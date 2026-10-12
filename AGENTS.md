@@ -45,7 +45,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 
 An agent may merge its own pull request only when all of these hold:
 - every required status check passes;
-- no path in `.github/CODEOWNERS` is touched (GitHub enforces this by requiring Hari's review);
+- no protected path is touched (the ruleset's required reviewers rule on `main` lists them and blocks the merge until Hari approves; `.github/CODEOWNERS` mirrors the list);
 - Codex's review raised no P0 or P1 finding, or each finding is resolved in a later commit and Codex has re-reviewed;
 - Codex's security review raised no finding at High severity, or each is resolved and re-reviewed;
 - the pull request is within the size limit in docs/agents/factory.md.
