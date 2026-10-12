@@ -29,9 +29,9 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 |---|---|---|
 | Item plan | Human-approved | Cheapest place for Hari's judgment: a page, not a diff |
 | Harness code, Terraform for the ephemeral layer, KQL, scenario definitions | Unattended, merged by agents | Checked by build, analyzers, architecture tests, `terraform plan`, Codex review |
-| Verifier logic | Human-reviewed (CODEOWNERS) | It is the oracle for every result; also covered by mutation testing |
+| Verifier logic | Human-reviewed (protected path) | It is the oracle for every result; also covered by mutation testing |
 | Expected outcomes, verdicts, `results/` | Human-only approval | They are the public claims |
-| Persistent infrastructure, identity, network, workflows, governance, ADRs | Human-reviewed (CODEOWNERS) | Large blast radius, long-lived decisions |
+| Persistent infrastructure, identity, network, workflows, governance, ADRs | Human-reviewed (protected path) | Large blast radius, long-lived decisions |
 
 ## Item lifecycle
 
@@ -70,12 +70,33 @@ Every verdict pull request contains:
 
 Layer 1 decides; layer 2 can only add.
 
-1. **Deterministic rules.** `.github/CODEOWNERS` lists every escalated path. A ruleset on `main` requires code-owner review, so GitHub blocks the merge until Hari approves. Rules that paths cannot express are checked by a required status check: pull request size, new NuGet packages, and changes to assertions in tests.
+1. **Deterministic rules.** The `main-protection` ruleset's required reviewers rule lists every protected path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one. `.github/CODEOWNERS` mirrors the same list so GitHub requests Hari's review automatically, but it is not the gate (see "Ruleset" below). Rules that paths cannot express are checked by a required status check: pull request size, new NuGet packages, and changes to assertions in tests.
 2. **Codex review.** Any unresolved P0 or P1 code review finding, or High security review finding, blocks agent merge. Codex reads docs/threat-model.md for security reviews once it exists; until then it generates its own threat model on every review.
 
 To verify during the pilot, before agents merge unattended:
-- that a ruleset can require code-owner review while requiring zero other approvals;
+- that a pull request opened by the factory's GitHub App on a protected path is blocked until Hari approves (tested so far only with Hari as author);
+- that a pull request touching only `docs/operations/` is not blocked (the negation pattern);
 - whether Codex posts anything when it finds no issues, and whether its reviews can block a merge, so the merge step cannot race ahead of the review.
+
+## Ruleset
+
+`main-protection` on the default branch. Settings and the reason for each, as tested on 2026-10-12 with throwaway pull requests #1 and #2:
+
+| Setting | Value | Reason |
+|---|---|---|
+| Bypass | Repository admin and organization admin, "for pull requests only" | Hari cannot approve his own pull requests, so his governance changes merge through bypass; nobody can push to `main` directly |
+| Restrict deletions, block force pushes | On | |
+| Required approvals | 0 | Agent pull requests on unprotected paths merge without a human |
+| Required reviewers | Team `repo-owners`, 1 approval, 15 file patterns | The gate for protected paths. GitHub caps the list at 15 patterns per reviewer, so the list is full; a new protected path means merging patterns or adding a second team |
+| Require review from Code Owners | On, but not relied on | Test: with 0 required approvals, a code-owned pull request was mergeable without review. Cause not isolated (zero approvals, or author was the only code owner) |
+| Dismiss stale approvals on push | On | A push after Hari's approval clears it |
+| Require approval of the most recent push | **Off** | Test: it required an approval from someone other than the last pusher on every pull request, so agents could never merge |
+| Require conversation resolution | On | Review threads must be resolved. Not a hard gate: the bot can resolve threads |
+| Additional approval for unattributed Copilot pull requests | On | Preview setting; affects only pull requests Copilot authors |
+
+Protected paths use `.gitignore` syntax. `/docs/` is protected except `docs/operations/`, which agents own. Runbooks go in `docs/operations/`; any other document under `docs/` comes to Hari.
+
+GitHub Copilot code review is not part of the factory. It reviewed the test pull requests although no ruleset requested it (most likely a personal setting) and was switched off on 2026-10-12, because its threads would block agent merges through conversation resolution and it answers to none of the rules in AGENTS.md.
 
 ## Measuring the gate
 
@@ -94,8 +115,8 @@ The trial runs in shadow mode, logging scores without gating. Jev is adopted onl
 
 ## Sequence to start the factory
 
-1. Hari approves this document, AGENTS.md's GOVERNANCE section, CLAUDE.md model bindings, and CODEOWNERS.
-2. Hari merges them to `main` and creates the ruleset.
+1. Hari approves this document, AGENTS.md's GOVERNANCE section, CLAUDE.md model bindings, and CODEOWNERS. Done 2026-10-12.
+2. Hari merges them to `main` and creates the ruleset. Done 2026-10-12; tested as recorded under "Ruleset".
 3. The reference slice (A01) is built interactively with Hari, at code level. It sets the patterns agents copy.
 4. Workflows are added: CI, implementation, scenario run with cost check, sweeper.
 5. Pilot on 3 items with agent merge disabled, to verify the open questions above.

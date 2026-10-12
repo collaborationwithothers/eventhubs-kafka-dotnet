@@ -1,24 +1,19 @@
-# Escalation rules (docs/agents/factory.md, layer 1).
-# A pull request touching any path below cannot merge without Hari's review.
-# This file must exist on main to take effect, and is itself owned by Hari.
+# Review requests only. The merge gate is the required reviewers rule in the
+# main-protection ruleset (docs/agents/factory.md, "Ruleset"). Keep both lists
+# identical. A path listed with no owner has no owner.
 
+/docs/                            @haripraghash
+/docs/operations/
 /.github/                         @haripraghash
 /AGENTS.md                        @haripraghash
 /CLAUDE.md                        @haripraghash
-/docs/blueprint.md                @haripraghash
-/docs/decisions/                  @haripraghash
-/docs/agents/                     @haripraghash
-/docs/engineering/                @haripraghash
 /infra/persistent/                @haripraghash
 /infra/ephemeral/identity*.tf     @haripraghash
 /infra/ephemeral/network*.tf      @haripraghash
 /scripts/                         @haripraghash
 /results/                         @haripraghash
-/scenarios/**/expected.yaml       @haripraghash
-/src/Parchwell.Verifier/          @haripraghash
-/tests/Parchwell.Verifier.Tests/  @haripraghash
-/Directory.Packages.props         @haripraghash
-/Directory.Build.props            @haripraghash
-*.sln                             @haripraghash
-*.slnx                            @haripraghash
+expected.yaml                     @haripraghash
+Parchwell.Verifier*/              @haripraghash
+/Directory.*.props                @haripraghash
+*.sln*                            @haripraghash
 *.csproj                          @haripraghash

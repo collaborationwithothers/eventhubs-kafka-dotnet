@@ -13,7 +13,7 @@ src/
   Parchwell.Scenarios/        scenario definition model and loader (scenarios are data)
   Parchwell.LoadGen/          service, vertical slices
   Parchwell.Enrichment/       service, vertical slices
-  Parchwell.Verifier/         service, vertical slices; the oracle (CODEOWNERS)
+  Parchwell.Verifier/         service, vertical slices; the oracle (protected path)
 tests/
   <Project>.Tests/            one test project per source project
   Parchwell.ArchitectureTests/
