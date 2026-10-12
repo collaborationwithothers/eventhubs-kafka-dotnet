@@ -4,9 +4,9 @@
 
 /docs/                            @haripraghash
 /docs/operations/
-/.github/                         @haripraghash
-/AGENTS.md                        @haripraghash
-/CLAUDE.md                        @haripraghash
+/.*/                              @haripraghash
+/*.md                             @haripraghash
+/skills-lock.json                 @haripraghash
 /infra/persistent/                @haripraghash
 /infra/ephemeral/identity*.tf     @haripraghash
 /infra/ephemeral/network*.tf      @haripraghash

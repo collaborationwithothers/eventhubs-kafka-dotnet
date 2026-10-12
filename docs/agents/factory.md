@@ -87,7 +87,7 @@ To verify during the pilot, before agents merge unattended:
 | Bypass | Repository admin and organization admin, "for pull requests only" | Hari cannot approve his own pull requests, so his governance changes merge through bypass; nobody can push to `main` directly |
 | Restrict deletions, block force pushes | On | |
 | Required approvals | 0 | Agent pull requests on unprotected paths merge without a human |
-| Required reviewers | Team `repo-owners`, 1 approval, 15 file patterns | The gate for protected paths. GitHub caps the list at 15 patterns per reviewer, so the list is full; a new protected path means merging patterns or adding a second team |
+| Required reviewers | Team `repo-owners`, 1 approval, 15 file patterns | The gate for protected paths. GitHub caps the list at 15 patterns per reviewer, so the list is full; a new protected path means merging patterns or adding a second team. `/.*/` covers every root dot-folder (`.github`, `.agents`, `.claude`); `/*.md` covers every root Markdown file, including README.md |
 | Require review from Code Owners | On, but not relied on | Test: with 0 required approvals, a code-owned pull request was mergeable without review. Cause not isolated (zero approvals, or author was the only code owner) |
 | Dismiss stale approvals on push | On | A push after Hari's approval clears it |
 | Require approval of the most recent push | **Off** | Test: it required an approval from someone other than the last pusher on every pull request, so agents could never merge |

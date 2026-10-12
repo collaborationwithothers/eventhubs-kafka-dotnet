@@ -23,5 +23,5 @@ In GitHub Actions, Claude acts through the factory's GitHub App, using a token m
 ## Before opening a pull request
 
 1. Run the full build and test suite locally in the session. Warnings are errors.
-2. Review the diff against docs/engineering/ with the self-review model. Fix findings before opening the pull request; do not list them as known issues.
+2. Review the diff against docs/engineering/ with the self-review model, using the `code-review` skill. Fix findings before opening the pull request; do not list them as known issues.
 3. Fill in every section of the pull request template.
