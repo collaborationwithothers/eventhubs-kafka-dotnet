@@ -1,7 +1,7 @@
 # eventhubs-kafka-dotnet: blueprint
 
-Status: draft for review. Written 2026-10-11.
-Inventory snapshot: 2026-10-11. The inventory freezes on the date this blueprint is approved; anything found later goes to v1.1.
+Status: approved by Hari on 2026-10-11.
+Inventory frozen: 2026-10-11. Anything found later goes to v1.1.
 
 Conventions used in this document:
 - **Fact** means stated by a cited source, with the source's last-updated date.
@@ -63,9 +63,12 @@ flowchart LR
     WF[Scenario runner workflow]
     RES[results/ in repo]
   end
+  subgraph RVN[Existing runner VNet - not managed by this repo]
+    RUN[GitHub runner with Azure private networking]
+  end
   subgraph PERSIST[Persistent layer - rg-parchwell-persist]
     BUD[Budget alert]
-    VNET[VNet + subnets]
+    VNET[Spoke VNet + subnets]
     DNS[Private DNS zones]
     LAW[Log Analytics workspace]
     UAMI[User-assigned identities]
@@ -83,7 +86,9 @@ flowchart LR
     PE2[Private endpoint - Blob]
     AI[Application Insights]
   end
-  WF -->|private networking runner in VNet| AKS
+  WF --> RUN
+  RVN <-->|VNet peering, no firewall| VNET
+  RUN -->|over peering| AKS
   LG -->|Kafka 9093 via PE1| EHN
   EC -->|consume events, produce state| EHN
   VER -->|consume all, separate group| EHN
@@ -96,7 +101,7 @@ flowchart LR
 
 ### Persistent layer
 
-Holds everything that costs little or nothing while idle, or that must survive teardown. The Azure budget alert (rule 5, applied before any other resource). The VNet with subnets for AKS nodes, private endpoints, and the GitHub runner. Private DNS zones `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net`, linked to the VNet. The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state in a storage account with Entra authentication and shared key access disabled. The VNet is persistent because GitHub's Azure private networking binds to a specific subnet; recreating the VNet would break the runner configuration (inference from how the network settings resource is bound; confirm at build).
+Holds everything that costs little or nothing while idle, or that must survive teardown. The Azure budget alert (rule 5, applied before any other resource). A spoke VNet with subnets for AKS nodes and private endpoints, peered directly to Hari's existing runner VNet, which hosts the GitHub runner with Azure private networking. There is no hub and no firewall in the path. The runner VNet is not managed by this repo. Private DNS for `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net` must resolve from both the spoke and the runner VNet. Both zones are platform prerequisites created outside this repo by `scripts/prerequisites.ps1` (ADR-010); this repo links them to the spoke and writes records into them. Teams that run behind a hub firewall: see [docs/networking/hub-firewall.md](networking/hub-firewall.md). The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state in a storage account with Entra authentication and shared key access disabled. The spoke VNet is persistent because recreating it would mean recreating both sides of the peering every session, and the runner side lives outside this repo. Spoke address space must not overlap the runner VNet or anything else peered to it.
 
 ### Event Hubs Premium namespace
 
@@ -112,7 +117,7 @@ Limits that shape this (Fact, S3, updated 2026-02-06): 1 MB maximum publication 
 
 ### Private endpoints
 
-One private endpoint for the Event Hubs namespace and one for Blob, both in the private-endpoint subnet, with DNS zone groups writing A records into the persistent zones. Kafka traffic uses port 9093 (Fact: S2).
+One private endpoint for the Event Hubs namespace and one for Blob, both in the private-endpoint subnet, with DNS zone groups writing A records into the persistent zones. Kafka traffic uses port 9093 over SASL_SSL (Fact: the bootstrap server is `<namespace>.servicebus.windows.net:9093` in S1, and S2 lists port 9093 as the port that must not be blocked). TLS is required for all Kafka traffic to Event Hubs (Fact: S15). No source documents a listener on 9092, the Apache Kafka plaintext default; that absence is inference until A05 confirms it.
 
 ### AKS cluster
 
@@ -137,7 +142,7 @@ Fact: Confluent.Kafka 2.16.0 was released 2026-10-07, targets net8.0 and net10.0
 
 ### Scenario runner
 
-A GitHub Actions workflow on a GitHub-hosted runner with Azure private networking (Hari's existing setup). Per scenario: `terraform apply` for the ephemeral layer, deploy the scenario's Helm values, run, collect KQL results, write `results/<scenario-id>/<utc-date>.json`, `terraform destroy`. Authentication to Azure through GitHub OIDC federation; no stored secrets.
+A GitHub Actions workflow on Hari's existing GitHub-hosted runner with Azure private networking, which sits in the existing runner VNet and reaches the spoke over peering. The workflow triggers only on `workflow_dispatch` and `schedule`, never on pull requests, because the repo is public and fork pull requests must never run on a runner inside the network. Per scenario: `terraform apply` for the ephemeral layer, deploy the scenario's Helm values, run, collect KQL results, write `results/<scenario-id>/<utc-date>.json`, `terraform destroy`. Authentication to Azure through GitHub OIDC federation; no stored secrets.
 
 ### Observability
 
@@ -289,6 +294,57 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 **Status.** Recorded, not built in v1. C19 measures the noisy-neighbour effect without lanes; that measurement is the evidence for or against building them.
 
+### ADR-010: Platform prerequisites live outside this repo's Terraform
+
+**Context.** The GitHub runner's VNet was created by hand and is shared with Hari's other repos. Clients in the spoke and the runner must both resolve the Event Hubs and Blob private endpoints to private addresses. A VNet can be linked to only one private DNS zone of a given name, so whichever repo owns `privatelink.blob.core.windows.net` decides for every repo that uses this runner.
+
+**Options considered.**
+1. This repo creates and owns both zones. Self-contained, but every later repo that needs the runner to reach a private endpoint depends on this repo's Terraform state.
+2. A platform Terraform repo imports the runner VNet and owns the zones. The cleanest end state, but a new repo of scope unrelated to this thesis.
+3. Zones created once by a committed script, outside every repo's Terraform, alongside the hand-built runner VNet. Each repo references the zones and manages only its own links and records.
+
+**Decision.** Option 3. `scripts/prerequisites.ps1` creates resource group `rg-platform-privatedns`, both zones, and their links to the runner VNet, and protects each zone. Both sides of the spoke-to-runner peering are created by this repo's persistent-layer Terraform (decided 2026-10-11). Terraform runs as an app registration that Hari creates and grants permissions to; the identity and its role assignments are outside this repo. This repo's Terraform reads the zones as data sources, creates the spoke links, and lets private endpoint DNS zone groups write the A records. A `create_private_dns_zones` variable (default `false`) lets a standalone deployer create the zones inside this repo instead.
+
+**Protection, and why not a resource group lock.** Microsoft states that locks are inherited by child resources, so a delete lock on the zone or its resource group would block deleting record sets (Fact: S16). Each session's teardown deletes the private endpoints, and with them their A records, so such a lock would break `terraform destroy` every session. Instead, following S16, a `CanNotDelete` lock on each zone's SOA record set, which blocks deleting the zone while leaving other record sets free to change. S16 notes record-set locks can only be created with Azure PowerShell, which is why the script is PowerShell.
+
+**Consequences.**
+- Repos stay independent of each other's Terraform state.
+- Platform drift is invisible to `terraform plan`. A deleted runner-VNet link makes the runner resolve public addresses and fail against a namespace with public access disabled (FM-07).
+- Rebuilding the platform means re-running the script, so it must stay idempotent and in the repo.
+- Exit path: if a platform repo ever exists, it adopts the zones with Terraform `import` blocks; this repo changes nothing but the data source location.
+
+
+### ADR-011: Terraform with Azure Verified Modules where they cover the need
+
+**Context.** Hari's direction (2026-10-11): peerings and private DNS A records are created by Terraform, using Azure Verified Modules (AVM) where possible. AVM modules are Microsoft-maintained Terraform modules with a common interface for private endpoints, diagnostic settings, role assignments and locks. Some are young and do not yet expose every property this repo needs.
+
+**Options considered.**
+1. Plain `azurerm` and `azapi` resources throughout.
+2. AVM modules for every component, accepting their gaps.
+3. AVM modules where they expose what the design needs; a plain `azapi` or `azurerm` resource where they do not, with each gap recorded here.
+
+**Decision.** Option 3. Every module is pinned to an exact version. Mapping, as checked on 2026-10-11 against the Terraform Registry (S17):
+
+| Component | AVM module | Version checked | Use and known gaps |
+|---|---|---|---|
+| Spoke VNet, subnets, peering both ways | `Azure/avm-res-network-virtualnetwork/azurerm` | 0.22.2 (2026-08-28) | `peerings` with `create_reverse_peering = true` creates the runner-side peering from the same call. Uses the `azapi` provider |
+| Spoke links to the manual DNS zones | `Azure/avm-res-network-privatednszone/azurerm`, submodule `private_dns_virtual_network_link` | 0.5.0 (2026-02-12) | Takes the existing zone's ID as `parent_id`, so it works against zones this repo does not own |
+| Event Hubs namespace, event hubs, private endpoint | `Azure/avm-res-eventhub-namespace/azurerm` | 0.1.1 (2026-10-06) | Very new. Its README documents `capacity` for Standard throughput units only, and documents no input for minimum TLS or a compaction cleanup policy. If the build confirms those gaps, `document-state` and the TLS setting fall back to `azapi` resources |
+| Claim-check storage, private endpoint | `Azure/avm-res-storage-storageaccount/azurerm` | to pin at build | |
+| AKS cluster | `Azure/avm-res-containerservice-managedcluster/azurerm` | to pin at build | |
+| Workload identities | `Azure/avm-res-managedidentity-userassignedidentity/azurerm` | to pin at build | |
+| Log Analytics workspace | `Azure/avm-res-operationalinsights-workspace/azurerm` | to pin at build | |
+| Application Insights | `Azure/avm-res-insights-component/azurerm` | to pin at build | |
+| Budget alert | none found in the AVM resource module index | | Plain `azurerm` resource |
+
+**A records.** Created by Terraform through each private endpoint's DNS zone group (the `private_endpoints` input with `private_dns_zone_resource_ids` on the Event Hubs and storage modules). The zone group writes the A record when the private endpoint is created and removes it when the endpoint is destroyed, so the record cannot drift from the endpoint's IP. The `private_dns_a_record` submodule is available but not used, because a hand-declared record duplicates what the zone group manages.
+
+**Consequences.**
+- Common interfaces for private endpoints, diagnostics and role assignments across components.
+- Two providers (`azurerm` and `azapi`) in one configuration, because several AVM modules use `azapi`.
+- Young modules can change inputs between minor versions. Exact pins, and upgrades only in their own pull requests.
+- Each gap found during the build is recorded in this ADR's table, which is itself a finding for readers using AVM with Event Hubs.
+
 ---
 
 ## 5. Failure modes
@@ -347,7 +403,7 @@ Each entry links to the inventory items that test it. Detection queries are in s
 - Trigger: missing VNet link, zone group, or a custom DNS forwarder misconfiguration, with public access disabled.
 - Blast radius: every client in the affected network.
 - Detection: connection failures at bootstrap; `AZMSVnetConnectionEvents`.
-- Mitigation: DNS zone groups managed by Terraform; a startup probe that resolves the namespace and checks for a private address.
+- Mitigation: DNS zone groups and spoke links managed by Terraform; runner-VNet links created by `scripts/prerequisites.ps1` and protected by the SOA lock (ADR-010); a startup probe in every workload and a first step in the scenario workflow that resolve the namespace and fail fast on a public address.
 - Not protected against: DNS changes outside Terraform.
 - Inventory: A06.
 
@@ -474,10 +530,11 @@ Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource
 - **Data plane: Entra only.** Local (SAS) authentication disabled on the namespace. OAUTHBEARER through a custom refresh handler using `WorkloadIdentityCredential` (ADR-003).
 - **Least privilege.** Role assignments at event hub scope, not namespace, per identity. No identity can create or delete topics. Assignments live in Terraform.
 - **Workload identity.** One user-assigned identity per workload, federated to a single Kubernetes service account in a single namespace. Federated credentials recreated per cluster.
-- **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform runs through GitHub OIDC federation, with the federated credential restricted to the main branch and the scenario-runner environment.
-- **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges plus the runner subnet (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture).
+- **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform apply and destroy run through GitHub OIDC federation, with the federated credential trusting only the protected scenario-runner environment, which requires Hari's approval; branches and pull requests are not trusted subjects.
+- **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). The runner group with Azure private networking is restricted to the scenario workflow file.
 - **Audit.** Premium runtime audit logs (`AZMSRunTimeAuditLogs`) record data-plane access per identity.
 - **Storage.** Shared key access disabled on both storage accounts; Entra-only.
+- **Deploying identity.** Terraform runs as an app registration created and permissioned by Hari, federated to GitHub OIDC as above. Its role assignments, including those on `rg-platform-privatedns` and the runner VNet, are outside this repo.
 - **Not covered in v1.** Customer-managed keys; egress firewall; Azure Policy enforcement of the above. Deferred, listed in section 12.
 
 ---
@@ -607,7 +664,7 @@ Optional, longer: reproduce any scenario in your own subscription with `make sce
 
 ### Explicitly deferred (v1.1 or later)
 
-Standard and Dedicated tiers. SAS authentication. AMQP interoperability. Kafka Connect and Debezium. Schema registry (Azure Schema Registry or Confluent). KEDA autoscaling of consumers on lag. Event Hubs Capture. Customer-managed keys. Egress firewall. Managed Prometheus and Grafana. Bulk and interactive lanes (ADR-009). Multi-region application deployment. A Java client comparison.
+Standard and Dedicated tiers. SAS authentication. AMQP interoperability. Kafka Connect and Debezium. Schema registry (Azure Schema Registry or Confluent). KEDA autoscaling of consumers on lag. Event Hubs Capture. Customer-managed keys. Egress firewall. Managed Prometheus and Grafana. Hub-and-spoke with a hub Azure Firewall: the required rules and the Kafka-specific risks are documented in [docs/networking/hub-firewall.md](networking/hub-firewall.md) but not tested. Bulk and interactive lanes (ADR-009). Multi-region application deployment. A Java client comparison.
 
 ### Documentation conflicts found while blueprinting
 
@@ -631,7 +688,7 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 | A02 | `socket.keepalive.enable` default `false` versus required `true` | S1, S6 | T | M |
 | A03 | `metadata.max.age.ms` default 900000 versus required under 240000 | S1, S6 | T | S |
 | A04 | `connections.max.idle.ms` absent from Microsoft's librdkafka table; librdkafka Azure heuristic at default | S1, S6 | T | M |
-| A05 | Port 9093 blocked by an NSG | S2 | T | S |
+| A05 | Port 9093 blocked by an NSG; confirm no listener on 9092 | S2, S15 | T | S |
 | A06 | Private DNS resolves the public address with public access disabled | S13 (inference for Kafka) | T | M |
 
 **B. Producer**
@@ -781,7 +838,7 @@ Planning envelope GBP 800 to 1,200, as in section 8. Recorded actuals replace th
 3. Whether Event Hubs supports `group.protocol = consumer` (C08).
 4. Resource-specific table and column for replication lag; columns of `AZMSRunTimeAuditLogs`.
 5. AKS Free tier control plane charge and private endpoint hourly price in UK South.
-6. The GitHub Azure private networking binding to the persistent subnet.
+6. Runner VNet integration: the runner VNet's egress address for AKS authorised IP ranges; spoke address space that does not overlap the runner VNet.
 7. Canary subset membership, fixed at v1.
 
 ---
@@ -806,3 +863,6 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S12 | [Confluent.Kafka on NuGet](https://www.nuget.org/packages/Confluent.Kafka) | 2.16.0 released 2026-10-07 |
 | S13 | [Geo-replication in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/geo-replication) | 2026-07-11 |
 | S14 | [Log compaction in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/log-compaction) | 2025-05-19 |
+| S15 | [What is Azure Event Hubs for Apache Kafka?](https://learn.microsoft.com/en-us/azure/event-hubs/azure-event-hubs-apache-kafka-overview) | read 2026-10-11 |
+| S16 | [How to protect private DNS zones and records](https://learn.microsoft.com/en-us/azure/dns/dns-protect-private-zones-recordsets) | read 2026-10-11 |
+| S17 | Terraform Registry module API and module READMEs: [virtual network](https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm), [private DNS zone](https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm), [Event Hubs namespace](https://registry.terraform.io/modules/Azure/avm-res-eventhub-namespace/azurerm); [AVM Terraform resource module index](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/) | read 2026-10-11 |
