@@ -100,3 +100,5 @@ These rules apply when Codex reviews a pull request in this repository.
 - Documents (README, ADRs, scenario write-ups, pull request descriptions) open with two or three plain sentences that a reader could stop after and still leave right.
 - One idea per sentence. Define unfamiliar terms at first use in documents. Never in log messages or code comments.
 - ASCII punctuation only. No em or en dashes. Metric units.
+
+<!-- Ruleset test. Do not merge. -->
