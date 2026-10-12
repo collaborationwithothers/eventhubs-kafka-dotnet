@@ -8,15 +8,16 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 
 - **Confidence.** "confirmed": the cited primary source states the fact. "confirmed*": every cited fact is confirmed, but the combined consequence is an inference that a test would establish. "unconfirmed": no primary source found.
 - **Disposition.** "fold X": becomes a configuration or hypothesis of existing item X. "new KNN": a new inventory item. "rule": an engineering rule for this repo's own harness (docs/engineering/), plus a section in docs/kubernetes.md citing the source; not a test. "guide": a docs/kubernetes.md section only.
-- **Versions.** Sources S05 to S08 were read at the pinned tags librdkafka v2.16.0 and Confluent.Kafka v2.16.0. S01 to S04 and S09 to S11 were read from `master` and are re-checked at the pinned tag before any claim built on them ships.
+- **Versions.** Every librdkafka and Confluent.Kafka source (S01 to S11) is cited at the pinned tag v2.16.0. S01 to S04 and S09 to S11 were first read from `master` and re-checked at the tag on 2026-10-12; every cited fact matched.
 
 ## Findings that change existing items
 
-1. **A04.** librdkafka sets its Azure default `connections.max.idle.ms` of 230000 ms only when `bootstrap.servers` contains the string "azure" (S05, verified at v2.16.0). Event Hubs bootstrap addresses are `<namespace>.servicebus.windows.net:9093`, which does not contain it, so the default stays 0 (disabled).
+1. **A04.** librdkafka sets its Azure default `connections.max.idle.ms` of 230000 ms only when `bootstrap.servers` contains the string "azure" (S05, verified at v2.16.0). Event Hubs bootstrap addresses are `<namespace>.servicebus.windows.net:9093`. The fixed part does not contain the string, so the heuristic fires only if the namespace name itself does (for example `myazurehub`). This repo's namespace names must not contain it (Terraform validation), so here the default stays 0 (disabled); a reader's result depends on their namespace name.
 2. **A02.** `socket.keepalive.enable` only sets SO_KEEPALIVE; librdkafka sets no keepalive timers (S06). The AKS Linux default keepalive time is 7200 s (S19), far above the 240 s Event Hubs idle cutoff (S13). Whether Event Hubs counts keepalive probes as activity is undocumented (K-37).
 3. **C18 and harness integrity.** .NET 10 installs no default SIGTERM handler outside the Generic Host (S30). Before .NET 11, a background service failure that stops the host usually exits with code 0 (S34), which a Kubernetes Job records as success.
 4. **F01, F03, C03.** Confluent.Kafka runs the consumer's OAUTHBEARER refresh only from inside `Consume` (S08). A consumer that stops calling `Consume` during long processing cannot refresh its token.
 5. **F02.** Every pod can reach the node's IMDS by default, so `azure_imds` exercises the node's managed identity, not workload identity, unless AKS IMDS restriction is enabled (S28).
+6. **A01.** In librdkafka, `request.timeout.ms` is "the ack timeout of the producer request", "only enforced by the broker" (S01 at v2.16.0): it is sent to the broker, not used as the client's wait. The client's own wait for a produce request is the lesser of `socket.timeout.ms` (default 60000) and the remaining `message.timeout.ms` (S01). Microsoft's librdkafka guidance treats `request.timeout.ms` as a client setting; whether Event Hubs honours the broker-side value is undocumented.
 
 ## Catalogue
 
@@ -40,7 +41,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-16 | Producer queue defaults (1048576 KB, 100000 messages) are native memory outside the GC heap; a smaller pod limit can be OOMKilled before QueueFull | yes | yes | confirmed* | S01, S44 | new K03 |
 | K-17 | Consumer prefetch defaults (`queued.max.messages.kbytes`, `fetch.max.bytes`, `receive.message.max.bytes`) size native memory | yes | yes | confirmed | S01 | new K03 |
 | K-18 | The GC heap hard limit defaults to 75 percent of the container limit and ignores librdkafka's native queues | yes | yes | confirmed* | S36, S01 | new K03 |
-| K-19 | Worker apps default to workstation GC; DATAS is on by default since .NET 9; server GC is unavailable on one core | no | yes | confirmed | S37 | rule; configuration of K03 |
+| K-19 | Worker apps default to workstation GC; DATAS is on by default since .NET 9; server GC is unavailable on one core | no | yes | confirmed | S37, S58 | rule; configuration of K03 |
 | K-20 | Replicas above the partition count sit idle; CPU-based HPA can add idle pods; every scale event is a rebalance | yes | yes | confirmed | S15, S56 | new K05 |
 | K-21 | HPA scale-down stabilisation defaults to 5 min; a flapping metric still causes repeated rebalances unless `behavior` dampens it | yes | yes | confirmed* | S56, S02 | new K05 |
 | K-22 | RollingUpdate defaults of 25 percent surge and unavailable; surge pods join while old members remain | yes | yes | confirmed* | S45, S12 | fold C06, C07 |
@@ -57,7 +58,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-33 | A VM freeze pauses CPU and network; a pause beyond `session.timeout.ms` causes a rebalance | yes | no | confirmed* | S25 | new K08 (D) |
 | K-34 | Pods need egress to CoreDNS and to the private endpoint on 9093; default-deny egress also blocks DNS | no | yes | confirmed | S52 | rule; guide |
 | K-35 | `socket.keepalive.enable` sets only SO_KEEPALIVE; AKS default keepalive time is 7200 s; pod sysctl `tcp_keepalive_time` below 240 is needed | yes | yes | confirmed | S06, S19, S53, S13 | fold A02 |
-| K-36 | librdkafka's Azure idle default applies only when `bootstrap.servers` contains "azure"; Event Hubs addresses do not | yes | yes | confirmed | S05, S01, S03, S13 | fold A04 |
+| K-36 | librdkafka's Azure idle default applies only when `bootstrap.servers` contains "azure" anywhere, case-insensitive; an Event Hubs address contains it only if the chosen namespace name does | yes | yes | confirmed | S05, S01, S03, S13 | fold A04 |
 | K-37 | Whether the Event Hubs 240 s idle close counts TCP keepalive probes as activity | yes | yes | unconfirmed | S13 | fold A02 (hypothesis) |
 | K-38 | librdkafka hides idle-classified disconnect logs; the statistics `disconnects` counter is the reliable signal | yes | yes | confirmed | S02, S04 | fold A04, H01 |
 | K-39 | `ndots:5` sends the Event Hubs name through search-domain lookups first; `broker.address.ttl` 1000 ms re-resolves on reconnect | yes | yes | confirmed* | S51, S21, S01, S22 | new K04 |
@@ -79,7 +80,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-55 | Pause and resume for long processing; keep calling `Consume` so poll interval and token refresh stay served | yes | yes | confirmed | S01, S02, S08 | fold C03 |
 | K-56 | `Close` commits stored offsets; Event Hubs throttles commits to 2 per second per partition, which can slow shutdown | yes | yes | confirmed* | S09, S02, S14 | fold C18, C09 |
 | K-57 | A consumer killed before its first auto-commit restarts with no committed offset; `auto.offset.reset` `largest` skips silently | yes | yes | confirmed | S01 | fold C15, C10 |
-| K-58 | Hosted services stop in reverse registration order unless configured otherwise | no | yes | confirmed | S32, S35 | rule |
+| K-58 | Hosted services stop in reverse registration order unless configured otherwise | no | yes | unconfirmed (S32 and S35 do not state the order) | S32, S35 | rule: shutdown order is orchestrated explicitly, never left to registration order |
 
 ## Not found in a primary source
 
@@ -98,17 +99,17 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 
 All fetched on 2026-10-12.
 
-- S01: https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md
-- S02: https://github.com/confluentinc/librdkafka/blob/master/INTRODUCTION.md
-- S03: https://github.com/confluentinc/librdkafka/blob/master/CHANGELOG.md
-- S04: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+- S01: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+- S02: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+- S03: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CHANGELOG.md
+- S04: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
 - S05: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L4682-L4687
 - S06: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_transport.c#L1046-L1052
 - S07: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_sasl_oauthbearer.c#L430-L432
 - S08: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Consumer.cs
-- S09: https://github.com/confluentinc/confluent-kafka-dotnet/blob/master/src/Confluent.Kafka/IConsumer.cs
-- S10: https://github.com/confluentinc/confluent-kafka-dotnet/blob/master/src/Confluent.Kafka/ConsumerBuilder.cs
-- S11: https://github.com/confluentinc/confluent-kafka-dotnet/blob/master/src/Confluent.Kafka/IProducer.cs
+- S09: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs
+- S10: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs
+- S11: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs and .../Config_gen.cs
 - S12: https://docs.confluent.io/platform/current/clients/consumer.html
 - S13: https://learn.microsoft.com/azure/event-hubs/apache-kafka-configurations
 - S14: https://learn.microsoft.com/azure/event-hubs/apache-kafka-troubleshooting-guide
@@ -154,5 +155,6 @@ All fetched on 2026-10-12.
 - S55: https://kubernetes.io/docs/concepts/storage/projected-volumes/
 - S56: https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
 - S57: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+- S58: https://learn.microsoft.com/dotnet/standard/garbage-collection/datas ("enabled by default in .NET 9")
 
 S43 is unused.

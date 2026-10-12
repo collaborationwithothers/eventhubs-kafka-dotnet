@@ -812,7 +812,8 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | Item | Added |
 |---|---|
 | A02 | Effective keepalive timers: `socket.keepalive.enable` sets SO_KEEPALIVE only and AKS defaults to 7200 s (K-35); configuration with pod sysctl `net.ipv4.tcp_keepalive_time` below 240; hypothesis: whether Event Hubs counts keepalive probes as activity (K-37) |
-| A04 | Reframed: the librdkafka Azure heuristic matches "azure" in `bootstrap.servers` and does not fire for `servicebus.windows.net` (K-36); detection through the statistics `disconnects` counter (K-38) |
+| A01 | Reframed: librdkafka's `request.timeout.ms` is broker-enforced; the client's per-request wait is the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` (catalogue finding 6). Configurations add `socket.timeout.ms`; hypothesis: whether Event Hubs honours the broker-side `request.timeout.ms` |
+| A04 | Reframed: the librdkafka Azure heuristic matches "azure" anywhere in `bootstrap.servers`; it does not fire for `servicebus.windows.net` unless the namespace name contains the string (K-36). This repo's namespace names must not contain it, enforced by Terraform validation, and the write-up states the condition. Detection through the statistics `disconnects` counter (K-38) |
 | B04, B10 | Idempotence does not survive a pod restart (K-53) |
 | C03 | Pause and resume while processing; keep calling `Consume` (K-55); consumer token refresh runs only inside `Consume` (K-47); no commit on partitions lost (K-28) |
 | C04 | Crash-looping consumer: restart back-off and a rebalance per restart (K-09) |
@@ -857,7 +858,7 @@ All figures are estimates with low confidence.
 | Work | Hours |
 |---|---|
 | Inventory items: 26 S at 3 h, 28 M at 8 h, 8 L at 16 h, 4 X at 0.5 h | 432 |
-| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 20 h; docs/kubernetes.md about 8 h | 78 |
+| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 20 h; docs/kubernetes.md about 8 h (basis below) | 78 |
 | Terraform, persistent and ephemeral layers | 30 |
 | `Parchwell.Kafka`, loadgen, enrichment-consumer, verifier | 50 |
 | Statistics bridge, KQL queries, workbook | 20 |
@@ -866,6 +867,8 @@ All figures are estimates with low confidence.
 | Subtotal | 665 |
 | Contingency, 15 percent | 100 |
 | **Total** | **about 765; range 580 to 830** |
+
+Basis for amendment 1's two unsized lines (estimate, Claude with Hari, 2026-10-12, low confidence): the folded findings add roughly one configuration or hypothesis to each of 17 existing items at about 1 h each to define, run and write up, plus about 3 h for the A01 reframing, giving about 20 h; docs/kubernetes.md has about 12 sections linking existing results, at about 40 minutes each, giving about 8 h.
 
 This is larger than the earlier estimate of 250 to 500 hours. The cause is the inventory: the earlier figure assumed 30 to 40 items; the frozen list has 66, and amendment 1 (2026-10-12) adds 10.
 
