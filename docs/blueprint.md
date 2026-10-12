@@ -1,7 +1,7 @@
 # eventhubs-kafka-dotnet: blueprint
 
 Status: approved by Hari on 2026-10-11.
-Inventory frozen: 2026-10-11. Anything found later goes to v1.1.
+Inventory frozen: 2026-10-11. Amended once, by Hari on 2026-10-12 (amendment 1, section 12). Anything else found later goes to v1.1.
 
 Conventions used in this document:
 - **Fact** means stated by a cited source, with the source's last-updated date.
@@ -788,6 +788,49 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 
 Totals: 66 items. Tested or traced with effort: 62 (S 26, M 28, L 8). Out of scope: 4.
 
+### Inventory amendment 1 (approved by Hari, 2026-10-12)
+
+Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 and C18. A sourced review of 58 practices and failure modes at the Kafka client, Kubernetes and Event Hubs boundary ([docs/research/kubernetes-kafka-clients.md](research/kubernetes-kafka-clients.md)) found gaps. Each of the 58 was sorted by one rule: covered by an existing item, folded into it; specific to Kafka or Event Hubs, reproducible at build scale and not covered, a new tested item; generic Kubernetes or .NET behaviour, an engineering rule for this harness (docs/engineering/dotnet.md) and a guide section; not reproducible at build scale, a traced item.
+
+**K. Kubernetes runtime (new)**
+
+| ID | Item | Source | Type | Size |
+|---|---|---|---|---|
+| K01 | Probe design for Kafka workers: liveness, startup and readiness; restart storms during long processing or rebalances | K-11, K-12, K-13 | T | M |
+| K02 | CPU limits: CFS throttling of librdkafka threads, missed heartbeats, error-free rebalances; `ProcessorCount` under a CPU limit | K-14, K-15 | T | M |
+| K03 | Native memory against pod memory limits: librdkafka queues outside the GC heap, OOMKill before QueueFull; GC heap hard limit and GC mode | K-16 to K-19 | T | M |
+| K04 | DNS `ndots:5` lookups for the Event Hubs name and re-resolution on reconnect | K-39 | T | S |
+| K05 | Scaling events: replicas above the partition count, CPU-based HPA flapping, rebalance per scale event | K-20, K-21 | T | M |
+| K06 | Spot eviction notice against the termination grace period (Microsoft pages disagree) | K-31 | D: harness uses normal pools (ADR-008) | S |
+| K07 | Zone spread of consumer group members | K-32 | D: a zone outage cannot be induced | S |
+| K08 | VM freeze pauses longer than `session.timeout.ms` | K-33 | D: a platform freeze cannot be triggered | S |
+| K09 | LocalDNS prerequisites and effects | K-40 | D: reimages nodes; outside the harness design | S |
+| K10 | SNAT port use for Entra egress | K-41 | D: exhaustion needs scale | S |
+
+**Folded into existing items** (configurations or hypotheses added; the catalogue row is the source)
+
+| Item | Added |
+|---|---|
+| A02 | Effective keepalive timers: `socket.keepalive.enable` sets SO_KEEPALIVE only and AKS defaults to 7200 s (K-35); configuration with pod sysctl `net.ipv4.tcp_keepalive_time` below 240; hypothesis: whether Event Hubs counts keepalive probes as activity (K-37) |
+| A04 | Reframed: the librdkafka Azure heuristic matches "azure" in `bootstrap.servers` and does not fire for `servicebus.windows.net` (K-36); detection through the statistics `disconnects` counter (K-38) |
+| B04, B10 | Idempotence does not survive a pod restart (K-53) |
+| C03 | Pause and resume while processing; keep calling `Consume` (K-55); consumer token refresh runs only inside `Consume` (K-47); no commit on partitions lost (K-28) |
+| C04 | Crash-looping consumer: restart back-off and a rebalance per restart (K-09) |
+| C06 | Deployment versus StatefulSet for `group.instance.id` (K-23, K-25); duplicate ID fencing (K-24); rolling update surge (K-22); node drain and AKS upgrade with a PDB (K-29, K-30); static members do not send LeaveGroup (K-05) |
+| C07 | Eager to cooperative migration in two restarts (K-26); Confluent.Kafka handler limits under cooperative rebalancing (K-27) |
+| C09 | Shutdown commits under the 2 per second per partition throttle (K-56) |
+| C10, C15 | Killed before the first auto-commit, with `auto.offset.reset` `largest` (K-57) |
+| C14 | Job double start as a source of concurrent members (K-08, K-24) |
+| C18 | Grace period shorter than flush plus close (K-03, K-04); shell-form `ENTRYPOINT` image (K-02); `Close` versus `Dispose` (K-05); commit on revoke versus lost (K-28) |
+| D04 | Broker connections per client; record the broker count in every evidence pack (K-42) |
+| F01 | Projected token TTL and re-read of the token file (K-44); token resource (K-45); consumer refresh only inside `Consume` (K-47) |
+| F02 | IMDS reachable from every pod, so `azure_imds` uses the node identity (K-49); hypothesis: librdkafka jwt-bearer grant with Entra federation (K-50) |
+| F03 | Egress to `login.microsoftonline.com` (K-43); refresh timing and retry on failure (K-46); hypothesis: Event Hubs re-authentication at token expiry (K-48) |
+| F04 | Token resource mismatch (K-45) |
+| H02 | `client.id` from the pod name to join client statistics to Event Hubs logs (K-51) |
+
+Totals after amendment 1: 76 items. Tested or traced with effort: 72 (S 32, M 32, L 8). Out of scope: 4. Guidance for operators is collected in docs/kubernetes.md, written as results arrive; every recommendation there links to the item and result behind it.
+
 ---
 
 ## 13. Learning ledger
@@ -814,20 +857,23 @@ All figures are estimates with low confidence.
 | Work | Hours |
 |---|---|
 | Inventory items: 26 S at 3 h, 28 M at 8 h, 8 L at 16 h, 4 X at 0.5 h | 432 |
+| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 20 h; docs/kubernetes.md about 8 h | 78 |
 | Terraform, persistent and ephemeral layers | 30 |
 | `Parchwell.Kafka`, loadgen, enrichment-consumer, verifier | 50 |
 | Statistics bridge, KQL queries, workbook | 20 |
 | Scenario runner workflow and results pipeline | 25 |
 | README, ADRs, diagrams, per-scenario write-ups | 30 |
-| Subtotal | 587 |
-| Contingency, 15 percent | 88 |
-| **Total** | **about 675; range 500 to 750** |
+| Subtotal | 665 |
+| Contingency, 15 percent | 100 |
+| **Total** | **about 765; range 580 to 830** |
 
-This is larger than the earlier estimate of 250 to 500 hours. The cause is the inventory: the earlier figure assumed 30 to 40 items; the frozen list has 66.
+This is larger than the earlier estimate of 250 to 500 hours. The cause is the inventory: the earlier figure assumed 30 to 40 items; the frozen list has 66, and amendment 1 (2026-10-12) adds 10.
 
 ### Azure spend to v1
 
 Planning envelope GBP 800 to 1,200, as in section 8. Recorded actuals replace this as the build proceeds.
+
+Amendment 1 adds at most GBP 65 of live runs under the per-item cost limits (4 M at GBP 15, 1 S at GBP 5; traced items run nothing). These are caps, not a forecast; the envelope is unchanged until actuals say otherwise.
 
 ---
 

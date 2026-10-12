@@ -64,6 +64,23 @@ Rules:
 - No type in one slice folder references a type in another slice folder of the same service.
 - No production type references `DateTime.UtcNow` or `DateTime.Now`.
 
+## Process lifecycle, containers and Kubernetes
+
+Binding for every service image. Each rule cites the row in docs/research/kubernetes-kafka-clients.md that justifies it. Inventory amendment 1 tests the Kafka-specific consequences; these rules keep our own harness from producing false results.
+
+- **Generic Host.** Every service runs on the .NET Generic Host. .NET 10 has no default SIGTERM handler outside it (K-01).
+- **Exec-form `ENTRYPOINT`.** The app is PID 1 and receives SIGTERM directly; no shell wrapper (K-02).
+- **Exit codes.** Any failure that ends a run sets a non-zero exit code explicitly, including a background service that throws and a fatal Kafka error. On .NET 10 the host otherwise exits with 0, and a Kubernetes Job would record a failed run as a success (K-07, K-54). A test proves each failure path exits non-zero.
+- **Stop token.** Background work honours the host's stop token. `Consume` is called with a timeout or the token, never blocking indefinitely (K-06).
+- **Shutdown budget.** `terminationGracePeriodSeconds` is set explicitly and is longer than `HostOptions.ShutdownTimeout` plus any preStop time. Both values are recorded in every evidence pack (K-03).
+- **Shutdown order.** Consumers stop before the producers they feed (K-58). Producers `Flush` within the remaining budget; consumers `Close`, never only `Dispose` (K-04, K-05).
+- **Probes.** A startup probe gates liveness. Liveness reports whether the process can make progress, never whether lag or processing time is high (K-11, K-12). The harness's probe settings are fixed; K01 tests the alternatives.
+- **Resources.** CPU and memory requests and limits are set explicitly per service and recorded in every evidence pack, with `Environment.ProcessorCount` as seen by the process (K-15). The memory limit allows for librdkafka's native queues outside the GC heap (K-16 to K-18).
+- **GC mode.** The GC mode is set explicitly in the project file and recorded in every evidence pack (K-19).
+- **Client identity.** `client.id` is the pod name, injected through the Downward API (K-51). `group.instance.id`, where used, comes from a stable StatefulSet ordinal, never a Deployment pod name (K-23).
+- **Statistics.** librdkafka statistics are on in every service, bridged to OpenTelemetry (K-52, ADR-007).
+- **Network policy.** Pods allow egress only to CoreDNS (53 UDP and TCP), the Event Hubs private endpoint on 9093, the Blob private endpoint on 443, and Entra on 443 (K-34, K-43).
+
 ## Logging and telemetry
 
 - Structured logging with message templates. Log messages are for operators: what happened, with identifiers. No explanations of Kafka concepts.

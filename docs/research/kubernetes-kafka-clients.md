@@ -2,7 +2,7 @@
 
 This catalogue lists 58 practices and failure modes at the boundary between a librdkafka-based Kafka client (Confluent.Kafka on .NET), Kubernetes on AKS, and Azure Event Hubs' Kafka endpoint. Every row cites a primary source; rows marked "unconfirmed" have none and are therefore test questions, not claims. The "Disposition" column says how each row enters the v1 inventory under inventory amendment 1 (docs/blueprint.md section 12).
 
-Status: research fetched 2026-10-12. Disposition proposed 2026-10-12, pending Hari's approval of amendment 1.
+Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12 as inventory amendment 1.
 
 ## How to read this
 
