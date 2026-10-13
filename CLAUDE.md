@@ -25,7 +25,10 @@ In GitHub Actions, Claude acts through the factory's GitHub App, using a token m
 AGENTS.md's "Before opening a pull request" applies in full. In addition:
 
 1. Run the full build and test suite locally in the session. Warnings are errors.
-2. For the cold review (AGENTS.md, "Before opening a pull request", rule 8), write the diff to a file and give only that path to the `repo-reviewer` subagent.
+2. Run the cold review (AGENTS.md, "Before opening a pull request", rule 8) as follows.
+   - Stage exactly the files you intend to commit with `git add <paths>`. Never use `git add -A`.
+   - Write the whole proposed change to a file outside the repository: `git fetch origin main && git diff --cached --merge-base origin/main > <file>`. Check that the command succeeded before going on.
+   - Give only that file's path to the `repo-reviewer` subagent. Spawn it without a `model` parameter, as the one exception to "Subagents" below. A per-invocation `model` overrides the `claude-opus-5-5` pin in its definition (https://code.claude.com/docs/en/sub-agents, "Choose a model"). Record the resolved model, as "Subagents" requires.
 
 ## Subagents
 

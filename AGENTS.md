@@ -91,7 +91,7 @@ Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, sym
 - Never apply the `ready-for-agent` label. Only Hari applies it; it is his plan approval.
 - Skills that interview a human (`grilling`, `domain-modeling`) are for interactive sessions with Hari only. In an unattended run, write the open question as the handoff comment instead.
 
-One skill is owned by this repository rather than pinned from a third party: `repo-review`, the shared review rubric for every agent. It is not in `skills-lock.json` and changes only through a pull request to Hari.
+One skill is owned by this repository rather than pinned from a third party: `repo-review`. It is the rubric for the cold review that "Before opening a pull request" rule 8 defines. `repo-review` is not in `skills-lock.json` and changes only through a pull request to Hari.
 
 Adding or removing a skill is a governance change and goes to Hari.
 
@@ -106,12 +106,14 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 5. When a reviewer finds one error, check every instance of that class, not only the one flagged.
 6. If two review rounds in a row raise new substantive findings, stop and split the pull request. The threshold is a governance choice, not a measurement; its basis is PR #6, where design findings kept arriving until the pull request was split after round four.
 7. Keep the description short: what changed, why, what to read first, what you are least sure about. Evidence lives in the repository (ADRs, citations, commit messages); the description links to it. If the change cannot be described in a few lines, split it.
-8. Run a cold review before every push: a fresh context, given only the diff by the author, applying the `repo-review` skill. Fix every P0 and P1 it reports; fix or record P2s as issues. Cold-review rounds do not count toward rule 6. If three cold-review rounds on the same pull request still report P0 or P1 findings, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
+8. Run a cold review before every push. A cold review is a fresh context that applies the `repo-review` skill and is given only the diff by the author. Fix every P0 and P1 it reports, except as the next paragraph allows. Fix each P2, or record it as an issue. Cold-review rounds do not count toward rule 6. If three cold-review rounds in total on the same pull request report P0 or P1 findings that must be fixed, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
+
+   Some Code Review Rules flag work that only Hari can approve: changes to expected outcomes, verdicts or `results/`, and new projects, assembly references or NuGet packages. Keep such work only if the approved plan or the verdict step requires it. In that case, push, list the finding in the pull request description, and leave the merge to Hari. Revert any other such change before the push. This exception does not relax GOVERNANCE "Verdict integrity".
 9. Fill in the pull request template, including its collapsed self-review record. Escapes start as "pending"; after the review rounds, classify every finding and update the count before merge (issue #17 defines how escapes are measured).
 
 ## Code Review Rules
 
-These rules apply when Codex reviews a pull request in this repository.
+These rules apply when Codex reviews a pull request in this repository, and in the cold review ("Before opening a pull request", rule 8).
 
 - Flag as P0 any change that edits an expected outcome, a verdict, or a file under `results/`, outside a pull request labelled `verdict`.
 - Flag as P0 any change that weakens identity scope, network exposure, or private endpoint configuration.
