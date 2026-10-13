@@ -140,7 +140,7 @@ Fact: Confluent.Kafka 2.16.0 was released 2026-10-07, targets net8.0 and net10.0
 - **`Parchwell.Kafka` (shared library).** The guidance as code: an Event Hubs configuration builder with every setting traceable to an inventory item; the Entra OAUTHBEARER token refresh handler (ADR-003); the librdkafka statistics to OpenTelemetry bridge (ADR-007); graceful shutdown (flush on stop, close on stop, commit on partition revoke). Each setting's XML doc comment links to its inventory item and result.
 - **`loadgen`.** Deterministic, seeded producer. Reads a workload profile file and emits lifecycle events with tenant, document id, a per-key sequence number and its own instance ID in headers. Records every message's delivery outcome in a ledger (ADR-012). Same seed, same schedule, every run.
 - **`enrichment-consumer`.** The consumer under test. Simulates processing time per event type from the profile, can be told to fail a set percentage of messages, writes the document's latest state to `document-state`, writes large payloads to Blob and references them (ADR-006).
-- **`verifier`.** The oracle: the component that decides, for every message, what actually happened to it. A separate consumer reading `document-events`; oracles for the other topics are decided when an item needs them. Joins the consumed messages with the load generator's per-message ledger into four outcome classes (ok, loss, phantom, reported failure) and counts duplicates and reorders (ADR-012). Reads `document-events` between high watermarks recorded before and after the load generator runs (ADR-013). This is what makes loss and reordering measurable instead of inferred.
+- **`verifier`.** The oracle: the component that decides, for every message, what actually happened to it. A separate consumer reading `document-events`; oracles for the other topics are decided when an item needs them. Joins the consumed messages with the load generator's per-message ledger into four outcome classes: ok, loss, phantom (consumed although the ledger says delivery failed) and reported failure. It also counts duplicates and reorders (ADR-012). Reads `document-events` between high watermarks (the current end offset of each partition) recorded before and after the load generator runs (ADR-013). This is what makes loss and reordering measurable instead of inferred.
 
 ### Scenario runner
 
@@ -197,7 +197,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 3. librdkafka `azure_imds`.
 4. Confluent.Kafka `SetOAuthBearerTokenRefreshHandler` calling `WorkloadIdentityCredential` (Azure.Identity) for scope `https://<namespace>.servicebus.windows.net/.default`.
 
-**Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only. Ledger container roles for `loadgen` and `verifier` are in ADR-012.
+**Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only on Event Hubs. Ledger container roles for `loadgen` and `verifier` are in ADR-012.
 
 **Consequences.**
 - No secrets anywhere in the cluster or the repo.
@@ -449,7 +449,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - Every setting the harness depends on is set explicitly and tagged with its inventory ID.
 - Where Microsoft's pages conflict, the baseline takes the value Microsoft labels as recommended or required for librdkafka. Labels in Microsoft's Java table do not apply to a librdkafka client. If no page labels a value for librdkafka, the baseline takes the librdkafka default, set explicitly.
 - Preview features never enter the baseline.
-- The baseline covers the clients under test: the load generator's producer and `enrichment-consumer`. The verifier is harness, not a client under test. Its settings go through the same configuration builder, are set explicitly, and are tagged with the inventory item each one guards against (ADR-013).
+- The baseline covers the producer configuration in the load generator and the consumer configuration in `enrichment-consumer`, the Kafka settings the inventory tests. The verifier's settings are harness settings. Its settings go through the same configuration builder, are set explicitly, and are tagged with the inventory item each one guards against (ADR-013).
 
 **Consequences.**
 - A change of default in a later librdkafka version cannot silently change a setting the harness depends on.
@@ -465,17 +465,17 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 **Options considered.**
 1. Unit tests of the join only. Fast, but they never show the classes arising from a real client and broker.
 2. Component tests that cause every class for real. Not possible for loss (below).
-3. Unit tests of the join, plus component tests that cause phantom, reported failure and duplicate outcomes for real, plus one component test that simulates loss.
+3. Unit tests of the join, plus component tests that cause phantom, reported failure and duplicate outcomes for real, plus one component test that simulates loss in the ledger.
 
 **Decision.** Option 3.
 - Unit tests cover the join for all four classes, duplicates and reorders.
 - Component tests use a Kafka broker in a container (Testcontainers) behind Toxiproxy, a TCP proxy for simulating network conditions (Fact: S21). Toxiproxy's faults are called toxics; they include latency, timeout and reset_peer (Fact: S21). The toxics are applied between the client and the broker to cause phantom, reported-failure and duplicate outcomes.
-- Loss is covered by one component test that simulates it. The test produces, records success in the ledger, then calls `DeleteRecordsAsync`, which deletes records older than the offsets given (Fact: S20). The verifier then finds delivered messages it cannot consume. The test and its name say it is simulated.
+- Loss is covered by one component test that simulates it in the ledger. Alongside real produced messages, the test writes ledger rows marked delivered for messages it never sends. The verifier, running the real start line, end line, consumer and join, finds those rows with no consumed message and classes them as loss. The test and its name say it is simulated.
 
 **Consequences.**
 - Why loss cannot be caused for real: loss means the broker acknowledged a write and then lost it. A single-broker test cluster gives no reliable way to make that happen. Toxiproxy acts before the acknowledgement reaches the client, so it causes reported failures or phantoms, not loss. (Inference; not tested.)
 - The simulated test proves the harness detects loss end to end, through the real consumer, watermarks and join. It proves nothing about Event Hubs, and nothing in `results/` cites it.
-- `DeleteRecordsAsync` is used against the test broker only. This ADR makes no claim about Event Hubs support for it.
+- Simulating loss by deleting produced records with `DeleteRecordsAsync`, which deletes records older than the offsets given (Fact: S20), was considered and rejected. It also deletes the run's start line, so under ADR-013's `auto.offset.reset = error` the run fails instead of showing loss (inference from S20 and S25). Decided by Hari, 2026-10-13.
 - Whether Toxiproxy can produce a phantom with Confluent.Kafka 2.16.0 is the question of the phantom spike (#9, PR 3). If it cannot, this ADR is revised before the verifier is built.
 - Testcontainers and Toxiproxy packages are new dependencies, so the pull requests that add them go to Hari (AGENTS.md, "Code Review Rules").
 
