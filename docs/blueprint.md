@@ -348,7 +348,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 ### ADR-018: Either tool implements; Codex reviews every pull request; the factory runs on plans, not metered keys
 
-**Context.** The factory operating model approved on 2026-10-12 bound the two tools to fixed roles: Claude Code implements, Codex reviews. Hari's Claude Max plan has usage limits, and when they are reached the factory has no implementer. Hari's requirement (2026-10-13): either Claude Code or Codex must be able to implement an issue. The reviewer then has to be decided. ADR-012 to ADR-017 are on branch `claude/issue-8-code-half-adrs` (issue #8, not yet merged), so this decision takes ADR-018.
+**Context.** The factory operating model approved on 2026-10-12 bound the two tools to fixed roles: Claude Code implements, Codex reviews. Hari's Claude Max plan has usage limits, and when they are reached the factory has no implementer. Hari's requirement (2026-10-13): either Claude Code or Codex must be able to implement an issue. The reviewer then has to be decided. Six ADRs for issue #8 are on branch `claude/issue-8-code-half-adrs`, not yet merged, and take the six numbers after ADR-011, so this decision takes ADR-018.
 
 What the tools offer, verified 2026-10-13:
 - Codex's GitHub Action takes an API key and runs `codex exec` (S30, S31). Its GitHub integration reviews a pull request automatically or on `@codex review`; any other `@codex` comment starts a legacy cloud chat with the pull request as context; it posts as the bot `chatgpt-codex-connector` (S32). No issue or label trigger is documented. Its current cloud environments start from the app, mobile, Slack or Teams; no GitHub event, API or CLI trigger is documented, and the GitHub integration runs on "Codex Cloud (Legacy)", which OpenAI says it plans to deprecate, with no date (S33). Inferred from S30 to S33, not stated by any of them: the only documented way to start a Codex implementation task from a GitHub event without a person is the GitHub Action, on an API key (reviews start on their own, S32).
@@ -948,7 +948,7 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S17 | Terraform Registry module API and module READMEs: [virtual network](https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm), [private DNS zone](https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm), [Event Hubs namespace](https://registry.terraform.io/modules/Azure/avm-res-eventhub-namespace/azurerm); [AVM Terraform resource module index](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/) | read 2026-10-11 |
 | S18 | [Kafka transactions in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions) | read 2026-10-13 |
 
-S19 to S29 are left for branch `claude/issue-8-code-half-adrs` (issue #8), which uses S19 to S26 as of 2026-10-13. ADR-018's sources start at S30.
+The numbers between S18 and S30 are left for branch `claude/issue-8-code-half-adrs` (issue #8), which uses eight of them as of 2026-10-13. ADR-018's sources start at S30.
 
 | ID | Source | Updated |
 |---|---|---|
