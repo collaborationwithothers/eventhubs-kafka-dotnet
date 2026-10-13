@@ -2,7 +2,6 @@
 
 **Read first:** 
 **Least sure about:** 
-**Escapes:** pending
 
 <details><summary>Self-review record</summary>
 
@@ -10,5 +9,6 @@
 - ADRs and engineering rules checked against:
 - Scripted checks run:
 - Cold review (repo-review): rounds run, and the final result line:
+- Models, with effort where visible: authoring session; cold reviewer; Codex:
 
 </details>

@@ -104,6 +104,20 @@ GitHub Copilot code review is not part of the factory. It reviewed the test pull
 - Each week Hari spot-checks about 5 agent-merged pull requests and records yes or no: should this have come to me? (About 10 minutes.)
 - Metrics: Hari's minutes per item, cost per merged pull request, gate misses, false escalations.
 
+### Escapes
+
+An escape is a valid P0 or P1 finding that the cold review should have caught but did not. It shows whether self-review is improving. The cases below also count findings on pushes that skipped the cold review. That is by design: a skipped review is a self-review failure too.
+
+- Pre-merge escape: a valid P0 or P1 that Codex raises on any pushed commit.
+- A push without a cold review breaks AGENTS.md "Before opening a pull request" rule 8. It is recorded as a process breach in the pull request description, and Codex's findings on it still count as escapes.
+- Not an escape: a finding the author pushed knowingly under the escalation exception in AGENTS.md "Before opening a pull request" rule 8, listed in the pull request description.
+- Post-merge escape: a P0 or P1 defect on `main` that a cold review of its pull request should have caught. It is recorded as an issue labelled `escape` that links the pull request that introduced it. The label does not exist yet. Who applies it is open (issue #17).
+- Only valid findings count. An author's `Not valid:` reply makes a finding disputed, not invalid. A disputed finding counts as an escape unless Hari agrees with the dispute in the same thread.
+- A `Not valid:` reply does not clear a P0 or P1 for merge. The merge rule in AGENTS.md still applies, so a disputed finding waits for Hari.
+- P2 findings do not count.
+- A pull request's count is provisional, because post-merge escapes can appear weeks later.
+- Escapes are not counted by hand. A script will compute them from the Codex review threads and their replies, the pull request descriptions (escalation exceptions and process breaches) and the `escape` issues. The script and the normalisation (per inventory item or per finding) will be designed with the merge workflow (issue #17). Until then, the threads are the record.
+
 ## Deferred: Jev as the second escalation layer
 
 Jev (TypeSafe AI) is deferred. It is trialled only when all of these hold:
