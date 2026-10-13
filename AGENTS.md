@@ -87,13 +87,29 @@ docs/engineering/dotnet.md and docs/engineering/terraform.md are binding. The no
 Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, symlinks to the same folders). Except for `repo-review` (below), they are third-party, pinned in `skills-lock.json`, and not edited in place. Where a skill conflicts with this file or docs/agents/factory.md, this file wins:
 
 - Decisions are recorded as ADRs in docs/blueprint.md section 4, numbered from ADR-012, in its format (context, options, decision, consequences). Never create `docs/adr/`.
-- The issue tracker is GitHub issues on this repository. Read an issue with `gh issue view <number> --comments`. This replaces `/setup-matt-pocock-skills`, which is not installed; ignore any skill step that points to it.
+- The issue tracker is GitHub issues on this repository. Read issues as described under "GitHub issues and pull requests". This replaces `/setup-matt-pocock-skills`, which is not installed; ignore any skill step that points to it.
 - Never apply the `ready-for-agent` label. Only Hari applies it; it is his plan approval.
 - Skills that interview a human (`grilling`, `domain-modeling`) are for interactive sessions with Hari only. In an unattended run, write the open question as the handoff comment instead.
 
 One skill is owned by this repository rather than pinned from a third party: `repo-review`. It is the rubric for the cold review that "Before opening a pull request" rule 8 defines. `repo-review` is not in `skills-lock.json` and changes only through a pull request to Hari.
 
 Adding or removing a skill is a governance change and goes to Hari.
+
+## GitHub issues and pull requests
+
+Read, open and comment on issues and pull requests through the REST API.
+
+`gh issue view`, `gh pr view`, `gh pr create` and `gh issue comment` use GitHub GraphQL. Claude Code cloud sessions block it. In a cloud session these four fail with HTTP 403, "GitHub GraphQL is not available from Claude Code sessions". All four failures were observed on 2026-10-13. Issue #23 first reported the failure. Other `gh issue` and `gh pr` subcommands may fail the same way.
+
+- Read an issue: `gh api repos/{owner}/{repo}/issues/<number>`.
+- Read its comments: `gh api 'repos/{owner}/{repo}/issues/<number>/comments?per_page=100'`. GitHub documents 100 as the maximum page size (https://docs.github.com/en/rest/issues/comments, "List issue comments"). If 100 come back, fetch again with `&page=2`, and so on.
+- Do not use `gh api --paginate`. Its next-page URLs use numeric repository IDs. The proxy refuses them with HTTP 403, "Numeric-ID repository paths (repositories/{id}/...) are not supported through this proxy". This was observed on 2026-10-13.
+- Open a pull request: write the description to a file, then run `gh api -X POST repos/{owner}/{repo}/pulls -f title='<title>' -f head=<branch> -f base=main -F body=@<file>`.
+- Open an issue: `gh api -X POST repos/{owner}/{repo}/issues -f title='<title>' -F body=@<file>`.
+- Comment on an issue or pull request: `gh api -X POST repos/{owner}/{repo}/issues/<number>/comments -F body=@<file>`. A pull request takes general comments on the same route.
+- The routes for opening an issue and for commenting are documented at https://docs.github.com/en/rest/issues/issues ("Create an issue") and https://docs.github.com/en/rest/issues/comments ("Create an issue comment"). Neither has been run in a cloud session.
+- Read a pull request: `gh api repos/{owner}/{repo}/pulls/<number>`.
+- For review threads, auto-merge and draft state, the 403 message names the routes to use.
 
 ## Before opening a pull request
 
