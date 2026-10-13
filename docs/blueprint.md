@@ -91,7 +91,7 @@ flowchart LR
   RUN -->|over peering| AKS
   LG -->|Kafka 9093 via PE1| EHN
   EC -->|consume events, produce state| EHN
-  VER -->|consume all, separate group| EHN
+  VER -->|consume document-events| EHN
   EC -->|large payloads| BLOB
   AKS -->|OpenTelemetry| AI
   AI --> LAW
@@ -126,7 +126,7 @@ Free tier control plane at build scale (no SLA; acceptable for a test harness). 
 | Pool | Nodes | Purpose |
 |---|---|---|
 | `system` | 1 | system pods only (`CriticalAddonsOnly` taint) |
-| `workload` | 1 | enrichment-consumer and verifier: the clients under test |
+| `workload` | 1 | enrichment-consumer (a client under test) and the verifier (harness, ADR-015) |
 | `loadgen` | 1, scale to N for saturation runs | load generation only, tainted so it never shares a node with clients under test |
 
 Normal pools, not spot: a spot eviction mid-run looks like a client failure and contaminates results (ADR-008).
@@ -401,15 +401,15 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - The runner starts the verifier only after the load generator Job has completed.
 - As its first step, before consuming, the verifier records the high watermark of every `document-events` partition again. This is the run's end line.
 - Both lookups use the verifier's identity and Data Receiver role (ADR-003). That Data Receiver permits this offset lookup is an inference: Microsoft describes the role only as allowing a principal to receive events. The first live run confirms it, and if it fails, the fix is a decision for Hari, not a wider role.
-- The verifier assigns each partition at its start line and consumes until its position reaches the end line. With an explicit offset, `Assign` starts there (Fact: S19). `auto.offset.reset` still applies when the desired offset is out of range (Fact: S25), and its default, `largest`, would silently skip to the end. The verifier therefore sets `auto.offset.reset = error`, a documented value (S25), so a start line that is no longer in the partition fails the run instead of being skipped. It also sets `enable.auto.commit = false`, whose default is `true` (S25), because it reads by assignment, not from committed offsets.
+- The verifier assigns each partition at its start line and consumes until its position reaches the end line. With an explicit offset, `Assign` sets the start offset (Fact: S19, the `Assign` and `Seek` documentation). `auto.offset.reset` still applies when the desired offset is out of range (Fact: S25), and its default, `largest`, would silently skip to the end. The verifier therefore sets `auto.offset.reset = error`, a documented value (S25), so a start line that is no longer in the partition fails the run instead of being skipped. It also sets `enable.auto.commit = false`, whose default is `true` (S25), because it reads by assignment, not from committed offsets. Each setting is tagged with the inventory item whose behaviour it guards against: `auto.offset.reset` with C15, `enable.auto.commit` with C10.
 - A safety stop ends the verifier after 10 minutes if the watermarks are never reached. The 10 minutes is a design choice, not a measurement. The run records that the stop fired.
 
 **Consequences.**
 - Each repeat sees only its own messages, except for the late writes below, so the duplicate-run rule (ADR-012) applies to one repeat's window.
 - Throttling slows the verifier but cannot end it early (unlike option 1).
-- Because the ledger row is written in the `Produce` delivery handler, a completed `Flush` means every row is written. With `ProduceAsync`, the returned task is completed with `TaskCreationOptions.RunContinuationsAsynchronously` (Fact: S19), so code awaiting it can still be pending when `Flush` returns (inference). That is why ADR-012 requires the handler.
+- Because the ledger row is recorded in the `Produce` delivery handler, a completed `Flush` means every row is recorded. With `ProduceAsync`, the returned task is completed with `TaskCreationOptions.RunContinuationsAsynchronously` (Fact: S19), so code awaiting it can still be pending when `Flush` returns (inference). That is why ADR-012 requires the handler.
 - Not protected: a write the broker makes after the verifier has recorded the end line. Under throttling, Event Hubs delays produce requests (Fact: S2). A ProduceRequest times out after the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` (Fact: S25). A timed-out request is normally retried: delivery fails only when the retry count or `message.timeout.ms` is exceeded, and `retries` defaults to 2147483647 (Fact: S25). If the broker appends a timed-out request late and the retry also lands, the message is consumed twice and counted as a duplicate (inference). If the broker appends it after the delivery has finally failed and after the end line, it is never read in this repeat. In that case a real phantom is classified as a reported failure; and because the message lands inside the next repeat's window carrying this run's instance ID, the next repeat is invalid under ADR-012's duplicate-run rule (inference). Whether Event Hubs appends a message after returning Policy Violation is not documented (inference). This risk sits on the items that cause throttling, A01, B09 and H07, and on H01, which observes it; their write-ups must state it.
-- The verifier reads with librdkafka's default `isolation.level`, `read_committed`, which returns transactional messages only once committed (Fact: S25). A message from an aborted transaction would be classed as loss, and an open transaction can hold the verifier short of the high watermark until the safety stop. B05's transaction configurations therefore need their own oracle rule, decided in B05's plan.
+- The verifier sets `isolation.level = read_committed` explicitly, tagged B05. It is librdkafka's default, and returns transactional messages only once committed (Fact: S25). A message from an aborted transaction would be classed as loss, and an open transaction can hold the verifier short of the high watermark until the safety stop. B05's transaction configurations therefore need their own oracle rule, decided in B05's plan.
 - This rule is for topics with the delete cleanup policy. On a compacted topic, compaction removes earlier values per key, so "not consumed" means something else there. A01 does not use one.
 - How a run that hit the safety stop is reported is not yet decided. It is settled in the verifier pull request (#9, PR 7).
 
@@ -425,7 +425,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 **Decision.** Option 4.
 - `scenarios/<ID>/scenario.yaml` is the definition: the profile, the configurations as deltas from the baseline (ADR-015), the fault, the repeat count and the measures.
-- `scenarios/<ID>/expected.yaml` holds the hypotheses. It is a protected path: the `main-protection` ruleset requires Hari's review for it (docs/agents/factory.md, "Ruleset"). It is approved with the item's plan.
+- `scenarios/<ID>/expected.yaml` holds the hypotheses. It is a protected path: the `main-protection` ruleset requires Hari's review for it, and `.github/CODEOWNERS` mirrors the list. It is approved with the item's plan.
 - Workload profiles shared by several items live in `scenarios/profiles/`.
 - The runner generates each run's Helm values from these files. Nobody writes Helm values by hand.
 
@@ -447,7 +447,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - Every setting the harness depends on is set explicitly and tagged with its inventory ID.
 - Where Microsoft's pages conflict, the baseline takes the value Microsoft labels as recommended or required for librdkafka. Labels in Microsoft's Java table do not apply to a librdkafka client. If no page labels a value for librdkafka, the baseline takes the librdkafka default, set explicitly.
 - Preview features never enter the baseline.
-- The baseline covers the clients under test: the load generator's producer and `enrichment-consumer`. The verifier is harness, not a client under test. Its settings are set explicitly and documented in ADR-013, with no inventory ID.
+- The baseline covers the clients under test: the load generator's producer and `enrichment-consumer`. The verifier is harness, not a client under test. Its settings go through the same configuration builder, are set explicitly, and are tagged with the inventory item each one guards against (ADR-013).
 
 **Consequences.**
 - A change of default in a later librdkafka version cannot silently change a setting the harness depends on.
@@ -1071,7 +1071,7 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S16 | [How to protect private DNS zones and records](https://learn.microsoft.com/en-us/azure/dns/dns-protect-private-zones-recordsets) | read 2026-10-11 |
 | S17 | Terraform Registry module API and module READMEs: [virtual network](https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm), [private DNS zone](https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm), [Event Hubs namespace](https://registry.terraform.io/modules/Azure/avm-res-eventhub-namespace/azurerm); [AVM Terraform resource module index](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/) | read 2026-10-11 |
 | S18 | [Kafka transactions in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions) | read 2026-10-13 |
-| S19 | Confluent.Kafka v2.16.0 source: `IProducer.Flush`, `WatermarkOffsets.High` and `IConsumer.Assign` XML documentation, and the `ProduceAsync` delivery shim ([IProducer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs), [WatermarkOffsets.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/WatermarkOffsets.cs), [Producer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs), [IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs)) | tag v2.16.0, read 2026-10-13 |
+| S19 | Confluent.Kafka v2.16.0 source: `IProducer.Flush`, `WatermarkOffsets.High`, `IConsumer.Assign` and `IConsumer.Seek` XML documentation, and the `ProduceAsync` delivery shim ([IProducer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs), [WatermarkOffsets.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/WatermarkOffsets.cs), [Producer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs), [IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs)) | tag v2.16.0, read 2026-10-13 |
 | S20 | Confluent.Kafka v2.16.0 source: `IAdminClient.DeleteRecordsAsync` XML documentation ([IAdminClient.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IAdminClient.cs)) | tag v2.16.0, read 2026-10-13 |
 | S21 | [Toxiproxy README](https://github.com/Shopify/toxiproxy) | read 2026-10-13 |
 | S22 | [.NET 6 breaking change: unhandled exceptions from a BackgroundService](https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/6.0/hosting-exception-handling) | read 2026-10-13 |

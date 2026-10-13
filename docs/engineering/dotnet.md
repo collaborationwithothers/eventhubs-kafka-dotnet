@@ -18,6 +18,7 @@ tests/
   <Project>.Tests/            one test project per source project
   Parchwell.ArchitectureTests/
 scenarios/<ID>/               scenario definition and expected outcome, per inventory item
+scenarios/profiles/           workload profiles shared by several items (ADR-014)
 ```
 
 ## Vertical slices
