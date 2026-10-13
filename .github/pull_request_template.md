@@ -9,5 +9,6 @@
 - Claims verified (source and pinned version):
 - ADRs and engineering rules checked against:
 - Scripted checks run:
+- Cold review (repo-review): rounds run, and the final result line:
 
 </details>
