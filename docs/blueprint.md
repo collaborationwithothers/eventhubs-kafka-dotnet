@@ -138,7 +138,7 @@ Fact: Confluent.Kafka 2.16.0 was released 2026-10-07, targets net8.0 and net10.0
 - **`Parchwell.Kafka` (shared library).** The guidance as code: an Event Hubs configuration builder with every setting traceable to an inventory item; the Entra OAUTHBEARER token refresh handler (ADR-003); the librdkafka statistics to OpenTelemetry bridge (ADR-007); graceful shutdown (flush on stop, close on stop, commit on partition revoke). Each setting's XML doc comment links to its inventory item and result.
 - **`loadgen`.** Deterministic, seeded producer. Reads a workload profile file and emits lifecycle events with tenant, document id, and a per-key sequence number in headers. Same seed, same schedule, every run.
 - **`enrichment-consumer`.** The consumer under test. Simulates processing time per event type from the profile, can be told to fail a set percentage of messages, writes the document's latest state to `document-state`, writes large payloads to Blob and references them (ADR-006).
-- **`verifier`.** A separate consumer group reading every topic. Joins the consumed messages with the load generator's per-message ledger into four outcome classes (ok, loss, phantom, reported failure) and counts duplicates and reorders (ADR-012). Reads `document-events` between high watermarks recorded before and after the load generator runs (ADR-013). This is what makes loss and reordering measurable instead of inferred.
+- **`verifier`.** A separate consumer reading `document-events`; oracles for the other topics are decided when an item needs them. Joins the consumed messages with the load generator's per-message ledger into four outcome classes (ok, loss, phantom, reported failure) and counts duplicates and reorders (ADR-012). Reads `document-events` between high watermarks recorded before and after the load generator runs (ADR-013). This is what makes loss and reordering measurable instead of inferred.
 
 ### Scenario runner
 
@@ -195,7 +195,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 3. librdkafka `azure_imds`.
 4. Confluent.Kafka `SetOAuthBearerTokenRefreshHandler` calling `WorkloadIdentityCredential` (Azure.Identity) for scope `https://<namespace>.servicebus.windows.net/.default`.
 
-**Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only.
+**Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only. Ledger container roles for `loadgen` and `verifier` are in ADR-012.
 
 **Consequences.**
 - No secrets anywhere in the cluster or the repo.
@@ -357,10 +357,11 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 **Decision.** Option 2.
 - The load generator writes one ledger row per message: key, sequence number and delivery outcome.
-- The row is written inside the delivery handler passed to `Produce`, not after awaiting `ProduceAsync` (reason under ADR-013).
+- The row is recorded inside the delivery handler passed to `Produce`, not after awaiting `ProduceAsync` (reason under ADR-013). The handler only appends the row to an in-memory buffer; a background writer moves rows to the local file, and the load generator drains that buffer before the upload. The handler runs on the client's poll path, which also serves token refresh (amendment 1, F01), so it must not wait on file I/O (inference).
 - Every message carries the load generator's instance ID in a header.
 - The ledger sits behind `ILedgerStore`, a seam at our own boundary, not around Confluent.Kafka (docs/engineering/dotnet.md).
-- During the run the ledger is written to a local file. It is uploaded to Blob once, at the end.
+- During the run the ledger is written to a local file. It is uploaded once, at the end, to a single `ledger` container in the claim-check storage account (ADR-006).
+- Ledger roles, decided by Hari on 2026-10-13, both scoped to the `ledger` container: the load generator's identity gets Storage Blob Data Contributor; the verifier's identity gets Storage Blob Data Reader. There is no built-in write-only blob role: Contributor grants read, write and delete, Reader grants read and list (Fact: S26). These are additions to the role list in ADR-003.
 - The oracle covers `document-events`, the topic the load generator writes. The oracles for `document-state` and `document-events-dlq`, which `enrichment-consumer` writes, are decided when an inventory item first needs them.
 - The verifier joins the ledger with the messages consumed from `document-events`, on key and sequence number:
 
@@ -382,6 +383,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - The classes do not judge. "Reported failure" is a count; whether it is acceptable is decided by the scenario's `expected.yaml` (ADR-014). The word "expected" is reserved for those hypotheses.
 - Section 7's loss target now means the loss class. A reported failure is not loss: the application was told.
 - The ledger upload is a step that can fail. A failed upload means a missing ledger, so an invalid run.
+- The claim-check storage account is in the ephemeral layer, so the ledger is deleted at `terraform destroy`. The verifier's counts are what reach `results/`. Whether the ledger itself is kept with the evidence is decided with the verifier (#9, PR 7).
 - One load generator per run. H07's saturation profile plans several, so the duplicate-run rule must change before H07 runs: for example, to accept exactly the instance IDs the runner started.
 
 ### ADR-013: A run is the window between high watermarks recorded before and after the load generator
@@ -399,14 +401,14 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - The runner starts the verifier only after the load generator Job has completed.
 - As its first step, before consuming, the verifier records the high watermark of every `document-events` partition again. This is the run's end line.
 - Both lookups use the verifier's identity and Data Receiver role (ADR-003). That Data Receiver permits this offset lookup is an inference: Microsoft describes the role only as allowing a principal to receive events. The first live run confirms it, and if it fails, the fix is a decision for Hari, not a wider role.
-- The verifier assigns each partition at its start line and consumes until its position reaches the end line. With an explicit offset, `Assign` starts there; `auto.offset.reset` applies only to a partition assigned with an unset offset (Fact: S19). The verifier therefore commits no offsets and does not depend on `auto.offset.reset`.
+- The verifier assigns each partition at its start line and consumes until its position reaches the end line. With an explicit offset, `Assign` starts there (Fact: S19). `auto.offset.reset` still applies when the desired offset is out of range (Fact: S25), and its default, `largest`, would silently skip to the end. The verifier therefore sets `auto.offset.reset = error`, a documented value (S25), so a start line that is no longer in the partition fails the run instead of being skipped. It also sets `enable.auto.commit = false`, whose default is `true` (S25), because it reads by assignment, not from committed offsets.
 - A safety stop ends the verifier after 10 minutes if the watermarks are never reached. The 10 minutes is a design choice, not a measurement. The run records that the stop fired.
 
 **Consequences.**
-- Each repeat sees only its own messages, so the duplicate-run rule (ADR-012) applies to one repeat's window.
+- Each repeat sees only its own messages, except for the late writes below, so the duplicate-run rule (ADR-012) applies to one repeat's window.
 - Throttling slows the verifier but cannot end it early (unlike option 1).
 - Because the ledger row is written in the `Produce` delivery handler, a completed `Flush` means every row is written. With `ProduceAsync`, the returned task is completed with `TaskCreationOptions.RunContinuationsAsynchronously` (Fact: S19), so code awaiting it can still be pending when `Flush` returns (inference). That is why ADR-012 requires the handler.
-- Not protected: a write the broker makes after the verifier has recorded the watermarks. Under throttling, Event Hubs delays produce requests (Fact: S2). The client gives up on a ProduceRequest after the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` (Fact: S25), and records a failed delivery. The broker may still append the message later. That message is never read, so a real phantom is classified as a reported failure. Whether Event Hubs appends a message after returning Policy Violation is not documented (inference). This risk sits on the items that cause throttling, A01, B09 and H07, and on H01, which observes it; their write-ups must state it.
+- Not protected: a write the broker makes after the verifier has recorded the end line. Under throttling, Event Hubs delays produce requests (Fact: S2). A ProduceRequest times out after the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` (Fact: S25). A timed-out request is normally retried: delivery fails only when the retry count or `message.timeout.ms` is exceeded, and `retries` defaults to 2147483647 (Fact: S25). If the broker appends a timed-out request late and the retry also lands, the message is consumed twice and counted as a duplicate (inference). If the broker appends it after the delivery has finally failed and after the end line, it is never read in this repeat. In that case a real phantom is classified as a reported failure; and because the message lands inside the next repeat's window carrying this run's instance ID, the next repeat is invalid under ADR-012's duplicate-run rule (inference). Whether Event Hubs appends a message after returning Policy Violation is not documented (inference). This risk sits on the items that cause throttling, A01, B09 and H07, and on H01, which observes it; their write-ups must state it.
 - The verifier reads with librdkafka's default `isolation.level`, `read_committed`, which returns transactional messages only once committed (Fact: S25). A message from an aborted transaction would be classed as loss, and an open transaction can hold the verifier short of the high watermark until the safety stop. B05's transaction configurations therefore need their own oracle rule, decided in B05's plan.
 - This rule is for topics with the delete cleanup policy. On a compacted topic, compaction removes earlier values per key, so "not consumed" means something else there. A01 does not use one.
 - How a run that hit the safety stop is reported is not yet decided. It is settled in the verifier pull request (#9, PR 7).
@@ -445,11 +447,12 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 - Every setting the harness depends on is set explicitly and tagged with its inventory ID.
 - Where Microsoft's pages conflict, the baseline takes the value Microsoft labels as recommended or required for librdkafka. Labels in Microsoft's Java table do not apply to a librdkafka client. If no page labels a value for librdkafka, the baseline takes the librdkafka default, set explicitly.
 - Preview features never enter the baseline.
+- The baseline covers the clients under test: the load generator's producer and `enrichment-consumer`. The verifier is harness, not a client under test. Its settings are set explicitly and documented in ADR-013, with no inventory ID.
 
 **Consequences.**
 - A change of default in a later librdkafka version cannot silently change a setting the harness depends on.
 - Results describe what a team following Microsoft's guidance gets, which is the repository's thesis (section 1).
-- `enable.idempotence` is labelled only in Microsoft's Java table (S1), so until B04 decides it (ADR-005) the baseline sets the librdkafka default, `false` (S6), explicitly.
+- `enable.idempotence` is labelled only in Microsoft's Java table (S1), so until B04 decides it (ADR-005) the baseline sets the librdkafka default, `false` (S25), explicitly.
 - Kafka transactions stay out of the baseline whichever of Microsoft's pages is right: the most favourable reading is public preview (ADR-005, conflict 6). B05 tests them as a delta.
 - A01's baseline must be rebuilt around `socket.timeout.ms` first (#14).
 
@@ -476,7 +479,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 ### ADR-017: Workers are Generic Host apps run as Kubernetes Jobs, and set a non-zero exit code on failure
 
-**Context.** The load generator and verifier run once per run and end. The runner must know whether each one succeeded. On .NET 6 and later, an unhandled exception in a `BackgroundService` is logged and stops the host by default (Fact: S22). Through .NET 10, the task returned by `RunAsync` still completes successfully in that case, which usually meant the application exited with code 0; .NET 11 changes this (Fact: S23). On .NET 10 a failed worker can therefore look successful.
+**Context.** The load generator and verifier run once per run and end. The runner must know whether each one succeeded. On .NET 6 and later, an unhandled exception in a `BackgroundService` is logged and stops the host by default (Fact: S22). Microsoft documents that before .NET 11 the task returned by `RunAsync` completed successfully in that case, which usually meant the application exited with code 0, and that .NET 11 changes this (Fact: S23). That .NET 10 has the previous behaviour is inferred from the change being introduced in .NET 11. On .NET 10 a failed worker can therefore look successful.
 
 **Options considered.**
 1. Deployments. They are for processes that keep running, not for a run that completes.
@@ -677,7 +680,7 @@ Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource
 ## 9. Security and identity
 
 - **Data plane: Entra only.** Local (SAS) authentication disabled on the namespace. OAUTHBEARER through a custom refresh handler using `WorkloadIdentityCredential` (ADR-003).
-- **Least privilege.** Role assignments at event hub scope, not namespace, per identity. No identity can create or delete topics. Assignments live in Terraform.
+- **Least privilege.** Role assignments at event hub scope, not namespace, per identity. No identity can create or delete topics. Assignments live in Terraform. The two ledger roles are scoped to the `ledger` container, not the storage account (ADR-012).
 - **Workload identity.** One user-assigned identity per workload, federated to a single Kubernetes service account in a single namespace. Federated credentials recreated per cluster.
 - **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform apply and destroy run through GitHub OIDC federation, with the federated credential trusting only the protected scenario-runner environment, which requires Hari's approval; branches and pull requests are not trusted subjects.
 - **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). The runner group with Azure private networking is restricted to the scenario workflow file.
@@ -1068,10 +1071,11 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S16 | [How to protect private DNS zones and records](https://learn.microsoft.com/en-us/azure/dns/dns-protect-private-zones-recordsets) | read 2026-10-11 |
 | S17 | Terraform Registry module API and module READMEs: [virtual network](https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm), [private DNS zone](https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm), [Event Hubs namespace](https://registry.terraform.io/modules/Azure/avm-res-eventhub-namespace/azurerm); [AVM Terraform resource module index](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/) | read 2026-10-11 |
 | S18 | [Kafka transactions in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions) | read 2026-10-13 |
-| S19 | Confluent.Kafka v2.16.0 source: `IProducer.Flush`, `WatermarkOffsets.High` and `IConsumer.Assign` XML documentation, and the `ProduceAsync` delivery shim ([IProducer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs), [WatermarkOffsets.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/WatermarkOffsets.cs), [Producer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs)); `IConsumer.Assign` ([IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs)) | tag v2.16.0, read 2026-10-13 |
+| S19 | Confluent.Kafka v2.16.0 source: `IProducer.Flush`, `WatermarkOffsets.High` and `IConsumer.Assign` XML documentation, and the `ProduceAsync` delivery shim ([IProducer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs), [WatermarkOffsets.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/WatermarkOffsets.cs), [Producer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs), [IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs)) | tag v2.16.0, read 2026-10-13 |
 | S20 | Confluent.Kafka v2.16.0 source: `IAdminClient.DeleteRecordsAsync` XML documentation ([IAdminClient.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IAdminClient.cs)) | tag v2.16.0, read 2026-10-13 |
 | S21 | [Toxiproxy README](https://github.com/Shopify/toxiproxy) | read 2026-10-13 |
 | S22 | [.NET 6 breaking change: unhandled exceptions from a BackgroundService](https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/6.0/hosting-exception-handling) | read 2026-10-13 |
 | S23 | [.NET 11 breaking change: IHost.RunAsync and IHost.StopAsync throw when a BackgroundService fails](https://learn.microsoft.com/en-us/dotnet/core/compatibility/extensions/11/ihost-runasync-stopasync-throw-backgroundservice-failure) | read 2026-10-13 |
 | S24 | [Kubernetes documentation: Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) | read 2026-10-13 |
 | S25 | [librdkafka v2.16.0 CONFIGURATION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md) | tag v2.16.0, read 2026-10-13 |
+| S26 | [Azure built-in roles for Storage](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/storage) | read 2026-10-13 |
