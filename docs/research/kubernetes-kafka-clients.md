@@ -97,7 +97,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 
 ## Sources
 
-All fetched on 2026-10-12.
+All fetched on 2026-10-12, except S43, which is retired and has no source.
 
 - S01: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
 - S02: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
@@ -141,6 +141,7 @@ All fetched on 2026-10-12.
 - S40: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
 - S41: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
 - S42: https://kubernetes.io/docs/concepts/workloads/pods/probes/
+- S43: retired, no source
 - S44: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 - S45: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 - S46: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
@@ -159,5 +160,3 @@ All fetched on 2026-10-12.
 - S59: https://learn.microsoft.com/azure/aks/localdns-custom ("Kubernetes versions 1.31 and later"; "at least 4 vCPUs"; enabling LocalDNS "initiates a reimage operation")
 - S60: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/README.md ("a lightweight wrapper around librdkafka, a finely tuned C client")
 - S61: https://learn.microsoft.com/azure/event-hubs/apache-kafka-transactions ("Kafka Transactions is currently in Public preview in Premium, and Dedicated tier"; page dated 2025-03-06)
-
-S43 is unused.
