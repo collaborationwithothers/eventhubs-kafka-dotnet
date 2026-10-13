@@ -957,7 +957,7 @@ The numbers between S18 and S30 are left for branch `claude/issue-8-code-half-ad
 | S32 | [Review GitHub pull requests with Codex](https://learn.chatgpt.com/docs/third-party/github) | read 2026-10-13 |
 | S33 | [Codex cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments) and [Codex Cloud (Legacy)](https://learn.chatgpt.com/docs/environments/cloud-environment) | read 2026-10-13 |
 | S34 | [Codex pricing](https://chatgpt.com/codex/pricing/) | read 2026-10-13 |
-| S35 | [openai/codex issue #52549, code review refused despite remaining quota](https://github.com/openai/codex/issues/52549) | opened 2026-10-09, read 2026-10-13 |
+| S35 | [openai/codex#52549, code review refused despite remaining quota](https://github.com/openai/codex/issues/52549) | opened 2026-10-09, read 2026-10-13 |
 | S36 | [Claude Code GitHub Actions](https://code.claude.com/docs/en/github-actions) | read 2026-10-13 |
 | S37 | [Codex with Azure OpenAI in Microsoft Foundry Models](https://learn.microsoft.com/azure/foundry/openai/how-to/codex) | read 2026-10-13 |
 | S38 | [GitHub changelog 2026-06-18: Copilot code review AGENTS.md support](https://github.blog/changelog/2026-06-18-copilot-code-review-agents-md-support-and-ui-improvements/) | 2026-06-18 |
