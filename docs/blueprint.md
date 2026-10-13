@@ -818,7 +818,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | C03 | Pause and resume while processing; keep calling `Consume` (K-55); consumer token refresh runs only inside `Consume` (K-47); no commit on partitions lost (K-28) |
 | C04 | Crash-looping consumer: restart back-off and a rebalance per restart (K-09) |
 | C06 | Deployment versus StatefulSet for `group.instance.id` (K-23, K-25); duplicate ID fencing (K-24); rolling update surge (K-22); node drain and AKS upgrade with a PDB (K-29, K-30); static members do not send LeaveGroup (K-05) |
-| C07 | Eager to cooperative migration in two restarts (K-26); Confluent.Kafka handler limits under cooperative rebalancing (K-27) |
+| C07 | Rolling update surge with cooperative assignment (K-22); eager to cooperative migration: Confluent documents two rolling restarts with both assignors listed, which librdkafka v2.16.0 rejects, so the test question is which migration librdkafka permits and what it costs (K-26); Confluent.Kafka handler limits under cooperative rebalancing (K-27) |
 | C09 | Shutdown commits under the 2 per second per partition throttle, with auto-commit on (`Close` commits) and off (explicit commit) as separate configurations (K-56) |
 | C10, C15 | Killed before the first auto-commit, with `auto.offset.reset` `largest` (K-57) |
 | C14 | Job double start as a source of concurrent members (K-08, K-24) |
@@ -826,8 +826,9 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | D04 | Broker connections per client; record the broker count in every evidence pack (K-42) |
 | F01 | Projected token TTL and re-read of the token file (K-44); token resource (K-45); consumer refresh only inside `Consume` (K-47) |
 | F02 | IMDS reachable from every pod, so `azure_imds` uses the node identity (K-49); hypothesis: librdkafka jwt-bearer grant with Entra federation (K-50) |
-| F03 | Egress to `login.microsoftonline.com` (K-43); refresh timing and retry on failure (K-46); hypothesis: Event Hubs re-authentication at token expiry (K-48) |
+| F03 | Egress to `login.microsoftonline.com` (K-43); projected token TTL and kubelet refresh (K-44); refresh timing and retry on failure (K-46); hypothesis: Event Hubs re-authentication at token expiry (K-48) |
 | F04 | Token resource mismatch (K-45) |
+| H01 | The statistics `disconnects` counter as the reliable disconnect signal, since librdkafka hides idle-classified disconnect logs (K-38) |
 | H02 | `client.id` from the pod name to join client statistics to Event Hubs logs (K-51) |
 
 Totals after amendment 1: 76 items. Tested or traced with effort: 72 (S 32, M 32, L 8). Out of scope: 4. Guidance for operators is collected in docs/kubernetes.md, written as results arrive. A recommendation backed by a tested or traced item links to that item and its result; a generic Kubernetes or .NET recommendation (catalogue disposition "rule" or "guide") links to its primary source and, for rules, to docs/engineering/dotnet.md. No recommendation links to a result that does not exist.
@@ -858,17 +859,17 @@ All figures are estimates with low confidence.
 | Work | Hours |
 |---|---|
 | Inventory items: 26 S at 3 h, 28 M at 8 h, 8 L at 16 h, 4 X at 0.5 h | 432 |
-| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 20 h; docs/kubernetes.md about 8 h (basis below) | 78 |
+| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 23 h; docs/kubernetes.md about 8 h (basis below) | 81 |
 | Terraform, persistent and ephemeral layers | 30 |
 | `Parchwell.Kafka`, loadgen, enrichment-consumer, verifier | 50 |
 | Statistics bridge, KQL queries, workbook | 20 |
 | Scenario runner workflow and results pipeline | 25 |
 | README, ADRs, diagrams, per-scenario write-ups | 30 |
-| Subtotal | 665 |
+| Subtotal | 668 |
 | Contingency, 15 percent | 100 |
-| **Total** | **about 765; range 580 to 830** |
+| **Total** | **about 770; range 580 to 830** |
 
-Basis for amendment 1's two unsized lines (estimate, Claude with Hari, 2026-10-12, low confidence): the folded findings add roughly one configuration or hypothesis to each of 17 existing items at about 1 h each to define, run and write up, plus about 3 h for the A01 reframing, giving about 20 h; docs/kubernetes.md has about 12 sections linking existing results, at about 40 minutes each, giving about 8 h.
+Basis for amendment 1's two unsized lines (estimate, Claude with Hari, 2026-10-12, low confidence): the folded findings add roughly one configuration or hypothesis to each of the 21 existing items in the fold table; 20 of them at about 1 h each to define, run and write up, and A01 at about 3 h for its reframing, giving about 23 h; docs/kubernetes.md has about 12 sections linking existing results, at about 40 minutes each, giving about 8 h.
 
 This is larger than the earlier estimate of 250 to 500 hours. The cause is the inventory: the earlier figure assumed 30 to 40 items; the frozen list has 66, and amendment 1 (2026-10-12) adds 10.
 

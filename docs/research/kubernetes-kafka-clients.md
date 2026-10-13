@@ -42,13 +42,13 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-17 | Consumer prefetch defaults (`queued.max.messages.kbytes`, `fetch.max.bytes`, `receive.message.max.bytes`) size native memory | yes | yes | confirmed | S01 | new K03 |
 | K-18 | The GC heap hard limit defaults to 75 percent of the container limit and ignores librdkafka's native queues | yes | yes | confirmed* | S36, S01 | new K03 |
 | K-19 | Worker apps default to workstation GC; DATAS is on by default since .NET 9; server GC is unavailable on one core | no | yes | confirmed | S37, S58 | rule; configuration of K03 |
-| K-20 | Replicas above the partition count sit idle; CPU-based HPA can add idle pods; every scale event is a rebalance | yes | yes | confirmed | S15, S56 | new K05 |
+| K-20 | Replicas above the partition count sit idle; CPU-based HPA can add idle pods; with dynamic membership every scale event is a rebalance | yes | yes | confirmed* | S15, S56, S02 ("rebalanced each time a new consumer joins the group or an existing member leaves") | new K05 |
 | K-21 | HPA scale-down stabilisation defaults to 5 min; a flapping metric still causes repeated rebalances unless `behavior` dampens it | yes | yes | confirmed* | S56, S02 | new K05 |
 | K-22 | RollingUpdate defaults of 25 percent surge and unavailable; surge pods join while old members remain | yes | yes | confirmed* | S45, S12 | fold C06, C07 |
 | K-23 | Deployment pod names change every rollout, so `group.instance.id` from the pod name is not stable; Confluent recommends StatefulSets | yes | yes | confirmed | S45, S46, S02, S12 | fold C06 |
 | K-24 | A duplicate `group.instance.id` fences the older member with a fatal error | yes | yes | confirmed | S02, S47 | fold C06, C14 |
 | K-25 | StatefulSet rollouts replace one ordinal at a time; a static member must return within `session.timeout.ms` | yes | yes | confirmed | S46, S13, S01 | fold C06 |
-| K-26 | Moving from eager to cooperative-sticky needs two rolling restarts; mixed assignor types are rejected | yes | yes | confirmed | S12, S01 | fold C07 |
+| K-26 | Confluent documents eager to cooperative migration as two rolling restarts with both assignor types listed (S12); librdkafka v2.16.0 states cooperative and eager strategies "must not be mixed" (S01), so that procedure is not available to this client. Which migration librdkafka permits is the test question | yes | yes | confirmed (conflict) | S12, S01 | fold C07 |
 | K-27 | Confluent.Kafka's Func-returning revoked and lost handlers are not supported with cooperative rebalancing | yes | yes | confirmed | S10 | fold C07 |
 | K-28 | Do not commit on partitions lost; without a lost handler the revoked handler is called instead | yes | yes | confirmed | S10 | fold C03, C18 |
 | K-29 | A PDB covers voluntary evictions only; `minAvailable` equal to the replica count blocks node drains | no | yes | confirmed | S48, S49 | guide; fold C06 (node drain configuration) |
