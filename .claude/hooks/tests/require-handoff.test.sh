@@ -131,7 +131,26 @@ test_no_target_allows_stop_with_warning() {
   git -C "$REPO" checkout -q main
   write_start_file
   run_stop false GITHUB_ACTIONS=true
-  assert_status 0; assert_warns "no issue"; assert_gh_not_called
+  assert_status 0; assert_warns "no issue"
+}
+
+test_unnumbered_branch_uses_its_open_pr() {
+  git -C "$REPO" checkout -q -b feature/fix
+  write_start_file
+  set_fixture pulls.json '{"number": 77}'
+  set_fixture pr_comments.json "$(comment 2026-10-13T10:05:00Z '**Decision needed:** merge #77?')"
+  run_stop false GITHUB_ACTIONS=true
+  assert_status 0; assert_no_output
+  grep -q 'issues/77/comments' "$WORK/gh-calls.log" || fail "pull request 77 was not checked"
+}
+
+test_unnumbered_branch_without_handoff_blocks_on_its_pr() {
+  git -C "$REPO" checkout -q -b feature/fix
+  write_start_file
+  set_fixture pulls.json '{"number": 77}'
+  run_stop false GITHUB_ACTIONS=true
+  assert_blocked
+  [[ "$(jq -r '.reason' <<<"$OUT")" == *"pull request #77"* ]] || fail "reason does not name pull request #77: $OUT"
 }
 
 test_action_issue_branch_is_parsed() {
@@ -229,26 +248,22 @@ test_more_than_one_handoff_warns() {
   assert_status 0; assert_warns "exactly one"
 }
 
-test_second_stop_without_handoff_allows_with_warning() {
+test_blocks_three_times_then_allows_with_warning() {
   write_start_file
-  run_stop false GITHUB_ACTIONS=true
-  assert_blocked
+  run_stop false GITHUB_ACTIONS=true; assert_blocked
+  run_stop true GITHUB_ACTIONS=true; assert_blocked
+  run_stop true GITHUB_ACTIONS=true; assert_blocked
   run_stop true GITHUB_ACTIONS=true
   assert_status 0; assert_warns "without a handoff"
 }
 
-test_continuation_from_another_hook_still_blocks() {
+test_block_count_ignores_stop_hook_active() {
   write_start_file
-  run_stop true GITHUB_ACTIONS=true
-  assert_status 0; assert_blocked
-}
-
-test_new_turn_blocks_again() {
-  write_start_file
+  run_stop true GITHUB_ACTIONS=true; assert_blocked
+  run_stop false GITHUB_ACTIONS=true; assert_blocked
+  run_stop false GITHUB_ACTIONS=true; assert_blocked
   run_stop false GITHUB_ACTIONS=true
-  run_stop true GITHUB_ACTIONS=true
-  run_stop false GITHUB_ACTIONS=true
-  assert_status 0; assert_blocked
+  assert_status 0; assert_warns "without a handoff"
 }
 
 test_second_stop_with_handoff_allows_silently() {

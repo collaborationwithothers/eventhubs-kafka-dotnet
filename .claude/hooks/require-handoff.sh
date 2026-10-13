@@ -1,29 +1,32 @@
 #!/usr/bin/env bash
 # Stop hook enforcing AGENTS.md GOVERNANCE "Handoffs" in unattended runs.
 #
-# Blocks the stop once unless the session's issue, or the open pull request
-# for its branch, has a comment starting with the marker below that was
-# created since the session started. If the agent stops again right after
-# this hook's own block, or on any error the agent cannot fix, it allows the
-# stop and says why, so it cannot loop.
+# Blocks the stop unless the session's issue, or the open pull request for its
+# branch, has a comment starting with the marker below that was created since
+# the session started. After MAX_BLOCKS blocks in a session, or on any error
+# the agent cannot fix, it allows the stop and says why. The cap is this
+# hook's own: Claude Code's cap of 8 resets on every tool call, so a session
+# whose posting keeps failing would otherwise loop.
 #
 # Sources for the hook contract (Stop input, decision/reason, systemMessage,
-# stop_hook_active, CLAUDE_PROJECT_DIR, inherited environment):
+# block cap, CLAUDE_PROJECT_DIR, inherited environment):
 #   https://code.claude.com/docs/en/hooks
 #   https://code.claude.com/docs/en/hooks-guide ("Stop hook hits the block cap")
-# claude-code-action branch names (main branch, unpinned, read 2026-10-13): template ${branchPrefix}${entityType}-${entityNumber}-${timestamp}
-# (src/utils/branch-template.ts), branch_prefix default "claude/" (action.yml), entityType
-# "pr" or "issue" (src/github/operations/branch.ts). An open pull request's own head
-# branch is reused instead, so claude/pr-<n>-... appears only for closed or merged ones.
-#   https://github.com/anthropics/claude-code-action/blob/main/src/utils/branch-template.ts
-#   https://github.com/anthropics/claude-code-action/blob/main/action.yml
-#   https://github.com/anthropics/claude-code-action/blob/main/src/github/operations/branch.ts
+# claude-code-action at commit 1d6de8cb0c237e7c15e9e1bdf973826ebae490cc: new branches
+# are ${branchPrefix}${entityType}-${entityNumber}-${timestamp} (src/utils/branch-template.ts),
+# branch_prefix defaults to "claude/" (action.yml), and entityType is "pr" or "issue"
+# (src/github/operations/branch.ts). An open pull request's own head branch is reused,
+# whatever its name, so the hook also looks up the branch's open pull request.
+#   https://github.com/anthropics/claude-code-action/blob/1d6de8cb0c237e7c15e9e1bdf973826ebae490cc/src/utils/branch-template.ts
+#   https://github.com/anthropics/claude-code-action/blob/1d6de8cb0c237e7c15e9e1bdf973826ebae490cc/action.yml
+#   https://github.com/anthropics/claude-code-action/blob/1d6de8cb0c237e7c15e9e1bdf973826ebae490cc/src/github/operations/branch.ts
 set -uo pipefail
 # shellcheck source=SCRIPTDIR/handoff-lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/handoff-lib.sh"
 
 readonly MARKER='**Decision needed:**'
 readonly MARKER_REGEX='^\\s*\\*\\*Decision needed:\\*\\*'
+readonly MAX_BLOCKS=3
 
 allow() { exit 0; }
 
@@ -44,13 +47,11 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-input="$(cat)"
-session_id="$(jq -r '.session_id // empty' <<<"$input" 2>/dev/null)"
-stop_hook_active="$(jq -r '.stop_hook_active // false' <<<"$input" 2>/dev/null)"
+session_id="$(jq -r '.session_id // empty' 2>/dev/null)"
 project_dir="$(handoff_project_dir)"
 
-# Resolve the target issue: workflow variable first, then the branch name.
-kind="issue"
+# Target from the workflow variable or a numbered branch name, if either gives one.
+issue="" kind="issue"
 branch="$(git -C "$project_dir" branch --show-current 2>/dev/null)"
 if [[ -n "${PARCHWELL_ISSUE:-}" ]]; then
   [[ "$PARCHWELL_ISSUE" =~ ^[0-9]+$ ]] || warn "PARCHWELL_ISSUE is not an issue number, so the handoff was not checked."
@@ -59,8 +60,6 @@ if [[ -n "${PARCHWELL_ISSUE:-}" ]]; then
 elif [[ "$branch" =~ ^claude/((issue|pr)-)?([0-9]+)- ]]; then
   issue="${BASH_REMATCH[3]}"
   [[ "${BASH_REMATCH[2]}" == "pr" ]] && kind="pull request"
-else
-  warn "no issue found from PARCHWELL_ISSUE or branch '$branch', so the handoff was not checked."
 fi
 
 handoff_valid_session_id "$session_id" || warn "the session id is missing or unsafe, so the handoff was not checked."
@@ -81,6 +80,19 @@ fi
 
 command -v gh >/dev/null 2>&1 || warn "gh is not installed, so the handoff was not checked."
 
+# Open pull requests whose head is this branch, whatever the branch is called.
+prs=""
+if [[ -n "$branch" ]]; then
+  prs="$(gh api -X GET "repos/$repo/pulls" -f head="${repo%%/*}:$branch" -f state=open --jq '.[].number')" \
+    || warn "GitHub API call failed, so the handoff was not checked."
+fi
+
+if [[ -z "$issue" ]]; then
+  read -r issue _ <<<"$prs"
+  kind="pull request"
+  [[ -n "$issue" ]] || warn "no issue found from PARCHWELL_ISSUE, branch '$branch' or an open pull request, so the handoff was not checked."
+fi
+
 # Prints one line per marked comment created since the session started.
 marked_comments() { # issue_or_pr_number
   local filter
@@ -90,36 +102,27 @@ marked_comments() { # issue_or_pr_number
 
 found="$(marked_comments "$issue")" || warn "GitHub API call failed, so the handoff was not checked."
 targets="$kind #$issue"
-
-if [[ -n "$branch" ]]; then
-  prs="$(gh api -X GET "repos/$repo/pulls" -f head="${repo%%/*}:$branch" -f state=open --jq '.[].number')" \
-    || warn "GitHub API call failed, so the handoff was not checked."
-  for pr in $prs; do
-    [[ "$pr" == "$issue" ]] && continue # already counted above
-    found+=$'\n'"$(marked_comments "$pr")" || warn "GitHub API call failed, so the handoff was not checked."
-    targets+=" or pull request #$pr"
-  done
-fi
+for pr in $prs; do
+  [[ "$pr" == "$issue" ]] && continue # already counted above
+  found+=$'\n'"$(marked_comments "$pr")" || warn "GitHub API call failed, so the handoff was not checked."
+  targets+=" or pull request #$pr"
+done
 
 count="$(grep -c . <<<"$found")"
-
-# Inferred, not stated in the docs: stop_hook_active may also be true after
-# another Stop hook's block. So this hook remembers its own block and allows
-# only when it has already blocked once.
-blocked_file="$state_file.blocked"
-if [[ "$count" -ge 1 || "$stop_hook_active" != "true" ]]; then
-  rm -f "$blocked_file"
-fi
 
 if [[ "$count" -eq 1 ]]; then
   allow
 elif [[ "$count" -gt 1 ]]; then
   warn "$count handoff comments since the session started on $targets; GOVERNANCE requires exactly one."
-elif [[ -e "$blocked_file" ]]; then
-  rm -f "$blocked_file"
-  warn "session ended without a handoff comment on $targets."
 fi
 
-: >"$blocked_file"
+# Count this hook's own blocks for the session. It does not use stop_hook_active.
+blocks_file="$state_file.blocks"
+blocks="$(cat "$blocks_file" 2>/dev/null)"
+[[ "$blocks" =~ ^[0-9]+$ ]] || blocks=0
+if (( blocks >= MAX_BLOCKS )); then
+  warn "session ended without a handoff comment on $targets after $MAX_BLOCKS reminders."
+fi
+echo $((blocks + 1)) >"$blocks_file"
 
 block "GOVERNANCE \"Handoffs\": before stopping, post exactly one comment on $targets that starts with $MARKER and states, in one sentence, the decision you need from Hari, with the evidence linked. Use gh api REST, for example: gh api repos/$repo/issues/$issue/comments -f body='$MARKER ...'"
