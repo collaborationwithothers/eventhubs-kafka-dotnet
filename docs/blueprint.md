@@ -221,10 +221,10 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 ### ADR-005: At-least-once delivery with store-after-process offsets and idempotent consumers
 
-**Context.** Transactions and exactly-once semantics are listed as not supported (Fact: S1). The same page's Java table says to keep `enable.idempotence` enabled "for exactly-once producer semantics" (Fact: S1). librdkafka's default for `enable.idempotence` is `false` (Fact: S6). Offset commits are throttled to 2 calls per second per partition (Fact: S2).
+**Context.** Microsoft's configuration page lists transactions and exactly-once semantics as not supported (Fact: S1); its transactions guide says Kafka transactions are in public preview on Premium and Dedicated (Fact: S18). The two pages conflict (section 12, conflict 6). The same page's Java table says to keep `enable.idempotence` enabled "for exactly-once producer semantics" (Fact: S1). librdkafka's default for `enable.idempotence` is `false` (Fact: S6). Offset commits are throttled to 2 calls per second per partition (Fact: S2).
 
 **Options considered.**
-1. Transactions (not supported).
+1. Transactions: rejected for v1. Microsoft's pages conflict on whether they are supported, and the most favourable reading is public preview, which this repo does not build its baseline on. B05 tests what actually happens on the Premium namespace.
 2. Auto-commit with default auto offset store: offsets can be committed before processing finishes, so a crash loses messages.
 3. Synchronous commit per message: hits the commit throttle.
 4. Auto-commit with `enable.auto.offset.store = false`, storing each offset only after processing (Fact: this pattern is recommended in librdkafka's description of `max.poll.interval.ms`; S6). Consumers deduplicate by `documentId` plus sequence number.
@@ -670,11 +670,12 @@ Standard and Dedicated tiers. SAS authentication. AMQP interoperability. Kafka C
 
 These are the highest-value items in the inventory, because they are where a reader following the docs today can go wrong:
 
-1. **A01.** Microsoft states the librdkafka default `request.timeout.ms` is 5000 (S1). librdkafka's own configuration reference lists the default as 30000 (S6).
+1. **A01.** Microsoft states the librdkafka default `request.timeout.ms` is 5000 (S1). librdkafka's own configuration reference lists the default as 30000 (S6). Amendment 1 adds: librdkafka documents `request.timeout.ms` as broker-enforced, while the client's own wait is `socket.timeout.ms` (catalogue finding 6).
 2. **D01.** Microsoft's configuration page says the AdminClient cannot manage topics (S1). Microsoft's partitions page says to use AlterTopics to add partitions (S5).
 3. **B04.** Microsoft's Java table says to keep idempotence enabled "for exactly-once producer semantics" and states a default of `true` (S1); the same page lists exactly-once semantics as not supported (S1); librdkafka's default is `false` (S6).
-4. **A04.** Microsoft's librdkafka table omits `connections.max.idle.ms` (S1); librdkafka applies an Azure-specific heuristic when it is left at default (S6).
+4. **A04.** Microsoft's librdkafka table omits `connections.max.idle.ms` (S1); librdkafka applies an Azure-specific heuristic when it is left at default (S6). Amendment 1 adds: the heuristic only fires when the bootstrap address contains "azure", which `servicebus.windows.net` does not (K-36).
 5. **F01, F02.** Microsoft's required connection settings are SAS-based (S1); its OAuth samples are Java and Go (S11); librdkafka's built-in Azure option uses IMDS (S6), which AKS workload identity does not use (inference).
+6. **B05.** Microsoft's configuration page lists Kafka transactions as "Not currently supported" (S1); its transactions guide says they are "in Public preview in Premium, and Dedicated tier" (S18). Found during amendment 1 review, 2026-10-13.
 
 ### Frozen inventory
 
@@ -815,6 +816,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | A01 | Reframed: librdkafka's `request.timeout.ms` is broker-enforced; the client's per-request wait is the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` (catalogue finding 6). Configurations add `socket.timeout.ms`; hypothesis: whether Event Hubs honours the broker-side `request.timeout.ms` |
 | A04 | Reframed: the librdkafka Azure heuristic matches "azure" anywhere in `bootstrap.servers`; it does not fire for `servicebus.windows.net` unless the namespace name contains the string (K-36). This repo's namespace names must not contain it, enforced by Terraform validation, and the write-up states the condition. Detection through the statistics `disconnects` counter (K-38) |
 | B04, B10 | Idempotence does not survive a pod restart (K-53) |
+| B05 | Transactions: Microsoft's pages conflict (unsupported versus public preview on Premium); B05 tests whether a `transactional.id` producer works on the Premium namespace, not only its failure surface (K-53, conflict 6) |
 | C03 | Pause and resume while processing; keep calling `Consume` (K-55); consumer token refresh runs only inside `Consume` (K-47); no commit on partitions lost (K-28) |
 | C04 | Crash-looping consumer: restart back-off and a rebalance per restart (K-09) |
 | C06 | Deployment versus StatefulSet for `group.instance.id` (K-23, K-25); duplicate ID fencing (K-24); rolling update surge (K-22); node drain and AKS upgrade with a PDB (K-29, K-30); static members do not send LeaveGroup (K-05) |
@@ -859,17 +861,17 @@ All figures are estimates with low confidence.
 | Work | Hours |
 |---|---|
 | Inventory items: 26 S at 3 h, 28 M at 8 h, 8 L at 16 h, 4 X at 0.5 h | 432 |
-| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 23 h; docs/kubernetes.md about 8 h (basis below) | 81 |
+| Inventory amendment 1: 6 S at 3 h, 4 M at 8 h; folded configurations about 24 h; docs/kubernetes.md about 8 h (basis below) | 82 |
 | Terraform, persistent and ephemeral layers | 30 |
 | `Parchwell.Kafka`, loadgen, enrichment-consumer, verifier | 50 |
 | Statistics bridge, KQL queries, workbook | 20 |
 | Scenario runner workflow and results pipeline | 25 |
 | README, ADRs, diagrams, per-scenario write-ups | 30 |
-| Subtotal | 668 |
+| Subtotal | 669 |
 | Contingency, 15 percent | 100 |
 | **Total** | **about 770; range 580 to 830** |
 
-Basis for amendment 1's two unsized lines (estimate, Claude with Hari, 2026-10-12, low confidence): the folded findings add roughly one configuration or hypothesis to each of the 21 existing items in the fold table; 20 of them at about 1 h each to define, run and write up, and A01 at about 3 h for its reframing, giving about 23 h; docs/kubernetes.md has about 12 sections linking existing results, at about 40 minutes each, giving about 8 h.
+Basis for amendment 1's two unsized lines (estimate, Claude with Hari, 2026-10-12, low confidence): the folded findings add roughly one configuration or hypothesis to each of the 22 existing items in the fold table; 21 of them at about 1 h each to define, run and write up, and A01 at about 3 h for its reframing, giving about 24 h; docs/kubernetes.md has about 12 sections linking existing results, at about 40 minutes each, giving about 8 h.
 
 This is larger than the earlier estimate of 250 to 500 hours. The cause is the inventory: the earlier figure assumed 30 to 40 items; the frozen list has 66, and amendment 1 (2026-10-12) adds 10.
 
@@ -916,3 +918,4 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S15 | [What is Azure Event Hubs for Apache Kafka?](https://learn.microsoft.com/en-us/azure/event-hubs/azure-event-hubs-apache-kafka-overview) | read 2026-10-11 |
 | S16 | [How to protect private DNS zones and records](https://learn.microsoft.com/en-us/azure/dns/dns-protect-private-zones-recordsets) | read 2026-10-11 |
 | S17 | Terraform Registry module API and module READMEs: [virtual network](https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm), [private DNS zone](https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm), [Event Hubs namespace](https://registry.terraform.io/modules/Azure/avm-res-eventhub-namespace/azurerm); [AVM Terraform resource module index](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/) | read 2026-10-11 |
+| S18 | [Kafka transactions in Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions) | read 2026-10-13 |
