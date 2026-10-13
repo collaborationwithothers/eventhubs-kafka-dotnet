@@ -799,7 +799,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | K01 | Probe design for Kafka workers: liveness, startup and readiness; restart storms during long processing or rebalances | K-11, K-12, K-13 | T | M |
 | K02 | CPU limits: CFS throttling of librdkafka threads, missed heartbeats, error-free rebalances; `ProcessorCount` under a CPU limit | K-14, K-15 | T | M |
 | K03 | Native memory against pod memory limits: librdkafka queues outside the GC heap, OOMKill before QueueFull; GC heap hard limit and GC mode | K-16 to K-19 | T | M |
-| K04 | DNS `ndots:5` lookups for the Event Hubs name and re-resolution on reconnect | K-39 | T | S |
+| K04 | DNS `ndots:5` lookups for the Event Hubs name; re-resolution on reconnect once the `broker.address.ttl` cache expires, with one configuration at TTL 0 | K-39 | T | S |
 | K05 | Scaling events: replicas above the partition count, CPU-based HPA flapping, rebalance per scale event | K-20, K-21 | T | M |
 | K06 | Spot eviction notice against the termination grace period (Microsoft pages disagree) | K-31 | D: harness uses normal pools (ADR-008) | S |
 | K07 | Zone spread of consumer group members | K-32 | D: a zone outage cannot be induced | S |

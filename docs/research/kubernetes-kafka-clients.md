@@ -23,21 +23,21 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 
 | ID | Practice or failure mode | Kafka or EH specific | Reproducible at build scale | Confidence | Sources | Disposition |
 |---|---|---|---|---|---|---|
-| K-01 | .NET 10 has no default SIGTERM handler; without Generic Host the process dies at once (no Flush, no Close) | no | yes | confirmed | S30, S31 | rule |
+| K-01 | .NET 10 has no default SIGTERM handler outside the Generic Host (S30); inferred consequence: the process ends without running Flush or Close | no | yes | confirmed* | S30, S31 | rule |
 | K-02 | Shell-form ENTRYPOINT runs the app under `/bin/sh -c`; it is not PID 1, gets no SIGTERM, and is SIGKILLed at the end of the grace period | no | yes | confirmed | S39, S40 | rule; fold C18 (shell-form image configuration) |
 | K-03 | Default `terminationGracePeriodSeconds` (30 s) equals the default `HostOptions.ShutdownTimeout` (30 s); preStop time comes out of the same budget | no | yes | confirmed* | S40, S41, S32 | fold C18 |
-| K-04 | Producer: `message.timeout.ms` default 300000 ms far exceeds a 30 s grace period; queued and in-flight messages are dropped at SIGKILL; `Flush` must fit the remaining grace | yes | yes | confirmed | S02, S01, S11 | fold C18 |
+| K-04 | Producer: `message.timeout.ms` defaults to 300000 ms (S01); the Kubernetes default grace period is 30 s, then SIGKILL (S40); inferred consequence: queued and in-flight messages are dropped at SIGKILL unless `Flush` fits the remaining grace | yes | yes | confirmed* | S01, S02, S11, S40 | fold C18 |
 | K-05 | `Close()` commits offsets when auto-commit is enabled, and leaves the group; `Dispose` alone does neither; static members never send LeaveGroup | yes | yes | confirmed | S09, S02 | fold C18, C06 |
-| K-06 | The background task must honour its stop token; a blocking `Consume` without token or timeout holds the host until the shutdown timeout | no | yes | confirmed | S32 | rule |
-| K-07 | A .NET 10 background service failure stops the host with exit code 0; a Job records success and does not retry | no | yes | confirmed | S33, S34, S47 | rule (harness integrity) |
+| K-06 | The background task must honour its stop token (S32); inferred consequence: a blocking `Consume` without token or timeout holds the host until the shutdown timeout | no | yes | confirmed* | S32 | rule |
+| K-07 | Before .NET 11, a background service failure that stops the host "usually" exits with code 0 (S34); a Job counts exit code 0 as success and does not retry it (S47) | no | yes | confirmed | S33, S34, S47 | rule (harness integrity) |
 | K-08 | A Job can run the same program twice at once, even with parallelism and completions at 1 | no | unsure | confirmed | S47 | rule (duplicate-run detection invalidates the run); fold C14 |
-| K-09 | Restart back-off for Pods and Jobs; each restart of a dynamic group member triggers a rebalance | yes | yes | confirmed* | S40, S47 | fold C04 (crash-loop configuration) |
+| K-09 | Restart back-off for Pods and Jobs (S40, S47); dynamic group members are rebalanced each time a member joins or leaves (S02); inferred consequence: each restart of a dynamic member triggers a rebalance | yes | yes | confirmed* | S40, S47, S02 | fold C04 (crash-loop configuration) |
 | K-10 | Ordinary containers get SIGTERM in arbitrary order; native sidecars only after main containers exit | no | yes, with a sidecar | confirmed | S40 | guide |
 | K-11 | A liveness probe tied to processing progress or lag restarts consumers during long processing or rebalances | yes | yes | confirmed* | S42, S01 | new K01 |
 | K-12 | A startup probe holds liveness back; first token fetch and group join happen only once `Consume` runs | yes | yes | confirmed* | S42, S08 | new K01 |
 | K-13 | Readiness and `minReadySeconds` pace rollouts even without Service traffic; ready before assignment lets old pods go too fast | yes | yes | confirmed* | S45, S40 | new K01 |
 | K-14 | CPU limits are enforced by CFS throttling; throttled librdkafka threads may miss heartbeats and exceed `session.timeout.ms` | yes | yes | unconfirmed (heartbeat effect) | S44 | new K02 |
-| K-15 | `Environment.ProcessorCount` follows the CPU limit, rounded up; thread pool sizing follows it | no | yes | confirmed | S38 | rule; configuration of K02 |
+| K-15 | `Environment.ProcessorCount` follows the CPU limit, rounded up, and applications commonly size parallelism from it (S38); whether the .NET thread pool sizes from it is not stated and is for K02 to test | no | yes | confirmed (ProcessorCount); unconfirmed (thread pool) | S38 | rule; configuration of K02 |
 | K-16 | Producer queue defaults (1048576 KB, 100000 messages) are native memory outside the GC heap; a smaller pod limit can be OOMKilled before QueueFull | yes | yes | confirmed* | S01, S44 | new K03 |
 | K-17 | Consumer prefetch defaults (`queued.max.messages.kbytes`, `fetch.max.bytes`, `receive.message.max.bytes`) size native memory | yes | yes | confirmed | S01 | new K03 |
 | K-18 | The GC heap hard limit defaults to 75 percent of the container limit and ignores librdkafka's native queues | yes | yes | confirmed* | S36, S01 | new K03 |
@@ -45,8 +45,8 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-20 | Replicas above the partition count sit idle; CPU-based HPA can add idle pods; with dynamic membership every scale event is a rebalance | yes | yes | confirmed* | S15, S56, S02 ("rebalanced each time a new consumer joins the group or an existing member leaves") | new K05 |
 | K-21 | HPA scale-down stabilisation defaults to 5 min; a flapping metric still causes repeated rebalances unless `behavior` dampens it | yes | yes | confirmed* | S56, S02 | new K05 |
 | K-22 | RollingUpdate defaults of 25 percent surge and unavailable; surge pods join while old members remain | yes | yes | confirmed* | S45, S12 | fold C06, C07 |
-| K-23 | Deployment pod names change every rollout, so `group.instance.id` from the pod name is not stable; Confluent recommends StatefulSets | yes | yes | confirmed | S45, S46, S02, S12 | fold C06 |
-| K-24 | A duplicate `group.instance.id` fences the older member with a fatal error | yes | yes | confirmed | S02, S47 | fold C06, C14 |
+| K-23 | Deployment pod names change every rollout, so `group.instance.id` from the pod name is not stable (S45, S46); Confluent: "In Kubernetes environments, use StatefulSets to provide stable pod identities that can serve as static member IDs" (S12) | yes | yes | confirmed | S45, S46, S02, S12 | fold C06 |
+| K-24 | A new member joining with the same `group.instance.id` as an existing one fences the existing member with a fatal error (S02) | yes | yes | confirmed | S02, S47 | fold C06, C14 |
 | K-25 | StatefulSet rollouts replace one ordinal at a time; a static member must return within `session.timeout.ms` | yes | yes | confirmed | S46, S13, S01 | fold C06 |
 | K-26 | Confluent documents eager to cooperative migration as two rolling restarts with both assignor types listed (S12); librdkafka v2.16.0 states cooperative and eager strategies "must not be mixed" (S01), so that procedure is not available to this client. Which migration librdkafka permits is the test question | yes | yes | confirmed (conflict) | S12, S01 | fold C07 |
 | K-27 | Confluent.Kafka's Func-returning revoked and lost handlers are not supported with cooperative rebalancing | yes | yes | confirmed | S10 | fold C07 |
@@ -57,11 +57,11 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-32 | Spread consumers across zones with topology spread constraints | no | no | confirmed | S57 | new K07 (D) |
 | K-33 | A VM freeze pauses CPU and network; a pause beyond `session.timeout.ms` causes a rebalance | yes | no | confirmed* | S25 | new K08 (D) |
 | K-34 | Pods need egress to CoreDNS and to the private endpoint on 9093 (Microsoft's Kafka bootstrap examples use `<namespace>.servicebus.windows.net:9093`); default-deny egress also blocks DNS | no | yes | confirmed | S52, S16 | rule; guide |
-| K-35 | `socket.keepalive.enable` sets only SO_KEEPALIVE; AKS default keepalive time is 7200 s; pod sysctl `tcp_keepalive_time` below 240 is needed | yes | yes | confirmed | S06, S19, S53, S13 | fold A02 |
+| K-35 | `socket.keepalive.enable` sets only SO_KEEPALIVE (S06); the AKS default keepalive time is 7200 s (S19); Event Hubs closes idle connections at 240 s (S13); inferred consequence: keepalive helps only if pod sysctl `tcp_keepalive_time` is below 240 (S53) | yes | yes | confirmed* | S06, S19, S53, S13 | fold A02 |
 | K-36 | librdkafka's Azure idle default applies only when `bootstrap.servers` contains "azure" anywhere, case-insensitive; an Event Hubs address contains it only if the chosen namespace name does | yes | yes | confirmed | S05, S01, S03, S13 | fold A04 |
 | K-37 | Whether the Event Hubs 240 s idle close counts TCP keepalive probes as activity | yes | yes | unconfirmed | S13 | fold A02 (hypothesis) |
-| K-38 | librdkafka hides idle-classified disconnect logs; the statistics `disconnects` counter is the reliable signal | yes | yes | confirmed | S02, S04 | fold A04, H01 |
-| K-39 | `ndots:5` sends the Event Hubs name through search-domain lookups first; `broker.address.ttl` 1000 ms re-resolves on reconnect | yes | yes | confirmed* | S51, S21, S01, S22 | new K04 |
+| K-38 | librdkafka silences the "Disconnect" log for disconnects it classifies as idle (no requests in the last `socket.timeout.ms`, or none outstanding) (S02); the statistics `disconnects` counter still counts them (S04) | yes | yes | confirmed | S02, S04 | fold A04, H01 |
+| K-39 | `ndots:5` sends the three-dot Event Hubs name through search-domain lookups first (S51, S21); `broker.address.ttl` caches resolved addresses for 1000 ms (S01), so a reconnect re-resolves only after that cache expires; K04 runs one configuration with `broker.address.ttl` 0 to force it | yes | yes | confirmed* | S51, S21, S01, S22 | new K04 |
 | K-40 | LocalDNS needs Kubernetes 1.31 or later and 4 vCPUs, and reimages nodes | no | unsure | confirmed | S22, S59 | new K09 (D) |
 | K-41 | Public egress (Entra) uses load balancer SNAT; private endpoint traffic probably does not | no | no | confirmed (limits); unconfirmed (bypass) | S20, S29 | new K10 (D) |
 | K-42 | librdkafka connects only where needed; every client counts toward brokered connections per PU | yes | yes | confirmed (client); unconfirmed (EH broker IDs) | S02, S16 | fold D04; record broker count in every evidence pack |
@@ -76,10 +76,10 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-51 | `client.id` defaults to "rdkafka"; set it from the pod name through the Downward API | yes | yes | confirmed | S01, S50 | rule; fold H02 |
 | K-52 | Statistics are off by default; they expose rtt, throttle, queues, lag and rebalance counts from inside the pod | yes | yes | confirmed | S01, S04 | rule (already in ADR-007) |
 | K-53 | Idempotence does not survive a pod restart; Event Hubs has no transactions | yes | yes | confirmed* | S01, S13 | fold B04, B10 |
-| K-54 | A fatal producer error or fencing leaves the client unusable; exit non-zero | yes | unsure | confirmed | S02 | rule |
+| K-54 | A fatal error (for example idempotent producer failure or static-member fencing) leaves the client unusable (S02); this repo's rule is to exit non-zero so Kubernetes restart and Job back-off apply | yes | unsure | confirmed | S02 | rule |
 | K-55 | Pause and resume for long processing; keep calling `Consume` so poll interval and token refresh stay served | yes | yes | confirmed | S01, S02, S08 | fold C03 |
 | K-56 | With auto-commit enabled, `Close` commits stored offsets; with `enable.auto.commit=false` it does not, and the application commits explicitly. Event Hubs throttles commits to 2 per second per partition, which can slow either path | yes | yes | confirmed* | S09, S02, S14 | fold C18, C09 |
-| K-57 | A consumer killed before its first auto-commit restarts with no committed offset; `auto.offset.reset` `largest` skips silently | yes | yes | confirmed | S01 | fold C15, C10 |
+| K-57 | `auto.commit.interval.ms` defaults to 5000 ms and `auto.offset.reset` to `largest` (S01); inferred consequence: a consumer killed before its first auto-commit restarts with no committed offset and skips to the latest offset | yes | yes | confirmed* | S01 | fold C15, C10 |
 | K-58 | Hosted services stop in reverse registration order unless configured otherwise | no | yes | unconfirmed (S32 and S35 do not state the order) | S32, S35 | rule: shutdown order is orchestrated explicitly, never left to registration order |
 
 ## Not found in a primary source
