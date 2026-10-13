@@ -76,7 +76,9 @@ Layer 1 decides; layer 2 can only add.
 To verify during the pilot, before agents merge unattended:
 - that a pull request opened by the factory's GitHub App on a protected path is blocked until Hari approves (tested so far only with Hari as author);
 - that a pull request touching only `docs/operations/` is not blocked (the negation pattern);
-- whether Codex posts anything when it finds no issues, and whether its reviews can block a merge, so the merge step cannot race ahead of the review.
+- whether Codex's reviews can block a merge, so the merge step cannot race ahead of the review.
+
+Answered on PR #6 (2026-10-13): Codex reviews automatically on each new commit. With no findings it reacts with a thumbs-up on the pull request, and its summary comment shows the review as completed for the named commit. The merge step must see both, for the head commit, before merging.
 
 ## Ruleset
 
@@ -102,7 +104,8 @@ GitHub Copilot code review is not part of the factory. It reviewed the test pull
 
 - Every pull request's gate decisions are logged: which rules fired, Codex's findings, who merged.
 - Each week Hari spot-checks about 5 agent-merged pull requests and records yes or no: should this have come to me? (About 10 minutes.)
-- Metrics: Hari's minutes per item, cost per merged pull request, gate misses, false escalations.
+- Metrics: Hari's minutes per item, cost per merged pull request, gate misses, false escalations, review rounds per pull request, and escapes.
+- An escape is a review finding that the author's self-review (AGENTS.md, "Before opening a pull request") should have caught. Each finding is classed escape or not when it is fixed. Baseline: PR #6, 9 review rounds (8 with findings), 32 findings (1 P0, 25 P1, 6 P2; counted from the pull request on 2026-10-13), of which about 20 were escapes (estimate, Claude, 2026-10-13). The count should fall; if it does not, the self-review is not working.
 
 ## Deferred: Jev as the second escalation layer
 
