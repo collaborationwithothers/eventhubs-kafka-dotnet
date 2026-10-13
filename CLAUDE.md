@@ -25,7 +25,10 @@ In GitHub Actions, Claude acts through the factory's GitHub App, using a token m
 AGENTS.md's "Before opening a pull request" applies in full. In addition:
 
 1. Run the full build and test suite locally in the session. Warnings are errors.
-2. For the cold review (AGENTS.md, "Before opening a pull request", rule 8), write the diff to a file and give only that path to the `repo-reviewer` subagent.
+2. Run the cold review (AGENTS.md, "Before opening a pull request", rule 8) as follows.
+   - Stage exactly the files you intend to commit with `git add <paths>`. Never use `git add -A`.
+   - Write the whole proposed change to a file outside the repository: `git fetch origin main && git diff --cached $(git merge-base origin/main HEAD) > <file>`.
+   - Give only that file's path to the `repo-reviewer` subagent. Its definition pins the self-review model from "Model bindings".
 
 ## Subagents
 
