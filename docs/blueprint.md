@@ -790,7 +790,7 @@ Totals: 66 items. Tested or traced with effort: 62 (S 26, M 28, L 8). Out of sco
 
 ### Inventory amendment 1 (approved by Hari, 2026-10-12)
 
-Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 and C18. A sourced review of 58 practices and failure modes at the Kafka client, Kubernetes and Event Hubs boundary ([docs/research/kubernetes-kafka-clients.md](research/kubernetes-kafka-clients.md)) found gaps. Each of the 58 was sorted by one rule: covered by an existing item, folded into it; specific to Kafka or Event Hubs, reproducible at build scale and not covered, a new tested item; generic Kubernetes or .NET behaviour, an engineering rule for this harness (docs/engineering/dotnet.md) and a guide section; not reproducible at build scale, a traced item.
+Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 and C18. A sourced review of 58 practices and failure modes at the Kafka client, Kubernetes and Event Hubs boundary ([docs/research/kubernetes-kafka-clients.md](research/kubernetes-kafka-clients.md)) found gaps. Each of the 58 was sorted by one rule: covered by an existing item, folded into it; specific to Kafka or Event Hubs, reproducible at build scale and not covered, a new tested item; generic Kubernetes or .NET behaviour, an engineering rule for this harness and a guide section (the rules are written into docs/engineering/ with the code half, where they are designed against the real manifests and identities); not reproducible at build scale, a traced item.
 
 **K. Kubernetes runtime (new)**
 
@@ -803,7 +803,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | K05 | Scaling events: replicas above the partition count, CPU-based HPA flapping, rebalance per scale event | K-20, K-21 | T | M |
 | K06 | Spot eviction notice against the termination grace period (Microsoft pages disagree) | K-31 | D: harness uses normal pools (ADR-008) | S |
 | K07 | Zone spread of consumer group members | K-32 | D: a zone outage cannot be induced | S |
-| K08 | VM freeze pauses longer than `session.timeout.ms` | K-33 | D: a platform freeze cannot be triggered | S |
+| K08 | VM freeze pauses: Microsoft describes them as lasting a few seconds; a rebalance follows only if a pause exceeds `session.timeout.ms` | K-33 | D: a platform freeze cannot be triggered | S |
 | K09 | LocalDNS prerequisites and effects | K-40 | D: reimages nodes; outside the harness design | S |
 | K10 | SNAT port use for Entra egress | K-41 | D: exhaustion needs scale | S |
 
@@ -822,9 +822,9 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | C09 | Shutdown commits under the 2 per second per partition throttle, with auto-commit on (`Close` commits) and off (explicit commit) as separate configurations (K-56) |
 | C10, C15 | Killed before the first auto-commit, with `auto.offset.reset` `largest` (K-57) |
 | C14 | Job double start as a source of concurrent members (K-08, K-24) |
-| C18 | Grace period shorter than flush plus close (K-03, K-04); shell-form `ENTRYPOINT` image (K-02); `Close` versus `Dispose` (K-05); commit on revoke versus lost (K-28) |
+| C18 | Grace period shorter than flush plus close (K-03, K-04); shell-form `ENTRYPOINT` image (K-02); `Close` versus `Dispose` (K-05); commit on revoke versus lost (K-28); shutdown commit with auto-commit on and off (K-56) |
 | D04 | Broker connections per client; record the broker count in every evidence pack (K-42) |
-| F01 | Projected token TTL and re-read of the token file (K-44); token resource (K-45); consumer refresh only inside `Consume` (K-47) |
+| F01 | Projected token TTL and re-read of the token file (K-44); token resource (K-45); token refresh is served by polling: the consumer only inside `Consume`, the producer through `Poll`, which the background poll thread calls only while `dotnet.producer.enable.background.poll` is true (K-47) |
 | F02 | IMDS reachable from every pod, so `azure_imds` uses the node identity (K-49); hypothesis: librdkafka jwt-bearer grant with Entra federation (K-50) |
 | F03 | Egress to `login.microsoftonline.com` (K-43); projected token TTL and kubelet refresh (K-44); refresh timing and retry on failure (K-46); hypothesis: Event Hubs re-authentication at token expiry (K-48) |
 | F04 | Token resource mismatch (K-45) |

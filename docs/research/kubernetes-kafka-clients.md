@@ -7,7 +7,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 ## How to read this
 
 - **Confidence.** "confirmed": the cited primary source states the fact. "confirmed*": every cited fact is confirmed, but the combined consequence is an inference that a test would establish. "unconfirmed": no primary source found.
-- **Disposition.** "fold X": becomes a configuration or hypothesis of existing item X. "new KNN": a new inventory item. "rule": an engineering rule for this repo's own harness (docs/engineering/), plus a section in docs/kubernetes.md citing the source; not a test. "guide": a docs/kubernetes.md section only.
+- **Disposition.** "fold X": becomes a configuration or hypothesis of existing item X. "new KNN": a new inventory item. "rule": an engineering rule for this repo's own harness, written into docs/engineering/ with the code half, plus a section in docs/kubernetes.md citing the source; not a test. "guide": a docs/kubernetes.md section only.
 - **Versions.** Every librdkafka and Confluent.Kafka source (S01 to S11) is cited at the pinned tag v2.16.0. S01 to S04 and S09 to S11 were first read from `master` and re-checked at the tag on 2026-10-12; every cited fact matched.
 
 ## Findings that change existing items
@@ -69,7 +69,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-44 | Projected token TTL default 3600 s, refreshed by kubelet at 80 percent; re-read the token file on each exchange | yes | yes | confirmed | S18, S54, S55 | fold F01, F03 |
 | K-45 | The Kafka token resource is `https://<namespace>.servicebus.windows.net` | yes | yes | confirmed | S17 | fold F01, F04 |
 | K-46 | librdkafka refreshes the token at 80 percent of lifetime; on failure it keeps the old token and retries after 10 s | yes | yes | confirmed | S07 | fold F03 |
-| K-47 | The consumer's refresh callback runs only from `Consume`; the producer's runs on its background poll thread | yes | yes | confirmed | S08, S01, S11 | fold F01, C03 |
+| K-47 | The consumer's refresh callback runs only from `Consume`; the producer's is triggered through `IProducer.Poll`, which the background poll thread calls only while `dotnet.producer.enable.background.poll` is true (the default); with it false and no explicit `Poll`, refresh stalls | yes | yes | confirmed | S08, S01, S11 | fold F01, C03 |
 | K-48 | Whether Event Hubs supports SASL re-authentication (KIP-368) or closes connections at token expiry | yes | yes | unconfirmed (EH side) | S03 | fold F03 (hypothesis) |
 | K-49 | Every pod can reach the node's IMDS; `azure_imds` uses the node identity, not workload identity | yes | yes | confirmed* | S02, S28 | fold F02 |
 | K-50 | librdkafka's built-in jwt-bearer grant (KIP-1139) with Entra federation is untested | yes | yes | unconfirmed | S02 | fold F02 (hypothesis) |
@@ -109,7 +109,7 @@ All fetched on 2026-10-12.
 - S08: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Consumer.cs
 - S09: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs
 - S10: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs
-- S11: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs and .../Config_gen.cs
+- S11: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ProducerBuilder.cs (`SetOAuthBearerTokenRefreshHandler`: "triggered via IProducer.Poll"), https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Config_gen.cs (`dotnet.producer.enable.background.poll`, default true) and https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs
 - S12: https://docs.confluent.io/platform/current/clients/consumer.html
 - S13: https://learn.microsoft.com/azure/event-hubs/apache-kafka-configurations
 - S14: https://learn.microsoft.com/azure/event-hubs/apache-kafka-troubleshooting-guide
