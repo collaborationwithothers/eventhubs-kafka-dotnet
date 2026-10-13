@@ -819,7 +819,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | C04 | Crash-looping consumer: restart back-off and a rebalance per restart (K-09) |
 | C06 | Deployment versus StatefulSet for `group.instance.id` (K-23, K-25); duplicate ID fencing (K-24); rolling update surge (K-22); node drain and AKS upgrade with a PDB (K-29, K-30); static members do not send LeaveGroup (K-05) |
 | C07 | Eager to cooperative migration in two restarts (K-26); Confluent.Kafka handler limits under cooperative rebalancing (K-27) |
-| C09 | Shutdown commits under the 2 per second per partition throttle (K-56) |
+| C09 | Shutdown commits under the 2 per second per partition throttle, with auto-commit on (`Close` commits) and off (explicit commit) as separate configurations (K-56) |
 | C10, C15 | Killed before the first auto-commit, with `auto.offset.reset` `largest` (K-57) |
 | C14 | Job double start as a source of concurrent members (K-08, K-24) |
 | C18 | Grace period shorter than flush plus close (K-03, K-04); shell-form `ENTRYPOINT` image (K-02); `Close` versus `Dispose` (K-05); commit on revoke versus lost (K-28) |
@@ -830,7 +830,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | F04 | Token resource mismatch (K-45) |
 | H02 | `client.id` from the pod name to join client statistics to Event Hubs logs (K-51) |
 
-Totals after amendment 1: 76 items. Tested or traced with effort: 72 (S 32, M 32, L 8). Out of scope: 4. Guidance for operators is collected in docs/kubernetes.md, written as results arrive; every recommendation there links to the item and result behind it.
+Totals after amendment 1: 76 items. Tested or traced with effort: 72 (S 32, M 32, L 8). Out of scope: 4. Guidance for operators is collected in docs/kubernetes.md, written as results arrive. A recommendation backed by a tested or traced item links to that item and its result; a generic Kubernetes or .NET recommendation (catalogue disposition "rule" or "guide") links to its primary source and, for rules, to docs/engineering/dotnet.md. No recommendation links to a result that does not exist.
 
 ---
 

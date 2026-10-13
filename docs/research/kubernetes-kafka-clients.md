@@ -27,10 +27,10 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-02 | Shell-form ENTRYPOINT runs the app under `/bin/sh -c`; it is not PID 1, gets no SIGTERM, and is SIGKILLed at the end of the grace period | no | yes | confirmed | S39, S40 | rule; fold C18 (shell-form image configuration) |
 | K-03 | Default `terminationGracePeriodSeconds` (30 s) equals the default `HostOptions.ShutdownTimeout` (30 s); preStop time comes out of the same budget | no | yes | confirmed* | S40, S41, S32 | fold C18 |
 | K-04 | Producer: `message.timeout.ms` default 300000 ms far exceeds a 30 s grace period; queued and in-flight messages are dropped at SIGKILL; `Flush` must fit the remaining grace | yes | yes | confirmed | S02, S01, S11 | fold C18 |
-| K-05 | `Close()` commits stored offsets and leaves the group; `Dispose` alone does neither; static members never send LeaveGroup | yes | yes | confirmed | S09, S02 | fold C18, C06 |
+| K-05 | `Close()` commits offsets when auto-commit is enabled, and leaves the group; `Dispose` alone does neither; static members never send LeaveGroup | yes | yes | confirmed | S09, S02 | fold C18, C06 |
 | K-06 | The background task must honour its stop token; a blocking `Consume` without token or timeout holds the host until the shutdown timeout | no | yes | confirmed | S32 | rule |
 | K-07 | A .NET 10 background service failure stops the host with exit code 0; a Job records success and does not retry | no | yes | confirmed | S33, S34, S47 | rule (harness integrity) |
-| K-08 | A Job can run the same program twice at once, even with parallelism and completions at 1 | no | unsure | confirmed | S47 | fold C14 |
+| K-08 | A Job can run the same program twice at once, even with parallelism and completions at 1 | no | unsure | confirmed | S47 | rule (duplicate-run detection invalidates the run); fold C14 |
 | K-09 | Restart back-off for Pods and Jobs; each restart of a dynamic group member triggers a rebalance | yes | yes | confirmed* | S40, S47 | fold C04 (crash-loop configuration) |
 | K-10 | Ordinary containers get SIGTERM in arbitrary order; native sidecars only after main containers exit | no | yes, with a sidecar | confirmed | S40 | guide |
 | K-11 | A liveness probe tied to processing progress or lag restarts consumers during long processing or rebalances | yes | yes | confirmed* | S42, S01 | new K01 |
@@ -78,7 +78,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-53 | Idempotence does not survive a pod restart; Event Hubs has no transactions | yes | yes | confirmed* | S01, S13 | fold B04, B10 |
 | K-54 | A fatal producer error or fencing leaves the client unusable; exit non-zero | yes | unsure | confirmed | S02 | rule |
 | K-55 | Pause and resume for long processing; keep calling `Consume` so poll interval and token refresh stay served | yes | yes | confirmed | S01, S02, S08 | fold C03 |
-| K-56 | `Close` commits stored offsets; Event Hubs throttles commits to 2 per second per partition, which can slow shutdown | yes | yes | confirmed* | S09, S02, S14 | fold C18, C09 |
+| K-56 | With auto-commit enabled, `Close` commits stored offsets; with `enable.auto.commit=false` it does not, and the application commits explicitly. Event Hubs throttles commits to 2 per second per partition, which can slow either path | yes | yes | confirmed* | S09, S02, S14 | fold C18, C09 |
 | K-57 | A consumer killed before its first auto-commit restarts with no committed offset; `auto.offset.reset` `largest` skips silently | yes | yes | confirmed | S01 | fold C15, C10 |
 | K-58 | Hosted services stop in reverse registration order unless configured otherwise | no | yes | unconfirmed (S32 and S35 do not state the order) | S32, S35 | rule: shutdown order is orchestrated explicitly, never left to registration order |
 
