@@ -18,6 +18,7 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 | The diff touches | Apply |
 |---|---|
 | anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", "Before opening a pull request", "Skills", writing standards; CLAUDE.md; docs/agents/factory.md; docs/blueprint.md ADRs |
+| `docs/engineering/` | each changed document itself |
 | .NET code or tests | docs/engineering/dotnet.md |
 | Terraform | docs/engineering/terraform.md; ADR-011 |
 | Kafka client settings | docs/blueprint.md "Workloads (.NET 10, Confluent.Kafka 2.16.0 pinned)": every setting traceable to an inventory item |
