@@ -87,7 +87,7 @@ docs/engineering/dotnet.md and docs/engineering/terraform.md are binding. The no
 Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, symlinks to the same folders). Except for `repo-review` (below), they are third-party, pinned in `skills-lock.json`, and not edited in place. Where a skill conflicts with this file or docs/agents/factory.md, this file wins:
 
 - Decisions are recorded as ADRs in docs/blueprint.md section 4, numbered from ADR-012, in its format (context, options, decision, consequences). Never create `docs/adr/`.
-- The issue tracker is GitHub issues on this repository. Read an issue with `gh issue view <number> --comments`. This replaces `/setup-matt-pocock-skills`, which is not installed; ignore any skill step that points to it.
+- The issue tracker is GitHub issues on this repository. Read an issue with `gh api repos/{owner}/{repo}/issues/<number>` and its comments with `gh api --paginate repos/{owner}/{repo}/issues/<number>/comments`. Do not use `gh issue view`: it needs GraphQL, which Claude cloud sessions block. This replaces `/setup-matt-pocock-skills`, which is not installed; ignore any skill step that points to it.
 - Never apply the `ready-for-agent` label. Only Hari applies it; it is his plan approval.
 - Skills that interview a human (`grilling`, `domain-modeling`) are for interactive sessions with Hari only. In an unattended run, write the open question as the handoff comment instead.
 
