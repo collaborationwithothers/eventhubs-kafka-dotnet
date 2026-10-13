@@ -257,14 +257,17 @@ class CheckDocsTest(unittest.TestCase):
 
     def test_issue_references_are_checked_for_existence_and_kind(self):
         gh = StubGitHub({"issues/8": {"number": 8}, "issues/41": {"number": 41, "pull_request": {}}})
-        self.write("AGENTS.md", "# A\n\nSee issue #8, PR #41, pull request #8, issue #41 and #99. Not https://x.test/a#5.\n")
+        self.write("AGENTS.md", "# A\n\nSee issue #8, PR #41, pull request #8, issue #41 and #99. Not https://x.test/a#5, openai/codex#52549, community discussion #156147 or discussions #1, #2 and #3.\nBut Claude Code/Codex issue #7, scripts/x.py issue #70 and openai/codex issue #700 are ours.\n")
         out = self.run_checks(["AGENTS.md"], gh=gh)
         self.assertEqual(out, [
             "AGENTS.md:3: refs: #41 is called an issue but is a pull request",
             "AGENTS.md:3: refs: #8 is called a pull request but is an issue",
-            "AGENTS.md:3: refs: #99 does not exist in owner/repo",
+            "AGENTS.md:3: refs: #99 does not exist in owner/repo (another repository's number is written owner/repo#99)",
+            "AGENTS.md:4: refs: #7 does not exist in owner/repo (another repository's number is written owner/repo#7)",
+            "AGENTS.md:4: refs: #70 does not exist in owner/repo (another repository's number is written owner/repo#70)",
+            "AGENTS.md:4: refs: #700 does not exist in owner/repo (another repository's number is written owner/repo#700)",
         ])
-        self.assertEqual(sorted(set(gh.asked)), ["issues/41", "issues/8", "issues/99"])
+        self.assertEqual(gh.asked, ["issues/8", "issues/41", "issues/99", "issues/7", "issues/70", "issues/700"])
 
     def test_github_unavailable_is_not_treated_as_an_answer(self):
         class Down:
@@ -308,9 +311,23 @@ class CheckDocsTest(unittest.TestCase):
             "contents/docs/blueprint.md?ref=main": b64(main),
             "contents/docs/blueprint.md?ref=claude/8-adrs": b64(other),
         })
-        out = self.run_checks(["docs/blueprint.md"], gh=gh)
-        self.assertEqual(out, [f"docs/blueprint.md:{self.line_of('docs/blueprint.md', '### ADR-002 (option')}: adr: ADR-002 is also new on branch claude/8-adrs, with a different title"])
+        line = self.line_of("docs/blueprint.md", "### ADR-002 (option")
+        prefix = f"docs/blueprint.md:{line}: adr: ADR-002 is also new on branch claude/8-adrs, with a different title; "
+        # Neither branch has a pull request: both report.
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "neither branch has an open pull request yet; the first to open one keeps the number"])
         self.assertNotIn("contents/docs/blueprint.md?ref=claude/1-x", gh.asked)
+        # Only theirs has a pull request: we renumber.
+        gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = [{"created_at": "2026-10-13T10:00:00Z"}]
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "this branch has no open pull request and that one has, so this branch renumbers"])
+        # Theirs opened first: we renumber.
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T11:00:00Z"}]
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "that branch's pull request opened first, so this branch renumbers"])
+        # Ours opened first: we keep the number.
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T09:00:00Z"}]
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
+        # Only ours has a pull request: we keep it.
+        gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = []
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
         # The same ADR carried on both branches is not a collision.
         gh.routes["contents/docs/blueprint.md?ref=claude/8-adrs"] = b64(BLUEPRINT_OK)
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
@@ -327,7 +344,9 @@ class CheckDocsTest(unittest.TestCase):
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
         self.write("AGENTS.md", "# A\n\nFine.\n")
         subprocess.run(["git", "add", "AGENTS.md", "docs/blueprint.md"], cwd=self.root, check=True)
-        env = dict(os.environ, GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], cwd=self.root, check=True)
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        env.update(GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
         script = str(HERE.parent / "check_docs.py")
         ok = subprocess.run([sys.executable, script, "--offline", "--today", "2026-10-13"], cwd=self.root, env=env, capture_output=True, text=True)
         self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
@@ -344,6 +363,29 @@ class CheckDocsTest(unittest.TestCase):
         self.assertIn("could not check with GitHub", down.stderr)
         outside = subprocess.run([sys.executable, script, "--offline"], cwd=self.root.parent, env=dict(os.environ, GIT_DIR=str(self.root / "nowhere")), capture_output=True, text=True)
         self.assertEqual(outside.returncode, 2, outside.stdout + outside.stderr)
+
+    def test_current_branch_is_git_branch_first_then_actions_refs_on_detached_head(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], cwd=self.root, check=True)
+        subprocess.run(["git", "checkout", "-q", "-b", "claude/1-x"], cwd=self.root, check=True)
+        old = {k: os.environ.pop(k, None) for k in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        try:
+            named = cd.current_branch(self.root)
+            self.assertEqual(named, "claude/1-x")
+            os.environ["GITHUB_REF_NAME"] = "main"  # an issues-event run: git's branch wins
+            self.assertEqual(cd.current_branch(self.root), named)
+            subprocess.run(["git", "checkout", "-q", "--detach"], cwd=self.root, check=True)
+            self.assertEqual(cd.current_branch(self.root), "")  # main is not a working branch
+            os.environ["GITHUB_REF_NAME"] = "12/merge"
+            self.assertEqual(cd.current_branch(self.root), "")
+            os.environ["GITHUB_HEAD_REF"] = "claude/9-x"
+            self.assertEqual(cd.current_branch(self.root), "claude/9-x")
+        finally:
+            for k, v in old.items():
+                if v is not None:
+                    os.environ[k] = v
+                else:
+                    os.environ.pop(k, None)
 
 
 if __name__ == "__main__":

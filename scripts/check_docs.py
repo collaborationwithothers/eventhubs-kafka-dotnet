@@ -23,6 +23,18 @@ planned or scheduled. Mark its line `<!-- check-docs: allow date: <why> -->`.
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
 source is written `- Sn: retired ...`.
+
+Issue and pull request numbers (online only): every `#N` is this repository's and must
+exist; `issue #N` must be an issue and `PR #N` or `pull request #N` a pull
+request. Another repository's number is written GitHub's way, `owner/repo#N`.
+A discussion's (`discussion #N`) is not checked.
+
+ADR numbers across branches (online only): an ADR number that two branches
+use for different ADRs is a collision. The branch whose open pull request was
+created first keeps the number and gets no finding. A branch with no open
+pull request renumbers when the other has one. When neither has one, both
+see the finding until one opens a pull request. The same heading line on
+both branches is one ADR carried over, not a collision.
 """
 
 from __future__ import annotations
@@ -31,6 +43,7 @@ import argparse
 import base64
 import datetime as dt
 import json
+import os
 import re
 import subprocess
 import sys
@@ -69,6 +82,11 @@ SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
 DATE = re.compile(r"(?<!\d)(20\d\d)-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
 ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b")
+# `owner/repo issue #N`, `owner/repo pull request #N`, `discussion #N`: another repository's number, not ours
+# Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
+# (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
+# or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
+DISCUSSION_REF = re.compile(r"(?:^|[\s(\[])discussions?(?:\s+#\d+(?:,|\s+and|\s+or)?)*(?:\s+(?:and|or))?\s+$", re.I)
 # `file.md "Heading"`, `file.md, "Heading"` and `file.md's "Heading"`
 FILE_HEADING_REF = re.compile(r"((?:docs/[\w./-]+|AGENTS|CLAUDE|README|CONTEXT)\.md)(?:,|'s)? \"([^\"]+)\"")
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
@@ -339,17 +357,23 @@ class GitHub:
 
 
 def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -> list[Finding]:
-    """`#N` exists; `issue #N` is an issue and `PR #N` or `pull request #N` is a pull request."""
+    """`#N` exists; `issue #N` is an issue and `PR #N` or `pull request #N` is a pull request.
+
+    Another repository's number is written `owner/repo#N` and is never matched.
+    A discussion's number (`discussion #N`) is skipped. Every other `#N` is ours.
+    """
     out = []
     for n, line in enumerate(doc.lines, 1):
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
+            if DISCUSSION_REF.search(line[:m.start()]):
+                continue
             if num not in cache:
                 data = gh.get(f"issues/{num}")
                 cache[num] = None if data is None else ("pull" if "pull_request" in data else "issue")
             kind = cache[num]
             if kind is None:
-                out.append(Finding(doc.path, n, "refs", f"#{num} does not exist in {gh.slug}"))
+                out.append(Finding(doc.path, n, "refs", f"#{num} does not exist in {gh.slug} (another repository's number is written owner/repo#{num})"))
                 continue
             before = line[max(0, m.start() - 20):m.start()].lower()
             if re.search(r"\b(pr|prs|pull requests?)\s*$", before) and kind != "pull":
@@ -362,8 +386,7 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
 def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch: str) -> list[Finding]:
     """An ADR number new on this branch is not also new, with a different title, on another branch.
 
-    The same heading on both branches is the same ADR carried over (a branch cut
-    from another, or a split pull request), not a collision.
+    The cases are in the module docstring, under "ADR numbers across branches".
     """
     out = []
     if BLUEPRINT not in docs:
@@ -387,9 +410,32 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
             continue
         their_titles = adr_titles(Doc(BLUEPRINT, decode(data).split("\n")))
         for num in sorted(new_here.keys() & (set(their_titles) - on_main)):
-            if their_titles[num] != titles_here[num]:
-                out.append(Finding(BLUEPRINT, new_here[num], "adr", f"ADR-{num} is also new on branch {name}, with a different title"))
+            if their_titles[num] == titles_here[num]:
+                continue
+            verdict = collision_verdict(gh, current_branch, name)
+            if verdict is None:
+                continue
+            out.append(Finding(BLUEPRINT, new_here[num], "adr", f"ADR-{num} is also new on branch {name}, with a different title; {verdict}"))
     return out
+
+
+def pull_request_opened_at(gh: GitHub, branch: str) -> str | None:
+    """ISO time the branch's open pull request was created, or None when it has none."""
+    owner = gh.slug.split("/")[0]
+    prs = gh.get(f"pulls?state=open&head={owner}:{branch}") or []
+    return min((p["created_at"] for p in prs), default=None)
+
+
+def collision_verdict(gh: GitHub, ours: str, theirs: str) -> str | None:
+    """None when our branch keeps a colliding ADR number; otherwise why this branch renumbers."""
+    mine, other = pull_request_opened_at(gh, ours), pull_request_opened_at(gh, theirs)
+    if mine is not None and (other is None or mine < other):
+        return None
+    if mine is None and other is None:
+        return "neither branch has an open pull request yet; the first to open one keeps the number"
+    if mine is None:
+        return "this branch has no open pull request and that one has, so this branch renumbers"
+    return "that branch's pull request opened first, so this branch renumbers"
 
 
 def all_branches(gh: GitHub) -> list[dict]:
@@ -441,8 +487,17 @@ def allowed(doc: Doc, f: Finding) -> bool:
 
 
 def current_branch(root: Path) -> str:
+    """The checked-out branch. On a detached HEAD, as in a pull_request workflow, the
+    event's head ref; the default branch and `<n>/merge` refs are not working branches."""
     r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root, capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else ""
+    name = r.stdout.strip() if r.returncode == 0 else ""
+    if name and name != "HEAD":
+        return name
+    for var in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
+        ref = os.environ.get(var, "")
+        if ref and ref != DEFAULT_BRANCH and not ref.endswith("/merge"):
+            return ref
+    return ""
 
 
 def main(argv: list[str]) -> int:
@@ -471,8 +526,12 @@ def main(argv: list[str]) -> int:
         return 2
 
     gh = None if args.offline else GitHub(args.repo)
+    branch = current_branch(root)
+    if gh is not None and not branch:
+        print("check-docs: cannot tell the current branch (detached HEAD and no GITHUB_HEAD_REF); the ADR-collision check needs it", file=sys.stderr)
+        return 2
     try:
-        findings = run(root, paths, today, gh, current_branch(root))
+        findings = run(root, paths, today, gh, branch)
     except Unavailable as e:
         print(f"check-docs: could not check with GitHub ({e}); the refs and ADR-collision checks are unknown, not passed. Fix the access or hand off; --offline is for local iteration only", file=sys.stderr)
         return 2
