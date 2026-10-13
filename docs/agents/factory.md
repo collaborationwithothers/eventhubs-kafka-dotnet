@@ -112,7 +112,7 @@ An escape is a valid P0 or P1 finding that the cold review should have caught bu
 - A push without a cold review breaks AGENTS.md "Before opening a pull request" rule 8. It is recorded as a process breach in the pull request description, and Codex's findings on it still count as escapes.
 - Not an escape: a finding the author pushed knowingly under the escalation exception in AGENTS.md "Before opening a pull request" rule 8, listed in the pull request description.
 - Post-merge escape: a P0 or P1 defect on `main` that a cold review of its pull request should have caught. It is recorded as an issue labelled `escape` that links the pull request that introduced it. The label does not exist yet. Who applies it is open (issue #17).
-- Only valid findings count. A finding whose reply starts with `Not valid:` is not an escape. The reply keeps its evidence, so Hari can audit it when he reviews the pull request.
+- Only valid findings count. An author's `Not valid:` reply makes a finding disputed, not invalid. A disputed finding counts as an escape unless Hari agrees with the dispute in the same thread.
 - A `Not valid:` reply does not clear a P0 or P1 for merge. The merge rule in AGENTS.md still applies, so a disputed finding waits for Hari.
 - P2 findings do not count.
 - A pull request's count is provisional, because post-merge escapes can appear weeks later.
