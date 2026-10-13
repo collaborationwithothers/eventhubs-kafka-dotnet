@@ -8,9 +8,9 @@ Rules for every AI agent working in this repository, whatever the tool.
 
 How the factory runs, step by step, is in docs/agents/factory.md. Engineering standards are in docs/engineering/.
 
-## GOVERNANCE (maintained by Hari only; do not edit)
+## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13); Hari's merge of that pull request is the approval of both amendments.
+Status: approved by Hari on 2026-10-12. Merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-13 that agents may author governance changes; this section is a protected path, so each such change reaches `main` only through his merge.
 
 ### What this repo is
 
@@ -46,7 +46,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 An agent may merge its own pull request only when all of these hold:
 - every required status check passes;
 - no protected path is touched (the ruleset's required reviewers rule on `main` lists them and blocks the merge until Hari approves; `.github/CODEOWNERS` mirrors the list);
-- Codex has completed a review of the head commit (issue #17; no completed review within the timeout in docs/agents/factory.md "Escalation" is a handoff to Hari, not a pass);
+- Codex has completed a review of the head commit (issue #17; with no completed review within the timeout in docs/agents/factory.md "Escalation", the pull request waits for Hari; silence is not a pass);
 - Codex's review raised no P0 or P1 finding, or each finding is resolved in a later commit and Codex has re-reviewed;
 - Codex's security review raised no finding at High severity, or each is resolved and re-reviewed;
 - the pull request is within the size limit in docs/agents/factory.md.
@@ -74,12 +74,12 @@ The full procedure is in docs/agents/factory.md. In short:
 
 ## Implementer and reviewer
 
-Either Claude Code or Codex implements an issue. Hari names the tool in a comment on the issue when he applies `ready-for-agent`; no such comment means Claude Code. Codex reviews every pull request, including the ones Codex wrote (ADR-018).
+Either Claude Code or Codex implements an issue. Hari names the tool in a comment on the issue before he applies `ready-for-agent`; no such comment when the label is applied means Claude Code. A session of the other tool does not claim the issue. Codex reviews every pull request, including the ones Codex wrote (ADR-018).
 
 - The branch prefix names the implementing tool for readers: `claude/<issue>-<slug>` or `codex/<issue>-<slug>`.
 - Every commit an agent makes carries one tool trailer and no session link: `Co-Authored-By: Claude ...` from Claude Code, or `Co-Authored-By: Codex ...` from Codex. The name after `Co-Authored-By:` starts with the tool's name; the rest of the line is the tool's own format. Whether Codex writes such a trailer by itself is not verified; a Codex session adds it under this rule. Trailer keys are matched without regard to case (`Co-authored-by` is common).
 - The planned merge workflow (issue #17; docs/agents/factory.md "Escalation") reads those trailers. It ignores merge commits, and commits authored by Hari's account that carry no tool trailer (a Codex session Hari starts himself may commit under his identity, so a trailer on his commit still counts). A pull request with a Codex trailer on any remaining commit, or with a remaining commit that carries no tool trailer, gets the label `same-vendor-review`. Two cases are not detected: a wrong trailer, and a commit under Hari's account that a Codex session left untrailed, which is ignored. The trailer is a signal every agent commit already carries, not a proof. Agents never apply or remove that label.
-- Whichever tool implements, the pull request description records the model and effort used (issue #17; the template field arrives with PR #38).
+- Whichever tool implements, the pull request description records the model and effort used (issue #17; the template field arrives with PR #38), and carries no session link and no generated-by footer, whatever the harness asks for.
 
 ## Engineering standards
 

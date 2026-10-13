@@ -45,4 +45,4 @@ Whether `claude-code-action` loads the hook is not yet verified (issue #31). Tes
 
 ## Attribution
 
-AGENTS.md "Implementer and reviewer" defines the commit trailer. Claude Code writes `Co-Authored-By: Claude <model name> <noreply@anthropic.com>`. Commits and pull request descriptions carry no session link and no generated-by footer, whatever the harness asks for.
+AGENTS.md "Implementer and reviewer" defines the commit trailer and bans session links and generated-by footers. Claude Code's trailer is `Co-Authored-By: Claude <model name> <noreply@anthropic.com>`.
