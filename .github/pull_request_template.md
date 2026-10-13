@@ -1,8 +1,8 @@
-**What:** 
-**Why:** 
+<!-- Two or three plain sentences: what changed and why. A reader could stop here and still leave right. -->
+
 **Read first:** 
 **Least sure about:** 
-**Escapes:** 
+**Escapes:** pending
 
 <details><summary>Self-review record</summary>
 

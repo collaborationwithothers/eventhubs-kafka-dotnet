@@ -78,7 +78,7 @@ To verify during the pilot, before agents merge unattended:
 - that a pull request touching only `docs/operations/` is not blocked (the negation pattern);
 - whether Codex's reviews can block a merge, so the merge step cannot race ahead of the review.
 
-Answered on PR #6 (2026-10-13): Codex reviews automatically on each new commit. With no findings it reacts with a thumbs-up on the pull request, and its summary comment shows the review as completed for the named commit. The merge step must see both, for the head commit, before merging.
+Answered on PR #6 (2026-10-13): Codex reviews automatically on each new commit. With no findings it reacts with a thumbs-up on the pull request, and its summary comment shows the review as completed for the named commit. A reaction carries no commit, so a thumbs-up from an earlier commit cannot prove the head is clean. The merge step therefore requires all of: Codex's summary shows a completed review for the head commit; no Codex review comment exists on the head commit; no Codex review thread is unresolved.
 
 ## Ruleset
 
