@@ -99,12 +99,12 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 
 1. Verify every factual claim against its source at the pinned version before committing it. Never write a library or Azure behaviour from memory.
 2. Mark a claim confirmed only if every part of it is stated by a cited source. Name any inferred part as inferred. Cite every source a claim depends on, in full.
-3. Before every push, fix commits included, re-read the whole diff against docs/blueprint.md's ADRs and docs/engineering/. A fix can break another decision.
+3. Before every push, including pushes that only contain review fixes, re-read the whole diff against docs/blueprint.md's ADRs, docs/engineering/ and the merge rule. A fix can break another decision.
 4. Compute counts, totals, cross-references and time differences with a script, never by hand.
 5. When a reviewer finds one error, check every instance of that class, not only the one flagged.
 6. If two review rounds in a row raise new substantive findings, stop and split the pull request. The threshold is a governance choice, not a measurement; its basis is PR #6, where design findings kept arriving until the pull request was split after round four.
 7. Keep the description short: what changed, why, what to read first, what you are least sure about. Evidence lives in the repository (ADRs, citations, commit messages); the description links to it. If the change cannot be described in a few lines, split it.
-8. Fill in the pull request template, including its collapsed self-review record. Escapes start as "pending"; after the review rounds, classify every finding and update the count before merge.
+8. Fill in the pull request template, including its collapsed self-review record. Escapes start as "pending"; after the review rounds, classify every finding and update the count before merge (issue #17 defines how escapes are measured).
 
 ## Code Review Rules
 
