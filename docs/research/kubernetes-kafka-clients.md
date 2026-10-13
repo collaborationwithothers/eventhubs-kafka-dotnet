@@ -38,9 +38,9 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-13 | Readiness and `minReadySeconds` pace rollouts even without Service traffic; ready before assignment lets old pods go too fast | yes | yes | confirmed* | S45, S40 | new K01 |
 | K-14 | CPU limits are enforced by CFS throttling; throttled librdkafka threads may miss heartbeats and exceed `session.timeout.ms` | yes | yes | unconfirmed (heartbeat effect) | S44 | new K02 |
 | K-15 | `Environment.ProcessorCount` follows the CPU limit, rounded up, and applications commonly size parallelism from it (S38); whether the .NET thread pool sizes from it is not stated and is for K02 to test | no | yes | confirmed (ProcessorCount); unconfirmed (thread pool) | S38 | rule; configuration of K02 |
-| K-16 | Producer queue defaults (1048576 KB, 100000 messages) are native memory outside the GC heap; a smaller pod limit can be OOMKilled before QueueFull | yes | yes | confirmed* | S01, S44 | new K03 |
+| K-16 | Producer queue defaults are 1048576 KB and 100000 messages (S01); Confluent.Kafka is a wrapper around librdkafka, a C library (S60); a container exceeding its memory limit can be OOM-killed (S44). Inferred, for K03 to test: the queues are native allocations outside the .NET GC heap, so a smaller pod limit can be OOM-killed before QueueFull | yes | yes | confirmed* (allocation outside the GC heap is inferred) | S01, S44, S60 | new K03 |
 | K-17 | Consumer prefetch defaults (`queued.max.messages.kbytes`, `fetch.max.bytes`, `receive.message.max.bytes`) size native memory | yes | yes | confirmed | S01 | new K03 |
-| K-18 | The GC heap hard limit defaults to 75 percent of the container limit and ignores librdkafka's native queues | yes | yes | confirmed* | S36, S01 | new K03 |
+| K-18 | The GC heap hard limit defaults to the larger of 20 MB or 75 percent of the container memory limit (S36). Inferred, for K03 to test: that budget does not account for librdkafka's native queues (S01, S60), so the two together can exceed the limit | yes | yes | confirmed* (interaction is inferred) | S36, S01, S60 | new K03 |
 | K-19 | Worker apps default to workstation GC; DATAS is on by default since .NET 9; server GC is unavailable on one core | no | yes | confirmed | S37, S58 | rule; configuration of K03 |
 | K-20 | Replicas above the partition count sit idle; CPU-based HPA can add idle pods; with dynamic membership every scale event is a rebalance | yes | yes | confirmed* | S15, S56, S02 ("rebalanced each time a new consumer joins the group or an existing member leaves") | new K05 |
 | K-21 | HPA scale-down stabilisation defaults to 5 min; a flapping metric still causes repeated rebalances unless `behavior` dampens it | yes | yes | confirmed* | S56, S02 | new K05 |
@@ -157,5 +157,6 @@ All fetched on 2026-10-12.
 - S57: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
 - S58: https://learn.microsoft.com/dotnet/standard/garbage-collection/datas ("enabled by default in .NET 9")
 - S59: https://learn.microsoft.com/azure/aks/localdns-custom ("Kubernetes versions 1.31 and later"; "at least 4 vCPUs"; enabling LocalDNS "initiates a reimage operation")
+- S60: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/README.md ("a lightweight wrapper around librdkafka, a finely tuned C client")
 
 S43 is unused.
