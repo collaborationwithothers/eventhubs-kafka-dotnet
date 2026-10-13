@@ -36,13 +36,19 @@ setup() {
 #!/usr/bin/env bash
 echo "$*" >>"$GH_CALLS_LOG"
 [[ "${FAKE_GH_FAIL:-}" == "1" ]] && { echo "gh: HTTP 401" >&2; exit 1; }
-path="" expr="."
+path="" expr="." page=1 per_page=30
 shift # "api"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --jq) expr="$2"; shift 2 ;;
-    -f|-F|-X|-H) shift 2 ;;
-    --paginate) shift ;;
+    -f|-F)
+      case "$2" in
+        page=*) page="${2#page=}" ;;
+        per_page=*) per_page="${2#per_page=}" ;;
+      esac
+      shift 2 ;;
+    -X|-H) shift 2 ;;
+    --paginate) echo "stub gh: --paginate is not allowed (AGENTS.md)" >&2; exit 1 ;;
     *) [[ -z "$path" ]] && path="$1"; shift ;;
   esac
 done
@@ -52,7 +58,7 @@ case "$path" in
   repos/acme/widget/pulls*) file="pulls.json" ;;
   *) echo "stub gh: unexpected path $path" >&2; exit 1 ;;
 esac
-jq -r "$expr" "$FIXTURES/$file"
+jq --argjson p "$page" --argjson n "$per_page" '.[($p - 1) * $n : $p * $n]' "$FIXTURES/$file" | jq -r "$expr"
 STUB
   chmod +x "$STUB_BIN/gh"
 }
@@ -214,6 +220,20 @@ test_unmarked_comment_blocks() {
   assert_status 0; assert_blocked
 }
 
+test_marker_on_later_line_blocks() {
+  write_start_file
+  set_fixture issue_comments.json "$(comment 2026-10-13T10:05:00Z $'Quoting the rule:\n**Decision needed:** example.')"
+  run_stop false GITHUB_ACTIONS=true
+  assert_status 0; assert_blocked
+}
+
+test_marker_after_leading_whitespace_counts() {
+  write_start_file
+  set_fixture issue_comments.json "$(comment 2026-10-13T10:05:00Z $'\n  **Decision needed:** approve X.')"
+  run_stop false GITHUB_ACTIONS=true
+  assert_status 0; assert_no_output
+}
+
 test_block_reason_names_the_issue_and_marker() {
   write_start_file
   run_stop false GITHUB_ACTIONS=true
@@ -237,6 +257,25 @@ test_target_equal_to_open_pr_is_counted_once() {
   set_fixture issue_comments.json "$(comment 2026-10-13T10:05:00Z '**Decision needed:** approve X.')"
   run_stop false GITHUB_ACTIONS=true PARCHWELL_ISSUE=29
   assert_status 0; assert_no_output
+}
+
+test_handoff_on_second_page_is_found() {
+  write_start_file
+  local comments=() i
+  for i in $(seq 1 100); do
+    comments+=("$(comment 2026-10-13T10:05:00Z "progress note $i")")
+  done
+  comments+=("$(comment 2026-10-13T10:06:00Z '**Decision needed:** approve X.')")
+  set_fixture issue_comments.json "${comments[@]}"
+  run_stop false GITHUB_ACTIONS=true
+  assert_status 0; assert_no_output
+  grep -q 'page=2' "$WORK/gh-calls.log" || fail "second page was not requested"
+}
+
+test_block_reason_uses_post_with_body_file() {
+  write_start_file
+  run_stop false GITHUB_ACTIONS=true
+  [[ "$(jq -r '.reason' <<<"$OUT")" == *"-X POST"*"-F body=@"* ]] || fail "reason does not show the AGENTS.md post form: $OUT"
 }
 
 test_more_than_one_handoff_warns() {

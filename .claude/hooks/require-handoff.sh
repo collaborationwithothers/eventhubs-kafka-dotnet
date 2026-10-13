@@ -25,7 +25,9 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/handoff-lib.sh"
 
 readonly MARKER='**Decision needed:**'
-readonly MARKER_REGEX='^\\s*\\*\\*Decision needed:\\*\\*'
+readonly MARKER_REGEX='^\s*\*\*Decision needed:\*\*'
+readonly PAGE_SIZE=100 # GitHub's documented maximum for "List issue comments"
+readonly MAX_PAGES=50
 readonly MAX_BLOCKS=3
 
 allow() { exit 0; }
@@ -94,10 +96,18 @@ if [[ -z "$issue" ]]; then
 fi
 
 # Prints one line per marked comment created since the session started.
+# Pages by number: AGENTS.md forbids gh api --paginate, whose next-page URLs
+# the session proxy refuses.
 marked_comments() { # issue_or_pr_number
-  local filter
-  filter=".[] | select(.created_at >= \"$started\") | select(.body | test(\"$MARKER_REGEX\")) | .created_at"
-  gh api --paginate -X GET "repos/$repo/issues/$1/comments" -f since="$started" --jq "$filter"
+  local page json
+  for ((page = 1; page <= MAX_PAGES; page++)); do
+    json="$(gh api -X GET "repos/$repo/issues/$1/comments" -f since="$started" \
+      -f per_page="$PAGE_SIZE" -f page="$page")" || return 1
+    jq -r --arg s "$started" --arg re "$MARKER_REGEX" \
+      '.[] | select(.created_at >= $s) | select(.body | test($re)) | .created_at' <<<"$json" || return 1
+    (( $(jq length <<<"$json") < PAGE_SIZE )) && return 0
+  done
+  return 1 # More pages than MAX_PAGES: report as a failed check.
 }
 
 found="$(marked_comments "$issue")" || warn "GitHub API call failed, so the handoff was not checked."
@@ -125,4 +135,4 @@ if (( blocks >= MAX_BLOCKS )); then
 fi
 echo $((blocks + 1)) >"$blocks_file"
 
-block "GOVERNANCE \"Handoffs\": before stopping, post exactly one comment on $targets that starts with $MARKER and states, in one sentence, the decision you need from Hari, with the evidence linked. Use gh api REST, for example: gh api repos/$repo/issues/$issue/comments -f body='$MARKER ...'"
+block "GOVERNANCE \"Handoffs\": before stopping, post exactly one comment on $targets that starts with $MARKER and states, in one sentence, the decision you need from Hari, with the evidence linked. Write the comment to a file, then post it with: gh api -X POST repos/$repo/issues/$issue/comments -F body=@<file>"
