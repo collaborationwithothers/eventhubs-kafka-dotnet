@@ -16,4 +16,4 @@ Verdicts: confirmed, contradicted, undocumented, untestable.
 
 ## Read next
 
-- [docs/blueprint.md](docs/blueprint.md): thesis, architecture, decisions, failure modes, the frozen inventory of 66 items, and the estimate.
+- [docs/blueprint.md](docs/blueprint.md): thesis, architecture, decisions, failure modes, the frozen inventory of 66 items plus amendment 1 (10 Kubernetes items), and the estimate.
