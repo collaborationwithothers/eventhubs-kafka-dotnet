@@ -56,13 +56,13 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-31 | Spot eviction notice of about 30 s (two Microsoft pages disagree on "up to" versus "at least") | no | unsure (normal pools, ADR-008) | confirmed | S24, S25, S26 | new K06 (D) |
 | K-32 | Spread consumers across zones with topology spread constraints | no | no | confirmed | S57 | new K07 (D) |
 | K-33 | A VM freeze pauses CPU and network; a pause beyond `session.timeout.ms` causes a rebalance | yes | no | confirmed* | S25 | new K08 (D) |
-| K-34 | Pods need egress to CoreDNS and to the private endpoint on 9093; default-deny egress also blocks DNS | no | yes | confirmed | S52 | rule; guide |
+| K-34 | Pods need egress to CoreDNS and to the private endpoint on 9093 (Microsoft's Kafka bootstrap examples use `<namespace>.servicebus.windows.net:9093`); default-deny egress also blocks DNS | no | yes | confirmed | S52, S16 | rule; guide |
 | K-35 | `socket.keepalive.enable` sets only SO_KEEPALIVE; AKS default keepalive time is 7200 s; pod sysctl `tcp_keepalive_time` below 240 is needed | yes | yes | confirmed | S06, S19, S53, S13 | fold A02 |
 | K-36 | librdkafka's Azure idle default applies only when `bootstrap.servers` contains "azure" anywhere, case-insensitive; an Event Hubs address contains it only if the chosen namespace name does | yes | yes | confirmed | S05, S01, S03, S13 | fold A04 |
 | K-37 | Whether the Event Hubs 240 s idle close counts TCP keepalive probes as activity | yes | yes | unconfirmed | S13 | fold A02 (hypothesis) |
 | K-38 | librdkafka hides idle-classified disconnect logs; the statistics `disconnects` counter is the reliable signal | yes | yes | confirmed | S02, S04 | fold A04, H01 |
 | K-39 | `ndots:5` sends the Event Hubs name through search-domain lookups first; `broker.address.ttl` 1000 ms re-resolves on reconnect | yes | yes | confirmed* | S51, S21, S01, S22 | new K04 |
-| K-40 | LocalDNS needs Kubernetes 1.31 or later and 4 vCPUs, and reimages nodes | no | unsure | confirmed | S22 | new K09 (D) |
+| K-40 | LocalDNS needs Kubernetes 1.31 or later and 4 vCPUs, and reimages nodes | no | unsure | confirmed | S22, S59 | new K09 (D) |
 | K-41 | Public egress (Entra) uses load balancer SNAT; private endpoint traffic probably does not | no | no | confirmed (limits); unconfirmed (bypass) | S20, S29 | new K10 (D) |
 | K-42 | librdkafka connects only where needed; every client counts toward brokered connections per PU | yes | yes | confirmed (client); unconfirmed (EH broker IDs) | S02, S16 | fold D04; record broker count in every evidence pack |
 | K-43 | Workload identity needs HTTPS egress to `login.microsoftonline.com`, which has no fixed IPs | yes | yes | confirmed | S27, S52 | fold F03 |
@@ -118,11 +118,11 @@ All fetched on 2026-10-12.
 - S17: https://learn.microsoft.com/azure/event-hubs/authenticate-application
 - S18: https://learn.microsoft.com/azure/aks/workload-identity-overview
 - S19: https://learn.microsoft.com/azure/aks/improve-network-fault-tolerance-in-aks-using-tcp-keepalive
-- S20: https://learn.microsoft.com/azure/aks/configure-load-balancer-standard
+- S20: https://learn.microsoft.com/azure/aks/configure-load-balancer-standard and https://learn.microsoft.com/azure/aks/troubleshoot-source-network-address-translation
 - S21: https://learn.microsoft.com/azure/aks/coredns-troubleshoot
 - S22: https://learn.microsoft.com/azure/aks/dns-concepts
-- S23: https://learn.microsoft.com/azure/aks/upgrade-options
-- S24: https://learn.microsoft.com/azure/aks/spot-node-pool
+- S23: https://learn.microsoft.com/azure/aks/upgrade-options and https://learn.microsoft.com/azure/templates/microsoft.containerservice/2026-03-01/managedclusters
+- S24: https://learn.microsoft.com/azure/aks/spot-node-pool and https://learn.microsoft.com/azure/architecture/aws-professional/eks-to-aks/node-pools
 - S25: https://learn.microsoft.com/azure/aks/node-auto-drain
 - S26: https://learn.microsoft.com/azure/architecture/guide/spot/spot-eviction
 - S27: https://learn.microsoft.com/azure/aks/outbound-rules-control-egress
@@ -130,7 +130,7 @@ All fetched on 2026-10-12.
 - S29: https://learn.microsoft.com/troubleshoot/azure/azure-kubernetes/create-upgrade-delete/error-code-invalidloadbalancerprofileallocatedoutboundports
 - S30: https://learn.microsoft.com/dotnet/core/compatibility/core-libraries/10.0/sigterm-signal-handler
 - S31: https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown
-- S32: https://learn.microsoft.com/aspnet/core/fundamentals/host/generic-host#shutdowntimeout
+- S32: https://learn.microsoft.com/aspnet/core/fundamentals/host/generic-host#shutdowntimeout and https://learn.microsoft.com/aspnet/core/fundamentals/host/hosted-services
 - S33: https://learn.microsoft.com/dotnet/core/compatibility/core-libraries/6.0/hosting-exception-handling
 - S34: https://learn.microsoft.com/dotnet/core/compatibility/extensions/11/ihost-runasync-stopasync-throw-backgroundservice-failure
 - S35: https://learn.microsoft.com/dotnet/core/compatibility/extensions/10.0/backgroundservice-executeasync-task
@@ -156,5 +156,6 @@ All fetched on 2026-10-12.
 - S56: https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
 - S57: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
 - S58: https://learn.microsoft.com/dotnet/standard/garbage-collection/datas ("enabled by default in .NET 9")
+- S59: https://learn.microsoft.com/azure/aks/localdns-custom ("Kubernetes versions 1.31 and later"; "at least 4 vCPUs"; enabling LocalDNS "initiates a reimage operation")
 
 S43 is unused.
