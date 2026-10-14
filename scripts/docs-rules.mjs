@@ -6,7 +6,9 @@ const blueprintPath = 'docs/blueprint.md';
 
 function text(node) {
   if (node.type === 'text') return node.value;
-  return (node.children ?? []).map(text).join('');
+  // Keep non-text leaves as separators: dropping code or images can make
+  // a cell or link label look exact, or join a declaration prefix together.
+  return node.children ? node.children.map(text).join('') : '\0';
 }
 
 function leadingText(node) {
