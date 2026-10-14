@@ -97,7 +97,7 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 
 ## Sources
 
-All fetched on 2026-10-12, except S43, which is retired and has no source.
+All fetched on 2026-10-12, except one number marked retired below, which has no source.
 
 - S01: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
 - S02: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md

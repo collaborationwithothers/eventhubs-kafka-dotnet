@@ -19,6 +19,11 @@ Output: one line per finding, `path:line: class: message`, then a summary.
 
 One waiver exists, for the `date` class only: a date the text states as
 planned or scheduled. Mark its line `<!-- check-docs: allow date: <why> -->`.
+A value that is not a calendar date (`date-invalid`) cannot be waived.
+
+Files: every tracked Markdown file, except the third-party skills pinned in
+skills-lock.json. Paths given on the command line may be spelled relative to
+the current directory or absolute; they are read as repository-relative.
 
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
@@ -29,12 +34,16 @@ exist; `issue #N` must be an issue and `PR #N` or `pull request #N` a pull
 request. Another repository's number is written GitHub's way, `owner/repo#N`.
 A discussion's (`discussion #N`) is not checked.
 
-ADR numbers across branches (online only): an ADR number that two branches
-use for different ADRs is a collision. The branch whose open pull request was
-created first keeps the number and gets no finding. A branch with no open
-pull request renumbers when the other has one. When neither has one, both
-see the finding until one opens a pull request. The same heading line on
-both branches is one ADR carried over, not a collision.
+ADR numbers across branches (online only): an ADR number new on this branch
+is a finding when another branch uses it for a different ADR (a collision),
+and when it is below the highest ADR another branch added. The branch whose
+open pull request was created first keeps the number and gets no finding;
+equal creation times are broken by the lower pull request number. A branch
+with no open pull request renumbers when the other has one. When neither has
+one, both see the finding until one opens a pull request. The same heading
+line on both branches is one ADR carried over, not a collision. ADRs already
+on main are nobody's allocation: a number reserved below main's highest is
+not a finding.
 """
 
 from __future__ import annotations
@@ -47,6 +56,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -54,24 +64,23 @@ REPO_SLUG = "collaborationwithothers/eventhubs-kafka-dotnet"
 BLUEPRINT = "docs/blueprint.md"
 DEFAULT_BRANCH = "main"
 
-# Files the checks cover: the repository's own documents. Third-party skills
-# pinned in skills-lock.json are copies and are not ours to fix.
-INCLUDE = (
-    "AGENTS.md",
-    "CLAUDE.md",
-    "README.md",
-    "CONTEXT.md",
-    ".github/pull_request_template.md",
-    ".agents/skills/repo-review/SKILL.md",
-    ".claude/agents/repo-reviewer.md",
-)
-INCLUDE_DIRS = ("docs/",)
-# Unit symbols the metric-units standard needs; everything else non-ASCII is reported.
+# Every tracked Markdown file is ours except the third-party skills pinned in
+# skills-lock.json: they are copies and are not ours to fix. Discovery excludes
+# those, so a new document anywhere in the repository is covered without
+# editing this script.
+SKILLS_LOCK = "skills-lock.json"
+SKILL_ROOTS = (".agents/skills/", ".claude/skills/")
+# Unit symbols the metric-units standard needs. Other non-ASCII punctuation and symbols are reported.
 ALLOWED_NON_ASCII = {"\u00b0", "\u00b5"}
 ALLOW = re.compile(r"<!-- check-docs: allow (date): [^>]*\S[^>]*-->")
 WAIVABLE = ("date",)
 
 ADR_HEADING = re.compile(r"^### ADR-(\d{3})\b")
+# A heading that looks like an ADR's, in any form (`## ADR-1`, `### ADR 012`, `### adr-001`): the
+# canonical form is `### ADR-NNN` with three digits, so anything else this matches is a typo.
+ADR_LIKE_HEADING = re.compile(r"^#{1,6}\s+ADR[-\s]?\d", re.I)
+# The heading annotation that selects ADR_OPTION_PARTS
+ADR_OPTION_HEADING = re.compile(r"^### ADR-\d{3} \(option, deferred\)")
 ADR_REF = re.compile(r"\bADR-(\d{3})\b")
 ADR_PARTS = ("**Context.**", "**Options considered.**", "**Decision.**", "**Consequences.**")
 # An ADR recorded as an option, not taken: `### ADR-NNN (option, deferred): ...`
@@ -82,10 +91,13 @@ SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
 DATE = re.compile(r"(?<!\d)(20\d\d)-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
 ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b")
-# `owner/repo issue #N`, `owner/repo pull request #N`, `discussion #N`: another repository's number, not ours
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
+# A label before a number, and the pieces of a group such as `PRs #6, #24 and #34`
+KIND_LABEL = re.compile(r"\b(prs?|pull requests?|issues?)\s*$", re.I)
+GROUP_SEPARATOR = re.compile(r"(?:,?\s+(?:and|or)\s+|\s*[,&]\s*)$", re.I)
+PREVIOUS_REF = re.compile(r"(?<![\w/#])#\d+$")
 DISCUSSION_REF = re.compile(r"(?:^|[\s(\[])discussions?(?:\s+#\d+(?:,|\s+and|\s+or)?)*(?:\s+(?:and|or))?\s+$", re.I)
 # `file.md "Heading"`, `file.md, "Heading"` and `file.md's "Heading"`
 FILE_HEADING_REF = re.compile(r"((?:docs/[\w./-]+|AGENTS|CLAUDE|README|CONTEXT)\.md)(?:,|'s)? \"([^\"]+)\"")
@@ -126,11 +138,31 @@ class Doc:
 # --- discovery --------------------------------------------------------------
 
 
+def pinned_skill_prefixes(root: Path) -> tuple[str, ...]:
+    """Path prefixes of the third-party skills pinned in skills-lock.json."""
+    lock = root / SKILLS_LOCK
+    if not lock.is_file():
+        return ()
+    names = json.loads(lock.read_text(encoding="utf-8")).get("skills", {})
+    return tuple(f"{base}{name}/" for name in names for base in SKILL_ROOTS)
+
+
 def tracked_markdown(root: Path) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files", "*.md"], cwd=root, check=True, capture_output=True, text=True
-    ).stdout.split()
-    return [p for p in out if p in INCLUDE or p.startswith(INCLUDE_DIRS)]
+        ["git", "ls-files", "-z", "*.md"], cwd=root, check=True, capture_output=True, text=True
+    ).stdout.split("\0")
+    pinned = pinned_skill_prefixes(root)
+    return [p for p in out if p and not p.startswith(pinned)]
+
+
+def repo_relative(root: Path, cwd: Path, given: str) -> str:
+    """The path as `git ls-files` spells it: relative to the repository root, forward slashes.
+
+    `./docs/blueprint.md`, an absolute path and a path given from a subdirectory
+    all become `docs/blueprint.md`. Raises ValueError for a path outside the repository.
+    """
+    full = (cwd / given).resolve()
+    return full.relative_to(root.resolve()).as_posix()
 
 
 def load(root: Path, paths: list[str]) -> dict[str, Doc]:
@@ -143,10 +175,19 @@ def load(root: Path, paths: list[str]) -> dict[str, Doc]:
 # --- checks that need no network --------------------------------------------
 
 
+def is_non_ascii_punctuation(c: str) -> bool:
+    """True for a non-ASCII punctuation mark, symbol, separator or invisible format character.
+
+    Letters, digits and combining marks (a name such as Zoë) pass: the rule is ASCII
+    punctuation, not ASCII-only text.
+    """
+    return ord(c) > 0x7F and c not in ALLOWED_NON_ASCII and unicodedata.category(c)[0] in "PSZC"
+
+
 def check_ascii(doc: Doc) -> list[Finding]:
     out = []
     for n, line in enumerate(doc.lines, 1):
-        bad = next((c for c in line if ord(c) > 0x7F and c not in ALLOWED_NON_ASCII), None)
+        bad = next((c for c in line if is_non_ascii_punctuation(c)), None)
         if bad is not None:
             out.append(Finding(doc.path, n, "ascii", f"non-ASCII character U+{ord(bad):04X}"))
     return out
@@ -159,7 +200,7 @@ def check_future_dates(doc: Doc, today: dt.date) -> list[Finding]:
             try:
                 d = dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
             except ValueError:
-                out.append(Finding(doc.path, n, "date", f"{m.group(0)} is not a calendar date"))
+                out.append(Finding(doc.path, n, "date-invalid", f"{m.group(0)} is not a calendar date"))
                 continue
             if d > today:
                 out.append(Finding(doc.path, n, "date", f"{m.group(0)} is after today ({today})"))
@@ -199,9 +240,9 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
             out.append(Finding(doc.path, own[sid], "sources", f"{sid} is defined {c} times"))
 
     if own:
-        defs, where = own, doc.path
+        defs, where, retired = own, doc.path, retired_sources(doc)
     elif BLUEPRINT in docs:
-        defs, where = source_definitions(docs[BLUEPRINT]), BLUEPRINT
+        defs, where, retired = source_definitions(docs[BLUEPRINT]), BLUEPRINT, retired_sources(docs[BLUEPRINT])
     else:
         return out
 
@@ -214,9 +255,11 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
             referenced.add(sid)
             if sid not in defs:
                 out.append(Finding(doc.path, n, "sources", f"{sid} is not defined in {where}"))
+            elif sid in retired:
+                out.append(Finding(doc.path, n, "sources", f"{sid} is retired in {where}, so it has no source to cite"))
     if own:
         for sid, n in own.items():
-            if sid not in referenced and sid not in retired_sources(doc):
+            if sid not in referenced and sid not in retired:
                 out.append(Finding(doc.path, n, "sources", f"{sid} is defined but never referenced (write `- {sid}: retired ...` to keep the number without a source)"))
     return out
 
@@ -257,13 +300,18 @@ def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
 
 
 def check_adr_format(doc: Doc) -> list[Finding]:
-    """Each ADR has Context, Options considered, Decision, Consequences, in order.
+    """Each ADR has Context, Options considered, Decision, Consequences, once each, in order.
 
-    An ADR whose heading says `(option` has Context, Option, Status instead.
+    An ADR whose heading carries `(option, deferred)` has Context, Option, Status instead.
+    A heading that looks like an ADR's but is not `### ADR-NNN` is reported, because
+    the other checks would otherwise never see it.
     """
     out = []
     if doc.path != BLUEPRINT:
         return out
+    for n, line in enumerate(doc.lines, 1):
+        if ADR_LIKE_HEADING.match(line) and not ADR_HEADING.match(line):
+            out.append(Finding(doc.path, n, "adr-format", "heading is not in the form `### ADR-NNN` (three digits)"))
     starts = [n for n, line in enumerate(doc.lines, 1) if ADR_HEADING.match(line)]
     for i, start in enumerate(starts):
         end = starts[i + 1] - 1 if i + 1 < len(starts) else len(doc.lines)
@@ -272,20 +320,22 @@ def check_adr_format(doc: Doc) -> list[Finding]:
             if line.startswith("## ") or line.strip() == "---":
                 body = body[:stop]
                 break
-        text = "\n".join(body)
-        parts = ADR_OPTION_PARTS if "(option" in doc.lines[start - 1] else ADR_PARTS
+        parts = ADR_OPTION_PARTS if ADR_OPTION_HEADING.match(doc.lines[start - 1]) else ADR_PARTS
         first = next((l for l in body if l.strip()), "")
         if not first.startswith(parts[0]):
             out.append(Finding(doc.path, start, "adr-format", f"first paragraph does not start with {parts[0]}"))
         last = -1
         for part in parts:
-            pos = text.find(part)
-            if pos < 0:
+            at = [k for k, l in enumerate(body) if l.startswith(part)]
+            if not at:
                 out.append(Finding(doc.path, start, "adr-format", f"missing {part}"))
-            elif pos < last:
+                continue
+            if len(at) > 1:
+                out.append(Finding(doc.path, start, "adr-format", f"{part} starts {len(at)} paragraphs; expected one"))
+            if at[0] < last:
                 out.append(Finding(doc.path, start, "adr-format", f"{part} is out of order"))
             else:
-                last = pos
+                last = at[0]
     return out
 
 
@@ -302,7 +352,8 @@ def check_cross_references(doc: Doc, docs: dict[str, Doc], root: Path) -> list[F
         return None
 
     def resolves(heads: list[str], wanted: str) -> bool:
-        return any(h == wanted or h.startswith(wanted + " ") or h.startswith(wanted + ":") for h in heads)
+        # The whole heading, or the heading followed by a deliberate decoration: ` (...)` or `:`.
+        return any(h == wanted or h.startswith(wanted + " (") or h.startswith(wanted + ":") for h in heads)
 
     for n, line in enumerate(doc.lines, 1):
         for m in FILE_HEADING_REF.finditer(line):
@@ -356,10 +407,32 @@ class GitHub:
         raise Unavailable(f"gh api {route}: {r.stderr.strip() or r.stdout.strip() or 'failed'}")
 
 
+def expected_kind(before: str) -> str | None:
+    """`pull` or `issue` when the text before a number labels it, directly or as a later member of a group.
+
+    In `PRs #6, #24 and #34` all three are pull requests. A group is broken by
+    anything that is not a number of ours and a separator, so `PR #6, openai/codex#5 and #7`
+    gives #7 no expected kind.
+    """
+    s = before
+    while True:
+        m = KIND_LABEL.search(s)
+        if m:
+            return "pull" if m.group(1).lower().startswith("p") else "issue"
+        sep = GROUP_SEPARATOR.search(s)
+        if not sep:
+            return None
+        s = s[:sep.start()]
+        prev = PREVIOUS_REF.search(s)
+        if not prev:
+            return None
+        s = s[:prev.start()]
+
+
 def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -> list[Finding]:
     """`#N` exists; `issue #N` is an issue and `PR #N` or `pull request #N` is a pull request.
 
-    Another repository's number is written `owner/repo#N` and is never matched.
+    A label covers the whole group it opens: `PRs #6, #24 and #34`. Another repository's number is written `owner/repo#N` and is never matched.
     A discussion's number (`discussion #N`) is skipped. Every other `#N` is ours.
     """
     out = []
@@ -375,18 +448,21 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
             if kind is None:
                 out.append(Finding(doc.path, n, "refs", f"#{num} does not exist in {gh.slug} (another repository's number is written owner/repo#{num})"))
                 continue
-            before = line[max(0, m.start() - 20):m.start()].lower()
-            if re.search(r"\b(pr|prs|pull requests?)\s*$", before) and kind != "pull":
+            wanted = expected_kind(line[:m.start()])
+            if wanted == "pull" and kind != "pull":
                 out.append(Finding(doc.path, n, "refs", f"#{num} is called a pull request but is an issue"))
-            elif re.search(r"\bissues?\s*$", before) and kind != "issue":
+            elif wanted == "issue" and kind != "issue":
                 out.append(Finding(doc.path, n, "refs", f"#{num} is called an issue but is a pull request"))
     return out
 
 
 def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch: str) -> list[Finding]:
-    """An ADR number new on this branch is not also new, with a different title, on another branch.
+    """An ADR number new on this branch is above every other branch's highest, and not new there too.
 
-    The cases are in the module docstring, under "ADR numbers across branches".
+    Two cases are reported for each other branch: the same number used for a
+    different ADR (a collision), and a number below the highest ADR that branch
+    added. The cases and who renumbers are in the module docstring, under
+    "ADR numbers across branches".
     """
     out = []
     if BLUEPRINT not in docs:
@@ -409,26 +485,39 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
         if data is None:
             continue
         their_titles = adr_titles(Doc(BLUEPRINT, decode(data).split("\n")))
-        for num in sorted(new_here.keys() & (set(their_titles) - on_main)):
-            if their_titles[num] == titles_here[num]:
+        # Their allocation is what they added; ADRs already on main are not theirs. A number
+        # reserved below main's highest (ADR-018's block for issue #8) is not a finding.
+        their_max = max((k for k in their_titles if k not in on_main), default=None)
+        for num in sorted(new_here):
+            if num in their_titles:
+                if num in on_main or their_titles[num] == titles_here[num]:
+                    continue
+                reason = f"ADR-{num} is also new on branch {name}, with a different title"
+            elif their_max is not None and num < their_max:
+                reason = f"ADR-{num} is below ADR-{their_max}, the highest on branch {name}"
+            else:
                 continue
             verdict = collision_verdict(gh, current_branch, name)
             if verdict is None:
                 continue
-            out.append(Finding(BLUEPRINT, new_here[num], "adr", f"ADR-{num} is also new on branch {name}, with a different title; {verdict}"))
+            out.append(Finding(BLUEPRINT, new_here[num], "adr", f"{reason}; {verdict}"))
     return out
 
 
-def pull_request_opened_at(gh: GitHub, branch: str) -> str | None:
-    """ISO time the branch's open pull request was created, or None when it has none."""
+def pull_request_opened(gh: GitHub, branch: str) -> tuple[str, int] | None:
+    """`(created_at, number)` of the branch's earliest open pull request, or None when it has none.
+
+    The number breaks a tie between identical timestamps, so exactly one of two
+    branches opened first.
+    """
     owner = gh.slug.split("/")[0]
     prs = gh.get(f"pulls?state=open&head={owner}:{branch}") or []
-    return min((p["created_at"] for p in prs), default=None)
+    return min(((p["created_at"], p["number"]) for p in prs), default=None)
 
 
 def collision_verdict(gh: GitHub, ours: str, theirs: str) -> str | None:
     """None when our branch keeps a colliding ADR number; otherwise why this branch renumbers."""
-    mine, other = pull_request_opened_at(gh, ours), pull_request_opened_at(gh, theirs)
+    mine, other = pull_request_opened(gh, ours), pull_request_opened(gh, theirs)
     if mine is not None and (other is None or mine < other):
         return None
     if mine is None and other is None:
@@ -518,7 +607,12 @@ def main(argv: list[str]) -> int:
     except ValueError:
         print("check-docs: --today must be YYYY-MM-DD", file=sys.stderr)
         return 2
-    paths = args.files or tracked_markdown(root)
+    try:
+        given = [repo_relative(root, Path.cwd(), f) for f in args.files]
+    except ValueError as e:
+        print(f"check-docs: a file is outside the repository ({e})", file=sys.stderr)
+        return 2
+    paths = list(dict.fromkeys(given)) if args.files else tracked_markdown(root)
     paths = [p for p in paths if p.endswith(".md")]
     missing = [p for p in paths if not (root / p).is_file()]
     if missing:

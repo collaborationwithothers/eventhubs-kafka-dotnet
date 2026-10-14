@@ -163,7 +163,7 @@ class CheckDocsTest(unittest.TestCase):
     def test_impossible_date_is_reported(self):
         self.write("AGENTS.md", "# A\n\nDecided 2026-13-01.\n")
         out = self.run_checks(["AGENTS.md"])
-        self.assertEqual(out, ["AGENTS.md:3: date: 2026-13-01 is not a calendar date"])
+        self.assertEqual(out, ["AGENTS.md:3: date-invalid: 2026-13-01 is not a calendar date"])
 
     # --- sources --------------------------------------------------------------
 
@@ -317,13 +317,13 @@ class CheckDocsTest(unittest.TestCase):
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "neither branch has an open pull request yet; the first to open one keeps the number"])
         self.assertNotIn("contents/docs/blueprint.md?ref=claude/1-x", gh.asked)
         # Only theirs has a pull request: we renumber.
-        gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = [{"created_at": "2026-10-13T10:00:00Z"}]
+        gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = [{"created_at": "2026-10-13T10:00:00Z", "number": 8}]
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "this branch has no open pull request and that one has, so this branch renumbers"])
         # Theirs opened first: we renumber.
-        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T11:00:00Z"}]
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T11:00:00Z", "number": 1}]
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "that branch's pull request opened first, so this branch renumbers"])
         # Ours opened first: we keep the number.
-        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T09:00:00Z"}]
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T09:00:00Z", "number": 1}]
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
         # Only ours has a pull request: we keep it.
         gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = []
@@ -337,6 +337,155 @@ class CheckDocsTest(unittest.TestCase):
         gh = StubGitHub({"branches?per_page=100&page=1": page1, "branches?per_page=100&page=2": [{"name": "last"}]})
         self.assertEqual(len(cd.all_branches(gh)), 101)
         self.assertEqual(gh.asked, ["branches?per_page=100&page=1", "branches?per_page=100&page=2"])
+
+    # --- review round 2 on PR 43: classes found by Codex ------------------------
+
+    def test_non_ascii_letters_pass_and_non_ascii_punctuation_is_reported(self):
+        self.write("AGENTS.md", "# A\n\nAuthor Zo\u00eb and Jos\u00e9 are fine.\nA no-break\u00a0space, an en dash \u2013 and a zero-width\u200bspace are not.\n")
+        out = self.run_checks(["AGENTS.md"])
+        self.assertEqual(out, ["AGENTS.md:4: ascii: non-ASCII character U+00A0"])
+
+    def test_every_non_ascii_punctuation_class_is_reported(self):
+        for ch, code in (("\u2013", "2013"), ("\u200b", "200B"), ("\u2192", "2192"), ("\u00a9", "00A9")):
+            with self.subTest(code=code):
+                self.write("AGENTS.md", f"# A\n\nx{ch}y\n")
+                self.assertEqual(self.run_checks(["AGENTS.md"]), [f"AGENTS.md:3: ascii: non-ASCII character U+{code}"])
+
+    def test_retired_source_cannot_be_cited(self):
+        self.write("docs/research/r.md", "# R\n\nFact (S01) and a claim (S02).\n\n## Sources\n\n- S01: https://a.test\n- S02: retired, no source\n")
+        out = self.run_checks(["docs/research/r.md"])
+        self.assertEqual(out, ["docs/research/r.md:3: sources: S02 is retired in docs/research/r.md, so it has no source to cite"])
+        self.write("docs/research/r.md", "# R\n\nFact (S01).\n\n## Sources\n\n- S01: https://a.test\n- S02: retired, no source\n")
+        self.assertEqual(self.run_checks(["docs/research/r.md"]), [])
+
+    def test_retired_blueprint_source_cannot_be_cited_from_another_document(self):
+        self.write("docs/blueprint.md", BLUEPRINT_OK + "\n- S2: retired, no source\n")
+        self.write("docs/agents/factory.md", "# F\n\nSee S1 and S2.\n")
+        out = self.run_checks(["docs/agents/factory.md"])
+        self.assertEqual(out, ["docs/agents/factory.md:3: sources: S2 is retired in docs/blueprint.md, so it has no source to cite"])
+
+    def test_adr_number_below_another_branchs_highest_is_reported(self):
+        main = BLUEPRINT_OK.replace("### ADR-002 (option, deferred): Lanes\n\n**Context.** Why.\n\n**Option.** Lanes.\n\n**Status.** Not built (S1).\n\n", "")
+        main = main.replace("**Consequences.**\n- Fine.", "**Consequences.**\n- Fine (S1).")
+        other = main.replace("## 5. Failure modes", "### ADR-003: Theirs\n\n**Context.** T.\n\n**Options considered.**\n1. T.\n\n**Decision.** T.\n\n**Consequences.**\n- T.\n\n---\n\n## 5. Failure modes")
+        gh = StubGitHub({
+            "branches?per_page=100&page=1": [{"name": "main"}, {"name": "claude/1-x"}, {"name": "claude/8-adrs"}],
+            "contents/docs/blueprint.md?ref=main": b64(main),
+            "contents/docs/blueprint.md?ref=claude/8-adrs": b64(other),
+            "pulls?state=open&head=owner:claude/8-adrs": [{"created_at": "2026-10-13T10:00:00Z", "number": 8}],
+        })
+        line = self.line_of("docs/blueprint.md", "### ADR-002 (option")
+        # Theirs has ADR-003, ours is ADR-002 and has no pull request yet: we renumber.
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [
+            f"docs/blueprint.md:{line}: adr: ADR-002 is below ADR-003, the highest on branch claude/8-adrs; this branch has no open pull request and that one has, so this branch renumbers"])
+        # Ours opened first: we keep it, and theirs is the one above ours.
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": "2026-10-13T09:00:00Z", "number": 1}]
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
+
+    def test_number_reserved_below_mains_highest_is_not_a_finding(self):
+        # ADR-018's block: main has ADR-009; this branch holds the reserved ADR-002 below it.
+        main = BLUEPRINT_OK.replace("### ADR-002 (option, deferred): Lanes", "### ADR-009: Late").replace(
+            "**Context.** Why.\n\n**Option.** Lanes.\n\n**Status.** Not built (S1).",
+            "**Context.** Why.\n\n**Options considered.**\n1. L.\n\n**Decision.** L (S1).\n\n**Consequences.**\n- Ok.")
+        mine = main.replace("### ADR-009: Late", "### ADR-002: Reserved")
+        self.write("docs/blueprint.md", mine)
+        gh = StubGitHub({
+            "branches?per_page=100&page=1": [{"name": "main"}, {"name": "claude/1-x"}, {"name": "claude/9-merged-main"}],
+            "contents/docs/blueprint.md?ref=main": b64(main),
+            # a branch that merged main holds ADR-009 too; that one is not its allocation
+            "contents/docs/blueprint.md?ref=claude/9-merged-main": b64(main),
+        })
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
+
+    def test_grouped_references_share_the_kind_of_their_label(self):
+        gh = StubGitHub({"issues/6": {"number": 6, "pull_request": {}}, "issues/24": {"number": 24, "pull_request": {}}, "issues/34": {"number": 34}, "issues/5": {"number": 5}, "issues/7": {"number": 7, "pull_request": {}}})
+        self.write("AGENTS.md", "# A\n\nSee PRs #6, #24 and #34. Issues #5 or #7.\nBut PR #6, openai/codex#52549 and #34 has no group.\nAnd issue #5, PR #6, #24 are three.\n")
+        out = self.run_checks(["AGENTS.md"], gh=gh)
+        self.assertEqual(out, [
+            "AGENTS.md:3: refs: #34 is called a pull request but is an issue",
+            "AGENTS.md:3: refs: #7 is called an issue but is a pull request",
+        ])
+
+    def test_invalid_date_cannot_be_waived_but_a_future_one_can(self):
+        self.write("AGENTS.md", "# A\n\nPlanned for 2026-13-01. <!-- check-docs: allow date: planned -->\nPlanned for 2026-12-01. <!-- check-docs: allow date: planned -->\n")
+        out = self.run_checks(["AGENTS.md"])
+        self.assertEqual(out, ["AGENTS.md:3: date-invalid: 2026-13-01 is not a calendar date"])
+
+    def test_every_markdown_file_is_discovered_except_pinned_third_party_skills(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        for path in ("SECURITY.md", "docs/new/x.md", ".agents/skills/mine/SKILL.md", ".agents/skills/theirs/SKILL.md", ".agents/skills/theirs/OTHER.md"):
+            self.write(path, "# T\n")
+        self.write("skills-lock.json", '{"version": 1, "skills": {"theirs": {"source": "x"}}}')
+        subprocess.run(["git", "add", "-A"], cwd=self.root, check=True)
+        self.assertEqual(sorted(cd.tracked_markdown(self.root)), [".agents/skills/mine/SKILL.md", "SECURITY.md", "docs/blueprint.md", "docs/new/x.md"])
+
+    def test_heading_reference_must_name_the_whole_heading(self):
+        self.write("AGENTS.md", "# A\n\n## Before opening a pull request\n\n## Notes: more\n")
+        self.write("docs/agents/factory.md", '# F\n\nSee AGENTS.md "Before", AGENTS.md "Before opening a pull request" and AGENTS.md "Notes".\n')
+        out = self.run_checks(["docs/agents/factory.md"])
+        self.assertEqual(out, ['docs/agents/factory.md:3: xref: AGENTS.md has no heading "Before"'])
+
+    def test_equal_pull_request_timestamps_are_broken_by_number(self):
+        main = BLUEPRINT_OK.replace("### ADR-002 (option, deferred): Lanes\n\n**Context.** Why.\n\n**Option.** Lanes.\n\n**Status.** Not built (S1).\n\n", "")
+        main = main.replace("**Consequences.**\n- Fine.", "**Consequences.**\n- Fine (S1).")
+        other = main.replace("## 5. Failure modes", "### ADR-002: Theirs\n\n**Context.** T.\n\n**Options considered.**\n1. T.\n\n**Decision.** T.\n\n**Consequences.**\n- T.\n\n---\n\n## 5. Failure modes")
+        same = "2026-10-13T10:00:00Z"
+        gh = StubGitHub({
+            "branches?per_page=100&page=1": [{"name": "main"}, {"name": "claude/1-x"}, {"name": "claude/8-adrs"}],
+            "contents/docs/blueprint.md?ref=main": b64(main),
+            "contents/docs/blueprint.md?ref=claude/8-adrs": b64(other),
+            "pulls?state=open&head=owner:claude/1-x": [{"created_at": same, "number": 5}],
+            "pulls?state=open&head=owner:claude/8-adrs": [{"created_at": same, "number": 7}],
+        })
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])  # the lower number keeps it
+        gh.routes["pulls?state=open&head=owner:claude/1-x"] = [{"created_at": same, "number": 9}]
+        out = self.run_checks(["docs/blueprint.md"], gh=gh)
+        self.assertEqual(len(out), 1)
+        self.assertIn("that branch's pull request opened first, so this branch renumbers", out[0])
+
+    def test_explicit_paths_are_normalised_to_repository_relative(self):
+        cwd = self.root / "docs"
+        self.assertEqual(cd.repo_relative(self.root, self.root, "./docs/blueprint.md"), "docs/blueprint.md")
+        self.assertEqual(cd.repo_relative(self.root, self.root, str(self.root / "docs" / "blueprint.md")), "docs/blueprint.md")
+        self.assertEqual(cd.repo_relative(self.root, cwd, "blueprint.md"), "docs/blueprint.md")
+        self.assertEqual(cd.repo_relative(self.root, cwd, "../docs/../docs/blueprint.md"), "docs/blueprint.md")
+        with self.assertRaises(ValueError):
+            cd.repo_relative(self.root, self.root, "../elsewhere.md")
+
+    def test_cli_checks_the_blueprint_whatever_way_its_path_is_spelled(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        self.write("docs/blueprint.md", BLUEPRINT_OK.replace("**Decision.** A.\n\n", ""))
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        script = str(HERE.parent / "check_docs.py")
+        for spelling in ("docs/blueprint.md", "./docs/blueprint.md", str(self.root / "docs" / "blueprint.md")):
+            with self.subTest(spelling=spelling):
+                r = subprocess.run([sys.executable, script, "--offline", "--today", "2026-10-13", spelling], cwd=self.root, env=env, capture_output=True, text=True)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("docs/blueprint.md:", r.stdout)
+                self.assertIn("adr-format: missing **Decision.**", r.stdout)
+
+    def test_ordinary_adr_with_optional_in_its_title_keeps_the_ordinary_format(self):
+        text = BLUEPRINT_OK.replace("### ADR-001: First", "### ADR-001: First (optional extras)")
+        self.write("docs/blueprint.md", text)
+        self.assertEqual(self.run_checks(["docs/blueprint.md"]), [])
+        self.write("docs/blueprint.md", text.replace("**Decision.** A.\n\n", ""))
+        n = self.line_of("docs/blueprint.md", "### ADR-001")
+        self.assertEqual(self.run_checks(["docs/blueprint.md"]), [f"docs/blueprint.md:{n}: adr-format: missing **Decision.**"])
+
+    def test_malformed_adr_headings_are_reported(self):
+        for heading in ("### ADR-12: Short", "### ADR-0012: Long", "## ADR-003: Wrong level", "### ADR 004: No hyphen", "### adr-005: Lower case"):
+            with self.subTest(heading=heading):
+                text = BLUEPRINT_OK.replace("## 5. Failure modes", heading + "\n\n**Context.** C.\n\n---\n\n## 5. Failure modes")
+                self.write("docs/blueprint.md", text)
+                out = self.run_checks(["docs/blueprint.md"])
+                # A heading that is not canonical is also not a defined ADR, so a reference to it may add its own finding.
+                self.assertIn(f"docs/blueprint.md:{self.line_of('docs/blueprint.md', heading)}: adr-format: heading is not in the form `### ADR-NNN` (three digits)", out)
+
+    def test_duplicate_adr_sections_are_reported(self):
+        text = BLUEPRINT_OK.replace("**Decision.** A.\n\n", "**Decision.** A.\n\n**Decision.** B, after a bad merge.\n\n")
+        self.write("docs/blueprint.md", text)
+        n = self.line_of("docs/blueprint.md", "### ADR-001")
+        self.assertEqual(self.run_checks(["docs/blueprint.md"]), [f"docs/blueprint.md:{n}: adr-format: **Decision.** starts 2 paragraphs; expected one"])
 
     # --- command line ---------------------------------------------------------
 
