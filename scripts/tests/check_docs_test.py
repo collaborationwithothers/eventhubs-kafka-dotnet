@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -545,6 +547,101 @@ class CheckDocsTest(unittest.TestCase):
         both = subprocess.run([sys.executable, script, "--today", "2026-10-13", "README.md", "docs/blueprint.md"], cwd=self.root, env=env, capture_output=True, text=True)
         self.assertEqual(both.returncode, 2, both.stdout + both.stderr)
         self.assertIn("cannot tell the current branch", both.stderr)
+
+    # --- fenced examples and fork pull requests -------------------------------
+
+    def test_fenced_examples_do_not_truncate_or_duplicate_adr_parts(self):
+        for fence in ("```md", "~~~~"):
+            with self.subTest(fence=fence):
+                closing = "```" if fence.startswith("`") else "~~~~"
+                example = f"{fence}\n## Example\n---\n**Decision.** Example only.\n{closing}\n\n"
+                text = BLUEPRINT_OK.replace("**Options considered.**", example + "**Options considered.**")
+                text = text.replace("**Option.**", example + "**Option.**")
+                self.write("docs/blueprint.md", text)
+                self.assertEqual(self.run_checks(["docs/blueprint.md"]), [])
+
+    def test_fenced_adr_parts_cannot_satisfy_required_sections(self):
+        self.write("docs/blueprint.md", BLUEPRINT_OK.replace("**Decision.** A.", "```md\n**Decision.** A.\n```"))
+        n = self.line_of("docs/blueprint.md", "### ADR-001")
+        self.assertEqual(self.run_checks(["docs/blueprint.md"]), [
+            f"docs/blueprint.md:{n}: adr-format: missing **Decision.**",
+        ])
+
+    def test_fenced_source_definitions_cannot_resolve_prose_citations(self):
+        for definition in ("- S99: https://example.test", "| S99 | https://example.test |", "- S99: retired, no source"):
+            with self.subTest(definition=definition):
+                self.write("README.md", f"# R\n\n```md\n{definition}\n```\n\nClaim (S99).\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    "README.md:7: sources: S99 is not defined in docs/blueprint.md",
+                ])
+
+    def test_fenced_retirement_and_duplicates_do_not_change_real_sources(self):
+        self.write("README.md", "# R\n\nClaim (S1).\n\n- S1: https://example.test\n\n~~~md\n- S1: retired, example only\n| S1 | duplicate example |\n~~~\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_fenced_citations_neither_count_as_usage_nor_report_undefined_sources(self):
+        self.write("README.md", "# R\n\n- S1: https://example.test\n\n```md\nExample (S1, S99).\n```\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:3: sources: S1 is defined but never referenced (write `- S1: retired ...` to keep the number without a source)",
+        ])
+
+    def test_heading_references_cover_arbitrary_repository_markdown_paths(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        for path in ("SECURITY.md", ".github/CONTRIBUTING.md", "guides/nested/guide-v2.md"):
+            self.write(path, "# Guide\n\n## Reporting\n")
+            subprocess.run(["git", "add", path], cwd=self.root, check=True)
+            for suffix in ("", ",", "'s"):
+                with self.subTest(path=path, suffix=suffix):
+                    self.write("README.md", f'# R\n\nSee {path}{suffix} "Reporting".\nSee {path}{suffix} "Missing".\n')
+                    self.assertEqual(self.run_checks(["README.md"]), [
+                        f'README.md:4: xref: {path} has no heading "Missing"',
+                    ])
+        self.write("README.md", '# R\n\nSee MISSING.md "Reporting".\n')
+        self.assertEqual(self.run_checks(["README.md"]), ['README.md:3: xref: MISSING.md does not exist'])
+
+    def test_fenced_cross_references_are_examples_and_urls_are_not_local_paths(self):
+        self.write("README.md", '# R\n\n```md\nMISSING.md "Reporting", GOVERNANCE "Missing", docs/blueprint.md section 99 and issue #99.\n```\n\nSee https://example.test/SECURITY.md "Reporting".\n')
+        gh = StubGitHub({})
+        self.assertEqual(self.run_checks(["README.md"], gh=gh), [])
+        self.assertEqual(gh.asked, [])
+
+    def test_fork_pr_owner_is_preserved_from_event_through_collision_ordering(self):
+        main = "### ADR-001: First\n"
+        other = main + "### ADR-002: Other\n"
+        self.write("event.json", json.dumps({"pull_request": {"head": {
+            "ref": "topic", "repo": {"owner": {"login": "contributor"}},
+        }}}))
+        env = {"GITHUB_HEAD_REF": "topic", "GITHUB_EVENT_PATH": str(self.root / "event.json")}
+        gh = StubGitHub({
+            "branches?per_page=100&page=1": [{"name": "main"}, {"name": "topic"}],
+            "contents/docs/blueprint.md?ref=main": b64(main),
+            "contents/docs/blueprint.md?ref=topic": b64(other),
+            "pulls?state=open&head=contributor:topic": [{"created_at": "2026-10-13T09:00:00Z", "number": 1}],
+            "pulls?state=open&head=owner:topic": [{"created_at": "2026-10-13T10:00:00Z", "number": 2}],
+        })
+        with patch.dict(os.environ, env, clear=True):
+            for checkout in ("HEAD", "topic"):
+                with self.subTest(checkout=checkout), patch.object(cd.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, checkout + "\n")):
+                    branch = cd.current_branch(self.root)
+                    self.assertEqual(branch, "contributor:topic")
+                    self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh, branch=branch), [])
+            self.assertIn("contents/docs/blueprint.md?ref=topic", gh.asked)
+            self.assertIn("pulls?state=open&head=contributor:topic", gh.asked)
+            gh.routes["pulls?state=open&head=contributor:topic"][0]["created_at"] = "2026-10-13T11:00:00Z"
+            out = self.run_checks(["docs/blueprint.md"], gh=gh, branch=branch)
+            self.assertEqual(len(out), 1)
+            self.assertIn("that branch's pull request opened first, so this branch renumbers", out[0])
+
+    def test_unreadable_fork_event_fails_instead_of_guessing_the_owner(self):
+        env = {"GITHUB_HEAD_REF": "topic", "GITHUB_EVENT_PATH": str(self.root / "missing.json")}
+        with patch.dict(os.environ, env, clear=True), patch.object(cd.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "HEAD\n")):
+            with self.assertRaises(cd.Unavailable):
+                cd.current_branch(self.root)
+
+    def test_unrelated_checked_out_branch_does_not_inherit_event_owner(self):
+        env = {"GITHUB_HEAD_REF": "topic", "GITHUB_EVENT_PATH": str(self.root / "missing.json")}
+        with patch.dict(os.environ, env, clear=True), patch.object(cd.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "local-work\n")):
+            self.assertEqual(cd.current_branch(self.root), "local-work")
 
     # --- command line ---------------------------------------------------------
 

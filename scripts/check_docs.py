@@ -26,8 +26,8 @@ A value that is not a calendar date (`date-invalid`) cannot be waived.
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
 the current directory or absolute; they are read as repository-relative.
-Headings and ADR references inside fenced code blocks are examples, not the
-document, and are skipped.
+Headings, ADR bodies, source definitions and references, and cross-references
+inside fenced code blocks are examples, not the document, and are skipped.
 
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
@@ -113,7 +113,7 @@ GROUP_SEPARATOR = re.compile(r"(?:,?\s+(?:and|or)\s+|\s*[,&]\s*)$", re.I)
 PREVIOUS_REF = re.compile(r"(?<![\w/#])#\d+$")
 DISCUSSION_REF = re.compile(r"(?:^|[\s(\[])discussions?(?:\s+#\d+(?:,|\s+and|\s+or)?)*(?:\s+(?:and|or))?\s+$", re.I)
 # `file.md "Heading"`, `file.md, "Heading"` and `file.md's "Heading"`
-FILE_HEADING_REF = re.compile(r"((?:docs/[\w./-]+|AGENTS|CLAUDE|README|CONTEXT)\.md)(?:,|'s)? \"([^\"]+)\"")
+FILE_HEADING_REF = re.compile(r"(?<![\w./:-])([\w.-]+(?:/[\w.-]+)*\.md)(?:,|'s)? \"([^\"]+)\"")
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
 BLUEPRINT_SECTION_REF = re.compile(r"docs/blueprint\.md section (\d+)\b")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
@@ -243,7 +243,7 @@ def check_future_dates(doc: Doc, today: dt.date) -> list[Finding]:
 def source_definitions(doc: Doc) -> dict[str, int]:
     """Source IDs this document defines, with the line of each definition."""
     defs: dict[str, int] = {}
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         m = SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line)
         if m:
             defs.setdefault(m.group(1), n)
@@ -252,7 +252,7 @@ def source_definitions(doc: Doc) -> dict[str, int]:
 
 def retired_sources(doc: Doc) -> set[str]:
     """Source IDs defined as `- Sn: retired ...`: the number is kept, no reference is expected."""
-    return {m.group(1) for line in doc.lines if (m := SOURCE_LIST_DEF.match(line)) and line[m.end():].startswith(RETIRED)}
+    return {m.group(1) for _, line in doc.prose() if (m := SOURCE_LIST_DEF.match(line)) and line[m.end():].startswith(RETIRED)}
 
 
 def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
@@ -264,7 +264,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
     out = []
     own = source_definitions(doc)
     counts: dict[str, int] = {}
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         m = SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line)
         if m:
             counts[m.group(1)] = counts.get(m.group(1), 0) + 1
@@ -280,7 +280,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
         return out
 
     referenced: set[str] = set()
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         if SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line):
             continue
         for m in SOURCE_REF.finditer(line):
@@ -348,7 +348,7 @@ def check_adr_format(doc: Doc) -> list[Finding]:
     starts = [n for n, line in doc.prose() if ADR_HEADING.match(line)]
     for i, start in enumerate(starts):
         end = starts[i + 1] - 1 if i + 1 < len(starts) else len(doc.lines)
-        body = doc.lines[start:end]
+        body = [line for n, line in doc.prose() if start < n <= end]
         for stop, line in enumerate(body):
             if line.startswith("## ") or line.strip() == "---":
                 body = body[:stop]
@@ -388,7 +388,7 @@ def check_cross_references(doc: Doc, docs: dict[str, Doc], root: Path) -> list[F
         # The whole heading, or the heading followed by a deliberate decoration: ` (...)` or `:`.
         return any(h == wanted or h.startswith(wanted + " (") or h.startswith(wanted + ":") for h in heads)
 
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         for m in FILE_HEADING_REF.finditer(line):
             path, wanted = m.group(1), m.group(2)
             heads = headings_of(path)
@@ -475,7 +475,7 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
     A discussion's number (`discussion #N`) is skipped. Every other `#N` is ours.
     """
     out = []
-    for n, raw in enumerate(doc.lines, 1):
+    for n, raw in doc.prose():
         line = mask_link_targets(raw)
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
@@ -524,7 +524,7 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
         return out
     for b in branches:
         name = b["name"]
-        if name in (DEFAULT_BRANCH, current_branch):
+        if name == DEFAULT_BRANCH or branch_head(gh, name) == branch_head(gh, current_branch):
             continue
         data = gh.get(f"contents/{BLUEPRINT}?ref={name}")
         if data is None:
@@ -549,14 +549,18 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
     return out
 
 
+def branch_head(gh: GitHub, branch: str) -> str:
+    """Keep an explicit source owner; bare names belong to the target repository."""
+    return branch if ":" in branch else f"{gh.slug.split('/')[0]}:{branch}"
+
+
 def pull_request_opened(gh: GitHub, branch: str) -> tuple[str, int] | None:
     """`(created_at, number)` of the branch's earliest open pull request, or None when it has none.
 
     The number breaks a tie between identical timestamps, so exactly one of two
     branches opened first.
     """
-    owner = gh.slug.split("/")[0]
-    prs = gh.get(f"pulls?state=open&head={owner}:{branch}") or []
+    prs = gh.get(f"pulls?state=open&head={branch_head(gh, branch)}") or []
     return min(((p["created_at"], p["number"]) for p in prs), default=None)
 
 
@@ -625,6 +629,18 @@ def current_branch(root: Path) -> str:
     event's head ref; the default branch and `<n>/merge` refs are not working branches."""
     r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root, capture_output=True, text=True)
     name = r.stdout.strip() if r.returncode == 0 else ""
+    head_ref = os.environ.get("GITHUB_HEAD_REF", "")
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "")
+    if head_ref and event_path and (name in ("", "HEAD") or name == head_ref):
+        # The event's source repository supplies the owner, including on fork PRs.
+        try:
+            head = json.loads(Path(event_path).read_text(encoding="utf-8"))["pull_request"]["head"]
+            owner = head["repo"]["owner"]["login"]
+            if head["ref"] != head_ref or not isinstance(owner, str) or not owner:
+                raise ValueError("missing owner or mismatched head ref")
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            raise Unavailable("cannot read the pull request's source owner from GITHUB_EVENT_PATH") from e
+        return f"{owner}:{head_ref}"
     if name and name != "HEAD":
         return name
     # GITHUB_HEAD_REF is the pull request's source branch and is set only for pull_request and
@@ -668,11 +684,11 @@ def main(argv: list[str]) -> int:
         return 2
 
     gh = None if args.offline else GitHub(args.repo)
-    branch = current_branch(root)
-    if gh is not None and BLUEPRINT in paths and not branch:
-        print("check-docs: cannot tell the current branch (detached HEAD and no GITHUB_HEAD_REF); the ADR-collision check needs it", file=sys.stderr)
-        return 2
     try:
+        branch = current_branch(root) if gh is not None and BLUEPRINT in paths else ""
+        if gh is not None and BLUEPRINT in paths and not branch:
+            print("check-docs: cannot tell the current branch (detached HEAD and no GITHUB_HEAD_REF); the ADR-collision check needs it", file=sys.stderr)
+            return 2
         findings = run(root, paths, today, gh, branch)
     except Unavailable as e:
         print(f"check-docs: could not check with GitHub ({e}); the refs and ADR-collision checks are unknown, not passed. Fix the access or hand off; --offline is for local iteration only", file=sys.stderr)
