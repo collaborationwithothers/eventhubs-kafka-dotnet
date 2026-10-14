@@ -159,5 +159,3 @@ All fetched on 2026-10-12.
 - S59: https://learn.microsoft.com/azure/aks/localdns-custom ("Kubernetes versions 1.31 and later"; "at least 4 vCPUs"; enabling LocalDNS "initiates a reimage operation")
 - S60: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/README.md ("a lightweight wrapper around librdkafka, a finely tuned C client")
 - S61: https://learn.microsoft.com/azure/event-hubs/apache-kafka-transactions ("Kafka Transactions is currently in Public preview in Premium, and Dedicated tier"; page dated 2025-03-06)
-
-S43 is unused.

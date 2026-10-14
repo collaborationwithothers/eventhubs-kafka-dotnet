@@ -1,0 +1,18 @@
+{
+  "name": "eventhubs-kafka-dotnet-docs",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "check:docs": "node scripts/check-docs.mjs",
+    "test:docs": "node --test scripts/tests/docs-check.test.mjs"
+  },
+  "devDependencies": {
+    "remark": "15.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-validate-links": "13.1.0",
+    "unist-util-visit": "5.1.0",
+    "unified-engine": "11.2.2",
+    "vfile": "6.0.3"
+  }
+}
