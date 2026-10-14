@@ -423,7 +423,7 @@ class CheckDocsTest(unittest.TestCase):
 
     def test_in_page_link_anchors_are_not_issue_references(self):
         gh = StubGitHub({"issues/8": {"number": 8}})
-        self.write("AGENTS.md", "# A\n\nSee [modes](#5-failure-modes), [x](#12-Notes), [y](#12-3-options), <a href=\"#9-z\">z</a> and issue #8.\n\n[ref]: #7-reference-style\n")
+        self.write("AGENTS.md", "# A\n\nSee [modes](#5-failure-modes), [x](#12-Notes), [y](#12-3-options), <a href=\"#9-z\">z</a>, <a href='#12-3-options'>q</a>, <a href=#13-x>r</a>, <A HREF = '#14-y'>s</A>, a dash&#8212;written as an entity, and issue #8.\n\n[ref]: #7-reference-style\n")
         self.assertEqual(self.run_checks(["AGENTS.md"], gh=gh), [])
         self.assertEqual(gh.asked, ["issues/8"])
 
@@ -494,7 +494,7 @@ class CheckDocsTest(unittest.TestCase):
         self.assertEqual(self.run_checks(["docs/blueprint.md"]), [f"docs/blueprint.md:{n}: adr-format: missing **Decision.**"])
 
     def test_malformed_adr_headings_are_reported(self):
-        for heading in ("### ADR-12: Short", "### ADR-0012: Long", "## ADR-003: Wrong level", "### ADR 004: No hyphen", "### adr-005: Lower case"):
+        for heading in ("### ADR-12: Short", "### ADR-0012: Long", "## ADR-003: Wrong level", "### ADR 004: No hyphen", "### adr-005: Lower case", "### ADR- 006: Space after hyphen"):
             with self.subTest(heading=heading):
                 text = BLUEPRINT_OK.replace("## 5. Failure modes", heading + "\n\n**Context.** C.\n\n---\n\n## 5. Failure modes")
                 self.write("docs/blueprint.md", text)
@@ -507,6 +507,44 @@ class CheckDocsTest(unittest.TestCase):
         self.write("docs/blueprint.md", text)
         n = self.line_of("docs/blueprint.md", "### ADR-001")
         self.assertEqual(self.run_checks(["docs/blueprint.md"]), [f"docs/blueprint.md:{n}: adr-format: **Decision.** starts 2 paragraphs; expected one"])
+
+    def test_headings_inside_fenced_code_are_not_headings(self):
+        fenced = BLUEPRINT_OK + "\n```md\n## 9. Example\n\n### ADR-050: Shown only\n```\n\n~~~~\n## 8. Tilde example\n~~~\n## 7. Still inside, the fence is longer\n~~~~\n"
+        self.write("docs/blueprint.md", fenced)
+        self.write("docs/agents/factory.md", "# F\n\nSee docs/blueprint.md section 9, docs/blueprint.md section 8, docs/blueprint.md section 7 and ADR-050.\n\nReal: docs/blueprint.md section 4.\n")
+        out = self.run_checks(["docs/agents/factory.md", "docs/blueprint.md"])
+        self.assertEqual(out, [
+            "docs/agents/factory.md:3: adr: ADR-050 has no heading in docs/blueprint.md",
+            "docs/agents/factory.md:3: xref: docs/blueprint.md has no section 7",
+            "docs/agents/factory.md:3: xref: docs/blueprint.md has no section 8",
+            "docs/agents/factory.md:3: xref: docs/blueprint.md has no section 9",
+        ])
+
+    def test_an_unclosed_fence_runs_to_the_end_of_the_document(self):
+        doc = cd.Doc("x.md", ["# A", "```", "## B", "text"])
+        self.assertEqual(doc.headings(), ["A"])
+        self.assertEqual(doc.fenced(), [False, True, True, True])
+
+    def test_branch_is_needed_only_when_the_blueprint_is_checked(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        self.write("README.md", "# R\n\nSee issue #1.\n")
+        subprocess.run(["git", "add", "README.md", "docs/blueprint.md"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], cwd=self.root, check=True)
+        subprocess.run(["git", "checkout", "-q", "--detach"], cwd=self.root, check=True)
+        fake = self.root / "bin"
+        fake.mkdir()
+        gh = fake / "gh"
+        gh.write_text("#!/bin/sh\necho '{\"number\": 1}'\n")
+        gh.chmod(0o755)
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        env.update(PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
+        script = str(HERE.parent / "check_docs.py")
+        readme = subprocess.run([sys.executable, script, "--today", "2026-10-13", "README.md"], cwd=self.root, env=env, capture_output=True, text=True)
+        self.assertEqual(readme.returncode, 0, readme.stdout + readme.stderr)
+        self.assertIn("with GitHub", readme.stdout)
+        both = subprocess.run([sys.executable, script, "--today", "2026-10-13", "README.md", "docs/blueprint.md"], cwd=self.root, env=env, capture_output=True, text=True)
+        self.assertEqual(both.returncode, 2, both.stdout + both.stderr)
+        self.assertIn("cannot tell the current branch", both.stderr)
 
     # --- command line ---------------------------------------------------------
 

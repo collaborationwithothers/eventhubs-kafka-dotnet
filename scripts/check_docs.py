@@ -14,7 +14,9 @@ Usage:
   python3 scripts/check_docs.py --today D   override today's date (UTC, YYYY-MM-DD)
 
 Exit codes: 0 nothing found; 1 something found; 2 bad usage, or GitHub could
-not be reached, in which case the GitHub-backed checks are unknown, not passed.
+not be reached, in which case the GitHub-backed checks are unknown, not passed,
+or the current branch cannot be told (detached HEAD, no GITHUB_HEAD_REF) while
+docs/blueprint.md is checked online: run it on a branch, or check other files.
 Output: one line per finding, `path:line: class: message`, then a summary.
 
 One waiver exists, for the `date` class only: a date the text states as
@@ -24,6 +26,8 @@ A value that is not a calendar date (`date-invalid`) cannot be waived.
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
 the current directory or absolute; they are read as repository-relative.
+Headings and ADR references inside fenced code blocks are examples, not the
+document, and are skipped.
 
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
@@ -81,9 +85,9 @@ ALLOW = re.compile(r"<!-- check-docs: allow (date): [^>]*\S[^>]*-->")
 WAIVABLE = ("date",)
 
 ADR_HEADING = re.compile(r"^### ADR-(\d{3})\b")
-# A heading that looks like an ADR's, in any form (`## ADR-1`, `### ADR 012`, `### adr-001`): the
+# A heading that looks like an ADR's, in any form (`## ADR-1`, `### ADR 012`, `### ADR- 012`, `### adr-001`): the
 # canonical form is `### ADR-NNN` with three digits, so anything else this matches is a typo.
-ADR_LIKE_HEADING = re.compile(r"^#{1,6}\s+ADR[-\s]?\d", re.I)
+ADR_LIKE_HEADING = re.compile(r"^#{1,6}\s+ADR\s*[-_]?\s*\d", re.I)
 # The heading annotation that selects ADR_OPTION_PARTS
 ADR_OPTION_HEADING = re.compile(r"^### ADR-\d{3} \(option, deferred\)")
 ADR_REF = re.compile(r"\bADR-(\d{3})\b")
@@ -95,10 +99,11 @@ SOURCE_TABLE_DEF = re.compile(r"^\| (S\d+) \|")
 SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
 DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
-ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b")
-# Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `<#5>`.
+# `&` is excluded: `&#8212;` is a numeric character reference, not issue 8212
+ISSUE_REF = re.compile(r"(?<![\w/#&])#(\d+)\b")
+# Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`, `<#5>`.
 # They are blanked, same length, before references are looked for.
-LINK_TARGET = re.compile(r"\]\([^)]*\)|^\s*\[[^\]]+\]:\s*\S+|href=\"[^\"]*\"|<[^<>\s]*>")
+LINK_TARGET = re.compile(r"\]\([^)]*\)|^\s*\[[^\]]+\]:\s*\S+|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I)
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
@@ -112,6 +117,7 @@ FILE_HEADING_REF = re.compile(r"((?:docs/[\w./-]+|AGENTS|CLAUDE|README|CONTEXT)\
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
 BLUEPRINT_SECTION_REF = re.compile(r"docs/blueprint\.md section (\d+)\b")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 
 
 @dataclass(frozen=True)
@@ -134,9 +140,28 @@ class Doc:
     def text(self) -> str:
         return "\n".join(self.lines)
 
+    def fenced(self) -> list[bool]:
+        """Per line: inside a fenced code block, fence lines included. Examples are not the document."""
+        out, fence = [], None
+        for line in self.lines:
+            m = FENCE.match(line)
+            if fence is None:
+                if m:
+                    fence = (m.group(1)[0], len(m.group(1)))
+                out.append(fence is not None)
+            else:
+                out.append(True)
+                if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():
+                    fence = None
+        return out
+
+    def prose(self) -> list[tuple[int, str]]:
+        """`(line number, line)` for every line outside a fenced code block."""
+        return [(n, line) for n, (line, f) in enumerate(zip(self.lines, self.fenced()), 1) if not f]
+
     def headings(self) -> list[str]:
         out = []
-        for line in self.lines:
+        for _, line in self.prose():
             m = HEADING.match(line)
             if m:
                 out.append(m.group(2))
@@ -274,7 +299,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
 
 def adr_headings(doc: Doc) -> dict[str, int]:
     out: dict[str, int] = {}
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         m = ADR_HEADING.match(line)
         if m:
             out.setdefault(m.group(1), n)
@@ -283,7 +308,7 @@ def adr_headings(doc: Doc) -> dict[str, int]:
 
 def adr_titles(doc: Doc) -> dict[str, str]:
     """ADR number to the full heading line, so the same ADR carried on two branches is not a collision."""
-    return {m.group(1): line.strip() for line in doc.lines if (m := ADR_HEADING.match(line))}
+    return {m.group(1): line.strip() for _, line in doc.prose() if (m := ADR_HEADING.match(line))}
 
 
 def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
@@ -294,13 +319,13 @@ def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
     defined = adr_headings(bp)
     if doc.path == BLUEPRINT:
         seen: dict[str, int] = {}
-        for n, line in enumerate(doc.lines, 1):
+        for n, line in doc.prose():
             m = ADR_HEADING.match(line)
             if m:
                 if m.group(1) in seen:
                     out.append(Finding(doc.path, n, "adr", f"ADR-{m.group(1)} heading repeats line {seen[m.group(1)]}"))
                 seen.setdefault(m.group(1), n)
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         for m in ADR_REF.finditer(line):
             if m.group(1) not in defined:
                 out.append(Finding(doc.path, n, "adr", f"ADR-{m.group(1)} has no heading in {BLUEPRINT}"))
@@ -317,10 +342,10 @@ def check_adr_format(doc: Doc) -> list[Finding]:
     out = []
     if doc.path != BLUEPRINT:
         return out
-    for n, line in enumerate(doc.lines, 1):
+    for n, line in doc.prose():
         if ADR_LIKE_HEADING.match(line) and not ADR_HEADING.match(line):
             out.append(Finding(doc.path, n, "adr-format", "heading is not in the form `### ADR-NNN` (three digits)"))
-    starts = [n for n, line in enumerate(doc.lines, 1) if ADR_HEADING.match(line)]
+    starts = [n for n, line in doc.prose() if ADR_HEADING.match(line)]
     for i, start in enumerate(starts):
         end = starts[i + 1] - 1 if i + 1 < len(starts) else len(doc.lines)
         body = doc.lines[start:end]
@@ -644,7 +669,7 @@ def main(argv: list[str]) -> int:
 
     gh = None if args.offline else GitHub(args.repo)
     branch = current_branch(root)
-    if gh is not None and not branch:
+    if gh is not None and BLUEPRINT in paths and not branch:
         print("check-docs: cannot tell the current branch (detached HEAD and no GITHUB_HEAD_REF); the ADR-collision check needs it", file=sys.stderr)
         return 2
     try:
