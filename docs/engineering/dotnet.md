@@ -10,7 +10,7 @@ These rules exist because the earlier portfolio repo's code was hard to test and
 src/
   Parchwell.Kafka/            shared library: Event Hubs client configuration, Entra token refresh,
                               statistics bridge, graceful shutdown
-  Parchwell.Scenarios/        scenario definition model and loader (scenarios are data)
+  Parchwell.Scenarios/        scenario definition model, loader and Helm values generator (ADR-014)
   Parchwell.LoadGen/          service, vertical slices
   Parchwell.Enrichment/       service, vertical slices
   Parchwell.Verifier/         service, vertical slices; the oracle (protected path)
@@ -18,6 +18,7 @@ tests/
   <Project>.Tests/            one test project per source project
   Parchwell.ArchitectureTests/
 scenarios/<ID>/               scenario definition and expected outcome, per inventory item
+scenarios/profiles/           workload profiles shared by several items (ADR-014)
 ```
 
 ## Vertical slices
@@ -47,7 +48,7 @@ scenarios/<ID>/               scenario definition and expected outcome, per inve
 | Layer | What it tests | Tooling |
 |---|---|---|
 | Unit | Slice handlers, configuration mapping, verifier logic, scenario loading | xUnit, no I/O |
-| Component | A service against a local Kafka broker in a container | Testcontainers; tests harness logic only, never Event Hubs behaviour |
+| Component | A service against a local Kafka broker in a container | Testcontainers, with Toxiproxy for faults (ADR-016); tests harness logic only, never Event Hubs behaviour |
 | Architecture | Dependency direction and slice isolation | NetArchTest or ArchUnitNET, in `Parchwell.ArchitectureTests` |
 | Mutation | Verifier logic | Stryker.NET; minimum mutation score to be set with the reference slice |
 | Live | Event Hubs behaviour | Scenario workflow only; never in CI |

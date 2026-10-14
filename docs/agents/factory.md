@@ -60,7 +60,8 @@ Expected outcome file: scenarios/<ID>/expected.yaml (approved with this plan)
 Every verdict pull request contains:
 - the scenario definition and expected outcome as approved;
 - raw results per repeat in `results/<ID>/<utc-date>.json`;
-- verifier counts (gaps, duplicates, reorders) per repeat;
+- per-repeat run validity and completion status, reasons for any invalid or incomplete result, and worker exit outcomes;
+- verifier counts for every complete, valid repeat: `ok`, `loss`, `phantom`, `reported_failure`, `duplicate` and `reorder` (ADR-012); invalid or incomplete repeats retain diagnostic records with these authoritative counts absent, never substituted with zeros;
 - the KQL queries and their output;
 - Confluent.Kafka and librdkafka versions, PU count, node size, region, run timestamps;
 - actual cost of the runs from Cost Management;
