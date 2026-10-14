@@ -206,6 +206,36 @@ public sealed class EvidenceBehaviorTests
         Assert.False(decision.MatrixComplete);
     }
 
+    [Fact]
+    public void Given_UnexecutedSyntheticPlaceholders_When_Deciding_Then_ReportsNoObservedRate()
+    {
+        var trials = Matrix().Select(trial => trial with { Executed = false }).ToArray();
+        var decision = SpikeEvidence.Decide(Experiment(trials));
+
+        Assert.Equal("inconclusive", decision.ExistenceFinding);
+        Assert.False(decision.MatrixComplete);
+        Assert.All(decision.Recipes, recipe =>
+        {
+            Assert.Equal(0, recipe.ObservedTrials);
+            Assert.Equal(0, recipe.CompletedTrials);
+            Assert.Null(recipe.ObservedRate);
+        });
+    }
+
+    [Fact]
+    public void Given_OneExecutedSyntheticTrialAndPlaceholders_When_Deciding_Then_OnlyExecutedTrialCountsAsObserved()
+    {
+        var trials = Matrix().Select(trial => trial with { Executed = false }).ToArray();
+        trials[0] = trials[0] with { Executed = true };
+        var decision = SpikeEvidence.Decide(Experiment(trials));
+        var observed = Assert.Single(decision.Recipes, recipe => recipe.ObservedTrials != 0);
+
+        Assert.Equal("inconclusive", decision.ExistenceFinding);
+        Assert.Equal(1, observed.ObservedTrials);
+        Assert.Equal(0d, observed.ObservedRate);
+        Assert.All(decision.Recipes.Where(recipe => recipe != observed), recipe => Assert.Null(recipe.ObservedRate));
+    }
+
     private static ExperimentEvidence Experiment(IReadOnlyList<TrialEvidence> trials) =>
         new("synthetic-source-commit", false, Origin, Origin.AddMinutes(5), new(), trials, [], [], true);
 

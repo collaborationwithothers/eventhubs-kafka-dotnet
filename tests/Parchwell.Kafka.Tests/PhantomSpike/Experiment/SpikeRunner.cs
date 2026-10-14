@@ -78,7 +78,12 @@ internal sealed class SpikeRunner(TimeProvider clock)
             }
         }
 
-        return new ExperimentEvidence(commit, dirty, started, clock.GetUtcNow(), timings, trials, [], failures, cleanupSucceeded);
+        return new ExperimentEvidence(commit, dirty, started, clock.GetUtcNow(), timings, trials, [], failures, cleanupSucceeded,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Kafka"] = BrokerEnvironment.KafkaImage,
+                ["Toxiproxy"] = BrokerEnvironment.ProxyImage,
+            });
     }
 
     private async Task<TrialEvidence> RunTrialAsync(BrokerEnvironment environment, TrialConfiguration configuration,
@@ -243,7 +248,7 @@ internal sealed class SpikeRunner(TimeProvider clock)
         var timestamp = clock.GetUtcNow();
         return new TrialEvidence(trialId, configuration, timings,
             Message($"phantom-{trialId}", Guid.NewGuid().ToString("N")), false, null, [], null, [], null,
-            null, null, [reason], true, timestamp, timestamp, environment?.ProducerBootstrapServers);
+            null, null, [reason], true, timestamp, timestamp, environment?.ProducerBootstrapServers, Executed: false);
     }
 
     private static bool ControlSucceeded(TrialEvidence trial) => trial.Failures.Count == 0 && trial.Accepted

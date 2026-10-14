@@ -164,13 +164,22 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         proxyName = name;
         using var state = JsonDocument.Parse(await ReadControlAsync($"proxies/{Uri.EscapeDataString(name)}", cancellationToken).ConfigureAwait(false));
         var root = state.RootElement;
-        if (root.GetProperty("listen").GetString() != $"0.0.0.0:{ProxyDataPort}"
+        if (!IsExpectedWildcardListen(root.GetProperty("listen").GetString())
             || root.GetProperty("upstream").GetString() != "phantom-kafka:9092"
             || !root.GetProperty("enabled").GetBoolean()
             || root.GetProperty("toxics").GetArrayLength() != 0)
         {
             throw new InvalidOperationException("Trial proxy state did not match the requested clean route.");
         }
+    }
+
+    internal static bool IsExpectedWildcardListen(string? listen)
+    {
+        // Toxiproxy replaces the request address with net.Listener.Addr().String().
+        // A dual-stack wildcard can therefore be returned as [::], not 0.0.0.0.
+        // https://github.com/Shopify/toxiproxy/blob/v2.12.0/proxy.go#L118
+        return string.Equals(listen, $"0.0.0.0:{ProxyDataPort}", StringComparison.Ordinal)
+            || string.Equals(listen, $"[::]:{ProxyDataPort}", StringComparison.Ordinal);
     }
 
     public async Task<string> ApplyFaultAsync(SpikeFault fault, TimingSettings timings, CancellationToken cancellationToken)
@@ -257,7 +266,8 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         var kafkaOutput = await kafkaLogs.ConfigureAwait(false);
         var proxyOutput = await proxyLogs.ConfigureAwait(false);
         return new InfrastructureDiagnostics(await state.ConfigureAwait(false), await metrics.ConfigureAwait(false),
-            kafkaOutput.Stdout + "\n" + kafkaOutput.Stderr, proxyOutput.Stdout + "\n" + proxyOutput.Stderr);
+            kafkaOutput.Stdout + "\n" + kafkaOutput.Stderr, proxyOutput.Stdout + "\n" + proxyOutput.Stderr,
+            ContainerIds: new Dictionary<string, string> { ["Kafka"] = broker.Id, ["Toxiproxy"] = proxy.Id });
     }
 
     private async Task<string> ReadControlAsync(string path, CancellationToken cancellationToken)

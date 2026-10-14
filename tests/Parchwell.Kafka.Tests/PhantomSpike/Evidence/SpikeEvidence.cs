@@ -46,9 +46,10 @@ internal static class SpikeEvidence
         foreach (var retries in RetrySettings)
         foreach (var fault in FaultSettings)
         {
-            var observed = outcomes.Where(item => item.Trial.Configuration.Retries == retries && item.Trial.Configuration.Fault == fault).ToArray();
-            var repeatsComplete = observed.Length == PlannedRepeats &&
-                Enumerable.Range(1, PlannedRepeats).All(repeat => observed.Count(item => item.Trial.Configuration.Repeat == repeat) == 1);
+            var planned = outcomes.Where(item => item.Trial.Configuration.Retries == retries && item.Trial.Configuration.Fault == fault).ToArray();
+            var observed = planned.Where(item => item.Trial.Executed).ToArray();
+            var repeatsComplete = planned.Length == PlannedRepeats && observed.Length == PlannedRepeats &&
+                Enumerable.Range(1, PlannedRepeats).All(repeat => planned.Count(item => item.Trial.Configuration.Repeat == repeat) == 1);
             if (!repeatsComplete)
             {
                 failures.Add($"Incomplete or duplicate repeats for retries={retries}, fault={fault}.");
@@ -74,6 +75,7 @@ internal static class SpikeEvidence
     private static List<string> Validate(TrialEvidence trial, TimingSettings timings)
     {
         var failures = new List<string>(trial.Failures);
+        if (!trial.Executed) failures.Add("Trial was not executed.");
         if (trial.Timings != timings) failures.Add("Trial timings differ from the frozen matrix timings.");
         if (!trial.CleanupSucceeded) failures.Add("Trial cleanup failed.");
         if (string.IsNullOrWhiteSpace(trial.TrialId) || string.IsNullOrWhiteSpace(trial.Target.Topic) ||
@@ -114,7 +116,7 @@ internal static class SpikeEvidence
     }
 
     private static bool IsWitness(TrialEvidence trial) =>
-        trial.Configuration.Fault != SpikeFault.None && trial.Accepted && trial.SynchronousError is null &&
+        trial.Executed && trial.Configuration.Fault != SpikeFault.None && trial.Accepted && trial.SynchronousError is null &&
         RoutingVerified(trial) && FaultVerified(trial) && HealthyControlVerified(trial) && trial.IndependentObserver &&
         trial.Callbacks.Count == 1 && trial.Callbacks[0].IsError && CallbackMatches(trial, trial.Callbacks[0]) &&
         trial.Producer is { } producer && !producer.Errors.Any(IsCaptureFailure) &&

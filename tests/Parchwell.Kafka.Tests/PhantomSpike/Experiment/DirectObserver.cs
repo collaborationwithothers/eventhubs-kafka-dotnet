@@ -20,14 +20,14 @@ internal sealed class DirectObserver : IDisposable
         partition = new TopicPartition(topic, new Partition(0));
         consumer = new ConsumerBuilder<byte[], byte[]>(new ConsumerConfig
         {
-            BootstrapServers = bootstrapServers,
-            GroupId = "phantom-spike-direct-observer",
-            EnableAutoCommit = false,
-            EnableAutoOffsetStore = false,
-            AutoOffsetReset = AutoOffsetReset.Error,
-            IsolationLevel = IsolationLevel.ReadCommitted,
-            EnablePartitionEof = true,
-            AllowAutoCreateTopics = false
+            BootstrapServers = bootstrapServers, // A01: independent local diagnostic path.
+            GroupId = "phantom-spike-direct-observer", // C13: reuse one diagnostic group.
+            EnableAutoCommit = false, // C10: explicit bounded assignments, no stored progress.
+            EnableAutoOffsetStore = false, // C10: no automatic offset bookkeeping.
+            AutoOffsetReset = AutoOffsetReset.Error, // C15: never silently skip an unavailable start.
+            IsolationLevel = IsolationLevel.ReadCommitted, // B05: explicit observation isolation.
+            EnablePartitionEof = true, // C05/C15: EOF remains diagnostic, not scan completion.
+            AllowAutoCreateTopics = false // D01: topics are explicitly created by the fixture.
         }).Build();
     }
 
@@ -37,7 +37,7 @@ internal sealed class DirectObserver : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         using var admin = new AdminClientBuilder(new AdminClientConfig
         {
-            BootstrapServers = bootstrapServers
+            BootstrapServers = bootstrapServers // D01: use the direct local administration path.
         }).Build();
         await admin.CreateTopicsAsync(
             [new TopicSpecification { Name = topic, NumPartitions = 1, ReplicationFactor = 1 }],

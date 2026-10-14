@@ -16,7 +16,7 @@ internal static class SpikeEvidenceWriter
         await WriteJsonAsync(Path.Combine(directory, "decision.json"), SpikeEvidence.Decide(experiment), cancellationToken).ConfigureAwait(false);
         var records = new
         {
-            experiment.SourceCommit, experiment.Dirty, experiment.Started, experiment.Finished, experiment.Timings,
+            experiment.SourceCommit, experiment.Dirty, experiment.Started, experiment.Finished, experiment.Timings, experiment.ImagePins,
             experiment.Failures, experiment.CleanupSucceeded,
             Trials = experiment.Trials.Select(ProjectTrial), CalibrationTrials = experiment.CalibrationTrials.Select(ProjectTrial)
         };
@@ -26,7 +26,7 @@ internal static class SpikeEvidenceWriter
 
     private static object ProjectTrial(TrialEvidence trial) => new
     {
-        trial.TrialId, trial.Configuration, trial.Timings, trial.Target, trial.Accepted, trial.SynchronousError,
+        trial.TrialId, trial.Configuration, trial.Timings, trial.Target, trial.Executed, trial.Accepted, trial.SynchronousError,
         trial.Callbacks, trial.Scan, trial.AdvertisedBrokers, trial.ExpectedProducerEndpoint,
         trial.RouteVerified, trial.FaultState, trial.FaultVerified, trial.HealthyControlVerified,
         trial.IndependentObserver, trial.Started, trial.FaultActivated, trial.Submitted, trial.Sealed,

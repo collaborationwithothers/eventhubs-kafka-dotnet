@@ -48,19 +48,19 @@ internal sealed class ProducerProbe : IDisposable
         this.clock = clock;
         var settings = new ProducerConfig
         {
-            BootstrapServers = bootstrapServers,
-            ClientId = $"phantom-spike-{Guid.NewGuid():N}",
-            Acks = Acks.All,
-            EnableIdempotence = false,
-            MessageTimeoutMs = timings.MessageTimeoutMs,
-            SocketTimeoutMs = timings.SocketTimeoutMs,
-            EnableDeliveryReports = true,
-            EnableBackgroundPoll = true,
-            DeliveryReportFields = "all",
-            StatisticsIntervalMs = 1000,
-            Debug = "broker,topic,msg,metadata,protocol",
+            BootstrapServers = bootstrapServers, // A01: local fault path, not an Event Hubs baseline.
+            ClientId = $"phantom-spike-{Guid.NewGuid():N}", // A01/B10: distinguish fixture clients.
+            Acks = Acks.All, // B06: require broker acknowledgement.
+            EnableIdempotence = false, // B04: approved local mechanism configuration.
+            MessageTimeoutMs = timings.MessageTimeoutMs, // B10: bounded local delivery expiry.
+            SocketTimeoutMs = timings.SocketTimeoutMs, // A01/B09: request timeout path.
+            EnableDeliveryReports = true, // A01/B10: capture actual attempt outcomes.
+            EnableBackgroundPoll = true, // A01/B10: serve actual delivery callbacks.
+            DeliveryReportFields = "all", // A01/B10: preserve status and identity evidence.
+            StatisticsIntervalMs = 1000, // A01/B09/B10: retain native request diagnostics.
+            Debug = "broker,topic,msg,metadata,protocol", // A01/B10: verify the producer route.
         };
-        settings.Set("retries", config.Retries.ToString(CultureInfo.InvariantCulture));
+        settings.Set("retries", config.Retries.ToString(CultureInfo.InvariantCulture)); // B10: approved native retry comparison.
         producer = new ProducerBuilder<byte[], byte[]>(settings)
             .SetLogHandler((_, entry) => logs.Enqueue(Stamp($"{entry.Level} {entry.Facility} {entry.Message}")))
             .SetStatisticsHandler((_, json) => statistics.Enqueue(json))

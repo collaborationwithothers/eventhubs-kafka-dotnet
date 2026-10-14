@@ -24,7 +24,7 @@ internal sealed record ProducerDiagnostics(string ManagedVersion, string NativeV
     IReadOnlyList<string> Logs, IReadOnlyList<string> Statistics, IReadOnlyList<string> Errors);
 
 internal sealed record InfrastructureDiagnostics(string ProxyState, string Metrics, string KafkaLogs, string ProxyLogs,
-    string? MetricsBeforeTarget = null);
+    string? MetricsBeforeTarget = null, IReadOnlyDictionary<string, string>? ContainerIds = null);
 
 internal sealed record TrialEvidence(string TrialId, TrialConfiguration Configuration, TimingSettings Timings,
     AttemptMessage Target, bool Accepted, string? SynchronousError, IReadOnlyList<DeliveryObservation> Callbacks,
@@ -35,8 +35,9 @@ internal sealed record TrialEvidence(string TrialId, TrialConfiguration Configur
     bool HealthyControlVerified = false, bool IndependentObserver = false,
     DateTimeOffset? FaultActivated = null, DateTimeOffset? Submitted = null,
     AttemptMessage? WarmupTarget = null, IReadOnlyList<DeliveryObservation>? WarmupCallbacks = null,
-    ObservationScan? WarmupScan = null);
+    ObservationScan? WarmupScan = null, bool Executed = true);
 
 internal sealed record ExperimentEvidence(string SourceCommit, bool Dirty, DateTimeOffset Started,
     DateTimeOffset Finished, TimingSettings Timings, IReadOnlyList<TrialEvidence> Trials,
-    IReadOnlyList<TrialEvidence> CalibrationTrials, IReadOnlyList<string> Failures, bool CleanupSucceeded);
+    IReadOnlyList<TrialEvidence> CalibrationTrials, IReadOnlyList<string> Failures, bool CleanupSucceeded,
+    IReadOnlyDictionary<string, string>? ImagePins = null);
