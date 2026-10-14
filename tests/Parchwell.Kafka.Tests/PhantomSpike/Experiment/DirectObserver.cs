@@ -43,8 +43,9 @@ internal sealed class DirectObserver : IDisposable
             [new TopicSpecification { Name = topic, NumPartitions = 1, ReplicationFactor = 1 }],
             new CreateTopicsOptions
             {
-                RequestTimeout = TimeSpan.FromSeconds(5),
-                OperationTimeout = TimeSpan.FromSeconds(5)
+                // Planned operational ceiling: the caller's trial token caps the remaining budget.
+                RequestTimeout = TimeSpan.FromSeconds(60),
+                OperationTimeout = TimeSpan.FromSeconds(60)
             }).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 

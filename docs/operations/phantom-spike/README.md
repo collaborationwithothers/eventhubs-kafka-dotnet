@@ -85,12 +85,15 @@ The implementation also bounds individual operations and shutdown. These are pla
 | Operation | Planned safety bound | Implementation source |
 |---|---|---|
 | Individual observer watermark query and consume slice | 250 ms | [Direct observer][observer] |
-| Topic-creation request/operation timeout | 5 seconds each | [Direct observer][observer] |
+| Topic-creation request/operation timeout | 60-second ceiling, bounded by the remaining trial time | [Direct observer][observer] |
+| Docker HTTP request timeout | 30-minute ceiling, bounded by the original experiment token | [Docker client configuration][docker-authentication] |
 | Producer metadata lookup | 5 seconds | [Producer probe][probe] |
 | Diagnostic collection | 10 seconds | [Runner][runner], [container lifecycle][infrastructure] |
 | Cleanup | 30 seconds | [Runner][runner], [container lifecycle][infrastructure] |
 
 Basis: bounded synchronous polling, administration, diagnostic collection and resource release. Diagnostic and cleanup handling can continue after the experiment deadline with separate cancellation handling. Consequently, the approved experiment deadline is not a promise that process shutdown completes at that exact wall-clock time. A query timeout does not complete the observer's scan, and a cleanup timeout does not count as successful release. [Implementation][runner], [observer completion][observer].
+
+The Docker client configuration preserves the detected endpoint and authentication. It uses the supported timeout hook before the first client for that endpoint is cached; run each experiment in a fresh test process. Startup failures retain exact owned container names and report cleanup as unestablished, allowing any late-created resource to be identified without treating missing client state as proof of deletion. [Configuration][docker-authentication], [startup handling][infrastructure].
 
 Measure healthy controls first. The approval permits a single recalibration from measured controls, with recorded frozen timings and a complete rerun within the same experiment budget. The current [runner][runner] does not automatically retune: failed healthy controls without a trustworthy successful calibration sample stop the fault matrix and retain an inconclusive result. Retain superseded runs separately. Further tuning, a larger experiment budget, new faults, idempotence variants or different broker/client versions require Hari's decision. [Approved calibration boundary][plan].
 
@@ -121,6 +124,7 @@ Compare the actual restored graph against the approved additions and existing lo
 The implementation must follow the [.NET engineering standards][dotnet] and retain the package-approval exception explicitly in its PR. Run documentation checks and a fresh cold review before each push; Hari retains the merge decision for the approved new dependencies. See [AGENTS.md review rules][rules] and the [repository cold-review skill][review].
 
 [plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/52#issuecomment-6172812371
+[docker-authentication]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/ExperimentDockerAuthentication.cs
 [sdk]: ../../../global.json
 [verification]: ../../../scripts/verify-dotnet.sh
 [report-validation]: ../../../scripts/dotnet-verification.proj

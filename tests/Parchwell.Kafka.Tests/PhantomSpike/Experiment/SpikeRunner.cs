@@ -46,7 +46,7 @@ internal sealed class SpikeRunner(TimeProvider clock)
                 {
                     // Recalibration is optional. Failed controls do not supply a trustworthy successful
                     // latency sample, so changing timings from these failures would invent a measurement.
-                    stopReason = "Healthy controls failed; no trustworthy measured calibration was available. The fault matrix was not started.";
+                    stopReason = "Healthy control matrix was incomplete; no timing revision was applied. The fault matrix was not started.";
                     failures.Add(stopReason);
                 }
                 if (!trial.CleanupSucceeded)
