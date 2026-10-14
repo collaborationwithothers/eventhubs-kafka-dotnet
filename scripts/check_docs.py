@@ -24,8 +24,9 @@ planned or scheduled. Mark its line `<!-- check-docs: allow date: <why> -->`.
 A value that is not a calendar date (`date-invalid`) cannot be waived.
 Lines with multiple future-date occurrences cannot be waived; put the planned
 date on its own line so its waiver cannot hide another future date.
-The visible clause containing that date must say planned or scheduled, or
-state a retirement as "Retires on DATE"; a reason inside the waiver is not enough.
+The date needs an explicit schedule phrase, such as "planned for DATE",
+"scheduled release: DATE", "DATE (planned)" or "Retires on DATE".
+A reason inside the waiver or an earlier mention of planning is not enough.
 
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
@@ -108,12 +109,24 @@ ADR_PARTS = ("**Context.**", "**Options considered.**", "**Decision.**", "**Cons
 ADR_OPTION_PARTS = ("**Context.**", "**Option.**", "**Status.**")
 RETIRED = "retired"
 SOURCE_TABLE_DEF = re.compile(r"^\| (S\d+) \|")
-SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
+SOURCE_LIST_DEF = re.compile(r"^ {0,3}- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
 DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
 # `&` is excluded: `&#8212;` is a numeric character reference, not issue 8212
-ISSUE_REF = re.compile(r"(?<![\w/#&])#(\d+)\b")
-# Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`, `<#5>`.
+ISSUE_REF = re.compile(r"(?<![/#&])#(\d+)\b")
+EXTERNAL_ISSUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$")
+# CommonMark 0.31.2, Raw HTML and Autolinks. Custom names such as S404
+# are valid HTML tags; <#404> is literal text and must remain checkable.
+HTML_SPACE = r"[ \t]*(?:\n[ \t]*)?"
+HTML_ATTRIBUTE = (r"[ \t\n]+[A-Za-z_:][A-Za-z0-9_.:-]*"
+                  + r"(?:" + HTML_SPACE + "=" + HTML_SPACE
+                  + r"(?:\"[^\"]*\"|'[^']*'|[^\s\"'=<>`]+))?")
+HTML_TAG = (r"(?:<[A-Za-z][A-Za-z0-9-]*(?:" + HTML_ATTRIBUTE + r")*"
+            + HTML_SPACE + r"/?>|</[A-Za-z][A-Za-z0-9-]*" + HTML_SPACE + r">)")
+AUTOLINK = (r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\x00-\x20<>]*"
+            r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+            r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>")
+# Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`.
 # They are blanked, same length, before references are looked for.
 LINK_LABEL = re.compile(r"\[((?:\\.|[^\[\]\\]){1,999})\]")
 LINK_TARGET = re.compile(
@@ -122,10 +135,10 @@ LINK_TARGET = re.compile(
     r"\"(?:(?!\n[ \t]*\n)(?:\\.|[^\"\\]))*\""
     r"|'(?:(?!\n[ \t]*\n)(?:\\.|[^'\\]))*'"
     r"|\((?:(?!\n[ \t]*\n)(?:\\.|[^()\\]))*\)))?[ \t]*(?=\n|$)"
-    r"|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I | re.M,
+    r"|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|" + AUTOLINK + "|" + HTML_TAG, re.I | re.M,
 )
-# Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
-# (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
+# Another repository's number is written GitHub's way, `owner/repo#N`.
+# A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
 # A label before a number, and the pieces of a group such as `PRs #6, #24 and #34`
 KIND_LABEL = re.compile(r"\b(prs?|pull requests?|issues?)\s*$", re.I)
@@ -144,6 +157,28 @@ LIST_ITEM = re.compile(r"^( *)([-+*]|\d{1,9}[.)])([ \t]+)(.*)$")
 BLOCKQUOTE = re.compile(r"^ {0,3}> ?")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 INLINE_TOKEN = re.compile(r"\\.|`+|<!--")
+HTML_BLOCK_TAG = re.compile(
+    r"^ {0,3}</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|"
+    r"details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|"
+    r"header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|"
+    r"search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t>]|/>|$)", re.I,
+)
+
+
+def html_block_end(line: str, paragraph: bool) -> re.Pattern | None:
+    """CommonMark's seven raw HTML block forms, for Markdown heading discovery."""
+    for start, end in (
+        (r"^ {0,3}<(?:pre|script|style|textarea)(?=[ \t>]|$)", r"</(?:pre|script|style|textarea)>"),
+        (r"^ {0,3}<!--", r"-->"),
+        (r"^ {0,3}<\?", r"\?>"),
+        (r"^ {0,3}<![A-Za-z]", r">"),
+        (r"^ {0,3}<!\[CDATA\[", r"\]\]>"),
+    ):
+        if re.search(start, line, re.I):
+            return re.compile(end, re.I)
+    if HTML_BLOCK_TAG.match(line) or not paragraph and re.fullmatch(r" {0,3}" + HTML_TAG + r"[ \t]*", line):
+        return re.compile(r"^\s*$")
+    return None
 
 
 def atx_heading(line: str) -> tuple[int, str] | None:
@@ -161,6 +196,14 @@ def opening_fence(line: str) -> re.Match | None:
     if match and (match.group(1)[0] != "`" or "`" not in match.group(2)):
         return match
     return None
+
+
+def visible_inline(text: str) -> str:
+    """Remove paired emphasis delimiters without joining unrelated literal labels."""
+    for pattern in (r"(?<!\\)(\*{1,3}|~~)(?=\S)(.+?)(?<=\S)(?<!\\)\1",
+                    r"(?<![\\\w])(_{1,3})(?=\S)(.+?)(?<=\S)(?<!\\)\1(?!\w)"):
+        text = re.sub(pattern, lambda m: m.group(2), text)
+    return text
 
 
 @dataclass(frozen=True)
@@ -183,13 +226,15 @@ class Doc:
     def text(self) -> str:
         return "\n".join(self.lines)
 
-    def semantic_lines(self, mask_inline: bool = False) -> list[tuple[str, bool]]:
+    def semantic_lines(self, mask_inline: bool = False, mask_html: bool = False) -> list[tuple[str, bool]]:
         """Mask comments and exclude code blocks while preserving original line numbers."""
         out, fence, in_comment = [], None, False
         inline_end = None
         paragraph, code_indent = False, None
         list_indents: list[int] = []
         quote_end = -1
+        html_end = None
+        html_indent = 0
         for index, line in enumerate(self.lines):
             if index <= quote_end:
                 continue
@@ -198,6 +243,15 @@ class Doc:
             expanded = line.expandtabs(4)
             indent = len(expanded) - len(expanded.lstrip(" "))
             base_indent = 0
+            if html_end is not None:
+                if line.strip() and indent < html_indent:
+                    html_end, paragraph = None, False
+                else:
+                    out.append((line, True))
+                    if html_end.search(line):
+                        html_end = None
+                    paragraph = False
+                    continue
             if inline_end is not None:
                 if index < inline_end[0]:
                     out.append((" " * len(line) if mask_inline else line, False))
@@ -250,9 +304,18 @@ class Doc:
                         start = base_indent + marker.end()
                         prefixes.append(candidate[:start])
                         quoted.append(candidate[start:])
-                    nested = Doc(self.path, quoted).semantic_lines(mask_inline)
+                    nested = Doc(self.path, quoted).semantic_lines(mask_inline, mask_html)
                     out.extend((prefix + text, excluded) for prefix, (text, excluded) in zip(prefixes, nested))
                     quote_end = index + len(quoted) - 1
+                    paragraph = False
+                    continue
+            if mask_html and not in_comment and pos == 0:
+                html_end = html_block_end(expanded[base_indent:], paragraph)
+                if html_end is not None:
+                    html_indent = base_indent
+                    out.append((line, True))
+                    if html_end.search(line):
+                        html_end = None
                     paragraph = False
                     continue
             m = opening_fence(expanded[base_indent:]) if not in_comment and pos == 0 else None
@@ -332,7 +395,7 @@ class Doc:
         prose = dict(self.prose())
         text = "\n".join(prose.get(n, "") for n in range(1, len(self.lines) + 1))
         masked = mask_link_targets(text).split("\n")
-        return [(n, masked[n - 1]) for n in prose]
+        return [(n, visible_inline(masked[n - 1])) for n in prose]
 
     def heading_records(self) -> list[tuple[int, int, str]]:
         """Line number, level and normalized title for ATX and Setext headings.
@@ -343,7 +406,7 @@ class Doc:
         out = []
         paragraph: list[tuple[int, str]] = []
         previous = 0
-        for n, line in self.prose(mask_inline=False):
+        for n, line in self.heading_lines():
             if n != previous + 1:
                 paragraph = []
             previous = n
@@ -365,9 +428,13 @@ class Doc:
     def headings(self) -> list[str]:
         return [title for _, _, title in self.heading_records()]
 
+    def heading_lines(self) -> list[tuple[int, str]]:
+        """Raw HTML contents may be visible prose, but cannot define Markdown headings."""
+        return [(n, line) for n, (line, excluded) in enumerate(self.semantic_lines(mask_html=True), 1) if not excluded]
+
     def atx_lines(self) -> list[tuple[int, str]]:
         """ATX headings in canonical form, with source line numbers retained."""
-        return [(n, f"{'#' * heading[0]} {heading[1]}") for n, line in self.prose(mask_inline=False) if (heading := atx_heading(line))]
+        return [(n, f"{'#' * heading[0]} {heading[1]}") for n, line in self.heading_lines() if (heading := atx_heading(line))]
 
 
 # --- discovery --------------------------------------------------------------
@@ -548,7 +615,8 @@ def check_adr_format(doc: Doc) -> list[Finding]:
     out = []
     if doc.path != BLUEPRINT:
         return out
-    for n, line in doc.atx_lines():
+    for n, level, title in doc.heading_records():
+        line = f"{'#' * level} {title}"
         if ADR_LIKE_HEADING.match(line) and not ADR_HEADING.match(line):
             out.append(Finding(doc.path, n, "adr-format", "heading is not in the form `### ADR-NNN` (three digits)"))
     headings = dict(doc.atx_lines())
@@ -744,6 +812,9 @@ def mask_link_targets(line: str) -> str:
         if label and content[label.end():].startswith(":") and not re.search(r"\n[ \t]*\n", content):
             definitions.add(normalized(label.group(1)))
     masked = list(line)
+    for target in LINK_TARGET.finditer(line):
+        if not re.search(r"\n[ \t]*\n", target.group()):
+            masked[target.start():target.end()] = blank(target.group())
     openers: list[tuple[int, bool]] = []
     pos = 0
     while pos < len(line):
@@ -757,31 +828,33 @@ def mask_link_targets(line: str) -> str:
         if line[pos] != "]" or not openers:
             pos += 1
             continue
-        _, is_image = openers.pop()
+        opener, is_image = openers.pop()
         label = LINK_LABEL.match(line, pos + 1)
         if label and normalized(label.group(1)) in definitions:
-            masked[pos + 1:label.end()] = blank(line[pos + 1:label.end()])
+            masked[opener] = masked[pos] = ""
+            masked[pos + 1:label.end()] = ["\n" if ch == "\n" else "" for ch in line[pos + 1:label.end()]]
             if not is_image:
                 openers = [(p, image) for p, image in openers if image]
             pos = label.end()
             continue
         if not line.startswith("](", pos):
+            if normalized(line[opener + 1:pos]) in definitions:
+                masked[opener] = masked[pos] = ""
+                if line.startswith("[]", pos + 1):
+                    masked[pos + 1] = masked[pos + 2] = ""
             pos += 1
             continue
         start = pos
         end = inline_link_end(line, start + 2)
         if end is not None:
-            masked[start:end] = blank(line[start:end])
+            masked[start:end] = ["\n" if ch == "\n" else "" for ch in line[start:end]]
+            masked[opener] = masked[pos] = ""
             if not is_image:
                 openers = [(p, image) for p, image in openers if image]
             pos = end
         else:
             pos = start + 2
-    linked = LINK_TARGET.sub(
-        lambda m: m.group(0) if re.search(r"\n[ \t]*\n", m.group(0)) else blank(m.group(0)),
-        "".join(masked),
-    )
-    return BARE_URL.sub(lambda m: blank(m.group(0)), linked)
+    return BARE_URL.sub(lambda m: blank(m.group(0)), "".join(masked))
 
 
 def expected_kind(before: str) -> str | None:
@@ -814,11 +887,10 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
     """
     out = []
     for n, line in doc.references():
-        # Formatting does not change whether prose calls a reference an issue
-        # or a pull request, including grouped and linked references.
-        line = re.sub(r"(?<!\\)[*_~\[\]]", "", line)
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
+            if EXTERNAL_ISSUE.search(line[:m.start()]):
+                continue
             if DISCUSSION_REF.search(line[:m.start()]):
                 continue
             if num not in cache:
@@ -1005,12 +1077,17 @@ def allowed(doc: Doc, f: Finding, today: dt.date) -> bool:
         earlier_dates = list(DATE.finditer(before))
         if earlier_dates:
             before = before[earlier_dates[-1].end():]
-        planned_before = re.search(r"\b(?:planned|scheduled)\b", before, re.I)
+        # Accept explicit schedule phrases, not an arbitrary earlier mention
+        # of planning that may describe a different or already finished event.
+        planned_before = re.search(
+            r"\b(?:planned|scheduled)(?:\s+(?:release|review|retirement|launch|completion|start|end|date))?"
+            r"(?:\s+(?:for|on|at))?\s*:?\s*$", before, re.I,
+        )
         negated = re.search(r"\b(?:not|never|no longer)\s+(?:\w+\s+){0,2}(?:planned|scheduled)\b", before, re.I)
         qualified = qualified or bool(
             planned_before and not negated
             or re.search(r"\bRetires on\s*$", before, re.I)
-            or re.match(r"\s*\(?\s*(?:planned|scheduled)\b", after, re.I)
+            or re.fullmatch(r"\s*\(?\s*(?:planned|scheduled)\s*\)?\s*", after, re.I)
         )
     return future_dates == 1 and qualified and any(m.group(1) == f.cls for m in ALLOW.finditer(line))
 

@@ -1187,6 +1187,107 @@ class CheckDocsTest(unittest.TestCase):
         self.write("README.md", 'PRs **#12**, openai/codex#1 and **#13**.\n')
         self.assertEqual(self.run_checks(["README.md"], gh=gh), [])
 
+    def test_date_waiver_does_not_apply_to_a_different_predicate(self):
+        for text in ('The feature was planned but released on 2027-01-01.',
+                     'The release was scheduled and completed on 2027-01-01.',
+                     'Planned work was delivered on 2027-01-01.',
+                     'Never scheduled for 2027-01-01.', 'No longer planned for 2027-01-01.'):
+            with self.subTest(text=text):
+                self.write('README.md', text + ' <!-- check-docs: allow date: future schedule -->\n')
+                self.assertEqual(self.run_checks(['README.md']), [
+                    'README.md:1: date: 2027-01-01 is after today (2026-10-13)',
+                ])
+
+    def test_setext_adr_heading_is_rejected_even_if_number_exists(self):
+        for underline in ('===', '---'):
+            with self.subTest(underline=underline):
+                text = BLUEPRINT_OK + '\nADR-001: Duplicate\n' + underline + '\n'
+                doc = cd.Doc(cd.BLUEPRINT, text.splitlines())
+                findings = cd.check_adr_format(doc)
+                self.assertEqual(len(findings), 1)
+                self.assertEqual(findings[0].message, 'heading is not in the form `### ADR-NNN` (three digits)')
+                self.assertEqual(doc.lines[findings[0].line - 1], 'ADR-001: Duplicate')
+
+    def test_angle_brackets_hide_only_autolinks_and_valid_html(self):
+        self.write('README.md', '<#999999> <S404!> <ADR-999!>\n')
+        gh = StubGitHub({})
+        out = self.run_checks(['README.md'], gh=gh)
+        self.assertEqual(len(out), 3)
+        self.assertTrue(any('S404 is not defined' in f for f in out))
+        self.assertTrue(any('ADR-999 has no heading' in f for f in out))
+        self.assertEqual(gh.asked, ['issues/999999'])
+        self.write('README.md', 'Inline <S404> <ADR-999> <https://example.test/S405/#12> <S406@example.test> text.\n')
+        gh = StubGitHub({})
+        self.assertEqual(self.run_checks(['README.md'], gh=gh), [])
+        self.assertEqual(gh.asked, [])
+
+    def test_raw_html_blocks_cannot_define_markdown_headings(self):
+        for start, end in (('<div>', '</div>'), ('<script>', '</script>'), ('<pre>', '</pre>'),
+                           ('<style>', '</style>'), ('<textarea>', '</textarea>'),
+                           ('<!--', '-->'), ('<?xml', '?>'), ('<!DECL', '>'),
+                           ('<![CDATA[', ']]>'), ('<custom-tag>', '</custom-tag>')):
+            with self.subTest(start=start):
+                text = start + '\n# Reporting\n### ADR-999: Hidden\n' + end + '\n\n# Visible\n'
+                doc = cd.Doc('SECURITY.md', text.splitlines())
+                self.assertEqual(doc.headings(), ['Visible'])
+                self.assertEqual(cd.adr_headings(doc), {})
+                self.write('SECURITY.md', text)
+                self.write('README.md', 'SECURITY.md "Reporting"\n')
+                self.assertEqual(self.run_checks(['README.md']), [
+                    'README.md:1: xref: SECURITY.md has no heading "Reporting"',
+                ])
+        # Type 7 cannot interrupt prose; type 6 can. Blank lines terminate
+        # types 6/7 even before a closing tag, as in Markdown inside details.
+        self.assertEqual(cd.Doc('x.md', ['Paragraph', '<span>', '# Visible']).headings(), ['Visible'])
+        self.assertEqual(cd.Doc('x.md', ['Paragraph', '<div>', '# Hidden']).headings(), [])
+        self.assertEqual(cd.Doc('x.md', ['<details>', '', '# Visible', '', '</details>']).headings(), ['Visible'])
+        self.assertEqual(cd.Doc('x.md', ['> <div>', '> # Hidden', '# Visible']).headings(), ['Visible'])
+        self.assertEqual(cd.Doc('x.md', ['- <div>', '  # Hidden', '# Visible']).headings(), ['Visible'])
+
+    def test_word_adjacent_issue_references_are_local_except_repository_form(self):
+        self.write('README.md', 'issue#12 PR#13 typo#14 owner/repo#15 org/repo.name#16.\n')
+        gh = StubGitHub({'issues/12': {'pull_request': {}}, 'issues/13': {}})
+        self.assertEqual(self.run_checks(['README.md'], gh=gh), [
+            'README.md:1: refs: #12 is called an issue but is a pull request',
+            'README.md:1: refs: #13 is called a pull request but is an issue',
+            'README.md:1: refs: #14 does not exist in owner/repo (another repository\'s number is written owner/repo#14)',
+        ])
+        self.assertEqual(gh.asked, ['issues/12', 'issues/13', 'issues/14'])
+
+    def test_formatted_source_and_adr_identifiers_are_checked(self):
+        for text in ('S**404** ADR-**999**', 'S[404](https://example.test) ADR-[999](https://example.test)',
+                     'S[404][ref] ADR-[999][ref]\n\n[ref]: https://example.test',
+                     'S***404*** ADR-***999***'):
+            with self.subTest(text=text):
+                self.write('README.md', text + '\n')
+                self.assertEqual(self.run_checks(['README.md']), [
+                    'README.md:1: adr: ADR-999 has no heading in docs/blueprint.md',
+                    'README.md:1: sources: S404 is not defined in docs/blueprint.md',
+                ])
+
+    def test_source_list_definitions_allow_markdown_indentation(self):
+        for indent in (' ', '  ', '   '):
+            with self.subTest(indent=indent):
+                self.write('README.md', f'Cite S99.\n\n{indent}- S99: https://example.test\n')
+                self.assertEqual(self.run_checks(['README.md']), [])
+                self.write('README.md', f'Cite S99.\n\n{indent}- S99: retired old source\n')
+                self.assertEqual(self.run_checks(['README.md']), [
+                    'README.md:1: sources: S99 is retired in README.md, so it has no source to cite',
+                ])
+
+    def test_link_destinations_do_not_break_visible_identifier_adjacency(self):
+        for text in ('[S](https://example.test)404 [ADR-](https://example.test)999 [#](https://example.test)999999',
+                     '[S](<https://example.test>)404 [ADR-](<https://example.test>)999 [#](<https://example.test>)999999',
+                     '[S][ref]404 [ADR-][ref]999 [#][ref]999999\n\n[ref]: https://example.test'):
+            with self.subTest(text=text):
+                self.write('README.md', text + '\n')
+                gh = StubGitHub({})
+                out = self.run_checks(['README.md'], gh=gh)
+                self.assertEqual(len(out), 3)
+                self.assertTrue(any('S404 is not defined' in f for f in out))
+                self.assertTrue(any('ADR-999 has no heading' in f for f in out))
+                self.assertEqual(gh.asked, ['issues/999999'])
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):

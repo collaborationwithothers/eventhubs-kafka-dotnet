@@ -1,6 +1,8 @@
 name: check-docs
 
 on:
+  # This checks a snapshot of competing ADR allocations. Repository-wide
+  # invalidation and merge-time revalidation are tracked in issue #48.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
