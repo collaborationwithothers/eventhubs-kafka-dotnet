@@ -1,0 +1,104 @@
+# .NET foundation verification
+
+[Issue #47's approved implementation plan][approved-plan] defines this build-only foundation. The source libraries and paired unit-test projects are empty scaffolds; the architecture suite supplies executable foundation checks. No scenario or application behavior is established by a successful build.
+
+## Prerequisites and commands
+
+The supported .NET verification environment is Linux with Bash and .NET SDK **10.0.402** on `PATH`. Install prerequisites separately. `global.json` disallows SDK roll-forward and prereleases, and selects Microsoft Testing Platform. The verification script checks the selected SDK and never installs or upgrades tools.
+
+From the repository root:
+
+```bash
+./scripts/verify-dotnet.sh
+```
+
+The Bash script invokes .NET directly. Its normal restore and build are:
+
+```bash
+dotnet restore Parchwell.slnx --locked-mode
+dotnet build Parchwell.slnx --configuration Release --no-restore
+```
+
+The required architecture test invocation uses a fresh results directory:
+
+```bash
+dotnet test \
+  --project tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj \
+  --configuration Release \
+  --no-build \
+  --minimum-expected-tests 1 \
+  --results-directory "$verification_results/Parchwell.ArchitectureTests" \
+  -- \
+  --report-xunit-xml \
+  --report-xunit-xml-filename results.xml
+```
+
+The script sets `verification_results`, creates the assembly-specific results directory, and owns report validation. Running only the commands above omits its other checks and controls. The [pinned MTP command documentation][mtp-command] describes the runner options. `--minimum-expected-tests` counts skipped tests too; a separate report check therefore requires passing tests and rejects skips.
+
+Documentation verification has separate Node >=24 and npm prerequisites, declared in `package.json`:
+
+```bash
+npm ci --ignore-scripts
+npm run test:docs
+npm run check:docs
+```
+
+Those commands check documentation. They are not the .NET build entry point. Documentation warnings remain advisory and must be fixed or explained before cold review under [AGENTS.md](../../AGENTS.md#before-opening-a-pull-request).
+
+## Enforced gates
+
+`Directory.Build.props` sets `net10.0`, nullable references, warnings as errors, `latest-recommended` analysis, enabled .NET analyzers and analyzer execution during build. The script collects evaluated MSBuild configuration, declared project references and compile items in Release. The architecture suite reads those evaluated manifests, rather than treating the presence of root declarations as proof that every project inherits them.
+
+The architecture suite requires the documented source/test inventory in `Parchwell.slnx`, the effective correctness settings, and the declared dependency direction. `Parchwell.Kafka` cannot reference another source project, and the services cannot reference one another. Declared references are checked even when no types from a dependency are used.
+
+Compiled rules use ArchUnitNET to check the same dependency direction, isolation between feature slices within each service, and calls to the exact `DateTime.Now` and `DateTime.UtcNow` getters. The rule selects `get_Now()` and `get_UtcNow()` using the [pinned loader's method naming][getter-naming]. Other `DateTime` use remains allowed. Missing expected source assemblies fail verification. The source libraries currently contain no production types, so their compiled slice and clock checks have limited coverage. This is not behavioral coverage of the planned services.
+
+Fresh machine-readable xUnit reports must identify the expected test assembly, contain a positive passed-test count, and have no failed, skipped or not-run tests or runner errors. Summary counts must agree with the individual results. `scripts/dotnet-verification.proj` parses XML and rejects missing or malformed reports. The [pinned xUnit writer][xml-fields] supplies the checked assembly result fields.
+
+Each paired unit-test project is reported explicitly as an empty scaffold. The exemption requires an empty evaluated `Compile` item list. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. There are no dummy passing tests.
+
+## Approved controls
+
+Normal verification exercises only the controls approved in #47:
+
+| Control | Valid counterpart | Required rejection |
+|---|---|---|
+| Declared project reference | An isolated fixture with an allowed reference graph | The real declared-reference validator rejects an unused service-to-service reference and identifies the forbidden edge |
+| Warning as error | The fixture without the intentional warning | Compilation rejects `CS1030` with the `PARCHWELL_WARNING_CONTROL` marker as an error |
+
+The architecture suite evaluates the valid and forbidden-reference fixture projects and runs both graphs through the real reference validator. The Bash script builds the warning fixture's valid and invalid counterparts. Fixtures run in isolated temporary locations and do not edit production projects. A failing fixture counts only when its intended rule or diagnostic is verified. Missing prerequisites, restore errors and unrelated build failures do not satisfy a control.
+
+Cross-slice references, direct clock calls, separate nullable/analyzer violations, failing tests and zero-test discovery have no negative controls in this PR. Their underlying gates remain required, but this PR does not claim their rejection paths were exercised. Additional controls wait until a slice needs them, as Hari's amendment requires.
+
+## Diagnostics and dependency changes
+
+The script prints concise gate summaries and retains detailed logs and fresh results in `${TMPDIR:-/tmp}/parchwell-dotnet-verification.XXXXXXXX`, with a generated suffix. It prints the actual directory path on exit. The architecture report is `Parchwell.ArchitectureTests/results.xml` within that directory. Build artifacts stay in each project's ignored `bin/` and `obj/` directories. Unexpected subprocess failures preserve their exit codes; accepted negative-control failures still require the intended cause. Keep the printed directory when investigating a failure.
+
+Direct package versions are centralized in `Directory.Packages.props`, and per-project `packages.lock.json` files record the resolved graphs. Normal verification uses locked restore and cannot silently refresh those graphs. Change package versions and regenerate affected lock files deliberately in a reviewed dependency-change PR.
+
+| Direct test package | Pin | Use |
+|---|---|---|
+| `xunit.v3.mtp-v2` | 4.0.2 | Every test project |
+| `TngTech.ArchUnitNET` | 0.13.4 | Architecture tests only |
+
+The exact official [xUnit manifest][xunit-manifest] and [ArchUnitNET manifest][archunit-manifest] are the source for these dependencies. There is no separate VSTest adapter/Test SDK, architecture xUnit integration package or production package. Confluent.Kafka 2.16.0 is reserved for the later Kafka slice under the approved plan.
+
+## Hosted CI and completion
+
+`.github/workflows/dotnet-verification.yml` configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`, and the gate is `./scripts/verify-dotnet.sh`. It has no Azure identity, private-network runner or live tests.
+
+The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
+
+Hari explicitly authorized this workflow change in the approved issue plan. If GitHub rejects the workflow push for missing credential permission, hand off the exact YAML and rejection; do not change authentication to work around it.
+
+Issue #47 stays open until hosted verification passes on the reviewed PR head and Hari makes the `.NET verification` check required in branch protection. Record the tested commit and SDK alongside local results, and separately record the hosted run's head SHA. Hari retains the merge decision. Existing documentation CI stays advisory.
+
+[approved-plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/47#issuecomment-6170342354
+[mtp-command]: https://github.com/dotnet/docs/blob/b6c9cb41353de8cd352c499be9e49ea6b4825bae/docs/core/tools/dotnet-test-mtp.md
+[xunit-manifest]: https://api.nuget.org/v3-flatcontainer/xunit.v3.mtp-v2/4.0.2/xunit.v3.mtp-v2.nuspec
+[archunit-manifest]: https://api.nuget.org/v3-flatcontainer/tngtech.archunitnet/0.13.4/tngtech.archunitnet.nuspec
+[checkout-release]: https://github.com/actions/checkout/releases/tag/v7.0.1
+[setup-release]: https://github.com/actions/setup-dotnet/releases/tag/v6.0.0
+[setup-readme]: https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/README.md
+[getter-naming]: https://github.com/TNG/ArchUnitNET/blob/1ab5943d761d48f86b42f45ef047130dc9aff1c6/ArchUnitNET/Loader/MonoCecilMemberExtensions.cs#L47-L80
+[xml-fields]: https://github.com/xunit/xunit/blob/0c7aa4991fa340689155d52043ce88f52f2f7421/src/xunit.v3.runner.common/Results/Builtin/XmlV2ResultWriterMessageHandler.cs#L292-L308
