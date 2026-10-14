@@ -1,0 +1,111 @@
+<Project>
+  <UsingTask TaskName="ValidateXunitReport" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Report ParameterType="System.String" Required="true" />
+      <ExpectedAssembly ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Xml" />
+      <Using Namespace="System.Xml.Linq" />
+      <Code Type="Method" Language="cs"><![CDATA[
+      public override bool Execute()
+      {
+        try
+        {
+            if (!File.Exists(Report)) throw new InvalidDataException("Missing test report: " + Report);
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            XDocument document;
+            using (var reader = XmlReader.Create(Report, settings)) document = XDocument.Load(reader);
+            if (document.Root == null || document.Root.Name != "assemblies") throw new InvalidDataException("Unexpected xUnit report root.");
+            var assemblies = document.Root.Elements("assembly").ToArray();
+            if (assemblies.Length != 1) throw new InvalidDataException("Expected exactly one test assembly.");
+            var assembly = assemblies[0];
+            if (Path.GetFileNameWithoutExtension((string)assembly.Attribute("name")) != ExpectedAssembly)
+                throw new InvalidDataException("Report does not belong to " + ExpectedAssembly + ".");
+            Func<XElement, string, int> count = (element, field) =>
+            {
+                int value;
+                if (!int.TryParse((string)element.Attribute(field), out value) || value < 0)
+                    throw new InvalidDataException("Missing or invalid result count: " + field);
+                return value;
+            };
+            var tests = assembly.Descendants("test").ToArray();
+            var passed = count(assembly, "passed");
+            if (passed <= 0 || count(assembly, "failed") != 0 || count(assembly, "skipped") != 0
+                || count(assembly, "not-run") != 0 || count(assembly, "errors") != 0)
+                throw new InvalidDataException("Report must contain passing tests and zero failures, skips, not-run tests or errors.");
+            if (count(assembly, "total") != passed || tests.Length != passed || tests.Any(test => (string)test.Attribute("result") != "Pass"))
+                throw new InvalidDataException("Assembly totals disagree with individual test results.");
+            if (assembly.Descendants("error").Any() || assembly.Descendants("failure").Any())
+                throw new InvalidDataException("Report contains runner errors or test failures.");
+            var collections = assembly.Elements("collection").ToArray();
+            if (collections.Length == 0 || collections.Sum(collection => count(collection, "total")) != passed)
+                throw new InvalidDataException("Collection totals disagree with assembly total.");
+            foreach (var collection in collections)
+            {
+                var collectionTests = collection.Elements("test").ToArray();
+                if (count(collection, "passed") != collectionTests.Length || count(collection, "total") != collectionTests.Length
+                    || count(collection, "failed") != 0 || count(collection, "skipped") != 0 || count(collection, "not-run") != 0)
+                    throw new InvalidDataException("Collection summary disagrees with individual results.");
+            }
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.High, ExpectedAssembly + ": " + passed + " passed; checked report.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Log.LogError("Test report rejected: " + exception.Message);
+            return false;
+        }
+      }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <UsingTask TaskName="SelectNonemptyTestProjects" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ManifestDirectory ParameterType="System.String" Required="true" />
+      <ProjectList ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.Runtime.Serialization.Json" />
+      <Using Namespace="System.Xml" />
+      <Using Namespace="System.Xml.Linq" />
+      <Code Type="Method" Language="cs"><![CDATA[
+      public override bool Execute()
+      {
+        var selected = new List<string>();
+        foreach (var file in Directory.GetFiles(ManifestDirectory, "*.json").OrderBy(path => path, StringComparer.Ordinal))
+        {
+            using (var stream = File.OpenRead(file))
+            using (var reader = JsonReaderWriterFactory.CreateJsonReader(stream, XmlDictionaryReaderQuotas.Max))
+            {
+                var document = XDocument.Load(reader);
+                var properties = document.Root.Element("Properties");
+                var name = properties.Element("AssemblyName").Value;
+                if (!name.EndsWith(".Tests", StringComparison.Ordinal)) continue;
+                var projectPath = properties.Element("MSBuildProjectFullPath").Value;
+                var compileItems = document.Root.Element("Items").Element("Compile").Elements();
+                if (!compileItems.Any())
+                    Log.LogMessage(Microsoft.Build.Framework.MessageImportance.High, name + ": EMPTY scaffold; no unit-test coverage claimed.");
+                else selected.Add(projectPath);
+            }
+        }
+        File.WriteAllLines(ProjectList, selected);
+        return true;
+      }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="ValidateReport">
+    <ValidateXunitReport Report="$(Report)" ExpectedAssembly="$(ExpectedAssembly)" />
+  </Target>
+  <Target Name="SelectTests">
+    <SelectNonemptyTestProjects ManifestDirectory="$(ManifestDirectory)" ProjectList="$(ProjectList)" />
+  </Target>
+</Project>
