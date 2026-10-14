@@ -478,7 +478,7 @@ class CheckDocsTest(unittest.TestCase):
     def test_cli_checks_the_blueprint_whatever_way_its_path_is_spelled(self):
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
         self.write("docs/blueprint.md", BLUEPRINT_OK.replace("**Decision.** A.\n\n", ""))
-        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME", "GITHUB_EVENT_PATH")}
         script = str(HERE.parent / "check_docs.py")
         for spelling in ("docs/blueprint.md", "./docs/blueprint.md", str(self.root / "docs" / "blueprint.md")):
             with self.subTest(spelling=spelling):
@@ -538,7 +538,7 @@ class CheckDocsTest(unittest.TestCase):
         gh = fake / "gh"
         gh.write_text("#!/bin/sh\necho '{\"number\": 1}'\n")
         gh.chmod(0o755)
-        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME", "GITHUB_EVENT_PATH")}
         env.update(PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
         script = str(HERE.parent / "check_docs.py")
         readme = subprocess.run([sys.executable, script, "--today", "2026-10-13", "README.md"], cwd=self.root, env=env, capture_output=True, text=True)
@@ -786,7 +786,7 @@ class CheckDocsTest(unittest.TestCase):
         self.write("AGENTS.md", "# A\n\nFine.\n")
         subprocess.run(["git", "add", "AGENTS.md", "docs/blueprint.md"], cwd=self.root, check=True)
         subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], cwd=self.root, check=True)
-        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME", "GITHUB_EVENT_PATH")}
         env.update(GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
         script = str(HERE.parent / "check_docs.py")
         ok = subprocess.run([sys.executable, script, "--offline", "--today", "2026-10-13"], cwd=self.root, env=env, capture_output=True, text=True)
@@ -809,7 +809,7 @@ class CheckDocsTest(unittest.TestCase):
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
         subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], cwd=self.root, check=True)
         subprocess.run(["git", "checkout", "-q", "-b", "claude/1-x"], cwd=self.root, check=True)
-        old = {k: os.environ.pop(k, None) for k in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME")}
+        old = {k: os.environ.pop(k, None) for k in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME", "GITHUB_EVENT_PATH")}
         try:
             named = cd.current_branch(self.root)
             self.assertEqual(named, "claude/1-x")
