@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-13 that agents may author governance changes; this section is a protected path, so each such change reaches `main` only through his merge.
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). This section is a protected path, so each such change reaches `main` only through his merge.
 
 ### What this repo is
 
@@ -32,7 +32,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 7. Never add secrets, keys, connection strings, tenant IDs or subscription IDs to the repository.
 8. Never change files under `.github/workflows/`. The factory's GitHub App has no Workflows permission, so GitHub rejects such pushes; do not try to work around it.
 9. No workflow that reaches Azure may trigger on `pull_request` or `pull_request_target`. The repository is public; fork pull requests must never run inside the network.
-10. On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, S32); review fixes are made by the session that owns the branch, whichever tool it runs.
+10. On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, docs/blueprint.md S32 and S47); review fixes are made by the session that owns the branch, whichever tool it runs.
 11. Never state a number that was not measured. Estimates say "estimate", their basis and the date. Workload data is synthetic and labelled synthetic.
 
 ### Verdict integrity
