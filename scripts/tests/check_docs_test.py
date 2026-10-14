@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for scripts/check_docs.py. Run: python3 scripts/tests/check_docs_test.py
+"""Tests for scripts/check_docs.py. Run: python3 -B scripts/tests/check_docs_test.py
 
 Each test builds a small repository in a temporary directory, so the checks
 run against known files. GitHub is replaced by a stub; no network is used.
@@ -314,8 +314,8 @@ class CheckDocsTest(unittest.TestCase):
         })
         line = self.line_of("docs/blueprint.md", "### ADR-002 (option")
         prefix = f"docs/blueprint.md:{line}: adr: ADR-002 is also new on branch claude/8-adrs, with a different title; "
-        # Neither branch has a pull request: both report.
-        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "neither branch has an open pull request yet; open one and do not renumber, because the first to open one keeps the number"])
+        # Neither branch has a pull request: nothing is decided, so nobody is told to do what a push gate forbids.
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
         self.assertNotIn("contents/docs/blueprint.md?ref=claude/1-x", gh.asked)
         # Only theirs has a pull request: we renumber.
         gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = [{"created_at": "2026-10-13T10:00:00Z", "number": 8}]
@@ -397,6 +397,12 @@ class CheckDocsTest(unittest.TestCase):
             "contents/docs/blueprint.md?ref=claude/9-merged-main": b64(main),
         })
         self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
+        # Another branch adds a later ADR: the reserved block stays reserved, whoever opened first.
+        later = main.replace("## 5. Failure modes", "### ADR-019: Later\n\n**Context.** T.\n\n**Options considered.**\n1. T.\n\n**Decision.** T.\n\n**Consequences.**\n- T.\n\n---\n\n## 5. Failure modes")
+        gh.routes["branches?per_page=100&page=1"].append({"name": "claude/19-later"})
+        gh.routes["contents/docs/blueprint.md?ref=claude/19-later"] = b64(later)
+        gh.routes["pulls?state=open&head=owner:claude/19-later"] = [{"created_at": "2026-10-13T08:00:00Z", "number": 2}]
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
 
     def test_grouped_references_share_the_kind_of_their_label(self):
         gh = StubGitHub({"issues/6": {"number": 6, "pull_request": {}}, "issues/24": {"number": 24, "pull_request": {}}, "issues/34": {"number": 34}, "issues/5": {"number": 5}, "issues/7": {"number": 7, "pull_request": {}}})
@@ -407,9 +413,17 @@ class CheckDocsTest(unittest.TestCase):
             "AGENTS.md:3: refs: #7 is called an issue but is a pull request",
         ])
 
+    def test_dates_outside_the_2000s_are_checked_too(self):
+        self.write("AGENTS.md", "# A\n\nRetires 2100-01-01 and 2100-13-01 and 1999-12-31.\n")
+        out = self.run_checks(["AGENTS.md"])
+        self.assertEqual(out, [
+            "AGENTS.md:3: date: 2100-01-01 is after today (2026-10-13)",
+            "AGENTS.md:3: date-invalid: 2100-13-01 is not a calendar date",
+        ])
+
     def test_in_page_link_anchors_are_not_issue_references(self):
         gh = StubGitHub({"issues/8": {"number": 8}})
-        self.write("AGENTS.md", "# A\n\nSee [modes](#5-failure-modes), [x](#12-Notes) and issue #8.\n")
+        self.write("AGENTS.md", "# A\n\nSee [modes](#5-failure-modes), [x](#12-Notes), [y](#12-3-options), <a href=\"#9-z\">z</a> and issue #8.\n\n[ref]: #7-reference-style\n")
         self.assertEqual(self.run_checks(["AGENTS.md"], gh=gh), [])
         self.assertEqual(gh.asked, ["issues/8"])
 

@@ -40,10 +40,15 @@ and when it is below the highest ADR another branch added. The branch whose
 open pull request was created first keeps the number and gets no finding;
 equal creation times are broken by the lower pull request number. A branch
 with no open pull request renumbers when the other has one. When neither has
-one, both see the finding until one opens a pull request. The same heading
+one, nobody gets a finding: the author could not follow one, because a pull
+request needs the push. The first to open one keeps the number. The same heading
 line on both branches is one ADR carried over, not a collision. ADRs already
-on main are nobody's allocation: a number reserved below main's highest is
-not a finding.
+on main are nobody's allocation. A gap below main's highest ADR is a block
+that an ADR on main reserved; a number in it is never "below another branch's
+highest". The script does not know which branch a block was reserved for, so
+a branch that takes a number from someone else's block is reported only when
+that branch uses the same number; a gap left by a removed ADR counts as
+reserved too.
 """
 
 from __future__ import annotations
@@ -89,9 +94,11 @@ RETIRED = "retired"
 SOURCE_TABLE_DEF = re.compile(r"^\| (S\d+) \|")
 SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
-DATE = re.compile(r"(?<!\d)(20\d\d)-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
-# `#5-failure-modes` is an in-page link anchor, not issue 5
-ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b(?!-[A-Za-z])")
+DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
+ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b")
+# Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `<#5>`.
+# They are blanked, same length, before references are looked for.
+LINK_TARGET = re.compile(r"\]\([^)]*\)|^\s*\[[^\]]+\]:\s*\S+|href=\"[^\"]*\"|<[^<>\s]*>")
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
@@ -403,9 +410,15 @@ class GitHub:
                 return json.loads(r.stdout)
             except json.JSONDecodeError as e:
                 raise Unavailable(f"gh api {route} returned something that is not JSON") from e
-        if "HTTP 404" in r.stderr or "HTTP 410" in r.stderr:  # 410 Gone: GitHub's answer for a deleted issue
+        # 404: no such route. 410: a deleted issue, when the caller can read the repository (404 when not).
+        # Source: https://docs.github.com/en/rest/issues/issues, "Get an issue", read 2026-10-14.
+        if "HTTP 404" in r.stderr or "HTTP 410" in r.stderr:
             return None
         raise Unavailable(f"gh api {route}: {r.stderr.strip() or r.stdout.strip() or 'failed'}")
+
+
+def mask_link_targets(line: str) -> str:
+    return LINK_TARGET.sub(lambda m: " " * len(m.group(0)), line)
 
 
 def expected_kind(before: str) -> str | None:
@@ -437,13 +450,15 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
     A discussion's number (`discussion #N`) is skipped. Every other `#N` is ours.
     """
     out = []
-    for n, line in enumerate(doc.lines, 1):
+    for n, raw in enumerate(doc.lines, 1):
+        line = mask_link_targets(raw)
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
             if DISCUSSION_REF.search(line[:m.start()]):
                 continue
             if num not in cache:
                 data = gh.get(f"issues/{num}")
+                # "You can identify pull requests by the `pull_request` key" (same page as above, "Get an issue").
                 cache[num] = None if data is None else ("pull" if "pull_request" in data else "issue")
             kind = cache[num]
             if kind is None:
@@ -462,7 +477,8 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
 
     Two cases are reported for each other branch: the same number used for a
     different ADR (a collision), and a number below the highest ADR that branch
-    added. The cases and who renumbers are in the module docstring, under
+    added, unless it is in a block `main` reserves (a gap below main's highest
+    ADR). The cases and who renumbers are in the module docstring, under
     "ADR numbers across branches".
     """
     out = []
@@ -473,6 +489,9 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
     if not branches or main_doc is None:
         return out
     on_main = set(adr_headings(Doc(BLUEPRINT, decode(main_doc).split("\n"))))
+    # A gap below main's highest ADR is a block an ADR on main reserved (ADR-018 reserves the six
+    # numbers after ADR-011 for issue #8). Numbers in it may sit below another branch's highest.
+    reserved = {f"{i:03d}" for i in range(1, int(max(on_main, default="000")) + 1)} - on_main
     here = adr_headings(docs[BLUEPRINT])
     titles_here = adr_titles(docs[BLUEPRINT])
     new_here = {k: v for k, v in here.items() if k not in on_main}
@@ -494,7 +513,7 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
                 if num in on_main or their_titles[num] == titles_here[num]:
                     continue
                 reason = f"ADR-{num} is also new on branch {name}, with a different title"
-            elif their_max is not None and num < their_max:
+            elif their_max is not None and num < their_max and num not in reserved:
                 reason = f"ADR-{num} is below ADR-{their_max}, the highest on branch {name}"
             else:
                 continue
@@ -517,12 +536,12 @@ def pull_request_opened(gh: GitHub, branch: str) -> tuple[str, int] | None:
 
 
 def collision_verdict(gh: GitHub, ours: str, theirs: str) -> str | None:
-    """None when our branch keeps a colliding ADR number; otherwise why this branch renumbers."""
+    """None when our branch keeps a colliding ADR number, or nobody has decided it yet; otherwise why this branch renumbers."""
     mine, other = pull_request_opened(gh, ours), pull_request_opened(gh, theirs)
     if mine is not None and (other is None or mine < other):
         return None
     if mine is None and other is None:
-        return "neither branch has an open pull request yet; open one and do not renumber, because the first to open one keeps the number"
+        return None  # nothing to decide until one opens a pull request; the first to open one keeps the number
     if mine is None:
         return "this branch has no open pull request and that one has, so this branch renumbers"
     return "that branch's pull request opened first, so this branch renumbers"
@@ -583,6 +602,9 @@ def current_branch(root: Path) -> str:
     name = r.stdout.strip() if r.returncode == 0 else ""
     if name and name != "HEAD":
         return name
+    # GITHUB_HEAD_REF is the pull request's source branch and is set only for pull_request and
+    # pull_request_target events; GITHUB_REF_NAME is `<n>/merge` for an unmerged pull request.
+    # Source: https://docs.github.com/en/actions/reference/workflows-and-actions/variables, read 2026-10-14.
     for var in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
         ref = os.environ.get(var, "")
         if ref and ref != DEFAULT_BRANCH and not ref.endswith("/merge"):
