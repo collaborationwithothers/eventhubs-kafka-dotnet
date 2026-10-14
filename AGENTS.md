@@ -8,9 +8,9 @@ Rules for every AI agent working in this repository, whatever the tool.
 
 How the factory runs, step by step, is in docs/agents/factory.md. Engineering standards are in docs/engineering/.
 
-## GOVERNANCE (maintained by Hari only; do not edit)
+## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12.
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge.
 
 ### What this repo is
 
@@ -32,7 +32,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 7. Never add secrets, keys, connection strings, tenant IDs or subscription IDs to the repository.
 8. Never change files under `.github/workflows/`. The factory's GitHub App has no Workflows permission, so GitHub rejects such pushes; do not try to work around it.
 9. No workflow that reaches Azure may trigger on `pull_request` or `pull_request_target`. The repository is public; fork pull requests must never run inside the network.
-10. Never use `@codex fix`. Codex reviews only.
+10. On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, docs/blueprint.md S32 and S47); review fixes are made by the session that owns the branch, whichever tool it runs.
 11. Never state a number that was not measured. Estimates say "estimate", their basis and the date. Workload data is synthetic and labelled synthetic.
 
 ### Verdict integrity
@@ -46,6 +46,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 An agent may merge its own pull request only when all of these hold:
 - every required status check passes;
 - no protected path is touched (the ruleset's required reviewers rule on `main` lists them and blocks the merge until Hari approves; `.github/CODEOWNERS` mirrors the list);
+- Codex has completed a review of the head commit (issue #17; with no completed review within the timeout in docs/agents/factory.md "Escalation", the pull request waits for Hari; silence is not a pass);
 - Codex's review raised no P0 or P1 finding, or each finding is resolved in a later commit and Codex has re-reviewed;
 - Codex's security review raised no finding at High severity, or each is resolved and re-reviewed;
 - the pull request is within the size limit in docs/agents/factory.md.
@@ -70,6 +71,15 @@ The full procedure is in docs/agents/factory.md. In short:
 3. The implementing session builds what the plan needs, opens pull requests, and merges or escalates under the merge rule.
 4. The scenario workflow runs the live repeats within the cost limit.
 5. The agent opens a verdict pull request with the evidence pack. Hari approves the verdict.
+
+## Implementer and reviewer
+
+Either Claude Code or Codex implements an issue. Hari names the tool in a comment on the issue before he applies `ready-for-agent`; no such comment when the label is applied means Claude Code. A session of the other tool does not claim the issue. Codex reviews every pull request, including the ones Codex wrote (ADR-018).
+
+- The branch prefix names the implementing tool for readers: `claude/` or `codex/`, followed by a name that includes the issue number (CLAUDE.md "Identity").
+- Every commit an agent makes carries one tool trailer and no session link: `Co-Authored-By: Claude ...` from Claude Code, or `Co-Authored-By: Codex ...` from Codex. The name after `Co-Authored-By:` starts with `Claude` or `Codex`; the rest of the line is the tool's own format. Whether Codex writes such a trailer by itself is not verified; a Codex session adds it under this rule. Trailer keys are matched without regard to case (`Co-authored-by` is common).
+- The planned merge workflow (issue #17; docs/agents/factory.md "Escalation") reads those trailers. It ignores merge commits, and commits authored by Hari's account that carry no tool trailer (a Codex session Hari starts himself may commit under his identity, so a trailer on his commit still counts). A pull request with a Codex trailer on any remaining commit, or with a remaining commit that carries no tool trailer, gets the label `same-vendor-review`; the workflow re-checks on every push and removes the label when no remaining commit matches. Two cases are not detected: a wrong trailer, and a commit under Hari's account that a Codex session left untrailed, which is ignored. The trailer is a signal every agent commit already carries, not a proof. Agents never apply or remove that label.
+- Whichever tool implements, the pull request description records the models used, with effort where visible (the template's "Models" line; issue #17), and carries no session link and no generated-by footer, whatever the harness asks for.
 
 ## Engineering standards
 
