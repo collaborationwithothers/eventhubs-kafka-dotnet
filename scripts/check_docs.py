@@ -22,6 +22,8 @@ Output: one line per finding, `path:line: class: message`, then a summary.
 One waiver exists, for the `date` class only: a date the text states as
 planned or scheduled. Mark its line `<!-- check-docs: allow date: <why> -->`.
 A value that is not a calendar date (`date-invalid`) cannot be waived.
+Lines with multiple future-date occurrences cannot be waived; put the planned
+date on its own line so its waiver cannot hide another future date.
 
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
@@ -110,7 +112,14 @@ DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-
 ISSUE_REF = re.compile(r"(?<![\w/#&])#(\d+)\b")
 # Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`, `<#5>`.
 # They are blanked, same length, before references are looked for.
-LINK_TARGET = re.compile(r"^ {0,3}\[[^\]]+\]:[ \t]*\S+.*$|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I)
+LINK_TARGET = re.compile(
+    r"^ {0,3}\[[^\]\n]+\]:[ \t]*(?:\n[ \t]*)?(?:<[^<>\n]*>|\S+)"
+    r"(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(?:"
+    r"\"(?:(?!\n[ \t]*\n)(?:\\.|[^\"\\]))*\""
+    r"|'(?:(?!\n[ \t]*\n)(?:\\.|[^'\\]))*'"
+    r"|\((?:(?!\n[ \t]*\n)(?:\\.|[^()\\]))*\)))?[ \t]*(?=\n|$)"
+    r"|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I | re.M,
+)
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
@@ -313,6 +322,13 @@ class Doc:
         """`(line number, visible text)` outside code blocks and HTML comments."""
         return [(n, line) for n, (line, f) in enumerate(self.semantic_lines(mask_inline), 1) if not f]
 
+    def references(self) -> list[tuple[int, str]]:
+        """Mask link targets across physical lines without changing finding locations."""
+        prose = dict(self.prose())
+        text = "\n".join(prose.get(n, "") for n in range(1, len(self.lines) + 1))
+        masked = mask_link_targets(text).split("\n")
+        return [(n, masked[n - 1]) for n in prose]
+
     def heading_records(self) -> list[tuple[int, int, str]]:
         """Line number, level and normalized title for ATX and Setext headings.
 
@@ -461,8 +477,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
         return out
 
     referenced: set[str] = set()
-    for n, line in doc.prose():
-        line = mask_link_targets(line)
+    for n, line in doc.references():
         definition = SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line)
         if definition:
             line = line[definition.end():]
@@ -508,8 +523,7 @@ def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
                 if m.group(1) in seen:
                     out.append(Finding(doc.path, n, "adr", f"ADR-{m.group(1)} heading repeats line {seen[m.group(1)]}"))
                 seen.setdefault(m.group(1), n)
-    for n, line in doc.prose():
-        line = mask_link_targets(line)
+    for n, line in doc.references():
         for m in ADR_LIKE_REF.finditer(line):
             if ADR_REF.fullmatch(m.group()) is None:
                 out.append(Finding(doc.path, n, "adr", f"{m.group()} is not in the form ADR-NNN (three digits)"))
@@ -583,8 +597,7 @@ def check_cross_references(doc: Doc, docs: dict[str, Doc], root: Path) -> list[F
         # The whole heading, or the heading followed by a deliberate decoration: ` (...)` or `:`.
         return any(h == wanted or h.startswith(wanted + " (") or h.startswith(wanted + ":") for h in heads)
 
-    for n, raw in doc.prose():
-        line = mask_link_targets(raw)
+    for n, line in doc.references():
         for m in FILE_HEADING_REF.finditer(line):
             path, wanted = m.group(1), m.group(2)
             heads = headings_of(path)
@@ -639,12 +652,17 @@ class GitHub:
 
 
 def mask_link_targets(line: str) -> str:
+    def blank(text: str) -> str:
+        return "".join("\n" if ch == "\n" else " " for ch in text)
+
     masked = list(line)
     pos = 0
     while (start := line.find("](", pos)) >= 0:
         depth, title_quote, end = 1, None, start + 2
         while end < len(line) and depth:
             ch = line[end]
+            if ch == "\n" and re.match(r"\n[ \t]*\n", line[end:]):
+                break  # A link cannot span a blank line / paragraph boundary.
             if ch == "\\":
                 end += 2
                 continue
@@ -659,9 +677,12 @@ def mask_link_targets(line: str) -> str:
                 depth -= 1
             end += 1
         if depth == 0:
-            masked[start:end] = " " * (end - start)
+            masked[start:end] = blank(line[start:end])
         pos = max(end, start + 2)
-    return LINK_TARGET.sub(lambda m: " " * len(m.group(0)), "".join(masked))
+    return LINK_TARGET.sub(
+        lambda m: m.group(0) if re.search(r"\n[ \t]*\n", m.group(0)) else blank(m.group(0)),
+        "".join(masked),
+    )
 
 
 def expected_kind(before: str) -> str | None:
@@ -693,8 +714,7 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
     A discussion's number (`discussion #N`) is skipped. Every other `#N` is ours.
     """
     out = []
-    for n, raw in doc.prose():
-        line = mask_link_targets(raw)
+    for n, line in doc.references():
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
             if DISCUSSION_REF.search(line[:m.start()]):
@@ -855,15 +875,23 @@ def run(root: Path, paths: list[str], today: dt.date, gh: GitHub | None, branch:
             findings += check_issue_references(doc, gh, cache)
     if gh is not None and BLUEPRINT in paths:
         findings += check_adr_branch_collisions(docs, gh, branch)
-    findings = [f for f in findings if not allowed(docs[f.path], f)]
+    findings = [f for f in findings if not allowed(docs[f.path], f, today)]
     return sorted(set(findings), key=lambda f: (f.path, f.line, f.cls, f.message))
 
 
-def allowed(doc: Doc, f: Finding) -> bool:
-    """True when the finding's class is waivable and its line carries `<!-- check-docs: allow CLASS: why -->`."""
+def allowed(doc: Doc, f: Finding, today: dt.date) -> bool:
+    """A date waiver applies only to a line with one future-date occurrence."""
     if f.cls not in WAIVABLE or f.line < 1 or f.line > len(doc.lines):
         return False
-    return any(m.group(1) == f.cls for m in ALLOW.finditer(doc.lines[f.line - 1]))
+    line = doc.lines[f.line - 1]
+    future_dates = 0
+    for match in DATE.finditer(line):
+        try:
+            date = dt.date.fromisoformat(match.group())
+        except ValueError:
+            continue  # Invalid calendar dates are never waivable.
+        future_dates += date > today
+    return future_dates == 1 and any(m.group(1) == f.cls for m in ALLOW.finditer(line))
 
 
 def current_branch(root: Path) -> str:

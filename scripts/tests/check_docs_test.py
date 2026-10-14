@@ -1015,6 +1015,50 @@ class CheckDocsTest(unittest.TestCase):
         doc = cd.Doc(cd.BLUEPRINT, ("### ADR-001: First\n\n`example`\n" + "\n\n".join(parts)).split("\n"))
         self.assertIn("missing **Context.**", [f.message for f in cd.check_adr_format(doc)])
 
+    def test_multiline_link_targets_are_masked_by_every_reference_check(self):
+        for link in (
+            '[upstream](\nhttps://example.test/S404/ADR-999/#999999\n)',
+            '[upstream](https://example.test\n\'S404 ADR-999 #999999 MISSING.md "Missing"\'\n)',
+            '[upstream](https://example.test "S404\nADR-999 #999999\nMISSING.md \'Missing\'")',
+            '[ref]:\n  https://example.test/S404/ADR-999/#999999',
+            '[ref]: https://example.test\n  "S404 ADR-999 #999999"',
+            '[ref]:\n  https://example.test\n  "S404\nADR-999 #999999"',
+            '[ref]: https://example.test "S404\nADR-999 #999999"',
+            '[ref]: <https://example.test/S404> \'ADR-999\n#999999\'',
+        ):
+            with self.subTest(link=link):
+                self.write("README.md", link + "\n\nVisible S405.\n")
+                gh = StubGitHub({})
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+                    f"README.md:{self.line_of('README.md', 'Visible S405')}: sources: S405 is not defined in docs/blueprint.md",
+                ])
+                self.assertEqual(gh.asked, [])
+
+    def test_multiline_link_masking_preserves_labels_and_paragraph_boundaries(self):
+        for text in ('[Visible S404](\nhttps://example.test\n)', '[upstream](\n\nS404)',
+                     '[upstream](\n```\nexample\n```\nS404)', '[ref]: https://example.test\n"title\n\nS404"'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+
+    def test_date_waiver_cannot_hide_multiple_future_occurrences(self):
+        for text, dates in (
+            ('Released 2027-01-01; next review planned 2027-02-01.', ['2027-01-01', '2027-02-01']),
+            ('Released 2027-01-01; next review planned 2027-01-01.', ['2027-01-01']),
+        ):
+            with self.subTest(text=text):
+                self.write("README.md", text + ' <!-- check-docs: allow date: planned review -->\n')
+                expected = [f"README.md:1: date: {date} is after today (2026-10-13)" for date in dates]
+                self.assertEqual(self.run_checks(["README.md"]), expected)
+        self.write("README.md", 'Released 2026-10-01; next review planned 2027-02-01. <!-- check-docs: allow date: planned review -->\n')
+        self.assertEqual(self.run_checks(["README.md"]), [])
+        self.write("README.md", 'Released 2027-01-01.\nNext review planned 2027-02-01. <!-- check-docs: allow date: planned review -->\n')
+        self.assertEqual(self.run_checks(["README.md"]), ["README.md:1: date: 2027-01-01 is after today (2026-10-13)"])
+        self.write("README.md", 'Invalid 2027-13-01; next review planned 2027-02-01. <!-- check-docs: allow date: planned review -->\n')
+        self.assertEqual(self.run_checks(["README.md"]), ["README.md:1: date-invalid: 2027-13-01 is not a calendar date"])
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):
