@@ -1,0 +1,14 @@
+[
+  {
+    "Id": "6ff2f3fdcdd55e6c66ca2522443271da9defb0ab0169ef27583dd0e400c5d6e0",
+    "Name": "/phantom-proxy-6d0a8b32c0bf4b739db2a90cffb3a2be",
+    "ImageId": "sha256:3edf5d14625b9aa8ad71d5dd084da1f8a0eb46ee749457549ae91d29d96546aa",
+    "RequestedImage": "ghcr.io/shopify/toxiproxy:2.12.0@sha256:9378ed52a28bc50edc1350f936f518f31fa95f0d15917d6eb40b8e376d1a214e"
+  },
+  {
+    "Id": "4d8c3cdb96a24964627c8957332023d00aba57a466ed8722efa40e2f3608efa5",
+    "Name": "/testcontainers-ryuk-3d48aa7c-514f-403e-b686-179bedb929fd",
+    "ImageId": "sha256:9a5f93e8f9300530b91866bcf41c0b8a5d72f0e5a7b4365167a48df9816cd36e",
+    "RequestedImage": "testcontainers/ryuk:0.14.0@sha256:7c1a8a9a47c780ed0f983770a662f80deb115d95cce3e2daa3d12115b8cd28f0"
+  }
+]

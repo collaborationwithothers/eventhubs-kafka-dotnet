@@ -105,6 +105,66 @@
   <Target Name="ValidateReport">
     <ValidateXunitReport Report="$(Report)" ExpectedAssembly="$(ExpectedAssembly)" />
   </Target>
+  <UsingTask TaskName="PublishPhantomSpikeEvidence" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <EvidenceDirectory ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Runtime.Serialization.Json" />
+      <Using Namespace="System.Xml" />
+      <Using Namespace="System.Xml.Linq" />
+      <Code Type="Method" Language="cs"><![CDATA[
+      public override bool Execute()
+      {
+        try
+        {
+            if (!Directory.Exists(EvidenceDirectory)) throw new InvalidDataException("Missing spike evidence directory.");
+            var experiments = Directory.GetFiles(EvidenceDirectory, "experiment.json", SearchOption.AllDirectories);
+            if (experiments.Length != 1) throw new InvalidDataException("Expected exactly one spike experiment record.");
+            var directory = Path.GetDirectoryName(experiments[0]);
+            foreach (var name in new[] { "experiment.json", "decision.json", "trial-records.json" })
+            {
+                var path = Path.Combine(directory, name);
+                if (!File.Exists(path)) throw new InvalidDataException("Missing spike record: " + name);
+                using (var stream = File.OpenRead(path))
+                using (var reader = JsonReaderWriterFactory.CreateJsonReader(stream, XmlDictionaryReaderQuotas.Max))
+                {
+                    reader.MoveToContent();
+                    if (reader.NodeType != XmlNodeType.Element || reader.GetAttribute("type") != "object")
+                        throw new InvalidDataException("Invalid spike record root: " + name);
+                    if (name == "decision.json")
+                    {
+                        var document = XDocument.Load(reader);
+                        var finding = document.Root.Element("ExistenceFinding");
+                        if (finding == null || (finding.Value != "yes" && finding.Value != "no" && finding.Value != "inconclusive"))
+                            throw new InvalidDataException("Missing or invalid spike finding.");
+                    }
+                    else
+                    {
+                        // Validate large raw traces without materializing their XML string values.
+                        while (reader.Read()) { }
+                    }
+                }
+                if (name != "experiment.json")
+                    Log.LogMessage(Microsoft.Build.Framework.MessageImportance.High, name + ":\n" + File.ReadAllText(path));
+            }
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.High, "Full local spike evidence: " + directory);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Log.LogError("Spike evidence rejected: " + exception.Message);
+            return false;
+        }
+      }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="PublishSpikeEvidence">
+    <PublishPhantomSpikeEvidence EvidenceDirectory="$(EvidenceDirectory)" />
+  </Target>
   <Target Name="SelectTests">
     <SelectNonemptyTestProjects ManifestDirectory="$(ManifestDirectory)" ProjectList="$(ProjectList)" />
   </Target>

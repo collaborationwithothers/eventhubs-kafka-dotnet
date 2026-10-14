@@ -39,10 +39,21 @@ run_tests() {
     local project=$1 name=$2
     local results="$verification_results/$name"
     mkdir -p "$results"
+    local test_status=0 evidence_status=0
+    if [[ "$name" == "Parchwell.Kafka.Tests" ]]; then
+        export PARCHWELL_SPIKE_EVIDENCE_DIRECTORY="$results/spike"
+    fi
     run_logged "$name tests" "$results/test.log" dotnet test \
         --project "$project" --configuration Release --no-build \
         --minimum-expected-tests 1 --results-directory "$results" -- \
-        --report-xunit-xml --report-xunit-xml-filename results.xml
+        --report-xunit-xml --report-xunit-xml-filename results.xml || test_status=$?
+    if [[ "$name" == "Parchwell.Kafka.Tests" ]]; then
+        dotnet msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence \
+            "-p:EvidenceDirectory=$PARCHWELL_SPIKE_EVIDENCE_DIRECTORY" -nologo || evidence_status=$?
+        unset PARCHWELL_SPIKE_EVIDENCE_DIRECTORY
+    fi
+    if [[ "$test_status" -ne 0 ]]; then return "$test_status"; fi
+    if [[ "$evidence_status" -ne 0 ]]; then return "$evidence_status"; fi
     run_logged "$name report" "$results/report.log" dotnet msbuild scripts/dotnet-verification.proj \
         -t:ValidateReport "-p:Report=$results/results.xml" "-p:ExpectedAssembly=$name" -nologo
     cat "$results/report.log"
