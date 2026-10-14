@@ -1,6 +1,6 @@
 # Documentation checks
 
-Run `npm ci --ignore-scripts` and `npm run check:docs` before requesting a documentation review. The command reports a bounded set of local mistakes; warnings are advisory. A completed scan does not establish that factual claims are correct or that every possible documentation error was checked.
+Install dependencies with `npm ci --ignore-scripts`, then run `npm run check:docs` before every cold review as required by AGENTS.md rule 8. Fix each warning or explain in the pull request why it stands; warnings remain advisory in CI. A completed scan does not establish that factual claims are correct or that every possible documentation error was checked.
 
 ## Contract
 
@@ -17,7 +17,7 @@ The command scans tracked files with a `.md` extension, ignoring case, except th
 
 Source IDs are exact: leading zeros are significant. Identifiers must be contiguous within a text node; do not split one identifier across emphasis or other inline markup. Formatting around an entire identifier is supported. A split definition is not registered; an ordinary reference to it is reported as undefined. Detecting malformed definition syntax itself is outside this version's contract.
 
-Code blocks, inline code, HTML and URL destinations are excluded from identifier and punctuation checks. Autolink text and explicit link text that exactly equals its parsed destination are also excluded. Other explicit link labels are prose, including a URL-like label that differs from its destination; the checker does not guess whether a label is a URL. Image descriptions are checked for punctuation only; link and image title attributes are not checked.
+Code blocks, inline code, HTML and URL destinations are excluded from identifier and punctuation checks. Autolink text and direct link text that exactly equals its parsed destination are also excluded. Reference-style link labels and other direct link labels are prose, including a URL-like label that differs from its destination; the checker does not guess whether a label is a URL. Image descriptions are checked for punctuation only; link and image title attributes are not checked.
 
 Complete source definition table rows and source definition list paragraphs are declarations, not reference sites; their descriptions are not checked for identifier references. ADR heading declarations are also excluded from identifier-reference scans. Punctuation is still checked in declarations. Non-ASCII letters in names and unit symbols are allowed.
 
@@ -31,13 +31,11 @@ The checkout is the input. After installing the locked dependencies, the check n
 
 ## Rollout and review
 
-The `docs-advisory` workflow runs the same command and the regression tests. It is not a required status check. A warning is visible in the Actions log without blocking a push or merge; installation, test and execution failures remain failures.
+The `docs-advisory` workflow runs the same command and the regression tests. It is not a required status check. Warnings do not fail the CI job; authors must still fix or explain each warning before the cold review under AGENTS.md rule 8. Installation, test and execution failures remain failures.
 
 Assess findings against this contract. Correct a defect within the supported inputs, record a justified follow-up on the issue, or identify an unsupported input. New capabilities require a scope decision. Do not grow the parser or interpret more prose merely to clear another review comment.
 
 Before proposing a blocking check, record examples of mistakes caught and valid documents rejected during normal use in [issue #42](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/42). Hari decides whether that evidence justifies making it required. Current acceptance tests are regression evidence, not proof of future review savings.
-
-The initial scan reports `S43 is unused.` in the research document because that document has no S43 definition. That sentence describes an unused number rather than citing a source: it is a known false positive of the explicit token contract. It stays visible during the advisory trial; no special English-language exception is added to the checker.
 
 ## Evidence and dependencies
 
