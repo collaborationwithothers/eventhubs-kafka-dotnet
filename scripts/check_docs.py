@@ -90,7 +90,8 @@ SOURCE_TABLE_DEF = re.compile(r"^\| (S\d+) \|")
 SOURCE_LIST_DEF = re.compile(r"^- (S\d+): ")
 SOURCE_REF = re.compile(r"\bS\d+\b")
 DATE = re.compile(r"(?<!\d)(20\d\d)-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-13T16:17Z
-ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b")
+# `#5-failure-modes` is an in-page link anchor, not issue 5
+ISSUE_REF = re.compile(r"(?<![\w/#])#(\d+)\b(?!-[A-Za-z])")
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
@@ -385,7 +386,7 @@ class GitHub:
     """Thin wrapper over `gh api`, so tests can replace it.
 
     `get` returns the parsed JSON, `None` when GitHub says the route does not
-    exist (HTTP 404), and raises Unavailable for anything else: `gh` missing,
+    exist (HTTP 404, or 410 for a deleted issue), and raises Unavailable for anything else: `gh` missing,
     no credentials, a proxy refusal, a rate limit.
     """
 
@@ -402,7 +403,7 @@ class GitHub:
                 return json.loads(r.stdout)
             except json.JSONDecodeError as e:
                 raise Unavailable(f"gh api {route} returned something that is not JSON") from e
-        if "HTTP 404" in r.stderr:
+        if "HTTP 404" in r.stderr or "HTTP 410" in r.stderr:  # 410 Gone: GitHub's answer for a deleted issue
             return None
         raise Unavailable(f"gh api {route}: {r.stderr.strip() or r.stdout.strip() or 'failed'}")
 
@@ -521,7 +522,7 @@ def collision_verdict(gh: GitHub, ours: str, theirs: str) -> str | None:
     if mine is not None and (other is None or mine < other):
         return None
     if mine is None and other is None:
-        return "neither branch has an open pull request yet; the first to open one keeps the number"
+        return "neither branch has an open pull request yet; open one and do not renumber, because the first to open one keeps the number"
     if mine is None:
         return "this branch has no open pull request and that one has, so this branch renumbers"
     return "that branch's pull request opened first, so this branch renumbers"

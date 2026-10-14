@@ -284,7 +284,7 @@ class CheckDocsTest(unittest.TestCase):
         fake = self.root / "bin"
         fake.mkdir()
         gh = fake / "gh"
-        gh.write_text("#!/bin/sh\ncase \"$2\" in\n  */issues/404) echo '{\"message\":\"Not Found\"}'; echo 'gh: Not Found (HTTP 404)' >&2; exit 1;;\n  */issues/403) echo 'gh: Forbidden (HTTP 403)' >&2; exit 1;;\n  */issues/500) echo 'not json';;\n  *) echo '{\"number\": 1}';;\nesac\n")
+        gh.write_text("#!/bin/sh\ncase \"$2\" in\n  */issues/404) echo '{\"message\":\"Not Found\"}'; echo 'gh: Not Found (HTTP 404)' >&2; exit 1;;\n  */issues/403) echo 'gh: Forbidden (HTTP 403)' >&2; exit 1;;\n  */issues/410) echo 'gh: Gone (HTTP 410)' >&2; exit 1;;\n  */issues/500) echo 'not json';;\n  *) echo '{\"number\": 1}';;\nesac\n")
         gh.chmod(0o755)
         old = os.environ["PATH"]
         os.environ["PATH"] = f"{fake}{os.pathsep}{old}"
@@ -292,6 +292,7 @@ class CheckDocsTest(unittest.TestCase):
             api = cd.GitHub("owner/repo")
             self.assertEqual(api.get("issues/1"), {"number": 1})
             self.assertIsNone(api.get("issues/404"))
+            self.assertIsNone(api.get("issues/410"))
             with self.assertRaises(cd.Unavailable):
                 api.get("issues/403")
             with self.assertRaises(cd.Unavailable):
@@ -314,7 +315,7 @@ class CheckDocsTest(unittest.TestCase):
         line = self.line_of("docs/blueprint.md", "### ADR-002 (option")
         prefix = f"docs/blueprint.md:{line}: adr: ADR-002 is also new on branch claude/8-adrs, with a different title; "
         # Neither branch has a pull request: both report.
-        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "neither branch has an open pull request yet; the first to open one keeps the number"])
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [prefix + "neither branch has an open pull request yet; open one and do not renumber, because the first to open one keeps the number"])
         self.assertNotIn("contents/docs/blueprint.md?ref=claude/1-x", gh.asked)
         # Only theirs has a pull request: we renumber.
         gh.routes["pulls?state=open&head=owner:claude/8-adrs"] = [{"created_at": "2026-10-13T10:00:00Z", "number": 8}]
@@ -405,6 +406,12 @@ class CheckDocsTest(unittest.TestCase):
             "AGENTS.md:3: refs: #34 is called a pull request but is an issue",
             "AGENTS.md:3: refs: #7 is called an issue but is a pull request",
         ])
+
+    def test_in_page_link_anchors_are_not_issue_references(self):
+        gh = StubGitHub({"issues/8": {"number": 8}})
+        self.write("AGENTS.md", "# A\n\nSee [modes](#5-failure-modes), [x](#12-Notes) and issue #8.\n")
+        self.assertEqual(self.run_checks(["AGENTS.md"], gh=gh), [])
+        self.assertEqual(gh.asked, ["issues/8"])
 
     def test_invalid_date_cannot_be_waived_but_a_future_one_can(self):
         self.write("AGENTS.md", "# A\n\nPlanned for 2026-13-01. <!-- check-docs: allow date: planned -->\nPlanned for 2026-12-01. <!-- check-docs: allow date: planned -->\n")
