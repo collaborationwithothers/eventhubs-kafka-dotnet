@@ -115,8 +115,9 @@ DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-
 ISSUE_REF = re.compile(r"(?<![\w/#&])#(\d+)\b")
 # Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`, `<#5>`.
 # They are blanked, same length, before references are looked for.
+LINK_LABEL = re.compile(r"\[((?:\\.|[^\[\]\\]){1,999})\]")
 LINK_TARGET = re.compile(
-    r"^ {0,3}\[[^\]\n]+\]:[ \t]*(?:\n[ \t]*)?(?:<[^<>\n]*>|\S+)"
+    r"^ {0,3}\[(?:\\.|[^\[\]\\]){1,999}\]:[ \t]*(?:\n[ \t]*)?(?:<[^<>\n]*>|\S+)"
     r"(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(?:"
     r"\"(?:(?!\n[ \t]*\n)(?:\\.|[^\"\\]))*\""
     r"|'(?:(?!\n[ \t]*\n)(?:\\.|[^'\\]))*'"
@@ -733,6 +734,15 @@ def mask_link_targets(line: str) -> str:
     def blank(text: str) -> str:
         return "".join("\n" if ch == "\n" else " " for ch in text)
 
+    def normalized(label: str) -> str:
+        return re.sub(r"[ \t\n]+", " ", label).strip(" ").casefold()
+
+    definitions = set()
+    for target in LINK_TARGET.finditer(line):
+        content = target.group().lstrip(" ")
+        label = LINK_LABEL.match(content)
+        if label and content[label.end():].startswith(":") and not re.search(r"\n[ \t]*\n", content):
+            definitions.add(normalized(label.group(1)))
     masked = list(line)
     openers: list[tuple[int, bool]] = []
     pos = 0
@@ -748,6 +758,13 @@ def mask_link_targets(line: str) -> str:
             pos += 1
             continue
         _, is_image = openers.pop()
+        label = LINK_LABEL.match(line, pos + 1)
+        if label and normalized(label.group(1)) in definitions:
+            masked[pos + 1:label.end()] = blank(line[pos + 1:label.end()])
+            if not is_image:
+                openers = [(p, image) for p, image in openers if image]
+            pos = label.end()
+            continue
         if not line.startswith("](", pos):
             pos += 1
             continue
@@ -797,6 +814,9 @@ def check_issue_references(doc: Doc, gh: GitHub, cache: dict[int, str | None]) -
     """
     out = []
     for n, line in doc.references():
+        # Formatting does not change whether prose calls a reference an issue
+        # or a pull request, including grouped and linked references.
+        line = re.sub(r"(?<!\\)[*_~\[\]]", "", line)
         for m in ISSUE_REF.finditer(line):
             num = int(m.group(1))
             if DISCUSSION_REF.search(line[:m.start()]):

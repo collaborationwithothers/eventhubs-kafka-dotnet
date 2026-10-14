@@ -1150,6 +1150,43 @@ class CheckDocsTest(unittest.TestCase):
                 self.assertIn("README.MD:2: sources: S404 is not defined", result.stdout)
                 self.assertIn('guide.Md:1: xref: README.MD has no heading "Missing"', result.stdout)
 
+    def test_full_reference_links_hide_only_the_defined_destination_label(self):
+        for label, definition in (('S404', 'S404'), ('ADR-999', 'adr-999'), ('#999999', '#999999'),
+                                  ('S404\n ADR-999', 's404 ADR-999'), (r'S404\]', r's404\]')):
+            with self.subTest(label=label):
+                self.write("README.md", f'[Visible S405][{label}]\n\n[{definition}]: https://example.test\n')
+                gh = StubGitHub({})
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+                    "README.md:1: sources: S405 is not defined in docs/blueprint.md",
+                ])
+                self.assertEqual(gh.asked, [])
+        for text in ('[S404]', '[S404][]', '[upstream][S404]', '[upstream] [S404]'):
+            with self.subTest(text=text):
+                # An undefined full-reference label stays literal; shortcut and
+                # collapsed labels are themselves the visible link text.
+                definitions = '' if text == '[upstream][S404]' else '\n\n[S404]: https://example.test\n'
+                self.write("README.md", text + definitions)
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    "README.md:1: sources: S404 is not defined in docs/blueprint.md",
+                ])
+
+    def test_issue_kind_claims_survive_inline_markdown_formatting(self):
+        gh = StubGitHub({"issues/12": {"number": 12, "pull_request": {}}, "issues/13": {"number": 13}})
+        for text in ('issue [#12](https://example.test)', 'issue **#12**', '**issue** _#12_',
+                     'issue [#12][ref]\n\n[ref]: https://example.test', 'issue ~~#12~~',
+                     'issues [#13](https://example.test), **#12**'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+                    "README.md:1: refs: #12 is called an issue but is a pull request",
+                ])
+        self.write("README.md", 'PRs **#12** and [#13](https://example.test).\n')
+        self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+            "README.md:1: refs: #13 is called a pull request but is an issue",
+        ])
+        self.write("README.md", 'PRs **#12**, openai/codex#1 and **#13**.\n')
+        self.assertEqual(self.run_checks(["README.md"], gh=gh), [])
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):
