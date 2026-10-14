@@ -24,6 +24,8 @@ planned or scheduled. Mark its line `<!-- check-docs: allow date: <why> -->`.
 A value that is not a calendar date (`date-invalid`) cannot be waived.
 Lines with multiple future-date occurrences cannot be waived; put the planned
 date on its own line so its waiver cannot hide another future date.
+The visible clause containing that date must say planned or scheduled, or
+state a retirement as "Retires on DATE"; a reason inside the waiver is not enough.
 
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
@@ -70,6 +72,7 @@ import datetime as dt
 import json
 import os
 import re
+import string
 import subprocess
 import sys
 import unicodedata
@@ -129,7 +132,8 @@ GROUP_SEPARATOR = re.compile(r"(?:,?\s+(?:and|or)\s+|\s*[,&]\s*)$", re.I)
 PREVIOUS_REF = re.compile(r"(?<![\w/#])#\d+$")
 DISCUSSION_REF = re.compile(r"(?:^|[\s(\[])discussions?(?:\s+#\d+(?:,|\s+and|\s+or)?)*(?:\s+(?:and|or))?\s+$", re.I)
 # `file.md "Heading"`, `file.md, "Heading"` and `file.md's "Heading"`
-FILE_HEADING_REF = re.compile(r"(?<![\w./:-])([\w.-]+(?:/[\w.-]+)*\.md)(?:,|'s)? \"([^\"]+)\"")
+FILE_HEADING_REF = re.compile(r"(?<![\w./:-])([\w.-]+(?:/[\w.-]+)*\.[mM][dD])(?:,|'s)? \"([^\"]+)\"")
+BARE_URL = re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s<>\"'`|]+", re.I)
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
 BLUEPRINT_SECTION_REF = re.compile(r"docs/blueprint\.md section (\d+)\b")
 HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
@@ -379,7 +383,7 @@ def pinned_skill_prefixes(root: Path) -> tuple[str, ...]:
 
 def tracked_markdown(root: Path) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files", "-z", "*.md"], cwd=root, check=True, capture_output=True, text=True
+        ["git", "ls-files", "-z", ":(icase)*.md"], cwd=root, check=True, capture_output=True, text=True
     ).stdout.split("\0")
     pinned = pinned_skill_prefixes(root)
     return [p for p in out if p and not p.startswith(pinned)]
@@ -586,9 +590,13 @@ def check_cross_references(doc: Doc, docs: dict[str, Doc], root: Path) -> list[F
     out = []
 
     def headings_of(path: str) -> list[str] | None:
-        if path in docs:
-            return docs[path].headings()
-        f = root / path
+        f = (root / path).resolve()
+        try:
+            canonical = f.relative_to(root.resolve()).as_posix()
+        except ValueError:
+            return None
+        if canonical in docs:
+            return docs[canonical].headings()
         if f.is_file():
             return Doc(path, f.read_text(encoding="utf-8").split("\n")).headings()
         return None
@@ -651,38 +659,112 @@ class GitHub:
         raise Unavailable(f"gh api {route}: {r.stderr.strip() or r.stdout.strip() or 'failed'}")
 
 
+def inline_link_end(text: str, start: int) -> int | None:
+    """End of a valid destination/title and closing ')', per CommonMark 0.31.2 Links."""
+    def whitespace(pos: int) -> int | None:
+        begin = pos
+        while pos < len(text) and text[pos] in " \t\n":
+            pos += 1
+        return pos if text[begin:pos].count("\n") <= 1 else None
+
+    def escaped(pos: int) -> bool:
+        return text[pos] == "\\" and pos + 1 < len(text) and text[pos + 1] in string.punctuation
+
+    def title(pos: int) -> int | None:
+        if pos >= len(text) or text[pos] not in "\"'(":
+            return None
+        closer = ")" if text[pos] == "(" else text[pos]
+        pos += 1
+        while pos < len(text):
+            if re.match(r"\n[ \t]*\n", text[pos:]):
+                return None
+            if escaped(pos):
+                pos += 2
+                continue
+            if text[pos] == closer:
+                end = whitespace(pos + 1)
+                return end + 1 if end is not None and end < len(text) and text[end] == ")" else None
+            if closer == ")" and text[pos] == "(":
+                return None
+            pos += 1
+        return None
+
+    pos = whitespace(start)
+    if pos is None or pos >= len(text):
+        return None
+    # A destination may be omitted before a title.
+    title_only = title(pos) if pos > start else None
+    if title_only is not None:
+        return title_only
+    if text[pos] == "<":
+        pos += 1
+        while pos < len(text) and text[pos] != ">":
+            if text[pos] in "\n<":
+                return None
+            pos += 2 if escaped(pos) else 1
+        if pos >= len(text):
+            return None
+        pos += 1
+    else:
+        depth = 0
+        while pos < len(text):
+            ch = text[pos]
+            if escaped(pos):
+                pos += 2
+                continue
+            if ch.isspace() or ord(ch) < 32 or ch == ")" and depth == 0:
+                break
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            pos += 1
+        if depth:
+            return None
+    end = whitespace(pos)
+    if end is None or end >= len(text):
+        return None
+    if text[end] == ")":
+        return end + 1
+    return title(end) if end > pos else None
+
+
 def mask_link_targets(line: str) -> str:
     def blank(text: str) -> str:
         return "".join("\n" if ch == "\n" else " " for ch in text)
 
     masked = list(line)
+    openers: list[tuple[int, bool]] = []
     pos = 0
-    while (start := line.find("](", pos)) >= 0:
-        depth, title_quote, end = 1, None, start + 2
-        while end < len(line) and depth:
-            ch = line[end]
-            if ch == "\n" and re.match(r"\n[ \t]*\n", line[end:]):
-                break  # A link cannot span a blank line / paragraph boundary.
-            if ch == "\\":
-                end += 2
-                continue
-            if title_quote:
-                if ch == title_quote:
-                    title_quote = None
-            elif ch in "\"'" and depth == 1 and line[end - 1].isspace():
-                title_quote = ch
-            elif ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-            end += 1
-        if depth == 0:
+    while pos < len(line):
+        if line[pos] == "\\":
+            pos += 2
+            continue
+        if line[pos] == "\n" and re.match(r"\n[ \t]*\n", line[pos:]):
+            openers.clear()
+        if line[pos] == "[":
+            openers.append((pos, pos > 0 and line[pos - 1] == "!"))
+        if line[pos] != "]" or not openers:
+            pos += 1
+            continue
+        _, is_image = openers.pop()
+        if not line.startswith("](", pos):
+            pos += 1
+            continue
+        start = pos
+        end = inline_link_end(line, start + 2)
+        if end is not None:
             masked[start:end] = blank(line[start:end])
-        pos = max(end, start + 2)
-    return LINK_TARGET.sub(
+            if not is_image:
+                openers = [(p, image) for p, image in openers if image]
+            pos = end
+        else:
+            pos = start + 2
+    linked = LINK_TARGET.sub(
         lambda m: m.group(0) if re.search(r"\n[ \t]*\n", m.group(0)) else blank(m.group(0)),
         "".join(masked),
     )
+    return BARE_URL.sub(lambda m: blank(m.group(0)), linked)
 
 
 def expected_kind(before: str) -> str | None:
@@ -885,13 +967,32 @@ def allowed(doc: Doc, f: Finding, today: dt.date) -> bool:
         return False
     line = doc.lines[f.line - 1]
     future_dates = 0
+    future_text = ""
     for match in DATE.finditer(line):
         try:
             date = dt.date.fromisoformat(match.group())
         except ValueError:
             continue  # Invalid calendar dates are never waivable.
-        future_dates += date > today
-    return future_dates == 1 and any(m.group(1) == f.cls for m in ALLOW.finditer(line))
+        if date > today:
+            future_dates += 1
+            future_text = match.group()
+    visible = dict(doc.prose()).get(f.line, "")
+    qualified = False
+    for clause in re.split(r"[.;!?]", visible):
+        if not future_text or future_text not in clause:
+            continue
+        before, after = clause.split(future_text, 1)
+        earlier_dates = list(DATE.finditer(before))
+        if earlier_dates:
+            before = before[earlier_dates[-1].end():]
+        planned_before = re.search(r"\b(?:planned|scheduled)\b", before, re.I)
+        negated = re.search(r"\b(?:not|never|no longer)\s+(?:\w+\s+){0,2}(?:planned|scheduled)\b", before, re.I)
+        qualified = qualified or bool(
+            planned_before and not negated
+            or re.search(r"\bRetires on\s*$", before, re.I)
+            or re.match(r"\s*\(?\s*(?:planned|scheduled)\b", after, re.I)
+        )
+    return future_dates == 1 and qualified and any(m.group(1) == f.cls for m in ALLOW.finditer(line))
 
 
 def current_branch(root: Path) -> str:
@@ -947,7 +1048,7 @@ def main(argv: list[str]) -> int:
         print(f"check-docs: a file is outside the repository ({e})", file=sys.stderr)
         return 2
     paths = list(dict.fromkeys(given)) if args.files else tracked_markdown(root)
-    paths = [p for p in paths if p.endswith(".md")]
+    paths = [p for p in paths if p.lower().endswith(".md")]
     missing = [p for p in paths if not (root / p).is_file()]
     if missing:
         print(f"check-docs: not found: {', '.join(missing)}", file=sys.stderr)

@@ -1059,6 +1059,97 @@ class CheckDocsTest(unittest.TestCase):
         self.write("README.md", 'Invalid 2027-13-01; next review planned 2027-02-01. <!-- check-docs: allow date: planned review -->\n')
         self.assertEqual(self.run_checks(["README.md"]), ["README.md:1: date-invalid: 2027-13-01 is not a calendar date"])
 
+    def test_bare_urls_do_not_create_or_satisfy_source_references(self):
+        for definition in ('- S1: https://example.test/S404/ADR-999', '| S1 | https://example.test/S404/ADR-999 |'):
+            with self.subTest(definition=definition):
+                self.write("README.md", "Claim S1.\n" + definition + " (cross-check S405).\n")
+                self.assertEqual(self.run_checks(["README.md"]), ["README.md:2: sources: S405 is not defined in README.md"])
+        self.write("README.md", "Claim S1.\n- S1: https://example.test/S404\n- S404: https://other.test\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:3: sources: S404 is defined but never referenced (write `- S404: retired ...` to keep the number without a source)",
+        ])
+
+    def test_malformed_link_labels_do_not_hide_references(self):
+        for text in ('upstream](S404 ADR-999 #999999)', r'\[upstream](S404 ADR-999 #999999)',
+                     '[earlier\n\nupstream](S404 ADR-999 #999999)', '[earlier] text](S404 ADR-999 #999999)'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                gh = StubGitHub({})
+                out = self.run_checks(["README.md"], gh=gh)
+                self.assertEqual(len(out), 3)
+                self.assertTrue(any(": adr: ADR-999 has no heading" in f for f in out))
+                self.assertTrue(any(": sources: S404 is not defined" in f for f in out))
+                self.assertEqual(gh.asked, ["issues/999999"])
+        for text in ('[label [nested]](S404)', r'[label \] bracket](S404)', '[![image](S404)](S405)'):
+            with self.subTest(text=text):
+                self.write("README.md", text + " Visible S406.\n")
+                self.assertEqual(self.run_checks(["README.md"]), ["README.md:1: sources: S406 is not defined in docs/blueprint.md"])
+
+    def test_cross_references_cannot_resolve_external_files_or_symlinks(self):
+        with tempfile.TemporaryDirectory() as outside:
+            external = Path(outside) / "outside.md"
+            external.write_text("# Heading\n")
+            traversal = "../" + Path(outside).name + "/outside.md"
+            (self.root / "escape.md").symlink_to(external)
+            for target in (traversal, 'escape.md'):
+                with self.subTest(target=target):
+                    self.write("README.md", f'See {target} "Heading".\n')
+                    self.assertEqual(self.run_checks(["README.md"]), [f"README.md:1: xref: {target} does not exist"])
+            self.write("GUIDE.MD", "# Heading\n")
+            self.write("README.md", 'See docs/../GUIDE.MD "Heading".\n')
+            self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_invalid_link_destination_or_title_keeps_references_visible(self):
+        for text in ('[details](S404 ADR-999 #999999)', '[details](S404\nADR-999 #999999)',
+                     '[details](<S404\nADR-999 #999999>)', '[details](url "S404 ADR-999 #999999)',
+                     r'[details](S404\ ADR-999 #999999)'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                gh = StubGitHub({})
+                out = self.run_checks(["README.md"], gh=gh)
+                self.assertEqual(len(out), 3)
+                self.assertTrue(any(": adr: ADR-999 has no heading" in f for f in out))
+                self.assertTrue(any(": sources: S404 is not defined" in f for f in out))
+                self.assertEqual(gh.asked, ["issues/999999"])
+
+    def test_valid_link_destination_and_title_forms_are_excluded(self):
+        for text in ('[details](<S404 ADR-999 #999999>)', '[details](<S404)ADR-999> "#999999")',
+                     '[details](S404(and(ADR-999)) "#999999")', '[details](S404 (ADR-999 #999999))',
+                     '[details]( "S404 ADR-999 #999999")', r'[details](S404\(ADR-999\) "#999999")'):
+            with self.subTest(text=text):
+                self.write("README.md", text + " Visible S405.\n")
+                gh = StubGitHub({})
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), ["README.md:1: sources: S405 is not defined in docs/blueprint.md"])
+                self.assertEqual(gh.asked, [])
+
+    def test_date_waivers_require_visible_qualification_for_the_date(self):
+        for text in ('Released 2027-01-01.', 'Released 2027-01-01. <!-- planned -->',
+                     'Released 2027-01-01; other work is scheduled.', '`Planned` release 2027-01-01.',
+                     'Not planned for 2027-01-01.', 'Scheduled 2026-01-01, released 2027-01-01.'):
+            with self.subTest(text=text):
+                self.write("README.md", text + ' <!-- check-docs: allow date: planned release -->\n')
+                self.assertEqual(self.run_checks(["README.md"]), ["README.md:1: date: 2027-01-01 is after today (2026-10-13)"])
+        for text in ('Release planned for 2027-01-01.', 'Scheduled release: 2027-01-01.',
+                     'Release 2027-01-01 (planned).', 'Retires on 2027-01-01.'):
+            with self.subTest(text=text):
+                self.write("README.md", text + ' <!-- check-docs: allow date: announced schedule -->\n')
+                self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_uppercase_markdown_is_discovered_checked_and_cross_referenced(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        self.write("README.MD", "# Heading\nClaim S404.\n")
+        self.write("guide.Md", 'See README.MD "Missing".\n')
+        subprocess.run(["git", "add", "README.MD", "guide.Md", "docs/blueprint.md"], cwd=self.root, check=True)
+        self.assertEqual(sorted(cd.tracked_markdown(self.root)), ["README.MD", "docs/blueprint.md", "guide.Md"])
+        script = str(HERE.parent / "check_docs.py")
+        env = dict(os.environ, GIT_DIR=str(self.root / ".git"), GIT_WORK_TREE=str(self.root))
+        for paths in ([], ["README.MD", "guide.Md"]):
+            with self.subTest(paths=paths):
+                result = subprocess.run([sys.executable, script, "--offline", "--today", "2026-10-13", *paths], cwd=self.root, env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("README.MD:2: sources: S404 is not defined", result.stdout)
+                self.assertIn('guide.Md:1: xref: README.MD has no heading "Missing"', result.stdout)
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):
