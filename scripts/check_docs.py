@@ -26,9 +26,10 @@ A value that is not a calendar date (`date-invalid`) cannot be waived.
 Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
 the current directory or absolute; they are read as repository-relative.
-Headings, ADR bodies, source definitions and references, and cross-references
-inside fenced code blocks or HTML comments are not visible document prose
-and are skipped. Date waivers are still read from the original lines.
+Code blocks and HTML comments are excluded from structural and reference
+checks. Inline code spans are also excluded from reference checks; heading
+titles retain their inline code text. Date waivers are still read from the
+original lines.
 
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
@@ -96,6 +97,7 @@ ADR_LIKE_HEADING = re.compile(r"^#{1,6}\s+ADR\s*[-_]?\s*\d", re.I)
 # The heading annotation that selects ADR_OPTION_PARTS
 ADR_OPTION_HEADING = re.compile(r"^### ADR-\d{3} \(option, deferred\)")
 ADR_REF = re.compile(r"\bADR-(\d{3})\b")
+ADR_LIKE_REF = re.compile(r"\bADR[ \t]*[-_]?[ \t]*\d+\b", re.I)
 ADR_PARTS = ("**Context.**", "**Options considered.**", "**Decision.**", "**Consequences.**")
 # An ADR recorded as an option, not taken: `### ADR-NNN (option, deferred): ...`
 ADR_OPTION_PARTS = ("**Context.**", "**Option.**", "**Status.**")
@@ -139,6 +141,14 @@ def atx_heading(line: str) -> tuple[int, str] | None:
     return len(m.group(1)), title
 
 
+def opening_fence(line: str) -> re.Match | None:
+    """Backtick fence info strings cannot contain backticks (CommonMark 0.31.2)."""
+    match = FENCE.match(line)
+    if match and (match.group(1)[0] != "`" or "`" not in match.group(2)):
+        return match
+    return None
+
+
 @dataclass(frozen=True)
 class Finding:
     path: str
@@ -159,7 +169,7 @@ class Doc:
     def text(self) -> str:
         return "\n".join(self.lines)
 
-    def semantic_lines(self) -> list[tuple[str, bool]]:
+    def semantic_lines(self, mask_inline: bool = False) -> list[tuple[str, bool]]:
         """Mask comments and exclude code blocks while preserving original line numbers."""
         out, fence, in_comment = [], None, False
         inline_end = None
@@ -170,15 +180,16 @@ class Doc:
             if index <= quote_end:
                 continue
             visible, pos = "", 0
+            inline_present = inline_end is not None
             expanded = line.expandtabs(4)
             indent = len(expanded) - len(expanded.lstrip(" "))
             base_indent = 0
             if inline_end is not None:
                 if index < inline_end[0]:
-                    out.append((line, False))
+                    out.append((" " * len(line) if mask_inline else line, False))
                     continue
                 pos = inline_end[1]
-                visible, inline_end = line[:pos], None
+                visible, inline_end = (" " * pos if mask_inline else line[:pos]), None
             if fence is not None:
                 # A list's fence is relative to its content indentation. Leaving
                 # that container also ends an otherwise unclosed fenced block.
@@ -225,12 +236,12 @@ class Doc:
                         start = base_indent + marker.end()
                         prefixes.append(candidate[:start])
                         quoted.append(candidate[start:])
-                    nested = Doc(self.path, quoted).semantic_lines()
+                    nested = Doc(self.path, quoted).semantic_lines(mask_inline)
                     out.extend((prefix + text, excluded) for prefix, (text, excluded) in zip(prefixes, nested))
                     quote_end = index + len(quoted) - 1
                     paragraph = False
                     continue
-            m = FENCE.match(expanded[base_indent:]) if not in_comment and pos == 0 else None
+            m = opening_fence(expanded[base_indent:]) if not in_comment and pos == 0 else None
             if m:
                 fence = (m.group(1)[0], len(m.group(1)), base_indent)
                 paragraph = False
@@ -256,29 +267,39 @@ class Doc:
                             pos, in_comment = token.start(), True
                     elif token.group().startswith("`"):
                         end = self.code_span_end(index, token.end(), token.group())
+                        inline_present = inline_present or end is not None
                         if end is not None and end[0] > index:
-                            visible += line[token.start():]
+                            visible += " " * (len(line) - token.start()) if mask_inline else line[token.start():]
                             inline_end = end
                             break
                         pos = end[1] if end is not None else token.end()
-                        visible += line[token.start():pos]
+                        visible += " " * (pos - token.start()) if mask_inline and end is not None else line[token.start():pos]
                     else:
                         visible += token.group()
                         pos = token.end()
-            m = FENCE.match(visible)
+            m = opening_fence(visible)
             if m:
                 fence = (m.group(1)[0], len(m.group(1)), 0)
             out.append((visible, fence is not None))
-            paragraph = bool(visible.strip()) and not (fence or atx_heading(visible) or SETEXT.match(visible) or THEMATIC_BREAK.match(visible))
+            paragraph = (bool(visible.strip()) or inline_present) and not (fence or atx_heading(visible) or SETEXT.match(visible) or THEMATIC_BREAK.match(visible))
         return out
 
     def code_span_end(self, index: int, start: int, delimiter: str) -> tuple[int, int] | None:
         """Find a matching backtick run before a paragraph or explicit block boundary."""
         closing = re.compile(r"(?<!`)" + re.escape(delimiter) + r"(?!`)")
+        first_item = LIST_ITEM.match(self.lines[index])
         for n in range(index, len(self.lines)):
             line = self.lines[n]
-            if n > index and (not line.strip() or HEADING.match(line) or FENCE.match(line)):
-                break
+            if n > index:
+                item = LIST_ITEM.match(line)
+                list_boundary = item and (
+                    first_item is not None and len(item.group(1)) <= len(first_item.group(1))
+                    or len(item.group(1)) <= 3 and item.group(4) and item.group(2) in ("-", "+", "*", "1.", "1)")
+                )
+                if (HEADING.match(self.lines[index]) or not line.strip() or HEADING.match(line)
+                        or opening_fence(line) or THEMATIC_BREAK.match(line) or SETEXT.match(line)
+                        or BLOCKQUOTE.match(line) or list_boundary):
+                    break
             match = closing.search(line, start if n == index else 0)
             if match:
                 return n, match.end()
@@ -288,9 +309,9 @@ class Doc:
         """Per line: excluded as fenced or indented code, fence lines included."""
         return [f for _, f in self.semantic_lines()]
 
-    def prose(self) -> list[tuple[int, str]]:
+    def prose(self, mask_inline: bool = True) -> list[tuple[int, str]]:
         """`(line number, visible text)` outside code blocks and HTML comments."""
-        return [(n, line) for n, (line, f) in enumerate(self.semantic_lines(), 1) if not f]
+        return [(n, line) for n, (line, f) in enumerate(self.semantic_lines(mask_inline), 1) if not f]
 
     def heading_records(self) -> list[tuple[int, int, str]]:
         """Line number, level and normalized title for ATX and Setext headings.
@@ -301,7 +322,7 @@ class Doc:
         out = []
         paragraph: list[tuple[int, str]] = []
         previous = 0
-        for n, line in self.prose():
+        for n, line in self.prose(mask_inline=False):
             if n != previous + 1:
                 paragraph = []
             previous = n
@@ -325,7 +346,7 @@ class Doc:
 
     def atx_lines(self) -> list[tuple[int, str]]:
         """ATX headings in canonical form, with source line numbers retained."""
-        return [(n, f"{'#' * heading[0]} {heading[1]}") for n, line in self.prose() if (heading := atx_heading(line))]
+        return [(n, f"{'#' * heading[0]} {heading[1]}") for n, line in self.prose(mask_inline=False) if (heading := atx_heading(line))]
 
 
 # --- discovery --------------------------------------------------------------
@@ -441,6 +462,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
 
     referenced: set[str] = set()
     for n, line in doc.prose():
+        line = mask_link_targets(line)
         definition = SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line)
         if definition:
             line = line[definition.end():]
@@ -487,6 +509,10 @@ def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
                     out.append(Finding(doc.path, n, "adr", f"ADR-{m.group(1)} heading repeats line {seen[m.group(1)]}"))
                 seen.setdefault(m.group(1), n)
     for n, line in doc.prose():
+        line = mask_link_targets(line)
+        for m in ADR_LIKE_REF.finditer(line):
+            if ADR_REF.fullmatch(m.group()) is None:
+                out.append(Finding(doc.path, n, "adr", f"{m.group()} is not in the form ADR-NNN (three digits)"))
         for m in ADR_REF.finditer(line):
             if m.group(1) not in defined:
                 out.append(Finding(doc.path, n, "adr", f"ADR-{m.group(1)} has no heading in {BLUEPRINT}"))
@@ -512,7 +538,8 @@ def check_adr_format(doc: Doc) -> list[Finding]:
     for i, start in enumerate(starts):
         end = starts[i + 1] - 1 if i + 1 < len(starts) else len(doc.lines)
         end = min([end] + [n - 1 for n in boundaries if start < n <= end])
-        body = [line for n, line in doc.prose() if start < n <= end]
+        body_records = [(n, line) for n, line in doc.prose() if start < n <= end]
+        body = [line for _, line in body_records]
         for stop, line in enumerate(body):
             if THEMATIC_BREAK.match(line):
                 body = body[:stop]
@@ -522,8 +549,12 @@ def check_adr_format(doc: Doc) -> list[Finding]:
         if not first.startswith(parts[0]):
             out.append(Finding(doc.path, start, "adr-format", f"first paragraph does not start with {parts[0]}"))
         last = -1
+        structural = dict(doc.prose(mask_inline=False))
         for part in parts:
-            at = [k for k, l in enumerate(body) if l.startswith(part)]
+            at = [k for k, l in enumerate(body) if l.startswith(part) and (
+                k == 0 or not structural.get(body_records[k][0] - 1, "").strip()
+                or atx_heading(structural.get(body_records[k][0] - 1, ""))
+            )]
             if not at:
                 out.append(Finding(doc.path, start, "adr-format", f"missing {part}"))
                 continue
@@ -710,6 +741,9 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
         if titles_here[num] != main_titles[num]:
             out.append(Finding(BLUEPRINT, here[num], "adr", f"ADR-{num} has a different heading on {DEFAULT_BRANCH}; update this branch or renumber the new decision"))
     new_here = {k: v for k, v in here.items() if k not in on_main}
+    for num in sorted(new_here):
+        if num < max(on_main, default="000") and num not in reserved:
+            out.append(Finding(BLUEPRINT, new_here[num], "adr", f"ADR-{num} is below ADR-{max(on_main)}, the highest on {DEFAULT_BRANCH}; renumber the new decision"))
     if not new_here:
         return out
     candidates = {(gh.slug, b["name"]) for b in all_branches(gh)}

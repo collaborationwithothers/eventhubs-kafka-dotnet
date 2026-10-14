@@ -916,6 +916,105 @@ class CheckDocsTest(unittest.TestCase):
                     f"README.md:{self.line_of('README.md', 'Outside S405')}: sources: S405 is not defined in docs/blueprint.md",
                 ])
 
+    def test_new_zero_adr_cannot_bypass_main_allocation(self):
+        ours = {cd.BLUEPRINT: cd.Doc(cd.BLUEPRINT, ["### ADR-000: New"])}
+        gh = StubGitHub({"contents/docs/blueprint.md?ref=main": b64("### ADR-001: First")})
+        self.assertEqual([f.message for f in cd.check_adr_branch_collisions(ours, gh, "ours")], [
+            "ADR-000 is below ADR-001, the highest on main; renumber the new decision",
+        ])
+        gh.routes["contents/docs/blueprint.md?ref=main"] = b64("### ADR-000: New")
+        self.assertEqual(cd.check_adr_branch_collisions(ours, gh, "ours"), [])
+
+    def test_reference_scanners_ignore_link_targets_but_keep_labels(self):
+        self.write("README.md", '# R\n[upstream](https://example.test/S404/ADR-999 "S405 ADR-12")\n[ref]: https://example.test/S406/ADR-998 "S407"\n<https://example.test/S408/ADR-997>\n[Visible S409 and ADR-996](https://example.test)\n')
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:5: adr: ADR-996 has no heading in docs/blueprint.md",
+            "README.md:5: sources: S409 is not defined in docs/blueprint.md",
+        ])
+        self.write("README.md", '- S1: [upstream](https://example.test/S1)\n')
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:1: sources: S1 is defined but never referenced (write `- S1: retired ...` to keep the number without a source)",
+        ])
+
+    def test_invalid_backtick_fence_openers_do_not_hide_references(self):
+        for prefix in ("", "   ", "> ", "- "):
+            with self.subTest(prefix=prefix):
+                self.write("README.md", prefix + "``` bad` info\n#999999 and S404.\n")
+                gh = StubGitHub({})
+                out = self.run_checks(["README.md"], gh=gh)
+                self.assertEqual(len(out), 2)
+                self.assertTrue(any(": refs: #999999 does not exist" in f for f in out))
+                self.assertIn("README.md:2: sources: S404 is not defined in docs/blueprint.md", out)
+                self.assertEqual(gh.asked, ["issues/999999"])
+        self.write("README.md", "~~~ bad` info\nS404\n~~~\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_inline_code_references_are_examples_and_preserve_visible_prose(self):
+        for example in (
+            '`#999999 S999 ADR-999 ADR-12 MISSING.md "Missing"`',
+            '``#999999 ` S999 ADR-999``',
+            '`#999999\nS999 ADR-999`',
+            '> `#999999 S999 ADR-999`',
+            '- `#999999 S999 ADR-999`',
+        ):
+            with self.subTest(example=example):
+                self.write("README.md", example + " S404.\n")
+                gh = StubGitHub({})
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+                    f"README.md:{self.line_of('README.md', ' S404.')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+                self.assertEqual(gh.asked, [])
+        self.write("README.md", "- S1: https://example.test\n\n`S1`\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:1: sources: S1 is defined but never referenced (write `- S1: retired ...` to keep the number without a source)",
+        ])
+
+    def test_inline_code_does_not_erase_heading_titles_or_unmatched_prose(self):
+        doc = cd.Doc("GUIDE.md", ['# Use `client`', '### ADR-001: Use `client`'])
+        self.assertEqual(doc.headings(), ['Use `client`', 'ADR-001: Use `client`'])
+        self.assertEqual(cd.adr_titles(doc), {'001': '### ADR-001: Use `client`'})
+        for text in ('Unmatched ` S404.', 'Escaped \u005c\u005c` S404.', '`code`\n    S404.'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+
+    def test_malformed_adr_references_are_reported_without_heading_or_link_noise(self):
+        for reference in ('ADR-12', 'ADR-0012', 'ADR 012', 'adr-012', 'ADR_012', 'ADR- 012'):
+            with self.subTest(reference=reference):
+                self.write("README.md", f"See {reference}.\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:1: adr: {reference} is not in the form ADR-NNN (three digits)",
+                ])
+        self.write("README.md", "See ADR-001 and [upstream](https://example.test/ADR-12).\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_inline_code_cannot_cross_heading_or_container_boundaries(self):
+        for text in ('# `S999\nS404`', '` S999\n- S404\n`', '` S999\n> S404\n`',
+                     '` S999\n---\nS404`', '- `S999\n- S404`'):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                self.assertEqual(self.run_checks(["README.md"]), sorted([
+                    f"README.md:{self.line_of('README.md', 'S999')}: sources: S999 is not defined in docs/blueprint.md",
+                    f"README.md:{self.line_of('README.md', 'S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ]))
+
+    def test_adr_parts_must_start_separate_paragraphs(self):
+        parts = ["**Context.** C.", "**Options considered.** A.", "**Decision.** A.", "**Consequences.** C."]
+        for separator in ("\n", "  \n"):
+            with self.subTest(separator=separator):
+                doc = cd.Doc(cd.BLUEPRINT, ("### ADR-001: First\n\n" + separator.join(parts)).split("\n"))
+                self.assertEqual([f.message for f in cd.check_adr_format(doc)], [
+                    "missing **Options considered.**", "missing **Decision.**", "missing **Consequences.**",
+                ])
+        for boundary in ("\n\n", "\n\n```\nexample\n```\n", "\n#### Detail\n"):
+            with self.subTest(boundary=boundary):
+                doc = cd.Doc(cd.BLUEPRINT, ("### ADR-001: First\n" + boundary.join(parts)).split("\n"))
+                self.assertEqual(cd.check_adr_format(doc), [])
+        doc = cd.Doc(cd.BLUEPRINT, ("### ADR-001: First\n\n`example`\n" + "\n\n".join(parts)).split("\n"))
+        self.assertIn("missing **Context.**", [f.message for f in cd.check_adr_format(doc)])
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):
