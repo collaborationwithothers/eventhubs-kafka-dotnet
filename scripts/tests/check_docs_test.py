@@ -643,6 +643,142 @@ class CheckDocsTest(unittest.TestCase):
         with patch.dict(os.environ, env, clear=True), patch.object(cd.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "local-work\n")):
             self.assertEqual(cd.current_branch(self.root), "local-work")
 
+    # --- hidden prose, heading syntax and complete ADR collision discovery -----
+
+    def test_html_comments_cannot_define_sources_or_supply_citation_usage(self):
+        self.write("README.md", "# R\n\nClaim (S99).\n<!--\n- S99: https://example.test\n-->\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:3: sources: S99 is not defined in docs/blueprint.md",
+        ])
+        self.write("README.md", "# R\n\n- S1: https://example.test\n<!-- S1 -->\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:3: sources: S1 is defined but never referenced (write `- S1: retired ...` to keep the number without a source)",
+        ])
+
+    def test_hidden_adr_parts_headings_and_references_are_not_prose(self):
+        self.write("docs/blueprint.md", BLUEPRINT_OK.replace("**Decision.** A.", "<!--\n**Decision.** A.\n-->"))
+        self.write("README.md", '# R\n<!--\n## Hidden\nADR-999, S999, issue #999 and MISSING.md "Hidden".\n-->\nSee README.md "Hidden".\n')
+        gh = StubGitHub({})
+        self.assertEqual(self.run_checks(["README.md"], gh=gh), [
+            'README.md:6: xref: README.md has no heading "Hidden"',
+        ])
+        self.assertEqual(gh.asked, [])
+        n = self.line_of("docs/blueprint.md", "### ADR-001")
+        self.assertEqual(self.run_checks(["docs/blueprint.md"]), [
+            f"docs/blueprint.md:{n}: adr-format: missing **Decision.**",
+        ])
+
+    def test_inline_and_multiline_comments_preserve_visible_references_and_lines(self):
+        self.write("README.md", "# R\n<!-- S999 --> See S1. <!-- S888 -->\n<!-- hidden\nS777 --> Claim S404. <!-- S666 -->\n<!-- unclosed S555\nS444\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:4: sources: S404 is not defined in docs/blueprint.md",
+        ])
+
+    def test_fences_in_comments_and_comments_in_fences_do_not_hide_later_prose(self):
+        self.write("README.md", "# R\n<!--\n```md\n-->\n```html <!--\n<!-- example\n```\nClaim S404.\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            f"README.md:{self.line_of('README.md', 'Claim S404')}: sources: S404 is not defined in docs/blueprint.md",
+        ])
+
+    def test_date_waiver_survives_semantic_comment_masking(self):
+        self.write("README.md", "# R\nPlanned 2027-01-01. <!-- check-docs: allow date: planned release -->\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_empty_html_comment_forms_do_not_hide_following_citations(self):
+        for comment in ("<!-->", "<!--->", "<!---->"):
+            with self.subTest(comment=comment):
+                self.write("README.md", f"# R\n{comment} Claim S404.\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    "README.md:2: sources: S404 is not defined in docs/blueprint.md",
+                ])
+
+    def test_literal_comment_openers_do_not_hide_following_citations(self):
+        for example in ("Use `<!--` as the opener.", "Use `` ` <!-- `` as the opener.", "Use `a\n<!--` as the opener.", "Use \\<!-- as the opener.", "Use ` unmatched text."):
+            with self.subTest(example=example):
+                self.write("README.md", "# R\n" + example + "\nClaim S404.\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'Claim S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+        self.write("README.md", "# R\nLiteral `<!--` then <!-- S999 --> claim S404.\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:2: sources: S404 is not defined in docs/blueprint.md",
+        ])
+
+    def test_atx_heading_indentation_and_closing_hashes_resolve(self):
+        for heading in ("## Reporting", " ## Reporting", "  ## Reporting", "   ## Reporting", "## Reporting ##", "   ##\tReporting\t###\t"):
+            with self.subTest(heading=heading):
+                self.write("SECURITY.md", heading + "\n")
+                self.write("README.md", 'See SECURITY.md "Reporting".\n')
+                self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_atx_normalization_preserves_literal_hashes_and_rejects_non_headings(self):
+        doc = cd.Doc("SECURITY.md", ["    ## Indented code", "##No space", "####### Too many", "## Reporting#", "## Reporting \\#", "##", "## ###"])
+        self.assertEqual(doc.headings(), ["Reporting#", "Reporting \\#", "", ""])
+
+    def test_source_descriptions_validate_referenced_sources_in_lists_and_tables(self):
+        for definition in ("- S1: https://example.test (cross-check S404)", "| S1 | https://example.test (cross-check S404) |"):
+            with self.subTest(definition=definition):
+                self.write("README.md", "# R\nClaim S1.\n" + definition + "\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    "README.md:3: sources: S404 is not defined in README.md",
+                ])
+        self.write("README.md", "# R\nClaim S1.\n- S1: https://example.test (cross-check S2)\n- S2: https://other.test\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+        self.write("README.md", "# R\nClaim S1.\n- S1: https://example.test (cross-check S2)\n- S2: retired, no source\n")
+        self.assertEqual(self.run_checks(["README.md"]), [
+            "README.md:3: sources: S2 is retired in README.md, so it has no source to cite",
+        ])
+
+    def test_stale_branch_conflicting_with_main_must_update_even_without_new_numbers(self):
+        main = BLUEPRINT_OK.replace("### ADR-001: First", "### ADR-001: Merged competing decision")
+        gh = StubGitHub({"contents/docs/blueprint.md?ref=main": b64(main)})
+        n = self.line_of("docs/blueprint.md", "### ADR-001")
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [
+            f"docs/blueprint.md:{n}: adr: ADR-001 has a different heading on main; update this branch or renumber the new decision",
+        ])
+        gh.routes["contents/docs/blueprint.md?ref=main"] = b64(BLUEPRINT_OK)
+        self.assertEqual(self.run_checks(["docs/blueprint.md"], gh=gh), [])
+
+    def test_two_fork_pull_requests_are_compared_from_their_source_repositories(self):
+        ours = {cd.BLUEPRINT: cd.Doc(cd.BLUEPRINT, ["### ADR-001: First", "### ADR-002: Ours"])}
+        pr = {"head": {"ref": "topic", "repo": {"full_name": "other/fork"}}}
+        gh = StubGitHub({
+            "contents/docs/blueprint.md?ref=main": b64("### ADR-001: First"),
+            "branches?per_page=100&page=1": [{"name": "main"}],
+            "pulls?state=open&per_page=100&page=1": [pr, pr, {"head": {"repo": None}}],
+            "pulls?state=open&head=contributor:topic": [{"created_at": "2026-10-13T11:00:00Z", "number": 2}],
+            "pulls?state=open&head=other:topic": [{"created_at": "2026-10-13T10:00:00Z", "number": 1}],
+        })
+        fork = StubGitHub({"contents/docs/blueprint.md?ref=topic": b64("### ADR-001: First\n### ADR-002: Theirs")})
+        with patch.object(cd, "GitHub", return_value=fork) as factory:
+            out = cd.check_adr_branch_collisions(ours, gh, "contributor:topic")
+            self.assertEqual(len(out), 1)
+            self.assertIn("ADR-002 is also new on branch other:topic", out[0].message)
+            factory.assert_called_once_with("other/fork")
+            self.assertEqual(fork.asked, ["contents/docs/blueprint.md?ref=topic"])
+            fork.routes["contents/docs/blueprint.md?ref=topic"] = b64("### ADR-001: First\n### ADR-003: Theirs")
+            out = cd.check_adr_branch_collisions(ours, gh, "contributor:topic")
+            self.assertEqual(len(out), 1)
+            self.assertIn("ADR-002 is below ADR-003", out[0].message)
+            gh.routes["pulls?state=open&head=contributor:topic"][0]["created_at"] = "2026-10-13T09:00:00Z"
+            self.assertEqual(cd.check_adr_branch_collisions(ours, gh, "contributor:topic"), [])
+
+    def test_open_pull_requests_are_paged_by_hand(self):
+        first = [{"number": n} for n in range(100)]
+        gh = StubGitHub({"pulls?state=open&per_page=100&page=1": first, "pulls?state=open&per_page=100&page=2": [{"number": 101}]})
+        self.assertEqual(cd.all_open_pull_requests(gh), first + [{"number": 101}])
+        self.assertEqual(gh.asked, ["pulls?state=open&per_page=100&page=1", "pulls?state=open&per_page=100&page=2"])
+
+    def test_current_fork_head_is_not_compared_with_itself(self):
+        ours = {cd.BLUEPRINT: cd.Doc(cd.BLUEPRINT, ["### ADR-002: Ours"])}
+        gh = StubGitHub({
+            "contents/docs/blueprint.md?ref=main": b64("### ADR-001: First"),
+            "pulls?state=open&per_page=100&page=1": [{"head": {"ref": "topic", "repo": {"full_name": "contributor/fork"}}}],
+        })
+        with patch.object(cd, "GitHub") as factory:
+            self.assertEqual(cd.check_adr_branch_collisions(ours, gh, "contributor:topic"), [])
+            factory.assert_not_called()
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):

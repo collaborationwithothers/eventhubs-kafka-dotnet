@@ -27,7 +27,8 @@ Files: every tracked Markdown file, except the third-party skills pinned in
 skills-lock.json. Paths given on the command line may be spelled relative to
 the current directory or absolute; they are read as repository-relative.
 Headings, ADR bodies, source definitions and references, and cross-references
-inside fenced code blocks are examples, not the document, and are skipped.
+inside fenced code blocks or HTML comments are not visible document prose
+and are skipped. Date waivers are still read from the original lines.
 
 Sources: a document that defines sources (`| Sn | ... |` rows, or `- Sn: url`
 lines) must reference every one of them; a number kept on purpose with no
@@ -47,7 +48,10 @@ with no open pull request renumbers when the other has one. When neither has
 one, nobody gets a finding: the author could not follow one, because a pull
 request needs the push. The first to open one keeps the number. The same heading
 line on both branches is one ADR carried over, not a collision. ADRs already
-on main are nobody's allocation. A gap below main's highest ADR is a block
+on main are nobody's allocation, but a local heading that differs from main's
+for the same number must be updated or renumbered. Candidates include target
+repository branches and the source branches of open pull requests from forks.
+A gap below main's highest ADR is a block
 that an ADR on main reserved; a number in it is never "below another branch's
 highest". The script does not know which branch a block was reserved for, so
 a branch that takes a number from someone else's block is reported only when
@@ -116,8 +120,9 @@ DISCUSSION_REF = re.compile(r"(?:^|[\s(\[])discussions?(?:\s+#\d+(?:,|\s+and|\s+
 FILE_HEADING_REF = re.compile(r"(?<![\w./:-])([\w.-]+(?:/[\w.-]+)*\.md)(?:,|'s)? \"([^\"]+)\"")
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
 BLUEPRINT_SECTION_REF = re.compile(r"docs/blueprint\.md section (\d+)\b")
-HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
+HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+INLINE_TOKEN = re.compile(r"\\.|`+|<!--")
 
 
 @dataclass(frozen=True)
@@ -140,31 +145,92 @@ class Doc:
     def text(self) -> str:
         return "\n".join(self.lines)
 
-    def fenced(self) -> list[bool]:
-        """Per line: inside a fenced code block, fence lines included. Examples are not the document."""
-        out, fence = [], None
-        for line in self.lines:
-            m = FENCE.match(line)
-            if fence is None:
-                if m:
-                    fence = (m.group(1)[0], len(m.group(1)))
-                out.append(fence is not None)
-            else:
-                out.append(True)
+    def semantic_lines(self) -> list[tuple[str, bool]]:
+        """Mask HTML comments without moving line numbers; ignore comment delimiters inside fences."""
+        out, fence, in_comment = [], None, False
+        inline_end = None
+        for index, line in enumerate(self.lines):
+            visible, pos = "", 0
+            if inline_end is not None:
+                if index < inline_end[0]:
+                    out.append((line, False))
+                    continue
+                pos = inline_end[1]
+                visible, inline_end = line[:pos], None
+            if fence is not None:
+                m = FENCE.match(line)
+                out.append((line, True))
                 if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():
                     fence = None
+                continue
+            m = FENCE.match(line) if not in_comment and pos == 0 else None
+            if m:
+                fence = (m.group(1)[0], len(m.group(1)))
+                out.append((line, True))
+                continue
+            while pos < len(line):
+                if in_comment:
+                    end = line.find("-->", pos)
+                    stop = len(line) if end < 0 else end + len("-->")
+                    visible += " " * (stop - pos)
+                    pos, in_comment = stop, end < 0
+                else:
+                    token = INLINE_TOKEN.search(line, pos)
+                    if token is None:
+                        visible += line[pos:]
+                        break
+                    visible += line[pos:token.start()]
+                    if token.group() == "<!--":
+                        if line.startswith("<!-->", token.start()):
+                            visible += " " * len("<!-->")
+                            pos = token.start() + len("<!-->")
+                        else:
+                            pos, in_comment = token.start(), True
+                    elif token.group().startswith("`"):
+                        end = self.code_span_end(index, token.end(), token.group())
+                        if end is not None and end[0] > index:
+                            visible += line[token.start():]
+                            inline_end = end
+                            break
+                        pos = end[1] if end is not None else token.end()
+                        visible += line[token.start():pos]
+                    else:
+                        visible += token.group()
+                        pos = token.end()
+            m = FENCE.match(visible)
+            if m:
+                fence = (m.group(1)[0], len(m.group(1)))
+            out.append((visible, fence is not None))
         return out
 
+    def code_span_end(self, index: int, start: int, delimiter: str) -> tuple[int, int] | None:
+        """Find a matching backtick run before a paragraph or explicit block boundary."""
+        closing = re.compile(r"(?<!`)" + re.escape(delimiter) + r"(?!`)")
+        for n in range(index, len(self.lines)):
+            line = self.lines[n]
+            if n > index and (not line.strip() or HEADING.match(line) or FENCE.match(line)):
+                break
+            match = closing.search(line, start if n == index else 0)
+            if match:
+                return n, match.end()
+        return None
+
+    def fenced(self) -> list[bool]:
+        """Per line: inside a fenced code block, fence lines included."""
+        return [f for _, f in self.semantic_lines()]
+
     def prose(self) -> list[tuple[int, str]]:
-        """`(line number, line)` for every line outside a fenced code block."""
-        return [(n, line) for n, (line, f) in enumerate(zip(self.lines, self.fenced()), 1) if not f]
+        """`(line number, visible text)` outside fenced code blocks and HTML comments."""
+        return [(n, line) for n, (line, f) in enumerate(self.semantic_lines(), 1) if not f]
 
     def headings(self) -> list[str]:
         out = []
         for _, line in self.prose():
             m = HEADING.match(line)
             if m:
-                out.append(m.group(2))
+                # CommonMark 0.31.2 ATX headings: optional closing hashes follow whitespace.
+                # https://github.com/commonmark/commonmark-spec/blob/9103e341a973013013bb1a80e13567007c5cef6f/spec.txt
+                out.append(re.sub(r"(?:^|[ \t]+)#+[ \t]*$", "", m.group(2) or "").strip(" \t"))
         return out
 
 
@@ -281,8 +347,9 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
 
     referenced: set[str] = set()
     for n, line in doc.prose():
-        if SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line):
-            continue
+        definition = SOURCE_TABLE_DEF.match(line) or SOURCE_LIST_DEF.match(line)
+        if definition:
+            line = line[definition.end():]
         for m in SOURCE_REF.finditer(line):
             sid = m.group(0)
             referenced.add(sid)
@@ -509,24 +576,33 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
     out = []
     if BLUEPRINT not in docs:
         return out
-    branches = all_branches(gh)
     main_doc = gh.get(f"contents/{BLUEPRINT}?ref={DEFAULT_BRANCH}")
-    if not branches or main_doc is None:
+    if main_doc is None:
         return out
-    on_main = set(adr_headings(Doc(BLUEPRINT, decode(main_doc).split("\n"))))
+    main_titles = adr_titles(Doc(BLUEPRINT, decode(main_doc).split("\n")))
+    on_main = set(main_titles)
     # A gap below main's highest ADR is a block an ADR on main reserved (ADR-018 reserves the six
     # numbers after ADR-011 for issue #8). Numbers in it may sit below another branch's highest.
     reserved = {f"{i:03d}" for i in range(1, int(max(on_main, default="000")) + 1)} - on_main
     here = adr_headings(docs[BLUEPRINT])
     titles_here = adr_titles(docs[BLUEPRINT])
+    for num in sorted(here.keys() & main_titles.keys()):
+        if titles_here[num] != main_titles[num]:
+            out.append(Finding(BLUEPRINT, here[num], "adr", f"ADR-{num} has a different heading on {DEFAULT_BRANCH}; update this branch or renumber the new decision"))
     new_here = {k: v for k, v in here.items() if k not in on_main}
     if not new_here:
         return out
-    for b in branches:
-        name = b["name"]
-        if name == DEFAULT_BRANCH or branch_head(gh, name) == branch_head(gh, current_branch):
+    candidates = {(gh.slug, b["name"]) for b in all_branches(gh)}
+    for pr in all_open_pull_requests(gh):
+        head = pr["head"]
+        if head["repo"] is not None:
+            candidates.add((head["repo"]["full_name"], head["ref"]))
+    for repo, ref in sorted(candidates):
+        name = ref if repo == gh.slug else f"{repo.split('/')[0]}:{ref}"
+        if (repo == gh.slug and ref == DEFAULT_BRANCH) or branch_head(gh, name) == branch_head(gh, current_branch):
             continue
-        data = gh.get(f"contents/{BLUEPRINT}?ref={name}")
+        source = gh if repo == gh.slug else GitHub(repo)
+        data = source.get(f"contents/{BLUEPRINT}?ref={ref}")
         if data is None:
             continue
         their_titles = adr_titles(Doc(BLUEPRINT, decode(data).split("\n")))
@@ -582,6 +658,18 @@ def all_branches(gh: GitHub) -> list[dict]:
     page = 1
     while True:
         batch = gh.get(f"branches?per_page=100&page={page}") or []
+        out += batch
+        if len(batch) < 100:
+            return out
+        page += 1
+
+
+def all_open_pull_requests(gh: GitHub) -> list[dict]:
+    """Open PR heads include fork branches absent from the target repository's branch list."""
+    out: list[dict] = []
+    page = 1
+    while True:
+        batch = gh.get(f"pulls?state=open&per_page=100&page={page}") or []
         out += batch
         if len(batch) < 100:
             return out
