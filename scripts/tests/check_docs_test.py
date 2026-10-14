@@ -779,6 +779,143 @@ class CheckDocsTest(unittest.TestCase):
             self.assertEqual(cd.check_adr_branch_collisions(ours, gh, "contributor:topic"), [])
             factory.assert_not_called()
 
+    # --- Markdown block forms and encoded branch names ------------------------
+
+    def test_indented_adr_headings_use_the_same_format_and_identity(self):
+        for spaces in range(1, 4):
+            with self.subTest(spaces=spaces):
+                text = BLUEPRINT_OK.replace("### ADR-", " " * spaces + "### ADR-")
+                self.write("docs/blueprint.md", text)
+                self.assertEqual(self.run_checks(["docs/blueprint.md"]), [])
+                changed = text.replace("ADR-002 (option, deferred): Lanes", "ADR-001 (option, deferred): Lanes")
+                self.write("docs/blueprint.md", changed)
+                out = self.run_checks(["docs/blueprint.md"])
+                self.assertEqual(out, [f"docs/blueprint.md:{self.line_of('docs/blueprint.md', 'Lanes')}: adr: ADR-001 heading repeats line {self.line_of('docs/blueprint.md', 'First')}"])
+        self.write("docs/blueprint.md", BLUEPRINT_OK + "\n   ### ADR-12: Typo\n")
+        self.assertIn(f"docs/blueprint.md:{self.line_of('docs/blueprint.md', 'Typo')}: adr-format: heading is not in the form `### ADR-NNN` (three digits)", self.run_checks(["docs/blueprint.md"]))
+
+    def test_indented_branch_adr_is_discovered_and_decorations_do_not_change_identity(self):
+        ours = {cd.BLUEPRINT: cd.Doc(cd.BLUEPRINT, ["### ADR-001: First", "   ### ADR-002: Ours ##"])}
+        gh = StubGitHub({
+            "contents/docs/blueprint.md?ref=main": b64("### ADR-001: First"),
+            "branches?per_page=100&page=1": [{"name": "other"}],
+            "contents/docs/blueprint.md?ref=other": b64("   ### ADR-002: Theirs"),
+            "pulls?state=open&head=owner:other": [{"created_at": "2026-10-13T10:00:00Z", "number": 1}],
+        })
+        out = cd.check_adr_branch_collisions(ours, gh, "ours")
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].line, 2)
+        self.assertIn("ADR-002 is also new on branch other", out[0].message)
+        gh.routes["contents/docs/blueprint.md?ref=other"] = b64("### ADR-002: Ours")
+        self.assertEqual(cd.check_adr_branch_collisions(ours, gh, "ours"), [])
+
+    def test_adr_cannot_borrow_required_parts_from_a_later_section(self):
+        for boundary in ("   ## Later section", "   # Later section ##", " ##\tLater section", "Later section\n---", "Later section\n===", "***"):
+            with self.subTest(boundary=boundary):
+                text = "### ADR-001: First\n\n**Context.** C.\n\n**Options considered.** A.\n\n" + boundary + "\n\n**Decision.** A.\n\n**Consequences.** Fine.\n"
+                doc = cd.Doc(cd.BLUEPRINT, text.split("\n"))
+                self.assertEqual([f.message for f in cd.check_adr_format(doc)], ["missing **Decision.**", "missing **Consequences.**"])
+
+    def test_setext_heading_references_resolve_single_and_multiline_titles(self):
+        for heading in ("Reporting\n=========", "Reporting\n-", "   Reporting\n   ---   ", "Reporting\nprocedure\n==="):
+            with self.subTest(heading=heading):
+                self.write("GUIDE.md", heading + "\n")
+                wanted = "Reporting procedure" if "procedure" in heading else "Reporting"
+                self.write("README.md", f'See GUIDE.md "{wanted}".\n')
+                self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_setext_headings_do_not_cross_blank_lines_code_comments_or_other_blocks(self):
+        for example in ("Reporting\n\n===", "```md\nReporting\n===\n```", "<!--\nReporting\n===\n-->", "    Reporting\n    ===", "- Reporting\n===", "Reporting\n\n```\nexample\n```\n==="):
+            with self.subTest(example=example):
+                self.write("GUIDE.md", example + "\n")
+                self.write("README.md", 'See GUIDE.md "Reporting".\n')
+                self.assertEqual(self.run_checks(["README.md"]), ['README.md:1: xref: GUIDE.md has no heading "Reporting"'])
+
+    def test_xrefs_ignore_link_destinations_and_titles_but_keep_visible_labels(self):
+        self.write("AGENTS.md", "# Rules\n")
+        self.write("README.md", '# R\n[rules](AGENTS.md "Tooltip")\n![image](GUIDE.md "Tooltip")\n[rules](path(with(parentheses)).md \'GUIDE.md "Missing"\')\n[rules](x.md \'text ) GUIDE.md "Missing"\')\n[ref]: GUIDE.md \'AGENTS.md "Missing"\'\n[Visible AGENTS.md "Missing"](https://example.test)\nSee AGENTS.md "Missing".\n')
+        out = self.run_checks(["README.md"])
+        self.assertEqual(out, [
+            f"README.md:{self.line_of('README.md', '[Visible')}: xref: AGENTS.md has no heading \"Missing\"",
+            f"README.md:{self.line_of('README.md', 'See AGENTS')}: xref: AGENTS.md has no heading \"Missing\"",
+        ])
+
+    def test_branch_refs_are_encoded_for_contents_and_pull_request_queries(self):
+        from urllib.parse import parse_qs, urlsplit
+
+        ours = {cd.BLUEPRINT: cd.Doc(cd.BLUEPRINT, ["### ADR-002: Ours"])}
+        for branch, encoded in (("topic#draft", "topic%23draft"), ("topic&x=1", "topic%26x%3D1"), ("topic+percent%", "topic%2Bpercent%25")):
+            with self.subTest(branch=branch):
+                gh = StubGitHub({
+                    "contents/docs/blueprint.md?ref=main": b64("### ADR-001: First"),
+                    "branches?per_page=100&page=1": [{"name": branch}],
+                    f"contents/docs/blueprint.md?ref={encoded}": b64("### ADR-002: Theirs"),
+                    f"pulls?state=open&head=owner:{encoded}": [{"created_at": "2026-10-13T10:00:00Z", "number": 1}],
+                })
+                self.assertEqual(len(cd.check_adr_branch_collisions(ours, gh, "ours")), 1)
+                for route in gh.asked:
+                    if encoded in route:
+                        query = parse_qs(urlsplit(route).query)
+                        self.assertEqual(query.get("ref", query.get("head")), [branch] if "ref" in query else ["owner:" + branch])
+                fork = StubGitHub({f"contents/docs/blueprint.md?ref={encoded}": b64("### ADR-002: Fork")})
+                gh.routes["branches?per_page=100&page=1"] = []
+                gh.routes["pulls?state=open&per_page=100&page=1"] = [{"head": {"ref": branch, "repo": {"full_name": "other/fork"}}}]
+                gh.routes[f"pulls?state=open&head=other:{encoded}"] = [{"created_at": "2026-10-13T10:00:00Z", "number": 1}]
+                with patch.object(cd, "GitHub", return_value=fork):
+                    self.assertEqual(len(cd.check_adr_branch_collisions(ours, gh, "contributor:" + branch)), 1)
+                self.assertEqual(fork.asked, [f"contents/docs/blueprint.md?ref={encoded}"])
+                self.assertIn(f"pulls?state=open&head=contributor:{encoded}", gh.asked)
+
+    def test_indented_code_blocks_are_excluded_from_all_semantic_checks(self):
+        for indent in ("    ", "\t", "  \t"):
+            with self.subTest(indent=repr(indent)):
+                example = ["#999999 example output", "ADR-999 and S999", 'MISSING.md "Missing"', "<!--", "```md"]
+                self.write("README.md", "# R\n\n" + "\n".join(indent + line for line in example) + "\n\nVisible S1.\n")
+                gh = StubGitHub({})
+                self.assertEqual(self.run_checks(["README.md"], gh=gh), [])
+                self.assertEqual(gh.asked, [])
+
+    def test_indentation_does_not_hide_paragraph_or_list_continuations(self):
+        for text in ("Paragraph\n    Claim S404.", "- Item\n\n    Claim S404.", "- Item\n    - Nested\n\n        Claim S404."):
+            with self.subTest(text=text):
+                self.write("README.md", text + "\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'Claim S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+        self.write("README.md", "- Item\n\n      S999 is code.\n\nVisible S1.\n")
+        self.assertEqual(self.run_checks(["README.md"]), [])
+
+    def test_list_fences_hide_examples_and_stop_at_their_container(self):
+        for example in (
+            "- Example:\n\n    ```md\n    S999 example.\n    ```",
+            "- Example:\n\n\t~~~md\n\tS999 example.\n\t~~~",
+            "- Outer:\n    - Inner:\n\n        ```md\n        S999 example.\n        ```",
+            "- ```md\n  S999 example.\n  ```",
+            "- Example:\n\n    ```md\n    S999 example.",
+        ):
+            with self.subTest(example=example):
+                self.write("README.md", example + "\n\nVisible S404.\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'Visible S404')}: sources: S404 is not defined in docs/blueprint.md",
+                ])
+
+    def test_blockquote_code_is_excluded_without_hiding_following_prose(self):
+        for example in (
+            "> ```md\n> S999 example.\n> ```",
+            "> > ~~~md\n> > S999 example.\n> > ~~~",
+            "> ```md\n> S999 example.",
+            ">     S999 example.",
+            "> - Item:\n>\n>     ```md\n>     S999 example.\n>     ```",
+            "- Item:\n\n  > ```md\n  > S999 example.\n  > ```",
+            "- > ```md\n  > S999 example.\n  > ```",
+        ):
+            with self.subTest(example=example):
+                self.write("README.md", example + "\n\n> Visible S404.\nOutside S405.\n")
+                self.assertEqual(self.run_checks(["README.md"]), [
+                    f"README.md:{self.line_of('README.md', 'Visible S404')}: sources: S404 is not defined in docs/blueprint.md",
+                    f"README.md:{self.line_of('README.md', 'Outside S405')}: sources: S405 is not defined in docs/blueprint.md",
+                ])
+
     # --- command line ---------------------------------------------------------
 
     def test_cli_exit_codes(self):

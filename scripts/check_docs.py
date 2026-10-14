@@ -72,6 +72,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote
 
 REPO_SLUG = "collaborationwithothers/eventhubs-kafka-dotnet"
 BLUEPRINT = "docs/blueprint.md"
@@ -107,7 +108,7 @@ DATE = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")  # also inside 2026-10-
 ISSUE_REF = re.compile(r"(?<![\w/#&])#(\d+)\b")
 # Link destinations are not text: `[x](#12-3-options)`, `[x]: #5-modes`, `href="#5"`, `href='#5'`, `href=#5`, `<#5>`.
 # They are blanked, same length, before references are looked for.
-LINK_TARGET = re.compile(r"\]\([^)]*\)|^\s*\[[^\]]+\]:\s*\S+|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I)
+LINK_TARGET = re.compile(r"^ {0,3}\[[^\]]+\]:[ \t]*\S+.*$|href\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>]+)|<[^<>\s]*>", re.I)
 # Another repository's number is written GitHub's way, `owner/repo#N`, which ISSUE_REF never matches
 # (the `#` follows a word character). A community discussion has no repository: `discussion #N`,
 # or a list `discussions #1, #2 and #3`, is the one spaced form that is not ours.
@@ -121,8 +122,21 @@ FILE_HEADING_REF = re.compile(r"(?<![\w./:-])([\w.-]+(?:/[\w.-]+)*\.md)(?:,|'s)?
 GOVERNANCE_REF = re.compile(r'GOVERNANCE "([^"]+)"')
 BLUEPRINT_SECTION_REF = re.compile(r"docs/blueprint\.md section (\d+)\b")
 HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
+SETEXT = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
+THEMATIC_BREAK = re.compile(r"^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$")
+LIST_ITEM = re.compile(r"^( *)([-+*]|\d{1,9}[.)])([ \t]+)(.*)$")
+BLOCKQUOTE = re.compile(r"^ {0,3}> ?")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 INLINE_TOKEN = re.compile(r"\\.|`+|<!--")
+
+
+def atx_heading(line: str) -> tuple[int, str] | None:
+    """Normalize ATX indentation and closing hashes for every heading consumer."""
+    m = HEADING.match(line)
+    if m is None:
+        return None
+    title = re.sub(r"(?:^|[ \t]+)#+[ \t]*$", "", m.group(2) or "").strip(" \t")
+    return len(m.group(1)), title
 
 
 @dataclass(frozen=True)
@@ -146,11 +160,19 @@ class Doc:
         return "\n".join(self.lines)
 
     def semantic_lines(self) -> list[tuple[str, bool]]:
-        """Mask HTML comments without moving line numbers; ignore comment delimiters inside fences."""
+        """Mask comments and exclude code blocks while preserving original line numbers."""
         out, fence, in_comment = [], None, False
         inline_end = None
+        paragraph, code_indent = False, None
+        list_indents: list[int] = []
+        quote_end = -1
         for index, line in enumerate(self.lines):
+            if index <= quote_end:
+                continue
             visible, pos = "", 0
+            expanded = line.expandtabs(4)
+            indent = len(expanded) - len(expanded.lstrip(" "))
+            base_indent = 0
             if inline_end is not None:
                 if index < inline_end[0]:
                     out.append((line, False))
@@ -158,14 +180,60 @@ class Doc:
                 pos = inline_end[1]
                 visible, inline_end = line[:pos], None
             if fence is not None:
-                m = FENCE.match(line)
-                out.append((line, True))
-                if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():
+                # A list's fence is relative to its content indentation. Leaving
+                # that container also ends an otherwise unclosed fenced block.
+                if line.strip() and indent < fence[2]:
                     fence = None
-                continue
-            m = FENCE.match(line) if not in_comment and pos == 0 else None
+                    paragraph = False
+                else:
+                    m = FENCE.match(expanded[fence[2]:])
+                    out.append((line, True))
+                    if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():
+                        fence = None
+                        paragraph = False
+                    continue
+            if not in_comment and pos == 0:
+                if code_indent is not None:
+                    if not line.strip() or indent >= code_indent:
+                        out.append((line, True))
+                        continue
+                    code_indent = None
+                    paragraph = False
+                item = LIST_ITEM.match(expanded)
+                if line.strip() and (not paragraph or item or atx_heading(line)):
+                    while list_indents and indent < list_indents[-1]:
+                        list_indents.pop()
+                base_indent = list_indents[-1] if list_indents else 0
+                if line.strip() and indent >= base_indent + 4 and not paragraph:
+                    code_indent = base_indent + 4
+                    out.append((line, True))
+                    continue
+                if item:
+                    base_indent = item.start(4)
+                    list_indents.append(base_indent)
+                if BLOCKQUOTE.match(expanded[base_indent:]):
+                    # Parse explicitly quoted lines in their own container, so
+                    # a fence cannot consume prose after the blockquote ends.
+                    quoted, prefixes = [], []
+                    for n in range(index, len(self.lines)):
+                        candidate = self.lines[n].expandtabs(4)
+                        if n > index and len(candidate) - len(candidate.lstrip(" ")) < base_indent:
+                            break
+                        marker = BLOCKQUOTE.match(candidate[base_indent:])
+                        if marker is None:
+                            break
+                        start = base_indent + marker.end()
+                        prefixes.append(candidate[:start])
+                        quoted.append(candidate[start:])
+                    nested = Doc(self.path, quoted).semantic_lines()
+                    out.extend((prefix + text, excluded) for prefix, (text, excluded) in zip(prefixes, nested))
+                    quote_end = index + len(quoted) - 1
+                    paragraph = False
+                    continue
+            m = FENCE.match(expanded[base_indent:]) if not in_comment and pos == 0 else None
             if m:
-                fence = (m.group(1)[0], len(m.group(1)))
+                fence = (m.group(1)[0], len(m.group(1)), base_indent)
+                paragraph = False
                 out.append((line, True))
                 continue
             while pos < len(line):
@@ -199,8 +267,9 @@ class Doc:
                         pos = token.end()
             m = FENCE.match(visible)
             if m:
-                fence = (m.group(1)[0], len(m.group(1)))
+                fence = (m.group(1)[0], len(m.group(1)), 0)
             out.append((visible, fence is not None))
+            paragraph = bool(visible.strip()) and not (fence or atx_heading(visible) or SETEXT.match(visible) or THEMATIC_BREAK.match(visible))
         return out
 
     def code_span_end(self, index: int, start: int, delimiter: str) -> tuple[int, int] | None:
@@ -216,22 +285,47 @@ class Doc:
         return None
 
     def fenced(self) -> list[bool]:
-        """Per line: inside a fenced code block, fence lines included."""
+        """Per line: excluded as fenced or indented code, fence lines included."""
         return [f for _, f in self.semantic_lines()]
 
     def prose(self) -> list[tuple[int, str]]:
-        """`(line number, visible text)` outside fenced code blocks and HTML comments."""
+        """`(line number, visible text)` outside code blocks and HTML comments."""
         return [(n, line) for n, (line, f) in enumerate(self.semantic_lines(), 1) if not f]
 
-    def headings(self) -> list[str]:
+    def heading_records(self) -> list[tuple[int, int, str]]:
+        """Line number, level and normalized title for ATX and Setext headings.
+
+        CommonMark 0.31.2, ATX/Setext headings and indented code blocks:
+        https://github.com/commonmark/commonmark-spec/blob/9103e341a973013013bb1a80e13567007c5cef6f/spec.txt
+        """
         out = []
-        for _, line in self.prose():
-            m = HEADING.match(line)
-            if m:
-                # CommonMark 0.31.2 ATX headings: optional closing hashes follow whitespace.
-                # https://github.com/commonmark/commonmark-spec/blob/9103e341a973013013bb1a80e13567007c5cef6f/spec.txt
-                out.append(re.sub(r"(?:^|[ \t]+)#+[ \t]*$", "", m.group(2) or "").strip(" \t"))
+        paragraph: list[tuple[int, str]] = []
+        previous = 0
+        for n, line in self.prose():
+            if n != previous + 1:
+                paragraph = []
+            previous = n
+            heading = atx_heading(line)
+            underline = SETEXT.match(line)
+            if heading:
+                out.append((n, *heading))
+                paragraph = []
+            elif underline and paragraph:
+                title = " ".join(text.strip() for _, text in paragraph)
+                out.append((paragraph[0][0], 1 if underline.group(1)[0] == "=" else 2, title))
+                paragraph = []
+            elif not line.strip() or underline or THEMATIC_BREAK.match(line) or LIST_ITEM.match(line) or line.lstrip().startswith((">", "<")):
+                paragraph = []
+            else:
+                paragraph.append((n, line))
         return out
+
+    def headings(self) -> list[str]:
+        return [title for _, _, title in self.heading_records()]
+
+    def atx_lines(self) -> list[tuple[int, str]]:
+        """ATX headings in canonical form, with source line numbers retained."""
+        return [(n, f"{'#' * heading[0]} {heading[1]}") for n, line in self.prose() if (heading := atx_heading(line))]
 
 
 # --- discovery --------------------------------------------------------------
@@ -366,7 +460,7 @@ def check_sources(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
 
 def adr_headings(doc: Doc) -> dict[str, int]:
     out: dict[str, int] = {}
-    for n, line in doc.prose():
+    for n, line in doc.atx_lines():
         m = ADR_HEADING.match(line)
         if m:
             out.setdefault(m.group(1), n)
@@ -375,7 +469,7 @@ def adr_headings(doc: Doc) -> dict[str, int]:
 
 def adr_titles(doc: Doc) -> dict[str, str]:
     """ADR number to the full heading line, so the same ADR carried on two branches is not a collision."""
-    return {m.group(1): line.strip() for _, line in doc.prose() if (m := ADR_HEADING.match(line))}
+    return {m.group(1): line for _, line in doc.atx_lines() if (m := ADR_HEADING.match(line))}
 
 
 def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
@@ -386,7 +480,7 @@ def check_adr_numbers(doc: Doc, docs: dict[str, Doc]) -> list[Finding]:
     defined = adr_headings(bp)
     if doc.path == BLUEPRINT:
         seen: dict[str, int] = {}
-        for n, line in doc.prose():
+        for n, line in doc.atx_lines():
             m = ADR_HEADING.match(line)
             if m:
                 if m.group(1) in seen:
@@ -409,18 +503,21 @@ def check_adr_format(doc: Doc) -> list[Finding]:
     out = []
     if doc.path != BLUEPRINT:
         return out
-    for n, line in doc.prose():
+    for n, line in doc.atx_lines():
         if ADR_LIKE_HEADING.match(line) and not ADR_HEADING.match(line):
             out.append(Finding(doc.path, n, "adr-format", "heading is not in the form `### ADR-NNN` (three digits)"))
-    starts = [n for n, line in doc.prose() if ADR_HEADING.match(line)]
+    headings = dict(doc.atx_lines())
+    boundaries = [n for n, level, _ in doc.heading_records() if level <= 2]
+    starts = [n for n, line in headings.items() if ADR_HEADING.match(line)]
     for i, start in enumerate(starts):
         end = starts[i + 1] - 1 if i + 1 < len(starts) else len(doc.lines)
+        end = min([end] + [n - 1 for n in boundaries if start < n <= end])
         body = [line for n, line in doc.prose() if start < n <= end]
         for stop, line in enumerate(body):
-            if line.startswith("## ") or line.strip() == "---":
+            if THEMATIC_BREAK.match(line):
                 body = body[:stop]
                 break
-        parts = ADR_OPTION_PARTS if ADR_OPTION_HEADING.match(doc.lines[start - 1]) else ADR_PARTS
+        parts = ADR_OPTION_PARTS if ADR_OPTION_HEADING.match(headings[start]) else ADR_PARTS
         first = next((l for l in body if l.strip()), "")
         if not first.startswith(parts[0]):
             out.append(Finding(doc.path, start, "adr-format", f"first paragraph does not start with {parts[0]}"))
@@ -455,7 +552,8 @@ def check_cross_references(doc: Doc, docs: dict[str, Doc], root: Path) -> list[F
         # The whole heading, or the heading followed by a deliberate decoration: ` (...)` or `:`.
         return any(h == wanted or h.startswith(wanted + " (") or h.startswith(wanted + ":") for h in heads)
 
-    for n, line in doc.prose():
+    for n, raw in doc.prose():
+        line = mask_link_targets(raw)
         for m in FILE_HEADING_REF.finditer(line):
             path, wanted = m.group(1), m.group(2)
             heads = headings_of(path)
@@ -510,7 +608,29 @@ class GitHub:
 
 
 def mask_link_targets(line: str) -> str:
-    return LINK_TARGET.sub(lambda m: " " * len(m.group(0)), line)
+    masked = list(line)
+    pos = 0
+    while (start := line.find("](", pos)) >= 0:
+        depth, title_quote, end = 1, None, start + 2
+        while end < len(line) and depth:
+            ch = line[end]
+            if ch == "\\":
+                end += 2
+                continue
+            if title_quote:
+                if ch == title_quote:
+                    title_quote = None
+            elif ch in "\"'" and depth == 1 and line[end - 1].isspace():
+                title_quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            end += 1
+        if depth == 0:
+            masked[start:end] = " " * (end - start)
+        pos = max(end, start + 2)
+    return LINK_TARGET.sub(lambda m: " " * len(m.group(0)), "".join(masked))
 
 
 def expected_kind(before: str) -> str | None:
@@ -602,7 +722,7 @@ def check_adr_branch_collisions(docs: dict[str, Doc], gh: GitHub, current_branch
         if (repo == gh.slug and ref == DEFAULT_BRANCH) or branch_head(gh, name) == branch_head(gh, current_branch):
             continue
         source = gh if repo == gh.slug else GitHub(repo)
-        data = source.get(f"contents/{BLUEPRINT}?ref={ref}")
+        data = source.get(f"contents/{BLUEPRINT}?ref={quote(ref, safe='/')}")
         if data is None:
             continue
         their_titles = adr_titles(Doc(BLUEPRINT, decode(data).split("\n")))
@@ -636,7 +756,7 @@ def pull_request_opened(gh: GitHub, branch: str) -> tuple[str, int] | None:
     The number breaks a tie between identical timestamps, so exactly one of two
     branches opened first.
     """
-    prs = gh.get(f"pulls?state=open&head={branch_head(gh, branch)}") or []
+    prs = gh.get(f"pulls?state=open&head={quote(branch_head(gh, branch), safe='/:')}") or []
     return min(((p["created_at"], p["number"]) for p in prs), default=None)
 
 
