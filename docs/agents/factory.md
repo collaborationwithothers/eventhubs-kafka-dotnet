@@ -2,11 +2,11 @@
 
 How agents build this repository, and where Hari's judgment stays.
 
-Status: approved by Hari on 2026-10-12.
+Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval.
 
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
-## Decisions taken (2026-10-11 to 2026-10-12)
+## Decisions taken (2026-10-11 to 2026-10-13)
 
 | Decision | Choice |
 |---|---|
@@ -15,8 +15,8 @@ The factory exists to minimise Hari's hours per inventory item, not to minimise 
 | Live Azure runs | Started by agents without per-run approval, within a cost limit per item |
 | Merging | Agents merge their own pull requests under the merge rule in AGENTS.md |
 | Escalation | Deterministic rules decide; the reviewer can add an escalation, never remove one |
-| Tools | Claude Code implements; Codex reviews only, on Hari's ChatGPT plan |
-| Where sessions run | GitHub Actions, unattended, after one reference slice built interactively with Hari |
+| Tools | Either Claude Code or Codex implements, chosen per issue; Codex reviews every pull request, including its own. Both run on Hari's plans (Claude Max, ChatGPT Pro), not on metered API keys. Decided 2026-10-13, ADR-018 |
+| Where sessions run | GitHub Actions, unattended, after one reference slice built interactively with Hari. Claude Code only, until a Codex path in Actions exists; Codex implements in sessions Hari starts himself (ADR-018) |
 | Concurrency | 2 implementation sessions, 1 ephemeral environment |
 | Architecture | Vertical slices per service; `Parchwell.Kafka` shared library; scenarios as data |
 | Cost limits | GBP 5 (S), GBP 15 (M), GBP 40 (L) per item, estimates from the blueprint's sizing |
@@ -36,7 +36,7 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 ## Item lifecycle
 
 1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below.
-2. **Approve.** Hari applies `ready-for-agent`. This is approval of the plan and the trigger for implementation.
+2. **Approve.** Hari applies `ready-for-agent`. This is approval of the plan and the trigger for implementation. Before applying the label, he names the implementing tool, Claude Code or Codex, in a comment on the issue; no such comment at the time the label is applied means Claude Code, and a session of the other tool does not claim the issue (ADR-018).
 3. **Implement.** One session claims the issue, builds what the plan needs in pull requests within the size limit, and merges or escalates each under the merge rule.
 4. **Run.** The agent starts the scenario workflow. The workflow checks the cost limit, applies the ephemeral layer, runs the repeats, collects evidence, and destroys.
 5. **Verdict.** The agent opens a pull request labelled `verdict` with the evidence pack and the proposed verdict. Hari approves or rejects it.
@@ -70,8 +70,10 @@ Every verdict pull request contains:
 
 Layer 1 decides; layer 2 can only add.
 
-1. **Deterministic rules.** The `main-protection` ruleset's required reviewers rule lists every protected path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one. `.github/CODEOWNERS` mirrors the same list so GitHub requests Hari's review automatically, but it is not the gate (see "Ruleset" below). Rules that paths cannot express are checked by a required status check: pull request size, new NuGet packages, and changes to assertions in tests.
-2. **Codex review.** Any unresolved P0 or P1 code review finding, or High security review finding, blocks agent merge. Codex reads docs/threat-model.md for security reviews once it exists; until then it generates its own threat model on every review.
+1. **Deterministic rules.** The `main-protection` ruleset's required reviewers rule lists every protected path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one. `.github/CODEOWNERS` mirrors the same list so GitHub requests Hari's review automatically, but it is not the gate (see "Ruleset" below). Rules that paths cannot express are checked by a required status check: pull request size, new NuGet packages, and changes to assertions in tests. Two more deterministic rules belong to the merge workflow planned under issue #17 (ADR-018):
+   - Implementer. The merge workflow, planned under issue #17 and added by Hari at step 4 of "Sequence to start the factory", will read the `Co-Authored-By` trailers on the pull request's commits, ignoring merge commits and untrailed commits authored by Hari's account, and label the pull request `same-vendor-review` when any remaining commit carries a Codex trailer or no tool trailer, re-checking on every push and removing the label when no remaining commit does (AGENTS.md "Implementer and reviewer" defines the trailers and the ignored commits). Agents never apply or remove that label. Neither the label nor the workflow exists yet.
+   - Review unavailable. The same workflow will post `**Review unavailable:**` on the pull request when Codex has completed no review of the head commit within 60 minutes of the push; the pull request then waits for Hari. This covers a Codex usage-limit refusal (ADR-018, S35) and any other silence. The marker differs from the session handoff marker `**Decision needed:**` so that the workflow's comment never satisfies, or doubles, a session's Stop hook (CLAUDE.md "Handoffs"). 60 minutes is a governance choice, not a measurement; revisit it with the data recorded under issue #17. The check depends on Codex posting a completed review on a clean pull request, which the pilot verifies (third bullet below). Until then agents do not merge (step 5 of "Sequence to start the factory"), so the timeout has nothing to enforce; a session whose pull request waits for a review that does not come hands off under GOVERNANCE "Handoffs". If the pilot finds that Codex posts only a reaction on a clean pull request, the merge workflow must obtain a completed review, for example by commenting `@codex review`, before the merge rule can pass; that is a design item under issue #17.
+2. **Codex review.** Any unresolved P0 or P1 code review finding, or High security review finding, blocks agent merge. Codex reads docs/threat-model.md for security reviews once it exists; until then it generates its own threat model on every review. Codex reviews every pull request, whichever tool implemented it (ADR-018).
 
 To verify during the pilot, before agents merge unattended:
 - that a pull request opened by the factory's GitHub App on a protected path is blocked until Hari approves (tested so far only with Hari as author);
@@ -96,13 +98,13 @@ To verify during the pilot, before agents merge unattended:
 
 Protected paths use `.gitignore` syntax. `/docs/` is protected except `docs/operations/`, which agents own. Runbooks go in `docs/operations/`; any other document under `docs/` comes to Hari.
 
-GitHub Copilot code review is not part of the factory. It reviewed the test pull requests although no ruleset requested it (most likely a personal setting) and was switched off on 2026-10-12, because its threads would block agent merges through conversation resolution and it answers to none of the rules in AGENTS.md.
+GitHub Copilot code review is not part of the factory. It reviewed the test pull requests although no ruleset requested it (most likely a personal setting) and was switched off on 2026-10-12, because its threads would block agent merges through conversation resolution. The second reason recorded on 2026-10-12, that it answers to none of the rules in AGENTS.md, was wrong: Copilot code review has read AGENTS.md since 2026-06-18 (ADR-018, S38). It stays off because of the conversation-resolution problem and because of cost: reviews of bot-authored pull requests "bill the usage directly to your organization" (S40). Inferred, not stated by S40 or S44: organization billing needs AI-credit paid usage enabled, as S44 requires for its Organization billing option. Either way it is spend beyond the one seat Hari already pays for (ADR-018).
 
 ## Measuring the gate
 
 - Every pull request's gate decisions are logged: which rules fired, Codex's findings, who merged.
-- Each week Hari spot-checks about 5 agent-merged pull requests and records yes or no: should this have come to me? (About 10 minutes.)
-- Metrics: Hari's minutes per item, cost per merged pull request, gate misses, false escalations.
+- Each week Hari spot-checks about 5 agent-merged pull requests and records yes or no: should this have come to me? (About 10 minutes.) Pull requests labelled `same-vendor-review` come first in the sample, but the sample keeps at least one unlabelled pull request when the week has one.
+- Metrics: Hari's minutes per item, cost per merged pull request, gate misses, false escalations, review-unavailable escalations. Gate misses and escapes are reported split by `same-vendor-review` and the rest (ADR-018).
 
 ### Escapes
 
@@ -132,6 +134,6 @@ The trial runs in shadow mode, logging scores without gating. Jev is adopted onl
 1. Hari approves this document, AGENTS.md's GOVERNANCE section, CLAUDE.md model bindings, and CODEOWNERS. Done 2026-10-12.
 2. Hari merges them to `main` and creates the ruleset. Done 2026-10-12; tested as recorded under "Ruleset".
 3. The reference slice (A01) is built interactively with Hari, at code level. It sets the patterns agents copy.
-4. Workflows are added: CI, implementation, scenario run with cost check, sweeper.
+4. Workflows are added: CI, implementation, scenario run with cost check, sweeper, and the merge workflow (`same-vendor-review` label, review-unavailable escalation; issue #17).
 5. Pilot on 3 items with agent merge disabled, to verify the open questions above.
 6. Agent merge enabled. Factory runs.
