@@ -130,6 +130,10 @@
                 if (!classes.Any(type => (string)type.Attribute("name") == "Parchwell.Kafka.Configuration." + name
                     && type.Element("lines") != null && type.Element("lines").Elements("line").Any()))
                     throw new InvalidDataException("Missing coverage for " + name + ".");
+            var mappingNames = required.Select(name => "Parchwell.Kafka.Configuration." + name).ToArray();
+            classes = classes.Where(type => mappingNames.Any(name =>
+                (string)type.Attribute("name") == name
+                || ((string)type.Attribute("name") ?? "").StartsWith(name + ".", StringComparison.Ordinal))).ToArray();
             var lines = classes.SelectMany(type => type.Element("lines") == null ? Enumerable.Empty<XElement>() : type.Element("lines").Elements("line")).ToArray();
             if (lines.Length == 0) throw new InvalidDataException("Coverage report contains no mapping lines.");
             foreach (var line in lines)

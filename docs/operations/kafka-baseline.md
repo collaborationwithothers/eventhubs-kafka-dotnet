@@ -80,7 +80,7 @@ The pin is approved in the [plan][plan] and published in its [package manifest][
 
 ### Coverage checker regression examples
 
-The checker accepts a Cobertura report for `Parchwell.Kafka` containing executable lines for every required mapping type, with positive integer hits on every reported line. It rejects a missing assembly or required type, an empty report, and uncovered or invalid hits. The following examples use a genuine collected report as the positive control, then create synthetic malformed copies solely to test rejection. These copies are never coverage evidence.
+The checker accepts a Cobertura report for `Parchwell.Kafka` containing executable lines for every required mapping type, with positive integer hits on every reported mapping line, including compiler-generated nested types. Lines from other library features are outside this focused gate. It rejects a missing assembly or required type, an empty report, and uncovered or invalid mapping hits. The following examples use a genuine collected report as the positive control, then create synthetic copies to test the scope and rejection behavior. These copies are never coverage evidence.
 
 Run this example with Python's standard library and the path printed by the coverage script:
 
@@ -96,7 +96,18 @@ def validate(path):
         "-t:ValidateKafkaCoverage", "-p:CoverageReport=" + str(path), "-nologo"
     ], capture_output=True, text=True)
 assert validate(source).returncode == 0, "Positive control must pass"
-for name in ["missing-assembly", "missing-class", "empty", "uncovered", "invalid-hits"]:
+for name in ["TokenRefresh", "KafkaConfigurationFactoryExtra"]:
+    root = ET.parse(source).getroot()
+    classes = root.find("./packages/package/classes")
+    extra = ET.SubElement(classes, "class", {
+        "name": "Parchwell.Kafka.Configuration." + name,
+        "filename": "Synthetic/" + name + ".cs"})
+    ET.SubElement(ET.SubElement(extra, "lines"), "line", {"number": "1", "hits": "0"})
+    path = directory / (name + ".xml")
+    ET.ElementTree(root).write(path)
+    assert validate(path).returncode == 0, name + " must remain outside the mapping gate"
+    print(name + ": ignored as expected")
+for name in ["missing-assembly", "missing-class", "empty", "uncovered", "uncovered-generated", "invalid-hits"]:
     root = ET.parse(source).getroot()
     if name == "missing-assembly":
         root.find("./packages/package").set("name", "Synthetic.OtherAssembly")
@@ -106,6 +117,10 @@ for name in ["missing-assembly", "missing-class", "empty", "uncovered", "invalid
                             "Parchwell.Kafka.Configuration.KafkaSettingSource"))
     elif name == "empty":
         root = ET.fromstring("<coverage><packages /></coverage>")
+    elif name == "uncovered-generated":
+        generated = next(item for item in root.findall("./packages/package/classes/class")
+                         if item.get("name") == "Parchwell.Kafka.Configuration.KafkaConfigurationFactory.<>c")
+        generated.find("./lines/line").set("hits", "0")
     else:
         root.find("./packages/package/classes/class/lines/line").set(
             "hits", "0" if name == "uncovered" else "invalid")
