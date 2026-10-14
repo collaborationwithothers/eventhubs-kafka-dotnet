@@ -1,5 +1,6 @@
 using Xunit;
 using DotNet.Testcontainers.Configurations;
+using Docker.DotNet.Models;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
@@ -7,6 +8,34 @@ namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
 public sealed class InfraEndpointTests
 {
+    [Fact]
+    public void Given_PublishedFixturePorts_When_ConfiguringDockerCreation_Then_BindsEveryPortToLoopbackAndPreservesAllocation()
+    {
+        var control = new PortBinding { HostPort = string.Empty };
+        var proxy = new PortBinding { HostIP = "0.0.0.0", HostPort = "49152" };
+        var broker = new PortBinding { HostIP = "::", HostPort = "49153" };
+        var parameters = new CreateContainerParameters
+        {
+            HostConfig = new HostConfig
+            {
+                PortBindings = new Dictionary<string, IList<PortBinding>>
+                {
+                    ["8474/tcp"] = [control],
+                    ["8666/tcp"] = [proxy],
+                    ["9093/tcp"] = [broker]
+                }
+            }
+        };
+
+        BrokerEnvironment.BindPublishedPortsToLoopback(parameters);
+
+        Assert.All(parameters.HostConfig.PortBindings.Values.SelectMany(bindings => bindings),
+            binding => Assert.Equal("127.0.0.1", binding.HostIP));
+        Assert.Equal(string.Empty, control.HostPort);
+        Assert.Equal("49152", proxy.HostPort);
+        Assert.Equal("49153", broker.HostPort);
+    }
+
     [Fact]
     public void Given_DetectedDockerEndpoint_When_ConfiguringExperimentClient_Then_PreservesEndpointAndUsesApprovedBudget()
     {

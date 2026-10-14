@@ -131,14 +131,20 @@
                 using (var stream = File.OpenRead(path))
                 using (var reader = JsonReaderWriterFactory.CreateJsonReader(stream, XmlDictionaryReaderQuotas.Max))
                 {
-                    var document = XDocument.Load(reader);
-                    if (document.Root == null || (string)document.Root.Attribute("type") != "object")
+                    reader.MoveToContent();
+                    if (reader.NodeType != XmlNodeType.Element || reader.GetAttribute("type") != "object")
                         throw new InvalidDataException("Invalid spike record root: " + name);
                     if (name == "decision.json")
                     {
+                        var document = XDocument.Load(reader);
                         var finding = document.Root.Element("ExistenceFinding");
                         if (finding == null || (finding.Value != "yes" && finding.Value != "no" && finding.Value != "inconclusive"))
                             throw new InvalidDataException("Missing or invalid spike finding.");
+                    }
+                    else
+                    {
+                        // Validate large raw traces without materializing their XML string values.
+                        while (reader.Read()) { }
                     }
                 }
                 if (name != "experiment.json")

@@ -1,10 +1,43 @@
 # Phantom mechanism spike
 
-This fixture investigates whether Toxiproxy can cause a real failed Confluent.Kafka delivery callback while an independent consumer reads the same accepted produce attempt. It runs against a local Kafka broker and establishes no Event Hubs behavior. These instructions describe the [approved issue #52 experiment][plan]; a measured finding requires the retained experiment evidence.
+Yes. In the measured local experiment, Toxiproxy caused genuine failed Confluent.Kafka delivery callbacks while an independent consumer read the same accepted attempts. The complete approved matrix produced 30 witnessed mechanism pairs across 40 trials; these remain diagnostic evidence under ADR-013 and establish no Event Hubs behavior. [Decision][measured-decision], [trial records][measured-trials], [approved scope][plan].
+
+## Measured finding
+
+The tested source was [9643aa9ec6ece739fecefd30b2146bb1564cb8fd](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/commit/9643aa9ec6ece739fecefd30b2146bb1564cb8fd), with `Dirty=false`. The experiment ran from `2026-10-14T17:38:03.2286942+00:00` to `2026-10-14T17:43:10.3206978+00:00` UTC on 2026-10-14. All planned trials completed, with experimental integrity established and no recorded integrity failures. [Measured source, timestamps and observations][measured-trials], [decision][measured-decision].
+
+The recipe table below was generated from `decision.json`; it reports observed reproduction in this run, not a guarantee about later runs.
+
+| Retries | Fault | Completed trials | Witnessed pairs | Future positive-test candidate |
+|---|---|---|---|---|
+| `0` | `None` | 5/5 | 0/5 | No |
+| `0` | `latency` | 5/5 | 5/5 | Yes |
+| `0` | `timeout` | 5/5 | 5/5 | Yes |
+| `0` | `reset_peer` | 5/5 | 5/5 | Yes |
+| `2147483647` | `None` | 5/5 | 0/5 | No |
+| `2147483647` | `latency` | 5/5 | 5/5 | Yes |
+| `2147483647` | `timeout` | 5/5 | 5/5 | Yes |
+| `2147483647` | `reset_peer` | 5/5 | 5/5 | Yes |
+
+All fault recipes meet the approved candidate gate for a future positive regression test. The healthy controls have successful callbacks and no witnessed failed-callback pairs. Actual producer records report managed version `2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16` and native librdkafka `2.16.0`. The Kafka project [test report][measured-report] records 28 passed tests, with no failed or skipped tests. [Recipe decision][measured-decision], [callback/consumption evidence][measured-trials].
+
+Retained evidence consists of [full raw experiment JSON, gzip-compressed][measured-raw], the [decision][measured-decision], [compact trial records][measured-trials] and [test report][measured-report]. The full record includes raw producer statistics/debug traces and broker/proxy logs. Authoritative verifier outcome totals are absent. A yes does not require the ADR-016 revision reserved for a scoped no; the full-run invalidity rule remains unchanged. [Approved consequences][plan], [ADR-013][adr-013], [ADR-016][adr-016].
+
+Earlier inconclusive runs remain intact as diagnostic evidence:
+
+- [Initial listener validation][earlier-listener] rejected the proxy state before target production. The fixture's guard was corrected to accept Toxiproxy's wildcard-address normalization from `0.0.0.0` to `[::]`. [Current endpoint validation][infrastructure].
+- [Docker create timeout][earlier-docker] failed during broker creation. The timeout wrapper now preserves detected authentication while bounding Docker requests with the original experiment deadline. The legacy `CleanupSucceeded=true` records the then-tracked resource cleanup path; it does not establish the absence of a late-created orphan. [Current startup/cleanup handling][infrastructure], [timeout configuration][docker-authentication].
+- [Administration setup timeout][earlier-admin] timed out creating a topic during healthy controls. The setup ceiling now follows the original trial deadline. [Current administration bound][observer].
+
+These earlier records are superseded, not negative reproduction results. Their placeholder trial entries are not observed attempts or empirical reproduction rates. The historical JSON has not been rewritten to apply the later fixture's improved evidence contract.
+
+The exact orphan container `c96c38188129` was manually removed with `docker rm -fv`, which exited successfully; its removal timestamp was not recorded. [Cleanup recovery evidence][cleanup-recovery].
+
+The [cached-image snapshot][cached-images] records local cached image identities for the configured Kafka and Toxiproxy references. The [live-container snapshot][live-images] covers Toxiproxy and the Testcontainers resource reaper, Ryuk; it does not include a live Kafka image inspection. Configured `ImagePins`, cached image identity and observed running-container identity therefore remain distinct.
 
 ## Prerequisites and execution
 
-Use Linux with Bash, a reachable Docker daemon and .NET SDK 10.0.402 on `PATH`. The repository [SDK selection][sdk] disables roll-forward and selects Microsoft Testing Platform. Install prerequisites separately; the [verification entry point][verification] checks the selected SDK and does not install tools.
+Use Linux with Bash, a local Docker daemon and .NET SDK 10.0.402 on `PATH`. The fixture binds published control, producer and observer ports to host loopback and connects through loopback; remote Docker hosts are unsupported. See the [container lifecycle][infrastructure]. The repository [SDK selection][sdk] disables roll-forward and selects Microsoft Testing Platform. Install prerequisites separately; the [verification entry point][verification] checks the selected SDK and does not install tools.
 
 Check the daemon before planning a container run:
 
@@ -150,3 +183,14 @@ The implementation must follow the [.NET engineering standards][dotnet] and reta
 [kafka-package]: https://api.nuget.org/v3-flatcontainer/confluent.kafka/2.16.0/confluent.kafka.nuspec
 [containers-package]: https://api.nuget.org/v3-flatcontainer/testcontainers/4.16.0/testcontainers.nuspec
 [native-package]: https://api.nuget.org/v3-flatcontainer/librdkafka.redist/2.16.0/librdkafka.redist.nuspec
+
+[measured-decision]: evidence/2026-10-14/decision.json
+[measured-trials]: evidence/2026-10-14/trial-records.json
+[measured-raw]: evidence/2026-10-14/experiment.json.gz
+[measured-report]: evidence/2026-10-14/results.xml
+[earlier-listener]: evidence/2026-10-14/initial-listener-validation.json.gz
+[earlier-docker]: evidence/2026-10-14/docker-create-timeout.json.gz
+[earlier-admin]: evidence/2026-10-14/admin-setup-timeout.json.gz
+[cached-images]: evidence/2026-10-14/cached-image-identities.json
+[live-images]: evidence/2026-10-14/live-container-images.json
+[cleanup-recovery]: evidence/2026-10-14/cleanup-recovery.json

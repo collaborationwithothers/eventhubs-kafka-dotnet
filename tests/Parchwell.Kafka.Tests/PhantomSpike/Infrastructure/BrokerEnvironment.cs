@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Docker.DotNet.Models;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -41,6 +42,7 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
             .WithNetwork(network)
             .WithPortBinding(ProxyControlPort, true)
             .WithPortBinding(ProxyDataPort, true)
+            .WithCreateParameterModifier(BindPublishedPortsToLoopback)
             .WithCommand("-host=0.0.0.0", "-proxy-metrics")
             .WithEnvironment("LOG_LEVEL", "debug")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request =>
@@ -60,6 +62,8 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
             await environment.proxy.StartAsync(cancellationToken).ConfigureAwait(false);
             environment.ProducerBootstrapServers = Endpoint(environment.proxy, ProxyDataPort);
             environment.control.BaseAddress = new Uri($"http://{Endpoint(environment.proxy, ProxyControlPort)}/");
+            // Remote daemons require reachable local forwarding; never broaden the binding.
+            _ = await environment.ReadControlAsync("version", cancellationToken).ConfigureAwait(false);
             environment.kafka = environment.BuildKafka();
             environment.kafkaCreationAttempted = true;
             await environment.kafka.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -130,6 +134,7 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
             .WithNetwork(network)
             .WithNetworkAliases("phantom-kafka")
             .WithPortBinding(KafkaDirectPort, true)
+            .WithCreateParameterModifier(BindPublishedPortsToLoopback)
             .WithEnvironment("KAFKA_LISTENERS", "PROXY://:9092,DIRECT://:9093,CONTROLLER://:9094,BROKER://:9095")
             .WithEnvironment("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "PROXY:PLAINTEXT,DIRECT:PLAINTEXT,CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT")
             .WithEnvironment("KAFKA_INTER_BROKER_LISTENER_NAME", "BROKER")
@@ -363,11 +368,20 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         }
     }
 
-    private static string Endpoint(IContainer container, int port)
+    // Modifiers run after bindings are assembled and before Docker container creation.
+    // https://github.com/testcontainers/testcontainers-dotnet/blob/4.16.0/src/Testcontainers/Clients/DockerContainerOperations.cs#L222-L230
+    // HostIP serializes as Docker's HostIp field; this preserves random host-port allocation.
+    // https://github.com/testcontainers/Docker.DotNet/blob/1e4015a84fa48cbcfe9002ecc4e2cf14177edc2d/src/Docker.DotNet/Models/PortBinding.Generated.cs#L9-L19
+    internal static void BindPublishedPortsToLoopback(CreateContainerParameters parameters)
     {
-        var host = container.Hostname;
-        return $"{(host.Contains(':', StringComparison.Ordinal) ? $"[{host}]" : host)}:{container.GetMappedPublicPort(port)}";
+        var publishedPorts = parameters.HostConfig?.PortBindings
+            ?? throw new InvalidOperationException("Published fixture ports were not configured.");
+        foreach (var bindings in publishedPorts.Values)
+        foreach (var binding in bindings)
+            binding.HostIP = "127.0.0.1";
     }
+
+    private static string Endpoint(IContainer container, int port) => $"127.0.0.1:{container.GetMappedPublicPort(port)}";
 
     private static string ShellQuote(string value) => "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
 }
