@@ -56,9 +56,9 @@ shopt -s globstar nullglob
 projects=(src/**/*.csproj tests/**/*.csproj)
 for project in "${projects[@]}"; do
     manifest="$verification_results/manifests/$(basename "${project%.csproj}").json"
-    if dotnet msbuild "$project" -p:Configuration=Release \
-        -getProperty:MSBuildProjectFullPath,TargetFramework,Nullable,TreatWarningsAsErrors,AnalysisLevel,EnableNETAnalyzers,RunAnalyzersDuringBuild,RunAnalyzers,AssemblyName \
-        -getItem:ProjectReference,Compile -nologo >"$manifest" 2>"$manifest.stderr"; then
+    if dotnet msbuild "$project" -p:Configuration=Release -t:AddImplicitDefineConstants,_DisableDiagnosticTracing \
+        -getProperty:MSBuildProjectFullPath,TargetFramework,Nullable,TreatWarningsAsErrors,AnalysisLevel,EnableNETAnalyzers,RunAnalyzersDuringBuild,RunAnalyzers,AssemblyName,RootNamespace,ProjectDir,DefineConstants,LangVersion,EnforceCodeStyleInBuild \
+        -getItem:ProjectReference,Compile,CompilerVisibleProperty -nologo >"$manifest" 2>"$manifest.stderr"; then
         :
     else
         status=$?
@@ -91,11 +91,19 @@ if dotnet build "$warning_fixture/WarningControl.csproj" --configuration Release
     exit 1
 else
     status=$?
-    if [[ "$(<"$warning_fixture/forbidden.log")" != *"error CS1030: #warning: 'PARCHWELL_WARNING_CONTROL'"* ]]; then
+    expected_diagnostic="error CS1030: #warning: 'PARCHWELL_WARNING_CONTROL'"
+    if [[ "$status" -ne 1 || "$(<"$warning_fixture/forbidden.log")" != *"$expected_diagnostic"* ]]; then
         echo "Warning control failed for an unrelated cause (exit $status)." >&2
         tail -n 80 "$warning_fixture/forbidden.log" >&2
         exit "$status"
     fi
+    while IFS= read -r diagnostic || [[ -n "$diagnostic" ]]; do
+        if [[ "$diagnostic" =~ (^|[[:space:]])[Ee][Rr][Rr][Oo][Rr][[:space:]] && "$diagnostic" != *"$expected_diagnostic"* ]]; then
+            echo "Warning control included an unrelated error (exit $status)." >&2
+            tail -n 80 "$warning_fixture/forbidden.log" >&2
+            exit "$status"
+        fi
+    done < "$warning_fixture/forbidden.log"
 fi
 echo "Warning-as-error control: valid counterpart built; intended CS1030 error rejected."
 echo "Verification passed. Compiled rules currently cover empty source scaffolds; feature behavior is not tested."

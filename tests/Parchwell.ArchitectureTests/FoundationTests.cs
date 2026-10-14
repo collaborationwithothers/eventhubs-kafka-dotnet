@@ -13,15 +13,7 @@ public sealed class FoundationTests
     private static string RepositoryRoot => Environment.GetEnvironmentVariable("PARCHWELL_REPOSITORY_ROOT")
         ?? throw new InvalidOperationException("Run ./scripts/verify-dotnet.sh to collect evaluated project configuration.");
 
-    private static ProjectModel[] Projects
-    {
-        get
-        {
-            var manifests = Environment.GetEnvironmentVariable("PARCHWELL_PROJECT_MANIFEST_DIRECTORY")
-                ?? throw new InvalidOperationException("Missing evaluated project manifests. Run ./scripts/verify-dotnet.sh.");
-            return Directory.GetFiles(manifests, "*.json").Select(ProjectModel.Read).ToArray();
-        }
-    }
+    private static ProjectModel[] Projects => ProjectModel.ReadManifests();
 
     [Fact]
     public void Given_DocumentedLayout_When_ProjectsAreEvaluated_Then_AllSourceAndTestProjectsBelongToSolution()
@@ -65,6 +57,15 @@ public sealed class FoundationTests
             {
                 Assert.True(project.Properties.TryGetValue(property, out var actual) && actual.Equals(value, StringComparison.OrdinalIgnoreCase),
                     $"{project.Name}: expected effective {property}={value}; got {actual ?? "<missing>"}.");
+            }
+            if (ProjectRules.ServiceNames.Contains(project.Name, StringComparer.Ordinal))
+            {
+                Assert.Equal(project.Name, project.Properties["RootNamespace"]);
+                Assert.True(project.Properties["EnforceCodeStyleInBuild"].Equals("true", StringComparison.OrdinalIgnoreCase),
+                    $"{project.Name}: namespace/folder analysis must run during the build.");
+                Assert.Equal(Path.GetDirectoryName(project.Path), project.Properties["ProjectDir"].TrimEnd(Path.DirectorySeparatorChar));
+                Assert.Contains("RootNamespace", project.CompilerVisibleProperties);
+                Assert.Contains("ProjectDir", project.CompilerVisibleProperties);
             }
         }
     }

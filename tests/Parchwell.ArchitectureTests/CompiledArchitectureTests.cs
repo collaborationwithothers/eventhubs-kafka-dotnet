@@ -46,8 +46,18 @@ public sealed class CompiledArchitectureTests
     public void Given_ServiceFeatureNamespaces_When_CompiledDependenciesAreChecked_Then_FeatureSlicesAreIsolated()
     {
         var architecture = Architecture.Value;
+        var projects = ProjectModel.ReadManifests();
         foreach (var service in ProjectRules.ServiceNames)
         {
+            var project = Assert.Single(projects, candidate => candidate.Name == service);
+            Assert.Empty(SourceNamespaceRules.Validate(project));
+            // IDE0130 checks explicit namespace declarations. This also rejects source
+            // types with no namespace, which the syntax analyzer does not visit.
+            foreach (var type in architecture.Types.Where(type => type.Assembly.Name == service && !type.IsCompilerGenerated))
+            {
+                Assert.True(type.Namespace.FullName == service || type.Namespace.FullName.StartsWith(service + ".", StringComparison.Ordinal),
+                    $"{type.FullName}: service types must reside in {service} or its feature namespaces.");
+            }
             var sliceTypes = architecture.Types.Where(type => type.Assembly.Name == service && type.Namespace.FullName.StartsWith(service + ".", StringComparison.Ordinal))
                 .GroupBy(type => type.Namespace.FullName[(service.Length + 1)..].Split('.')[0], StringComparer.Ordinal)
                 .Where(group => group.Key != "Common").ToArray();

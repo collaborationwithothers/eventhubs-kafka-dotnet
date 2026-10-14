@@ -2,7 +2,10 @@ using System.Text.Json;
 
 namespace Parchwell.ArchitectureTests;
 
-internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, string> Properties, string[] References)
+internal sealed record SourceModel(string FullPath, string? Link);
+
+internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, string> Properties, string[] References,
+    string[] CompilerVisibleProperties, SourceModel[] Sources)
 {
     internal string Name => Properties["AssemblyName"];
 
@@ -13,7 +16,21 @@ internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, str
             .ToDictionary(property => property.Name, property => property.Value.GetString()!, StringComparer.Ordinal);
         var references = document.RootElement.GetProperty("Items").GetProperty("ProjectReference")
             .EnumerateArray().Select(item => System.IO.Path.GetFullPath(item.GetProperty("FullPath").GetString()!)).ToArray();
-        return new ProjectModel(System.IO.Path.GetFullPath(properties["MSBuildProjectFullPath"]), properties, references);
+        var compilerVisibleProperties = document.RootElement.GetProperty("Items").TryGetProperty("CompilerVisibleProperty", out var visible)
+            ? visible.EnumerateArray().Select(item => item.GetProperty("Identity").GetString()!).ToArray()
+            : [];
+        var sources = document.RootElement.GetProperty("Items").TryGetProperty("Compile", out var compile)
+            ? compile.EnumerateArray().Select(item => new SourceModel(item.GetProperty("FullPath").GetString()!,
+                item.TryGetProperty("Link", out var link) ? link.GetString() : null)).ToArray()
+            : [];
+        return new ProjectModel(System.IO.Path.GetFullPath(properties["MSBuildProjectFullPath"]), properties, references, compilerVisibleProperties, sources);
+    }
+
+    internal static ProjectModel[] ReadManifests()
+    {
+        var manifests = Environment.GetEnvironmentVariable("PARCHWELL_PROJECT_MANIFEST_DIRECTORY")
+            ?? throw new InvalidOperationException("Missing evaluated project manifests. Run ./scripts/verify-dotnet.sh.");
+        return Directory.GetFiles(manifests, "*.json").Select(Read).ToArray();
     }
 }
 
