@@ -186,6 +186,72 @@ test('split definition identifiers do not resolve references, while whole format
   for (const id of ['S882', 'S883', 'ADR-889']) assert.ok(!result.output.includes(`Undefined identifier: ${id}`), result.output);
 });
 
+for (const cell of ['S999 ![icon](icon.png)', 'S999 ![icon][picture]', 'S999 `extra`',
+  '`S999`', '**S999 ![icon](icon.png)**', 'S999 extra']) {
+  test(`source ID cell ${cell} does not define a source`, t => {
+    const {run} = fixture(t, {
+      'icon.png': '',
+      'README.md': `# Reproduction\n\nS999.\n\n| ID | Source |\n|---|---|\n| ${cell} | source |\n\n[picture]: icon.png\n`,
+    });
+    const result = run();
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /3:1[^\n]*Undefined identifier: S999/, result.output);
+  });
+}
+
+for (const cell of ['S999', '**S999**', '*S999*', '~~S999~~', '***S999***',
+  '[S999](https://example.invalid)']) {
+  test(`whole source ID cell ${cell} resolves its reference`, t => {
+    const {run} = fixture(t, {
+      'README.md': `# Sources\n\nS999.\n\n| ID | Source |\n|---|---|\n| ${cell} | source |\n`,
+    });
+    const result = run();
+    assert.equal(result.status, 0, result.output);
+    assert.doesNotMatch(result.output, /\bwarning\b|\berror\b/i);
+  });
+}
+
+test('ordinary undefined source references are reported without a definition', t => {
+  const {run} = fixture(t, {'README.md': '# Readme\n\nS999.\n'});
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /3:1[^\n]*Undefined identifier: S999/, result.output);
+});
+
+test('non-text content in link labels cannot make them equal their destinations', t => {
+  const {run} = fixture(t, {
+    'icon.png': '',
+    'README.md': '# Readme\n\n[https://example.invalid/S999![icon](icon.png)](https://example.invalid/S999)\n\n[https://example.invalid/S998`extra`](https://example.invalid/S998)\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /Undefined identifier: S999/);
+  assert.match(result.output, /Undefined identifier: S998/);
+});
+
+test('non-text content separates ADR heading text without hiding a valid prefix', t => {
+  const {run} = fixture(t, {
+    'icon.png': '',
+    'docs/blueprint.md': blueprint + '\n### ADR-888`title`9\n\n### **ADR-889**![icon](../icon.png)alpha\n\n### ![icon](../icon.png)ADR-887: Not a declaration\n',
+    'README.md': '# Readme\n\nADR-888, ADR-889 and ADR-887.\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /Undefined identifier: ADR-887/);
+  assert.doesNotMatch(result.output, /Undefined identifier: ADR-888|Undefined identifier: ADR-889/);
+});
+
+test('non-text content cannot create a source list declaration prefix', t => {
+  const {run} = fixture(t, {
+    'icon.png': '',
+    'README.md': '# Sources\n\nS999 and S998.\n\n- S999`extra`: source.\n- S998![icon](icon.png): source.\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /3:1[^\n]*Undefined identifier: S999/, result.output);
+  assert.match(result.output, /3:1[^\n]*Undefined identifier: S998/, result.output);
+});
+
 test('Unicode word characters do not delimit identifier references or ADR declarations', t => {
   const {run} = fixture(t, {
     'docs/blueprint.md': blueprint + '\n### ADR-001α: Not a duplicate\n\n### ADR-881α: Not a declaration\n',
