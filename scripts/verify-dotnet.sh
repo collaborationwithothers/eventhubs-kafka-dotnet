@@ -117,4 +117,4 @@ else
     done < "$warning_fixture/forbidden.log"
 fi
 echo "Warning-as-error control: valid counterpart built; intended CS1030 error rejected."
-echo "Verification passed. Compiled rules currently cover empty source scaffolds; feature behavior is not tested."
+echo "Verification passed. Per-project reports identify the tests executed."

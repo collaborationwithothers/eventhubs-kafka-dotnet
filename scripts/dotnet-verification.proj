@@ -102,6 +102,58 @@
       ]]></Code>
     </Task>
   </UsingTask>
+  <UsingTask TaskName="ValidateKafkaMappingCoverage" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <CoverageReport ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Xml" />
+      <Using Namespace="System.Xml.Linq" />
+      <Code Type="Method" Language="cs"><![CDATA[
+      public override bool Execute()
+      {
+        try
+        {
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            XDocument document;
+            using (var reader = XmlReader.Create(CoverageReport, settings)) document = XDocument.Load(reader);
+            if (document.Root == null || document.Root.Name != "coverage")
+                throw new InvalidDataException("Expected a Cobertura coverage report.");
+            var packages = document.Root.Descendants("package").Where(package => (string)package.Attribute("name") == "Parchwell.Kafka").ToArray();
+            if (packages.Length != 1) throw new InvalidDataException("Expected the instrumented Parchwell.Kafka assembly.");
+            var classes = packages[0].Descendants("class").ToArray();
+            var required = new[] { "KafkaConfigurationFactory", "KafkaBaselineOptionsValidator", "KafkaServiceCollectionExtensions", "BaselineSettingsCatalog", "FrozenInventory", "KafkaBaseline<TConfig>", "KafkaBaselineOptions", "KafkaRoleRegistration", "KafkaSettingDefinition", "KafkaSettingMetadata", "KafkaSettingSource" };
+            foreach (var name in required)
+                if (!classes.Any(type => (string)type.Attribute("name") == "Parchwell.Kafka.Configuration." + name
+                    && type.Element("lines") != null && type.Element("lines").Elements("line").Any()))
+                    throw new InvalidDataException("Missing coverage for " + name + ".");
+            var lines = classes.SelectMany(type => type.Element("lines") == null ? Enumerable.Empty<XElement>() : type.Element("lines").Elements("line")).ToArray();
+            if (lines.Length == 0) throw new InvalidDataException("Coverage report contains no mapping lines.");
+            foreach (var line in lines)
+            {
+                int hits;
+                if (!int.TryParse((string)line.Attribute("hits"), out hits) || hits <= 0)
+                    throw new InvalidDataException("Uncovered or invalid mapping line: " + (string)line.Attribute("number") + ".");
+            }
+            var sourceLines = classes.SelectMany(type => type.Element("lines") == null ? Enumerable.Empty<string>() : type.Element("lines").Elements("line").Select(line => (string)type.Attribute("filename") + ":" + (string)line.Attribute("number"))).Distinct().Count();
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.High, "Parchwell.Kafka: " + sourceLines + " instrumented source lines covered; branch completeness is checked by behavioral tests.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Log.LogError("Kafka mapping coverage rejected: " + exception.Message);
+            return false;
+        }
+      }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="ValidateKafkaCoverage">
+    <ValidateKafkaMappingCoverage CoverageReport="$(CoverageReport)" />
+  </Target>
   <Target Name="ValidateReport">
     <ValidateXunitReport Report="$(Report)" ExpectedAssembly="$(ExpectedAssembly)" />
   </Target>
