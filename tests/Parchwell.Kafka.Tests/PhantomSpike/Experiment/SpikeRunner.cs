@@ -58,6 +58,8 @@ internal sealed class SpikeRunner(TimeProvider clock)
         }
         catch (Exception exception)
         {
+            if (exception is BrokerStartupException startupFailure)
+                cleanupSucceeded = startupFailure.CleanupEstablished;
             failures.Add($"Experiment setup or execution failed: {exception}");
             foreach (var configuration in Matrix().Where(configuration => !trials.Any(trial => trial.Configuration == configuration)))
                 trials.Add(NotExecuted(configuration, timings, environment, "Experiment setup or execution failed before this trial."));

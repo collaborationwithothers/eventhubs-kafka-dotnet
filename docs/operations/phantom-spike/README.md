@@ -38,9 +38,21 @@ This uses the repository's [Microsoft Testing Platform invocation][verification]
 
 ## Evidence retention
 
-`PARCHWELL_SPIKE_EVIDENCE_DIRECTORY` selects the experiment evidence directory. Full verification assigns a directory below its temporary verification output and prints the actual path. It also prints the experiment summary and self-contained trial JSON to the verification log on success or failure. Preserve that output together with the detailed traces when investigating a run; these are [approved implementation boundaries][plan], not evidence of a successful experiment.
+`PARCHWELL_SPIKE_EVIDENCE_DIRECTORY` selects the evidence root. When it is unset or blank, the [evidence writer][writer] uses the system temporary directory. Each run creates a fresh `phantom-spike-<GUID>` subdirectory, so records from an earlier run cannot supply the current run's result.
 
-Routine execution writes evidence outside tracked repository files. Detailed local traces are temporary; these instructions make no claim that hosted runner files survive job teardown. A durable finding belongs under this directory with its measured evidence, source commit, dirty-state declaration and reproduction command. It does not belong under `results/` and is not a scenario verdict. These boundaries follow the [approved plan][plan] and [verdict-integrity rules][rules].
+The writer produces these files:
+
+| File | Contents |
+|---|---|
+| `experiment.json` | Full experiment record, including trial diagnostics, producer logs/statistics and broker/proxy logs when collection succeeds |
+| `decision.json` | Mechanism finding, matrix completion, experimental integrity and their reasons |
+| `trial-records.json` | Compact trial evidence, callback and independent-consumption records, warmup and routing/fault evidence, and configuration/source identity |
+
+The compact projection omits raw debug/statistics and broker/proxy log streams; preserve `experiment.json` for those details. The [writer implementation][writer] defines the files and projection. A missing diagnostic remains missing evidence rather than a claimed successful collection.
+
+Full verification assigns an evidence root below its temporary verification output and prints the actual path. It prints `decision.json` and `trial-records.json` to the job log on success or failure, while preserving test failures and XML report validation. See the [verification script][verification] and its [evidence-publishing target][report-validation]. Preserve that output together with `experiment.json` when investigating a run; successful publication is not evidence of a successful experiment.
+
+Routine execution writes evidence outside tracked repository files. Detailed local traces are temporary; these instructions make no claim that hosted runner files survive job teardown. A durable finding belongs under this directory with its measured evidence, source commit, dirty-state declaration and reproduction command. Retain the full raw JSON, compressed losslessly if needed, alongside the decision and compact trial records; preserve earlier inconclusive evidence separately. It does not belong under `results/` and is not a scenario verdict. These boundaries follow the [approved plan][plan] and [verdict-integrity rules][rules].
 
 ## Frozen experiment
 
@@ -50,6 +62,8 @@ Use these approved image pins. Their source is the corresponding Dockerfile in T
 
 - Kafka: `confluentinc/cp-kafka:7.5.12@sha256:997883c60e6f1207fb5f779c7a8fdae57312a17f446fd5ea3eb8b73f52d4a1cf`. [Kafka image source][kafka-image].
 - Toxiproxy: `ghcr.io/shopify/toxiproxy:2.12.0@sha256:9378ed52a28bc50edc1350f936f518f31fa95f0d15917d6eb40b8e376d1a214e`. [Proxy image source][proxy-image].
+
+The full experiment's `ImagePins` field records configured image references. Container IDs, when collected in infrastructure diagnostics, identify container instances; they are not an independently observed image content identity. The [evidence contract][contracts] does not record a Docker image-inspection result. Keep configured pins distinct from actually observed content identities in a finding.
 
 Compare explicit `retries=0` with explicit `retries=2147483647`, the default documented in [librdkafka 2.16.0 configuration][config]. Keep `acks=all`, `enable.idempotence=false` and transactions off. Enable delivery reports, their persistence-status field, and producer statistics/debug evidence. The [managed producer source][producer] substitutes `PossiblyPersisted` when the status field is disabled, so that substitute cannot serve as independent persistence evidence.
 
@@ -66,7 +80,19 @@ These are TCP faults, not selectors for Kafka acknowledgements. The pinned [Toxi
 
 Initial approved timing estimates, dated 2026-10-14, are `message.timeout.ms=5000`, `socket.timeout.ms=2000` and downstream latency `10000` ms. Basis: a bounded local experiment without broker runtime measurements. The planned trial deadline is 60 seconds and the overall deadline is 30 minutes including startup. These are experimental budgets, not measured performance claims. [Approval and basis][plan].
 
-Measure healthy controls first. If those settings cannot support healthy controls, permit the single approved recalibration from measured controls, record and freeze its timings, and repeat the complete matrix within the same overall deadline. Retain superseded runs separately. Further tuning, a larger budget, new faults, idempotence variants or different broker/client versions require Hari's decision. [Approved calibration boundary][plan].
+The implementation also bounds individual operations and shutdown. These are planned implementation safety budgets, dated 2026-10-14, not measured performance or additional experiment configurations:
+
+| Operation | Planned safety bound | Implementation source |
+|---|---|---|
+| Individual observer watermark query and consume slice | 250 ms | [Direct observer][observer] |
+| Topic-creation request/operation timeout | 5 seconds each | [Direct observer][observer] |
+| Producer metadata lookup | 5 seconds | [Producer probe][probe] |
+| Diagnostic collection | 10 seconds | [Runner][runner], [container lifecycle][infrastructure] |
+| Cleanup | 30 seconds | [Runner][runner], [container lifecycle][infrastructure] |
+
+Basis: bounded synchronous polling, administration, diagnostic collection and resource release. Diagnostic and cleanup handling can continue after the experiment deadline with separate cancellation handling. Consequently, the approved experiment deadline is not a promise that process shutdown completes at that exact wall-clock time. A query timeout does not complete the observer's scan, and a cleanup timeout does not count as successful release. [Implementation][runner], [observer completion][observer].
+
+Measure healthy controls first. The approval permits a single recalibration from measured controls, with recorded frozen timings and a complete rerun within the same experiment budget. The current [runner][runner] does not automatically retune: failed healthy controls without a trustworthy successful calibration sample stop the fault matrix and retain an inconclusive result. Retain superseded runs separately. Further tuning, a larger experiment budget, new faults, idempotence variants or different broker/client versions require Hari's decision. [Approved calibration boundary][plan].
 
 For every trial, use a fresh producer, topic, instance ID, attempt ID and proxy state. Warm metadata and demonstrate a healthy produce/consume path before fault activation. Apply the fault before the target `Produce` and retain it until the terminal callback or safety deadline. Do not cancel a produce task or remove the fault to manufacture its delivery outcome. Retain every trial, including startup, evidence and cleanup failures. [Approved trial procedure][plan].
 
@@ -97,6 +123,13 @@ The implementation must follow the [.NET engineering standards][dotnet] and reta
 [plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/52#issuecomment-6172812371
 [sdk]: ../../../global.json
 [verification]: ../../../scripts/verify-dotnet.sh
+[report-validation]: ../../../scripts/dotnet-verification.proj
+[writer]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Evidence/SpikeEvidenceWriter.cs
+[contracts]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Contracts.cs
+[runner]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/SpikeRunner.cs
+[observer]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/DirectObserver.cs
+[probe]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/ProducerProbe.cs
+[infrastructure]: ../../../tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/BrokerEnvironment.cs
 [foundation]: ../../engineering/dotnet-verification.md
 [rules]: ../../../AGENTS.md#before-opening-a-pull-request
 [factory]: ../../agents/factory.md#plan-template

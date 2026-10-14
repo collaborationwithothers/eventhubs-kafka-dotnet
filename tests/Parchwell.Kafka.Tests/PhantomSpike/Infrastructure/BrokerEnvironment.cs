@@ -15,19 +15,29 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
     private const int ProxyControlPort = 8474;
     private const int ProxyDataPort = 8666;
     private const int KafkaDirectPort = 9093;
+    private readonly ExperimentDockerAuthentication dockerAuthentication;
+    private readonly string proxyContainerName = $"phantom-proxy-{Guid.NewGuid():N}";
+    private readonly string kafkaContainerName = $"phantom-kafka-{Guid.NewGuid():N}";
     private readonly INetwork network;
     private readonly IContainer proxy;
     private readonly HttpClient control = new();
     private IContainer? kafka;
     private string? proxyName;
     private bool disposed;
+    private bool proxyCreationAttempted;
+    private bool kafkaCreationAttempted;
 
     private BrokerEnvironment()
     {
-        network = new NetworkBuilder().Build();
+        // Set the HTTP ceiling before any resource Build: TC caches the first client per endpoint.
+        // https://github.com/testcontainers/testcontainers-dotnet/blob/4.16.0/src/Testcontainers/Clients/DockerApiClient.cs
+        dockerAuthentication = new ExperimentDockerAuthentication(TestcontainersSettings.OS.DockerEndpointAuthConfig);
+        network = new NetworkBuilder().WithDockerEndpoint(dockerAuthentication).Build();
         // The scratch image has no shell. HTTP readiness and explicit metric flags are required.
         // https://github.com/Shopify/toxiproxy/blob/v2.12.0/Dockerfile
         proxy = new ContainerBuilder(ProxyImage)
+            .WithDockerEndpoint(dockerAuthentication)
+            .WithName(proxyContainerName)
             .WithNetwork(network)
             .WithPortBinding(ProxyControlPort, true)
             .WithPortBinding(ProxyDataPort, true)
@@ -46,10 +56,12 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         var environment = new BrokerEnvironment();
         try
         {
+            environment.proxyCreationAttempted = true;
             await environment.proxy.StartAsync(cancellationToken).ConfigureAwait(false);
             environment.ProducerBootstrapServers = Endpoint(environment.proxy, ProxyDataPort);
             environment.control.BaseAddress = new Uri($"http://{Endpoint(environment.proxy, ProxyControlPort)}/");
             environment.kafka = environment.BuildKafka();
+            environment.kafkaCreationAttempted = true;
             await environment.kafka.StartAsync(cancellationToken).ConfigureAwait(false);
             environment.ObserverBootstrapServers = Endpoint(environment.kafka, KafkaDirectPort);
             return environment;
@@ -57,14 +69,15 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         catch (Exception startFailure)
         {
             var diagnosticText = await environment.CaptureStartupDiagnosticsAsync().ConfigureAwait(false);
-            var failure = new InvalidOperationException("Broker startup failed.\n" + diagnosticText, startFailure);
+            var failure = new BrokerStartupException(environment.proxyContainerName, environment.kafkaContainerName, diagnosticText, startFailure);
             try
             {
                 await environment.DisposeAsync().ConfigureAwait(false);
             }
             catch (Exception cleanupFailure)
             {
-                throw new AggregateException("Broker startup and cleanup failed.", failure, cleanupFailure);
+                throw new BrokerStartupException(environment.proxyContainerName, environment.kafkaContainerName, diagnosticText,
+                    new AggregateException("Broker startup and cleanup failed.", startFailure, cleanupFailure));
             }
 
             throw failure;
@@ -112,6 +125,8 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         // Adapted KRaft setup and startup-script gate from the pinned module; no module package is used.
         // https://github.com/testcontainers/testcontainers-dotnet/blob/4.16.0/src/Testcontainers.Kafka/KafkaBuilder.cs
         return new ContainerBuilder(KafkaImage)
+            .WithDockerEndpoint(dockerAuthentication)
+            .WithName(kafkaContainerName)
             .WithNetwork(network)
             .WithNetworkAliases("phantom-kafka")
             .WithPortBinding(KafkaDirectPort, true)
@@ -290,6 +305,10 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         // uncancellable; expiration marks cleanup failed and leaves its reaper enabled.
         using var cleanupDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var failures = new List<Exception>();
+        // A cancelled create may continue inside the daemon after the client loses the ID.
+        // Dispose of an ID-less Testcontainers object does not prove that daemon work stopped.
+        RecordUnknownCreation(kafka, kafkaCreationAttempted, kafkaContainerName, failures);
+        RecordUnknownCreation(proxy, proxyCreationAttempted, proxyContainerName, failures);
         if (kafka is not null)
         {
             await DisposeResourceAsync(kafka, failures, cleanupDeadline.Token).ConfigureAwait(false);
@@ -301,6 +320,23 @@ internal sealed class BrokerEnvironment : IAsyncDisposable
         if (failures.Count != 0)
         {
             throw new AggregateException("Broker environment cleanup failed.", failures);
+        }
+    }
+
+    private static void RecordUnknownCreation(IContainer? container, bool creationAttempted, string name, List<Exception> failures)
+    {
+        if (!creationAttempted || container is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = container.Id;
+        }
+        catch (InvalidOperationException exception)
+        {
+            failures.Add(new InvalidOperationException($"Docker creation outcome is unknown for owned container '{name}'; cleanup cannot be asserted. Inspect and remove this exact name if the daemon completes creation later.", exception));
         }
     }
 

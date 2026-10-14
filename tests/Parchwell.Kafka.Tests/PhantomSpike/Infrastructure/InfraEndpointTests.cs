@@ -1,4 +1,5 @@
 using Xunit;
+using DotNet.Testcontainers.Configurations;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
@@ -6,6 +7,19 @@ namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
 public sealed class InfraEndpointTests
 {
+    [Fact]
+    public void Given_DetectedDockerEndpoint_When_ConfiguringExperimentClient_Then_PreservesEndpointAndUsesApprovedBudget()
+    {
+        var original = new DockerEndpointAuthenticationConfiguration(new Uri("unix:///var/run/docker.sock"));
+        var configuration = new ExperimentDockerAuthentication(original);
+        var builder = configuration.GetDockerClientBuilder();
+
+        Assert.Equal(original.Endpoint, configuration.Endpoint);
+        Assert.Equal(original.Version, configuration.Version);
+        using var client = builder.Build();
+        Assert.Equal(TimeSpan.FromMinutes(30), client.Options.Timeout);
+    }
+
     [Theory]
     [InlineData("0.0.0.0:8666")]
     [InlineData("[::]:8666")]
