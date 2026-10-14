@@ -185,3 +185,15 @@ test('split definition identifiers do not resolve references, while whole format
   for (const id of ['S880', 'S881', 'ADR-888']) assert.ok(result.output.includes(`Undefined identifier: ${id}`), result.output);
   for (const id of ['S882', 'S883', 'ADR-889']) assert.ok(!result.output.includes(`Undefined identifier: ${id}`), result.output);
 });
+
+test('Unicode word characters do not delimit identifier references or ADR declarations', t => {
+  const {run} = fixture(t, {
+    'docs/blueprint.md': blueprint + '\n### ADR-001α: Not a duplicate\n\n### ADR-881α: Not a declaration\n',
+    'README.md': '# Readme\n\nS999é éS999 ADR-999α αADR-999 S999\u0301 \u0301S999 ADR-999\u0301 \u0301ADR-999 S999２ ２S999 ADR-999２ ２ADR-999 x_S999 S999_x x_ADR-999 ADR-999_x XS999 S999X ADR-999X XADR-999 ADR-9999\n\n(S882), [ADR-882], S883/ADR-883 and ADR-881.\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  const undefinedIds = [...result.output.matchAll(/Undefined identifier: ([\w-]+)/g)].map(match => match[1]).sort();
+  assert.deepEqual(undefinedIds, ['ADR-881', 'ADR-882', 'ADR-883', 'S882', 'S883'], result.output);
+  assert.doesNotMatch(result.output, /Duplicate definition/);
+});

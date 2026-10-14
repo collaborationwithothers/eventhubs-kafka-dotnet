@@ -33,7 +33,7 @@ function definitions(tree, includeAdrs = true) {
   }
   visit(tree, node => {
     if (includeAdrs && node.type === 'heading' && node.depth === 3) {
-      const match = /^ADR-\d{3}\b/.exec(text(node));
+      const match = /^ADR-\d{3}(?![\p{L}\p{M}\p{N}_])/u.exec(text(node));
       if (match && leadingText(node).startsWith(match[0])) add(adrs, match[0], node);
     }
     if (node.type === 'tableRow') {
@@ -78,7 +78,7 @@ export default function repositoryRules() {
       if (local.labels.has(node)) return SKIP;
       if (excludedLinkText(node, file)) return SKIP;
       if (node.type !== 'text') return;
-      for (const match of node.value.matchAll(/\b(?:ADR-\d{3}|S\d+)\b/g)) {
+      for (const match of node.value.matchAll(/(?<![\p{L}\p{M}\p{N}_])(?:ADR-\d{3}|S\d+)(?![\p{L}\p{M}\p{N}_])/gu)) {
         const id = match[0];
         const known = id.startsWith('ADR-') ? blueprint.adrs : sources;
         if (!known.has(id)) report(`Undefined identifier: ${id}`, node, 'undefined-id');
