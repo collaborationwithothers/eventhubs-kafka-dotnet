@@ -9,7 +9,12 @@ function text(node) {
   return (node.children ?? []).map(text).join('');
 }
 
-function displayedUrl(node, file) {
+function leadingText(node) {
+  if (!node) return '';
+  return node.type === 'text' ? node.value : leadingText(node.children?.[0]);
+}
+
+function excludedLinkText(node, file) {
   // Parsed autolinks have no opening label bracket in the source. Their
   // destinations may add a scheme that is absent from the visible label.
   return node.type === 'link' && (text(node) === node.url
@@ -21,26 +26,26 @@ function definitions(tree, includeAdrs = true) {
   const adrs = new Map();
   const labels = new Set();
   const duplicates = [];
-  function add(map, id, node) {
+  function add(map, id, node, declaration = node) {
     if (map.has(id)) duplicates.push({id, node});
     map.set(id, node);
-    labels.add(node);
+    labels.add(declaration);
   }
   visit(tree, node => {
     if (includeAdrs && node.type === 'heading' && node.depth === 3) {
       const match = /^ADR-\d{3}\b/.exec(text(node));
-      if (match) add(adrs, match[0], node);
+      if (match && leadingText(node).startsWith(match[0])) add(adrs, match[0], node);
     }
     if (node.type === 'tableRow') {
       const cell = node.children[0];
       const id = text(cell).trim();
-      if (/^S\d+$/.test(id)) add(sources, id, cell);
+      if (/^S\d+$/.test(id) && leadingText(cell).trim() === id) add(sources, id, cell, node);
     }
     if (node.type === 'listItem') {
       const paragraph = node.children[0];
       if (paragraph?.type === 'paragraph') {
         const match = /^(S\d+):/.exec(text(paragraph));
-        if (match) add(sources, match[1], paragraph);
+        if (match && leadingText(paragraph).startsWith(match[1])) add(sources, match[1], paragraph);
       }
     }
   });
@@ -60,9 +65,10 @@ export default function repositoryRules() {
     for (const {id, node} of local.duplicates) report(`Duplicate definition: ${id}`, node, 'duplicate-id');
 
     visit(tree, node => {
-      if (displayedUrl(node, file)) return SKIP;
-      if (node.type !== 'text') return;
-      if ([...node.value].some(c => c.codePointAt(0) > 127 && /\p{P}/u.test(c))) {
+      if (excludedLinkText(node, file)) return SKIP;
+      const value = node.type === 'text' ? node.value : node.alt;
+      if (!value) return;
+      if ([...value].some(c => c.codePointAt(0) > 127 && /\p{P}/u.test(c))) {
         report('Use ASCII punctuation in prose', node, 'punctuation');
       }
     });
@@ -70,7 +76,7 @@ export default function repositoryRules() {
       // Definition labels are declarations, not references. URLs and code are
       // separate Markdown nodes, so only ordinary text is scanned here.
       if (local.labels.has(node)) return SKIP;
-      if (displayedUrl(node, file)) return SKIP;
+      if (excludedLinkText(node, file)) return SKIP;
       if (node.type !== 'text') return;
       for (const match of node.value.matchAll(/\b(?:ADR-\d{3}|S\d+)\b/g)) {
         const id = match[0];

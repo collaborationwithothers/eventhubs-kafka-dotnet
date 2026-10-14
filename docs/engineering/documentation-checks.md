@@ -8,16 +8,18 @@ The command scans tracked files with a `.md` extension, ignoring case, except th
 
 | Check | Supported input | Finding |
 |---|---|---|
-| Punctuation | Parsed prose text, including headings and table cells | A non-ASCII character in Unicode's punctuation category |
+| Punctuation | Markdown text nodes and image descriptions (alt text), including headings and table cells | A non-ASCII character in Unicode's punctuation category |
 | Local links | Standard Markdown links, images and link definitions | A local target file or heading does not exist, as reported by remark-validate-links |
 | Source definitions | A table row whose first cell is exactly `S` followed by digits, or a list item starting `S` followed by digits and a colon | A source ID is defined more than once in a document |
 | Source references | A complete `S` followed by digits in a prose text node | No matching source definition in the document, or in the blueprint when the document defines no sources |
 | ADR definitions | A level-three heading in `docs/blueprint.md` starting with `ADR-` and three digits | An ADR ID is defined more than once |
 | ADR references | A complete `ADR-` followed by three digits in a prose text node | No matching heading in the local blueprint |
 
-Source IDs are exact: leading zeros are significant. Identifiers must be contiguous within a text node; do not split one identifier across emphasis or other inline markup. Formatting around an entire identifier is supported.
+Source IDs are exact: leading zeros are significant. Identifiers must be contiguous within a text node; do not split one identifier across emphasis or other inline markup. Formatting around an entire identifier is supported. A split definition is not registered; an ordinary reference to it is reported as undefined. Detecting malformed definition syntax itself is outside this version's contract.
 
-Code blocks, inline code, HTML, URL destinations and displayed URL text are excluded from identifier and punctuation checks. Source definition cells and complete source definition list paragraphs are declarations, not reference sites; their descriptions are not checked for identifier references. ADR heading declarations are also excluded from identifier-reference scans. Punctuation is still checked in declarations. Non-ASCII letters in names and unit symbols are allowed.
+Code blocks, inline code, HTML and URL destinations are excluded from identifier and punctuation checks. Autolink text and explicit link text that exactly equals its parsed destination are also excluded. Other explicit link labels are prose, including a URL-like label that differs from its destination; the checker does not guess whether a label is a URL. Image descriptions are checked for punctuation only; link and image title attributes are not checked.
+
+Complete source definition table rows and source definition list paragraphs are declarations, not reference sites; their descriptions are not checked for identifier references. ADR heading declarations are also excluded from identifier-reference scans. Punctuation is still checked in declarations. Non-ASCII letters in names and unit symbols are allowed.
 
 Links are checked through unified-engine, the engine used by the remark CLI, so that headings in other Markdown files are included. External URLs are not requested or validated. Plain-text references such as `file.md "Heading"` are not links and are not checked. Undefined Markdown reference labels and HTML links are outside this version's contract.
 

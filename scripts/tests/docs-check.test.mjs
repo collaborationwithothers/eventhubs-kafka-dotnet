@@ -143,3 +143,45 @@ test('scan is read-only and external links require no successful response', t =>
   assert.doesNotMatch(result.output, /\bwarning\b|\berror\b/i);
   assert.equal(readFileSync(join(f.cwd, 'README.md'), 'utf8'), input);
 });
+
+test('image descriptions are checked for punctuation in direct and reference images', t => {
+  const {run} = fixture(t, {
+    'image.png': '',
+    'README.md': '# Readme\n\n![Use “quoted” text](image.png)\n\n![Use ‘quoted’ text][picture]\n\n![José uses 20 °C](image.png)\n\n[picture]: image.png\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.equal((result.output.match(/Use ASCII punctuation in prose/g) ?? []).length, 2, result.output);
+});
+
+test('only autolinks and exactly matching link labels are excluded from prose scans', t => {
+  const {run} = fixture(t, {
+    'README.md': '# Readme\n\n[www.example.com/S999](https://www.example.com/S999)\n\n[https://example.com/S998](https://example.com/S998)\n\nwww.example.com/S997\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /Undefined identifier: S999/);
+  assert.doesNotMatch(result.output, /Undefined identifier: S998|Undefined identifier: S997/);
+});
+
+test('source descriptions are declarations in both tables and lists but still check punctuation', t => {
+  const {run} = fixture(t, {
+    'README.md': '# Readme\n\nS1, S2 and S997.\n\n| ID | Source |\n|---|---|\n| S1 | Supersedes S999; “quote” |\n\n- S2: Supersedes S998.\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /Undefined identifier: S997/);
+  assert.match(result.output, /Use ASCII punctuation in prose/);
+  assert.doesNotMatch(result.output, /Undefined identifier: S999|Undefined identifier: S998/);
+});
+
+test('split definition identifiers do not resolve references, while whole formatted identifiers do', t => {
+  const {run} = fixture(t, {
+    'docs/blueprint.md': blueprint + '\n### **ADR-**888: Split\n\n### **ADR-889**: Whole\n',
+    'README.md': '# Readme\n\nS880, S881, S882, S883, ADR-888 and ADR-889.\n\n| ID | Source |\n|---|---|\n| **S**880 | Split |\n| **S882** | Whole |\n\n- **S**881: Split.\n- **S883**: Whole.\n',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  for (const id of ['S880', 'S881', 'ADR-888']) assert.ok(result.output.includes(`Undefined identifier: ${id}`), result.output);
+  for (const id of ['S882', 'S883', 'ADR-889']) assert.ok(!result.output.includes(`Undefined identifier: ${id}`), result.output);
+});
