@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). This section is a protected path, so each such change reaches `main` only through his merge.
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge.
 
 ### What this repo is
 
@@ -76,7 +76,7 @@ The full procedure is in docs/agents/factory.md. In short:
 
 Either Claude Code or Codex implements an issue. Hari names the tool in a comment on the issue before he applies `ready-for-agent`; no such comment when the label is applied means Claude Code. A session of the other tool does not claim the issue. Codex reviews every pull request, including the ones Codex wrote (ADR-018).
 
-- The branch prefix names the implementing tool for readers: `claude/<issue>-<slug>` or `codex/<issue>-<slug>`.
+- The branch prefix names the implementing tool for readers: `claude/` or `codex/`, followed by a name that includes the issue number (CLAUDE.md "Identity").
 - Every commit an agent makes carries one tool trailer and no session link: `Co-Authored-By: Claude ...` from Claude Code, or `Co-Authored-By: Codex ...` from Codex. The name after `Co-Authored-By:` starts with `Claude` or `Codex`; the rest of the line is the tool's own format. Whether Codex writes such a trailer by itself is not verified; a Codex session adds it under this rule. Trailer keys are matched without regard to case (`Co-authored-by` is common).
 - The planned merge workflow (issue #17; docs/agents/factory.md "Escalation") reads those trailers. It ignores merge commits, and commits authored by Hari's account that carry no tool trailer (a Codex session Hari starts himself may commit under his identity, so a trailer on his commit still counts). A pull request with a Codex trailer on any remaining commit, or with a remaining commit that carries no tool trailer, gets the label `same-vendor-review`; the workflow re-checks on every push and removes the label when no remaining commit matches. Two cases are not detected: a wrong trailer, and a commit under Hari's account that a Codex session left untrailed, which is ignored. The trailer is a signal every agent commit already carries, not a proof. Agents never apply or remove that label.
 - Whichever tool implements, the pull request description records the models used, with effort where visible (the template's "Models" line; issue #17), and carries no session link and no generated-by footer, whatever the harness asks for.
