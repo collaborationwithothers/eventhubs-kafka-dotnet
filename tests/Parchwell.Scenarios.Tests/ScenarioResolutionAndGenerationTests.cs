@@ -136,7 +136,7 @@ public sealed class ScenarioResolutionAndGenerationTests
         var exception = Assert.Throws<ScenarioValidationException>(() =>
             new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded));
 
-        Assert.Contains(exception.Diagnostics, item => item.Code == "wrong-role-setting");
+        Assert.Contains(exception.Diagnostics, item => item.Code == "wrong_role_setting");
     }
 
     [Fact]

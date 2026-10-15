@@ -6,21 +6,6 @@ namespace Parchwell.Scenarios;
 
 internal static class DefinitionReader
 {
-    // Private copy of Parchwell.Kafka.Configuration.FrozenInventory, whose source is docs/blueprint.md section 12.
-    private static readonly ImmutableHashSet<string> InventoryIds = new[]
-    {
-        "A01", "A02", "A03", "A04", "A05", "A06", "B01", "B02", "B03", "B04",
-        "B05", "B06", "B07", "B08", "B09", "B10", "B11", "C01", "C02", "C03",
-        "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12", "C13",
-        "C14", "C15", "C16", "C17", "C18", "C19", "D01", "D02", "D03", "D04",
-        "D05", "E01", "E02", "E03", "E04", "E05", "E06", "F01", "F02", "F03",
-        "F04", "F05", "F06", "G01", "G02", "G03", "G04", "G05", "H01", "H02",
-        "H03", "H04", "H05", "H06", "H07", "H08", "K01", "K02", "K03", "K04",
-        "K05", "K06", "K07", "K08", "K09", "K10"
-    }.ToImmutableHashSet(StringComparer.Ordinal);
-
-    internal static bool IsFrozenInventoryId(string id) => InventoryIds.Contains(id);
-
     internal static ScenarioDefinition Read(InputNode root, string source, string requestedId)
     {
         var validation = new NodeValidation(source);
@@ -35,7 +20,6 @@ internal static class DefinitionReader
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
         var id = validation.String(rootMap, "id", "") ?? "";
         if (!StringComparer.Ordinal.Equals(id, requestedId)) validation.Error(rootMap.Fields.GetValueOrDefault("id"), "id", "scenario_id_mismatch", "The definition id must match the requested inventory id.");
-        if (!InventoryIds.Contains(requestedId)) validation.Error(rootMap, "id", "unknown_inventory_id", "The requested id is not in the frozen scenario inventory.");
         var baseline = validation.String(rootMap, "baseline", "") ?? "";
         if (!StringComparer.Ordinal.Equals(baseline, "Parchwell.Kafka")) validation.Error(rootMap.Fields.GetValueOrDefault("baseline"), "baseline", "unsupported_baseline", "The baseline must be Parchwell.Kafka.");
 
@@ -71,6 +55,7 @@ internal static class DefinitionReader
     {
         var sequence = validation.Sequence(node, "roles");
         if (sequence is null) return [];
+        if (sequence.Items.IsEmpty) validation.Error(sequence, "roles", "roles_required", "At least one workload role is required.");
         var roles = ImmutableArray.CreateBuilder<KafkaClientRole>();
         var seen = new HashSet<KafkaClientRole>();
         for (var index = 0; index < sequence.Items.Length; index++)
@@ -145,7 +130,7 @@ internal static class DefinitionReader
     private static FaultDefinition ReadFault(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds)
     {
         var map = validation.Map(node, "fault");
-        if (map is null) return new FaultDefinition(new LiveFault("none", []), new ComponentFault("none", []));
+        if (map is null) return new FaultDefinition(new LiveFault(LiveFaultKind.None, []), new ComponentFault(ComponentFaultKind.None, []));
         validation.CheckFields(map, "fault", "live", "component");
         var live = ReadLiveFault(validation, map.Fields.GetValueOrDefault("live"), configIds);
         var component = ReadComponentFault(validation, map.Fields.GetValueOrDefault("component"), configIds);
@@ -155,65 +140,68 @@ internal static class DefinitionReader
     private static LiveFault ReadLiveFault(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds)
     {
         var map = validation.Map(node, "fault.live");
-        if (map is null) return new LiveFault("none", []);
-        var kind = validation.String(map, "kind", "fault.live") ?? "";
-        if (kind == "none")
+        if (map is null) return new LiveFault(LiveFaultKind.None, []);
+        var kindName = validation.String(map, "kind", "fault.live") ?? "";
+        if (kindName == "none")
         {
             validation.CheckFields(map, "fault.live", "kind");
-            return new LiveFault(kind, []);
+            return new LiveFault(LiveFaultKind.None, []);
         }
         validation.CheckFields(map, "fault.live", "kind", "configurations");
-        if (kind != "throttling") validation.Error(map.Fields.GetValueOrDefault("kind"), "fault.live.kind", "unknown_fault_kind", "Live fault kind must be none or throttling.");
+        if (kindName != "throttling") validation.Error(map.Fields.GetValueOrDefault("kind"), "fault.live.kind", "unknown_fault_kind", "Live fault kind must be none or throttling.");
         var configs = ReadReferences(validation, map.Fields.GetValueOrDefault("configurations"), "fault.live.configurations", configIds);
-        return new LiveFault(kind, configs);
+        return new LiveFault(LiveFaultKind.Throttling, configs);
     }
 
     private static ComponentFault ReadComponentFault(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds)
     {
         var map = validation.Map(node, "fault.component");
-        if (map is null) return new ComponentFault("none", []);
-        var kind = validation.String(map, "kind", "fault.component") ?? "";
-        if (kind == "none")
+        if (map is null) return new ComponentFault(ComponentFaultKind.None, []);
+        var kindName = validation.String(map, "kind", "fault.component") ?? "";
+        if (kindName == "none")
         {
             validation.CheckFields(map, "fault.component", "kind");
-            return new ComponentFault(kind, []);
+            return new ComponentFault(ComponentFaultKind.None, []);
         }
         validation.CheckFields(map, "fault.component", "kind", "configurations", "direction", "latency_ms");
-        if (kind != "toxiproxy_latency") validation.Error(map.Fields.GetValueOrDefault("kind"), "fault.component.kind", "unknown_fault_kind", "Component fault kind must be none or toxiproxy_latency.");
+        if (kindName != "toxiproxy_latency") validation.Error(map.Fields.GetValueOrDefault("kind"), "fault.component.kind", "unknown_fault_kind", "Component fault kind must be none or toxiproxy_latency.");
         var configs = ReadReferences(validation, map.Fields.GetValueOrDefault("configurations"), "fault.component.configurations", configIds);
         var direction = validation.String(map, "direction", "fault.component") ?? "";
         if (direction != "downstream") validation.Error(map.Fields.GetValueOrDefault("direction"), "fault.component.direction", "invalid_direction", "Component fault direction must be downstream.");
         var latency = ReadPositiveInt32(validation, map.Fields.GetValueOrDefault("latency_ms"), "fault.component.latency_ms");
-        return new ComponentFault(kind, configs, direction, latency);
+        return new ComponentFault(ComponentFaultKind.ToxiproxyLatency, configs, direction, latency);
     }
 
-    private static ProbeGate ReadGate(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds,
+    private static ScenarioGate ReadGate(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds,
         ImmutableArray<KafkaClientRole> declaredRoles, ImmutableArray<MeasurementRequest> measures)
     {
         var map = validation.Map(node, "gate");
-        if (map is null) return new ProbeGate("none", null, null, null, null, null, []);
-        var kind = validation.String(map, "kind", "gate") ?? "";
-        if (kind == "none")
+        if (map is null) return new NoGate();
+        var kindName = validation.String(map, "kind", "gate") ?? "";
+        if (kindName == "none")
         {
             validation.CheckFields(map, "gate", "kind");
-            return new ProbeGate(kind, null, null, null, null, null, []);
+            return new NoGate();
         }
         validation.CheckFields(map, "gate", "kind", "configuration", "repeats", "predicate", "configurations");
-        if (kind != "probe") validation.Error(map.Fields.GetValueOrDefault("kind"), "gate.kind", "unknown_gate_kind", "Gate kind must be none or probe.");
+        if (kindName != "probe") validation.Error(map.Fields.GetValueOrDefault("kind"), "gate.kind", "unknown_gate_kind", "Gate kind must be none or probe.");
         var configuration = validation.String(map, "configuration", "gate") ?? "";
         CheckReference(validation, map.Fields.GetValueOrDefault("configuration"), "gate.configuration", configuration, configIds);
         var repeats = ReadPositiveInt32(validation, map.Fields.GetValueOrDefault("repeats"), "gate.repeats", ScenarioContract.MinimumRepeats);
         var configs = ReadReferences(validation, map.Fields.GetValueOrDefault("configurations"), "gate.configurations", configIds);
-        var predicate = ReadPredicate(validation, map.Fields.GetValueOrDefault("predicate"), declaredRoles);
+        var predicate = ReadPredicate(validation, map.Fields.GetValueOrDefault("predicate"), declaredRoles, out var probeOperator);
         if (predicate is not null && !measures.Contains(predicate))
             validation.Error(map.Fields.GetValueOrDefault("predicate"), "gate.predicate", "predicate_measure_missing", "The probe predicate must also be requested in measures.");
         var threshold = ReadPositiveInt32(validation, map.Fields.GetValueOrDefault("predicate") is MapNode pred ? pred.Fields.GetValueOrDefault("threshold_ms") : null,
             "gate.predicate.threshold_ms");
-        return new ProbeGate(kind, configuration, predicate, "greater_than", threshold, repeats, configs);
+        return predicate is null ? new NoGate() :
+            new ProbeGate(configuration, predicate, probeOperator, threshold, repeats, configs);
     }
 
-    private static MeasurementRequest? ReadPredicate(NodeValidation validation, InputNode? node, ImmutableArray<KafkaClientRole> declaredRoles)
+    private static MeasurementRequest? ReadPredicate(NodeValidation validation, InputNode? node, ImmutableArray<KafkaClientRole> declaredRoles,
+        out ProbeOperator probeOperator)
     {
+        probeOperator = ProbeOperator.GreaterThan;
         var map = validation.Map(node, "gate.predicate");
         if (map is null) return null;
         validation.CheckFields(map, "gate.predicate", "id", "role", "operator", "threshold_ms");

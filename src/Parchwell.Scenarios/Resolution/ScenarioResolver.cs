@@ -8,8 +8,6 @@ namespace Parchwell.Scenarios;
 /// <summary>Composes scenario replacements over fresh, source-cited Kafka baselines.</summary>
 public sealed class ScenarioResolver
 {
-    private const string SupportedBaseline = "Parchwell.Kafka";
-
     private readonly KafkaConfigurationFactory factory;
 
     /// <summary>Creates a resolver using the application's registered Kafka baseline factory.</summary>
@@ -30,11 +28,6 @@ public sealed class ScenarioResolver
     {
         ArgumentNullException.ThrowIfNull(scenario);
         var definition = scenario.Definition;
-        if (definition is null)
-            throw new ArgumentException("The loaded scenario has no definition.", nameof(scenario));
-
-        ValidateResolutionInputs(definition);
-
         // Capture one fresh baseline snapshot per role for this resolution. OptionsMonitor may
         // change later; one run plan must not mix values from different option snapshots.
         var baselineSnapshots = new Dictionary<KafkaClientRole,
@@ -53,21 +46,14 @@ public sealed class ScenarioResolver
 
                 if (configuration.Value.Overrides.TryGetValue(role, out var overrides))
                 {
-                    if (overrides is null)
-                        throw Invalid(definition, $"configurations.{configuration.Key}.{role}", "null-overrides",
-                            "The role override map cannot be null.");
-
                     foreach (var item in overrides.OrderBy(pair => pair.Key, StringComparer.Ordinal))
                     {
                         var fieldPath = $"configurations.{configuration.Key}.{role}.{item.Key}";
-                        if (item.Value is null)
-                            throw Invalid(definition, fieldPath, "null-override", "A setting override cannot be null.");
-
                         var bounds = GetSupportedBounds(role, item.Key, definition, fieldPath, item.Value.Location);
                         var value = item.Value.Value;
                         if (value < bounds.Minimum || value > bounds.Maximum)
                         {
-                            throw Invalid(definition, fieldPath, "setting-out-of-range",
+                            throw Invalid(definition, fieldPath, "setting_out_of_range",
                                 $"{item.Key} must be between {bounds.Minimum.ToString(CultureInfo.InvariantCulture)} and {bounds.Maximum.ToString(CultureInfo.InvariantCulture)} milliseconds.",
                                 item.Value.Location);
                         }
@@ -76,7 +62,7 @@ public sealed class ScenarioResolver
                         {
                             var isOmission = omissions.Any(omission => string.Equals(omission.Key, item.Key, StringComparison.Ordinal));
                             throw Invalid(definition, fieldPath,
-                                isOmission ? "cannot-activate-omitted-setting" : "setting-not-in-baseline",
+                                isOmission ? "cannot_activate_omitted_setting" : "setting_not_in_baseline",
                                 isOmission
                                     ? "A baseline omission cannot be activated by a scenario override."
                                     : "The setting is not an emitted baseline key and cannot be introduced.",
@@ -85,14 +71,14 @@ public sealed class ScenarioResolver
 
                         if (!int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var baselineValue))
                         {
-                            throw Invalid(definition, fieldPath, "invalid-baseline-value",
+                            throw Invalid(definition, fieldPath, "invalid_baseline_value",
                                 "The baseline value for this numeric setting is not a plain decimal integer.",
                                 item.Value.Location);
                         }
 
                         if (value == baselineValue)
                         {
-                            throw Invalid(definition, fieldPath, "no-op-override",
+                            throw Invalid(definition, fieldPath, "no_op_override",
                                 "An override must change the numeric baseline value.", item.Value.Location);
                         }
 
@@ -108,15 +94,6 @@ public sealed class ScenarioResolver
                 roleConfigurations.Add(role, new ResolvedRoleConfiguration(role, effective, omissions));
             }
 
-            foreach (var overrideRole in configuration.Value.Overrides.Keys)
-            {
-                if (!definition.Roles.Contains(overrideRole))
-                {
-                    throw Invalid(definition, $"configurations.{configuration.Key}.{overrideRole}",
-                        "role-not-declared", "Overrides may target only roles declared by the scenario.");
-                }
-            }
-
             resolvedConfigurations.Add(configuration.Key,
                 new ResolvedConfiguration(configuration.Key, roleConfigurations.ToImmutable()));
         }
@@ -124,44 +101,12 @@ public sealed class ScenarioResolver
         return new ResolvedScenario(scenario, resolvedConfigurations.ToImmutable());
     }
 
-    private static void ValidateResolutionInputs(ScenarioDefinition definition)
-    {
-        if (!string.Equals(definition.Baseline, SupportedBaseline, StringComparison.Ordinal))
-            throw Invalid(definition, "baseline", "unsupported-baseline", $"Only {SupportedBaseline} is supported.");
-
-        if (definition.Roles.IsDefaultOrEmpty)
-            throw Invalid(definition, "roles", "roles-required", "At least one workload role is required.");
-
-        if (definition.Roles.Distinct().Count() != definition.Roles.Length ||
-            definition.Roles.Any(role => !Enum.IsDefined(role)))
-        {
-            throw Invalid(definition, "roles", "invalid-roles", "Roles must be unique declared KafkaClientRole values.");
-        }
-
-        if (definition.Configurations is null || definition.Configurations.Count == 0)
-            throw Invalid(definition, "configurations", "configurations-required", "At least one configuration is required.");
-
-        foreach (var configuration in definition.Configurations)
-        {
-            if (string.IsNullOrWhiteSpace(configuration.Key) || configuration.Value is null)
-                throw Invalid(definition, "configurations", "invalid-configuration", "Configuration IDs and values must be present.");
-
-            if (configuration.Value.Id != configuration.Key)
-                throw Invalid(definition, $"configurations.{configuration.Key}", "configuration-id-mismatch",
-                    "The configuration ID must match its mapping key.");
-
-            if (configuration.Value.Overrides is null)
-                throw Invalid(definition, $"configurations.{configuration.Key}", "null-overrides",
-                    "The configuration override map cannot be null.");
-        }
-    }
-
     private static (ImmutableDictionary<string, ResolvedSetting> Settings,
         ImmutableArray<KafkaSettingMetadata> Omissions) SnapshotBaseline<TConfig>(KafkaBaseline<TConfig> baseline,
         KafkaClientRole role, ScenarioDefinition definition) where TConfig : ClientConfig
     {
         if (baseline.Configuration is null || baseline.Settings.IsDefault || baseline.Omissions.IsDefault)
-            throw Invalid(definition, "baseline", "invalid-baseline-snapshot",
+            throw Invalid(definition, "baseline", "invalid_baseline_snapshot",
                 $"The Kafka factory returned an incomplete baseline for {role}.");
 
         var nativeSettings = baseline.Configuration.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -171,7 +116,7 @@ public sealed class ScenarioResolver
             if (metadata is null || metadata.Role != role || metadata.Disposition != KafkaSettingDisposition.Explicit ||
                 metadata.Value is null || !metadataSettings.TryAdd(metadata.Key, metadata))
             {
-                throw Invalid(definition, "baseline", "invalid-baseline-metadata",
+                throw Invalid(definition, "baseline", "invalid_baseline_metadata",
                     $"The Kafka factory returned invalid setting metadata for {role}.");
             }
         }
@@ -179,7 +124,7 @@ public sealed class ScenarioResolver
         if (nativeSettings.Count != metadataSettings.Count ||
             nativeSettings.Keys.Any(key => !metadataSettings.ContainsKey(key)))
         {
-            throw Invalid(definition, "baseline", "baseline-metadata-coverage",
+            throw Invalid(definition, "baseline", "baseline_metadata_coverage",
                 $"The native baseline and setting metadata keys do not match for {role}.");
         }
 
@@ -189,7 +134,7 @@ public sealed class ScenarioResolver
             var metadata = metadataSettings[pair.Key];
             if (!string.Equals(pair.Value, metadata.Value, StringComparison.Ordinal))
             {
-                throw Invalid(definition, "baseline", "baseline-metadata-value-mismatch",
+                throw Invalid(definition, "baseline", "baseline_metadata_value_mismatch",
                     $"The native baseline and metadata values do not match for {role}.{pair.Key}.");
             }
             effective.Add(pair.Key, new ResolvedSetting(pair.Value, metadata, null));
@@ -201,7 +146,7 @@ public sealed class ScenarioResolver
             if (omission is null || omission.Role != role || omission.Disposition == KafkaSettingDisposition.Explicit ||
                 omission.Value is not null || nativeSettings.ContainsKey(omission.Key) || !omissionKeys.Add(omission.Key))
             {
-                throw Invalid(definition, "baseline", "invalid-baseline-omission",
+                throw Invalid(definition, "baseline", "invalid_baseline_omission",
                     $"The Kafka factory returned invalid omission metadata for {role}.");
             }
         }
@@ -223,19 +168,19 @@ public sealed class ScenarioResolver
     private static (int Minimum, int Maximum) GetSupportedBounds(KafkaClientRole role, string key,
         ScenarioDefinition definition, string fieldPath, SourceLocation location)
     {
-        if (role != KafkaClientRole.LoadGenProducer)
+        if (!KafkaScenarioOverridePolicy.SupportsRole(role))
         {
-            throw Invalid(definition, fieldPath, "wrong-role-setting",
+            throw Invalid(definition, fieldPath, "wrong_role_setting",
                 "Scenario overrides are currently supported only for LoadGenProducer.", location);
         }
 
-        return key switch
+        if (!KafkaScenarioOverridePolicy.TryGetSetting(key, out var setting) || !setting.SupportsRole(role))
         {
-            "request.timeout.ms" => (1, 900_000),
-            "socket.timeout.ms" => (10, 300_000),
-            _ => throw Invalid(definition, fieldPath, "unsupported-setting",
-                "Only request.timeout.ms and socket.timeout.ms are currently supported overrides.", location)
-        };
+            throw Invalid(definition, fieldPath, "unsupported_setting",
+                "The setting is not supported by the scenario override policy.", location);
+        }
+
+        return (setting.Minimum, setting.Maximum);
     }
 
     private static ScenarioValidationException Invalid(ScenarioDefinition definition, string fieldPath,

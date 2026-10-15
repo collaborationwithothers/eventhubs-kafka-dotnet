@@ -2,7 +2,8 @@ using System.Collections.Frozen;
 
 namespace Parchwell.Kafka.Configuration;
 
-internal static class FrozenInventory
+/// <summary>Provides membership checks for the repository's approved frozen inventory.</summary>
+public static class FrozenInventory
 {
     // docs/blueprint.md section 12, frozen inventory and amendment 1.
     private static readonly FrozenSet<string> Ids = new[]
@@ -17,5 +18,8 @@ internal static class FrozenInventory
         "K05", "K06", "K07", "K08", "K09", "K10",
     }.ToFrozenSet(StringComparer.Ordinal);
 
-    internal static bool Contains(string? id) => id is not null && Ids.Contains(id);
+    /// <summary>Checks whether an identifier belongs to the frozen inventory.</summary>
+    /// <param name="id">The inventory identifier to check.</param>
+    /// <returns><see langword="true"/> when the exact, case-sensitive identifier is in the inventory.</returns>
+    public static bool Contains(string? id) => id is not null && Ids.Contains(id);
 }
