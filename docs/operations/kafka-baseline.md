@@ -24,7 +24,9 @@ var baseline = provider.GetRequiredService<KafkaConfigurationFactory>()
 
 Named options use the role name. `ValidateOnStart` validates every registered role through the startup validator invoked by Generic Host. Validation checks namespace DNS-label syntax and rejects missing identities, whitespace and control characters; the DNS label bound comes from [RFC 1035][dns]. It does not query Azure. [Startup registration][startup], [Host invocation][host].
 
-The other factory methods are `CreateEnrichmentProducer`, `CreateEnrichmentConsumer` and `CreateVerifierConsumer`. An unregistered role fails explicitly. Each result owns a fresh mutable native configuration and immutable `Settings`/`Exclusions` snapshots. Those snapshots describe initial emission; later caller edits do not update them or other results. Scenario-delta composition belongs to reference slice step 5. [Approved API][plan].
+Required runtime inputs come from the same catalogue entries that emit them. Adding an input-backed entry therefore adds its startup requirement. The factory snapshots the string-valued options with a record copy before resolving entries; literal, input-backed and omitted definitions have separate construction methods. [Implementation][catalogue], [factory implementation][factory-code].
+
+The other factory methods are `CreateEnrichmentProducer`, `CreateEnrichmentConsumer` and `CreateVerifierConsumer`. An unregistered role fails explicitly. Each result owns a fresh mutable native configuration and immutable `Settings`/`Omissions` snapshots. Those snapshots describe initial emission; later caller edits do not update them or other results. Scenario-delta composition belongs to reference slice step 5. [Approved API][plan].
 
 ## Source selection and conflicts
 
@@ -55,9 +57,9 @@ The managed delivery keys use `dotnet.producer.*`; fields `all` retain persisten
 
 ## Deliberate omissions
 
-Transactions, SAS credential settings and native OIDC client-secret settings are excluded under ADR-003/015. Consumer static membership remains unspecified for C06. The verifier fixes its group to `parchwell-verifier`, disables auto-commit, selects reset `error` and isolation `read_committed`; its offset-store and commit-interval settings remain unspecified under the assumption that it assigns explicit offsets and never stores or commits them. [ADR-003/013/015][blueprint], [approved exclusions][plan].
+Transactions, SAS credential settings and native OIDC client-secret settings are excluded under ADR-003/015. Consumer static membership remains unspecified for C06. The verifier fixes its group to `parchwell-verifier`, disables auto-commit, selects reset `error` and isolation `read_committed`; its offset-store and commit-interval settings remain unspecified under the assumption that it assigns explicit offsets and never stores or commits them. [ADR-003/013/015][blueprint], [approved omissions][plan].
 
-Omissions appear in `Exclusions` with null metadata values and their own disposition; no null entries are sent to native configuration. This PR supplies no token provider, refresh handler, client factory, statistics bridge or verifier algorithm. Attach the separately planned custom refresh handler before live use. [Approved scope][plan].
+Omissions appear in `Omissions` with null metadata values and their own disposition; no null entries are sent to native configuration. This PR supplies no token provider, refresh handler, client factory, statistics bridge or verifier algorithm. Attach the separately planned custom refresh handler before live use. [Approved scope][plan].
 
 ## Verification
 
@@ -80,63 +82,37 @@ dotnet tool install dotnet-coverage --version 18.12.0 --tool-path /tmp/parchwell
 
 The pin is approved in the [plan][plan] and published in its [package manifest][coverage-package]. The script collects only the library with [documented coverage configuration][coverage-settings], runs mapping tests, validates the test report and rejects missing coverage or uncovered mapping lines. Reports stay in the temporary directory printed by the script. Branch completeness is established by explicit behavior assertions; reported branch metrics alone are insufficient given the [open collector issue][coverage-issue]. This focused pass supplements full verification. [CLI documentation][coverage-cli].
 
-### Coverage checker regression examples
+### Coverage scope and controls
 
-The checker accepts a Cobertura report for `Parchwell.Kafka` containing executable lines for every required mapping type, with positive integer hits on every reported mapping line, including compiler-generated nested types. Lines from other library features are outside this focused gate. It rejects a missing assembly or required type, an empty report, and uncovered or invalid mapping hits. The following examples use a genuine collected report as the positive control, then create synthetic copies to test the scope and rejection behavior. These copies are never coverage evidence.
+The checker selects every reported class under `Parchwell.Kafka.Configuration`, including generated nested classes. It also reads the built Kafka assembly and its matching portable PDB, the compiler's source-location file, to derive the executable types that must appear in the report. There is no mapping-class allowlist to maintain. A newly added executable mapping type is required even if the collector omits it. [Verifier implementation][coverage-verifier].
 
-Run this example with Python's standard library and the path printed by the coverage script:
+Missing or malformed reports, absent expected types, invalid line data and uncovered mapping lines fail. Uncovered code in another feature namespace remains outside this focused gate. A rejected coverage report cannot substitute for a failed test run: the coverage script separately validates the fresh xUnit report. [Coverage entry point][coverage-script].
+
+The regression commands require Bash, Python and ripgrep (`rg`) on `PATH`, in addition to the pinned SDK and collector. The standalone regression controls exercise the real checker with valid and deliberately damaged reports, and collect a temporary fixture containing an unexecuted mapping type. Fixture data and edited reports are synthetic controls, never coverage evidence for the library. Run after the Release solution build:
 
 ```bash
-python3 - /path/to/collected/coverage.xml <<'PY'
-import pathlib, subprocess, sys, tempfile, xml.etree.ElementTree as ET
-
-source = pathlib.Path(sys.argv[1])
-directory = pathlib.Path(tempfile.mkdtemp(prefix="synthetic-coverage-controls-"))
-def validate(path):
-    return subprocess.run([
-        "dotnet", "msbuild", "scripts/dotnet-verification.proj",
-        "-t:ValidateKafkaCoverage", "-p:CoverageReport=" + str(path), "-nologo"
-    ], capture_output=True, text=True)
-assert validate(source).returncode == 0, "Positive control must pass"
-for name in ["TokenRefresh", "KafkaConfigurationFactoryExtra"]:
-    root = ET.parse(source).getroot()
-    classes = root.find("./packages/package/classes")
-    extra = ET.SubElement(classes, "class", {
-        "name": "Parchwell.Kafka.Configuration." + name,
-        "filename": "Synthetic/" + name + ".cs"})
-    ET.SubElement(ET.SubElement(extra, "lines"), "line", {"number": "1", "hits": "0"})
-    path = directory / (name + ".xml")
-    ET.ElementTree(root).write(path)
-    assert validate(path).returncode == 0, name + " must remain outside the mapping gate"
-    print(name + ": ignored as expected")
-for name in ["missing-assembly", "missing-class", "empty", "uncovered", "uncovered-generated", "invalid-hits"]:
-    root = ET.parse(source).getroot()
-    if name == "missing-assembly":
-        root.find("./packages/package").set("name", "Synthetic.OtherAssembly")
-    elif name == "missing-class":
-        classes = root.find("./packages/package/classes")
-        classes.remove(next(item for item in classes if item.get("name") ==
-                            "Parchwell.Kafka.Configuration.KafkaSettingSource"))
-    elif name == "empty":
-        root = ET.fromstring("<coverage><packages /></coverage>")
-    elif name == "uncovered-generated":
-        generated = next(item for item in root.findall("./packages/package/classes/class")
-                         if item.get("name") == "Parchwell.Kafka.Configuration.KafkaConfigurationFactory.<>c")
-        generated.find("./lines/line").set("hits", "0")
-    else:
-        root.find("./packages/package/classes/class/lines/line").set(
-            "hits", "0" if name == "uncovered" else "invalid")
-    path = directory / (name + ".xml")
-    ET.ElementTree(root).write(path)
-    result = validate(path)
-    assert result.returncode != 0 and "Kafka mapping coverage rejected:" in (
-        result.stdout + result.stderr), name + " must fail for the coverage reason"
-    print(name + ": rejected as expected")
-print("Synthetic checker controls: " + str(directory))
-PY
+./scripts/test-kafka-coverage.sh /tmp/parchwell-coverage-tool/dotnet-coverage
+./scripts/test-kafka-documentation.sh
 ```
 
-Missing or malformed files also fail report loading. A rejected report cannot substitute for a failed test run: the coverage script separately validates the fresh xUnit test report.
+The scripts identify the expected rejection reason; unrelated tool or build failures do not count as passing controls. [Coverage controls][coverage-controls], [documentation controls][documentation-controls].
+
+### XML inventory consistency
+
+Full verification checks the generated XML documentation after the Release build. The checker requires each literal `KafkaSettingKeys` declaration to name its Kafka key and link to exactly the union of that key's catalogue inventory IDs across all roles. Missing, duplicate, extra or mismatched declarations fail. This protects the inventory links required by the blueprint; it does not invent result links before results exist. [XML checker][xml-checker], [library documentation requirement][blueprint].
+
+### Pending CI coverage wiring
+
+The existing CI entry point now runs the XML inventory check. It still does not collect mapping coverage. Hari must add the following steps after `./scripts/verify-dotnet.sh` in the .NET verification job; until then, mapping coverage is a separately executed check. The collector stays outside the repository as approved in the plan. [Current workflow][workflow], [approved collector pin][plan], [tool CLI][coverage-cli].
+
+```yaml
+- name: Install mapping coverage collector
+  run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
+- name: Verify Kafka mapping coverage
+  run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
+```
+
+Agents cannot edit workflow files under [AGENTS.md safety rule 8][workflow-rule]. The snippet is a concrete handoff for Hari; this PR does not claim that CI coverage is enforced.
 
 [plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/54#issuecomment-6174869137
 [blueprint]: ../blueprint.md
@@ -161,3 +137,11 @@ Missing or malformed files also fail report loading. A rejected report cannot su
 [coverage-cli]: https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage
 [coverage-settings]: https://github.com/microsoft/codecoverage/blob/8df391ed291de6ae26bf688b6e591961ab5698cd/docs/configuration.md
 [coverage-issue]: https://github.com/microsoft/codecoverage/issues/218
+[factory-code]: ../../src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs
+[coverage-verifier]: ../../tests/Parchwell.ArchitectureTests/Verification/KafkaCoverageVerifier.cs
+[coverage-script]: ../../scripts/verify-kafka-coverage.sh
+[coverage-controls]: ../../scripts/test-kafka-coverage.sh
+[documentation-controls]: ../../scripts/test-kafka-documentation.sh
+[xml-checker]: ../../scripts/verification/ValidateKafkaDocumentation.cs
+[workflow]: ../../.github/workflows/dotnet-verification.yml
+[workflow-rule]: ../../AGENTS.md#hard-safety-rules

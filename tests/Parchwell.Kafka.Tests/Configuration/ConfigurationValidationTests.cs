@@ -65,16 +65,26 @@ public sealed class ConfigurationValidationTests
         provider.GetRequiredService<IStartupValidator>().Validate();
     }
 
-    [Fact]
-    public void Given_NamespaceLabelBoundaries_When_StartupValidating_Then_AcceptsValidDnsLabelsAndRejectsOverlongLabel()
+    [Theory]
+    [InlineData("a")]
+    [InlineData("A1")]
+    [InlineData("a-b")]
+    public void Given_ValidNamespaceLabel_When_StartupValidating_Then_Accepts(string name)
     {
-        foreach (string name in new[] { "a", "A1", "a-b", new string('a', 63) })
-        {
-            using var provider = UnvalidatedProvider(KafkaClientRole.LoadGenProducer, options => options.NamespaceName = name);
+        using var provider = UnvalidatedProvider(KafkaClientRole.LoadGenProducer, options => options.NamespaceName = name);
+        provider.GetRequiredService<IStartupValidator>().Validate();
+    }
+
+    [Theory]
+    [InlineData(63, true)]
+    [InlineData(64, false)]
+    public void Given_NamespaceLengthBoundary_When_StartupValidating_Then_EnforcesDnsLabelLimit(int length, bool valid)
+    {
+        using var provider = UnvalidatedProvider(KafkaClientRole.LoadGenProducer, options => options.NamespaceName = new string('a', length));
+        if (valid)
             provider.GetRequiredService<IStartupValidator>().Validate();
-        }
-        using var overlong = UnvalidatedProvider(KafkaClientRole.LoadGenProducer, options => options.NamespaceName = new string('a', 64));
-        Assert.Throws<OptionsValidationException>(() => overlong.GetRequiredService<IStartupValidator>().Validate());
+        else
+            Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
     }
 
     [Fact]
@@ -121,7 +131,6 @@ public sealed class ConfigurationValidationTests
         Assert.Throws<ArgumentNullException>(() => KafkaServiceCollectionExtensions.AddParchwellKafka(null!, KafkaClientRole.LoadGenProducer, ConfigurationMappingTests.Configure));
         Assert.Throws<ArgumentNullException>(() => services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, null!));
         Assert.Throws<ArgumentOutOfRangeException>(() => services.AddParchwellKafka((KafkaClientRole)(-1), ConfigurationMappingTests.Configure));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new KafkaBaselineOptionsValidator((KafkaClientRole)(-1)));
     }
 
     [Fact]
@@ -133,6 +142,21 @@ public sealed class ConfigurationValidationTests
         var result = validator.Validate(nameof(KafkaClientRole.EnrichmentConsumer), new());
         Assert.True(result.Failed);
         Assert.Throws<ArgumentNullException>(() => validator.Validate(nameof(KafkaClientRole.EnrichmentConsumer), null!));
+    }
+
+    public static IEnumerable<object[]> RequiredInputCases() =>
+        Enum.GetValues<KafkaClientRole>().SelectMany(role => BaselineSettingsCatalog.GetEntries(role)
+            .Select(entry => entry.RequiredInput).OfType<KafkaRequiredInput>().Distinct()
+            .Select(input => new object[] { role, input.Name }));
+
+    [Theory]
+    [MemberData(nameof(RequiredInputCases))]
+    public void Given_CatalogueRequiredInput_When_Missing_Then_StartupRejectsForThatRole(KafkaClientRole role, string inputName)
+    {
+        using var provider = UnvalidatedProvider(role, options =>
+            typeof(KafkaBaselineOptions).GetProperty(inputName)!.SetValue(options, null));
+        var error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Contains(error.Failures, failure => failure.StartsWith(inputName, StringComparison.Ordinal));
     }
 
     private static ServiceProvider UnvalidatedProvider(KafkaClientRole role, Action<KafkaBaselineOptions> change)

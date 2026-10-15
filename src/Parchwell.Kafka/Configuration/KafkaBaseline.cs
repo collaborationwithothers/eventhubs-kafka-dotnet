@@ -8,17 +8,17 @@ namespace Parchwell.Kafka.Configuration;
 public sealed class KafkaBaseline<TConfig> where TConfig : ClientConfig
 {
     internal KafkaBaseline(TConfig configuration, ImmutableArray<KafkaSettingMetadata> settings,
-        ImmutableArray<KafkaSettingMetadata> exclusions)
+        ImmutableArray<KafkaSettingMetadata> omissions)
     {
         Configuration = configuration;
         Settings = settings;
-        Exclusions = exclusions;
+        Omissions = omissions;
     }
 
     /// <summary>Gets the caller-owned mutable native client configuration.</summary>
     public TConfig Configuration { get; }
     /// <summary>Gets immutable metadata for the initial emitted values.</summary>
     public ImmutableArray<KafkaSettingMetadata> Settings { get; }
-    /// <summary>Gets immutable metadata for intentionally omitted settings.</summary>
-    public ImmutableArray<KafkaSettingMetadata> Exclusions { get; }
+    /// <summary>Gets immutable metadata for settings excluded or left unspecified.</summary>
+    public ImmutableArray<KafkaSettingMetadata> Omissions { get; }
 }

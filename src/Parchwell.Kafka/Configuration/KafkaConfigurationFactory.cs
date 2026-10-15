@@ -17,33 +17,31 @@ public sealed class KafkaConfigurationFactory
         ArgumentNullException.ThrowIfNull(registrations);
         this.options = options;
         registeredRoles = registrations.Select(registration => registration.Role).ToHashSet();
-        if (registeredRoles.Any(role => !Enum.IsDefined(role)))
-            throw new ArgumentOutOfRangeException(nameof(registrations));
     }
 
     /// <summary>Creates a fresh load-generator producer configuration and its initial metadata.</summary>
-    /// <returns>The native producer configuration with immutable setting and exclusion metadata.</returns>
+    /// <returns>The native producer configuration with immutable setting and omission metadata.</returns>
     /// <exception cref="InvalidOperationException">The workload role was not registered.</exception>
     /// <exception cref="OptionsValidationException">The required caller inputs are invalid.</exception>
     public KafkaBaseline<ProducerConfig> CreateLoadGenProducer() =>
         Create<ProducerConfig>(KafkaClientRole.LoadGenProducer);
 
     /// <summary>Creates a fresh enrichment producer configuration and its initial metadata.</summary>
-    /// <returns>The native producer configuration with immutable setting and exclusion metadata.</returns>
+    /// <returns>The native producer configuration with immutable setting and omission metadata.</returns>
     /// <exception cref="InvalidOperationException">The workload role was not registered.</exception>
     /// <exception cref="OptionsValidationException">The required caller inputs are invalid.</exception>
     public KafkaBaseline<ProducerConfig> CreateEnrichmentProducer() =>
         Create<ProducerConfig>(KafkaClientRole.EnrichmentProducer);
 
     /// <summary>Creates a fresh enrichment consumer configuration and its initial metadata.</summary>
-    /// <returns>The native consumer configuration with immutable setting and exclusion metadata.</returns>
+    /// <returns>The native consumer configuration with immutable setting and omission metadata.</returns>
     /// <exception cref="InvalidOperationException">The workload role was not registered.</exception>
     /// <exception cref="OptionsValidationException">The required caller inputs are invalid.</exception>
     public KafkaBaseline<ConsumerConfig> CreateEnrichmentConsumer() =>
         Create<ConsumerConfig>(KafkaClientRole.EnrichmentConsumer);
 
     /// <summary>Creates a fresh assigned-verifier consumer configuration and its initial metadata.</summary>
-    /// <returns>The native consumer configuration with immutable setting and exclusion metadata.</returns>
+    /// <returns>The native consumer configuration with immutable setting and omission metadata.</returns>
     /// <exception cref="InvalidOperationException">The workload role was not registered.</exception>
     /// <exception cref="OptionsValidationException">The required caller inputs are invalid.</exception>
     public KafkaBaseline<ConsumerConfig> CreateVerifierConsumer() =>
@@ -55,22 +53,17 @@ public sealed class KafkaConfigurationFactory
             throw new InvalidOperationException($"Kafka role {role} has not been registered.");
 
         var configured = options.Get(role.ToString());
-        var snapshot = new KafkaBaselineOptions
-        {
-            NamespaceName = configured.NamespaceName,
-            ClientId = configured.ClientId,
-            EnrichmentGroupId = configured.EnrichmentGroupId
-        };
+        var snapshot = configured with { };
         var validation = new KafkaBaselineOptionsValidator(role).Validate(role.ToString(), snapshot);
         if (validation.Failed)
             throw new OptionsValidationException(role.ToString(), typeof(KafkaBaselineOptions), validation.Failures);
 
         var configuration = new TConfig();
         var settings = ImmutableArray.CreateBuilder<KafkaSettingMetadata>();
-        var exclusions = ImmutableArray.CreateBuilder<KafkaSettingMetadata>();
+        var omissions = ImmutableArray.CreateBuilder<KafkaSettingMetadata>();
         foreach (var entry in BaselineSettingsCatalog.GetEntries(role))
         {
-            var value = entry.Disposition == KafkaSettingDisposition.Explicit ? ResolveValue(entry, snapshot) : null;
+            var value = entry.Disposition == KafkaSettingDisposition.Explicit ? entry.ResolveValue(snapshot) : null;
             var metadata = new KafkaSettingMetadata(entry.Key, value, role, entry.Disposition,
                 entry.InventoryIds, entry.Sources, entry.SelectionReason);
             if (entry.Disposition == KafkaSettingDisposition.Explicit)
@@ -80,21 +73,9 @@ public sealed class KafkaConfigurationFactory
             }
             else
             {
-                exclusions.Add(metadata);
+                omissions.Add(metadata);
             }
         }
-        return new KafkaBaseline<TConfig>(configuration, settings.ToImmutable(), exclusions.ToImmutable());
+        return new KafkaBaseline<TConfig>(configuration, settings.ToImmutable(), omissions.ToImmutable());
     }
-
-    internal static string ResolveValue(KafkaSettingDefinition definition, KafkaBaselineOptions options) =>
-        definition.ValueKind switch
-        {
-            KafkaSettingValueKind.Literal => definition.Value ??
-                throw new InvalidOperationException("An explicit literal setting must have a value."),
-            KafkaSettingValueKind.NamespaceEndpoint => $"{options.NamespaceName}.servicebus.windows.net:9093",
-            KafkaSettingValueKind.ClientId => options.ClientId,
-            KafkaSettingValueKind.EnrichmentGroupId => options.EnrichmentGroupId ??
-                throw new InvalidOperationException("The enrichment consumer group input is missing."),
-            _ => throw new InvalidOperationException("The setting definition has an unknown value kind.")
-        };
 }

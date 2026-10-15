@@ -9,18 +9,13 @@ public sealed class KafkaSettingMetadata
         KafkaSettingDisposition disposition, ImmutableArray<string> inventoryIds,
         ImmutableArray<KafkaSettingSource> sources, string selectionReason)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        ArgumentException.ThrowIfNullOrWhiteSpace(selectionReason);
+        ValidateAuditFields(key, inventoryIds, sources, selectionReason);
         if (!Enum.IsDefined(role))
             throw new ArgumentOutOfRangeException(nameof(role));
         if (!Enum.IsDefined(disposition))
             throw new ArgumentOutOfRangeException(nameof(disposition));
         if ((disposition == KafkaSettingDisposition.Explicit) != (value is not null))
             throw new ArgumentException("Only an explicit setting must have a value.", nameof(value));
-        if (inventoryIds.IsDefaultOrEmpty || inventoryIds.Any(id => !FrozenInventory.Contains(id)))
-            throw new ArgumentException("Every setting needs IDs from the frozen inventory.", nameof(inventoryIds));
-        if (sources.IsDefaultOrEmpty || sources.Any(source => source is null))
-            throw new ArgumentException("Every setting needs cited sources.", nameof(sources));
         Key = key;
         Value = value;
         Role = role;
@@ -28,6 +23,17 @@ public sealed class KafkaSettingMetadata
         InventoryIds = inventoryIds;
         Sources = sources;
         SelectionReason = selectionReason;
+    }
+
+    internal static void ValidateAuditFields(string key, ImmutableArray<string> inventoryIds,
+        ImmutableArray<KafkaSettingSource> sources, string selectionReason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectionReason);
+        if (inventoryIds.IsDefaultOrEmpty || inventoryIds.Any(id => !FrozenInventory.Contains(id)))
+            throw new ArgumentException("Every setting needs IDs from the frozen inventory.", nameof(inventoryIds));
+        if (sources.IsDefaultOrEmpty || sources.Any(source => source is null))
+            throw new ArgumentException("Every setting needs cited sources.", nameof(sources));
     }
 
     /// <summary>Gets the exact configuration key.</summary>

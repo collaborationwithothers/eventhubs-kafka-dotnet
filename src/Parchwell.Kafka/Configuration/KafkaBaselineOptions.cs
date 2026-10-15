@@ -1,7 +1,7 @@
 namespace Parchwell.Kafka.Configuration;
 
 /// <summary>Required caller inputs for one named workload configuration.</summary>
-public sealed class KafkaBaselineOptions
+public sealed record KafkaBaselineOptions
 {
     /// <summary>Gets or sets the Event Hubs namespace name without a suffix, URL or port.</summary>
     public string NamespaceName { get; set; } = string.Empty;

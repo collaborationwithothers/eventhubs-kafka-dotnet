@@ -31,5 +31,3 @@ public static class KafkaServiceCollectionExtensions
         return services;
     }
 }
-
-internal sealed record KafkaRoleRegistration(KafkaClientRole Role);
