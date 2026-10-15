@@ -2,6 +2,8 @@
 
 `Parchwell.Kafka` creates native Confluent.Kafka configurations for named workload roles and records each emitted setting's inventory IDs, sources and selection reason. The [approved issue plan][plan] defines the baseline contract and its deliberate omissions. Token refresh and client construction belong to later harness work.
 
+New to Kafka? Read [Kafka configuration explained](kafka-configuration-explained.md) for the meaning, units and interactions of the baseline settings, including the deliberately omitted keys.
+
 ## Registration and construction
 
 Register only the roles a process uses. Each registration has its own namespace and client identity; enrichment consumption also requires a stable group identity. The following identifiers are synthetic examples:
