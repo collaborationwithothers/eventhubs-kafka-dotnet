@@ -6,6 +6,10 @@ using Confluent.Kafka;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike;
 
+/// <summary>
+/// The outcome of one Produce call: whether it was accepted synchronously, and every delivery
+/// callback received for it, kept as a list so a duplicate callback stays visible.
+/// </summary>
 internal sealed record PendingProduce
 {
     private readonly ConcurrentQueue<DeliveryObservation> callbacks;
@@ -29,6 +33,10 @@ internal sealed record PendingProduce
 // Callback and configuration behavior source, pinned v2.16.0:
 // https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs
 // https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+/// <summary>
+/// One trial's producer, using the approved spike configuration (not the Event Hubs baseline) and
+/// capturing debug logs, statistics and errors as evidence (docs/operations/phantom-spike/README.md).
+/// </summary>
 internal sealed class ProducerProbe : IDisposable
 {
     private const string InstanceHeader = "instance-id";

@@ -2,8 +2,17 @@ using System.Text.Json;
 
 namespace Parchwell.ArchitectureTests;
 
+/// <summary>
+/// One evaluated Compile item: the file path and, for a file outside the project folder, the Link
+/// path that places it inside the project's logical folders.
+/// </summary>
 internal sealed record SourceModel(string FullPath, string? Link);
 
+/// <summary>
+/// One project's evaluated Release configuration, read from the JSON manifest that
+/// scripts/verify-dotnet.sh writes with dotnet msbuild -getProperty and -getItem. The architecture
+/// tests check these effective values instead of trusting what the root files declare.
+/// </summary>
 internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, string> Properties, string[] References,
     string[] CompilerVisibleProperties, SourceModel[] Sources)
 {
@@ -34,6 +43,10 @@ internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, str
     }
 }
 
+/// <summary>
+/// The documented project inventory and dependency direction (docs/engineering/dotnet.md
+/// "Solution layout" and "Architecture tests"), shared by the declared-reference and compiled checks.
+/// </summary>
 internal static class ProjectRules
 {
     internal static readonly string[] SourceNames =

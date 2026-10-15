@@ -1,7 +1,19 @@
 namespace Parchwell.Kafka.Configuration;
 
+/// <summary>
+/// A value the caller must supply because the baseline cannot know it, such as the namespace name.
+/// </summary>
+/// <remarks>
+/// A required input reads one property of <see cref="KafkaBaselineOptions"/>, checks it, and
+/// formats it into the value of a setting. The library never invents a default for these:
+/// a guessed namespace or identity would connect to, or report as, the wrong thing.
+/// Validation runs at host start (ValidateOnStart, docs/engineering/dotnet.md) and again on
+/// every factory call.
+/// </remarks>
 internal sealed class KafkaRequiredInput
 {
+    // Microsoft documents the bootstrap server as <namespace>.servicebus.windows.net:9093
+    // (docs/blueprint.md section 3, "Private endpoints", citing S1).
     internal static readonly KafkaRequiredInput NamespaceEndpoint = new(nameof(KafkaBaselineOptions.NamespaceName),
         options => options.NamespaceName, IsNamespaceLabel,
         "NamespaceName must be a single ASCII DNS label with alphanumeric boundaries.",
@@ -9,6 +21,8 @@ internal sealed class KafkaRequiredInput
     internal static readonly KafkaRequiredInput ClientId = new(nameof(KafkaBaselineOptions.ClientId),
         options => options.ClientId, IsIdentity,
         "ClientId must be non-empty and contain no whitespace or control characters.", value => value);
+    // The enrichment consumer's group ID depends on the deployment, so the caller supplies it.
+    // The verifier uses a fixed group ID instead (ADR-013), so this input is not required for it.
     internal static readonly KafkaRequiredInput EnrichmentGroupId = new(nameof(KafkaBaselineOptions.EnrichmentGroupId),
         options => options.EnrichmentGroupId, IsIdentity,
         "EnrichmentGroupId must be non-empty and contain no whitespace or control characters.", value => value);

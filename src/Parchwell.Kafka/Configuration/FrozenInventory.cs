@@ -3,9 +3,18 @@ using System.Collections.Frozen;
 namespace Parchwell.Kafka.Configuration;
 
 /// <summary>Provides membership checks for the repository's approved frozen inventory.</summary>
+/// <remarks>
+/// The frozen inventory is the fixed list of work item IDs that v1 may test or trace, such as A01
+/// or K10. Each ID names one item to test, trace or rule out. Code, scenarios and issues
+/// may only refer to IDs on this list; anything else is out of scope. Every baseline setting and
+/// every scenario override must name at least one ID, which is how a setting stays traceable to
+/// the item it serves.
+/// Source of the list: docs/blueprint.md section 12, frozen inventory and amendment 1.
+/// </remarks>
 public static class FrozenInventory
 {
-    // docs/blueprint.md section 12, frozen inventory and amendment 1.
+    // Keep in step with docs/blueprint.md section 12, frozen inventory and amendment 1.
+    // Adding an ID here does not add scope; the blueprint must change first.
     private static readonly FrozenSet<string> Ids = new[]
     {
         "A01", "A02", "A03", "A04", "A05", "A06", "B01", "B02", "B03", "B04",

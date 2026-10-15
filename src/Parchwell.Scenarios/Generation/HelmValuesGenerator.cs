@@ -6,6 +6,12 @@ using YamlDotNet.Core.Events;
 namespace Parchwell.Scenarios;
 
 /// <summary>Emits deterministic Helm values for one resolved scenario configuration.</summary>
+/// <remarks>
+/// Helm values are generated, never written by hand, so a deployment always matches its reviewed
+/// definition (ADR-014). The output is deterministic: the same input gives the same bytes, with no
+/// timestamps or random ids. The format is fixed by docs/operations/scenario-contract.md,
+/// "Composition and output"; no chart consumes it yet.
+/// </remarks>
 public sealed class HelmValuesGenerator
 {
     /// <summary>Generates the version 1 values document for the selected configuration.</summary>
@@ -58,6 +64,8 @@ public sealed class HelmValuesGenerator
     }
 #pragma warning restore CA1822
 
+    // Map keys are written in ordinal order by hand, as the contract requires. Keep that order when adding
+    // a field. List items keep their profile order, because stage order is meaningful.
     private static void EmitProfile(Emitter emitter, WorkloadProfile profile)
     {
         StartMapping(emitter);

@@ -6,6 +6,8 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+// Protects the scenario override policy: only the A01 timeout keys may be overridden, only for the
+// load generator, within the range cited from librdkafka v2.16.0 CONFIGURATION.md.
 [Trait("Category", "Unit")]
 public sealed class ScenarioOverrideMetadataTests
 {
@@ -61,6 +63,7 @@ public sealed class ScenarioOverrideMetadataTests
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole((KafkaClientRole)int.MaxValue));
     }
 
+    // Keys match exactly, so a misspelt scenario key is refused rather than treated as the approved one.
     [Theory]
     [InlineData("unknown.key")]
     [InlineData("Request.timeout.ms")]
@@ -78,6 +81,7 @@ public sealed class ScenarioOverrideMetadataTests
         Assert.Null(setting);
     }
 
+    // Only exact IDs from the frozen inventory (docs/blueprint.md section 12) are in scope.
     [Fact]
     public void Given_InventoryLookup_When_IdIsNullUnknownOrWrongCase_Then_ReturnsFalse()
     {
@@ -90,6 +94,8 @@ public sealed class ScenarioOverrideMetadataTests
     public void Given_InventoryLookup_When_IdIsKnown_Then_ReturnsTrue() =>
         Assert.True(FrozenInventory.Contains("A01"));
 
+    // The constructor guards below keep every override entry tied to a role, a frozen inventory ID
+    // and a cited source (ADR-015; AGENTS.md, Truth and verification).
     [Theory]
     [InlineData(null)]
     [InlineData("")]

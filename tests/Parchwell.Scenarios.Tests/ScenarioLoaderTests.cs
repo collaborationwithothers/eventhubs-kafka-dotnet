@@ -9,6 +9,8 @@ namespace Parchwell.Scenarios.Tests;
 [Trait("Category", "Unit")]
 public sealed class ScenarioLoaderTests
 {
+    // The loader opens only scenario.yaml and its profile and disposes both readers. It must never
+    // open expected.yaml: the hypotheses cannot be allowed to affect a run (ADR-014).
     [Fact]
     public async Task Given_ValidMixedBlockAndFlowDocuments_When_Loading_Then_UsesLogicalPathsAndReturnsTypedDeclaration()
     {
@@ -34,6 +36,7 @@ public sealed class ScenarioLoaderTests
         Assert.DoesNotContain(source.RequestedPaths, path => path.EndsWith("expected.yaml", StringComparison.Ordinal));
     }
 
+    // The YAML restrictions limit features, not layout: ordinary flow style is valid (scenario-contract.md).
     [Fact]
     public async Task Given_FlowRootDocuments_When_Loading_Then_AcceptsOrdinaryFlowYaml()
     {
@@ -47,6 +50,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal("synthetic", loaded.Profile.Id);
     }
 
+    // Unknown, duplicate and case-mismatched fields and an unsupported schema_version are rejected, so a
+    // typo can never be silently ignored and leave a setting at its baseline.
     [Theory]
     [InlineData("schema_version: 2", "schema_version")]
     [InlineData("Schema_version: 1", "Schema_version")]
@@ -78,6 +83,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal(15, diagnostic.Column);
     }
 
+    // scenario-contract.md rejects multiple documents, anchors, merge keys and explicit tags. Each has a
+    // stable code, and callers may compare codes (see its diagnostic code migration section).
     [Theory]
     [InlineData("schema_version: 1\n---\nschema_version: 1", "MultipleDocuments")]
     [InlineData("schema_version: 1\nid: A01\nbaseline: Parchwell.Kafka\nroles: &shared [LoadGenProducer, VerifierConsumer]\nprofile: profiles/synthetic.yaml\nconfigurations: {baseline: {}}\nfault: {live: {kind: none}, component: {kind: none}}\nrepeats: 5\ngate: {kind: none}\nmeasures: [{id: verifier.ok, role: VerifierConsumer}]\n", "AnchorNotAllowed")]
@@ -96,6 +103,8 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.Code == code);
     }
 
+    // One definition file per inventory item (ADR-014): a file under scenarios/A02 that declares A01
+    // would run the wrong experiment.
     [Fact]
     public async Task Given_RequestedIdDiffersFromDocumentId_When_Loading_Then_RejectsIdentityMismatch()
     {
@@ -107,6 +116,8 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.FieldPath.Contains("id", StringComparison.Ordinal));
     }
 
+    // Profiles must come from scenarios/profiles/ only; an absolute path, URL, parent traversal or
+    // backslash is rejected before anything outside that folder can be opened.
     [Theory]
     [InlineData("/tmp/profile.yaml")]
     [InlineData("https://example.test/profile.yaml")]
@@ -123,6 +134,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal([ScenarioTestData.ScenarioPath], source.RequestedPaths);
     }
 
+    // repeats below 5 breaks the factory minimum (docs/agents/factory.md plan template). The other
+    // cases are role and measurement rules from scenario-contract.md "Scenario schema".
     [Theory]
     [InlineData("roles: [loadgenproducer, VerifierConsumer]", "unknown_role")]
     [InlineData("roles: [LoadGenProducer, LoadGenProducer]", "duplicate_role")]
@@ -139,6 +152,8 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.Code == code);
     }
 
+    // Declaring a measurement is separate from collecting it (scenario-contract.md), so a catalogued
+    // statistic loads even though no collector exists yet.
     [Fact]
     public async Task Given_CataloguedBrokerStatisticWithoutImplementedCollector_When_Loading_Then_AcceptsDeclaration()
     {
@@ -150,6 +165,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal(new MeasurementRequest("stats.broker.throttle.max", KafkaClientRole.LoadGenProducer), Assert.Single(loaded.Definition.Measures));
     }
 
+    // Faults and the probe may only name declared configurations. The probe also needs its own
+    // minimum repeats and its predicate measurement listed in measures.
     [Theory]
     [InlineData("fault:\n  live: {kind: throttling, configurations: [absent]}\n  component: {kind: none}", "unknown_configuration")]
     [InlineData("gate:\n  kind: probe\n  configuration: absent\n  repeats: 5\n  predicate: {id: stats.broker.throttle.max, role: LoadGenProducer, operator: greater_than, threshold_ms: 1}\n  configurations: [baseline]", "unknown_configuration")]
@@ -164,6 +181,8 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.Code == code);
     }
 
+    // scenario-contract.md "Profile schema": numbers are plain Int32 and tenant, payload size and stage
+    // identifiers are unique. The diagnostic must name the profile file, not the scenario.
     [Theory]
     [InlineData("seed: \"17\"")]
     [InlineData("seed: 2147483648")]
@@ -179,6 +198,7 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.Source == ScenarioTestData.ProfilePath);
     }
 
+    // Each weight is Int32 but sums are checked in Int64, so two maximum weights are still valid.
     [Fact]
     public async Task Given_TenantWeightSumAboveInt32_When_Loading_Then_KeepsTheValidInt64Total()
     {
@@ -190,6 +210,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal([new TenantWeight("tenant-a", int.MaxValue), new TenantWeight("tenant-b", int.MaxValue)], loaded.Profile.Tenants);
     }
 
+    // Planned attempts (rate times duration, summed over stages) must fit in Int64; overflow is
+    // rejected rather than wrapped into a wrong total.
     [Fact]
     public async Task Given_PlannedAttemptTotalOverflowsInt64_When_Loading_Then_RejectsAggregate()
     {
@@ -201,6 +223,8 @@ public sealed class ScenarioLoaderTests
         Assert.Contains(exception.Diagnostics, item => item.FieldPath == "stages" && item.Code == "int64_overflow");
     }
 
+    // Budgets are inclusive. These values are the valid fixtures' own maxima; the next test goes one
+    // below each and expects rejection.
     [Fact]
     public async Task Given_CharacterDepthAndScalarLimitsAtDocumentMaximum_When_Loading_Then_AcceptsExactLimits()
     {
@@ -212,6 +236,8 @@ public sealed class ScenarioLoaderTests
         Assert.Equal("A01", loaded.Definition.Id);
     }
 
+    // Any one budget alone stops loading. A document over a limit is rejected, never truncated, so a
+    // partial declaration can never load as if it were complete.
     [Theory]
     [InlineData("characters")]
     [InlineData("depth")]
@@ -232,6 +258,8 @@ public sealed class ScenarioLoaderTests
         Assert.NotEmpty(exception.Diagnostics);
     }
 
+    // The loader owns every reader it opens and must dispose it on failure too
+    // (scenario-contract.md "Input and ownership").
     [Fact]
     public async Task Given_ScenarioReaderOpened_When_ProfileParsingFails_Then_DisposesEveryReader()
     {
@@ -243,6 +271,8 @@ public sealed class ScenarioLoaderTests
         Assert.All(source.Readers, reader => Assert.True(reader.WasDisposed));
     }
 
+    // Cancellation applies to opening, reading and parsing (scenario-contract.md); these two tests
+    // cover a token cancelled before the first open and one cancelled during it.
     [Fact]
     public async Task Given_CancellationBeforeOpening_When_Loading_Then_DoesNotOpenAnySource()
     {
@@ -266,6 +296,7 @@ public sealed class ScenarioLoaderTests
         Assert.Empty(source.Readers);
     }
 
+    /// <summary>A source that cancels the token inside the open call, to test cancellation during opening.</summary>
     private sealed class CancellingScenarioSource(CancellationTokenSource cancellation) : IScenarioSource
     {
         internal List<TextReader> Readers { get; } = [];
@@ -278,6 +309,7 @@ public sealed class ScenarioLoaderTests
         }
     }
 
+    // Removes a top-level field and its indented children, then appends the replacement at the end.
     private static string ReplaceRootField(string yaml, string replacement)
     {
         var field = replacement[..replacement.IndexOf(':', StringComparison.Ordinal)];

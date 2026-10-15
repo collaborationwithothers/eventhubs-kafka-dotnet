@@ -8,6 +8,10 @@ namespace Parchwell.Kafka.Configuration;
 public static class KafkaServiceCollectionExtensions
 {
     /// <summary>Registers one role's named options and the concrete configuration factory.</summary>
+    /// <remarks>
+    /// Call once per role the host uses. The options are named after the role, and missing or
+    /// invalid required inputs stop the host at start rather than at first use.
+    /// </remarks>
     /// <param name="services">The application's service registrations.</param>
     /// <param name="role">The workload role whose options are being configured.</param>
     /// <param name="configure">Supplies that role's required caller inputs.</param>

@@ -2,6 +2,23 @@ using System.Collections.Immutable;
 
 namespace Parchwell.Kafka.Configuration;
 
+/// <summary>The baseline: every setting entry for every role, with its tags, sources and reason.</summary>
+/// <remarks>
+/// <para>
+/// This is the single place where baseline values are chosen. The selection rule is ADR-015:
+/// take the value Microsoft labels for librdkafka; ignore labels in Microsoft's Java table; if no
+/// page labels a value for librdkafka, set the librdkafka default explicitly. "Pinned native
+/// default" in a reason means the librdkafka default at the pinned version, v2.16.0.
+/// "Managed" means Confluent.Kafka, the .NET library, at the same version.
+/// </para>
+/// <para>
+/// Entries are grouped by the roles that share them: all roles, producers, consumers, the
+/// enrichment consumer and the verifier. The verifier's entries are harness settings that guard
+/// the oracle (ADR-013); they are not part of what the inventory tests.
+/// The expected values are also transcribed, independently, in the tests' approved contract
+/// (issue #54 plan), so a change here must match an approved change there.
+/// </para>
+/// </remarks>
 internal static class BaselineSettingsCatalog
 {
     private static readonly KafkaSettingSource MicrosoftGuidance = new(

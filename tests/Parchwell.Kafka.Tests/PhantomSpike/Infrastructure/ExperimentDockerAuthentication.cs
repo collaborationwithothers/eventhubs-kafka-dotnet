@@ -4,6 +4,10 @@ using DotNet.Testcontainers.Configurations;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
+/// <summary>
+/// The detected Docker endpoint and authentication, unchanged except for the HTTP request timeout,
+/// a planned safety bound (docs/operations/phantom-spike/README.md, Frozen experiment).
+/// </summary>
 internal sealed class ExperimentDockerAuthentication(IDockerEndpointAuthenticationConfiguration original)
     : IDockerEndpointAuthenticationConfiguration
 {

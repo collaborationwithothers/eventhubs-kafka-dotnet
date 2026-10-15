@@ -6,6 +6,11 @@ using System.Xml.Linq;
 
 namespace Parchwell.ArchitectureTests.Verification;
 
+/// <summary>
+/// Checks a Cobertura report for full coverage of the Kafka configuration mapping, which
+/// docs/engineering/dotnet.md requires. scripts/verification/ValidateKafkaMappingCoverage.cs calls it;
+/// docs/operations/kafka-baseline.md "Coverage scope and controls" describes the rules.
+/// </summary>
 public static class KafkaCoverageVerifier
 {
     private const string MappingNamespace = "Parchwell.Kafka.Configuration.";
@@ -39,6 +44,8 @@ public static class KafkaCoverageVerifier
         return sourceLines;
     }
 
+    // The expected types come from the assembly and its matching PDB, not from a list, so a new
+    // mapping type is required even when the coverage collector leaves it out of the report.
     private static HashSet<string> ExecutableMappingTypes(string kafkaAssembly)
     {
         using (var assemblyStream = File.OpenRead(kafkaAssembly))

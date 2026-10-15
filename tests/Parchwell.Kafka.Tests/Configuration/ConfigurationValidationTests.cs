@@ -7,9 +7,13 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+// Protects startup validation: bad caller inputs must stop the host at start, before any client
+// configuration is built (docs/operations/kafka-baseline.md, Registration and construction).
 [Trait("Category", "Unit")]
 public sealed class ConfigurationValidationTests
 {
+    // The input is a bare namespace name that the library turns into the endpoint itself, so URLs, ports,
+    // suffixes and anything outside a single ASCII DNS label are rejected.
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -43,6 +47,7 @@ public sealed class ConfigurationValidationTests
         Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
     }
 
+    // Only the enrichment consumer needs a caller-supplied group; the verifier's group is fixed (ADR-013).
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -75,6 +80,7 @@ public sealed class ConfigurationValidationTests
         provider.GetRequiredService<IStartupValidator>().Validate();
     }
 
+    // RFC 1035 section 2.3.4 limits a DNS label to 63 octets; this pins both sides of that limit.
     [Theory]
     [InlineData(63, true)]
     [InlineData(64, false)]
@@ -87,6 +93,8 @@ public sealed class ConfigurationValidationTests
             Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
     }
 
+    // Each role validates under its own options name, so the error names the broken role and a valid
+    // role in the same process still works.
     [Fact]
     public void Given_OneInvalidNamedRoleAmongValidRoles_When_StartupValidating_Then_FailsTheRegisteredInvalidRole()
     {
@@ -103,6 +111,8 @@ public sealed class ConfigurationValidationTests
         Assert.Equal("synthetic-client", provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer().Configuration.ClientId);
     }
 
+    // A process registers only the roles it uses; asking for another must fail, not return a
+    // configuration built from empty inputs.
     [Fact]
     public void Given_UnregisteredRoles_When_RequestingTheirConfigurations_Then_FailsExplicitly()
     {
@@ -115,6 +125,8 @@ public sealed class ConfigurationValidationTests
         Assert.Throws<InvalidOperationException>(() => consumerProvider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer());
     }
 
+    // Startup validation runs once, so the factory validates its own snapshot again; options changed
+    // after startup cannot emit an invalid endpoint.
     [Fact]
     public void Given_ValidatedButLaterMutatedNamedOptions_When_CreatingConfiguration_Then_RejectsInvalidSnapshot()
     {
@@ -133,6 +145,8 @@ public sealed class ConfigurationValidationTests
         Assert.Throws<ArgumentOutOfRangeException>(() => services.AddParchwellKafka((KafkaClientRole)(-1), ConfigurationMappingTests.Configure));
     }
 
+    // A role's validator must skip options registered for other names, or one role's rules would
+    // reject another role's inputs.
     [Fact]
     public void Given_UnrelatedOptionsName_When_ValidatingNamedRole_Then_SkipsOnlyUnrelatedNames()
     {
@@ -144,6 +158,8 @@ public sealed class ConfigurationValidationTests
         Assert.Throws<ArgumentNullException>(() => validator.Validate(nameof(KafkaClientRole.EnrichmentConsumer), null!));
     }
 
+    // Required inputs are read from the catalogue entries that emit them, so adding an input-backed
+    // setting adds its startup check without a separate list to maintain (kafka-baseline.md).
     public static IEnumerable<object[]> RequiredInputCases() =>
         Enum.GetValues<KafkaClientRole>().SelectMany(role => BaselineSettingsCatalog.GetEntries(role)
             .Select(entry => entry.RequiredInput).OfType<KafkaRequiredInput>().Distinct()

@@ -7,6 +7,11 @@ namespace Parchwell.Kafka.Tests.PhantomSpike.Experiment;
 // This is a test fixture using the real pinned client, not a production client seam.
 // APIs: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs
 // Admin timeout options: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Admin/CreateTopicsOptions.cs
+/// <summary>
+/// The independent observer: a consumer on the broker's direct listener, not the proxy, so the
+/// producer's fault does not affect what it reads. It scans a fixed offset window and makes no
+/// finality claim (docs/operations/phantom-spike/README.md, Frozen experiment).
+/// </summary>
 internal sealed class DirectObserver : IDisposable
 {
     private static readonly TimeSpan QuerySlice = TimeSpan.FromMilliseconds(250);

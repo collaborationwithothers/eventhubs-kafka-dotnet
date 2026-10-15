@@ -12,6 +12,8 @@ namespace Parchwell.Scenarios.Tests;
 [Trait("Category", "Unit")]
 public sealed class ScenarioResolutionAndGenerationTests
 {
+    // Every role's baseline must match the hand-written ApprovedConfigurationContract, and each Resolve
+    // call must build fresh objects, so two run plans never share mutable state.
     [Fact]
     public async Task Given_AllFourDeclaredRoles_When_Resolving_Then_EmitsCompleteIndependentBaselineSettingsAndMetadata()
     {
@@ -53,6 +55,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         }
     }
 
+    // An override keeps the baseline metadata as first emitted and records the scenario, configuration
+    // and YAML position that changed it (scenario-contract.md "Composition and output").
     [Fact]
     public async Task Given_LoadGeneratorTimeoutOverrides_When_Resolving_Then_PreservesInitialMetadataAndRecordsSourceProvenance()
     {
@@ -76,6 +80,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Equal("300000", changed.Settings["socket.timeout.ms"].Value);
     }
 
+    // The bounds are librdkafka's native ranges at the pinned v2.16.0, cited in scenario-contract.md
+    // "Composition and output". Both ends of each range must be accepted.
     [Theory]
     [InlineData("request.timeout.ms", "1")]
     [InlineData("request.timeout.ms", "900000")]
@@ -91,6 +97,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Equal(value, resolved.Configurations["changed"].Roles[KafkaClientRole.LoadGenProducer].Settings[key].Value);
     }
 
+    // Only LoadGenProducer request.timeout.ms and socket.timeout.ms may be overridden for now. One past
+    // each bound, a value equal to the baseline, a misspelt key and an unsupported key are rejected.
     [Theory]
     [InlineData("request.timeout.ms", "0")]
     [InlineData("request.timeout.ms", "900001")]
@@ -111,6 +119,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Contains(exception.Diagnostics, item => item.FieldPath.Contains(key, StringComparison.Ordinal));
     }
 
+    // Replacements must be plain decimal Int32 (scenario-contract.md); other forms fail at load,
+    // before the resolver sees them.
     [Theory]
     [InlineData("request.timeout.ms: \"60001\"")]
     [InlineData("request.timeout.ms: true")]
@@ -126,6 +136,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Contains(exception.Diagnostics, item => item.FieldPath.Contains("request.timeout.ms", StringComparison.Ordinal));
     }
 
+    // Which roles may be overridden is repository policy (KafkaScenarioOverrideSetting.SupportedRoles),
+    // separate from the native ranges.
     [Fact]
     public async Task Given_OverrideForAnotherRole_When_Resolving_Then_RejectsRoleScope()
     {
@@ -139,6 +151,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Contains(exception.Diagnostics, item => item.Code == "wrong_role_setting");
     }
 
+    // Helm values are generated from the definition (ADR-014), so the same declared settings must give
+    // the same output whatever order the author wrote them in.
     [Fact]
     public async Task Given_ReplacementKeyWithDifferentMappingOrder_When_Generating_Then_ProducesSameValues()
     {
@@ -154,6 +168,8 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Equal(first, second);
     }
 
+    // Output must be culture-invariant (fr-FR is a non-English culture set on purpose) and carry no
+    // orchestration fields or expected outcomes, which stay out of the deployment (ADR-014).
     [Fact]
     public async Task Given_SelectedBaselineConfiguration_When_Generating_Then_ReturnsCompleteInvariantYamlWithoutOrchestratorFields()
     {
@@ -186,6 +202,7 @@ public sealed class ScenarioResolutionAndGenerationTests
         }
     }
 
+    // Asking for a configuration the scenario does not declare is a caller error, not a scenario diagnostic.
     [Fact]
     public async Task Given_UnknownConfigurationId_When_Generating_Then_ThrowsArgumentException()
     {
@@ -221,6 +238,9 @@ public sealed class ScenarioResolutionAndGenerationTests
             .Replace("measures:\n  - {id: verifier.ok, role: VerifierConsumer}", measure, StringComparison.Ordinal);
     }
 
+    // The complete expected output for the synthetic A01 fixture with the LoadGenProducer baseline,
+    // written by hand. The root key order is fixed by the contract; nested keys are in ordinal order,
+    // and every Kafka value is a quoted string.
     private const string ExpectedLoadGenBaselineYaml = """
         "contract_version": 1
         "scenario_id": "A01"

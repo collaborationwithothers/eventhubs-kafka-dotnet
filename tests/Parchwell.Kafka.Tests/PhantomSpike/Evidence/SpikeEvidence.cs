@@ -2,9 +2,17 @@ using System.Text;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Evidence;
 
+/// <summary>
+/// The result for one retries and fault combination. PositiveRegressionCandidate requires a witnessed
+/// pair in every one of the five planned trials (docs/operations/phantom-spike/README.md, repeat rule).
+/// </summary>
 internal sealed record RecipeFinding(int Retries, SpikeFault Fault, int ObservedTrials, int CompletedTrials,
     int WitnessedPairs, double? ObservedRate, bool PositiveRegressionCandidate);
 
+/// <summary>
+/// The decision written as decision.json. It is diagnostic only and never supplies authoritative
+/// outcome totals: an asynchronous delivery failure invalidates a full run (ADR-013).
+/// </summary>
 internal sealed record SpikeDecision(string ExistenceFinding, bool MatrixComplete,
     IReadOnlyList<string> IntegrityFailures, IReadOnlyList<RecipeFinding> Recipes,
     bool DiagnosticOnly = true, bool SyntheticWorkload = true,
@@ -13,6 +21,12 @@ internal sealed record SpikeDecision(string ExistenceFinding, bool MatrixComplet
     public bool IntegritySucceeded => MatrixComplete && IntegrityFailures.Count == 0;
 }
 
+/// <summary>
+/// Decides the spike finding from recorded evidence. A witnessed pair is the phantom mechanism: an
+/// accepted Produce whose delivery callback failed, while the independent observer consumed that
+/// exact attempt. The finding (yes, no or inconclusive) is kept separate from matrix completion and
+/// integrity; criteria in docs/operations/phantom-spike/README.md, Findings and completion.
+/// </summary>
 internal static class SpikeEvidence
 {
     private const int PlannedRepeats = 5;

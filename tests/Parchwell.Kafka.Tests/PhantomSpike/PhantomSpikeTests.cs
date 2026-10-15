@@ -7,9 +7,15 @@ namespace Parchwell.Kafka.Tests.PhantomSpike;
 [CollectionDefinition("Phantom spike", DisableParallelization = true)]
 public sealed class PhantomSpikeGrouping;
 
+/// <summary>
+/// Runs the phantom mechanism spike: the approved fault matrix against a real Kafka broker behind
+/// Toxiproxy in Docker. Scope, recipe and findings: docs/operations/phantom-spike/README.md.
+/// </summary>
 [Collection("Phantom spike")]
 public sealed class PhantomSpikeTests(ITestOutputHelper output)
 {
+    // Passes on experimental integrity, not on the finding: a complete scoped no is an accepted result,
+    // but missing Docker, missing evidence or an incomplete matrix must fail visibly (README).
     [Fact]
 #pragma warning disable CA1707 // Required repository test naming convention.
     public async Task Given_ApprovedFaultMatrix_When_RealClientAttemptsAreObserved_Then_ExperimentalIntegrityIsEstablished()

@@ -6,6 +6,11 @@ using Parchwell.Kafka.Configuration;
 namespace Parchwell.Scenarios;
 
 /// <summary>Composes scenario replacements over fresh, source-cited Kafka baselines.</summary>
+/// <remarks>
+/// Resolution applies each configuration's overrides to a fresh baseline for every declared role and
+/// records where each replacement came from. Which keys may be overridden, for which roles and within
+/// which ranges, is set by <see cref="KafkaScenarioOverridePolicy"/>, which cites its sources.
+/// </remarks>
 public sealed class ScenarioResolver
 {
     private readonly KafkaConfigurationFactory factory;
@@ -58,6 +63,8 @@ public sealed class ScenarioResolver
                                 item.Value.Location);
                         }
 
+                        // An override may only replace a value the baseline emits. A deliberate omission stays omitted, and a
+                        // new key cannot be introduced, so every difference from the baseline is a visible delta (ADR-015).
                         if (!effective.TryGetValue(item.Key, out var inherited))
                         {
                             var isOmission = omissions.Any(omission => string.Equals(omission.Key, item.Key, StringComparison.Ordinal));
@@ -76,6 +83,8 @@ public sealed class ScenarioResolver
                                 item.Value.Location);
                         }
 
+                        // An override equal to the baseline would label a configuration as different while it runs the same
+                        // settings, so it is rejected.
                         if (value == baselineValue)
                         {
                             throw Invalid(definition, fieldPath, "no_op_override",
@@ -105,6 +114,8 @@ public sealed class ScenarioResolver
         ImmutableArray<KafkaSettingMetadata> Omissions) SnapshotBaseline<TConfig>(KafkaBaseline<TConfig> baseline,
         KafkaClientRole role, ScenarioDefinition definition) where TConfig : ClientConfig
     {
+        // Check that the factory's native configuration and its metadata agree, so the provenance in the run
+        // plan describes exactly the settings that are emitted.
         if (baseline.Configuration is null || baseline.Settings.IsDefault || baseline.Omissions.IsDefault)
             throw Invalid(definition, "baseline", "invalid_baseline_snapshot",
                 $"The Kafka factory returned an incomplete baseline for {role}.");

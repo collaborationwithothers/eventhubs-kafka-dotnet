@@ -8,6 +8,8 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+// Protects the audit record (ADR-015): every emitted setting or omission must carry a key, a reason,
+// frozen inventory IDs and HTTPS sources with a pinned version or date.
 [Trait("Category", "Unit")]
 public sealed class MetadataValidationTests
 {
@@ -35,6 +37,7 @@ public sealed class MetadataValidationTests
         Assert.Throws<ArgumentOutOfRangeException>(() => field == "role"
             ? Metadata(role: (KafkaClientRole)(-1)) : Metadata(disposition: (KafkaSettingDisposition)(-1)));
 
+    // Only an Explicit setting has a value; an omission with a value would record a setting never sent.
     [Theory]
     [InlineData(KafkaSettingDisposition.Explicit, null)]
     [InlineData(KafkaSettingDisposition.Excluded, "60000")]
@@ -126,6 +129,7 @@ public sealed class MetadataValidationTests
         Assert.Throws<ArgumentNullException>(() => new KafkaConfigurationFactory(monitor, null!));
     }
 
+    // Catalogue definitions fail when declared, so a broken entry never reaches a native configuration.
     [Fact]
     public void Given_NullLiteral_When_DefiningExplicitSetting_Then_RejectsBeforeEmission() =>
         Assert.Throws<ArgumentNullException>(() => KafkaSettingDefinition.Explicit("synthetic.key", null!, ["A01"], ValidSources, "Synthetic"));

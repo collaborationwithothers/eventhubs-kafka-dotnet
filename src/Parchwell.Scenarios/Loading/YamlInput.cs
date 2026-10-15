@@ -6,6 +6,17 @@ using YamlDotNet.Core.Events;
 namespace Parchwell.Scenarios;
 
 /// <summary>Reads bounded YAML into a small data-only input tree.</summary>
+/// <remarks>
+/// <para>
+/// Every document is held to the <see cref="ScenarioLoadOptions"/> budgets. It must be exactly one
+/// document with no anchors, aliases, merge keys, explicit tags or duplicate keys, so the file means
+/// what it plainly says (docs/operations/scenario-contract.md, "Input and ownership").
+/// </para>
+/// <para>
+/// Diagnostic codes from this parser are PascalCase, unlike the snake_case codes of the readers and
+/// the resolver. Issue 61 left these spellings unchanged (docs/operations/scenario-contract.md).
+/// </para>
+/// </remarks>
 internal static class YamlInput
 {
     internal static async ValueTask<InputNode> ReadAsync(TextReader reader, string logicalPath,
@@ -54,6 +65,8 @@ internal static class YamlInput
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        // The limit has been reached. Read one more character to tell a document of exactly the limit from
+        // a longer one, which is rejected rather than truncated.
         var probe = new char[1];
         if (await reader.ReadAsync(probe.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
             throw Error(logicalPath, "$", "DocumentTooLarge",
