@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Parchwell.Kafka.Configuration;
 
 namespace Parchwell.Scenarios;
 
@@ -23,7 +24,7 @@ public sealed class ScenarioLoader
         ArgumentNullException.ThrowIfNull(inventoryId);
         var scenarioPath = $"scenarios/{inventoryId}/scenario.yaml";
         var options = SnapshotAndValidateOptions(scenarioPath);
-        if (!DefinitionReader.IsFrozenInventoryId(inventoryId) || !IsAsciiInventoryId(inventoryId))
+        if (!FrozenInventory.Contains(inventoryId))
         {
             throw new ScenarioValidationException([new ScenarioDiagnostic(scenarioPath, "id", "unknown_inventory_id",
                 "The requested id must be an exact id from the frozen scenario inventory.")]);
@@ -69,7 +70,4 @@ public sealed class ScenarioLoader
             invalid.Add(new ScenarioDiagnostic(source, "options." + name, "invalid_budget", "Parsing budgets must be positive."));
         }
     }
-
-    private static bool IsAsciiInventoryId(string id) => id.Length == 3 && id[1..].All(char.IsAsciiDigit) &&
-        id[0] is >= 'A' and <= 'Z';
 }

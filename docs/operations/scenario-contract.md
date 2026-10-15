@@ -8,7 +8,30 @@ The caller registers an IScenarioSource, required positive ScenarioLoadOptions b
 
 LoadAsync(id) requests only scenarios/<id>/scenario.yaml and its validated profile under scenarios/profiles/. It never requests expected.yaml. IDs must match the requested frozen inventory item. Profile references are profiles/<slug>.yaml, with no absolute paths, URLs, backslashes or parent traversal.
 
-Each document is bounded by MaxDocumentCharacters (UTF-16 reader characters), MaxNestingDepth (mapping/sequence nesting), MaxScalarCharacters and MaxParserEvents (all YAML parsing events). There are no default budgets. A reader is bounded before event parsing, and limit excess is rejected rather than truncated. Cancellation applies to opening, reading and parsing. Ordinary block and flow YAML is accepted. Duplicate/unknown/case-mismatched fields, multiple documents, anchors, aliases, merge keys and explicit tags are rejected. Diagnostics include logical source, field path, stable code and YAML location when available.
+Each document is bounded by MaxDocumentCharacters (UTF-16 reader characters), MaxNestingDepth (mapping/sequence nesting), MaxScalarCharacters and MaxParserEvents (all YAML parsing events). There are no default budgets. A reader is bounded before event parsing, and limit excess is rejected rather than truncated. Cancellation applies to opening, reading and parsing. Ordinary block and flow YAML is accepted. Duplicate/unknown/case-mismatched fields, multiple documents, anchors, aliases, merge keys and explicit tags are rejected. Diagnostics include logical source, field path, stable code and YAML location when available. Code comparisons must follow the [documented migration](#diagnostic-code-migration-issue-61) when upgrading.
+
+## Diagnostic code migration (issue 61)
+
+[Issue 61](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/61) requires one diagnostic code convention across the declaration reader and resolver. This implementation uses snake_case, matching the declaration reader. Consumers upgrading from [PR 60](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/60) must update comparisons and stored-code translations using the mapping below. The resolver no longer emits the old hyphenated spellings; it does not emit compatibility aliases.
+
+| Previous resolver code | Replacement code |
+|---|---|
+| `baseline-metadata-coverage` | `baseline_metadata_coverage` |
+| `baseline-metadata-value-mismatch` | `baseline_metadata_value_mismatch` |
+| `cannot-activate-omitted-setting` | `cannot_activate_omitted_setting` |
+| `invalid-baseline-metadata` | `invalid_baseline_metadata` |
+| `invalid-baseline-omission` | `invalid_baseline_omission` |
+| `invalid-baseline-snapshot` | `invalid_baseline_snapshot` |
+| `invalid-baseline-value` | `invalid_baseline_value` |
+| `no-op-override` | `no_op_override` |
+| `setting-not-in-baseline` | `setting_not_in_baseline` |
+| `setting-out-of-range` | `setting_out_of_range` |
+| `unsupported-setting` | `unsupported_setting` |
+| `wrong-role-setting` | `wrong_role_setting` |
+
+This table covers each retained resolver code renamed by issue 61. The source comparison is the [previous resolver](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/d8b6efcab004f9c41e80a005591df61c522ab612/src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs) against the [updated resolver](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/47bf0401830d9d51c57ebfbed82ee1d06fe9ba57/src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs). Declaration-reader and YAML parser code spellings are unchanged. Structural declaration errors remain the loader's responsibility; the resolver no longer repeats that validation.
+
+This is an explicit diagnostic API migration. The YAML schema and generated Helm values versions stay unchanged, as declared in [ScenarioContract](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/47bf0401830d9d51c57ebfbed82ee1d06fe9ba57/src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs). Callers should treat diagnostic codes as stable outside documented migrations.
 
 ## Scenario schema
 

@@ -20,25 +20,54 @@ public sealed record ScenarioConfiguration(string Id,
 /// <summary>A logical measurement request, independent of collection support.</summary>
 public sealed record MeasurementRequest(string Id, KafkaClientRole Role);
 
-/// <summary>A live fault intent; kind is none or throttling.</summary>
-public sealed record LiveFault(string Kind, ImmutableArray<string> Configurations);
+/// <summary>The supported live fault kinds.</summary>
+public enum LiveFaultKind
+{
+    None,
+    Throttling
+}
 
-/// <summary>A component fault declaration; kind is none or toxiproxy_latency.</summary>
-public sealed record ComponentFault(string Kind, ImmutableArray<string> Configurations,
+/// <summary>The supported component fault kinds.</summary>
+public enum ComponentFaultKind
+{
+    None,
+    ToxiproxyLatency
+}
+
+/// <summary>A live fault intent.</summary>
+public sealed record LiveFault(LiveFaultKind Kind, ImmutableArray<string> Configurations);
+
+/// <summary>A component fault declaration.</summary>
+public sealed record ComponentFault(ComponentFaultKind Kind, ImmutableArray<string> Configurations,
     string? Direction = null, int? LatencyMs = null);
 
 /// <summary>Separate live and component fault declarations.</summary>
 public sealed record FaultDefinition(LiveFault Live, ComponentFault Component);
 
-/// <summary>A probe declaration, or an explicit none gate. Outcomes are fixed by the contract.</summary>
-public sealed record ProbeGate(string Kind, string? Configuration, MeasurementRequest? Measurement,
-    string? Operator, long? ThresholdMs, int? Repeats, ImmutableArray<string> Configurations);
+/// <summary>The supported probe predicate operators.</summary>
+public enum ProbeOperator
+{
+    GreaterThan
+}
+
+/// <summary>A closed set of scenario gate declarations.</summary>
+public abstract record ScenarioGate
+{
+    private protected ScenarioGate() { }
+}
+
+/// <summary>An explicit declaration that no gate is required.</summary>
+public sealed record NoGate : ScenarioGate;
+
+/// <summary>A probe gate declaration. Outcomes are fixed by the contract.</summary>
+public sealed record ProbeGate(string Configuration, MeasurementRequest Measurement,
+    ProbeOperator Operator, int ThresholdMs, int Repeats, ImmutableArray<string> Configurations) : ScenarioGate;
 
 /// <summary>A fully validated scenario declaration.</summary>
 public sealed record ScenarioDefinition(int SchemaVersion, string Id, string Baseline,
     ImmutableArray<KafkaClientRole> Roles, string Profile,
     ImmutableDictionary<string, ScenarioConfiguration> Configurations, FaultDefinition Fault,
-    int Repeats, ProbeGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source);
+    int Repeats, ScenarioGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source);
 
 /// <summary>A synthetic tenant and its positive relative traffic weight.</summary>
 public sealed record TenantWeight(string Id, int Weight);
