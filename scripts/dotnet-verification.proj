@@ -1,4 +1,9 @@
 <Project>
+  <PropertyGroup>
+    <KafkaAssembly Condition="'$(KafkaAssembly)' == ''">$(MSBuildThisFileDirectory)../src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll</KafkaAssembly>
+    <DocumentationFile Condition="'$(DocumentationFile)' == ''">$([System.IO.Path]::ChangeExtension('$(KafkaAssembly)', '.xml'))</DocumentationFile>
+    <KafkaVerificationAssembly Condition="'$(KafkaVerificationAssembly)' == ''">$(MSBuildThisFileDirectory)../tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll</KafkaVerificationAssembly>
+  </PropertyGroup>
   <UsingTask TaskName="ValidateXunitReport" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <Report ParameterType="System.String" Required="true" />
@@ -102,6 +107,22 @@
       ]]></Code>
     </Task>
   </UsingTask>
+  <UsingTask TaskName="ValidateKafkaMappingCoverage" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)verification/ValidateKafkaMappingCoverage.cs" />
+    </Task>
+  </UsingTask>
+  <UsingTask TaskName="ValidateKafkaDocumentation" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)verification/ValidateKafkaDocumentation.cs" />
+    </Task>
+  </UsingTask>
+  <Target Name="ValidateKafkaCoverage">
+    <ValidateKafkaMappingCoverage CoverageReport="$(CoverageReport)" KafkaAssembly="$(KafkaAssembly)" VerificationAssembly="$(KafkaVerificationAssembly)" />
+  </Target>
+  <Target Name="ValidateKafkaDocumentation">
+    <ValidateKafkaDocumentation KafkaAssembly="$(KafkaAssembly)" DocumentationFile="$(DocumentationFile)" />
+  </Target>
   <Target Name="ValidateReport">
     <ValidateXunitReport Report="$(Report)" ExpectedAssembly="$(ExpectedAssembly)" />
   </Target>

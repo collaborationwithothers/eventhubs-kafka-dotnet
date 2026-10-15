@@ -62,6 +62,9 @@ run_tests() {
 echo "Verifying with .NET SDK $sdk_version (Release)."
 run_logged "Locked restore" "$verification_results/restore.log" dotnet restore Parchwell.slnx --locked-mode
 run_logged "Solution build" "$verification_results/build.log" dotnet build Parchwell.slnx --configuration Release --no-restore
+run_logged "Kafka XML inventory consistency" "$verification_results/kafka-documentation.log" \
+    dotnet msbuild scripts/dotnet-verification.proj -t:ValidateKafkaDocumentation -nologo
+cat "$verification_results/kafka-documentation.log"
 
 shopt -s globstar nullglob
 projects=(src/**/*.csproj tests/**/*.csproj)
@@ -117,4 +120,4 @@ else
     done < "$warning_fixture/forbidden.log"
 fi
 echo "Warning-as-error control: valid counterpart built; intended CS1030 error rejected."
-echo "Verification passed. Compiled rules currently cover empty source scaffolds; feature behavior is not tested."
+echo "Verification passed. Per-project reports identify the tests executed."

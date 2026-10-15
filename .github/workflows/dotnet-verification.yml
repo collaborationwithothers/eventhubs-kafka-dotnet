@@ -25,3 +25,7 @@ jobs:
           global-json-file: global.json
       - name: Verify .NET foundation
         run: ./scripts/verify-dotnet.sh
+      - name: Install mapping coverage collector
+        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
+      - name: Verify Kafka mapping coverage
+        run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"

@@ -1,6 +1,6 @@
 # .NET foundation verification
 
-[Issue #47's approved implementation plan][approved-plan] defines this build-only foundation. The source libraries and paired unit-test projects are empty scaffolds; the architecture suite supplies executable foundation checks. No scenario or application behavior is established by a successful build.
+[Issue #47's approved implementation plan][approved-plan] established the build foundation and executable architecture checks. The Kafka library now has [baseline mapping tests](../operations/kafka-baseline.md), and its test project also runs [local Docker characterization](../operations/phantom-spike/README.md). A successful build alone establishes no scenario behavior.
 
 ## Prerequisites and commands
 
@@ -51,7 +51,7 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 
 The architecture suite requires the documented source/test inventory in `Parchwell.slnx`, the effective correctness settings, and the declared dependency direction. `Parchwell.Kafka` cannot reference another source project, and the services cannot reference one another. Declared references are checked even when no types from a dependency are used.
 
-Compiled rules use ArchUnitNET to check the same dependency direction, isolation between feature slices within each service, and calls to the exact `DateTime.Now` and `DateTime.UtcNow` getters. The rule selects `get_Now()` and `get_UtcNow()` using the [pinned loader's method naming][getter-naming]. Other `DateTime` use remains allowed. Missing expected source assemblies fail verification. The source libraries currently contain no production types, so their compiled slice and clock checks have limited coverage. This is not behavioral coverage of the planned services.
+Compiled rules use ArchUnitNET to check the same dependency direction, isolation between feature slices within each service, and calls to the exact `DateTime.Now` and `DateTime.UtcNow` getters. The rule selects `get_Now()` and `get_UtcNow()` using the [pinned loader's method naming][getter-naming]. Other `DateTime` use remains allowed. Missing expected source assemblies fail verification. The Kafka library now contains the [baseline configuration mapping](../operations/kafka-baseline.md), which has paired behavior tests. Service projects remain scaffolds, so their compiled slice and clock checks still have limited coverage.
 
 Service namespaces follow their folders. For example, `src/Parchwell.LoadGen/Publish/Handler.cs` declares `Parchwell.LoadGen.Publish`; deeper folders add namespace segments. Folder names are single, unescaped C# identifiers. The first folder below the service directory defines the feature slice, with `Common/` reserved for shared behavior under the engineering standards. The architecture suite parses every evaluated service `Compile` item with Roslyn from the pinned SDK and requires each class, struct, interface, enum, record and delegate declaration to match that file's folder namespace. It combines nested namespace declarations, handles file-scoped namespaces and checks each partial declaration. Types without namespaces and source syntax errors fail. A file outside its project requires explicit relative `Link` metadata mapping it inside that project's logical folders; unmapped external files and links escaping the project fail.
 
@@ -61,11 +61,11 @@ The parser uses each project's effective Release `LangVersion` and `DefineConsta
 
 Fresh machine-readable xUnit reports must identify the expected test assembly, contain a positive passed-test count, and have no failed, skipped or not-run tests or runner errors. Summary counts must agree with the individual results. `scripts/dotnet-verification.proj` parses XML and rejects missing or malformed reports. The [pinned xUnit writer][xml-fields] supplies the checked assembly result fields.
 
-Each paired unit-test project is reported explicitly as an empty scaffold. The exemption requires an empty evaluated `Compile` item list. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. There are no dummy passing tests.
+A paired unit-test project is reported as an empty scaffold only when its evaluated `Compile` item list is empty. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. The Kafka test project executes its mapping tests and Docker characterization; the additional [mapping coverage pass](../operations/kafka-baseline.md#verification) supplements full verification. After the solution build, the entry point also checks generated Kafka setting XML against the catalogue inventory IDs. The [CI mapping coverage steps](../operations/kafka-baseline.md#ci-mapping-coverage) run after foundation verification and reject missing coverage or uncovered mapping lines. There are no dummy passing tests.
 
 ## Approved controls
 
-Normal verification exercises only the controls approved in #47:
+The foundation negative controls approved in #47 are:
 
 | Control | Valid counterpart | Required rejection |
 |---|---|---|
@@ -82,16 +82,20 @@ The script prints concise gate summaries and retains detailed logs and fresh res
 
 Direct package versions are centralized in `Directory.Packages.props`, and per-project `packages.lock.json` files record the resolved graphs. Normal verification uses locked restore and cannot silently refresh those graphs. Change package versions and regenerate affected lock files deliberately in a reviewed dependency-change PR.
 
-| Direct test package | Pin | Use |
+| Direct package | Pin | Use |
 |---|---|---|
 | `xunit.v3.mtp-v2` | 4.0.2 | Every test project |
 | `TngTech.ArchUnitNET` | 0.13.4 | Architecture tests only |
+| `Confluent.Kafka` | 2.16.0 | Kafka library and Kafka tests |
+| `Testcontainers` | 4.16.0 | Kafka Docker characterization |
+| `Microsoft.Extensions.Options` | 10.0.13 | Kafka library options and startup validation |
+| `Microsoft.Extensions.DependencyInjection` | 10.0.13 | Kafka in-process DI tests |
 
-The exact official [xUnit manifest][xunit-manifest] and [ArchUnitNET manifest][archunit-manifest] are the source for these dependencies. There is no separate VSTest adapter/Test SDK, architecture xUnit integration package or production package. Confluent.Kafka 2.16.0 is reserved for the later Kafka slice under the approved plan.
+The exact official [xUnit manifest][xunit-manifest], [ArchUnitNET manifest][archunit-manifest], [Kafka manifest][kafka-manifest], [Testcontainers manifest][containers-manifest], [Options manifest][options-manifest] and [DI manifest][di-manifest] are the sources for these pins. The Kafka additions follow the [spike plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/52#issuecomment-6172812371) and [baseline plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/54#issuecomment-6174869137). There is no separate VSTest adapter/Test SDK or architecture xUnit integration package.
 
 ## Hosted CI and completion
 
-`.github/workflows/dotnet-verification.yml` configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`, and the gate is `./scripts/verify-dotnet.sh`. It has no Azure identity, private-network runner or live tests.
+The [verification workflow][workflow] configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It runs `./scripts/verify-dotnet.sh`, installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage`, then invokes `./scripts/verify-kafka-coverage.sh` with that collector path. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
 
 The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
 
@@ -103,9 +107,14 @@ Issue #47 stays open until hosted verification passes on the reviewed PR head an
 [mtp-command]: https://github.com/dotnet/docs/blob/b6c9cb41353de8cd352c499be9e49ea6b4825bae/docs/core/tools/dotnet-test-mtp.md
 [xunit-manifest]: https://api.nuget.org/v3-flatcontainer/xunit.v3.mtp-v2/4.0.2/xunit.v3.mtp-v2.nuspec
 [archunit-manifest]: https://api.nuget.org/v3-flatcontainer/tngtech.archunitnet/0.13.4/tngtech.archunitnet.nuspec
+[kafka-manifest]: https://api.nuget.org/v3-flatcontainer/confluent.kafka/2.16.0/confluent.kafka.nuspec
+[containers-manifest]: https://api.nuget.org/v3-flatcontainer/testcontainers/4.16.0/testcontainers.nuspec
+[options-manifest]: https://api.nuget.org/v3-flatcontainer/microsoft.extensions.options/10.0.13/microsoft.extensions.options.nuspec
+[di-manifest]: https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection/10.0.13/microsoft.extensions.dependencyinjection.nuspec
 [checkout-release]: https://github.com/actions/checkout/releases/tag/v7.0.1
 [setup-release]: https://github.com/actions/setup-dotnet/releases/tag/v6.0.0
 [setup-readme]: https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/README.md
+[workflow]: ../../.github/workflows/dotnet-verification.yml
 [getter-naming]: https://github.com/TNG/ArchUnitNET/blob/1ab5943d761d48f86b42f45ef047130dc9aff1c6/ArchUnitNET/Loader/MonoCecilMemberExtensions.cs#L47-L80
 [xml-fields]: https://github.com/xunit/xunit/blob/0c7aa4991fa340689155d52043ce88f52f2f7421/src/xunit.v3.runner.common/Results/Builtin/XmlV2ResultWriterMessageHandler.cs#L292-L308
 [namespace-rule]: https://github.com/dotnet/docs/blob/b6c9cb41353de8cd352c499be9e49ea6b4825bae/docs/fundamentals/code-analysis/style-rules/ide0130.md

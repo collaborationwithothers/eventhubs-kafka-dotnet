@@ -16,5 +16,7 @@ Verdicts: confirmed, contradicted, undocumented, untestable.
 
 ## Read next
 
+- [Kafka configuration explained](docs/operations/kafka-configuration-explained.md): a beginner's guide to each baseline setting, its units and how settings interact.
+- [Kafka baseline configuration](docs/operations/kafka-baseline.md): register workload roles, understand value selection and run verification.
 - [docs/blueprint.md](docs/blueprint.md): thesis, architecture, decisions, failure modes, the frozen inventory of 66 items plus amendment 1 (10 Kubernetes items), and the estimate.
 - [docs/engineering/dotnet-verification.md](docs/engineering/dotnet-verification.md): reproduce the .NET foundation build, architecture gates and approved controls.
