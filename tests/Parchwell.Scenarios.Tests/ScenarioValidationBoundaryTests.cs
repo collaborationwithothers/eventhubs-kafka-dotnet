@@ -60,7 +60,7 @@ public sealed class ScenarioValidationBoundaryTests
         var exception = await Assert.ThrowsAsync<ScenarioValidationException>(async () =>
             await ScenarioTestData.Loader(ScenarioTestData.Source(yaml)).LoadAsync("A01", TestContext.Current.CancellationToken));
 
-        Assert.Contains(exception.Diagnostics, diagnostic => diagnostic.FieldPath == "roles" && diagnostic.Code == "roles_required");
+        Assert.Contains(exception.Diagnostics, diagnostic => diagnostic.FieldPath == "roles" && diagnostic.Code == "empty_sequence");
     }
 
     [Theory]

@@ -55,7 +55,6 @@ internal static class DefinitionReader
     {
         var sequence = validation.Sequence(node, "roles");
         if (sequence is null) return [];
-        if (sequence.Items.IsEmpty) validation.Error(sequence, "roles", "roles_required", "At least one workload role is required.");
         var roles = ImmutableArray.CreateBuilder<KafkaClientRole>();
         var seen = new HashSet<KafkaClientRole>();
         for (var index = 0; index < sequence.Items.Length; index++)
