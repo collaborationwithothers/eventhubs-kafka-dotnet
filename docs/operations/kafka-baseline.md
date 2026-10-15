@@ -101,9 +101,9 @@ The scripts identify the expected rejection reason; unrelated tool or build fail
 
 Full verification checks the generated XML documentation after the Release build. The checker requires each literal `KafkaSettingKeys` declaration to name its Kafka key and link to exactly the union of that key's catalogue inventory IDs across all roles. Missing, duplicate, extra or mismatched declarations fail. This protects the inventory links required by the blueprint; it does not invent result links before results exist. [XML checker][xml-checker], [library documentation requirement][blueprint].
 
-### Pending CI coverage wiring
+### CI mapping coverage
 
-The existing CI entry point now runs the XML inventory check. It still does not collect mapping coverage. Hari must add the following steps after `./scripts/verify-dotnet.sh` in the .NET verification job; until then, mapping coverage is a separately executed check. The collector stays outside the repository as approved in the plan. [Current workflow][workflow], [approved collector pin][plan], [tool CLI][coverage-cli].
+The .NET verification workflow runs the XML inventory check through `./scripts/verify-dotnet.sh`, then installs the pinned collector outside the repository under `RUNNER_TEMP` and runs the mapping coverage gate. The coverage steps follow the foundation build because the checker requires its Release assemblies and matching portable PDB. [Workflow][workflow], [coverage entry point][coverage-script], [approved collector pin][plan], [tool CLI][coverage-cli].
 
 ```yaml
 - name: Install mapping coverage collector
@@ -112,7 +112,7 @@ The existing CI entry point now runs the XML inventory check. It still does not 
   run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
 ```
 
-Agents cannot edit workflow files under [AGENTS.md safety rule 8][workflow-rule]. The snippet is a concrete handoff for Hari; this PR does not claim that CI coverage is enforced.
+These steps describe the committed workflow configuration. A successful hosted run must be verified separately against the pushed commit; local coverage results do not establish that hosted result.
 
 [plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/54#issuecomment-6174869137
 [blueprint]: ../blueprint.md
@@ -144,4 +144,3 @@ Agents cannot edit workflow files under [AGENTS.md safety rule 8][workflow-rule]
 [documentation-controls]: ../../scripts/test-kafka-documentation.sh
 [xml-checker]: ../../scripts/verification/ValidateKafkaDocumentation.cs
 [workflow]: ../../.github/workflows/dotnet-verification.yml
-[workflow-rule]: ../../AGENTS.md#hard-safety-rules

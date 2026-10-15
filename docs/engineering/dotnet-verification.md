@@ -61,7 +61,7 @@ The parser uses each project's effective Release `LangVersion` and `DefineConsta
 
 Fresh machine-readable xUnit reports must identify the expected test assembly, contain a positive passed-test count, and have no failed, skipped or not-run tests or runner errors. Summary counts must agree with the individual results. `scripts/dotnet-verification.proj` parses XML and rejects missing or malformed reports. The [pinned xUnit writer][xml-fields] supplies the checked assembly result fields.
 
-A paired unit-test project is reported as an empty scaffold only when its evaluated `Compile` item list is empty. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. The Kafka test project executes its mapping tests and Docker characterization; the additional [mapping coverage pass](../operations/kafka-baseline.md#verification) supplements full verification. After the solution build, the entry point also checks generated Kafka setting XML against the catalogue inventory IDs. Mapping coverage still needs the [documented CI wiring by Hari](../operations/kafka-baseline.md#pending-ci-coverage-wiring); the existing workflow does not collect it. There are no dummy passing tests.
+A paired unit-test project is reported as an empty scaffold only when its evaluated `Compile` item list is empty. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. The Kafka test project executes its mapping tests and Docker characterization; the additional [mapping coverage pass](../operations/kafka-baseline.md#verification) supplements full verification. After the solution build, the entry point also checks generated Kafka setting XML against the catalogue inventory IDs. The [CI mapping coverage steps](../operations/kafka-baseline.md#ci-mapping-coverage) run after foundation verification and reject missing coverage or uncovered mapping lines. There are no dummy passing tests.
 
 ## Approved controls
 
@@ -95,7 +95,7 @@ The exact official [xUnit manifest][xunit-manifest], [ArchUnitNET manifest][arch
 
 ## Hosted CI and completion
 
-`.github/workflows/dotnet-verification.yml` configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`, and the gate is `./scripts/verify-dotnet.sh`. It has no Azure identity, private-network runner or live tests.
+The [verification workflow][workflow] configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It runs `./scripts/verify-dotnet.sh`, installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage`, then invokes `./scripts/verify-kafka-coverage.sh` with that collector path. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
 
 The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
 
@@ -114,6 +114,7 @@ Issue #47 stays open until hosted verification passes on the reviewed PR head an
 [checkout-release]: https://github.com/actions/checkout/releases/tag/v7.0.1
 [setup-release]: https://github.com/actions/setup-dotnet/releases/tag/v6.0.0
 [setup-readme]: https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/README.md
+[workflow]: ../../.github/workflows/dotnet-verification.yml
 [getter-naming]: https://github.com/TNG/ArchUnitNET/blob/1ab5943d761d48f86b42f45ef047130dc9aff1c6/ArchUnitNET/Loader/MonoCecilMemberExtensions.cs#L47-L80
 [xml-fields]: https://github.com/xunit/xunit/blob/0c7aa4991fa340689155d52043ce88f52f2f7421/src/xunit.v3.runner.common/Results/Builtin/XmlV2ResultWriterMessageHandler.cs#L292-L308
 [namespace-rule]: https://github.com/dotnet/docs/blob/b6c9cb41353de8cd352c499be9e49ea6b4825bae/docs/fundamentals/code-analysis/style-rules/ide0130.md
