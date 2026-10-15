@@ -1,0 +1,25 @@
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Parchwell.Scenarios;
+
+/// <summary>Registers scenario declaration loading and pure resolution/generation.</summary>
+public static class ScenarioServiceCollectionExtensions
+{
+    /// <summary>Registers required parsing limits with startup validation. The caller supplies IScenarioSource and Kafka roles.</summary>
+    public static IServiceCollection AddParchwellScenarios(this IServiceCollection services,
+        Action<ScenarioLoadOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+        services.AddOptions<ScenarioLoadOptions>().Configure(configure)
+            .Validate(options => options.MaxDocumentCharacters > 0, "MaxDocumentCharacters must be positive.")
+            .Validate(options => options.MaxNestingDepth > 0, "MaxNestingDepth must be positive.")
+            .Validate(options => options.MaxScalarCharacters > 0, "MaxScalarCharacters must be positive.")
+            .Validate(options => options.MaxParserEvents > 0, "MaxParserEvents must be positive.")
+            .ValidateOnStart();
+        services.AddSingleton<ScenarioLoader>();
+        services.AddSingleton<ScenarioResolver>();
+        services.AddSingleton<HelmValuesGenerator>();
+        return services;
+    }
+}
