@@ -45,7 +45,7 @@ The complete mapping is in [BaselineSettingsCatalog.cs][catalogue]; the independ
 | Consumer `allow.auto.create.topics` | `false` | Native consumer default; D01 |
 | `statistics.interval.ms` | `15000` | ADR-007's starting-point decision; H01/H02, plus producer A01/B10 |
 
-Values in this table are configuration literals, not runtime measurements. Their sources are the [Microsoft table][microsoft], [pinned native reference][native], [approved shared contract][plan] and [ADRs][blueprint]. The statistics interval still needs a later callback and bridge implementation.
+Values in this table are configuration literals, not runtime measurements. Their sources are the [Microsoft table][microsoft], [pinned native reference][native], [approved shared contract][plan] and [ADRs][blueprint]. The statistics interval requires an attached callback; the [statistics bridge contract](statistics-bridge.md) describes capture, evidence and metric emission.
 
 Microsoft's librdkafka table states a request-timeout default of `5000`, while the pinned native reference states `30000`; the recommendation remains `60000`. The native reference describes `request.timeout.ms` as broker-enforced and producer-only. Consumers receive their network `socket.timeout.ms` setting, without a producer request-timeout entry. [Microsoft][microsoft], [librdkafka v2.16.0][native].
 
@@ -59,7 +59,7 @@ The managed delivery keys use `dotnet.producer.*`; fields `all` retain persisten
 
 Transactions, SAS credential settings and native OIDC client-secret settings are excluded under ADR-003/015. Consumer static membership remains unspecified for C06. The verifier fixes its group to `parchwell-verifier`, disables auto-commit, selects reset `error` and isolation `read_committed`; its offset-store and commit-interval settings remain unspecified under the assumption that it assigns explicit offsets and never stores or commits them. [ADR-003/013/015][blueprint], [approved omissions][plan].
 
-Omissions appear in `Omissions` with null metadata values and their own disposition; no null entries are sent to native configuration. This PR supplies no token provider, refresh handler, client factory, statistics bridge or verifier algorithm. Attach the separately planned custom refresh handler before live use. [Approved scope][plan].
+Omissions appear in `Omissions` with null metadata values and their own disposition; no null entries are sent to native configuration. The baseline factory supplies configuration without attaching handlers, constructing clients or implementing the verifier. Attach the [statistics bridge](statistics-bridge.md) through its callback contract and the separately planned custom refresh handler before live use. [Approved scope][plan].
 
 ## Verification
 
