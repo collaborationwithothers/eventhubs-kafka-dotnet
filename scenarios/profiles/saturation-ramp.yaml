@@ -1,0 +1,32 @@
+schema_version: 1
+id: saturation-ramp
+seed: 1401
+tenants:
+  - {id: tenant01, weight: 40}
+  - {id: tenant02, weight: 20}
+  - {id: tenant03, weight: 10}
+  - {id: tenant04, weight: 8}
+  - {id: tenant05, weight: 6}
+  - {id: tenant06, weight: 5}
+  - {id: tenant07, weight: 4}
+  - {id: tenant08, weight: 3}
+  - {id: tenant09, weight: 2}
+  - {id: tenant10, weight: 2}
+documents_per_burst: 2000
+payloads:
+  uploaded:
+    - {size_bytes: 1024, weight: 1}
+  ocr-started:
+    - {size_bytes: 1024, weight: 1}
+  ocr-finished:
+    - {size_bytes: 150000, weight: 99}
+    - {size_bytes: 900000, weight: 1}
+  classified:
+    - {size_bytes: 1024, weight: 1}
+  indexed:
+    - {size_bytes: 1024, weight: 1}
+stages:
+  - {id: ramp100, offered_attempts_per_second: 100, duration_seconds: 60}
+  - {id: ramp300, offered_attempts_per_second: 300, duration_seconds: 60}
+  - {id: ramp900, offered_attempts_per_second: 900, duration_seconds: 60}
+  - {id: ramp1800, offered_attempts_per_second: 1800, duration_seconds: 60}

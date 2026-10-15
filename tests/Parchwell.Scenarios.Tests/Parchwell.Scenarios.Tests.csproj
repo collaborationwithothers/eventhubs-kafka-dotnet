@@ -9,4 +9,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <ProjectReference Include="../../src/Parchwell.Scenarios/Parchwell.Scenarios.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../scenarios/A01/scenario.yaml" LogicalName="Parchwell.Scenarios.Tests.A01.scenario.yaml" />
+    <EmbeddedResource Include="../../scenarios/profiles/saturation-ramp.yaml" LogicalName="Parchwell.Scenarios.Tests.A01.saturation-ramp.yaml" />
+  </ItemGroup>
 </Project>

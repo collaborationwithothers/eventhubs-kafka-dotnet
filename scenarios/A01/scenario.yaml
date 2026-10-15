@@ -1,0 +1,54 @@
+schema_version: 1
+id: A01
+baseline: Parchwell.Kafka
+roles:
+  - LoadGenProducer
+  - VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+
+configurations:
+  C0: {}
+  C2:
+    LoadGenProducer:
+      request.timeout.ms: 5000
+  C3:
+    LoadGenProducer:
+      socket.timeout.ms: 20000
+
+fault:
+  live:
+    kind: throttling
+    configurations: [C0, C2, C3]
+  component:
+    kind: toxiproxy_latency
+    configurations: [C3]
+    direction: downstream
+    latency_ms: 25000
+
+repeats: 5
+
+gate:
+  kind: probe
+  configuration: C0
+  repeats: 5
+  predicate:
+    id: stats.broker.throttle.max
+    role: LoadGenProducer
+    operator: greater_than
+    threshold_ms: 20000
+  configurations: [C0, C2, C3]
+
+measures:
+  - {id: ledger.delivery_error_code, role: LoadGenProducer}
+  - {id: ledger.delivery_latency_ms, role: LoadGenProducer}
+  - {id: stats.broker.throttle.max, role: LoadGenProducer}
+  - {id: stats.broker.req_timeouts, role: LoadGenProducer}
+  - {id: stats.broker.disconnects, role: LoadGenProducer}
+  - {id: stats.broker.rtt.p99, role: LoadGenProducer}
+  - {id: producer.request_timeout, role: LoadGenProducer}
+  - {id: verifier.ok, role: VerifierConsumer}
+  - {id: verifier.loss, role: VerifierConsumer}
+  - {id: verifier.phantom, role: VerifierConsumer}
+  - {id: verifier.reported_failure, role: VerifierConsumer}
+  - {id: verifier.duplicate, role: VerifierConsumer}
+  - {id: verifier.reorder, role: VerifierConsumer}
