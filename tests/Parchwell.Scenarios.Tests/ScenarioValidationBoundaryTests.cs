@@ -9,6 +9,8 @@ namespace Parchwell.Scenarios.Tests;
 [Trait("Category", "Unit")]
 public sealed class ScenarioValidationBoundaryTests
 {
+    // The loader must reject an ID outside the frozen inventory before it reads any file,
+    // so a typo or a path such as "../A01" can never open an unrelated source.
     [Theory]
     [InlineData("Z99")]
     [InlineData("A00")]
@@ -28,6 +30,8 @@ public sealed class ScenarioValidationBoundaryTests
         Assert.Empty(source.RequestedPaths);
     }
 
+    // The last ID of every inventory group, K10 from amendment 1 included (docs/blueprint.md section 12),
+    // proves the loader uses the Kafka library's FrozenInventory rather than a shorter copy.
     [Theory]
     [InlineData("A06")]
     [InlineData("B11")]
@@ -50,6 +54,7 @@ public sealed class ScenarioValidationBoundaryTests
         Assert.Equal([path, ScenarioTestData.ProfilePath], source.RequestedPaths);
     }
 
+    // roles must be nonempty (scenario-contract.md): with no roles the resolver would emit no Kafka settings.
     [Fact]
     public async Task Given_EmptyRoles_When_Loading_Then_RejectsAtTheDeclarationBoundary()
     {
@@ -63,6 +68,8 @@ public sealed class ScenarioValidationBoundaryTests
         Assert.Contains(exception.Diagnostics, diagnostic => diagnostic.FieldPath == "roles" && diagnostic.Code == "empty_sequence");
     }
 
+    // Resolver codes follow the issue 61 snake_case migration (scenario-contract.md), and the diagnostic
+    // points at the override's line in scenario.yaml, the file the author edits.
     [Theory]
     [InlineData("request.timeout.ms", 0, "setting_out_of_range")]
     [InlineData("socket.timeout.ms", 300_001, "setting_out_of_range")]

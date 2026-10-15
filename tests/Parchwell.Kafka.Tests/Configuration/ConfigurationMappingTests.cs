@@ -8,9 +8,13 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+// Protects ADR-015: every setting the harness depends on is emitted explicitly, tagged with its
+// inventory IDs and cited, so a change of library default cannot silently change a scenario.
 [Trait("Category", "Unit")]
 public sealed class ConfigurationMappingTests
 {
+    // The whole emitted dictionary must equal the hand-written contract, so an added, dropped or retagged
+    // key fails. The absent keys are deliberate omissions and alias spellings (kafka-baseline.md).
     [Theory]
     [InlineData(KafkaClientRole.LoadGenProducer)]
     [InlineData(KafkaClientRole.EnrichmentProducer)]
@@ -61,6 +65,8 @@ public sealed class ConfigurationMappingTests
             Assert.Null(configuration.Get(excluded));
     }
 
+    // Distinct inputs per role expose any leak between roles, and reading back through the typed getters
+    // checks the managed key spellings the services will rely on (kafka-baseline.md).
     [Fact]
     public void Given_AllNamedRoles_When_CreatingBaselines_Then_UsesIndependentInputsAndNativeTypedValues()
     {
@@ -118,6 +124,8 @@ public sealed class ConfigurationMappingTests
         }
     }
 
+    // Each result is caller-owned: an edit to one configuration must not reach the next result, and the
+    // metadata must keep describing what was first emitted, not later edits.
     [Theory]
     [InlineData(KafkaClientRole.LoadGenProducer)]
     [InlineData(KafkaClientRole.EnrichmentProducer)]
@@ -140,6 +148,7 @@ public sealed class ConfigurationMappingTests
         Assert.Equal(ApprovedConfigurationContract.Settings(role).Keys.Order(StringComparer.Ordinal), metadata.Select(item => item.Key).Order(StringComparer.Ordinal));
     }
 
+    // The factory snapshots options per call. The verifier group stays fixed whatever the inputs (ADR-013).
     [Theory]
     [InlineData(KafkaClientRole.LoadGenProducer)]
     [InlineData(KafkaClientRole.EnrichmentProducer)]

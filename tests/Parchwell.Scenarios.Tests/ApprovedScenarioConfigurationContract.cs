@@ -9,6 +9,10 @@ namespace Parchwell.Scenarios.Tests;
 // plus Config_gen.cs getters and Config.cs GetEnum at v2.16.0. Native largest/latest are synonyms.
 // https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Config.cs#L179-L187
 // Harness choices and inventory tags: blueprint ADRs and frozen section 12 at the cited commit.
+/// <summary>
+/// The approved baseline settings per Kafka role, written out by hand so that a change to the
+/// implementation cannot also change what the tests expect. Tags and sources are kept for the reader.
+/// </summary>
 internal static class ApprovedConfigurationContract
 {
     internal const string Microsoft = "https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations";

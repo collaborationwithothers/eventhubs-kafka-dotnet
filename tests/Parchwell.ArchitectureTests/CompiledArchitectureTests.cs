@@ -10,6 +10,8 @@ using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Parchwell.ArchitectureTests;
 
+// Enforces docs/engineering/dotnet.md "Architecture tests" on the compiled types. FoundationTests
+// checks declared project references, which also catches a reference no type uses.
 public sealed class CompiledArchitectureTests
 {
     private static readonly Lazy<Architecture> Architecture = new(() =>
@@ -19,6 +21,8 @@ public sealed class CompiledArchitectureTests
         return new ArchLoader().LoadAssemblies(assemblies).Build();
     });
 
+    // dotnet.md "Vertical slices": Parchwell.Kafka is the shared library and depends on no Parchwell.*
+    // project, so it never pulls service or scenario code into every service that uses it.
     [Fact]
     public void Given_SourceAssemblies_When_CompiledDependenciesAreChecked_Then_KafkaHasNoParchwellDependencies()
     {
@@ -29,6 +33,8 @@ public sealed class CompiledArchitectureTests
         Check(kafka.Should().NotDependOnAny(otherParchwellTypes), architecture);
     }
 
+    // dotnet.md "Architecture tests": no service depends on another, so a change inside one
+    // service cannot break another through a hidden dependency.
     [Fact]
     public void Given_ServiceAssemblies_When_CompiledDependenciesAreChecked_Then_ServicesDoNotDependOnEachOther()
     {
@@ -42,6 +48,8 @@ public sealed class CompiledArchitectureTests
         }
     }
 
+    // dotnet.md "Architecture tests": a slice never uses another slice's types; shared code goes in Common/.
+    // The namespace checks run first because the slice is read from the namespace.
     [Fact]
     public void Given_ServiceFeatureNamespaces_When_CompiledDependenciesAreChecked_Then_FeatureSlicesAreIsolated()
     {
@@ -70,6 +78,7 @@ public sealed class CompiledArchitectureTests
         }
     }
 
+    // dotnet.md "Seams and dependencies": time comes from TimeProvider, so time-dependent logic is testable.
     [Fact]
     public void Given_ProductionMethods_When_ClockCallsAreChecked_Then_DirectDateTimeNowAndUtcNowGettersAreForbidden()
     {

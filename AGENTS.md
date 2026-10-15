@@ -170,9 +170,11 @@ These rules apply when Codex reviews a pull request in this repository, and in t
 - Flag as P1 any new `docs/adr/` file, or any change that applies the `ready-for-agent` label.
 - Flag as P1 any use of a Kafka client setting that contradicts docs/blueprint.md without a linked inventory item.
 - Do not flag style that the analyzers already enforce.
+- Do not flag the presence, absence or style of code comments ([Code comments](docs/engineering/code-comments.md) "Review"). Two exceptions: a comment that states something false about the code or a source, and a public member of `Parchwell.Kafka` without documentation, which docs/engineering/dotnet.md requires.
 
 ## Writing standards
 
 - Documents (README, ADRs, scenario write-ups, pull request descriptions) open with two or three plain sentences that a reader could stop after and still leave right.
-- One idea per sentence. Define unfamiliar terms at first use in documents. Never in log messages or code comments.
+- One idea per sentence. Define unfamiliar terms at first use in documents. Never in log messages.
+- Code comments are written for an engineer new to the repository, as [Code comments](docs/engineering/code-comments.md) describes.
 - ASCII punctuation only. No em or en dashes. Metric units.

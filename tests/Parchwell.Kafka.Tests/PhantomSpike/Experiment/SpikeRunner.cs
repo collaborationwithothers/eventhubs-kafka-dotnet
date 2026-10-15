@@ -4,6 +4,11 @@ using Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Experiment;
 
+/// <summary>
+/// Runs the frozen spike matrix, each trial with a fresh producer, topic, identity and proxy.
+/// Healthy controls run first; a failed control or a failed cleanup stops the remaining trials
+/// (docs/operations/phantom-spike/README.md, Frozen experiment).
+/// </summary>
 internal sealed class SpikeRunner(TimeProvider clock)
 {
     // Approved design budgets, not measured broker performance.
@@ -125,6 +130,8 @@ internal sealed class SpikeRunner(TimeProvider clock)
             producer = new ProducerProbe(environment.ProducerBootstrapServers, configuration, timings, clock);
             brokers = producer.MetadataBrokerEndpoints();
             deadline.Token.ThrowIfCancellationRequested();
+            // The producer also connects to brokers it learns from metadata (README, Frozen experiment), so
+            // every advertised broker must be the proxy or the fault would not sit on the producer's path.
             if (brokers.Count == 0 || brokers.Any(endpoint => !string.Equals(endpoint, environment.ProducerBootstrapServers, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("Producer metadata advertised a route other than the trial proxy.");
 

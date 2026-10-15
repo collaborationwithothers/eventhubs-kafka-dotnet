@@ -3,6 +3,12 @@ using System.Collections.Immutable;
 namespace Parchwell.Kafka.Configuration;
 
 /// <summary>An immutable audit record for one emitted setting or deliberate omission.</summary>
+/// <remarks>
+/// The record answers, for one role and one key: what value the baseline chose or why it chose
+/// none, which frozen inventory items depend on it, and which sources support it.
+/// ADR-015 requires every setting the harness depends on to be explicit and tagged; this record
+/// is that tag, available at run time.
+/// </remarks>
 public sealed class KafkaSettingMetadata
 {
     internal KafkaSettingMetadata(string key, string? value, KafkaClientRole role,
@@ -14,6 +20,8 @@ public sealed class KafkaSettingMetadata
             throw new ArgumentOutOfRangeException(nameof(role));
         if (!Enum.IsDefined(disposition))
             throw new ArgumentOutOfRangeException(nameof(disposition));
+        // An omission has no value by definition. A value on an omission, or a missing value on an
+        // explicit setting, would make the audit record disagree with the emitted configuration.
         if ((disposition == KafkaSettingDisposition.Explicit) != (value is not null))
             throw new ArgumentException("Only an explicit setting must have a value.", nameof(value));
         Key = key;
@@ -25,6 +33,9 @@ public sealed class KafkaSettingMetadata
         SelectionReason = selectionReason;
     }
 
+    // Shared with KafkaSettingDefinition, so a bad catalogue entry fails when the catalogue loads,
+    // before any configuration is built.
+    // An untagged or unsourced setting breaks ADR-015's rule that every setting is traceable.
     internal static void ValidateAuditFields(string key, ImmutableArray<string> inventoryIds,
         ImmutableArray<KafkaSettingSource> sources, string selectionReason)
     {

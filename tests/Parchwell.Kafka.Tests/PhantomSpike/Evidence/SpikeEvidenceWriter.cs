@@ -2,6 +2,11 @@ using System.Text.Json;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Evidence;
 
+/// <summary>
+/// Writes experiment.json, decision.json and trial-records.json to a new folder per run, so files
+/// from an earlier run cannot supply this run's result (docs/operations/phantom-spike/README.md,
+/// Evidence retention).
+/// </summary>
 internal static class SpikeEvidenceWriter
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

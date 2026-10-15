@@ -4,9 +4,21 @@ using Parchwell.Kafka.Configuration;
 
 namespace Parchwell.Scenarios;
 
+/// <summary>
+/// What one catalogued measurement is: where its value comes from, its kind and unit, what one value
+/// covers (its scope), which client roles it applies to, and the source that documents it.
+/// </summary>
 internal sealed record MeasurementDescriptor(string Source, string ValueKind, string Unit, string Scope,
     ImmutableArray<KafkaClientRole> Roles, string SourceUrl, string VersionOrDate);
 
+/// <summary>
+/// The declaration catalogue: the closed list of measurement ids a scenario may request in measures.
+/// An id outside this list, or a role the entry does not apply to, is a validation error.
+/// </summary>
+/// <remarks>
+/// An entry here does not mean the harness collects it yet. The list and its sources are fixed by
+/// docs/operations/scenario-contract.md, "Measurements and review boundaries".
+/// </remarks>
 internal static class MeasurementCatalog
 {
     // These are declaration identities, not implemented collectors or OpenTelemetry names.

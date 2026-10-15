@@ -5,6 +5,9 @@ namespace Parchwell.Kafka.Configuration;
 
 /// <summary>Describes an override key admitted by the repository's scenario policy.</summary>
 /// <remarks>
+/// A scenario override is one baseline setting that a scenario definition changes for its run.
+/// Overrides are how a scenario expresses its configurations as deltas from the baseline
+/// (ADR-014, ADR-015). Only keys listed in <see cref="KafkaScenarioOverridePolicy"/> may be overridden.
 /// The range is the native librdkafka range. <see cref="SupportedRoles"/> is a separate
 /// repository policy and does not claim that librdkafka itself restricts the key by role.
 /// </remarks>
@@ -62,6 +65,7 @@ public sealed class KafkaScenarioOverrideSetting
 /// <remarks>
 /// These bounds are verified against librdkafka v2.16.0. At present, this repository separately
 /// permits overrides only for <see cref="KafkaClientRole.LoadGenProducer"/>.
+/// Each entry must name the frozen inventory items it serves.
 /// </remarks>
 public static class KafkaScenarioOverridePolicy
 {

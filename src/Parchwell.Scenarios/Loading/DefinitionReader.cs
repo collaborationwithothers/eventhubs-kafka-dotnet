@@ -4,6 +4,14 @@ using Parchwell.Kafka.Configuration;
 
 namespace Parchwell.Scenarios;
 
+/// <summary>
+/// Validates the input tree of one scenario.yaml and builds a <see cref="ScenarioDefinition"/>.
+/// </summary>
+/// <remarks>
+/// It checks structure and cross-references only: field shapes, declared roles, configuration ids and the
+/// measurement catalogue. Whether an override key and value are allowed is checked by
+/// <see cref="ScenarioResolver"/>. The rules are in docs/operations/scenario-contract.md, "Scenario schema".
+/// </remarks>
 internal static class DefinitionReader
 {
     internal static ScenarioDefinition Read(InputNode root, string source, string requestedId)
@@ -19,15 +27,21 @@ internal static class DefinitionReader
 
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
         var id = validation.String(rootMap, "id", "") ?? "";
+        // One definition file exists per inventory item (ADR-014). A file whose id differs from the
+        // requested item would run the wrong experiment, so it is rejected.
         if (!StringComparer.Ordinal.Equals(id, requestedId)) validation.Error(rootMap.Fields.GetValueOrDefault("id"), "id", "scenario_id_mismatch", "The definition id must match the requested inventory id.");
         var baseline = validation.String(rootMap, "baseline", "") ?? "";
+        // Every scenario is a delta from the one baseline in Parchwell.Kafka (ADR-015).
         if (!StringComparer.Ordinal.Equals(baseline, "Parchwell.Kafka")) validation.Error(rootMap.Fields.GetValueOrDefault("baseline"), "baseline", "unsupported_baseline", "The baseline must be Parchwell.Kafka.");
 
         var roles = ReadRoles(validation, rootMap.Fields.GetValueOrDefault("roles"));
         var profile = validation.String(rootMap, "profile", "") ?? "";
+        // The loader opens this path next, so it is limited to profiles/<slug>.yaml. A definition then
+        // cannot make the loader read a file outside scenarios/profiles/.
         if (!IsProfileReference(profile)) validation.Error(rootMap.Fields.GetValueOrDefault("profile"), "profile", "invalid_profile_reference", "Profile must be profiles/<slug>.yaml.");
         var configurations = ReadConfigurations(validation, rootMap.Fields.GetValueOrDefault("configurations"), roles);
         var fault = ReadFault(validation, rootMap.Fields.GetValueOrDefault("fault"), configurations.Keys.ToImmutableHashSet(StringComparer.Ordinal));
+        // The minimum repeat count is a repository rule (docs/agents/factory.md, "Plan template"), not a measurement.
         var repeats = ReadPositiveInt32(validation, rootMap.Fields.GetValueOrDefault("repeats"), "repeats", ScenarioContract.MinimumRepeats);
         var measures = ReadMeasures(validation, rootMap.Fields.GetValueOrDefault("measures"), roles);
         var gate = ReadGate(validation, rootMap.Fields.GetValueOrDefault("gate"), configurations.Keys.ToImmutableHashSet(StringComparer.Ordinal), roles, measures);
@@ -104,12 +118,16 @@ internal static class DefinitionReader
             {
                 var rolePath = NodeValidation.Join(path, roleName);
                 if (!ReadRole(validation, new ScalarNode(roleName, true, settingsNode.Location), rolePath, out var role)) continue;
+                // The resolver builds a baseline only for roles listed in roles, so an override for any other
+                // role would have nothing to replace.
                 if (!declaredRoles.Contains(role)) validation.Error(settingsNode, rolePath, "role_not_declared", "Configuration roles must be declared in roles.");
                 var settings = validation.Map(settingsNode, rolePath);
                 if (settings is null) continue;
                 var values = ImmutableDictionary.CreateBuilder<string, SettingOverride>(StringComparer.Ordinal);
                 foreach (var (key, settingNode) in settings.Fields)
                 {
+                    // Only the form of the value is checked here. The resolver decides whether the key, role and range
+                    // are allowed.
                     if (settingNode is not ScalarNode { IsPlain: true } scalar || !int.TryParse(scalar.Value,
                             NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ||
                         !IsSignedInteger(scalar.Value))
@@ -126,6 +144,8 @@ internal static class DefinitionReader
         return result.ToImmutable();
     }
 
+    // Each fault part and the gate is either exactly {kind: none} or a full declaration of its one
+    // supported kind, so a stray field next to none is an error rather than silently ignored.
     private static FaultDefinition ReadFault(NodeValidation validation, InputNode? node, ImmutableHashSet<string> configIds)
     {
         var map = validation.Map(node, "fault");
@@ -186,13 +206,16 @@ internal static class DefinitionReader
         if (kindName != "probe") validation.Error(map.Fields.GetValueOrDefault("kind"), "gate.kind", "unknown_gate_kind", "Gate kind must be none or probe.");
         var configuration = validation.String(map, "configuration", "gate") ?? "";
         CheckReference(validation, map.Fields.GetValueOrDefault("configuration"), "gate.configuration", configuration, configIds);
+        // The probe's repeat count obeys the same minimum as full runs, independently of them.
         var repeats = ReadPositiveInt32(validation, map.Fields.GetValueOrDefault("repeats"), "gate.repeats", ScenarioContract.MinimumRepeats);
         var configs = ReadReferences(validation, map.Fields.GetValueOrDefault("configurations"), "gate.configurations", configIds);
         var predicate = ReadPredicate(validation, map.Fields.GetValueOrDefault("predicate"), declaredRoles, out var probeOperator);
+        // The probe is judged on this measurement, so the scenario must also request it in measures.
         if (predicate is not null && !measures.Contains(predicate))
             validation.Error(map.Fields.GetValueOrDefault("predicate"), "gate.predicate", "predicate_measure_missing", "The probe predicate must also be requested in measures.");
         var threshold = ReadPositiveInt32(validation, map.Fields.GetValueOrDefault("predicate") is MapNode pred ? pred.Fields.GetValueOrDefault("threshold_ms") : null,
             "gate.predicate.threshold_ms");
+        // A null predicate means an error was already recorded; ThrowIfErrors in Read stops this placeholder.
         return predicate is null ? new NoGate() :
             new ProbeGate(configuration, predicate, probeOperator, threshold, repeats, configs);
     }
@@ -205,6 +228,8 @@ internal static class DefinitionReader
         if (map is null) return null;
         validation.CheckFields(map, "gate.predicate", "id", "role", "operator", "threshold_ms");
         var id = validation.String(map, "id", "gate.predicate") ?? "";
+        // The contract fixes the only probe predicate: stats.broker.throttle.max, greater_than a positive
+        // threshold (docs/operations/scenario-contract.md, "Scenario schema").
         if (id != "stats.broker.throttle.max") validation.Error(map.Fields.GetValueOrDefault("id"), "gate.predicate.id", "invalid_predicate_measure", "Probe predicate id must be stats.broker.throttle.max.");
         var role = ReadRoleField(validation, map, "role", "gate.predicate", out var validRole);
         if (validRole && !declaredRoles.Contains(role)) validation.Error(map.Fields.GetValueOrDefault("role"), "gate.predicate.role", "role_not_declared", "The predicate role must be declared in roles.");
@@ -230,6 +255,7 @@ internal static class DefinitionReader
             validation.CheckFields(map, path, "id", "role");
             var id = validation.String(map, "id", path) ?? "";
             var role = ReadRoleField(validation, map, "role", path, out var validRole);
+            // A measure must name a catalogued measurement, for a role the entry applies to and the scenario declares.
             if (!MeasurementCatalog.TryGet(id, out var descriptor))
                 validation.Error(map.Fields.GetValueOrDefault("id"), NodeValidation.Join(path, "id"), "unknown_measurement", "Measurement id is not in the declaration catalogue.");
             else if (validRole && descriptor is not null && !descriptor.Roles.Contains(role))
@@ -276,6 +302,8 @@ internal static class DefinitionReader
         if (!configIds.Contains(reference)) validation.Error(node, path, "unknown_configuration", $"Configuration '{reference}' is not declared.");
     }
 
+    // The contract forbids absolute paths, URLs, backslashes and parent traversal in profile references.
+    // The slug allows no dot, slash, backslash or colon, so none of those can pass.
     private static bool IsProfileReference(string profile)
     {
         const string prefix = "profiles/";
@@ -286,6 +314,8 @@ internal static class DefinitionReader
             char.IsAsciiLetter(slug[0]) && !profile.Contains('\\') && !profile.Contains(':');
     }
 
+    // int.TryParse with AllowLeadingSign would also accept a leading plus sign; this keeps the form to an
+    // optional minus and ASCII digits.
     private static bool IsSignedInteger(string value) => value.Length > 0 &&
         (value[0] == '-' ? value.Length > 1 && value[1..].All(char.IsAsciiDigit) : value.All(char.IsAsciiDigit));
 }

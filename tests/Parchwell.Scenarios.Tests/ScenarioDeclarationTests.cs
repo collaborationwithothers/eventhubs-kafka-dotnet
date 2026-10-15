@@ -6,6 +6,8 @@ namespace Parchwell.Scenarios.Tests;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+// fault and gate are closed declarations (docs/operations/scenario-contract.md "Scenario schema"):
+// only the exact snake_case kinds load, so a near-miss spelling is reported, never guessed.
 [Trait("Category", "Unit")]
 public sealed class ScenarioDeclarationTests
 {
@@ -19,6 +21,8 @@ public sealed class ScenarioDeclarationTests
         Assert.Equal(ComponentFaultKind.None, scenario.Definition.Fault.Component.Kind);
     }
 
+    // A probe gate's predicate measurement must also be requested in measures, which is why the
+    // throttle statistic is added here alongside the gate.
     [Fact]
     public async Task Given_ProbeGateAndBothFaultKinds_When_Loading_Then_UsesTypedDeclarations()
     {
@@ -49,6 +53,7 @@ public sealed class ScenarioDeclarationTests
         Assert.Equal(25, scenario.Definition.Fault.Component.LatencyMs);
     }
 
+    // The diagnostic carries field path and YAML position so the author can find the typo.
     [Theory]
     [InlineData("fault:\n  live: {kind: Throttling, configurations: [baseline]}\n  component: {kind: none}", "unknown_fault_kind", "fault.live.kind")]
     [InlineData("fault:\n  live: {kind: none}\n  component: {kind: toxiproxy-latency, configurations: [baseline], direction: downstream, latency_ms: 25}", "unknown_fault_kind", "fault.component.kind")]

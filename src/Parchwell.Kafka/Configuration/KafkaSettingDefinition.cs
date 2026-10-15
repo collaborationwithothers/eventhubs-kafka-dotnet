@@ -2,6 +2,15 @@ using System.Collections.Immutable;
 
 namespace Parchwell.Kafka.Configuration;
 
+/// <summary>One catalogue entry: how the baseline treats one setting key for the roles that use it.</summary>
+/// <remarks>
+/// An entry is either explicit or an omission (see <see cref="KafkaSettingDisposition"/>).
+/// An explicit entry has a fixed value, or takes its value from a required caller input such as
+/// the namespace name. Required inputs exist because some values depend on the deployment and
+/// must not be guessed. An omission carries no value.
+/// Each entry is tagged with frozen inventory IDs, cited sources and a selection reason,
+/// as ADR-015 requires.
+/// </remarks>
 internal sealed class KafkaSettingDefinition
 {
     private KafkaSettingDefinition(string key, string? value, KafkaRequiredInput? requiredInput,

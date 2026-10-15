@@ -5,6 +5,12 @@ using Microsoft.Extensions.Options;
 namespace Parchwell.Kafka.Configuration;
 
 /// <summary>Creates baseline native configurations without constructing clients or performing I/O.</summary>
+/// <remarks>
+/// The factory turns the baseline catalogue for one role, plus that role's required caller inputs,
+/// into a native configuration and its audit records. See <see cref="KafkaBaseline{TConfig}"/>.
+/// It builds configuration only. Creating the producer or consumer is the caller's job, because
+/// Confluent.Kafka is the thing under test and is not wrapped (docs/engineering/dotnet.md).
+/// </remarks>
 public sealed class KafkaConfigurationFactory
 {
     private readonly IOptionsMonitor<KafkaBaselineOptions> options;
@@ -52,6 +58,8 @@ public sealed class KafkaConfigurationFactory
         if (!registeredRoles.Contains(role))
             throw new InvalidOperationException($"Kafka role {role} has not been registered.");
 
+        // Named options are mutable after start-up validation. Copy them and validate the copy,
+        // so the value emitted is the value that was checked.
         var configured = options.Get(role.ToString());
         var snapshot = configured with { };
         var validation = new KafkaBaselineOptionsValidator(role).Validate(role.ToString(), snapshot);
@@ -66,6 +74,8 @@ public sealed class KafkaConfigurationFactory
             var value = entry.Disposition == KafkaSettingDisposition.Explicit ? entry.ResolveValue(snapshot) : null;
             var metadata = new KafkaSettingMetadata(entry.Key, value, role, entry.Disposition,
                 entry.InventoryIds, entry.Sources, entry.SelectionReason);
+            // Only explicit entries are written. Omissions are recorded so the run can show that
+            // the baseline left the key unset on purpose.
             if (entry.Disposition == KafkaSettingDisposition.Explicit)
             {
                 configuration.Set(entry.Key, value!);

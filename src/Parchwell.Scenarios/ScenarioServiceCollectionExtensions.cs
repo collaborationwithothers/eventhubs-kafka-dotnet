@@ -11,6 +11,7 @@ public static class ScenarioServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
+        // Budgets have no defaults, so a missing or zero budget fails at startup instead of at the first load.
         services.AddOptions<ScenarioLoadOptions>().Configure(configure)
             .Validate(options => options.MaxDocumentCharacters > 0, "MaxDocumentCharacters must be positive.")
             .Validate(options => options.MaxNestingDepth > 0, "MaxNestingDepth must be positive.")

@@ -4,6 +4,11 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Parchwell.ArchitectureTests;
 
+/// <summary>
+/// Requires each type declared in a service to sit in the namespace its folder implies, so the first
+/// folder below the service reliably names its feature slice. It covers the cases IDE0130 skips:
+/// nested namespaces, partial declarations and linked files (docs/engineering/dotnet-verification.md).
+/// </summary>
 internal static class SourceNamespaceRules
 {
     internal static IEnumerable<string> Validate(ProjectModel project)

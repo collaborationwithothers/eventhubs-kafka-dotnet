@@ -1,5 +1,9 @@
 namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
+/// <summary>
+/// Broker startup failed. It names the exact owned containers and reports cleanup as not established,
+/// so a container created late can still be found and removed (docs/operations/phantom-spike/README.md).
+/// </summary>
 internal sealed class BrokerStartupException : InvalidOperationException
 {
     public BrokerStartupException(string proxyName, string kafkaName, string diagnostics, Exception innerException)

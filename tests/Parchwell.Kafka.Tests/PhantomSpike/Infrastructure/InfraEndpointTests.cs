@@ -8,6 +8,8 @@ namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
 public sealed class InfraEndpointTests
 {
+    // The fixture must never publish broker or proxy ports beyond host loopback (README, Prerequisites),
+    // while keeping the random host port Docker assigns.
     [Fact]
     public void Given_PublishedFixturePorts_When_ConfiguringDockerCreation_Then_BindsEveryPortToLoopbackAndPreservesAllocation()
     {
@@ -36,6 +38,7 @@ public sealed class InfraEndpointTests
         Assert.Equal("49153", broker.HostPort);
     }
 
+    // Adding the timeout must not change which Docker daemon the experiment talks to.
     [Fact]
     public void Given_DetectedDockerEndpoint_When_ConfiguringExperimentClient_Then_PreservesEndpointAndUsesApprovedBudget()
     {
@@ -49,6 +52,8 @@ public sealed class InfraEndpointTests
         Assert.Equal(TimeSpan.FromMinutes(30), client.Options.Timeout);
     }
 
+    // Toxiproxy can report a requested 0.0.0.0 listen as [::]; an earlier run was wrongly rejected for
+    // this (README, Measured finding). Any other port or a specific address is a different route.
     [Theory]
     [InlineData("0.0.0.0:8666")]
     [InlineData("[::]:8666")]

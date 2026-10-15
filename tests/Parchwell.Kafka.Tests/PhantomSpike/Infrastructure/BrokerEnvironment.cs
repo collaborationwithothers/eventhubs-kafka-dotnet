@@ -9,6 +9,12 @@ using DotNet.Testcontainers.Networks;
 
 namespace Parchwell.Kafka.Tests.PhantomSpike.Infrastructure;
 
+/// <summary>
+/// The spike's local broker environment: one Kafka container and one Toxiproxy container on a Docker
+/// network, started with generic Testcontainers. The producer reaches Kafka only through the proxy
+/// listener; the admin client and observer use a separate direct listener. Published ports bind to
+/// host loopback. See docs/operations/phantom-spike/README.md and ADR-016.
+/// </summary>
 internal sealed class BrokerEnvironment : IAsyncDisposable
 {
     internal const string KafkaImage = "confluentinc/cp-kafka:7.5.12@sha256:997883c60e6f1207fb5f779c7a8fdae57312a17f446fd5ea3eb8b73f52d4a1cf";

@@ -9,6 +9,7 @@ namespace Parchwell.Kafka.Tests.PhantomSpike;
 // These synthetic snapshots test evidence validation; they are never measured spike findings.
 public sealed class EvidenceBehaviorTests
 {
+    // A complete matrix without a witness is a scoped no, and no recipe becomes a test candidate.
     [Fact]
     public void Given_CompleteSyntheticMatrixWithoutWitness_When_Deciding_Then_ReturnsScopedNo()
     {
@@ -22,6 +23,7 @@ public sealed class EvidenceBehaviorTests
         Assert.All(decision.Recipes, recipe => Assert.False(recipe.PositiveRegressionCandidate));
     }
 
+    // One witnessed pair establishes existence even when the matrix is incomplete (README, Findings).
     [Fact]
     public void Given_OneSyntheticWitnessAndIncompleteMatrix_When_Deciding_Then_SeparatesExistenceFromIntegrity()
     {
@@ -34,6 +36,7 @@ public sealed class EvidenceBehaviorTests
         Assert.All(decision.Recipes, recipe => Assert.False(recipe.PositiveRegressionCandidate));
     }
 
+    // A recipe is a future positive-test candidate only when all five planned trials witness the pair.
     [Fact]
     public void Given_FiveIndependentSyntheticWitnesses_When_Deciding_Then_OnlyThatRecipeMeetsRepeatGate()
     {
@@ -48,6 +51,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Equal(1d, recipe.ObservedRate);
     }
 
+    // A witness needs exactly one terminal callback; two cannot both describe the attempt's outcome.
     [Fact]
     public void Given_DuplicateSyntheticCallbacks_When_Deciding_Then_RejectsApparentWitness()
     {
@@ -58,6 +62,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Contains(decision.IntegrityFailures, failure => failure.Contains("duplicate terminal callback", StringComparison.Ordinal));
     }
 
+    // Callback and consumed record must match the exact attempt's IDs, key, payload and headers.
     [Fact]
     public void Given_ConflictingSyntheticIdentityBytes_When_Deciding_Then_RejectsApparentWitness()
     {
@@ -77,6 +82,7 @@ public sealed class EvidenceBehaviorTests
             Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([conflict])).ExistenceFinding);
     }
 
+    // Anything seen after the trial was sealed may come from cleanup, so it is not evidence for the attempt.
     [Fact]
     public void Given_SyntheticObservationsAfterSafetySeal_When_Deciding_Then_RejectsApparentWitness()
     {
@@ -91,6 +97,8 @@ public sealed class EvidenceBehaviorTests
             Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([late])).ExistenceFinding);
     }
 
+    // A failed callback is attributable to the fault only with a verified proxy route, a fault active
+    // before submission, a healthy warmup, an independent observer and a cleanly accepted Produce.
     [Fact]
     public void Given_UnverifiedSyntheticCausation_When_Deciding_Then_RejectsApparentWitness()
     {
@@ -110,6 +118,7 @@ public sealed class EvidenceBehaviorTests
             Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([item])).ExistenceFinding);
     }
 
+    // Persistence status alone or a client-wide error cannot establish the pair (README, Findings).
     [Fact]
     public void Given_PersistenceStatusOrGlobalErrorWithoutFailedSyntheticCallback_When_Deciding_Then_DoesNotProveExistence()
     {
@@ -120,6 +129,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([trial])).ExistenceFinding);
     }
 
+    // A callback handler that failed or saw different bytes makes that callback unusable as evidence.
     [Fact]
     public void Given_StampedSyntheticCallbackCaptureError_When_Deciding_Then_RejectsApparentWitness()
     {
@@ -135,6 +145,8 @@ public sealed class EvidenceBehaviorTests
         }
     }
 
+    // A cleanup failure fails integrity without erasing a witness already seen; a passing status
+    // cannot replace cleanup evidence (README, Findings).
     [Fact]
     public void Given_CleanupFailureAfterSyntheticWitness_When_Deciding_Then_RetainsExistenceButFailsIntegrity()
     {
@@ -146,6 +158,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Contains(decision.IntegrityFailures, failure => failure.Contains("cleanup failed", StringComparison.Ordinal));
     }
 
+    // A missing record means something only after a complete scan, so an incomplete one cannot give no.
     [Fact]
     public void Given_IncompleteSyntheticBoundedScan_When_Deciding_Then_AbsenceCannotProduceNo()
     {
@@ -166,6 +179,7 @@ public sealed class EvidenceBehaviorTests
         Assert.False(decision.IntegritySucceeded);
     }
 
+    // The healthy-control flag must be backed by the raw warmup callback and scan, not trusted alone.
     [Fact]
     public void Given_MissingRawSyntheticHealthyControl_When_Deciding_Then_FlagAloneDoesNotProveCausation()
     {
@@ -174,6 +188,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([trial])).ExistenceFinding);
     }
 
+    // The trial topic is fresh, so any other identity in its window is a conflict, not background noise.
     [Fact]
     public void Given_AnotherIdentityInSyntheticScan_When_Deciding_Then_RejectsConflictingWitnessEvidence()
     {
@@ -184,6 +199,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment([trial])).ExistenceFinding);
     }
 
+    // Calibration trials and trials with other timings are outside the frozen matrix and never the finding.
     [Fact]
     public void Given_CalibrationWitnessOutsideFrozenSyntheticMatrix_When_Deciding_Then_DoesNotPromoteItToFinding()
     {
@@ -195,6 +211,7 @@ public sealed class EvidenceBehaviorTests
         Assert.Equal("inconclusive", SpikeEvidence.Decide(Experiment(trials)).ExistenceFinding);
     }
 
+    // Each repeat number must appear once; a duplicate cannot stand in for a missing repeat.
     [Fact]
     public void Given_DuplicateSyntheticRepeatReplacingMissingRepeat_When_Deciding_Then_RejectsCompleteMatrixClaim()
     {
@@ -206,6 +223,8 @@ public sealed class EvidenceBehaviorTests
         Assert.False(decision.MatrixComplete);
     }
 
+    // Placeholders for trials that never ran are not observations, so they give no rate (README,
+    // Measured finding, earlier inconclusive runs).
     [Fact]
     public void Given_UnexecutedSyntheticPlaceholders_When_Deciding_Then_ReportsNoObservedRate()
     {

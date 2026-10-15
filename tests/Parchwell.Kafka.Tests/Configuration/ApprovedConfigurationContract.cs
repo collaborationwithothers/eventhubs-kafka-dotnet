@@ -9,6 +9,12 @@ namespace Parchwell.Kafka.Tests.Configuration;
 // plus Config_gen.cs getters and Config.cs GetEnum at v2.16.0. Native largest/latest are synonyms.
 // https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Config.cs#L179-L187
 // Harness choices and inventory tags: blueprint ADRs and frozen section 12 at the cited commit.
+/// <summary>
+/// The expected baseline for each workload role, written out by hand from the approved plan
+/// rather than read from the production catalogue, so a catalogue mistake cannot also become the
+/// expectation (docs/operations/kafka-baseline.md, Verification). Each entry is the emitted value,
+/// its frozen inventory IDs and the source that justifies it (ADR-015).
+/// </summary>
 internal static class ApprovedConfigurationContract
 {
     internal const string Microsoft = "https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations";

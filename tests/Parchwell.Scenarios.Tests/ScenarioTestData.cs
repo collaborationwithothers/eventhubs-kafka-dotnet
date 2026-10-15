@@ -5,6 +5,10 @@ using Parchwell.Scenarios;
 
 namespace Parchwell.Scenarios.Tests;
 
+/// <summary>
+/// Shared synthetic inputs: a minimal valid A01 declaration and profile, parsing budgets and a Kafka
+/// provider. Tests change one part of the valid documents, so a failure points at that part.
+/// </summary>
 internal static class ScenarioTestData
 {
     internal const string ScenarioPath = "scenarios/A01/scenario.yaml";
@@ -75,6 +79,10 @@ internal static class ScenarioTestData
         new((ScenarioPath, scenario), (ProfilePath, profile));
 }
 
+/// <summary>
+/// An in-memory scenario source that records each requested path and each reader it hands out,
+/// so tests can prove which files the loader opened and that it disposed every reader.
+/// </summary>
 internal sealed class InMemoryScenarioSource(params (string Path, string Text)[] documents) : IScenarioSource
 {
     private readonly Dictionary<string, string> _documents = documents.ToDictionary(item => item.Path, item => item.Text, StringComparer.Ordinal);
@@ -96,6 +104,10 @@ internal sealed class InMemoryScenarioSource(params (string Path, string Text)[]
     }
 }
 
+/// <summary>
+/// A string reader that records disposal. The loader owns every reader it opens and must dispose
+/// it (docs/operations/scenario-contract.md "Input and ownership").
+/// </summary>
 internal sealed class TrackingReader(string contents) : StringReader(contents)
 {
     internal bool WasDisposed { get; private set; }

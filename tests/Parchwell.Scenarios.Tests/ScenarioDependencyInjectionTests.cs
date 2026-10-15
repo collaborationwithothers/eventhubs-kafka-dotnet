@@ -11,6 +11,8 @@ namespace Parchwell.Scenarios.Tests;
 [Trait("Category", "Unit")]
 public sealed class ScenarioDependencyInjectionTests
 {
+    // Parsing budgets have no defaults and must be positive. Validation on start (dotnet.md "Seams and
+    // dependencies") makes a bad budget fail when the host starts, not at the first load.
     [Fact]
     public void Given_NonpositiveParsingBudget_When_StartingScenarioModule_Then_ThrowsOptionsValidationException()
     {
@@ -28,6 +30,8 @@ public sealed class ScenarioDependencyInjectionTests
         Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
     }
 
+    // The scenario declares VerifierConsumer but only LoadGenProducer is registered. Resolution must fail
+    // and name the role, rather than return a run plan missing one client.
     [Fact]
     public async Task Given_ScenarioDeclaresRoleMissingFromKafkaFactory_When_Resolving_Then_NamesTheMissingRole()
     {
@@ -55,6 +59,8 @@ public sealed class ScenarioDependencyInjectionTests
         Assert.Contains(nameof(KafkaClientRole.VerifierConsumer), exception.Message, StringComparison.Ordinal);
     }
 
+    // AddParchwellScenarios registers the concrete loader, resolver and generator; only the scenario
+    // source is an interface, because it is a boundary (dotnet.md "Seams and dependencies").
     [Fact]
     public void Given_ValidScenarioModuleRegistrations_When_ResolvingServices_Then_CreatesConcreteServices()
     {

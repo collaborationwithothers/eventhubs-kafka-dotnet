@@ -4,9 +4,26 @@ using System.Text.RegularExpressions;
 
 namespace Parchwell.Scenarios;
 
+/// <summary>
+/// Shared checks for reading an <see cref="InputNode"/> tree, and the list of diagnostics found in one
+/// document.
+/// </summary>
+/// <remarks>
+/// <para>
+/// A reader keeps going after an error and returns a placeholder value, so that one load reports every
+/// problem in the document. The placeholders never escape: each reader calls
+/// <see cref="NodeValidation.ThrowIfErrors"/> before it returns a result.
+/// </para>
+/// <para>
+/// The schema is closed and case-sensitive. Unknown, missing and differently cased fields are errors,
+/// as docs/operations/scenario-contract.md, "Scenario schema", requires.
+/// </para>
+/// </remarks>
 internal sealed class NodeValidation(string source)
 {
     private static readonly Regex SlugPattern = new(@"\A[A-Za-z][A-Za-z0-9_-]*\z", RegexOptions.CultureInvariant);
+    // Numbers must be plain ASCII decimal digits. The patterns run before int.TryParse because the parser
+    // alone would also accept a leading plus sign.
     private static readonly Regex PositiveIntegerPattern = new(@"\A[0-9]+\z", RegexOptions.CultureInvariant);
     private static readonly Regex SignedIntegerPattern = new(@"\A-?[0-9]+\z", RegexOptions.CultureInvariant);
     private readonly List<ScenarioDiagnostic> _diagnostics = [];
@@ -32,6 +49,7 @@ internal sealed class NodeValidation(string source)
         return null;
     }
 
+    /// <summary>Reports every field that is not expected, and every expected field that is missing.</summary>
     internal bool CheckFields(MapNode map, string path, params string[] expected)
     {
         var valid = true;
@@ -128,6 +146,10 @@ internal sealed class NodeValidation(string source)
         return true;
     }
 
+    /// <summary>
+    /// Checks an identifier written by an author, such as a configuration, tenant or stage id: ASCII, starting
+    /// with a letter, then letters, digits, underscore or hyphen.
+    /// </summary>
     internal bool IsSlug(string? value, InputNode? node, string path)
     {
         if (value is not null && SlugPattern.IsMatch(value)) return true;

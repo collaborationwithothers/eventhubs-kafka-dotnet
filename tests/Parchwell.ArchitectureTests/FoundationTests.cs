@@ -7,6 +7,8 @@ using Xunit;
 
 namespace Parchwell.ArchitectureTests;
 
+// The build foundation from issue #47 (docs/engineering/dotnet-verification.md). Tests read the project
+// manifests that scripts/verify-dotnet.sh evaluates, so they see effective settings, not root declarations.
 public sealed class FoundationTests
 {
     private static readonly string[] ProjectFolders = ["src", "tests"];
@@ -15,6 +17,8 @@ public sealed class FoundationTests
 
     private static ProjectModel[] Projects => ProjectModel.ReadManifests();
 
+    // dotnet.md "Solution layout": one test project per source project. dotnet-verification.md also
+    // requires every project in Parchwell.slnx, because verification builds and tests only the solution.
     [Fact]
     public void Given_DocumentedLayout_When_ProjectsAreEvaluated_Then_AllSourceAndTestProjectsBelongToSolution()
     {
@@ -37,6 +41,8 @@ public sealed class FoundationTests
         Assert.Equal(expected, discovered);
     }
 
+    // dotnet.md "Correctness settings", checked per project so a local override cannot weaken them. Services
+    // also need the settings IDE0130 uses to match namespaces to folders (dotnet-verification.md).
     [Fact]
     public void Given_SourceAndTestProjects_When_ReleaseSettingsAreEvaluated_Then_CorrectnessSettingsAreEnforced()
     {
@@ -70,6 +76,8 @@ public sealed class FoundationTests
         }
     }
 
+    // dotnet.md "Architecture tests" on declared references: a forbidden reference fails even when no
+    // type from it is used, which the compiled checks cannot see.
     [Fact]
     public void Given_DeclaredProjectReferences_When_DependencyRulesRun_Then_KafkaAndServicesRespectDirection()
     {
@@ -87,6 +95,8 @@ public sealed class FoundationTests
         }
     }
 
+    // Negative control approved in issue #47 (dotnet-verification.md "Approved controls"): proves the real
+    // validator rejects a forbidden edge, not only that the repository currently has none.
     [Fact]
     public void Given_AllowedAndUnusedForbiddenReferenceFixtures_When_RealGraphValidatorRuns_Then_OnlyForbiddenEdgeIsRejected()
     {

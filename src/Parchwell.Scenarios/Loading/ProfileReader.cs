@@ -3,8 +3,15 @@ using System.Globalization;
 
 namespace Parchwell.Scenarios;
 
+/// <summary>
+/// Validates the input tree of one profile file under scenarios/profiles/ and builds a
+/// <see cref="WorkloadProfile"/>.
+/// </summary>
+/// <remarks>The rules are in docs/operations/scenario-contract.md, "Profile schema".</remarks>
 internal static class ProfileReader
 {
+    // The five lifecycle events every document produces (docs/blueprint.md section 2, "Workload").
+    // A profile must give a payload size distribution for each, and for no other name.
     private static readonly string[] PayloadNames = ["uploaded", "ocr-started", "ocr-finished", "classified", "indexed"];
 
     internal static WorkloadProfile Read(InputNode root, string source, string expectedSlug)
@@ -20,10 +27,14 @@ internal static class ProfileReader
         var version = ReadVersion(validation, map);
         var id = validation.String(map, "id", "") ?? "";
         validation.IsSlug(id, map.Fields.GetValueOrDefault("id"), "id");
+        // The profile id must equal the file name the definition referenced, so the id in generated values
+        // always names the file that was read.
         if (!StringComparer.Ordinal.Equals(id, expectedSlug))
             validation.Error(map.Fields.GetValueOrDefault("id"), "id", "profile_id_mismatch", "Profile id must match the referenced filename slug.");
         var seed = ReadSeed(validation, map.Fields.GetValueOrDefault("seed"));
         var tenants = ReadTenants(validation, map.Fields.GetValueOrDefault("tenants"));
+        // Weights are relative, so their sum must stay representable. The contract requires weight sums and
+        // planned attempt totals to fit in Int64.
         CheckWeightSum(validation, tenants.Select(static tenant => tenant.Weight), "tenants");
         var documents = ReadPositive(validation, map.Fields.GetValueOrDefault("documents_per_burst"), "documents_per_burst");
         var payloads = ReadPayloads(validation, map.Fields.GetValueOrDefault("payloads"));
@@ -44,6 +55,7 @@ internal static class ProfileReader
 
     private static int ReadSeed(NodeValidation validation, InputNode? node)
     {
+        // The seed is the one signed number in a profile; every other number must be positive.
         if (node is not ScalarNode { IsPlain: true } scalar)
         {
             validation.Error(node, "seed", "plain_integer_required", "Seed must be a plain signed decimal Int32.");
@@ -102,6 +114,7 @@ internal static class ProfileReader
                 if (bucket is null) continue;
                 validation.CheckFields(bucket, path, "size_bytes", "weight");
                 var size = ReadPositive(validation, bucket.Fields.GetValueOrDefault("size_bytes"), path + ".size_bytes");
+                // Each size appears once per event type, so its weight alone sets how often it is chosen.
                 if (!sizes.Add(size)) validation.Error(bucket.Fields.GetValueOrDefault("size_bytes"), path + ".size_bytes", "duplicate_payload_size", "Payload sizes must be unique within a lifecycle type.");
                 var weight = ReadPositive(validation, bucket.Fields.GetValueOrDefault("weight"), path + ".weight");
                 buckets.Add(new PayloadBucket(size, weight));
