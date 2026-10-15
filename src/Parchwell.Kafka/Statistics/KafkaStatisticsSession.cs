@@ -87,17 +87,25 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     /// <param name="json">The original librdkafka statistics JSON.</param>
     public void Capture(string json)
     {
-        long receiptTimestamp = _timeProvider.GetTimestamp();
-        DateTimeOffset receivedAt = _timeProvider.GetUtcNow();
-        if (!Monitor.TryEnter(_gate))
+        if (!_completionState.TryBeginCapture())
         {
-            _completionState.TryRecordCaptureLoss();
-            AddDiagnostic(Volatile.Read(ref _captureOpen) ? "capture_contention" : "late_capture");
+            AddDiagnostic("late_capture");
             return;
         }
 
+        bool entered = false;
         try
         {
+            long receiptTimestamp = _timeProvider.GetTimestamp();
+            DateTimeOffset receivedAt = _timeProvider.GetUtcNow();
+            entered = Monitor.TryEnter(_gate);
+            if (!entered)
+            {
+                _completionState.TryRecordCaptureLoss();
+                AddDiagnostic("capture_contention");
+                return;
+            }
+
             if (!_captureOpen || _disposed)
             {
                 _completionState.TryRecordCaptureLoss();
@@ -118,7 +126,12 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         }
         finally
         {
-            Monitor.Exit(_gate);
+            if (entered)
+            {
+                Monitor.Exit(_gate);
+            }
+
+            _completionState.EndCapture();
         }
     }
 
@@ -140,6 +153,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(expectedBrokerNames);
         string[] expected = ValidateExpectedBrokers(expectedBrokerNames);
+        long completionStartTimestamp = _timeProvider.GetTimestamp();
+        using CancellationTokenSource deadline = new(_options.CompletionTimeout, _timeProvider);
         bool wasDisposed;
         lock (_gate)
         {
@@ -161,9 +176,12 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             wasDisposed = _disposed;
         }
 
-        using CancellationTokenSource deadline = new(_options.CompletionTimeout, _timeProvider);
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, deadline.Token);
+        using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(
+            _completionState.RecordCancellation);
+        using CancellationTokenRegistration deadlineRegistration = deadline.Token.Register(
+            _completionState.RecordDeadline);
 
         bool coverageReached = false;
         if (_nativeClockCompatible && expected.Length > 0 && !wasDisposed)
@@ -188,9 +206,10 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             {
                 lock (_gate)
                 {
+                    coverageReached = _coverageComplete;
                     AddDiagnostic(cancellationToken.IsCancellationRequested
                         ? "completion_cancelled"
-                        : "completion_timeout");
+                        : coverageReached ? "sink_drain_timeout" : "completion_timeout");
                 }
             }
         }
@@ -204,6 +223,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         {
             lock (_gate)
             {
+                coverageReached = _coverageComplete;
                 AddDiagnostic(cancellationToken.IsCancellationRequested
                     ? "completion_cancelled"
                     : coverageReached ? "sink_drain_timeout" : "completion_timeout");
@@ -218,7 +238,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             AddDiagnosticThreadSafe("completion_cancelled");
         }
 
-        return BuildCompletion();
+        return BuildCompletion(completionStartTimestamp, cancellationToken, deadline.Token);
     }
 
     /// <summary>Stops capture and waits a bounded time for queued reports to finish.</summary>
@@ -534,7 +554,10 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         }
     }
 
-    private KafkaStatisticsCompletion BuildCompletion()
+    private KafkaStatisticsCompletion BuildCompletion(
+        long completionStartTimestamp,
+        CancellationToken cancellationToken,
+        CancellationToken deadlineToken)
     {
         lock (_gate)
         {
@@ -542,14 +565,28 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
                 .Where(name => !_postDrainBrokers.Contains(name))
                 .Order(StringComparer.Ordinal)
                 .ToArray();
-
-            // Snapshot diagnostics before the atomic seal. A losing callback may publish its
-            // diagnostic after this snapshot, so the loss bit itself determines the result.
             string[] diagnosticCodes = _diagnosticCodes.Keys.ToArray();
-            bool captureLostBeforeFinalization = _completionState.Seal();
-            if (captureLostBeforeFinalization)
+
+            // Sealing also fails the session if a callback is still registered at this boundary.
+            // Final outcome checks follow the seal so cancellation or deadline expiry during the
+            // worker-drain-to-seal race cannot be hidden by a diagnostic snapshot.
+            _completionState.SealFlags();
+            RecordCompletionConditions(completionStartTimestamp, cancellationToken, deadlineToken);
+
+            int sealedFlags = _completionState.SnapshotFlags();
+            if ((sealedFlags & KafkaStatisticsCompletionState.CaptureLost) != 0)
             {
                 diagnosticCodes = [.. diagnosticCodes, "capture_loss"];
+            }
+
+            if ((sealedFlags & KafkaStatisticsCompletionState.CancellationObserved) != 0)
+            {
+                diagnosticCodes = [.. diagnosticCodes, "completion_cancelled"];
+            }
+
+            if ((sealedFlags & KafkaStatisticsCompletionState.DeadlineObserved) != 0)
+            {
+                diagnosticCodes = [.. diagnosticCodes, "completion_timeout"];
             }
 
             ImmutableArray<KafkaStatisticsDiagnostic> diagnostics = diagnosticCodes
@@ -565,6 +602,25 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
                 && missing.Length == 0;
             _completionFinished = true;
             return new KafkaStatisticsCompletion(complete, diagnostics, missing.ToImmutableArray());
+        }
+    }
+
+    private void RecordCompletionConditions(
+        long completionStartTimestamp,
+        CancellationToken cancellationToken,
+        CancellationToken deadlineToken)
+    {
+        long nowTimestamp = _timeProvider.GetTimestamp();
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            _completionState.RecordCancellation();
+        }
+
+        if (deadlineToken.IsCancellationRequested
+            || _timeProvider.GetElapsedTime(completionStartTimestamp, nowTimestamp) >= _options.CompletionTimeout)
+        {
+            _completionState.RecordDeadline();
         }
     }
 
@@ -742,9 +798,53 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
 internal sealed class KafkaStatisticsCompletionState
 {
     private const int Finalized = 1;
-    private const int CaptureLost = 2;
+    internal const int CaptureLost = 2;
+    internal const int CancellationObserved = 4;
+    internal const int DeadlineObserved = 8;
+    private const int ActiveCaptureIncrement = 16;
+    private const int FlagMask = ActiveCaptureIncrement - 1;
 
     private int _flags;
+
+    internal bool TryBeginCapture()
+    {
+        while (true)
+        {
+            int flags = Volatile.Read(ref _flags);
+            if ((flags & Finalized) != 0)
+            {
+                return false;
+            }
+
+            if ((flags & ~FlagMask) == int.MaxValue - (int.MaxValue % ActiveCaptureIncrement))
+            {
+                TryRecordCaptureLoss();
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _flags, flags + ActiveCaptureIncrement, flags) == flags)
+            {
+                return true;
+            }
+        }
+    }
+
+    internal void EndCapture()
+    {
+        while (true)
+        {
+            int flags = Volatile.Read(ref _flags);
+            if ((flags & ~FlagMask) == 0)
+            {
+                return;
+            }
+
+            if (Interlocked.CompareExchange(ref _flags, flags - ActiveCaptureIncrement, flags) == flags)
+            {
+                return;
+            }
+        }
+    }
 
     internal bool TryRecordCaptureLoss()
     {
@@ -770,7 +870,35 @@ internal sealed class KafkaStatisticsCompletionState
 
     internal bool Seal()
     {
-        int flagsAtSeal = Interlocked.Or(ref _flags, Finalized);
-        return (flagsAtSeal & CaptureLost) != 0;
+        return (SealFlags() & CaptureLost) != 0;
     }
+
+    internal int SealFlags()
+    {
+        while (true)
+        {
+            int flags = Volatile.Read(ref _flags);
+            if ((flags & Finalized) != 0)
+            {
+                return flags;
+            }
+
+            int sealedFlags = flags | Finalized;
+            if ((flags & ~FlagMask) != 0)
+            {
+                sealedFlags |= CaptureLost;
+            }
+
+            if (Interlocked.CompareExchange(ref _flags, sealedFlags, flags) == flags)
+            {
+                return sealedFlags;
+            }
+        }
+    }
+
+    internal void RecordCancellation() => Interlocked.Or(ref _flags, CancellationObserved);
+
+    internal void RecordDeadline() => Interlocked.Or(ref _flags, DeadlineObserved);
+
+    internal int SnapshotFlags() => Volatile.Read(ref _flags);
 }

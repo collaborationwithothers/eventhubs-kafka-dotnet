@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 
 namespace Parchwell.Kafka.Statistics;
 
-/// <summary>Publishes selected librdkafka broker statistics as low-cardinality OpenTelemetry metrics.</summary>
+/// <summary>Publishes selected librdkafka broker statistics as scoped monitoring metrics.</summary>
 /// <remarks>
 /// Scenario and run identity accompany every measurement so client observations can be joined to
 /// platform evidence (ADR-007). Window values are emitted only when the native window contains a

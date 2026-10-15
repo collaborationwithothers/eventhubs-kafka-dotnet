@@ -35,7 +35,7 @@ The existing baseline interval is `15000` ms under [ADR-007 and the baseline con
 
 ## Capture and evidence
 
-`Capture` timestamps callback receipt through `TimeProvider` and attempts a bounded enqueue without waiting. A separate worker parses each accepted report once, copies supported fields into immutable records and delivers the original JSON with parsed samples and diagnostics to the sink. The callback does no sink I/O or metric export work.
+`Capture` first registers an in-flight callback, then timestamps receipt through `TimeProvider` and attempts a bounded enqueue without waiting. A separate worker parses each accepted report once, copies supported fields into immutable records and delivers the original JSON with parsed samples and diagnostics to the sink. The callback does no sink I/O or metric export work.
 
 The parser requires native client `name`, `client_id`, `type`, `ts`, `time`, `age` and `brokers`. Each broker supplies its identity/state, `req_timeouts`, `disconnects`, `txretries`, `txerrs`, `rxerrs`, throttle `cnt/max` and RTT `cnt/p99`. Selected-field type, range and presence errors reject the typed snapshot. Ordinary additional native fields are allowed. Duplicate JSON properties and disagreement between a broker dictionary key and its name are rejected. Native JSON definitions, units and asynchronous consistency limitations are in [librdkafka v2.16.0][statistics].
 
@@ -58,7 +58,7 @@ Inventory traceability follows the [frozen inventory and amendment][inventory]: 
 
 The probe reads `stats.broker.throttle.max` from captured evidence, with the role and threshold in its declaration. Missing or unusable evidence makes it inconclusive and blocks gated execution under the [scenario contract][scenario]. KQL is not the probe's evidence source.
 
-The meter is `Parchwell.Kafka.Statistics`. Tags are `scenario`, `run`, `role`, `client_id` and `broker`. Session IDs and native timestamps remain in evidence. Topic, partition, tenant and message dimensions are excluded from this initial bridge.
+The meter is `Parchwell.Kafka.Statistics`. Tags are `scenario`, `run`, `role`, `client_id` and `broker`. Session IDs and native timestamps remain in evidence. Topic, partition, tenant and message dimensions are excluded from this initial bridge. These dimensions follow decision 9 of the agreed design. The broker-series limit applies within a session; it does not bound distinct run or client identities across executions. Later exporter integration must validate that cardinality and its ingestion cost.
 
 Evidence preserves cumulative native counts. Metrics receive increments, including the first cumulative value from zero for the fresh client lifetime. A decreasing counter is permanently quarantined from delta export for that series. Guard fields `TransmissionRetries`, `TransmissionErrors` and `ReceiveErrors` retain `txretries`, `txerrs` and `rxerrs`; they introduce no selectable IDs or monitoring instruments.
 
@@ -74,7 +74,9 @@ Callback receipt after drain is insufficient: a queued report may have been gene
 
 Production freshness comparison is therefore supported only on Linux with `TimeProvider.System`. Convert the boundary upward to microseconds and require a strictly later native `ts`; same-microsecond ambiguity cannot pass. Other providers/platforms return an unverified-clock/incomplete result. Tests model the native clock through an internal seam, without exposing a caller-controlled assertion of clock compatibility in the public interface.
 
-Missing broker keys, stale reports, source-clock uncertainty, prior capture failures, cancellation and deadline expiry prevent complete statistics status. Disposing the session without successful completion does not establish final evidence. The harness must inspect the returned status before accepting evidence. Completion freezes at an atomic boundary after diagnostics are collected: capture loss before that boundary makes the result incomplete even if its diagnostic arrives later. Calls after the freeze cannot revise the immutable completion result.
+Missing broker keys, stale reports, source-clock uncertainty, prior capture failures, cancellation and deadline expiry prevent complete statistics status. Disposing the session without successful completion does not establish final evidence. The harness must inspect the returned status before accepting evidence.
+
+Completion freezes capture membership at an atomic boundary after diagnostics are collected. Registered callbacks still in flight and capture loss before that boundary make the result incomplete, even if a diagnostic arrives later. Cancellation and elapsed deadline are checked again after the boundary so a delayed cancellation callback cannot hide an earlier cancellation or expiry. A cancellation observed during those final checks may conservatively make the result incomplete. Calls after the boundary cannot join the captured evidence or revise the returned result.
 
 `expectedBrokerNames` describes native report keys within the bound client session. The load generator must independently retain every broker instance used, including instances missed between reports; identical names cannot establish continuity of recreated instances. Statistics completeness is only one input to [ADR-013][blueprint]. Nonzero guard counters, lifecycle uncertainty and delivery/request ambiguity remain reasons for the harness/verifier to reject authoritative outcome totals.
 
