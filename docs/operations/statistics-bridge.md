@@ -74,7 +74,7 @@ Callback receipt after drain is insufficient: a queued report may have been gene
 
 Production freshness comparison is therefore supported only on Linux with `TimeProvider.System`. Convert the boundary upward to microseconds and require a strictly later native `ts`; same-microsecond ambiguity cannot pass. Other providers/platforms return an unverified-clock/incomplete result. Tests model the native clock through an internal seam, without exposing a caller-controlled assertion of clock compatibility in the public interface.
 
-Missing broker keys, stale reports, source-clock uncertainty, prior capture failures, cancellation and deadline expiry prevent complete statistics status. Disposing the session without successful completion does not establish final evidence. The harness must inspect the returned status before accepting evidence.
+Missing broker keys, stale reports, source-clock uncertainty, prior capture failures, cancellation and deadline expiry prevent complete statistics status. Disposing the session without successful completion does not establish final evidence. The harness must inspect the returned status before accepting evidence. Completion freezes at an atomic boundary after diagnostics are collected: capture loss before that boundary makes the result incomplete even if its diagnostic arrives later. Calls after the freeze cannot revise the immutable completion result.
 
 `expectedBrokerNames` describes native report keys within the bound client session. The load generator must independently retain every broker instance used, including instances missed between reports; identical names cannot establish continuity of recreated instances. Statistics completeness is only one input to [ADR-013][blueprint]. Nonzero guard counters, lifecycle uncertainty and delivery/request ambiguity remain reasons for the harness/verifier to reject authoritative outcome totals.
 
@@ -97,7 +97,7 @@ The delivery adds no Azure run, result, verdict, scenario prediction, request co
 [producer]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ProducerBuilder.cs
 [consumer]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs
 [flush]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs
-[generation]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L1874-L1905
+[generation]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L1892-L1915
 [native-clock]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdtime.h#L85-L111
 [time-provider]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L83-L97
 [stopwatch]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Stopwatch.Unix.cs

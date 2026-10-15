@@ -8,9 +8,6 @@ namespace Parchwell.Kafka.Statistics;
 /// <summary>Captures and processes statistics reports for one native Kafka client lifetime.</summary>
 public sealed class KafkaStatisticsSession : IAsyncDisposable
 {
-    private const int CompletionFinalized = 1;
-    private const int CaptureLostDuringFinalization = 2;
-
     private readonly object _gate = new();
     private readonly KafkaStatisticsIdentity _identity;
     private readonly KafkaStatisticsOptions _options;
@@ -40,7 +37,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     private bool _workerCancellationRequested;
     private bool _workerCancellationCallbacksFinished;
     private bool _workerCancellationDisposed;
-    private int _completionFlags;
+    private readonly KafkaStatisticsCompletionState _completionState = new();
     private long? _lastNativeTimestamp;
     private long? _nativeCreationTimestamp;
     private string? _nativeName;
@@ -94,7 +91,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         DateTimeOffset receivedAt = _timeProvider.GetUtcNow();
         if (!Monitor.TryEnter(_gate))
         {
-            Interlocked.Or(ref _completionFlags, CaptureLostDuringFinalization);
+            _completionState.TryRecordCaptureLoss();
             AddDiagnostic(Volatile.Read(ref _captureOpen) ? "capture_contention" : "late_capture");
             return;
         }
@@ -103,7 +100,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         {
             if (!_captureOpen || _disposed)
             {
-                Interlocked.Or(ref _completionFlags, CaptureLostDuringFinalization);
+                _completionState.TryRecordCaptureLoss();
                 AddDiagnostic("late_capture");
                 return;
             }
@@ -541,18 +538,22 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     {
         lock (_gate)
         {
-            bool captureLostBeforeFinalization =
-                (Interlocked.Or(ref _completionFlags, CompletionFinalized) & CaptureLostDuringFinalization) != 0;
-            if (captureLostBeforeFinalization)
-            {
-                AddDiagnostic("capture_loss");
-            }
-
             string[] missing = _expectedBrokers
                 .Where(name => !_postDrainBrokers.Contains(name))
                 .Order(StringComparer.Ordinal)
                 .ToArray();
-            ImmutableArray<KafkaStatisticsDiagnostic> diagnostics = _diagnosticCodes.Keys
+
+            // Snapshot diagnostics before the atomic seal. A losing callback may publish its
+            // diagnostic after this snapshot, so the loss bit itself determines the result.
+            string[] diagnosticCodes = _diagnosticCodes.Keys.ToArray();
+            bool captureLostBeforeFinalization = _completionState.Seal();
+            if (captureLostBeforeFinalization)
+            {
+                diagnosticCodes = [.. diagnosticCodes, "capture_loss"];
+            }
+
+            ImmutableArray<KafkaStatisticsDiagnostic> diagnostics = diagnosticCodes
+                .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .Select(code => new KafkaStatisticsDiagnostic(code))
                 .ToImmutableArray();
@@ -735,5 +736,41 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             _previous = value;
             return value - previous;
         }
+    }
+}
+
+internal sealed class KafkaStatisticsCompletionState
+{
+    private const int Finalized = 1;
+    private const int CaptureLost = 2;
+
+    private int _flags;
+
+    internal bool TryRecordCaptureLoss()
+    {
+        while (true)
+        {
+            int flags = Volatile.Read(ref _flags);
+            if ((flags & Finalized) != 0)
+            {
+                return false;
+            }
+
+            if ((flags & CaptureLost) != 0)
+            {
+                return true;
+            }
+
+            if (Interlocked.CompareExchange(ref _flags, flags | CaptureLost, flags) == flags)
+            {
+                return true;
+            }
+        }
+    }
+
+    internal bool Seal()
+    {
+        int flagsAtSeal = Interlocked.Or(ref _flags, Finalized);
+        return (flagsAtSeal & CaptureLost) != 0;
     }
 }

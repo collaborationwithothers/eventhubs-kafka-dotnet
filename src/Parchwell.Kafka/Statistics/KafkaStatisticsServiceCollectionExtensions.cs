@@ -33,7 +33,7 @@ public static class KafkaStatisticsServiceCollectionExtensions
             provider.GetRequiredService<KafkaStatisticsMetrics>(),
             // librdkafka v2.16.0 stats use CLOCK_MONOTONIC on Linux:
             // https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdtime.h#L85-L111 and
-            // https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L1874-L1905.
+            // https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L1892-L1915.
             // .NET 10 TimeProvider.System uses Stopwatch on the Linux CLOCK_MONOTONIC path:
             // https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L83-L97,
             // https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Stopwatch.Unix.cs

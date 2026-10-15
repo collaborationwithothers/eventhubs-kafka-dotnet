@@ -220,6 +220,42 @@ public sealed class KafkaStatisticsSessionTests
     }
 
     [Fact]
+    public async Task Given_CaptureLossRacesWithFinalization_When_StateSeals_Then_PreSealLossIsIncluded()
+    {
+        var preSealState = new KafkaStatisticsCompletionState();
+        Assert.True(preSealState.TryRecordCaptureLoss());
+        Assert.True(preSealState.Seal());
+
+        var postSealState = new KafkaStatisticsCompletionState();
+        Assert.False(postSealState.Seal());
+        Assert.False(postSealState.TryRecordCaptureLoss());
+        Assert.False(postSealState.Seal());
+
+        var state = new KafkaStatisticsCompletionState();
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<bool>[] captureTasks = Enumerable.Range(0, 32)
+            .Select(_ => Task.Run(async () =>
+            {
+                await start.Task.WaitAsync(TestContext.Current.CancellationToken);
+                return state.TryRecordCaptureLoss();
+            }, TestContext.Current.CancellationToken))
+            .ToArray();
+        Task<bool> sealTask = Task.Run(async () =>
+        {
+            await start.Task.WaitAsync(TestContext.Current.CancellationToken);
+            return state.Seal();
+        }, TestContext.Current.CancellationToken);
+        start.SetResult();
+
+        bool[] capturesPrecededSeal = await Task.WhenAll(captureTasks);
+        bool lossIncludedAtSeal = await sealTask;
+
+        Assert.Equal(capturesPrecededSeal.Any(preceded => preceded), lossIncludedAtSeal);
+        Assert.False(state.TryRecordCaptureLoss());
+        Assert.Equal(lossIncludedAtSeal, state.Seal());
+    }
+
+    [Fact]
     public async Task Given_UnexpectedBrokerArrivesAfterDrain_When_ExpectedBrokerIsAbsent_Then_DoesNotClaimCoverage()
     {
         var clock = new ManualTimeProvider();
