@@ -4,7 +4,7 @@ The load generator executes a finite synthetic offered schedule and preserves in
 
 ## Delivery stages
 
-The first stage supplies workload generation, an independent inventory, local ledger persistence and strict read-back reconciliation. The second adds the executable worker, native client execution, local evidence capture and explicit exit handling. The third supplies Blob publication required for production completion. No stage implements verifier classification or changes scenario expectations.
+The first stage supplies workload generation, an independent inventory, local ledger persistence and strict read-back reconciliation. The second adds the executable worker, native client execution and local evidence capture. The third publishes the closed artifacts and completes the worker only after publication succeeds. No stage implements verifier classification or changes scenario expectations.
 
 ## Workload version 1
 
@@ -54,7 +54,7 @@ The offered schedule origin is sampled after producer construction, so setup is 
 
 An asynchronous delivery failure or uncertain persistence remains a sticky oracle guard observation. A fully reconciled ledger can still be complete bookkeeping. The worker does not calculate verifier counts or declare oracle eligibility. Required capture failure, missing rows, incomplete admissions, cleanup failure or publication failure prevents a successful final exit. A process watchdog also exits nonzero if synchronous native cleanup stalls; a hard termination may leave only partial local artifacts, which cannot establish completion.
 
-Production admission currently reports the missing ADR-003 authentication handler. Until the publication stage supplies its adapter, mandatory publication also remains unavailable at preflight. Neither path substitutes test credentials or local test client settings. Local component fixtures inject Confluent.Kafka's existing native interface and exercise the same executor, callbacks and ledger. They establish harness behavior against the [pinned local broker][local-broker], with no Event Hubs result.
+Production admission currently reports the missing ADR-003 authentication handler. The publication adapter is registered with workload identity; it does not substitute test credentials or local test client settings. Local component fixtures inject Confluent.Kafka's existing native interface and exercise the same executor, callbacks and ledger. They establish harness behavior against the [pinned local broker][local-broker], with no Event Hubs result.
 
 ## Statistics and request capability evidence
 
@@ -67,6 +67,18 @@ The selected broker fields retain the bridge's mapping: throttle window maximum 
 The pure probe evaluator follows [approved A01 revision 3][a01-plan]: all five distinct, correctly attributed C0 repeats must have usable throttle evidence. Any value strictly above the configured threshold passes; five usable repeats without one yield `UntestableAtBuildScale`; missing or unusable evidence yields `Inconclusive`. Oracle invalidity alone does not erase usable throttle observations. The evaluator neither schedules repeats nor reads expectations.
 
 `capabilities.json` separates source facts from inference for request identity, matched response/error/throttle attribution, deadline provenance, retransmission, ordering, completeness and broker lifecycle inventory. The accepted result is negative: the pinned [managed log fields][native-log-fields], [callback threading contract][native-log-handler], [limited timeout diagnostics][native-timeouts] and [retry/deadline paths][native-request] do not establish the complete collector this adapter would need. No native patch, debug override or packet interception is added. A01's request-level measurement remains unsupported, and complete broker lifecycle coverage remains unproven; worker completion cannot turn either into an available capability.
+
+## Publication and reader acceptance
+
+The production composition root uses Azure.Storage.Blobs 12.30.1 and Azure.Core 1.60.0, with [WorkloadIdentityCredential][workload-identity] and a real SDK service client. The SDK accepts [TokenCredential construction][blob-token]; the adapter uses [UploadAsync with overwrite false][blob-create-only] for create-only payload and index names. The source endpoint must be an HTTPS service root without embedded credentials, query or fragment, and the container is `ledger`. The adapter neither provisions containers nor overwrites or deletes objects.
+
+The blob prefix is the escaped scenario, configuration, run and instance identities, in that order. The five payload names are `ledger.jsonl`, `manifest.json`, `statistics.jsonl`, `request-lifecycle.jsonl` and `capabilities.json`. The independent manifest contains portable evidence names; local absolute paths stay in the in-process execution result. The publisher first validates the persisted manifest, ledger/inventory agreement and evidence envelopes, then hashes bounded, open file streams. It uploads the same closed payloads and checks that their bytes remain unchanged.
+
+`index.json` is last. Its schema version is 1; it carries the full run identity, execution/bookkeeping/publication completion flags, and each payload's exact byte length and lowercase SHA-256. It contains no self-hash, and the manifest contains neither its own hash nor an index hash. All payloads and the index share explicit per-artifact, aggregate-byte and upload-time budgets. Missing, conflicting, changed or invalid artifacts fail publication. A cancellation, deadline or ambiguous SDK error is a failure; no read-back fallback invents success.
+
+Index-last is a reader acceptance protocol over separate objects. Index-reader callers must enumerate the complete run prefix and supply the observed member names, including `index.json`; validation rejects extra, missing or duplicate names before opening payload streams. Readers also require identity, complete flags, lengths and hashes and reject malformed, truncated or partial sets. They must also require the runner's observed successful worker exit. A local index, or an index stored by the server before an ambiguous error, cannot by itself prove that final exit succeeded. The index's worker flag describes completed local execution; the process returns zero only after required publication and cleanup complete. Oracle eligibility and A01 capability readiness remain separate.
+
+Local tests use the real SDK through its [transport seam][sdk-transport], fake test credentials and recorded HTTPS requests. They verify payload bytes, create conditions, scoped names, hashes, index order and failure propagation, including a local Kafka producer through to that transport. They do not exercise Azure identity exchange, RBAC, private networking or Event Hubs.
 
 [design]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/68#issuecomment-6201728123
 [handoff]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/68#issuecomment-6201890702
@@ -81,5 +93,9 @@ The pure probe evaluator follows [approved A01 revision 3][a01-plan]: all five d
 [native-timeouts]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L968-L1107
 [native-request]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L5030-L5127
 [local-broker]: ../../tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs
+[blob-token]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Storage.Blobs_12.30.1/sdk/storage/Azure.Storage.Blobs/src/BlobClient.cs#L161-L181
+[blob-create-only]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Storage.Blobs_12.30.1/sdk/storage/Azure.Storage.Blobs/src/BlobClient.cs#L854-L899
+[workload-identity]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Core_1.60.0/sdk/core/Azure.Core/src/Identity/Credentials/WorkloadIdentityCredential.cs#L14-L42
+[sdk-transport]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Core_1.60.0/sdk/core/Azure.Core/src/Pipeline/HttpClientTransport.cs#L107-L136
 
 [a01-plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6198834304
