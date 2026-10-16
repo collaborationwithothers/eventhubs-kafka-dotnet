@@ -23,6 +23,7 @@ public sealed class RunArtifactIndexReaderTests
 {
     private static readonly string[] ArtifactNames =
     ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+    private static readonly JsonSerializerOptions EvidenceJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     private const int MaximumIndexBytes = 64 * 1024;
     private const int MaximumArtifactBytes = 256 * 1024;
     private const int MaximumAggregateBytes = 1024 * 1024;
@@ -283,6 +284,99 @@ public sealed class RunArtifactIndexReaderTests
         await AssertPayloadSetRejectedAsync(identity, expectations, missingStatisticsCompletion);
     }
 
+    [Theory]
+    [InlineData("possibly_persisted_observed")]
+    [InlineData("persistence_status_missing")]
+    [InlineData("async_delivery_failure_observed")]
+    [InlineData("broker=broker-1;counter=req_timeouts;observed=1")]
+    [InlineData("broker=broker-1;counter=txretries;observed=1")]
+    [InlineData("broker=broker-1;counter=txerrs;observed=1")]
+    [InlineData("broker=broker-1;counter=rxerrs;observed=1")]
+    [InlineData("native_error_callback_observed")]
+    [InlineData("statistics_guard_unproven")]
+    [InlineData("statistics_guard_incomplete")]
+    [InlineData("request_lifecycle_capture_unsupported")]
+    [InlineData("broker_lifecycle_inventory_unproven")]
+    public async Task Given_OracleGuardIsSupportedByPayloads_When_RehashedManifestOmitsIt_Then_RejectsMissingGuard(string guard)
+    {
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = Expectations(identity);
+        if (guard.StartsWith("statistics_guard_", StringComparison.Ordinal))
+            expectations = new RunEvidenceExpectations(expectations.ResolvedConfiguration, false, expectations.ExpectedBrokerNames);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
+        LedgerRow row = LedgerValidator.DeserializeRow(payloads["ledger.jsonl"].AsSpan(0, payloads["ledger.jsonl"].Length - 1));
+        row = guard switch
+        {
+            "possibly_persisted_observed" => row with { PersistenceStatus = (int)PersistenceStatus.PossiblyPersisted },
+            "persistence_status_missing" => row with { PersistenceStatus = null, PersistenceProvenance = "missing" },
+            "async_delivery_failure_observed" => row with { Delivered = false, ErrorCode = (int)ErrorCode.Local_MsgTimedOut },
+            _ => row
+        };
+        payloads["ledger.jsonl"] = [.. LedgerValidator.SerializeRow(row), (byte)'\n'];
+        JsonNode capabilities = JsonNode.Parse(payloads["capabilities.json"])!;
+        if (guard.StartsWith("broker=", StringComparison.Ordinal))
+        {
+            string counter = guard.Split(';')[1].Split('=')[1];
+            string field = counter switch
+            {
+                "req_timeouts" => "request_timeouts", "txretries" => "transmission_retries",
+                "txerrs" => "transmission_errors", "rxerrs" => "receive_errors",
+                _ => throw new InvalidOperationException()
+            };
+            JsonNode statistics = JsonNode.Parse(payloads["statistics.jsonl"])!;
+            statistics["typed_snapshot"]!["brokers"]![0]![field] = 1;
+            payloads["statistics.jsonl"] = [.. JsonSerializer.SerializeToUtf8Bytes(statistics), (byte)'\n'];
+            capabilities["guard_observations"] = new JsonArray(guard);
+        }
+        else if (guard == "native_error_callback_observed")
+        {
+            var lifecycle = new
+            {
+                schema_version = 1, identity, session_id = "managed_error_callback", receipt_sequence = 1,
+                received_at = DateTimeOffset.UnixEpoch, event_type = "native_error",
+                error_code = (int)ErrorCode.Local_Transport, error_name = ErrorCode.Local_Transport.ToString(),
+                reason = "synthetic error", is_error = true, is_fatal = false, provenance = "managed_error_callback"
+            };
+            payloads["request-lifecycle.jsonl"] = [.. JsonSerializer.SerializeToUtf8Bytes(lifecycle,
+                EvidenceJsonOptions), (byte)'\n'];
+            capabilities["guard_observations"] = new JsonArray(guard);
+        }
+        else if (guard == "statistics_guard_unproven") capabilities["statistics_completion"] = null;
+        else if (guard == "statistics_guard_incomplete") capabilities["statistics_completion"]!["is_complete"] = false;
+        payloads["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capabilities);
+
+        RunManifest manifest = LedgerValidator.DeserializeManifest(payloads["manifest.json"].AsSpan(0, payloads["manifest.json"].Length - 1), 1);
+        manifest = manifest with { GuardObservations = manifest.GuardObservations.Add(guard).Distinct(StringComparer.Ordinal).ToImmutableArray() };
+        payloads["manifest.json"] = [.. LedgerValidator.SerializeManifest(manifest), (byte)'\n'];
+        RunArtifactIndex valid = await ReadAsync(CreateIndex(identity, payloads), identity,
+            MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
+        // Complete bookkeeping with retained ambiguity remains publishable; this is not oracle classification.
+        await ValidateAsync(valid, expectations, payloads);
+
+        manifest = manifest with { GuardObservations = manifest.GuardObservations.Remove(guard) };
+        payloads["manifest.json"] = [.. LedgerValidator.SerializeManifest(manifest), (byte)'\n'];
+        RunArtifactIndex corrupt = await ReadAsync(CreateIndex(identity, payloads), identity,
+            MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
+        InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() => ValidateAsync(corrupt, expectations, payloads));
+        Assert.Equal("publication_manifest_guard_observation_missing:" + guard, failure.Message);
+    }
+
+    [Fact]
+    public async Task Given_SynchronousPreEnqueueRejection_When_Validating_Then_DoesNotRequireCallbackGuards()
+    {
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = Expectations(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
+        LedgerRow row = LedgerValidator.DeserializeRow(payloads["ledger.jsonl"].AsSpan(0, payloads["ledger.jsonl"].Length - 1));
+        row = row with { CompletionSource = "synchronous_rejection", Delivered = false,
+            ErrorCode = (int)ErrorCode.Local_QueueFull, PersistenceStatus = null, PersistenceProvenance = "pre_enqueue",
+            DeliveryLatencyMs = null, SynchronousCallDurationMs = 0 };
+        payloads["ledger.jsonl"] = [.. LedgerValidator.SerializeRow(row), (byte)'\n'];
+        RunArtifactIndex index = await ReadAsync(CreateIndex(identity, payloads), identity,
+            MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
+        await ValidateAsync(index, expectations, payloads);
+    }
+
     private static async Task<RunArtifactIndex> ReadAsync(byte[] bytes, RunIdentity identity, long maxIndex, long maxArtifact, long maxAggregate)
         => await RunArtifactIndexReader.ReadAsync(new MemoryStream(bytes, writable: false), identity, maxIndex,
             maxArtifact, maxAggregate, TestContext.Current.CancellationToken);
@@ -296,7 +390,7 @@ public sealed class RunArtifactIndexReaderTests
             "complete", true, null, ImmutableArray<string>.Empty,
             ImmutableDictionary<string, string>.Empty,
             ArtifactNames.Skip(2).ToImmutableDictionary(name => name, name => name, StringComparer.Ordinal),
-            ImmutableArray<string>.Empty);
+            ImmutableArray.Create("request_lifecycle_capture_unsupported", "broker_lifecycle_inventory_unproven"));
         byte[] json = LedgerValidator.SerializeManifest(manifest);
         byte[] persisted = new byte[json.Length + 1];
         Buffer.BlockCopy(json, 0, persisted, 0, json.Length);

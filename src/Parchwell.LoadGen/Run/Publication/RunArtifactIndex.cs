@@ -1,3 +1,4 @@
+using Confluent.Kafka;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
@@ -182,10 +183,11 @@ public static class RunArtifactIndexReader
                 !StringComparer.Ordinal.Equals(value, name)))
             throw Invalid("publication_manifest_evidence_file_set_invalid");
 
+        ImmutableArray<LedgerRow> rows;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ImmutableArray<LedgerRow> rows = ParseLedgerRows(ledgerBytes, manifest.Inventory.Length, maximumArtifactBytes, cancellationToken);
+            rows = ParseLedgerRows(ledgerBytes, manifest.Inventory.Length, maximumArtifactBytes, cancellationToken);
             _ = LedgerValidator.Validate(rows, manifest, identity);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or OverflowException)
@@ -200,7 +202,7 @@ public static class RunArtifactIndexReader
             int maximumRowBytes = (int)maximumArtifactBytes;
             evidence = RunEvidenceReader.ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, identity,
                 expectations,
-                maximumArtifactBytes, maximumRowBytes, int.MaxValue);
+                maximumArtifactBytes, maximumRowBytes, int.MaxValue, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or DecoderFallbackException)
@@ -208,7 +210,31 @@ public static class RunArtifactIndexReader
             throw Invalid("publication_evidence_validation_failed");
         }
         if (evidence.IsFaulted) throw Invalid("publication_evidence_capture_faulted");
+        var manifestGuards = manifest.GuardObservations.ToHashSet(StringComparer.Ordinal);
+        foreach (LedgerRow row in rows)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (row.CompletionSource != "callback") continue;
+            if (!row.Delivered) RequireGuard("async_delivery_failure_observed");
+            if (row.PersistenceStatus is null) RequireGuard("persistence_status_missing");
+            if (row.PersistenceStatus == (int)PersistenceStatus.PossiblyPersisted) RequireGuard("possibly_persisted_observed");
+        }
+        foreach (string observation in evidence.GuardObservations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireGuard(observation);
+        }
+        if (evidence.StatisticsComplete is null) RequireGuard("statistics_guard_unproven");
+        else if (!evidence.StatisticsComplete.Value) RequireGuard("statistics_guard_incomplete");
+        if (!evidence.RequestCapabilitySupported) RequireGuard("request_lifecycle_capture_unsupported");
+        RequireGuard("broker_lifecycle_inventory_unproven");
         return manifest;
+
+        void RequireGuard(string observation)
+        {
+            if (!manifestGuards.Contains(observation))
+                throw Invalid("publication_manifest_guard_observation_missing:" + observation);
+        }
     }
 
     private static ImmutableArray<LedgerRow> ParseLedgerRows(byte[] bytes, int maximumRows, long maximumRowBytes,

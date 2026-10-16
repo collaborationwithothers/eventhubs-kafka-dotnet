@@ -25,6 +25,56 @@ public sealed class RunEvidenceReaderTests
         new(LoadSelectedConfigurationsAsync);
 
     [Fact]
+    public void Given_Utf8CharacterCrossesValidationChunk_When_Parsing_Then_AcceptsValidAndRejectsTruncatedEncoding()
+    {
+        string value = new string('a', 8185) + "😀" + new string('b', 8192);
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes("{\"v\":\"" + value + "\"}\n");
+        int count = RunEvidenceReader.ValidateJsonLines(bytes, bytes.Length, 1,
+            row => Assert.Equal(value, row.GetProperty("v").GetString()), TestContext.Current.CancellationToken);
+        Assert.Equal(1, count);
+        byte[] invalid = [.. bytes, 0xf0, 0x9f];
+        InvalidDataException failure = Assert.Throws<InvalidDataException>(() =>
+            RunEvidenceReader.ValidateJsonLines(invalid, invalid.Length, 2, _ => { }, TestContext.Current.CancellationToken));
+        Assert.Equal("evidence_json_invalid_utf8", failure.Message);
+    }
+
+    [Theory]
+    [InlineData("{}\n{}\n")]
+    [InlineData("{}\ninvalid-json\n")]
+    [InlineData("{}\n")]
+    public void Given_CancellationDuringEvidenceRowValidation_When_Parsing_Then_StopsBeforeAnotherRowOrSuccess(string jsonl)
+    {
+        using var cancellation = new CancellationTokenSource();
+        int visited = 0;
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(jsonl);
+        OperationCanceledException failure = Assert.Throws<OperationCanceledException>(() =>
+            RunEvidenceReader.ValidateJsonLines(bytes, 1024, 10, _ =>
+            {
+                visited++;
+                cancellation.Cancel();
+            }, cancellation.Token));
+        Assert.Equal(1, visited);
+        Assert.Equal(cancellation.Token, failure.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_CanceledEvidenceValidation_When_ReadingBuffers_Then_PreservesCancellation()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        RunEvidenceExpectations expectations = await ExpectationsAsync(Identity());
+        byte[] statistics = await File.ReadAllBytesAsync(Path.Combine(path, "statistics.jsonl"), TestContext.Current.CancellationToken);
+        byte[] lifecycle = await File.ReadAllBytesAsync(Path.Combine(path, "request-lifecycle.jsonl"), TestContext.Current.CancellationToken);
+        byte[] capabilities = await File.ReadAllBytesAsync(Path.Combine(path, "capabilities.json"), TestContext.Current.CancellationToken);
+        _ = RunEvidenceReader.ReadBytes(statistics, lifecycle, capabilities, Identity(), expectations, 256 * 1024, 64 * 1024, 16, TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        OperationCanceledException failure = Assert.Throws<OperationCanceledException>(() =>
+            RunEvidenceReader.ReadBytes(statistics, lifecycle, capabilities, Identity(), expectations,
+                256 * 1024, 64 * 1024, 16, cancellation.Token));
+        Assert.Equal(cancellation.Token, failure.CancellationToken);
+    }
+
+    [Fact]
     public async Task Given_ValidNegativeCapabilityArtifactsAndNativeExtraFields_When_Read_Then_ReturnsArtifactCountsWithoutPromotingCapability()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);

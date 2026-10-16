@@ -61,14 +61,15 @@ public static class RunEvidenceReader
 
         cancellationToken.ThrowIfCancellationRequested();
         return ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, expectedIdentity,
-            expectations, maximumFileBytes, maximumRowBytes, maximumDiagnostics);
+            expectations, maximumFileBytes, maximumRowBytes, maximumDiagnostics, cancellationToken);
     }
 
     /// <summary>Validates the three evidence artifacts directly from bounded byte buffers without filesystem access.</summary>
     internal static RunEvidenceReadResult ReadBytes(byte[] statisticsBytes, byte[] lifecycleBytes, byte[] capabilityBytes,
         RunIdentity expectedIdentity, RunEvidenceExpectations expectations, long maximumFileBytes, int maximumRowBytes,
-        int maximumDiagnostics)
+        int maximumDiagnostics, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(statisticsBytes);
         ArgumentNullException.ThrowIfNull(lifecycleBytes);
         ArgumentNullException.ThrowIfNull(capabilityBytes);
@@ -87,14 +88,14 @@ public static class RunEvidenceReader
         int maximumRows = (int)Math.Min(int.MaxValue, maximumFileBytes);
         var statisticsAttribution = new StatisticsAttribution();
         int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,
-            row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics, statisticsAttribution));
+            row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics, statisticsAttribution, cancellationToken), cancellationToken);
         var lifecycleAttribution = new LifecycleAttribution();
         int lifecycleCount = ValidateJsonLines(lifecycleBytes, maximumRowBytes, maximumRows,
-            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics, lifecycleAttribution));
+            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics, lifecycleAttribution, cancellationToken), cancellationToken);
 
-        using JsonDocument capabilities = ParseDocument(capabilityBytes);
+        using JsonDocument capabilities = ParseDocument(capabilityBytes, cancellationToken);
         JsonElement rootElement = capabilities.RootElement;
-        RejectDuplicatePropertiesRecursively(rootElement);
+        RejectDuplicatePropertiesRecursively(rootElement, cancellationToken);
         ValidateCapabilityReport(rootElement, expectedIdentity, expectations, statisticsCount, maximumRows, maximumDiagnostics,
             statisticsAttribution.ObservedBrokerNames, statisticsAttribution.HasReportDiagnostics,
             statisticsAttribution.HasUnparsedReports, statisticsAttribution.PositiveGuardValues,
@@ -103,7 +104,8 @@ public static class RunEvidenceReader
             lifecycleAttribution.HasErrorCallback,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
             out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
-            out bool guardObservationsComplete, out ImmutableArray<string> diagnostics);
+            out bool guardObservationsComplete, out ImmutableArray<string> diagnostics, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         return new RunEvidenceReadResult(statisticsCount, lifecycleCount, isFaulted, requestCapabilitySupported,
             statisticsComplete, statuses, guardObservations, guardObservationsComplete, diagnostics);
     }
@@ -129,9 +131,10 @@ public static class RunEvidenceReader
         return bytes;
     }
 
-    private static int ValidateJsonLines(byte[] bytes, int maximumRowBytes, int maximumRows, Action<JsonElement> validateRow)
+    internal static int ValidateJsonLines(byte[] bytes, int maximumRowBytes, int maximumRows, Action<JsonElement> validateRow, CancellationToken cancellationToken)
     {
-        ValidateUtf8(bytes);
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateUtf8(bytes, cancellationToken);
         if (bytes.AsSpan().StartsWith(Utf8Bom))
             throw new InvalidDataException("evidence_jsonl_bom_not_allowed");
         if (bytes.Length == 0) return 0;
@@ -140,6 +143,7 @@ public static class RunEvidenceReader
         int start = 0;
         for (int index = 0; index < bytes.Length; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (bytes[index] != (byte)'\n') continue;
             int rowLength = index - start;
             if (rowLength == 0) throw new InvalidDataException("evidence_jsonl_empty_row");
@@ -147,17 +151,19 @@ public static class RunEvidenceReader
             if (count >= maximumRows) throw new InvalidDataException("evidence_jsonl_row_count_exceeded");
             if (bytes[index - 1] == (byte)'\r') throw new InvalidDataException("evidence_jsonl_crlf_not_canonical");
             using JsonDocument row = JsonDocument.Parse(bytes.AsMemory(start, rowLength), JsonOptions);
-            RejectDuplicatePropertiesRecursively(row.RootElement);
+            RejectDuplicatePropertiesRecursively(row.RootElement, cancellationToken);
             validateRow(row.RootElement);
+            cancellationToken.ThrowIfCancellationRequested();
             count++;
             start = index + 1;
         }
         return count;
     }
 
-    private static JsonDocument ParseDocument(byte[] bytes)
+    private static JsonDocument ParseDocument(byte[] bytes, CancellationToken cancellationToken)
     {
-        ValidateUtf8(bytes);
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateUtf8(bytes, cancellationToken);
         if (bytes.AsSpan().StartsWith(Utf8Bom))
             throw new InvalidDataException("evidence_json_bom_not_allowed");
         try
@@ -170,11 +176,21 @@ public static class RunEvidenceReader
         }
     }
 
-    private static void ValidateUtf8(byte[] bytes)
+    private static void ValidateUtf8(byte[] bytes, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            _ = StrictUtf8.GetCharCount(bytes);
+            Decoder decoder = StrictUtf8.GetDecoder();
+            const int chunkBytes = 8192;
+            Span<char> characters = stackalloc char[chunkBytes + 2];
+            for (int offset = 0; offset < bytes.Length; offset += Math.Min(chunkBytes, bytes.Length - offset))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int count = Math.Min(chunkBytes, bytes.Length - offset);
+                _ = decoder.GetChars(bytes.AsSpan(offset, count), characters, flush: offset + count == bytes.Length);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch (DecoderFallbackException exception)
         {
@@ -183,8 +199,9 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateStatisticsRecord(JsonElement row, RunIdentity expected, int maximumRows, int maximumDiagnostics,
-        StatisticsAttribution attribution)
+        StatisticsAttribution attribution, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(row, "schema_version", "identity", "statistics_identity", "session_id", "received_at", "receipt_time", "raw_json", "typed_snapshot", "diagnostics");
         RequireSchemaVersion(row);
         ValidateIdentity(Get(row, "identity"), expected);
@@ -206,7 +223,7 @@ public static class RunEvidenceReader
         JsonElement snapshot = Get(row, "typed_snapshot");
         if (snapshot.ValueKind != JsonValueKind.Null)
         {
-            string nativeName = ValidateSnapshot(snapshot, expected.ClientId, maximumRows, attribution);
+            string nativeName = ValidateSnapshot(snapshot, expected.ClientId, maximumRows, attribution, cancellationToken);
             if (attribution.NativeName is not null && !StringComparer.Ordinal.Equals(nativeName, attribution.NativeName))
                 throw Invalid("statistics_native_name_changed");
             attribution.NativeName ??= nativeName;
@@ -215,13 +232,14 @@ public static class RunEvidenceReader
         {
             attribution.HasUnparsedReports = true;
         }
-        if (ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics))
+        if (ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics, cancellationToken))
             attribution.HasReportDiagnostics = true;
     }
 
     private static string ValidateSnapshot(JsonElement snapshot, string expectedClientId, int maximumRows,
-        StatisticsAttribution attribution)
+        StatisticsAttribution attribution, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(snapshot, "name", "client_id", "type", "timestamp_microseconds", "time_seconds", "age_microseconds", "brokers");
         string nativeName = RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
         RequireEqualString(snapshot, "client_id", expectedClientId);
@@ -251,6 +269,7 @@ public static class RunEvidenceReader
         var brokerNamesInSnapshot = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement broker in brokers.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string brokerName = ValidateBroker(broker, attribution, generationValid);
             if (!brokerNamesInSnapshot.Add(brokerName)) attribution.HasDuplicateBrokerName = true;
             attribution.ObservedBrokerNames.Add(brokerName);
@@ -295,11 +314,13 @@ public static class RunEvidenceReader
         }
     }
 
-    private static bool ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics)
+    private static bool ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireArray(diagnostics, "diagnostics", maximumDiagnostics);
         foreach (JsonElement diagnostic in diagnostics.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             RequireObject(diagnostic, "code", "broker", "field");
             RequireNonemptyString(Get(diagnostic, "code"), "diagnostics.code");
             RequireNullableString(Get(diagnostic, "broker"), "diagnostics.broker");
@@ -309,8 +330,9 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics,
-        LifecycleAttribution attribution)
+        LifecycleAttribution attribution, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObjectBase(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type");
         RequireSchemaVersion(row);
         ValidateIdentity(Get(row, "identity"), expected);
@@ -329,7 +351,7 @@ public static class RunEvidenceReader
                 Get(row, "source_order").ValueKind != JsonValueKind.Null)
                 throw Invalid("native_log_known_missing_fields_have_values");
             ImmutableArray<string> missing = RequireStringArray(Get(row, "known_missing_fields"),
-                "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: false);
+                "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: false, cancellationToken);
             if (!missing.SequenceEqual(KnownMissingLifecycleFields, StringComparer.Ordinal))
                 throw Invalid("native_log_known_missing_fields_mismatch");
             if (Get(row, "inference").ValueKind != JsonValueKind.Null)
@@ -373,19 +395,20 @@ public static class RunEvidenceReader
         bool hasErrorCallback,
         out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
         out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
-        out bool guardObservationsComplete, out ImmutableArray<string> diagnostics)
+        out bool guardObservationsComplete, out ImmutableArray<string> diagnostics, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(root, "schema_version", "identity", "artifacts", "resolved_configuration", "request_lifecycle_requirements", "request_capability_supported", "observed_broker_names", "guard_observations", "guard_observations_complete", "statistics_completion", "session_diagnostics", "is_faulted");
         RequireSchemaVersion(root);
         ValidateIdentity(Get(root, "identity"), expected);
         JsonElement artifacts = Get(root, "artifacts");
-        ImmutableArray<string> artifactNames = RequireStringArray(artifacts, "artifacts", 3, allowEmpty: false);
+        ImmutableArray<string> artifactNames = RequireStringArray(artifacts, "artifacts", 3, allowEmpty: false, cancellationToken);
         if (artifactNames.Length != 3 || !artifactNames.ToHashSet(StringComparer.Ordinal).SetEquals(ArtifactNames))
             throw Invalid("artifact_name_set_mismatch");
 
         JsonElement resolved = Get(root, "resolved_configuration");
         if (resolved.ValueKind == JsonValueKind.Null) throw Invalid("resolved_configuration_required");
-        ValidateResolvedConfiguration(resolved, expected, expectations, maximumRows);
+        ValidateResolvedConfiguration(resolved, expected, expectations, maximumRows, cancellationToken);
 
         JsonElement requirements = Get(root, "request_lifecycle_requirements");
         RequireArray(requirements, "request_lifecycle_requirements", maximumRows);
@@ -395,6 +418,7 @@ public static class RunEvidenceReader
         var requirementNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement requirement in requirements.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             RequireObject(requirement, "requirement", "status", "pinned_version", "source_urls", "source_facts", "inference", "local_test_evidence");
             string name = RequireNonemptyString(Get(requirement, "requirement"), "capability.requirement");
             if (!RequestCapabilityCatalogue.TryGet(name, out RequestCapabilityClaim? claim) || !requirementNames.Add(name))
@@ -407,16 +431,16 @@ public static class RunEvidenceReader
         requestCapabilitySupported = RequireBoolean(Get(root, "request_capability_supported"), "request_capability_supported");
         if (requestCapabilitySupported) throw Invalid("request_capability_supported_for_schema_v1");
         ImmutableArray<string> observedBrokerNames = RequireStringArray(Get(root, "observed_broker_names"),
-            "observed_broker_names", maximumRows, allowEmpty: true);
+            "observed_broker_names", maximumRows, allowEmpty: true, cancellationToken);
         var observedBrokerNameSet = observedBrokerNames.ToHashSet(StringComparer.Ordinal);
         if (!statisticsBrokerNames.IsSubsetOf(observedBrokerNameSet))
             throw Invalid("observed_broker_names_missing_statistics_broker");
-        guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
+        guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true, cancellationToken);
         guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
         isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (guardObservationsComplete)
         {
-            ValidatePositiveGuardObservations(guardObservations, positiveGuardValues, hasErrorCallback, isFaulted);
+            ValidatePositiveGuardObservations(guardObservations, positiveGuardValues, hasErrorCallback, isFaulted, cancellationToken);
         }
         JsonElement completion = Get(root, "statistics_completion");
         statisticsComplete = null;
@@ -427,8 +451,8 @@ public static class RunEvidenceReader
             if (statisticsComplete.Value && statisticsRecordCount == 0)
                 throw Invalid("statistics_completion_without_records");
             JsonElement completionDiagnostics = Get(completion, "diagnostics");
-            ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics);
-            ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
+            ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics, cancellationToken);
+            ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true, cancellationToken);
             if (statisticsComplete.Value &&
                 (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty || hasStatisticsReportDiagnostics || hasUnparsedReports ||
                  hasNonIncreasingTimestamp || hasNativeCreationChanged || hasDecreasingCounter || hasDuplicateBrokerName))
@@ -445,7 +469,7 @@ public static class RunEvidenceReader
         }
         if (expectations.RequireStatisticsEvidence && statisticsComplete != true)
             throw Invalid("required_statistics_completion_missing_or_incomplete");
-        diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
+        diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true, cancellationToken);
         if (!isFaulted && !observedBrokerNameSet.SetEquals(statisticsBrokerNames))
             throw Invalid("observed_broker_names_statistics_mismatch");
         if (!guardObservationsComplete && !isFaulted) throw Invalid("guard_observation_truncation_not_faulted");
@@ -465,11 +489,13 @@ public static class RunEvidenceReader
 
     private static void ValidatePositiveGuardObservations(ImmutableArray<string> observations,
         HashSet<(string Broker, string Counter, long Value)> positiveGuardValues,
-        bool hasErrorCallback, bool isFaulted)
+        bool hasErrorCallback, bool isFaulted, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var valuesByPair = new Dictionary<(string Broker, string Counter), HashSet<string>>();
         foreach ((string broker, string counter, long value) in positiveGuardValues)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var pair = (broker, counter);
             if (!valuesByPair.TryGetValue(pair, out HashSet<string>? candidates))
                 valuesByPair.Add(pair, candidates = new HashSet<string>(StringComparer.Ordinal));
@@ -486,6 +512,7 @@ public static class RunEvidenceReader
                 throw Invalid("native_error_guard_observation_missing");
             foreach ((string broker, string counter) in valuesByPair.Keys)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 string prefix = FormattableString.Invariant($"broker={broker};counter={counter};observed=");
                 bool found = observations.Any(observation => observation.StartsWith(prefix, StringComparison.Ordinal) &&
                     long.TryParse(observation.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value) && value > 0);
@@ -496,6 +523,7 @@ public static class RunEvidenceReader
 
         foreach (KeyValuePair<(string Broker, string Counter), HashSet<string>> pair in valuesByPair)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             bool found = observations.Any(pair.Value.Contains);
             if (!found) throw Invalid("statistics_guard_observation_missing");
         }
@@ -503,8 +531,10 @@ public static class RunEvidenceReader
         var candidatePairs = new Dictionary<string, HashSet<(string Broker, string Counter)>>(StringComparer.Ordinal);
         foreach (KeyValuePair<(string Broker, string Counter), HashSet<string>> pair in valuesByPair)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (string candidate in pair.Value)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!candidatePairs.TryGetValue(candidate, out HashSet<(string Broker, string Counter)>? matches))
                     candidatePairs.Add(candidate, matches = []);
                 matches.Add(pair.Key);
@@ -515,6 +545,7 @@ public static class RunEvidenceReader
         bool errorGuardObserved = false;
         foreach (string observation in observations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (StringComparer.Ordinal.Equals(observation, "native_error_callback_observed"))
             {
                 if (!hasErrorCallback || errorGuardObserved)
@@ -533,8 +564,9 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected,
-        RunEvidenceExpectations expectations, int maximumRows)
+        RunEvidenceExpectations expectations, int maximumRows, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(resolved, "role", "settings", "omissions");
         ResolvedRoleConfiguration selected = expectations.ResolvedConfiguration;
         RequireEnumNumber(Get(resolved, "role"), (int)selected.Role, "resolved_configuration.role");
@@ -546,12 +578,13 @@ public static class RunEvidenceReader
         var seenSettings = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonProperty setting in settings.EnumerateObject())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(setting.Name) || !seenSettings.Add(setting.Name))
                 throw Invalid("resolved_setting_name_empty_or_duplicate");
             if (!baselineSettings.TryGetValue(setting.Name, out KafkaSettingMetadata? metadata) ||
                 !selected.Settings.TryGetValue(setting.Name, out ResolvedSetting? selectedSetting))
                 throw Invalid("resolved_setting_unknown");
-            ValidateResolvedSetting(setting.Value, setting.Name, expected, metadata, selectedSetting);
+            ValidateResolvedSetting(setting.Value, setting.Name, expected, metadata, selectedSetting, cancellationToken);
         }
         if (!seenSettings.SetEquals(baselineSettings.Keys) || !seenSettings.SetEquals(selected.Settings.Keys))
             throw Invalid("resolved_setting_catalogue_coverage_mismatch");
@@ -562,12 +595,13 @@ public static class RunEvidenceReader
         var seenOmissions = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement omission in omissions.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             RequireKind(omission, JsonValueKind.Object, "resolved_configuration.omissions");
             string key = RequireNonemptyString(Get(omission, "key"), "setting_metadata.key");
             if (!seenOmissions.Add(key) || !baselineOmissions.TryGetValue(key, out KafkaSettingMetadata? metadata) ||
                 !selectedOmissions.TryGetValue(key, out KafkaSettingMetadata? selectedMetadata))
                 throw Invalid("resolved_omission_unknown_or_duplicate");
-            ValidateSettingMetadata(omission, metadata, expected.ClientId);
+            ValidateSettingMetadata(omission, metadata, expected.ClientId, cancellationToken);
             if (!MetadataMatchesSelectedSetting(metadata, selectedMetadata))
                 throw Invalid("resolved_omission_selected_context_mismatch");
             ValidatePersistedMetadataValue(omission, selectedMetadata);
@@ -577,12 +611,13 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey, RunIdentity expected,
-        KafkaSettingMetadata expectedMetadata, ResolvedSetting selectedSetting)
+        KafkaSettingMetadata expectedMetadata, ResolvedSetting selectedSetting, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(setting, "value", "baseline", "override");
         RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
         JsonElement baseline = Get(setting, "baseline");
-        ValidateSettingMetadata(baseline, expectedMetadata, expected.ClientId);
+        ValidateSettingMetadata(baseline, expectedMetadata, expected.ClientId, cancellationToken);
         if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(baseline, "key"), "baseline.key"), dictionaryKey))
             throw Invalid("resolved_setting_key_mismatch");
         if (!MetadataMatchesSelectedSetting(expectedMetadata, selectedSetting.Baseline))
@@ -651,8 +686,9 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateSettingMetadata(JsonElement metadata, KafkaSettingMetadata expected,
-        string expectedClientId)
+        string expectedClientId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireObject(metadata, "key", "value", "role", "disposition", "inventory_ids", "sources", "selection_reason");
         if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(metadata, "key"), "setting_metadata.key"), expected.Key))
             throw Invalid("setting_metadata_catalogue_key_mismatch");
@@ -677,7 +713,7 @@ public static class RunEvidenceReader
         RequireEnumNumber(Get(metadata, "role"), (int)expected.Role, "setting_metadata.role");
         int disposition = RequireInt32(Get(metadata, "disposition"), "setting_metadata.disposition");
         if (disposition != (int)expected.Disposition) throw Invalid("setting_metadata_catalogue_disposition_mismatch");
-        ImmutableArray<string> ids = RequireStringArray(Get(metadata, "inventory_ids"), "setting_metadata.inventory_ids", 100, allowEmpty: false);
+        ImmutableArray<string> ids = RequireStringArray(Get(metadata, "inventory_ids"), "setting_metadata.inventory_ids", 100, allowEmpty: false, cancellationToken);
         if (ids.Any(string.IsNullOrWhiteSpace)) throw Invalid("setting_metadata.inventory_id_empty");
         if (!ids.SequenceEqual(expected.InventoryIds, StringComparer.Ordinal))
             throw Invalid("setting_metadata_catalogue_inventory_mismatch");
@@ -685,6 +721,7 @@ public static class RunEvidenceReader
         RequireArray(sources, "setting_metadata.sources", 100);
         foreach (JsonElement source in sources.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             RequireObject(source, "url", "version_or_date");
             string urlText = RequireNonemptyString(Get(source, "url"), "setting_source.url");
             if (!Uri.TryCreate(urlText, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps)
@@ -744,20 +781,26 @@ public static class RunEvidenceReader
             throw Invalid("evidence_schema_version_unsupported");
     }
 
-    private static void RejectDuplicatePropertiesRecursively(JsonElement element)
+    private static void RejectDuplicatePropertiesRecursively(JsonElement element, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (element.ValueKind == JsonValueKind.Object)
         {
             var names = new HashSet<string>(StringComparer.Ordinal);
             foreach (JsonProperty property in element.EnumerateObject())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!names.Add(property.Name)) throw Invalid("evidence_duplicate_property");
-                RejectDuplicatePropertiesRecursively(property.Value);
+                RejectDuplicatePropertiesRecursively(property.Value, cancellationToken);
             }
         }
         else if (element.ValueKind == JsonValueKind.Array)
         {
-            foreach (JsonElement value in element.EnumerateArray()) RejectDuplicatePropertiesRecursively(value);
+            foreach (JsonElement value in element.EnumerateArray())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                RejectDuplicatePropertiesRecursively(value, cancellationToken);
+            }
         }
     }
 
@@ -804,12 +847,14 @@ public static class RunEvidenceReader
         if (element.GetArrayLength() > maximumItems) throw Invalid("evidence_array_limit_exceeded:" + field);
     }
 
-    private static ImmutableArray<string> RequireStringArray(JsonElement element, string field, int maximumItems, bool allowEmpty)
+    private static ImmutableArray<string> RequireStringArray(JsonElement element, string field, int maximumItems, bool allowEmpty, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireArray(element, field, maximumItems);
         var values = ImmutableArray.CreateBuilder<string>(element.GetArrayLength());
         foreach (JsonElement value in element.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string text = RequireString(value, field);
             if (!allowEmpty && string.IsNullOrWhiteSpace(text)) throw Invalid("evidence_string_array_empty_value:" + field);
             values.Add(text);
