@@ -53,8 +53,9 @@ public sealed class BlobPublicationIntegrationTests
         {
             RunIdentity identity = Identity();
             WorkloadProfile profile = Profile();
+            RunExecutionOptions executionOptions = ExecutionOptions(directory, topic);
             var evidenceExpectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
-                requireStatisticsEvidence: true);
+                executionOptions.RequireStatisticsEvidence);
             await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
                 evidenceExpectations);
             await using var ledger = NewLedger(directory);
@@ -69,7 +70,7 @@ public sealed class BlobPublicationIntegrationTests
             }).Build();
 
             RunExecutionResult result = await new RunExecutor(() => producer, ledger, TimeProvider.System, evidence: evidence)
-                .ExecuteAsync(profile, identity, ExecutionOptions(directory, topic), startup.Token);
+                .ExecuteAsync(profile, identity, executionOptions, startup.Token);
 
             Assert.Equal(0, result.ExitCode);
             Assert.Same(evidenceExpectations, result.EvidenceExpectations);
@@ -411,13 +412,14 @@ public sealed class BlobPublicationIntegrationTests
     {
         RunIdentity identity = Identity();
         await using var ledger = NewLedger(directory);
+        RunExecutionOptions executionOptions = ExecutionOptions(directory, "synthetic-publication-topic");
         var expectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
-            requireStatisticsEvidence: true);
+            executionOptions.RequireStatisticsEvidence);
         await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
             expectations);
         var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
         return await new RunExecutor(() => producer, ledger, TimeProvider.System, evidence: evidence)
-            .ExecuteAsync(Profile(), identity, ExecutionOptions(directory, "synthetic-publication-topic"),
+            .ExecuteAsync(Profile(), identity, executionOptions,
                 TestContext.Current.CancellationToken);
     }
 
