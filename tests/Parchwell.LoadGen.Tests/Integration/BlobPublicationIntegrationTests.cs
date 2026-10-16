@@ -12,6 +12,8 @@ using Azure.Core.Pipeline;
 using Azure.Storage.Blobs;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
+using Microsoft.Extensions.DependencyInjection;
+using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
@@ -51,7 +53,8 @@ public sealed class BlobPublicationIntegrationTests
         {
             RunIdentity identity = Identity();
             WorkloadProfile profile = Profile();
-            await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System);
+            await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
+                CreateResolvedConfiguration(identity));
             await using var ledger = NewLedger(directory);
             IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(new ProducerConfig
             {
@@ -302,7 +305,8 @@ public sealed class BlobPublicationIntegrationTests
     {
         RunIdentity identity = Identity();
         await using var ledger = NewLedger(directory);
-        await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System);
+        await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
+            CreateResolvedConfiguration(identity));
         var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
         return await new RunExecutor(() => producer, ledger, TimeProvider.System, evidence: evidence)
             .ExecuteAsync(Profile(), identity, ExecutionOptions(directory, "synthetic-publication-topic"),
@@ -471,6 +475,21 @@ public sealed class BlobPublicationIntegrationTests
 
     private static RunEvidenceOptions EvidenceOptions(string directory) => new(directory, 16, 8192,
         2_000_000, 64, TimeSpan.FromSeconds(3));
+
+    private static ResolvedRoleConfiguration CreateResolvedConfiguration(RunIdentity identity)
+    {
+        var services = new ServiceCollection();
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
+        {
+            options.NamespaceName = "synthetic-namespace";
+            options.ClientId = identity.ClientId;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaBaseline<ProducerConfig> baseline = provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer();
+        ImmutableDictionary<string, ResolvedSetting> settings = baseline.Settings.ToImmutableDictionary(
+            setting => setting.Key, setting => new ResolvedSetting(setting.Value!, setting, null), StringComparer.Ordinal);
+        return new ResolvedRoleConfiguration(KafkaClientRole.LoadGenProducer, settings, baseline.Omissions);
+    }
 
     private static RunExecutionOptions ExecutionOptions(string directory, string topic) => new(8, 1024,
         TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), 8192,

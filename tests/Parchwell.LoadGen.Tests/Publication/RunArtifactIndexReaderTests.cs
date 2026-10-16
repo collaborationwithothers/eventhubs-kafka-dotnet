@@ -4,12 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Collections.Immutable;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Ledger;
 using Parchwell.LoadGen.Run.Publication;
+using Parchwell.Scenarios;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.Publication;
@@ -263,10 +265,14 @@ public sealed class RunArtifactIndexReaderTests
         try
         {
             await using var session = new RunEvidenceSession(identity,
-                new RunEvidenceOptions(directory, 8, 64 * 1024, 256 * 1024, 16, TimeSpan.FromSeconds(2)), TimeProvider.System);
+                new RunEvidenceOptions(directory, 8, 64 * 1024, 256 * 1024, 16, TimeSpan.FromSeconds(2)),
+                TimeProvider.System, CreateResolvedConfiguration(identity));
+            var snapshot = new KafkaStatisticsSnapshot("native-producer", identity.ClientId, "producer", 1, 1, 1,
+                [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, 0, 0, 0, 0, 0,
+                    new KafkaWindowStatistics(0, null), new KafkaWindowStatistics(0, null))]);
             var report = new KafkaStatisticsReport(
                 new KafkaStatisticsIdentity(identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer, identity.ClientId),
-                "reader-session", DateTimeOffset.UnixEpoch, "{}", null, ImmutableArray<KafkaStatisticsDiagnostic>.Empty);
+                "reader-session", DateTimeOffset.UnixEpoch, "{}", snapshot, ImmutableArray<KafkaStatisticsDiagnostic>.Empty);
             await session.WriteAsync(report, TestContext.Current.CancellationToken);
             await session.CompleteAsync(new KafkaStatisticsCompletion(true, ImmutableArray<KafkaStatisticsDiagnostic>.Empty,
                 ImmutableArray<string>.Empty), TestContext.Current.CancellationToken);
@@ -284,6 +290,21 @@ public sealed class RunArtifactIndexReaderTests
         {
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private static ResolvedRoleConfiguration CreateResolvedConfiguration(RunIdentity identity)
+    {
+        var services = new ServiceCollection();
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
+        {
+            options.NamespaceName = "synthetic-namespace";
+            options.ClientId = identity.ClientId;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaBaseline<ProducerConfig> baseline = provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer();
+        ImmutableDictionary<string, ResolvedSetting> settings = baseline.Settings.ToImmutableDictionary(
+            setting => setting.Key, setting => new ResolvedSetting(setting.Value!, setting, null), StringComparer.Ordinal);
+        return new ResolvedRoleConfiguration(KafkaClientRole.LoadGenProducer, settings, baseline.Omissions);
     }
 
     private static Task ValidateAsync(RunArtifactIndex index, Dictionary<string, byte[]> payloads) =>
