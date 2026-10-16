@@ -69,6 +69,31 @@ public sealed class LoadGenHostProcessTests
         Assert.Contains("loadgen_startup_or_host_failure:OptionsValidationException", result.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("azure-test")]
+    [InlineData("test-AzUrE")]
+    [InlineData("testazuretest")]
+    public async Task Given_NamespaceViolatingA04Policy_When_StartingChildHost_Then_FailsBeforeCreatingArtifacts(string namespaceName)
+    {
+        string output = Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            ChildResult result = await RunChildAsync(environment =>
+            {
+                ConfigureValidInputs(environment, output);
+                environment["LoadGen__NamespaceName"] = namespaceName;
+            });
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("loadgen_startup_or_host_failure:OptionsValidationException", result.Output, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(output));
+        }
+        finally
+        {
+            if (Directory.Exists(output)) Directory.Delete(output, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task Given_BlobEndpointWithPath_When_StartingChildHost_Then_FailsStartupValidation()
     {

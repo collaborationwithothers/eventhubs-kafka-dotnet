@@ -119,6 +119,8 @@ public sealed class LoadGenHostOptions
             !char.IsAsciiLetterOrDigit(NamespaceName[^1]) ||
             NamespaceName.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
             throw new InvalidOperationException("namespace_name_must_be_one_dns_label");
+        if (NamespaceName.Contains("azure", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("namespace_name_must_exclude_reserved_substring");
         _ = Path.GetFullPath(ScenarioSourceRoot);
         _ = Path.GetFullPath(OutputRoot);
         if (StringComparer.Ordinal.Equals(Path.GetFullPath(ScenarioSourceRoot), Path.GetFullPath(OutputRoot)))
