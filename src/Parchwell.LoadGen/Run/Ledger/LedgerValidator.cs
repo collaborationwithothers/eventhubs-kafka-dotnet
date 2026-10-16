@@ -155,7 +155,7 @@ public static class LedgerValidator
             manifest.Diagnostics.IsDefault || manifest.RuntimeVersions is null || manifest.EvidenceFiles is null || manifest.GuardObservations.IsDefault)
             throw new InvalidDataException("invalid_manifest_required_field");
         manifest.Identity.Validate();
-        if (string.IsNullOrWhiteSpace(manifest.GeneratorVersion) || manifest.WorkerStatus is not ("complete" or "incomplete" or "failed") ||
+        if (manifest.GeneratorVersion != "1" || manifest.WorkerStatus is not ("complete" or "incomplete" or "failed") ||
             manifest.PlannedAttemptCount < 0 || manifest.AttemptCount != manifest.Inventory.Length ||
             manifest.PlannedAttemptCount < manifest.AttemptCount || manifest.TimestampFrequency <= 0 || manifest.StartTimestamp < 0 ||
             manifest.FirstUnexecutedOrdinal is < 0 || manifest.FirstUnexecutedOrdinal >= manifest.PlannedAttemptCount && manifest.FirstUnexecutedOrdinal.HasValue)
@@ -170,6 +170,11 @@ public static class LedgerValidator
                 !ids.Add(entry.AttemptId) || !ordinals.Add(entry.Ordinal))
                 throw new InvalidDataException("duplicate_manifest_inventory_entry");
         }
+        var expectedSuffix = manifest.AttemptCount < manifest.PlannedAttemptCount ? manifest.AttemptCount : (long?)null;
+        if (manifest.FirstUnexecutedOrdinal != expectedSuffix ||
+            (manifest.WorkerStatus == "complete" &&
+                (expectedSuffix.HasValue || !manifest.BookkeepingComplete || manifest.PlannedAttemptCount == 0)))
+            throw new InvalidDataException("manifest_unexecuted_suffix_mismatch");
     }
 
     /// <summary>Requires exact inventory-to-row agreement, including the entire immutable entry and run identity.</summary>

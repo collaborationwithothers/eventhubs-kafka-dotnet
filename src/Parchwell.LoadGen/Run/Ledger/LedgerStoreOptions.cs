@@ -13,7 +13,7 @@ public sealed record LedgerStoreOptions(string LedgerPath, string ManifestPath, 
         if (string.Equals(Path.GetFullPath(LedgerPath), Path.GetFullPath(ManifestPath), pathComparison))
             throw new ArgumentException("ledger_and_manifest_paths_must_differ");
         if (QueueCapacity <= 0 || MaximumRowBytes <= 0 || MaximumLedgerBytes <= 0 || MaximumManifestBytes <= 0 ||
-            DrainTimeout <= TimeSpan.Zero || DrainTimeout == Timeout.InfiniteTimeSpan)
+            DrainTimeout <= TimeSpan.Zero || DrainTimeout.TotalMilliseconds > uint.MaxValue - 1)
             throw new ArgumentOutOfRangeException(nameof(QueueCapacity), "ledger_limits_must_be_positive_and_finite");
     }
 }

@@ -32,6 +32,8 @@ Completion source is `callback` or `synchronous_rejection`. Callback latency is 
 
 `RunManifest` contains schema and generator versions, run identity, planned count, independently computed actual count and the sealed inventory, timestamp frequency/start, worker status, bookkeeping completeness, first unexecuted ordinal when applicable, diagnostics, runtime versions, evidence file names and guard observations. The manifest is saved directly, independently of the ledger queue and writer. It is never reconstructed by counting persisted rows.
 
+The inventory is the contiguous invocation prefix starting at ordinal zero. When actual count is less than planned count, first_unexecuted_ordinal equals actual count; otherwise it is null. A partial prefix cannot claim complete worker status. These checks prevent execution metadata from silently skipping schedule opportunities.
+
 Before acceptance, read the persisted ledger back and compare its IDs, count, full attempt identity, keys and sequences with the sealed inventory. Require exactly one final row per actual attempt. Missing failed rows are invalid bookkeeping even if the corresponding message was never independently observed. Duplicate rows, mismatched identity and inconsistent manifest counts are rejected. This is the harness bookkeeping rule in [ADR-012][oracle].
 
 Local evidence uses schema version 1, UTF-8, snake_case property names and invariant JSON numbers. Ledger rows are one complete JSON object per LF-terminated line. Missing, duplicate and unknown harness-envelope fields, wrong types/ranges, unsupported versions and truncated rows are rejected within explicit size/depth/count limits. Native raw JSON later stored inside an envelope retains the statistics bridge's own parser policy.

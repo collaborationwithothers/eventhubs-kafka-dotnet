@@ -107,6 +107,53 @@ public sealed class LedgerValidatorTests
     internal static LedgerRow CallbackRow() => new(1, Identity, Entry, "callback", true, 0, null, 2,
         "native_callback", 150, 0.04, null);
 
+    [Fact]
+    public void Given_UnverifiedBookkeepingOrGenerator_When_ValidatingCompleteManifest_Then_Rejects()
+    {
+        var manifest = Manifest([Entry]);
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest with { BookkeepingComplete = false }));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest with { GeneratorVersion = "unknown" }));
+    }
+
+    [Fact]
+    public void Given_SkippedInvocationOrdinal_When_Registered_Then_RejectsWithoutReservingTheAttempt()
+    {
+        var inventory = new AttemptInventory(Identity, 3);
+        inventory.Register(Entry);
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 2 }));
+        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1 });
+        Assert.Equal(new long[] { 0, 1 }, inventory.Seal().Select(item => item.Ordinal));
+    }
+
+    // A stopped schedule preserves the next unexecuted opportunity independently of ledger rows.
+    [Theory]
+    [InlineData(null)]
+    [InlineData(4L)]
+    public void Given_InconsistentUnexecutedSuffix_When_ValidatingManifest_Then_Rejects(long? firstUnexecuted)
+    {
+        var manifest = Manifest([Entry]) with
+        {
+            PlannedAttemptCount = 5,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = firstUnexecuted
+        };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest));
+    }
+
+    [Fact]
+    public void Given_ContiguousPartialInventory_When_ValidatingManifest_Then_PreservesExactSuffix()
+    {
+        var manifest = Manifest([Entry]) with
+        {
+            PlannedAttemptCount = 5,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 1
+        };
+        Assert.Equal([CallbackRow()], LedgerValidator.Validate([CallbackRow()], manifest, Identity));
+        var sparse = manifest with { Inventory = [Entry with { Ordinal = 1 }] };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(sparse));
+    }
+
     internal static RunManifest Manifest(ImmutableArray<AttemptEntry> entries) => new(1, Identity, "1", entries.Length,
         entries.Length, entries, 1_000_000, 0, "complete", true, null, [],
         ImmutableDictionary<string, string>.Empty, ImmutableDictionary<string, string>.Empty, []);

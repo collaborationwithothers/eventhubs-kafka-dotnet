@@ -41,6 +41,8 @@ public sealed class AttemptInventory
                 throw new ArgumentException("invalid_inventory_entry", nameof(entry));
             if (entries.Count > 0 && entry.Ordinal <= entries[^1].Ordinal)
                 throw new InvalidOperationException("inventory_ordinals_must_increase");
+            if (entry.Ordinal != entries.Count)
+                throw new InvalidOperationException("inventory_ordinal_must_be_contiguous");
             if (attemptIds.Contains(entry.AttemptId) || ordinals.Contains(entry.Ordinal))
                 throw new InvalidOperationException("duplicate_inventory_attempt_or_ordinal");
             attemptIds.Add(entry.AttemptId);
