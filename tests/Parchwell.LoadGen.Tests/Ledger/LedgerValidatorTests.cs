@@ -80,9 +80,8 @@ public sealed class LedgerValidatorTests
 
     [Theory]
     [InlineData(0, 0, "ocr-started", "d0", "tenant-1-d0")]
-    [InlineData(1, 0, "uploaded", "d0", "tenant-1-d0")]
     [InlineData(1, 1, "ocr-started", "d0", "wrong-tenant-d0")]
-    [InlineData(5, 0, "uploaded", "d0", "tenant-1-d0")]
+    [InlineData(0, 5, "uploaded", "d0", "tenant-1-d0")]
     public void Given_attempt_workload_fields_disagree_with_global_ordinal_When_registered_or_validated_Then_rejected(
         long ordinal, long sequence, string eventType, string documentId, string key)
     {
@@ -99,6 +98,47 @@ public sealed class LedgerValidatorTests
         Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
         Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
         Assert.Empty(inventory.Seal());
+    }
+
+    [Theory]
+    [InlineData("d-1", "tenant-1-d-1")]
+    [InlineData("d01", "tenant-1-d01")]
+    [InlineData("doc0", "tenant-1-doc0")]
+    public void Given_noncanonical_document_id_When_registered_or_validated_Then_rejected(string documentId, string key)
+    {
+        var invalid = Entry with { DocumentId = documentId, Key = key };
+        var inventory = new AttemptInventory(Identity, 1);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        Assert.Empty(inventory.Seal());
+    }
+
+    [Fact]
+    public void Given_retry_attempt_has_new_invocation_ordinal_and_same_logical_event_When_reconciled_Then_accepted()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        var first = Entry;
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        inventory.Register(first);
+        inventory.Register(retry);
+        var manifest = Manifest(inventory.Seal());
+        var firstRow = CallbackRow();
+        var retryRow = firstRow with { Attempt = retry };
+
+        Assert.Equal([firstRow, retryRow], LedgerValidator.Validate([firstRow, retryRow], manifest, Identity));
+    }
+
+    [Fact]
+    public void Given_new_invocation_ordinal_and_canonical_logical_document_When_registered_Then_accepted()
+    {
+        var inventory = new AttemptInventory(Identity, 6);
+        inventory.Register(Entry);
+        var otherDocument = Entry with { AttemptId = "attempt-2", Ordinal = 1, DocumentId = "d1", Key = "tenant-1-d1" };
+
+        inventory.Register(otherDocument);
+
+        Assert.Equal([0L, 1L], inventory.Seal().Select(item => item.Ordinal));
     }
 
     [Fact]

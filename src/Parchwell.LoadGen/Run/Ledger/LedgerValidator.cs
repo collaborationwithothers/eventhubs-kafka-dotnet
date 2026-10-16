@@ -223,13 +223,19 @@ public static class LedgerValidator
             entry.Ordinal < 0 || entry.Sequence < 0 || entry.PlannedMicroseconds < 0 || entry.InvokedMicroseconds < entry.PlannedMicroseconds)
             throw new InvalidDataException("invalid_attempt_entry");
 
-        var eventIndex = (int)(entry.Ordinal % LifecycleEvents.Length);
-        var expectedDocumentId = string.Concat("d", (entry.Ordinal / LifecycleEvents.Length).ToString(CultureInfo.InvariantCulture));
-        var expectedKey = string.Concat(entry.TenantId, "-", expectedDocumentId);
-        if (entry.Sequence != eventIndex || !string.Equals(entry.EventType, LifecycleEvents[eventIndex], StringComparison.Ordinal) ||
-            !string.Equals(entry.DocumentId, expectedDocumentId, StringComparison.Ordinal) ||
-            !string.Equals(entry.Key, expectedKey, StringComparison.Ordinal))
+        if (entry.Sequence >= LifecycleEvents.Length ||
+            !string.Equals(entry.EventType, LifecycleEvents[(int)entry.Sequence], StringComparison.Ordinal) ||
+            !IsCanonicalDocumentId(entry.DocumentId) ||
+            !string.Equals(entry.Key, string.Concat(entry.TenantId, "-", entry.DocumentId), StringComparison.Ordinal))
             throw new InvalidDataException("attempt_workload_identity_mismatch");
+    }
+
+    private static bool IsCanonicalDocumentId(string documentId)
+    {
+        if (documentId.Length < 2 || documentId[0] != 'd' ||
+            !long.TryParse(documentId.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture, out var ordinal) || ordinal < 0)
+            return false;
+        return string.Equals(documentId, string.Concat("d", ordinal.ToString(CultureInfo.InvariantCulture)), StringComparison.Ordinal);
     }
 
     private static void ValidateMetadataText(string? value, string fieldName)
