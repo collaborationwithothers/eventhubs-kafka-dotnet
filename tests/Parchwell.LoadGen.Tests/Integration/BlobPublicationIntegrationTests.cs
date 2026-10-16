@@ -53,8 +53,10 @@ public sealed class BlobPublicationIntegrationTests
         {
             RunIdentity identity = Identity();
             WorkloadProfile profile = Profile();
+            var evidenceExpectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
+                requireStatisticsEvidence: true);
             await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
-                CreateResolvedConfiguration(identity));
+                evidenceExpectations);
             await using var ledger = NewLedger(directory);
             IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(new ProducerConfig
             {
@@ -70,6 +72,7 @@ public sealed class BlobPublicationIntegrationTests
                 .ExecuteAsync(profile, identity, ExecutionOptions(directory, topic), startup.Token);
 
             Assert.Equal(0, result.ExitCode);
+            Assert.Same(evidenceExpectations, result.EvidenceExpectations);
             Assert.Equal("complete", result.Manifest.WorkerStatus);
             Assert.True(result.Manifest.BookkeepingComplete);
             Assert.Contains("request_lifecycle_capture_unsupported", result.Manifest.GuardObservations);
@@ -99,6 +102,31 @@ public sealed class BlobPublicationIntegrationTests
             }
 
             VerifyIndexAndArtifactsIndependently(transport.StoredByName, identity);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Given_CompletedResultWithoutTrustedEvidenceExpectations_When_Publishing_Then_RejectsBeforeBlobRequests()
+    {
+        string directory = NewDirectory();
+        try
+        {
+            RunExecutionResult result = await CreateSyntheticCompletedRunAsync(directory);
+            RunExecutionResult withoutExpectations = result with { EvidenceExpectations = null };
+            using var handler = new RecordingHttpHandler();
+            using var http = new HttpClient(handler);
+
+            InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                NewPublisher(http).PublishAsync(withoutExpectations, PublicationOptions(),
+                    TestContext.Current.CancellationToken));
+
+            Assert.Equal("publication_evidence_expectations_missing", failure.Message);
+            Assert.Empty(handler.Requests);
+            Assert.False(File.Exists(Path.Combine(directory, "index.json")));
         }
         finally
         {
@@ -383,8 +411,10 @@ public sealed class BlobPublicationIntegrationTests
     {
         RunIdentity identity = Identity();
         await using var ledger = NewLedger(directory);
+        var expectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
+            requireStatisticsEvidence: true);
         await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
-            CreateResolvedConfiguration(identity));
+            expectations);
         var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
         return await new RunExecutor(() => producer, ledger, TimeProvider.System, evidence: evidence)
             .ExecuteAsync(Profile(), identity, ExecutionOptions(directory, "synthetic-publication-topic"),

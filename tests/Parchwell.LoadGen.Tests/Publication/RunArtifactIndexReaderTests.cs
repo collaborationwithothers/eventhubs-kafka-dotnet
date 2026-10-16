@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Collections.Immutable;
 using Confluent.Kafka;
@@ -31,7 +32,8 @@ public sealed class RunArtifactIndexReaderTests
     {
         // The index is the reader acceptance marker; all five payloads must match the bytes it names.
         RunIdentity identity = Identity();
-        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity);
+        RunEvidenceExpectations expectations = Expectations(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
         byte[] bytes = CreateIndex(identity, payloads);
         RunArtifactIndex index = await ReadAsync(bytes, identity, MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
 
@@ -40,6 +42,7 @@ public sealed class RunArtifactIndexReaderTests
         Assert.Equal(ArtifactNames, index.Artifacts.Select(item => item.Name));
         await RunArtifactIndexReader.ValidateArtifactSetAsync(index,
             0,
+            expectations,
             ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken);
@@ -50,7 +53,7 @@ public sealed class RunArtifactIndexReaderTests
     {
         // A valid artifact set from another run must never be attributed to the expected run.
         RunIdentity identity = Identity();
-        byte[] bytes = CreateIndex(identity, await PayloadsAsync(identity));
+        byte[] bytes = CreateIndex(identity, await PayloadsAsync(identity, Expectations(identity)));
         RunIdentity otherIdentity = identity with { RunId = "other-run" };
 
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(bytes, otherIdentity, MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes));
@@ -61,7 +64,7 @@ public sealed class RunArtifactIndexReaderTests
     {
         // Duplicate JSON properties and incomplete status flags can make readers disagree about publication state.
         RunIdentity identity = Identity();
-        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, Expectations(identity));
         string valid = Encoding.UTF8.GetString(CreateIndex(identity, payloads));
         string duplicate = valid.Replace("{\"schema_version\":1,", "{\"schema_version\":1,\"schema_version\":1,", StringComparison.Ordinal);
         string incomplete = valid.Replace("\"publication_complete\":true", "\"publication_complete\":false", StringComparison.Ordinal);
@@ -75,7 +78,7 @@ public sealed class RunArtifactIndexReaderTests
     {
         // Exact file membership prevents a partial upload from being treated as a complete run.
         RunIdentity identity = Identity();
-        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, Expectations(identity));
         byte[] valid = CreateIndex(identity, payloads);
         using JsonDocument parsed = JsonDocument.Parse(valid);
         JsonElement root = parsed.RootElement;
@@ -97,13 +100,15 @@ public sealed class RunArtifactIndexReaderTests
     {
         // The index hash and budgets protect the exact bytes readers later download.
         RunIdentity identity = Identity();
-        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity);
+        RunEvidenceExpectations expectations = Expectations(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
         byte[] indexBytes = CreateIndex(identity, payloads);
         RunArtifactIndex index = await ReadAsync(indexBytes, Identity(), MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
         payloads["ledger.jsonl"] = Encoding.UTF8.GetBytes("different-ledger");
 
         await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
             0,
+            expectations,
             ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken));
@@ -117,7 +122,8 @@ public sealed class RunArtifactIndexReaderTests
     {
         // A valid index cannot hide stale objects or an incomplete Blob listing beneath the run prefix.
         RunIdentity identity = Identity();
-        byte[] indexBytes = CreateIndex(identity, await PayloadsAsync(identity));
+        RunEvidenceExpectations expectations = Expectations(identity);
+        byte[] indexBytes = CreateIndex(identity, await PayloadsAsync(identity, expectations));
         RunArtifactIndex index = await ReadAsync(indexBytes, identity, MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
         string[] exact = ObservedNames();
         string[][] invalidListings =
@@ -133,6 +139,7 @@ public sealed class RunArtifactIndexReaderTests
             int opened = 0;
             await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
                 0,
+                expectations,
                 listing,
                 (name, _) =>
                 {
@@ -152,7 +159,7 @@ public sealed class RunArtifactIndexReaderTests
         {
             int opened = 0;
             InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
-                RunArtifactIndexReader.ValidateArtifactSetAsync(index, exitCode, ObservedNames(), (name, _) =>
+                RunArtifactIndexReader.ValidateArtifactSetAsync(index, exitCode, Expectations(Identity()), ObservedNames(), (name, _) =>
                 {
                     Interlocked.Increment(ref opened);
                     return ValueTask.FromResult<Stream>(new MemoryStream());
@@ -176,7 +183,7 @@ public sealed class RunArtifactIndexReaderTests
         int opened = 0;
 
         await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index, 0,
-            ObservedNames(), (name, _) =>
+            Expectations(Identity()), ObservedNames(), (name, _) =>
             {
                 opened++;
                 return ValueTask.FromResult<Stream>(oversizedPayload);
@@ -205,6 +212,7 @@ public sealed class RunArtifactIndexReaderTests
         int opened = 0;
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
             0,
+            Expectations(Identity()),
             ObservedNames(), (name, _) =>
             {
                 Interlocked.Increment(ref opened);
@@ -217,7 +225,8 @@ public sealed class RunArtifactIndexReaderTests
     public async Task Given_RehashedMalformedLedgerOrEvidenceArtifacts_When_Validating_Then_RejectsTheArtifactSet()
     {
         RunIdentity identity = Identity();
-        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity);
+        RunEvidenceExpectations expectations = Expectations(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
         LedgerRow row = LedgerValidator.DeserializeRow(payloads["ledger.jsonl"].AsSpan(0, payloads["ledger.jsonl"].Length - 1));
         byte[] inventoryMismatch = [.. LedgerValidator.SerializeRow(row with
         {
@@ -228,21 +237,32 @@ public sealed class RunArtifactIndexReaderTests
         byte[] wrongStatisticsIdentity = Encoding.UTF8.GetBytes(statistics.Replace("run-index", "other-run", StringComparison.Ordinal));
         byte[] manifestWithoutFinalLf = payloads["manifest.json"][..^1];
 
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", Encoding.UTF8.GetBytes("ledger.jsonl\n"));
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", []);
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", [.. payloads["ledger.jsonl"], .. payloads["ledger.jsonl"]]);
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", inventoryMismatch);
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "manifest.json", manifestWithoutFinalLf);
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "statistics.jsonl", wrongStatisticsIdentity);
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "request-lifecycle.jsonl", Encoding.UTF8.GetBytes("{}\n"));
-        await AssertRehashedArtifactRejectedAsync(identity, payloads, "capabilities.json", Encoding.UTF8.GetBytes("{}"));
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "ledger.jsonl", Encoding.UTF8.GetBytes("ledger.jsonl\n"));
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "ledger.jsonl", []);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "ledger.jsonl", [.. payloads["ledger.jsonl"], .. payloads["ledger.jsonl"]]);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "ledger.jsonl", inventoryMismatch);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "manifest.json", manifestWithoutFinalLf);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "statistics.jsonl", wrongStatisticsIdentity);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "request-lifecycle.jsonl", Encoding.UTF8.GetBytes("{}\n"));
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "capabilities.json", Encoding.UTF8.GetBytes("{}"));
+
+        byte[] inventedOverride = AddInventedOverride(payloads["capabilities.json"], identity);
+        await AssertRehashedArtifactRejectedAsync(identity, expectations, payloads, "capabilities.json", inventedOverride);
+
+        Dictionary<string, byte[]> missingStatisticsCompletion = payloads.ToDictionary(pair => pair.Key,
+            pair => pair.Value, StringComparer.Ordinal);
+        JsonNode capability = JsonNode.Parse(missingStatisticsCompletion["capabilities.json"])!;
+        capability["statistics_completion"] = null;
+        missingStatisticsCompletion["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capability);
+        await AssertPayloadSetRejectedAsync(identity, expectations, missingStatisticsCompletion);
     }
 
     private static async Task<RunArtifactIndex> ReadAsync(byte[] bytes, RunIdentity identity, long maxIndex, long maxArtifact, long maxAggregate)
         => await RunArtifactIndexReader.ReadAsync(new MemoryStream(bytes, writable: false), identity, maxIndex,
             maxArtifact, maxAggregate, TestContext.Current.CancellationToken);
 
-    private static async Task<Dictionary<string, byte[]>> PayloadsAsync(RunIdentity identity)
+    private static async Task<Dictionary<string, byte[]>> PayloadsAsync(RunIdentity identity,
+        RunEvidenceExpectations expectations)
     {
         var entry = new AttemptEntry(identity.InstanceId, "attempt-0", 0, "tenant", "d0", "tenant-d0", 0,
             "uploaded", 0, 0);
@@ -266,7 +286,7 @@ public sealed class RunArtifactIndexReaderTests
         {
             await using var session = new RunEvidenceSession(identity,
                 new RunEvidenceOptions(directory, 8, 64 * 1024, 256 * 1024, 16, TimeSpan.FromSeconds(2)),
-                TimeProvider.System, CreateResolvedConfiguration(identity));
+                TimeProvider.System, expectations);
             var snapshot = new KafkaStatisticsSnapshot("native-producer", identity.ClientId, "producer", 1, 1, 1,
                 [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, 0, 0, 0, 0, 0,
                     new KafkaWindowStatistics(0, null), new KafkaWindowStatistics(0, null))]);
@@ -307,19 +327,51 @@ public sealed class RunArtifactIndexReaderTests
         return new ResolvedRoleConfiguration(KafkaClientRole.LoadGenProducer, settings, baseline.Omissions);
     }
 
-    private static Task ValidateAsync(RunArtifactIndex index, Dictionary<string, byte[]> payloads) =>
-        RunArtifactIndexReader.ValidateArtifactSetAsync(index, 0, ObservedNames(),
+    private static Task ValidateAsync(RunArtifactIndex index, RunEvidenceExpectations expectations,
+        Dictionary<string, byte[]> payloads) =>
+        RunArtifactIndexReader.ValidateArtifactSetAsync(index, 0, expectations, ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken);
 
+    private static async Task AssertPayloadSetRejectedAsync(RunIdentity identity,
+        RunEvidenceExpectations expectations, Dictionary<string, byte[]> payloads)
+    {
+        RunArtifactIndex index = await ReadAsync(CreateIndex(identity, payloads), identity,
+            MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ValidateAsync(index, expectations, payloads));
+    }
+
     private static async Task AssertRehashedArtifactRejectedAsync(RunIdentity identity,
+        RunEvidenceExpectations expectations,
         Dictionary<string, byte[]> validPayloads, string name, byte[] invalidBytes)
     {
         Dictionary<string, byte[]> payloads = validPayloads.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         payloads[name] = invalidBytes;
         RunArtifactIndex index = await ReadAsync(CreateIndex(identity, payloads), identity,
             MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
-        await Assert.ThrowsAsync<InvalidDataException>(() => ValidateAsync(index, payloads));
+        await Assert.ThrowsAsync<InvalidDataException>(() => ValidateAsync(index, expectations, payloads));
+    }
+
+    private static RunEvidenceExpectations Expectations(RunIdentity identity) =>
+        new(CreateResolvedConfiguration(identity), requireStatisticsEvidence: true);
+
+    private static byte[] AddInventedOverride(byte[] capabilityBytes, RunIdentity identity)
+    {
+        JsonNode capability = JsonNode.Parse(capabilityBytes)!;
+        JsonObject setting = capability["resolved_configuration"]!["settings"]!.AsObject()["client.id"]!.AsObject();
+        setting["value"] = "invented-client-id";
+        setting["override"] = new JsonObject
+        {
+            ["scenario_id"] = identity.ScenarioId,
+            ["configuration_id"] = identity.ConfigurationId,
+            ["location"] = new JsonObject
+            {
+                ["path"] = "scenarios/A01.yaml",
+                ["line"] = 1,
+                ["column"] = 1
+            }
+        };
+        return JsonSerializer.SerializeToUtf8Bytes(capability);
     }
 
     private static byte[] CreateIndex(RunIdentity identity, Dictionary<string, byte[]> payloads)

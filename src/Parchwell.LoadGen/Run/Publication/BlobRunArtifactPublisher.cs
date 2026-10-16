@@ -66,9 +66,11 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
     internal async Task PublishOpenedSourcesAsync(RunExecutionResult result, RunPublicationOptions options,
         ImmutableArray<ArtifactSource> sources, CancellationToken cancellationToken)
     {
+        var expectations = result.EvidenceExpectations
+            ?? throw new InvalidDataException("publication_evidence_expectations_missing");
         ImmutableDictionary<string, byte[]> payloads = await ReadAndVerifySourcesAsync(sources,
             options.MaxArtifactBytes, cancellationToken).ConfigureAwait(false);
-        RunManifest persistedManifest = RunArtifactIndexReader.ValidatePayloadSemantics(result.Manifest.Identity,
+        RunManifest persistedManifest = RunArtifactIndexReader.ValidatePayloadSemantics(result.Manifest.Identity, expectations,
             payloads, options.MaxArtifactBytes, cancellationToken);
         ValidatePersistedManifest(result, payloads["manifest.json"], persistedManifest, options);
 
@@ -105,6 +107,8 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
     {
         ArgumentNullException.ThrowIfNull(result.Manifest);
         ArgumentNullException.ThrowIfNull(result.ArtifactPaths);
+        if (result.EvidenceExpectations is null)
+            throw new InvalidDataException("publication_evidence_expectations_missing");
         result.Manifest.Identity.Validate();
         if (result.ExitCode != 0 || result.Manifest.WorkerStatus != "complete" || !result.Manifest.BookkeepingComplete)
             throw new InvalidDataException("publication_requires_complete_worker_and_bookkeeping");

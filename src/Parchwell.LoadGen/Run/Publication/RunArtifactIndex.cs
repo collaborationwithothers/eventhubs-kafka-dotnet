@@ -91,13 +91,14 @@ public static class RunArtifactIndexReader
     }
 
     /// <summary>Requires a successful observed runner exit, exact prefix listing, bounded payload hashes, and valid ledger, manifest, and evidence content.</summary>
-    /// <remarks>The caller must supply the runner's observed exit code and enumerate every member beneath the run prefix before calling. Partial listings are not accepted.</remarks>
+    /// <remarks>The caller must supply the runner's observed exit code, independently selected evidence expectations, and enumerate every member beneath the run prefix before calling. Partial listings are not accepted.</remarks>
     public static async Task ValidateArtifactSetAsync(RunArtifactIndex index, int? observedWorkerExitCode,
-        IReadOnlyCollection<string> observedPrefixMemberNames,
+        RunEvidenceExpectations expectations, IReadOnlyCollection<string> observedPrefixMemberNames,
         Func<string, CancellationToken, ValueTask<Stream>> openArtifact, long maximumArtifactBytes,
         long maximumAggregateArtifactBytes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(index);
+        ArgumentNullException.ThrowIfNull(expectations);
         ArgumentNullException.ThrowIfNull(observedPrefixMemberNames);
         ArgumentNullException.ThrowIfNull(openArtifact);
         if (observedWorkerExitCode != 0) throw Invalid("publication_worker_exit_code_invalid");
@@ -146,15 +147,17 @@ public static class RunArtifactIndexReader
                 throw Invalid("publication_artifact_content_mismatch:" + descriptor.Name);
         }
 
-        _ = ValidatePayloadSemantics(index.Identity, payloads.ToImmutable(), maximumArtifactBytes, cancellationToken);
+        _ = ValidatePayloadSemantics(index.Identity, expectations, payloads.ToImmutable(), maximumArtifactBytes,
+            cancellationToken);
     }
 
-    /// <summary>Reconciles the bounded payload bytes shared by local publication and index readback.</summary>
-    internal static RunManifest ValidatePayloadSemantics(RunIdentity identity,
+    /// <summary>Reconciles bounded payload bytes against caller-supplied evidence expectations for local publication and index readback.</summary>
+    internal static RunManifest ValidatePayloadSemantics(RunIdentity identity, RunEvidenceExpectations expectations,
         IReadOnlyDictionary<string, byte[]> payloads, long maximumArtifactBytes,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(expectations);
         ArgumentNullException.ThrowIfNull(payloads);
         identity.Validate();
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumArtifactBytes);
@@ -196,6 +199,7 @@ public static class RunArtifactIndexReader
             cancellationToken.ThrowIfCancellationRequested();
             int maximumRowBytes = (int)maximumArtifactBytes;
             evidence = RunEvidenceReader.ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, identity,
+                expectations,
                 maximumArtifactBytes, maximumRowBytes, int.MaxValue);
             cancellationToken.ThrowIfCancellationRequested();
         }
