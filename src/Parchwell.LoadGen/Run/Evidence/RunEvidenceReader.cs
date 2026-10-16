@@ -59,6 +59,29 @@ public static class RunEvidenceReader
         byte[] lifecycleBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[1]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
         byte[] capabilityBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[2]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        return ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, expectedIdentity,
+            maximumFileBytes, maximumRowBytes, maximumDiagnostics);
+    }
+
+    /// <summary>Validates the three evidence artifacts directly from bounded byte buffers without filesystem access.</summary>
+    internal static RunEvidenceReadResult ReadBytes(byte[] statisticsBytes, byte[] lifecycleBytes, byte[] capabilityBytes,
+        RunIdentity expectedIdentity, long maximumFileBytes, int maximumRowBytes, int maximumDiagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(statisticsBytes);
+        ArgumentNullException.ThrowIfNull(lifecycleBytes);
+        ArgumentNullException.ThrowIfNull(capabilityBytes);
+        ArgumentNullException.ThrowIfNull(expectedIdentity);
+        expectedIdentity.Validate();
+        if (maximumFileBytes <= 0 || maximumFileBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumFileBytes));
+        if (maximumRowBytes <= 0 || maximumRowBytes > maximumFileBytes)
+            throw new ArgumentOutOfRangeException(nameof(maximumRowBytes));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumDiagnostics);
+        if (statisticsBytes.LongLength > maximumFileBytes || lifecycleBytes.LongLength > maximumFileBytes ||
+            capabilityBytes.LongLength > maximumFileBytes)
+            throw new InvalidDataException("evidence_file_exceeds_byte_limit");
+
         int maximumRows = (int)Math.Min(int.MaxValue, maximumFileBytes);
         var statisticsAttribution = new StatisticsAttribution();
         int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,

@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Ledger;
 
 namespace Parchwell.LoadGen.Run.Publication;
@@ -87,7 +89,7 @@ public static class RunArtifactIndexReader
             publicationComplete, artifacts.ToImmutable()) { IndexLength = bytes.LongLength };
     }
 
-    /// <summary>Requires an independently observed exact prefix listing and hashes every indexed payload within its budgets.</summary>
+    /// <summary>Requires the exact observed prefix listing, bounded payload hashes, and valid ledger, manifest, and evidence content.</summary>
     /// <remarks>The caller must enumerate every member beneath the run prefix before calling. Partial listings are not accepted.</remarks>
     public static async Task ValidateArtifactSetAsync(RunArtifactIndex index, IReadOnlyCollection<string> observedPrefixMemberNames,
         Func<string, CancellationToken, ValueTask<Stream>> openArtifact, long maximumArtifactBytes,
@@ -98,6 +100,8 @@ public static class RunArtifactIndexReader
         ArgumentNullException.ThrowIfNull(openArtifact);
         index.Identity.Validate();
         ValidateBudgets(index.IndexLength, maximumArtifactBytes, maximumAggregateArtifactBytes);
+        if (maximumArtifactBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumArtifactBytes), "Publication reader materialization limit must fit in an Int32-sized buffer.");
         if (index.IndexLength > maximumArtifactBytes) throw Invalid("publication_index_exceeds_artifact_byte_limit");
         if (index.SchemaVersion != 1 || index.WorkerStatus != "complete" || !index.BookkeepingComplete ||
             !index.WorkerComplete || !index.PublicationComplete || index.Artifacts.IsDefault ||
@@ -117,6 +121,11 @@ public static class RunArtifactIndexReader
         if (observedMemberSet.Count != expectedMemberSet.Count)
             throw Invalid("publication_prefix_member_set_incomplete");
 
+        byte[]? ledgerBytes = null;
+        RunManifest? manifest = null;
+        byte[]? statisticsBytes = null;
+        byte[]? lifecycleBytes = null;
+        byte[]? capabilityBytes = null;
         long aggregate = index.IndexLength;
         for (int i = 0; i < ArtifactNames.Length; i++)
         {
@@ -131,29 +140,77 @@ public static class RunArtifactIndexReader
 
             await using Stream stream = await openArtifact(descriptor.Name, cancellationToken).ConfigureAwait(false)
                 ?? throw Invalid("publication_artifact_missing:" + descriptor.Name);
-            long length;
-            string hash;
-            if (StringComparer.Ordinal.Equals(descriptor.Name, "manifest.json"))
+            byte[] bytes = await ReadBoundedAsync(stream, maximumArtifactBytes, cancellationToken).ConfigureAwait(false);
+            long length = bytes.LongLength;
+            string hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+            switch (descriptor.Name)
             {
-                byte[] bytes = await ReadBoundedAsync(stream, maximumArtifactBytes, cancellationToken).ConfigureAwait(false);
-                length = bytes.LongLength;
-                hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-                RunManifest manifest = LedgerValidator.DeserializeManifest(bytes, int.MaxValue);
-                if (manifest.Identity != index.Identity || manifest.WorkerStatus != "complete" || !manifest.BookkeepingComplete)
-                    throw Invalid("publication_manifest_identity_or_status_mismatch");
-                string[] evidenceNames = ArtifactNames.Skip(2).ToArray();
-                if (manifest.EvidenceFiles.Count != evidenceNames.Length ||
-                    evidenceNames.Any(name => !manifest.EvidenceFiles.TryGetValue(name, out string? value) ||
-                        !StringComparer.Ordinal.Equals(value, name)))
-                    throw Invalid("publication_manifest_evidence_file_set_invalid");
-            }
-            else
-            {
-                (length, hash) = await HashBoundedAsync(stream, maximumArtifactBytes, cancellationToken).ConfigureAwait(false);
+                case "ledger.jsonl": ledgerBytes = bytes; break;
+                case "manifest.json":
+                    manifest = LedgerValidator.DeserializeManifest(bytes, int.MaxValue);
+                    if (manifest.Identity != index.Identity || manifest.WorkerStatus != "complete" || !manifest.BookkeepingComplete)
+                        throw Invalid("publication_manifest_identity_or_status_mismatch");
+                    string[] evidenceNames = ArtifactNames.Skip(2).ToArray();
+                    if (manifest.EvidenceFiles.Count != evidenceNames.Length ||
+                        evidenceNames.Any(name => !manifest.EvidenceFiles.TryGetValue(name, out string? value) ||
+                            !StringComparer.Ordinal.Equals(value, name)))
+                        throw Invalid("publication_manifest_evidence_file_set_invalid");
+                    break;
+                case "statistics.jsonl": statisticsBytes = bytes; break;
+                case "request-lifecycle.jsonl": lifecycleBytes = bytes; break;
+                case "capabilities.json": capabilityBytes = bytes; break;
             }
             if (length != descriptor.Length || !StringComparer.Ordinal.Equals(hash, descriptor.Sha256))
                 throw Invalid("publication_artifact_content_mismatch:" + descriptor.Name);
         }
+
+        if (manifest is null || ledgerBytes is null || statisticsBytes is null || lifecycleBytes is null || capabilityBytes is null)
+            throw Invalid("publication_artifact_set_incomplete");
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ImmutableArray<LedgerRow> rows = ParseLedgerRows(ledgerBytes, manifest.Inventory.Length, maximumArtifactBytes, cancellationToken);
+            _ = LedgerValidator.Validate(rows, manifest, index.Identity);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or OverflowException)
+        {
+            throw Invalid("publication_ledger_manifest_reconciliation_failed");
+        }
+
+        RunEvidenceReadResult evidence;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int maximumRowBytes = (int)maximumArtifactBytes;
+            evidence = RunEvidenceReader.ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, index.Identity,
+                maximumArtifactBytes, maximumRowBytes, int.MaxValue);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or DecoderFallbackException)
+        {
+            throw Invalid("publication_evidence_validation_failed");
+        }
+        if (evidence.IsFaulted) throw Invalid("publication_evidence_capture_faulted");
+    }
+
+    private static ImmutableArray<LedgerRow> ParseLedgerRows(byte[] bytes, int maximumRows, long maximumRowBytes,
+        CancellationToken cancellationToken)
+    {
+        var rows = new List<LedgerRow>(maximumRows);
+        int lineStart = 0;
+        for (int index = 0; index < bytes.Length; index++)
+        {
+            if (bytes[index] != (byte)'\n') continue;
+            cancellationToken.ThrowIfCancellationRequested();
+            int lineLength = index - lineStart;
+            if (lineLength <= 0 || lineLength > maximumRowBytes)
+                throw Invalid("publication_ledger_line_length_invalid");
+            if (rows.Count >= maximumRows) throw Invalid("publication_ledger_row_count_exceeded");
+            rows.Add(LedgerValidator.DeserializeRow(bytes.AsSpan(lineStart, lineLength)));
+            lineStart = index + 1;
+        }
+        if (lineStart != bytes.Length) throw Invalid("publication_ledger_final_line_truncated");
+        return rows.ToImmutableArray();
     }
 
     internal static IReadOnlyList<string> RequiredArtifactNames => ArtifactNames;
@@ -172,23 +229,6 @@ public static class RunArtifactIndexReader
             output.Write(buffer, 0, read);
         }
         return output.ToArray();
-    }
-
-    private static async Task<(long Length, string Hash)> HashBoundedAsync(Stream stream, long maximumBytes, CancellationToken cancellationToken)
-    {
-        using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        byte[] buffer = new byte[81920];
-        long length = 0;
-        while (true)
-        {
-            int read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (read == 0) break;
-            try { length = checked(length + read); }
-            catch (OverflowException) { throw Invalid("publication_artifact_exceeds_byte_limit"); }
-            if (length > maximumBytes) throw Invalid("publication_artifact_exceeds_byte_limit");
-            hash.AppendData(buffer, 0, read);
-        }
-        return (length, Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
     }
 
     private static RunIdentity ParseIdentity(JsonElement element)
