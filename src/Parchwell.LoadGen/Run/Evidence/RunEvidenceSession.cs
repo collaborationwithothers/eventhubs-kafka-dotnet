@@ -8,7 +8,6 @@ using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
-using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Evidence;
 
@@ -38,7 +37,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     private readonly List<string> _guardObservations = [];
     private readonly ImmutableArray<string> _artifactNames;
     private readonly bool _requestCapabilitySupported;
-    private readonly ResolvedRoleConfiguration? _resolvedConfiguration;
+    private readonly RunEvidenceExpectations? _expectations;
     private readonly ConcurrentQueue<string> _diagnostics = new();
     private readonly Task _writerTask;
     private long _receiptSequence;
@@ -52,7 +51,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
     /// <summary>Creates files with create-only semantics and starts the bounded background writer.</summary>
     public RunEvidenceSession(RunIdentity identity, RunEvidenceOptions options, TimeProvider timeProvider,
-        ResolvedRoleConfiguration? resolvedConfiguration = null)
+        RunEvidenceExpectations? expectations = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(options);
@@ -62,7 +61,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         _identity = identity;
         _options = options;
         _timeProvider = timeProvider;
-        _resolvedConfiguration = resolvedConfiguration;
+        _expectations = expectations;
         _directory = Path.GetFullPath(options.DirectoryPath);
         _artifactNames = [StatisticsFileName, LifecycleFileName, CapabilitiesFileName];
         _requestCapabilitySupported = false;
@@ -88,6 +87,9 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
     /// <summary>Gets the artifact names owned by this session.</summary>
     public ImmutableArray<string> ArtifactNames => _artifactNames;
+
+    /// <summary>Gets the trusted scenario context used for strict persisted read-back.</summary>
+    public RunEvidenceExpectations? Expectations => _expectations;
 
     /// <summary>True when capture, queueing, or durable writing has failed.</summary>
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
@@ -365,7 +367,9 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         {
             if (Volatile.Read(ref _completed) == 0 || !_writerTask.IsCompletedSuccessfully)
                 throw new InvalidDataException("evidence_writer_not_successfully_closed");
-            _ = await RunEvidenceReader.ReadAsync(_directory, _identity, _options.MaximumFileBytes,
+            RunEvidenceExpectations expectations = _expectations
+                ?? throw new InvalidDataException("evidence_read_expectations_required");
+            _ = await RunEvidenceReader.ReadAsync(_directory, _identity, expectations, _options.MaximumFileBytes,
                 (int)Math.Min(_options.MaximumFileBytes, _options.MaximumStatisticsRecordBytes),
                 _options.MaximumDiagnostics, cancellationToken).ConfigureAwait(false);
         }
@@ -497,43 +501,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             schema_version = SchemaVersion,
             identity = _identity,
             artifacts = ArtifactNames,
-            resolved_configuration = _resolvedConfiguration,
-            request_lifecycle_requirements = new[]
-            {
-                Capability("request_identity", "unsupported",
-                    ["https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md",
-                     "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L968-L1058",
-                     "https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/LogMessage.cs#L45-L71"],
-                    "Statistics expose aggregate client and broker counters and windows. The timeout logger is capped by log_first_n and its format has no correlation identifier. LogMessage exposes name, level, facility, and message.",
-                    "These sources provide no complete unique identity for every request observed by this collector."),
-                Capability("matched_response_error_throttle_attribution", "unsupported",
-                    ["https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md"],
-                    "The statistics document defines broker throttle windows and cumulative counters.",
-                    "Those aggregate fields cannot match one request with a response, error, or throttle event."),
-                Capability("applicable_deadline_provenance", "unproven",
-                    ["https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/LogMessage.cs#L45-L71",
-                     "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L5109-L5127"],
-                    "Managed LogMessage exposes name, level, facility, and message; request source defines a message-lifetime deadline.",
-                    "No managed callback field ties an observed event to the applicable request deadline."),
-                Capability("native_retransmission", "unsupported",
-                    ["https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L5030-L5037"],
-                    "The retry path constructs a new request.",
-                    "This adapter records no complete request sequence to establish which request is a retransmission."),
-                Capability("request_ordering", "unproven",
-                    ["https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ProducerBuilder.cs#L261-L278"],
-                    "The managed producer log callback is called spontaneously from internal librdkafka threads.",
-                    "A local receipt sequence cannot establish native source-event order."),
-                Capability("request_lifecycle_completeness", "unsupported",
-                    ["https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ProducerBuilder.cs#L261-L278",
-                     "https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/LogMessage.cs#L45-L71",
-                     "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L968-L1058"],
-                    "The managed callback is a spontaneous log callback from internal librdkafka threads. Timeout log emission is limited by log_first_n, and LogMessage provides only name, level, facility, and message.",
-                    "This capture cannot establish a complete request lifecycle."),
-                Capability("broker_instance_lifecycle_inventory", "unproven",
-                    ["https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md"],
-                    "Statistics reports broker objects in periodic samples.",
-                    "Samples cannot establish broker instances absent between reports.")
-            },
+            resolved_configuration = _expectations?.ResolvedConfiguration,
+            request_lifecycle_requirements = RequestCapabilityCatalogue.Claims,
             request_capability_supported = false,
             observed_broker_names = GetObservedBrokerNames(),
             guard_observations = GuardObservations,
@@ -554,17 +523,6 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
-
-    private static object Capability(string requirement, string status, string[] sourceUrls, string sourceFacts, string inference) => new
-    {
-        requirement,
-        status,
-        pinned_version = "2.16.0",
-        source_urls = sourceUrls,
-        source_facts = sourceFacts,
-        inference,
-        local_test_evidence = "tests/Parchwell.LoadGen.Tests/Evidence/RunEvidenceSessionTests.cs"
-    };
 
     private bool IdentityMatches(KafkaStatisticsIdentity identity) =>
         StringComparer.Ordinal.Equals(identity.ScenarioId, _identity.ScenarioId) &&

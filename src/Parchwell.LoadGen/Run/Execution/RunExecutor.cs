@@ -369,7 +369,8 @@ public sealed class RunExecutor
                 evidenceFiles, guardObservations, workerFailed, false, clock.TimestampFrequency);
         }
 
-        return new RunExecutionResult(bookkeepingComplete && !workerFailed ? 0 : 1, manifest, artifactPaths);
+        return new RunExecutionResult(bookkeepingComplete && !workerFailed ? 0 : 1, manifest, artifactPaths,
+            evidence?.Expectations);
     }
 
     private async Task DelayUntilAsync(long dueTimestamp, CancellationToken cancellationToken)

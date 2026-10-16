@@ -121,6 +121,7 @@ internal static class Program
     internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+        builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
         builder.Services.AddOptions<LoadGenHostOptions>()
             .Configure(options => BindOptions(options, builder.Configuration))
             .Validate(options => IsValid(options), "LoadGen host inputs or finite budgets are invalid.")

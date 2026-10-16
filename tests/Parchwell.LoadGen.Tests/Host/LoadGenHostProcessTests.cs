@@ -117,6 +117,12 @@ public sealed class LoadGenHostProcessTests
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("production_oauthbearer_refresh_handler_unavailable", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Load generator worker failed for scenario A01 run child-run", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Microsoft.Hosting.Lifetime", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Application started", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Hosting environment:", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Content root path:", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Application is shutting down", result.Output, StringComparison.Ordinal);
             Assert.False(Directory.Exists(output));
         }
         finally

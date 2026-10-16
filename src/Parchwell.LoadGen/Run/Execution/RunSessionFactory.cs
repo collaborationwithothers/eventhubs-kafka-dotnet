@@ -49,9 +49,11 @@ public sealed class RunSessionFactory
     {
         LoadGenHostOptions options = _options;
         Directory.CreateDirectory(options.OutputRoot);
+        var expectations = new RunEvidenceExpectations(configuration,
+            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
         RunEvidenceSession? evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(options.OutputRoot,
             options.EvidenceQueueCapacity, options.MaxReportBytes, options.MaxEvidenceFileBytes,
-            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, configuration);
+            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations);
         LocalLedgerStore? ledger = null;
         KafkaStatisticsSession? statistics = null;
         try

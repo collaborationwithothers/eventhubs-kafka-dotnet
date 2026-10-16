@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
@@ -20,6 +21,8 @@ public sealed class RunEvidenceReaderTests
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
+    private static readonly Lazy<Task<ImmutableDictionary<string, ResolvedRoleConfiguration>>> SelectedConfigurations =
+        new(LoadSelectedConfigurationsAsync);
 
     [Fact]
     public async Task Given_ValidNegativeCapabilityArtifactsAndNativeExtraFields_When_Read_Then_ReturnsArtifactCountsWithoutPromotingCapability()
@@ -332,7 +335,7 @@ public sealed class RunEvidenceReaderTests
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
 
         await File.WriteAllTextAsync(statistics, line + "\n", TestContext.Current.CancellationToken);
-        await Assert.ThrowsAsync<InvalidDataException>(() => RunEvidenceReader.ReadAsync(path, Identity(), 8, 7, 16, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadWithLimitsAsync(path, Identity(), 8, 7, 16, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -371,28 +374,58 @@ public sealed class RunEvidenceReaderTests
     [Fact]
     public async Task Given_ResolvedOverrideFromAnotherScenarioOrConfiguration_When_Read_Then_RejectsIt()
     {
-        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        RunIdentity identity = Identity() with { ConfigurationId = "C2" };
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
         string file = Path.Combine(path, "capabilities.json");
         string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        JsonNode validNode = JsonNode.Parse(original)!;
-        JsonNode resolved = SyntheticResolvedConfiguration();
-        JsonNode bootstrap = resolved["settings"]!["bootstrap.servers"]!;
-        bootstrap["value"] = "reader-override.servicebus.windows.net:9093";
-        bootstrap["override"] = JsonNode.Parse("{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenario.json\",\"line\":1,\"column\":1}}");
-        validNode["resolved_configuration"] = resolved;
-        string valid = validNode.ToJsonString();
-        await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
-        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, identity, TestContext.Current.CancellationToken);
 
-        foreach ((string field, string value) in new[] { ("scenario_id", "A02"), ("configuration_id", "C2") })
+        foreach ((string field, string value) in new[] { ("scenario_id", "A02"), ("configuration_id", "C0") })
         {
-            JsonNode malformed = JsonNode.Parse(valid)!;
-            malformed["resolved_configuration"]!["settings"]!["bootstrap.servers"]!["override"]![field] = value;
+            JsonNode malformed = JsonNode.Parse(original)!;
+            malformed["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["override"]![field] = value;
             string malformedJson = malformed.ToJsonString();
-            Assert.NotEqual(valid, malformedJson);
+            Assert.NotEqual(original, malformedJson);
             await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
-            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity, TestContext.Current.CancellationToken));
         }
+    }
+
+    [Fact]
+    public async Task Given_C2SelectedOverrideValueIsChanged_When_Read_Then_RejectsIt()
+    {
+        RunIdentity identity = Identity() with { ConfigurationId = "C2" };
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
+        string file = Path.Combine(path, "capabilities.json");
+        JsonNode original = JsonNode.Parse(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!;
+        Assert.Equal("5000", original["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["value"]!.GetValue<string>());
+
+        JsonNode malformed = original.DeepClone();
+        malformed["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["value"] = "4000";
+        string malformedJson = malformed.ToJsonString();
+        Assert.NotEqual(original.ToJsonString(), malformedJson);
+        await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_C0SelectedConfigurationContainsInventedOverride_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        JsonNode original = JsonNode.Parse(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!;
+        Assert.Null(original["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["override"]);
+
+        JsonNode malformed = original.DeepClone();
+        malformed["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["override"] = JsonNode.Parse(
+            "{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenarios/A01/scenario.yaml\",\"line\":13,\"column\":7}}");
+        malformed["resolved_configuration"]!["settings"]!["request.timeout.ms"]!["value"] = "5000";
+        string malformedJson = malformed.ToJsonString();
+        Assert.NotEqual(original.ToJsonString(), malformedJson);
+        await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -455,13 +488,13 @@ public sealed class RunEvidenceReaderTests
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
 
         JsonNode incompleteConfiguration = JsonNode.Parse(json)!;
-        incompleteConfiguration["resolved_configuration"] = SyntheticResolvedConfiguration();
+        incompleteConfiguration["resolved_configuration"] = await SerializeSelectedConfigurationAsync(Identity());
         incompleteConfiguration["resolved_configuration"]!["settings"]!.AsObject().Remove("bootstrap.servers");
         await File.WriteAllTextAsync(file, incompleteConfiguration.ToJsonString(), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
 
         JsonNode missingOmissions = JsonNode.Parse(json)!;
-        missingOmissions["resolved_configuration"] = SyntheticResolvedConfiguration();
+        missingOmissions["resolved_configuration"] = await SerializeSelectedConfigurationAsync(Identity());
         missingOmissions["resolved_configuration"]!["omissions"] = new JsonArray();
         await File.WriteAllTextAsync(file, missingOmissions.ToJsonString(), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
@@ -502,50 +535,172 @@ public sealed class RunEvidenceReaderTests
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
-    private static async Task<string> CreateEvidenceAsync(CancellationToken cancellationToken)
+    [Fact]
+    public async Task Given_RequiredStatisticsCompletionIsErased_When_Read_Then_RejectsItWhileOptionalEvidenceRemainsOptional()
     {
+        RunIdentity identity = Identity();
+        string requiredPath = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity,
+            requireStatisticsEvidence: true);
+        string requiredFile = Path.Combine(requiredPath, "capabilities.json");
+        JsonNode required = JsonNode.Parse(await File.ReadAllTextAsync(requiredFile, TestContext.Current.CancellationToken))!;
+        required["statistics_completion"] = null;
+        await File.WriteAllTextAsync(requiredFile, required.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(requiredPath, identity,
+            TestContext.Current.CancellationToken, requireStatisticsEvidence: true));
+
+        string optionalPath = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
+        string optionalFile = Path.Combine(optionalPath, "capabilities.json");
+        JsonNode optional = JsonNode.Parse(await File.ReadAllTextAsync(optionalFile, TestContext.Current.CancellationToken))!;
+        optional["statistics_completion"] = null;
+        await File.WriteAllTextAsync(optionalFile, optional.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(optionalPath, identity, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_CanonicalRequestCapabilityClaimIsAltered_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        JsonNode capabilities = JsonNode.Parse(original)!;
+        JsonNode claim = capabilities["request_lifecycle_requirements"]!.AsArray()
+            .Single(requirement => requirement!["requirement"]!.GetValue<string>() == "request_identity")!;
+        claim["source_facts"] = "unverified claim";
+        string malformedJson = capabilities.ToJsonString();
+        Assert.NotEqual(original, malformedJson);
+        await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    private static async Task<string> CreateEvidenceAsync(CancellationToken cancellationToken,
+        RunIdentity? identity = null, bool requireStatisticsEvidence = false)
+    {
+        RunIdentity runIdentity = identity ?? Identity();
+        RunEvidenceExpectations expectations = await ExpectationsAsync(runIdentity, requireStatisticsEvidence);
         string path = Path.Combine(Path.GetTempPath(), "evidence-reader-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
-        await using var session = new RunEvidenceSession(Identity(),
-            new RunEvidenceOptions(path, 8, 64 * 1024, 256 * 1024, 16, TimeSpan.FromSeconds(2)), TimeProvider.System);
+        await using var session = new RunEvidenceSession(runIdentity,
+            new RunEvidenceOptions(path, 8, 64 * 1024, 256 * 1024, 16, TimeSpan.FromSeconds(2)), TimeProvider.System,
+            expectations);
         string rawWithNativeExtra = "{\"name\":\"native-producer\",\"vendor_extra\":{\"preserved\":true}}";
-        await session.WriteAsync(Report(rawWithNativeExtra), cancellationToken);
+        await session.WriteAsync(Report(rawWithNativeExtra, runIdentity), cancellationToken);
         session.CaptureLog(new LogMessage("native-producer", SyslogLevel.Warning, "BROKER", "timed out"));
         session.CaptureError(new Error(ErrorCode.Local_TimedOut));
         await session.CompleteAsync(new KafkaStatisticsCompletion(true, ImmutableArray<KafkaStatisticsDiagnostic>.Empty, ImmutableArray<string>.Empty), cancellationToken);
         Assert.False(session.IsFaulted);
-        string capabilitiesFile = Path.Combine(path, "capabilities.json");
-        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, cancellationToken))!;
-        capabilities["resolved_configuration"] = SyntheticResolvedConfiguration();
-        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), cancellationToken);
         return path;
     }
 
-    private static JsonObject SyntheticResolvedConfiguration()
+    internal static async Task<RunEvidenceExpectations> ExpectationsAsync(RunIdentity identity,
+        bool requireStatisticsEvidence = false)
+    {
+        ImmutableDictionary<string, ResolvedRoleConfiguration> configurations = StringComparer.Ordinal.Equals(identity.ClientId, Identity().ClientId)
+            ? await SelectedConfigurations.Value
+            : await LoadSelectedConfigurationsAsync(identity.ClientId);
+        if (!configurations.TryGetValue(identity.ConfigurationId, out ResolvedRoleConfiguration? configuration))
+            throw new InvalidOperationException("evidence_test_configuration_missing");
+        return new RunEvidenceExpectations(configuration, requireStatisticsEvidence);
+    }
+
+    private static async Task<JsonObject> SerializeSelectedConfigurationAsync(RunIdentity identity)
+    {
+        RunEvidenceExpectations expectations = await ExpectationsAsync(identity);
+        return JsonSerializer.SerializeToNode(expectations.ResolvedConfiguration, ResolvedConfigurationJsonOptions)!.AsObject();
+    }
+
+    private static async Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity,
+        CancellationToken cancellationToken, bool requireStatisticsEvidence = false)
+    {
+        RunEvidenceExpectations expectations = await ExpectationsAsync(identity, requireStatisticsEvidence);
+        return await RunEvidenceReader.ReadAsync(path, identity, expectations, 256 * 1024, 64 * 1024, 16,
+            cancellationToken);
+    }
+
+    private static async Task<RunEvidenceReadResult> ReadWithLimitsAsync(string path, RunIdentity identity,
+        long maximumFileBytes, int maximumRowBytes, int maximumDiagnostics, CancellationToken cancellationToken)
+    {
+        RunEvidenceExpectations expectations = await ExpectationsAsync(identity);
+        return await RunEvidenceReader.ReadAsync(path, identity, expectations, maximumFileBytes, maximumRowBytes,
+            maximumDiagnostics, cancellationToken);
+    }
+
+    private static Task<ImmutableDictionary<string, ResolvedRoleConfiguration>> LoadSelectedConfigurationsAsync() =>
+        LoadSelectedConfigurationsAsync(Identity().ClientId);
+
+    private static async Task<ImmutableDictionary<string, ResolvedRoleConfiguration>> LoadSelectedConfigurationsAsync(string clientId)
     {
         var services = new ServiceCollection();
         services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
         {
             options.NamespaceName = "reader-validation";
-            options.ClientId = Identity().ClientId;
+            options.ClientId = clientId;
         });
         using ServiceProvider provider = services.BuildServiceProvider();
-        KafkaBaseline<ProducerConfig> baseline = provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer();
-        var settings = baseline.Settings.ToImmutableDictionary(metadata => metadata.Key,
-            metadata => new ResolvedSetting(metadata.Value!, metadata, null), StringComparer.Ordinal);
-        var resolved = new ResolvedRoleConfiguration(KafkaClientRole.LoadGenProducer, settings, baseline.Omissions);
-        return JsonSerializer.SerializeToNode(resolved, ResolvedConfigurationJsonOptions)!.AsObject();
+        var loader = new ScenarioLoader(new ReaderScenarioSource(), Options.Create(new ScenarioLoadOptions
+        {
+            MaxDocumentCharacters = 32 * 1024,
+            MaxNestingDepth = 32,
+            MaxScalarCharacters = 8 * 1024,
+            MaxParserEvents = 20_000
+        }));
+        LoadedScenario loaded = await loader.LoadAsync("A01");
+        ResolvedScenario resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
+        return resolved.Configurations.ToImmutableDictionary(pair => pair.Key,
+            pair => pair.Value.Roles[KafkaClientRole.LoadGenProducer], StringComparer.Ordinal);
     }
 
-    private static Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity, CancellationToken cancellationToken) =>
-        RunEvidenceReader.ReadAsync(path, identity, 256 * 1024, 64 * 1024, 16, cancellationToken);
+    private sealed class ReaderScenarioSource : IScenarioSource
+    {
+        public ValueTask<TextReader> OpenReadAsync(string logicalPath, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string document = logicalPath switch
+            {
+                "scenarios/A01/scenario.yaml" => """
+                    schema_version: 1
+                    id: A01
+                    baseline: Parchwell.Kafka
+                    roles: [LoadGenProducer]
+                    profile: profiles/reader.yaml
+                    configurations:
+                      C0: {}
+                      C2:
+                        LoadGenProducer:
+                          request.timeout.ms: 5000
+                    fault:
+                      live: {kind: none}
+                      component: {kind: none}
+                    repeats: 5
+                    gate: {kind: none}
+                    measures:
+                      - {id: ledger.delivery_latency_ms, role: LoadGenProducer}
+                    """,
+                "scenarios/profiles/reader.yaml" => """
+                    schema_version: 1
+                    id: reader
+                    seed: -17
+                    tenants: [{id: reader, weight: 1}]
+                    documents_per_burst: 1
+                    payloads:
+                      uploaded: [{size_bytes: 4, weight: 1}]
+                      ocr-started: [{size_bytes: 4, weight: 1}]
+                      ocr-finished: [{size_bytes: 4, weight: 1}]
+                      classified: [{size_bytes: 4, weight: 1}]
+                      indexed: [{size_bytes: 4, weight: 1}]
+                    stages: [{id: reader, offered_attempts_per_second: 1, duration_seconds: 1}]
+                    """,
+                _ => throw new FileNotFoundException("evidence_test_scenario_input_missing")
+            };
+            return ValueTask.FromResult<TextReader>(new StringReader(document));
+        }
+    }
 
     private static RunIdentity Identity() => new("A01", "C0", "run-reader", "instance-reader", "instance-reader", "loadgen-reader");
 
-    private static KafkaStatisticsReport Report(string raw) => new(
-        new KafkaStatisticsIdentity("A01", "run-reader", KafkaClientRole.LoadGenProducer, "loadgen-reader"),
+    private static KafkaStatisticsReport Report(string raw, RunIdentity identity) => new(
+        new KafkaStatisticsIdentity(identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer, identity.ClientId),
         "reader-session", DateTimeOffset.UnixEpoch, raw,
-        new KafkaStatisticsSnapshot("native-producer", "loadgen-reader", "producer", 1, 1, 1,
+        new KafkaStatisticsSnapshot("native-producer", identity.ClientId, "producer", 1, 1, 1,
         [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, 0, 0, 0, 0, 0,
             new KafkaWindowStatistics(0, null), new KafkaWindowStatistics(0, null))]),
         ImmutableArray<KafkaStatisticsDiagnostic>.Empty);

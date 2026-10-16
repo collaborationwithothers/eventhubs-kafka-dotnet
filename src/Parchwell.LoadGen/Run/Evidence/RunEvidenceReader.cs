@@ -1,9 +1,9 @@
+using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.Scenarios;
@@ -27,7 +27,6 @@ public static class RunEvidenceReader
 {
     private const int SchemaVersion = 1;
     private const int MaximumJsonDepth = 32;
-    private const int MaximumCapabilitySources = 16;
     private const int MaximumLifecycleFieldNames = 32;
     private static readonly byte[] Utf8Bom = [0xef, 0xbb, 0xbf];
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
@@ -35,26 +34,11 @@ public static class RunEvidenceReader
     private static readonly string[] ArtifactNames = ["statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
     private static readonly string[] KnownMissingLifecycleFields = ["source_event_timestamp", "correlation_id", "source_order"];
     private static readonly string[] IdentityFields = ["scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id"];
-    private static readonly string[] CapabilityRequirements =
-    [
-        "request_identity", "matched_response_error_throttle_attribution", "applicable_deadline_provenance",
-        "native_retransmission", "request_ordering", "request_lifecycle_completeness", "broker_instance_lifecycle_inventory"
-    ];
-    private static readonly ImmutableDictionary<string, string> ExpectedCapabilityStatuses = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["request_identity"] = "unsupported",
-        ["matched_response_error_throttle_attribution"] = "unsupported",
-        ["applicable_deadline_provenance"] = "unproven",
-        ["native_retransmission"] = "unsupported",
-        ["request_ordering"] = "unproven",
-        ["request_lifecycle_completeness"] = "unsupported",
-        ["broker_instance_lifecycle_inventory"] = "unproven"
-    }.ToImmutableDictionary(StringComparer.Ordinal);
-
     /// <summary>Reads and validates all three artifacts without parsing the native raw JSON string.</summary>
     public static async Task<RunEvidenceReadResult> ReadAsync(
         string directoryPath,
         RunIdentity expectedIdentity,
+        RunEvidenceExpectations expectations,
         long maximumFileBytes,
         int maximumRowBytes,
         int maximumDiagnostics,
@@ -62,6 +46,7 @@ public static class RunEvidenceReader
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
         ArgumentNullException.ThrowIfNull(expectedIdentity);
+        ArgumentNullException.ThrowIfNull(expectations);
         expectedIdentity.Validate();
         if (maximumFileBytes <= 0 || maximumFileBytes > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(maximumFileBytes), "Evidence file limit must fit in a positive Int32-sized buffer.");
@@ -85,7 +70,7 @@ public static class RunEvidenceReader
         using JsonDocument capabilities = ParseDocument(capabilityBytes);
         JsonElement rootElement = capabilities.RootElement;
         RejectDuplicatePropertiesRecursively(rootElement);
-        ValidateCapabilityReport(rootElement, expectedIdentity, statisticsCount, maximumRows, maximumDiagnostics,
+        ValidateCapabilityReport(rootElement, expectedIdentity, expectations, statisticsCount, maximumRows, maximumDiagnostics,
             statisticsAttribution.PositiveGuardPairs, statisticsAttribution.ObservedBrokerNames,
             lifecycleAttribution.HasErrorCallback,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
@@ -319,7 +304,8 @@ public static class RunEvidenceReader
         throw Invalid("lifecycle_event_type_unknown");
     }
 
-    private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected, int statisticsRecordCount,
+    private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected,
+        RunEvidenceExpectations expectations, int statisticsRecordCount,
         int maximumRows, int maximumDiagnostics, HashSet<(string Broker, string Counter)> positiveGuardPairs,
         HashSet<string> statisticsBrokerNames, bool hasErrorCallback,
         out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
@@ -336,35 +322,23 @@ public static class RunEvidenceReader
 
         JsonElement resolved = Get(root, "resolved_configuration");
         if (resolved.ValueKind == JsonValueKind.Null) throw Invalid("resolved_configuration_required");
-        ValidateResolvedConfiguration(resolved, expected, maximumRows);
+        ValidateResolvedConfiguration(resolved, expected, expectations, maximumRows);
 
         JsonElement requirements = Get(root, "request_lifecycle_requirements");
         RequireArray(requirements, "request_lifecycle_requirements", maximumRows);
-        if (requirements.GetArrayLength() != CapabilityRequirements.Length) throw Invalid("capability_requirement_count_mismatch");
+        if (requirements.GetArrayLength() != RequestCapabilityCatalogue.Claims.Length)
+            throw Invalid("capability_requirement_count_mismatch");
         var statusBuilder = ImmutableArray.CreateBuilder<string>(requirements.GetArrayLength());
         var requirementNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement requirement in requirements.EnumerateArray())
         {
             RequireObject(requirement, "requirement", "status", "pinned_version", "source_urls", "source_facts", "inference", "local_test_evidence");
             string name = RequireNonemptyString(Get(requirement, "requirement"), "capability.requirement");
-            if (!CapabilityRequirements.Contains(name, StringComparer.Ordinal) || !requirementNames.Add(name))
+            if (!RequestCapabilityCatalogue.TryGet(name, out RequestCapabilityClaim? claim) || !requirementNames.Add(name))
                 throw Invalid("capability_requirement_unknown_or_duplicate");
-            string status = RequireString(Get(requirement, "status"), "capability.status");
-            if (status is not ("supported" or "unsupported" or "unproven")) throw Invalid("capability_status_invalid");
-            if (!StringComparer.Ordinal.Equals(status, ExpectedCapabilityStatuses[name]))
-                throw Invalid("capability_status_mismatch");
-            statusBuilder.Add(status);
-            if (!StringComparer.Ordinal.Equals(RequireString(Get(requirement, "pinned_version"), "capability.pinned_version"), "2.16.0"))
-                throw Invalid("capability_pinned_version_mismatch");
-            ImmutableArray<string> urls = RequireStringArray(Get(requirement, "source_urls"), "capability.source_urls", MaximumCapabilitySources, allowEmpty: false);
-            foreach (string urlText in urls)
-            {
-                if (!Uri.TryCreate(urlText, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps || !urlText.Contains("v2.16.0", StringComparison.Ordinal))
-                    throw Invalid("capability_source_url_not_pinned_https");
-            }
-            RequireNonemptyString(Get(requirement, "source_facts"), "capability.source_facts");
-            RequireNonemptyString(Get(requirement, "inference"), "capability.inference");
-            RequireNonemptyString(Get(requirement, "local_test_evidence"), "capability.local_test_evidence");
+            if (!RequestCapabilityCatalogue.Matches(requirement))
+                throw Invalid("capability_claim_catalogue_mismatch");
+            statusBuilder.Add(claim.Status);
         }
         statuses = statusBuilder.ToImmutable();
         requestCapabilitySupported = RequireBoolean(Get(root, "request_capability_supported"), "request_capability_supported");
@@ -396,6 +370,8 @@ public static class RunEvidenceReader
             if (statisticsComplete.Value && (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty))
                 throw Invalid("statistics_completion_contradicts_diagnostics_or_missing_brokers");
         }
+        if (expectations.RequireStatisticsEvidence && statisticsComplete != true)
+            throw Invalid("required_statistics_completion_missing_or_incomplete");
         diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
         isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (!isFaulted && !observedBrokerNameSet.SetEquals(statisticsBrokerNames))
@@ -421,44 +397,52 @@ public static class RunEvidenceReader
         }
     }
 
-    private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected, int maximumRows)
+    private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected,
+        RunEvidenceExpectations expectations, int maximumRows)
     {
         RequireObject(resolved, "role", "settings", "omissions");
-        RequireEnumNumber(Get(resolved, "role"), (int)KafkaClientRole.LoadGenProducer, "resolved_configuration.role");
+        ResolvedRoleConfiguration selected = expectations.ResolvedConfiguration;
+        RequireEnumNumber(Get(resolved, "role"), (int)selected.Role, "resolved_configuration.role");
         KafkaBaseline<ProducerConfig> expectedBaseline = CreateExpectedProducerBaseline(expected.ClientId);
         JsonElement settings = Get(resolved, "settings");
         RequireKind(settings, JsonValueKind.Object, "resolved_configuration.settings");
         if (settings.EnumerateObject().Count() > maximumRows) throw Invalid("resolved_settings_limit_exceeded");
-        var expectedSettings = expectedBaseline.Settings.ToDictionary(metadata => metadata.Key, StringComparer.Ordinal);
+        var baselineSettings = expectedBaseline.Settings.ToDictionary(metadata => metadata.Key, StringComparer.Ordinal);
         var seenSettings = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonProperty setting in settings.EnumerateObject())
         {
             if (string.IsNullOrWhiteSpace(setting.Name) || !seenSettings.Add(setting.Name))
                 throw Invalid("resolved_setting_name_empty_or_duplicate");
-            if (!expectedSettings.TryGetValue(setting.Name, out KafkaSettingMetadata? metadata))
+            if (!baselineSettings.TryGetValue(setting.Name, out KafkaSettingMetadata? metadata) ||
+                !selected.Settings.TryGetValue(setting.Name, out ResolvedSetting? selectedSetting))
                 throw Invalid("resolved_setting_unknown");
-            ValidateResolvedSetting(setting.Value, setting.Name, expected, metadata);
+            ValidateResolvedSetting(setting.Value, setting.Name, expected, metadata, selectedSetting);
         }
-        if (!seenSettings.SetEquals(expectedSettings.Keys))
+        if (!seenSettings.SetEquals(baselineSettings.Keys) || !seenSettings.SetEquals(selected.Settings.Keys))
             throw Invalid("resolved_setting_catalogue_coverage_mismatch");
         JsonElement omissions = Get(resolved, "omissions");
         RequireArray(omissions, "resolved_configuration.omissions", maximumRows);
-        var expectedOmissions = expectedBaseline.Omissions.ToDictionary(metadata => metadata.Key, StringComparer.Ordinal);
+        var baselineOmissions = expectedBaseline.Omissions.ToDictionary(metadata => metadata.Key, StringComparer.Ordinal);
+        var selectedOmissions = selected.Omissions.ToDictionary(metadata => metadata.Key, StringComparer.Ordinal);
         var seenOmissions = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement omission in omissions.EnumerateArray())
         {
             RequireKind(omission, JsonValueKind.Object, "resolved_configuration.omissions");
             string key = RequireNonemptyString(Get(omission, "key"), "setting_metadata.key");
-            if (!seenOmissions.Add(key) || !expectedOmissions.TryGetValue(key, out KafkaSettingMetadata? metadata))
+            if (!seenOmissions.Add(key) || !baselineOmissions.TryGetValue(key, out KafkaSettingMetadata? metadata) ||
+                !selectedOmissions.TryGetValue(key, out KafkaSettingMetadata? selectedMetadata))
                 throw Invalid("resolved_omission_unknown_or_duplicate");
             ValidateSettingMetadata(omission, metadata, expected.ClientId);
+            if (!MetadataMatchesSelectedSetting(metadata, selectedMetadata))
+                throw Invalid("resolved_omission_selected_context_mismatch");
+            ValidatePersistedMetadataValue(omission, selectedMetadata);
         }
-        if (!seenOmissions.SetEquals(expectedOmissions.Keys))
+        if (!seenOmissions.SetEquals(baselineOmissions.Keys) || !seenOmissions.SetEquals(selectedOmissions.Keys))
             throw Invalid("resolved_omission_catalogue_coverage_mismatch");
     }
 
     private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey, RunIdentity expected,
-        KafkaSettingMetadata expectedMetadata)
+        KafkaSettingMetadata expectedMetadata, ResolvedSetting selectedSetting)
     {
         RequireObject(setting, "value", "baseline", "override");
         RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
@@ -466,19 +450,69 @@ public static class RunEvidenceReader
         ValidateSettingMetadata(baseline, expectedMetadata, expected.ClientId);
         if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(baseline, "key"), "baseline.key"), dictionaryKey))
             throw Invalid("resolved_setting_key_mismatch");
+        if (!MetadataMatchesSelectedSetting(expectedMetadata, selectedSetting.Baseline))
+            throw Invalid("resolved_setting_selected_baseline_mismatch");
+        ValidatePersistedMetadataValue(baseline, selectedSetting.Baseline);
+        string effectiveValue = RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
+        if (!StringComparer.Ordinal.Equals(effectiveValue, selectedSetting.Value))
+            throw Invalid("resolved_setting_selected_value_mismatch");
         JsonElement origin = Get(setting, "override");
-        if (origin.ValueKind != JsonValueKind.Null)
+        if (selectedSetting.Override is null)
         {
+            if (origin.ValueKind != JsonValueKind.Null)
+                throw Invalid("resolved_setting_unselected_override");
+        }
+        else
+        {
+            if (origin.ValueKind == JsonValueKind.Null)
+                throw Invalid("resolved_setting_selected_override_missing");
             RequireObject(origin, "scenario_id", "configuration_id", "location");
+            RequireEqualString(origin, "scenario_id", selectedSetting.Override.ScenarioId);
+            RequireEqualString(origin, "configuration_id", selectedSetting.Override.ConfigurationId);
+            ValidateSourceLocationMatches(Get(origin, "location"), selectedSetting.Override.Location);
             RequireEqualString(origin, "scenario_id", expected.ScenarioId);
             RequireEqualString(origin, "configuration_id", expected.ConfigurationId);
-            ValidateSourceLocation(Get(origin, "location"));
         }
-        else if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(setting, "value"), "resolved_setting.value"),
-                     RequireNonemptyString(Get(baseline, "value"), "baseline.value")))
+        if (selectedSetting.Override is null && !StringComparer.Ordinal.Equals(effectiveValue,
+                RequireNonemptyString(Get(baseline, "value"), "baseline.value")))
         {
             throw Invalid("resolved_setting_value_differs_from_unoverridden_baseline");
         }
+    }
+
+    private static bool MetadataMatchesSelectedSetting(KafkaSettingMetadata expected, KafkaSettingMetadata actual) =>
+        StringComparer.Ordinal.Equals(expected.Key, actual.Key) &&
+        (StringComparer.Ordinal.Equals(expected.Key, "bootstrap.servers") ||
+            StringComparer.Ordinal.Equals(expected.Value, actual.Value)) &&
+        expected.Role == actual.Role && expected.Disposition == actual.Disposition &&
+        expected.InventoryIds.SequenceEqual(actual.InventoryIds, StringComparer.Ordinal) &&
+        expected.Sources.Length == actual.Sources.Length && expected.Sources.Zip(actual.Sources)
+            .All(pair => StringComparer.Ordinal.Equals(pair.First.Url.AbsoluteUri, pair.Second.Url.AbsoluteUri) &&
+                StringComparer.Ordinal.Equals(pair.First.VersionOrDate, pair.Second.VersionOrDate)) &&
+        StringComparer.Ordinal.Equals(expected.SelectionReason, actual.SelectionReason);
+
+    private static void ValidatePersistedMetadataValue(JsonElement metadata, KafkaSettingMetadata selected)
+    {
+        JsonElement value = Get(metadata, "value");
+        string? actual = value.ValueKind == JsonValueKind.Null ? null : RequireString(value, "setting_metadata.value");
+        if (!StringComparer.Ordinal.Equals(actual, selected.Value))
+            throw Invalid("setting_metadata_selected_value_mismatch");
+    }
+
+    private static void ValidateSourceLocationMatches(JsonElement location, SourceLocation expected)
+    {
+        ValidateSourceLocation(location);
+        if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(location, "path"), "source_location.path"), expected.Path) ||
+            !EqualsNullablePositiveInt32(Get(location, "line"), expected.Line, "source_location.line") ||
+            !EqualsNullablePositiveInt32(Get(location, "column"), expected.Column, "source_location.column"))
+            throw Invalid("resolved_setting_source_location_mismatch");
+    }
+
+    private static bool EqualsNullablePositiveInt32(JsonElement element, int? expected, string field)
+    {
+        RequireNullablePositiveInt32(element, field);
+        int? actual = element.ValueKind == JsonValueKind.Null ? null : element.GetInt32();
+        return actual == expected;
     }
 
     private static void ValidateSettingMetadata(JsonElement metadata, KafkaSettingMetadata expected,

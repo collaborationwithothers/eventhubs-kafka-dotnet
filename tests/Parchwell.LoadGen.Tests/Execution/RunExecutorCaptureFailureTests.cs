@@ -5,6 +5,7 @@ using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Tests.Evidence;
 using Parchwell.Scenarios;
 using Xunit;
 
@@ -21,8 +22,10 @@ public sealed class RunExecutorCaptureFailureTests
         try
         {
             var identity = new RunIdentity("A01", "C0", "capture-run", "pod-1", "pod-1", "pod-1");
+            RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(identity);
             await using var evidence = new RunEvidenceSession(identity,
-                new RunEvidenceOptions(directory, 8, 4096, 128 * 1024, 16, TimeSpan.FromSeconds(2)), TimeProvider.System);
+                new RunEvidenceOptions(directory, 8, 4096, 128 * 1024, 16, TimeSpan.FromSeconds(2)), TimeProvider.System,
+                expectations);
             await using var ledger = new LocalLedgerStore(new LedgerStoreOptions(
                 Path.Combine(directory, "ledger.jsonl"), Path.Combine(directory, "manifest.json"),
                 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
