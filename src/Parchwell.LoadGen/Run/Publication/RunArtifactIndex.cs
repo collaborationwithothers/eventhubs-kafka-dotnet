@@ -89,15 +89,17 @@ public static class RunArtifactIndexReader
             publicationComplete, artifacts.ToImmutable()) { IndexLength = bytes.LongLength };
     }
 
-    /// <summary>Requires the exact observed prefix listing, bounded payload hashes, and valid ledger, manifest, and evidence content.</summary>
-    /// <remarks>The caller must enumerate every member beneath the run prefix before calling. Partial listings are not accepted.</remarks>
-    public static async Task ValidateArtifactSetAsync(RunArtifactIndex index, IReadOnlyCollection<string> observedPrefixMemberNames,
+    /// <summary>Requires a successful observed runner exit, exact prefix listing, bounded payload hashes, and valid ledger, manifest, and evidence content.</summary>
+    /// <remarks>The caller must supply the runner's observed exit code and enumerate every member beneath the run prefix before calling. Partial listings are not accepted.</remarks>
+    public static async Task ValidateArtifactSetAsync(RunArtifactIndex index, int? observedWorkerExitCode,
+        IReadOnlyCollection<string> observedPrefixMemberNames,
         Func<string, CancellationToken, ValueTask<Stream>> openArtifact, long maximumArtifactBytes,
         long maximumAggregateArtifactBytes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(index);
         ArgumentNullException.ThrowIfNull(observedPrefixMemberNames);
         ArgumentNullException.ThrowIfNull(openArtifact);
+        if (observedWorkerExitCode != 0) throw Invalid("publication_worker_exit_code_invalid");
         index.Identity.Validate();
         ValidateBudgets(index.IndexLength, maximumArtifactBytes, maximumAggregateArtifactBytes);
         if (index.IndexLength > maximumArtifactBytes) throw Invalid("publication_index_exceeds_artifact_byte_limit");

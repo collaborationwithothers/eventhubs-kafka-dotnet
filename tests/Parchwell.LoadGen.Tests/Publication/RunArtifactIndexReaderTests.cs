@@ -37,6 +37,7 @@ public sealed class RunArtifactIndexReaderTests
         Assert.Equal(bytes.Length, index.IndexLength);
         Assert.Equal(ArtifactNames, index.Artifacts.Select(item => item.Name));
         await RunArtifactIndexReader.ValidateArtifactSetAsync(index,
+            0,
             ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken);
@@ -100,6 +101,7 @@ public sealed class RunArtifactIndexReaderTests
         payloads["ledger.jsonl"] = Encoding.UTF8.GetBytes("different-ledger");
 
         await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
+            0,
             ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken));
@@ -128,12 +130,32 @@ public sealed class RunArtifactIndexReaderTests
         {
             int opened = 0;
             await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
+                0,
                 listing,
                 (name, _) =>
                 {
                     Interlocked.Increment(ref opened);
                     return ValueTask.FromResult<Stream>(new MemoryStream());
                 }, MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken));
+            Assert.Equal(0, opened);
+        }
+    }
+
+    [Fact]
+    public async Task Given_MissingOrNonzeroObservedWorkerExitCode_When_Validating_Then_RejectsBeforeOpeningPayloads()
+    {
+        var index = new RunArtifactIndex(1, Identity(), "complete", true, true, true,
+            ImmutableArray<RunArtifactDescriptor>.Empty) { IndexLength = 1 };
+        foreach (int? exitCode in new int?[] { null, 1, -1 })
+        {
+            int opened = 0;
+            InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                RunArtifactIndexReader.ValidateArtifactSetAsync(index, exitCode, ObservedNames(), (name, _) =>
+                {
+                    Interlocked.Increment(ref opened);
+                    return ValueTask.FromResult<Stream>(new MemoryStream());
+                }, MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken));
+            Assert.Equal("publication_worker_exit_code_invalid", failure.Message);
             Assert.Equal(0, opened);
         }
     }
@@ -156,6 +178,7 @@ public sealed class RunArtifactIndexReaderTests
             ImmutableArray<RunArtifactDescriptor>.Empty) { IndexLength = 1 };
         int opened = 0;
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
+            0,
             ObservedNames(), (name, _) =>
             {
                 Interlocked.Increment(ref opened);
@@ -238,7 +261,7 @@ public sealed class RunArtifactIndexReaderTests
     }
 
     private static Task ValidateAsync(RunArtifactIndex index, Dictionary<string, byte[]> payloads) =>
-        RunArtifactIndexReader.ValidateArtifactSetAsync(index, ObservedNames(),
+        RunArtifactIndexReader.ValidateArtifactSetAsync(index, 0, ObservedNames(),
             (name, _) => ValueTask.FromResult<Stream>(new MemoryStream(payloads[name], writable: false)),
             MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken);
 
