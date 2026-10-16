@@ -9,6 +9,9 @@ public sealed record RunEvidenceOptions(
     int MaximumDiagnostics,
     TimeSpan CompletionTimeout)
 {
+    /// <summary>Maximum serialized statistics row size, bounded by the evidence file's total byte budget.</summary>
+    public int MaximumStatisticsRecordBytes => checked((int)MaximumFileBytes);
+
     /// <summary>Validates limits before the evidence directory is opened.</summary>
     public void Validate()
     {

@@ -57,6 +57,7 @@ public sealed class RunExecutor
         var guardFlags = 0;
         var admissionStopped = false;
         var workerFailed = false;
+        long admittedAttemptCount = 0;
         string[] expectedBrokerNames = [];
 
         void AddDiagnostic(string diagnostic)
@@ -150,6 +151,7 @@ public sealed class RunExecutor
                     cancellationToken.ThrowIfCancellationRequested();
                     attempt = inventory.CommitReservation(ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
                     invocationCommitted = true;
+                    admittedAttemptCount = checked(admittedAttemptCount + 1);
                     try
                     {
                         producer.Produce(options.Topic, message, deliveryHandler);
@@ -198,6 +200,11 @@ public sealed class RunExecutor
         }
 
         var entries = inventory.Seal();
+        if (admittedAttemptCount != entries.Length)
+        {
+            workerFailed = true;
+            AddDiagnostic("admission_inventory_count_mismatch");
+        }
         using var cleanupDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
         try
         {
@@ -323,7 +330,7 @@ public sealed class RunExecutor
         artifactPaths = artifactPaths.SetItem("manifest", manifestPath);
 
         var readbackComplete = false;
-        var candidate = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+        var candidate = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
             evidenceFiles, guardObservations, workerFailed, readbackComplete, clock.TimestampFrequency);
         try
         {
@@ -343,11 +350,11 @@ public sealed class RunExecutor
             workerFailed = true;
             AddDiagnostic("execution_cancelled");
         }
-        var bookkeepingComplete = readbackComplete && !workerFailed && entries.Length == plannedCount &&
+        var bookkeepingComplete = readbackComplete && !workerFailed && admittedAttemptCount == plannedCount &&
             (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
             (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
             evidence is not { IsFaulted: true };
-        var manifest = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+        var manifest = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
             evidenceFiles, guardObservations, workerFailed, bookkeepingComplete, clock.TimestampFrequency);
         try
         {
@@ -358,7 +365,7 @@ public sealed class RunExecutor
         {
             workerFailed = true;
             AddDiagnostic("manifest_save_failed:" + exception.GetType().Name);
-            manifest = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+            manifest = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
                 evidenceFiles, guardObservations, workerFailed, false, clock.TimestampFrequency);
         }
 
@@ -461,11 +468,11 @@ public sealed class RunExecutor
 
     private static long DurationMicroseconds(TimeSpan duration) => duration.Ticks / 10;
 
-    private static RunManifest CreateManifest(RunIdentity identity, ImmutableArray<AttemptEntry> entries,
-        long plannedCount, long startTimestamp, List<string> diagnostics, ImmutableDictionary<string, string> evidenceFiles,
+    internal static RunManifest CreateManifest(RunIdentity identity, ImmutableArray<AttemptEntry> entries,
+        long admittedAttemptCount, long plannedCount, long startTimestamp, List<string> diagnostics, ImmutableDictionary<string, string> evidenceFiles,
         ImmutableArray<string> guardObservations, bool failed, bool bookkeepingComplete, long frequency)
     {
-        string status = !failed && bookkeepingComplete && entries.Length == plannedCount ? "complete"
+        string status = !failed && bookkeepingComplete && admittedAttemptCount == plannedCount ? "complete"
             : failed ? "failed" : "incomplete";
         ImmutableArray<string> diagnosticSnapshot;
         lock (diagnostics) diagnosticSnapshot = diagnostics.ToImmutableArray();
@@ -475,7 +482,7 @@ public sealed class RunExecutor
             .Add("librdkafka", Library.VersionString)
             .Add("workload_generator", WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture));
         return new RunManifest(1, identity, WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture),
-            plannedCount, entries.Length, entries, frequency, startTimestamp, status, bookkeepingComplete,
+            plannedCount, admittedAttemptCount, entries, frequency, startTimestamp, status, bookkeepingComplete,
             entries.Length < plannedCount ? entries.Length : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
     }
 

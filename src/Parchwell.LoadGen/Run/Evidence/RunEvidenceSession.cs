@@ -149,6 +149,21 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             Latch("statistics_report_exceeds_byte_limit");
             throw new InvalidOperationException("Statistics report exceeds its configured byte limit.");
         }
+        byte[] bytes;
+        try
+        {
+            bytes = SerializeStatistics(report);
+        }
+        catch
+        {
+            Latch("statistics_report_serialization_failed");
+            throw;
+        }
+        if (bytes.Length > _options.MaximumStatisticsRecordBytes)
+        {
+            Latch("statistics_report_envelope_exceeds_byte_limit");
+            throw new InvalidOperationException("Statistics report envelope exceeds its configured byte limit.");
+        }
         if (report.Snapshot is not null)
         {
             ImmutableArray<string> names = report.Snapshot.Brokers.Select(broker => broker.Name)
@@ -168,7 +183,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
         try
         {
-            await _queue.Writer.WriteAsync(new StatisticsItem(report), cancellationToken).ConfigureAwait(false);
+            await _queue.Writer.WriteAsync(new StatisticsItem(bytes), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is ChannelClosedException or OperationCanceledException)
         {
@@ -351,7 +366,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             if (Volatile.Read(ref _completed) == 0 || !_writerTask.IsCompletedSuccessfully)
                 throw new InvalidDataException("evidence_writer_not_successfully_closed");
             _ = await RunEvidenceReader.ReadAsync(_directory, _identity, _options.MaximumFileBytes,
-                (int)Math.Min(_options.MaximumFileBytes, Math.Min(int.MaxValue, (long)_options.MaximumReportBytes + 4096)),
+                (int)Math.Min(_options.MaximumFileBytes, _options.MaximumStatisticsRecordBytes),
                 _options.MaximumDiagnostics, cancellationToken).ConfigureAwait(false);
         }
         catch
@@ -377,7 +392,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
                 FileStream target;
                 if (item is StatisticsItem statisticsItem)
                 {
-                    bytes = SerializeStatistics(statisticsItem.Report);
+                    bytes = statisticsItem.Bytes;
                     target = statistics;
                     statisticsBytes = checked(statisticsBytes + bytes.Length);
                     if (statisticsBytes > _options.MaximumFileBytes) throw new IOException("statistics_file_byte_limit_exceeded");
@@ -428,12 +443,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             typed_snapshot = report.Snapshot,
             diagnostics = report.Diagnostics
         }, JsonOptions);
-        byte[] bytes = Encoding.UTF8.GetBytes(line + "\n");
-        if (bytes.Length > _options.MaximumReportBytes + 4096)
-        {
-            throw new IOException("statistics_envelope_byte_limit_exceeded");
-        }
-        return bytes;
+        return Encoding.UTF8.GetBytes(line + "\n");
     }
 
     private static byte[] SerializeLog(LogCapture capture)
@@ -591,7 +601,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     }
 
     private abstract record EvidenceItem;
-    private sealed record StatisticsItem(KafkaStatisticsReport Report) : EvidenceItem;
+    private sealed record StatisticsItem(byte[] Bytes) : EvidenceItem;
     private sealed record LogItem(LogCapture Capture) : EvidenceItem;
     private sealed record ErrorItem(ErrorCapture Capture) : EvidenceItem;
     private sealed record LogCapture(long ReceiptSequence, DateTimeOffset ReceivedAt, RunIdentity Identity,

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
@@ -63,6 +64,43 @@ public sealed class RunEvidenceSessionTests
             await session.WriteAsync(Report(new string('x', 33), Snapshot(0, 0)), TestContext.Current.CancellationToken));
         Assert.True(session.IsFaulted);
         Assert.Contains("statistics_report_exceeds_byte_limit", session.Diagnostics);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        Assert.Equal(string.Empty, await File.ReadAllTextAsync(Path.Combine(path, "statistics.jsonl"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_AtLimitQuoteHeavyRawReport_When_Writing_Then_PersistsWithinExplicitEnvelopeBudget()
+    {
+        string path = NewDirectory();
+        string escapedQuotes = string.Concat(Enumerable.Repeat("\\\"", 2048));
+        string raw = "{\"name\":\"producer-1\",\"payload\":\"" + escapedQuotes + "\"}";
+        RunEvidenceOptions options = Options(path, maximumReportBytes: Encoding.UTF8.GetByteCount(raw), maximumFileBytes: 32 * 1024);
+        await using var session = new RunEvidenceSession(Identity(), options, TimeProvider.System);
+
+        await session.WriteAsync(Report(raw, Snapshot(0, 0)), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.False(session.IsFaulted);
+        byte[] row = await File.ReadAllBytesAsync(Path.Combine(path, "statistics.jsonl"), TestContext.Current.CancellationToken);
+        Assert.True(row.Length > options.MaximumReportBytes + 4096);
+        Assert.True(row.Length <= options.MaximumStatisticsRecordBytes);
+        using JsonDocument document = JsonDocument.Parse(row);
+        Assert.Equal(raw, document.RootElement.GetProperty("raw_json").GetString());
+    }
+
+    [Fact]
+    public async Task Given_EnvelopeExceedsIndependentRecordBudget_When_Writing_Then_RejectsBeforeQueueing()
+    {
+        string path = NewDirectory();
+        RunEvidenceOptions options = Options(path, maximumReportBytes: 64, maximumFileBytes: 16 * 1024);
+        await using var session = new RunEvidenceSession(Identity(), options, TimeProvider.System);
+        KafkaStatisticsSnapshot oversizedSnapshot = Snapshot(0, 0) with { Name = new string('x', 20_000) };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await session.WriteAsync(Report("{}", oversizedSnapshot), TestContext.Current.CancellationToken));
+
+        Assert.True(session.IsFaulted);
+        Assert.Contains("statistics_report_envelope_exceeds_byte_limit", session.Diagnostics);
         await session.CompleteAsync(null, TestContext.Current.CancellationToken);
         Assert.Equal(string.Empty, await File.ReadAllTextAsync(Path.Combine(path, "statistics.jsonl"), TestContext.Current.CancellationToken));
     }

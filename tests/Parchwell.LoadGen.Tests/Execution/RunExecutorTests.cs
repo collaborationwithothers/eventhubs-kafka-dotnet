@@ -34,6 +34,7 @@ public sealed class RunExecutorTests
             Assert.Equal("complete", result.Manifest.WorkerStatus);
             Assert.True(result.Manifest.BookkeepingComplete);
             Assert.Equal(1, result.Manifest.AttemptCount);
+            Assert.Equal(((SuccessfulProducer)(object)native).ProduceCount, result.Manifest.AttemptCount);
             Assert.Null(result.Manifest.FirstUnexecutedOrdinal);
             Assembly kafkaAssembly = typeof(IProducer<byte[], byte[]>).Assembly;
             string expectedKafkaVersion = kafkaAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -61,6 +62,22 @@ public sealed class RunExecutorTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public void Given_AdmissionCounterDiffersFromInventory_When_CreatingManifest_Then_PreservesIndependentCountForValidation()
+    {
+        RunIdentity identity = Identity();
+        ImmutableArray<AttemptEntry> inventory =
+        [new AttemptEntry("instance-1", "instance-1-0", 0, "tenant", "d0", "tenant-d0", 1, "create", 0, 0)];
+
+        RunManifest manifest = RunExecutor.CreateManifest(identity, inventory, admittedAttemptCount: 2,
+            plannedCount: 2, startTimestamp: 0, diagnostics: [], evidenceFiles: ImmutableDictionary<string, string>.Empty,
+            guardObservations: [], failed: false, bookkeepingComplete: false, frequency: 1);
+
+        Assert.Equal(2, manifest.AttemptCount);
+        Assert.Single(manifest.Inventory);
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest));
     }
 
     [Fact]

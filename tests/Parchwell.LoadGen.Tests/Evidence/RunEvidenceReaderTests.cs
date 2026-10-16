@@ -2,10 +2,12 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
+using Parchwell.Scenarios;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.Evidence;
@@ -14,6 +16,11 @@ namespace Parchwell.LoadGen.Tests.Evidence;
 
 public sealed class RunEvidenceReaderTests
 {
+    private static readonly JsonSerializerOptions ResolvedConfigurationJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
+
     [Fact]
     public async Task Given_ValidNegativeCapabilityArtifactsAndNativeExtraFields_When_Read_Then_ReturnsArtifactCountsWithoutPromotingCapability()
     {
@@ -114,6 +121,31 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
+    public async Task Given_ObservedBrokerNamesDisagreeWithStatisticsRows_When_Read_Then_RequiresConsistentSuccessfulCapture()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        JsonNode missing = JsonNode.Parse(original)!;
+        missing["observed_broker_names"] = new JsonArray();
+        await File.WriteAllTextAsync(file, missing.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        JsonNode extra = JsonNode.Parse(original)!;
+        extra["observed_broker_names"] = new JsonArray("broker-2");
+        await File.WriteAllTextAsync(file, extra.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        // The writer records names before enqueueing the report, so a faulted capture may retain
+        // a name for a report that never reached statistics.jsonl.
+        JsonNode faultedExtra = JsonNode.Parse(original)!;
+        faultedExtra["observed_broker_names"] = new JsonArray("broker-1", "broker-2");
+        faultedExtra["is_faulted"] = true;
+        await File.WriteAllTextAsync(file, faultedExtra.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task Given_ErrorLifecycleGuardIsErased_When_Read_Then_RejectsOnlyCompleteErrorObservationLoss()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
@@ -124,6 +156,8 @@ public sealed class RunEvidenceReaderTests
         Assert.True(errorIndex >= 0);
         JsonNode errorRow = JsonNode.Parse(lifecycleLines[errorIndex])!;
         Assert.True(errorRow["is_error"]!.GetValue<bool>());
+        int originalErrorCode = errorRow["error_code"]!.GetValue<int>();
+        string originalErrorName = errorRow["error_name"]!.GetValue<string>();
 
         string capabilitiesFile = Path.Combine(path, "capabilities.json");
         JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
@@ -132,17 +166,56 @@ public sealed class RunEvidenceReaderTests
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
 
         errorRow["is_error"] = false;
+        errorRow["error_code"] = (int)ErrorCode.NoError;
+        errorRow["error_name"] = ErrorCode.NoError.ToString();
         lifecycleLines[errorIndex] = errorRow.ToJsonString();
         await File.WriteAllTextAsync(lifecycleFile, string.Join("\n", lifecycleLines) + "\n", TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
         errorRow["is_error"] = true;
+        errorRow["error_code"] = originalErrorCode;
+        errorRow["error_name"] = originalErrorName;
         lifecycleLines[errorIndex] = errorRow.ToJsonString();
         await File.WriteAllTextAsync(lifecycleFile, string.Join("\n", lifecycleLines) + "\n", TestContext.Current.CancellationToken);
         capabilities["guard_observations_complete"] = false;
         capabilities["is_faulted"] = true;
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(false, (int)ErrorCode.Local_TimedOut)]
+    [InlineData(true, (int)ErrorCode.NoError)]
+    public async Task Given_NativeErrorFlagContradictsCode_When_Read_Then_RejectsIt(bool isError, int errorCode)
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lines = await File.ReadAllLinesAsync(file, TestContext.Current.CancellationToken);
+        int index = Array.FindIndex(lines, line => line.Contains("\"event_type\":\"native_error\"", StringComparison.Ordinal));
+        Assert.True(index >= 0);
+        JsonNode row = JsonNode.Parse(lines[index])!;
+        row["is_error"] = isError;
+        row["error_code"] = errorCode;
+        row["error_name"] = ((ErrorCode)errorCode).ToString();
+        lines[index] = row.ToJsonString();
+        await File.WriteAllTextAsync(file, string.Join("\n", lines) + "\n", TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_ErrorCodeAndNameContradict_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lines = await File.ReadAllLinesAsync(file, TestContext.Current.CancellationToken);
+        int index = Array.FindIndex(lines, line => line.Contains("\"event_type\":\"native_error\"", StringComparison.Ordinal));
+        JsonNode row = JsonNode.Parse(lines[index])!;
+        row["error_name"] = ErrorCode.NoError.ToString();
+        lines[index] = row.ToJsonString();
+        await File.WriteAllTextAsync(file, string.Join("\n", lines) + "\n", TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -301,22 +374,23 @@ public sealed class RunEvidenceReaderTests
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string file = Path.Combine(path, "capabilities.json");
         string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        const string resolved = "\"resolved_configuration\":{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenario.json\",\"line\":1,\"column\":1}}}},\"omissions\":[]}";
         JsonNode validNode = JsonNode.Parse(original)!;
-        validNode["resolved_configuration"] = JsonNode.Parse("{" + resolved + "}")!["resolved_configuration"]!.DeepClone();
+        JsonNode resolved = SyntheticResolvedConfiguration();
+        JsonNode bootstrap = resolved["settings"]!["bootstrap.servers"]!;
+        bootstrap["value"] = "reader-override.servicebus.windows.net:9093";
+        bootstrap["override"] = JsonNode.Parse("{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenario.json\",\"line\":1,\"column\":1}}");
+        validNode["resolved_configuration"] = resolved;
         string valid = validNode.ToJsonString();
         await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
-        foreach ((string expected, string actual) in new[]
+        foreach ((string field, string value) in new[] { ("scenario_id", "A02"), ("configuration_id", "C2") })
         {
-            ("\"override\":{\"scenario_id\":\"A01\"", "\"override\":{\"scenario_id\":\"A02\""),
-            ("\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\"", "\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C2\"")
-        })
-        {
-            string malformed = valid.Replace(expected, actual, StringComparison.Ordinal);
-            Assert.NotEqual(valid, malformed);
-            await File.WriteAllTextAsync(file, malformed, TestContext.Current.CancellationToken);
+            JsonNode malformed = JsonNode.Parse(valid)!;
+            malformed["resolved_configuration"]!["settings"]!["bootstrap.servers"]!["override"]![field] = value;
+            string malformedJson = malformed.ToJsonString();
+            Assert.NotEqual(valid, malformedJson);
+            await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
             await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
         }
     }
@@ -330,15 +404,16 @@ public sealed class RunEvidenceReaderTests
         await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
-        string[] malformed =
-        [
-            valid.Replace("\"value\":\"broker\",\"baseline\"", "\"value\":\"another-broker\",\"baseline\"", StringComparison.Ordinal),
-            valid.Replace("\"value\":\"broker\",\"role\":0", "\"value\":\"broker\",\"role\":1", StringComparison.Ordinal)
-        ];
-        foreach (string json in malformed)
+        foreach ((string field, string value) in new[] { ("value", "another-broker"), ("role", "1") })
         {
-            Assert.NotEqual(valid, json);
-            await File.WriteAllTextAsync(file, json, TestContext.Current.CancellationToken);
+            JsonNode malformed = JsonNode.Parse(valid)!;
+            if (field == "value")
+                malformed["resolved_configuration"]!["settings"]!["bootstrap.servers"]!["value"] = value;
+            else
+                malformed["resolved_configuration"]!["settings"]!["bootstrap.servers"]!["baseline"]!["role"] = 1;
+            string malformedJson = malformed.ToJsonString();
+            Assert.NotEqual(valid, malformedJson);
+            await File.WriteAllTextAsync(file, malformedJson, TestContext.Current.CancellationToken);
             await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
         }
     }
@@ -377,11 +452,36 @@ public sealed class RunEvidenceReaderTests
         JsonNode emptyConfiguration = JsonNode.Parse(json)!;
         emptyConfiguration["resolved_configuration"] = JsonNode.Parse("{\"role\":0,\"settings\":{},\"omissions\":[]}");
         await File.WriteAllTextAsync(file, emptyConfiguration.ToJsonString(), TestContext.Current.CancellationToken);
-        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
 
-        string withResolvedConfiguration = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(file, withResolvedConfiguration.Replace("\"settings\":{}", "\"settings\":{\"unknown\":{}}", StringComparison.Ordinal),
-            TestContext.Current.CancellationToken);
+        JsonNode incompleteConfiguration = JsonNode.Parse(json)!;
+        incompleteConfiguration["resolved_configuration"] = SyntheticResolvedConfiguration();
+        incompleteConfiguration["resolved_configuration"]!["settings"]!.AsObject().Remove("bootstrap.servers");
+        await File.WriteAllTextAsync(file, incompleteConfiguration.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        JsonNode missingOmissions = JsonNode.Parse(json)!;
+        missingOmissions["resolved_configuration"] = SyntheticResolvedConfiguration();
+        missingOmissions["resolved_configuration"]!["omissions"] = new JsonArray();
+        await File.WriteAllTextAsync(file, missingOmissions.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        foreach (JsonNode? malformedOmission in new JsonNode?[] { JsonValue.Create("bad-omission"), null })
+        {
+            JsonNode invalidOmission = JsonNode.Parse(json)!;
+            invalidOmission["resolved_configuration"]!["omissions"] = new JsonArray(malformedOmission?.DeepClone());
+            await File.WriteAllTextAsync(file, invalidOmission.ToJsonString(), TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+
+        JsonNode wrongRole = JsonNode.Parse(json)!;
+        wrongRole["resolved_configuration"]!["role"] = 1;
+        await File.WriteAllTextAsync(file, wrongRole.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        JsonNode unknownSetting = JsonNode.Parse(json)!;
+        unknownSetting["resolved_configuration"]!["settings"]!["unknown"] = JsonNode.Parse("{}");
+        await File.WriteAllTextAsync(file, unknownSetting.ToJsonString(), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
@@ -421,8 +521,21 @@ public sealed class RunEvidenceReaderTests
         return path;
     }
 
-    private static JsonNode SyntheticResolvedConfiguration() => JsonNode.Parse(
-        "{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":null}},\"omissions\":[]}")!;
+    private static JsonObject SyntheticResolvedConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
+        {
+            options.NamespaceName = "reader-validation";
+            options.ClientId = Identity().ClientId;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaBaseline<ProducerConfig> baseline = provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer();
+        var settings = baseline.Settings.ToImmutableDictionary(metadata => metadata.Key,
+            metadata => new ResolvedSetting(metadata.Value!, metadata, null), StringComparer.Ordinal);
+        var resolved = new ResolvedRoleConfiguration(KafkaClientRole.LoadGenProducer, settings, baseline.Omissions);
+        return JsonSerializer.SerializeToNode(resolved, ResolvedConfigurationJsonOptions)!.AsObject();
+    }
 
     private static Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity, CancellationToken cancellationToken) =>
         RunEvidenceReader.ReadAsync(path, identity, 256 * 1024, 64 * 1024, 16, cancellationToken);
