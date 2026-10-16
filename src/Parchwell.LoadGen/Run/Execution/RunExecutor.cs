@@ -128,6 +128,18 @@ public sealed class RunExecutor
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (evidence is { IsFaulted: true })
+                    {
+                        workerFailed = true;
+                        AddDiagnostic("evidence_capture_faulted");
+                        break;
+                    }
+                    if (ledger.IsFaulted || (Volatile.Read(ref guardFlags) & (CallbackFailure | LedgerFailure)) != 0)
+                    {
+                        workerFailed = true;
+                        AddDiagnostic("callback_or_ledger_capture_faulted");
+                        break;
+                    }
                     invokedTimestamp = clock.GetTimestamp();
                     var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - dueTimestamp), clock.TimestampFrequency);
                     if (lateness > DurationMicroseconds(options.MaxScheduleLateness))

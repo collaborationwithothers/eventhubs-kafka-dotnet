@@ -319,6 +319,39 @@ public sealed class RunExecutorTests
     }
 
     [Fact]
+    public async Task Given_LedgerCaptureFaultsDuringScheduledWait_When_Executing_Then_DiscardsReservationBeforeProduce()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-fault-during-wait-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var identity = Identity();
+            var ledger = new FaultingLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+                Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
+            await using (ledger)
+            {
+                var clock = new FaultingDuringWaitTimeProvider(TimeSpan.FromMilliseconds(500), ledger.MarkFaulted);
+                var native = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
+                var executor = new RunExecutor(() => native, ledger, clock);
+
+                var result = await executor.ExecuteAsync(Profile() with { Stages = [new LoadStage("two", 2, 1)] },
+                    identity, Options(directory), TestContext.Current.CancellationToken);
+
+                Assert.True(clock.WaitTriggered);
+                Assert.True(ledger.IsFaulted);
+                Assert.Equal(1, ((SuccessfulProducer)(object)native).ProduceCount);
+                Assert.Equal(1, result.Manifest.AttemptCount);
+                Assert.Equal(1, result.Manifest.FirstUnexecutedOrdinal);
+                Assert.Contains("callback_or_ledger_capture_faulted", result.Manifest.Diagnostics);
+            }
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Given_UnnamedNativeErrorCode_When_Recorded_Then_PreservesCodeWithAbsentSymbolicName()
     {
         string directory = Path.Combine(Path.GetTempPath(), "loadgen-unnamed-error-" + Guid.NewGuid().ToString("N"));
@@ -396,11 +429,13 @@ public sealed class RunExecutorTests
     {
         public Headers? LastHeaders { get; private set; }
         public byte[]? LastKey { get; private set; }
+        public int ProduceCount { get; private set; }
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             if (targetMethod?.Name == "Produce" && args is { Length: 3 })
             {
+                ProduceCount++;
                 var message = (Message<byte[], byte[]>)args[1]!;
                 LastHeaders = message.Headers;
                 LastKey = message.Key;
@@ -415,6 +450,60 @@ public sealed class RunExecutorTests
             if (targetMethod?.Name == "Flush") return 0;
             if (targetMethod?.Name == "Dispose") return null;
             throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    private sealed class FaultingLedgerStore : ILedgerStore
+    {
+        private readonly LocalLedgerStore inner;
+        private Exception? failure;
+
+        public FaultingLedgerStore(LedgerStoreOptions options) => inner = new LocalLedgerStore(options);
+
+        public bool IsFaulted => Volatile.Read(ref failure) is not null || inner.IsFaulted;
+        public Exception? Failure => Volatile.Read(ref failure) ?? inner.Failure;
+        public bool TryAppend(LedgerRow row) => IsFaulted ? false : inner.TryAppend(row);
+        public Task DrainAsync(CancellationToken cancellationToken = default) => inner.DrainAsync(cancellationToken);
+        public Task SaveManifestAsync(RunManifest manifest, CancellationToken cancellationToken = default)
+            => inner.SaveManifestAsync(manifest, cancellationToken);
+        public ValueTask DisposeAsync() => inner.DisposeAsync();
+        public void MarkFaulted() => Interlocked.CompareExchange(ref failure,
+            new InvalidOperationException("test_capture_fault"), null);
+    }
+
+    private sealed class FaultingDuringWaitTimeProvider : TimeProvider
+    {
+        private readonly TimeSpan waitDuration;
+        private readonly Action markFaulted;
+        private long timestamp;
+        private int waitTriggered;
+
+        public FaultingDuringWaitTimeProvider(TimeSpan waitDuration, Action markFaulted)
+        {
+            this.waitDuration = waitDuration;
+            this.markFaulted = markFaulted;
+        }
+
+        public bool WaitTriggered => Volatile.Read(ref waitTriggered) != 0;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref timestamp);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (dueTime == waitDuration && Interlocked.Exchange(ref waitTriggered, 1) == 0)
+            {
+                Interlocked.Add(ref timestamp, dueTime.Ticks);
+                markFaulted();
+                callback(state);
+            }
+            return new NoopTimer();
+        }
+
+        private sealed class NoopTimer : ITimer
+        {
+            public bool Change(TimeSpan dueTime, TimeSpan period) => true;
+            public void Dispose() { }
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
     }
 
