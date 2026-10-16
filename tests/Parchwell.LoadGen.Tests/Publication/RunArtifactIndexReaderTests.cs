@@ -161,6 +161,30 @@ public sealed class RunArtifactIndexReaderTests
     }
 
     [Fact]
+    public async Task Given_ArtifactStreamExceedsItsIndexedLength_When_Validating_Then_ReadsOnlyOneOverflowByte()
+    {
+        byte[] emptyHash = SHA256.HashData([]);
+        var descriptors = ArtifactNames.Select(name => new RunArtifactDescriptor(name, 0,
+            Convert.ToHexString(emptyHash).ToLowerInvariant())).ToArray();
+        descriptors[0] = new RunArtifactDescriptor("ledger.jsonl", 1,
+            Convert.ToHexString(SHA256.HashData([(byte)'x'])).ToLowerInvariant());
+        var index = new RunArtifactIndex(1, Identity(), "complete", true, true, true,
+            descriptors.ToImmutableArray()) { IndexLength = 1 };
+        var oversizedPayload = new CountingReadStream(new byte[100_000]);
+        int opened = 0;
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index, 0,
+            ObservedNames(), (name, _) =>
+            {
+                opened++;
+                return ValueTask.FromResult<Stream>(oversizedPayload);
+            }, MaximumArtifactBytes, MaximumAggregateBytes, TestContext.Current.CancellationToken));
+
+        Assert.Equal(1, opened);
+        Assert.Equal(2, oversizedPayload.BytesRead);
+    }
+
+    [Fact]
     public async Task Given_FileBudgetExceedsMaterializationLimit_When_ReadingOrValidating_Then_RejectsBeforeIo()
     {
         const long unsupportedBudget = (long)int.MaxValue + 1;
@@ -200,11 +224,13 @@ public sealed class RunArtifactIndexReaderTests
         string statistics = Encoding.UTF8.GetString(payloads["statistics.jsonl"]);
         Assert.Contains("run-index", statistics, StringComparison.Ordinal);
         byte[] wrongStatisticsIdentity = Encoding.UTF8.GetBytes(statistics.Replace("run-index", "other-run", StringComparison.Ordinal));
+        byte[] manifestWithoutFinalLf = payloads["manifest.json"][..^1];
 
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", Encoding.UTF8.GetBytes("ledger.jsonl\n"));
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", []);
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", [.. payloads["ledger.jsonl"], .. payloads["ledger.jsonl"]]);
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "ledger.jsonl", inventoryMismatch);
+        await AssertRehashedArtifactRejectedAsync(identity, payloads, "manifest.json", manifestWithoutFinalLf);
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "statistics.jsonl", wrongStatisticsIdentity);
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "request-lifecycle.jsonl", Encoding.UTF8.GetBytes("{}\n"));
         await AssertRehashedArtifactRejectedAsync(identity, payloads, "capabilities.json", Encoding.UTF8.GetBytes("{}"));
@@ -312,6 +338,18 @@ public sealed class RunArtifactIndexReaderTests
         {
             ReadCount++;
             return base.ReadAsync(buffer, cancellationToken);
+        }
+    }
+
+    private sealed class CountingReadStream(byte[] bytes) : MemoryStream(bytes, writable: false)
+    {
+        public int BytesRead { get; private set; }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            int read = await base.ReadAsync(buffer, cancellationToken);
+            BytesRead += read;
+            return read;
         }
     }
 

@@ -41,7 +41,8 @@ public static class RunArtifactIndexReader
         expectedIdentity.Validate();
         ValidateBudgets(maximumIndexBytes, maximumArtifactBytes, maximumAggregateArtifactBytes);
 
-        byte[] bytes = await ReadBoundedAsync(indexStream, maximumIndexBytes, cancellationToken).ConfigureAwait(false);
+        byte[] bytes = await ReadBoundedAsync(indexStream, maximumIndexBytes,
+            "publication_index_exceeds_byte_limit", cancellationToken).ConfigureAwait(false);
         if (bytes.LongLength > maximumArtifactBytes) throw Invalid("publication_index_exceeds_artifact_byte_limit");
         using JsonDocument document = JsonDocument.Parse(bytes,
             new JsonDocumentOptions { MaxDepth = 16, CommentHandling = JsonCommentHandling.Disallow, AllowTrailingCommas = false });
@@ -140,14 +141,17 @@ public static class RunArtifactIndexReader
 
             await using Stream stream = await openArtifact(descriptor.Name, cancellationToken).ConfigureAwait(false)
                 ?? throw Invalid("publication_artifact_missing:" + descriptor.Name);
-            byte[] bytes = await ReadBoundedAsync(stream, maximumArtifactBytes, cancellationToken).ConfigureAwait(false);
+            byte[] bytes = await ReadBoundedAsync(stream, descriptor.Length,
+                "publication_artifact_exceeds_byte_limit", cancellationToken).ConfigureAwait(false);
             long length = bytes.LongLength;
             string hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             switch (descriptor.Name)
             {
                 case "ledger.jsonl": ledgerBytes = bytes; break;
                 case "manifest.json":
-                    manifest = LedgerValidator.DeserializeManifest(bytes, int.MaxValue);
+                    if (bytes.Length == 0 || bytes[^1] != (byte)'\n')
+                        throw Invalid("publication_manifest_missing_final_lf");
+                    manifest = LedgerValidator.DeserializeManifest(bytes.AsSpan(0, bytes.Length - 1), int.MaxValue);
                     if (manifest.Identity != index.Identity || manifest.WorkerStatus != "complete" || !manifest.BookkeepingComplete)
                         throw Invalid("publication_manifest_identity_or_status_mismatch");
                     string[] evidenceNames = ArtifactNames.Skip(2).ToArray();
@@ -215,7 +219,8 @@ public static class RunArtifactIndexReader
 
     internal static IReadOnlyList<string> RequiredArtifactNames => ArtifactNames;
 
-    private static async Task<byte[]> ReadBoundedAsync(Stream stream, long maximumBytes, CancellationToken cancellationToken)
+    private static async Task<byte[]> ReadBoundedAsync(Stream stream, long maximumBytes, string limitError,
+        CancellationToken cancellationToken)
     {
         if (maximumBytes > int.MaxValue) maximumBytes = int.MaxValue;
         using var output = new MemoryStream((int)Math.Min(maximumBytes, 81920));
@@ -225,7 +230,7 @@ public static class RunArtifactIndexReader
             int read = await stream.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, maximumBytes + 1 - output.Length)), cancellationToken)
                 .ConfigureAwait(false);
             if (read == 0) break;
-            if (output.Length + read > maximumBytes) throw Invalid("publication_index_exceeds_byte_limit");
+            if (output.Length + read > maximumBytes) throw Invalid(limitError);
             output.Write(buffer, 0, read);
         }
         return output.ToArray();
