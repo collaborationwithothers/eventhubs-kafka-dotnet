@@ -1,3 +1,5 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +10,7 @@ using System.Globalization;
 using System.Reflection;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
@@ -162,7 +165,19 @@ internal static class Program
         });
 
         builder.Services.AddSingleton<IWorkerAdmission, UnavailableWorkerAdmission>();
-        builder.Services.AddSingleton<IRunArtifactPublisher, UnavailableRunArtifactPublisher>();
+        builder.Services.AddSingleton<IRunArtifactPublisher>(provider =>
+        {
+            LoadGenHostOptions hostOptions = provider.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            new RunIdentity(hostOptions.ScenarioId, hostOptions.ConfigurationId, hostOptions.RunId,
+                hostOptions.ActualInstanceId, hostOptions.ExpectedInstanceId, hostOptions.ClientId).Validate();
+            if (!StringComparer.Ordinal.Equals(hostOptions.BlobContainer, "ledger"))
+                throw new InvalidOperationException("publication_container_must_be_ledger");
+            if (hostOptions.MaxArtifactBytes > int.MaxValue)
+                throw new InvalidOperationException("publication_artifact_limit_exceeds_supported_reader_bound");
+            var client = new BlobServiceClient(new Uri(hostOptions.BlobEndpoint, UriKind.Absolute),
+                new WorkloadIdentityCredential(), new BlobClientOptions());
+            return new BlobRunArtifactPublisher(client, provider.GetRequiredService<TimeProvider>());
+        });
         builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>>>(
             _ => (configuration, statistics, evidence) => new ProducerBuilder<byte[], byte[]>(configuration)
                 .SetStatisticsHandler((_, report) => statistics.Capture(report))
