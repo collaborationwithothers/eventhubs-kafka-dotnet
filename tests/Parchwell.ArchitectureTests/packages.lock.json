@@ -185,7 +185,10 @@
         }
       },
       "parchwell.loadgen": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Parchwell.Scenarios": "[1.0.0, )"
+        }
       },
       "parchwell.scenarios": {
         "type": "Project",

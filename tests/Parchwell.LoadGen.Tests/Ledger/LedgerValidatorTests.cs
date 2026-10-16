@@ -1,0 +1,317 @@
+using System.Collections.Immutable;
+using System.Text;
+using System.Text.Json;
+using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.LoadGen.Run.Ledger;
+using Xunit;
+#pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
+
+namespace Parchwell.LoadGen.Tests.Ledger;
+
+public sealed class LedgerValidatorTests
+{
+    private static readonly RunIdentity Identity = new("a01", "default", "run-1", "instance-1", "instance-1", "client-1");
+    private static readonly AttemptEntry Entry = new("instance-1", "attempt-1", 0, "tenant-1", "d0", "tenant-1-d0", 0, "uploaded", 100, 110);
+
+    [Fact]
+    public void Given_valid_row_When_serialized_Then_schema_uses_snake_case_and_round_trips()
+    {
+        var row = CallbackRow();
+        var bytes = LedgerValidator.SerializeRow(row);
+        var json = Encoding.UTF8.GetString(bytes);
+
+        Assert.Contains("\"schema_version\":1", json, StringComparison.Ordinal);
+        Assert.Contains("\"completion_source\":\"callback\"", json, StringComparison.Ordinal);
+        Assert.Equal(row, LedgerValidator.DeserializeRow(bytes));
+    }
+
+    [Theory]
+    [InlineData("\"schema_version\":1", "\"schema_version\":1,\"schema_version\":1")]
+    [InlineData("\"client_id\":\"client-1\"", "\"client_id\":\"client-1\",\"unknown\":true")]
+    [InlineData("\"key\":\"tenant-1-d0\",", "")]
+    public void Given_malformed_row_envelope_When_decoded_Then_rejected(string original, string replacement)
+    {
+        var json = Encoding.UTF8.GetString(LedgerValidator.SerializeRow(CallbackRow()));
+        var malformed = json.Replace(original, replacement, StringComparison.Ordinal);
+        Assert.Throws<JsonException>(() => LedgerValidator.DeserializeRow(Encoding.UTF8.GetBytes(malformed)));
+    }
+
+    [Fact]
+    public void Given_callback_without_native_status_When_validated_Then_missing_provenance_is_preserved()
+    {
+        var row = CallbackRow() with { PersistenceStatus = null, PersistenceProvenance = "missing" };
+        Assert.Equal(row, LedgerValidator.DeserializeRow(LedgerValidator.SerializeRow(row)));
+    }
+
+    [Fact]
+    public void Given_inventory_with_duplicate_attempt_or_ordinal_When_registered_Then_rejected()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        inventory.Register(Entry);
+
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2" }));
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { Ordinal = 1, Sequence = 1, EventType = "ocr-started" }));
+    }
+
+    [Fact]
+    public void Given_rejected_duplicate_ordinal_When_reusing_attempt_id_at_new_ordinal_Then_registration_succeeds()
+    {
+        var inventory = new AttemptInventory(Identity, 3);
+        inventory.Register(Entry);
+
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 0 }));
+        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1, Sequence = 1, EventType = "ocr-started" });
+
+        Assert.Equal(2, inventory.Seal().Length);
+    }
+
+    [Fact]
+    public void Given_invalid_key_When_registering_and_validating_row_Then_rejected_without_reserving_attempt()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        var invalid = Entry with { Key = "other-tenant-d0" };
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        inventory.Register(Entry);
+
+        Assert.Equal(Entry, Assert.Single(inventory.Seal()));
+    }
+
+    [Theory]
+    [InlineData(0, 0, "ocr-started", "d0", "tenant-1-d0")]
+    [InlineData(1, 1, "ocr-started", "d0", "wrong-tenant-d0")]
+    [InlineData(0, 5, "uploaded", "d0", "tenant-1-d0")]
+    public void Given_attempt_workload_fields_disagree_with_global_ordinal_When_registered_or_validated_Then_rejected(
+        long ordinal, long sequence, string eventType, string documentId, string key)
+    {
+        var invalid = Entry with
+        {
+            Ordinal = ordinal,
+            Sequence = sequence,
+            EventType = eventType,
+            DocumentId = documentId,
+            Key = key
+        };
+        var inventory = new AttemptInventory(Identity, 10);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        Assert.Empty(inventory.Seal());
+    }
+
+    [Theory]
+    [InlineData("d-1", "tenant-1-d-1")]
+    [InlineData("d01", "tenant-1-d01")]
+    [InlineData("doc0", "tenant-1-doc0")]
+    public void Given_noncanonical_document_id_When_registered_or_validated_Then_rejected(string documentId, string key)
+    {
+        var invalid = Entry with { DocumentId = documentId, Key = key };
+        var inventory = new AttemptInventory(Identity, 1);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        Assert.Empty(inventory.Seal());
+    }
+
+    [Fact]
+    public void Given_retry_attempt_has_new_invocation_ordinal_and_same_logical_event_When_reconciled_Then_accepted()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        var first = Entry;
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        inventory.Register(first);
+        inventory.Register(retry);
+        var manifest = Manifest(inventory.Seal()) with { PlannedAttemptCount = 1 };
+        var firstRow = CallbackRow();
+        var retryRow = firstRow with { Attempt = retry };
+
+        Assert.Equal([firstRow, retryRow], LedgerValidator.Validate([firstRow, retryRow], manifest, Identity));
+    }
+
+    [Fact]
+    public void Given_new_invocation_ordinal_and_canonical_logical_document_When_registered_Then_accepted()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        inventory.Register(Entry);
+        var nextLogicalEvent = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            Sequence = 1,
+            EventType = "ocr-started"
+        };
+
+        inventory.Register(nextLogicalEvent);
+
+        Assert.Equal([0L, 1L], inventory.Seal().Select(item => item.Ordinal));
+    }
+
+    [Fact]
+    public void Given_sealed_inventory_When_registration_attempted_Then_snapshot_remains_unchanged()
+    {
+        var inventory = new AttemptInventory(Identity, 1);
+        inventory.Register(Entry);
+        var sealedEntries = inventory.Seal();
+
+        Assert.Single(sealedEntries);
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "later", Ordinal = 1 }));
+        Assert.Single(inventory.Seal());
+    }
+
+    [Fact]
+    public void Given_ledger_row_not_equal_to_independent_inventory_When_reconciled_Then_rejected()
+    {
+        var manifest = Manifest([Entry]);
+        var wrongRow = CallbackRow() with { Attempt = Entry with { Key = "wrong-key" } };
+
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.Validate([wrongRow], manifest, Identity));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.Validate([], manifest, Identity));
+    }
+
+    [Fact]
+    public void Given_manifest_with_unknown_nested_identity_property_When_decoded_Then_rejected()
+    {
+        var json = Encoding.UTF8.GetString(LedgerValidator.SerializeManifest(Manifest([Entry])));
+        json = json.Replace("\"client_id\":\"client-1\"", "\"client_id\":\"client-1\",\"other\":false", StringComparison.Ordinal);
+
+        Assert.Throws<JsonException>(() => LedgerValidator.DeserializeManifest(Encoding.UTF8.GetBytes(json)));
+    }
+
+    [Fact]
+    public void Given_manifest_inventory_above_entry_budget_When_decoded_Then_rejected_before_model_creation()
+    {
+        var bytes = LedgerValidator.SerializeManifest(Manifest([Entry]));
+
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.DeserializeManifest(bytes, 0));
+    }
+
+    [Fact]
+    public void Given_manifest_collections_with_null_values_When_decoded_Then_rejected()
+    {
+        var json = Encoding.UTF8.GetString(LedgerValidator.SerializeManifest(Manifest([Entry])));
+        var invalidManifests = new[]
+        {
+            json.Replace("\"diagnostics\":[]", "\"diagnostics\":[null]", StringComparison.Ordinal),
+            json.Replace("\"guard_observations\":[]", "\"guard_observations\":[null]", StringComparison.Ordinal),
+            json.Replace("\"runtime_versions\":{}", "\"runtime_versions\":{\"dotnet\":null}", StringComparison.Ordinal),
+            json.Replace("\"evidence_files\":{}", "\"evidence_files\":{\"statistics.jsonl\":null}", StringComparison.Ordinal)
+        };
+
+        foreach (var invalidManifest in invalidManifests)
+            Assert.Throws<InvalidDataException>(() => LedgerValidator.DeserializeManifest(Encoding.UTF8.GetBytes(invalidManifest)));
+    }
+
+    internal static LedgerRow CallbackRow() => new(1, Identity, Entry, "callback", true, 0, null, 2,
+        "native_callback", 150, 0.04, null);
+
+    [Fact]
+    public void Given_UnverifiedBookkeepingOrGenerator_When_ValidatingCompleteManifest_Then_Rejects()
+    {
+        var manifest = Manifest([Entry]);
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest with { BookkeepingComplete = false }));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest with { GeneratorVersion = "unknown" }));
+    }
+
+    [Fact]
+    public void Given_SkippedInvocationOrdinal_When_Registered_Then_RejectsWithoutReservingTheAttempt()
+    {
+        var inventory = new AttemptInventory(Identity, 3);
+        inventory.Register(Entry);
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 2, Sequence = 2, EventType = "ocr-finished" }));
+        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1, Sequence = 1, EventType = "ocr-started" });
+        Assert.Equal(new long[] { 0, 1 }, inventory.Seal().Select(item => item.Ordinal));
+    }
+
+    // A stopped schedule preserves the next unexecuted opportunity independently of ledger rows.
+    [Theory]
+    [InlineData(null)]
+    [InlineData(4L)]
+    public void Given_InconsistentUnexecutedSuffix_When_ValidatingManifest_Then_Rejects(long? firstUnexecuted)
+    {
+        var manifest = Manifest([Entry]) with
+        {
+            PlannedAttemptCount = 5,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = firstUnexecuted
+        };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest));
+    }
+
+    [Fact]
+    public void Given_ContiguousPartialInventory_When_ValidatingManifest_Then_PreservesExactSuffix()
+    {
+        var manifest = Manifest([Entry]) with
+        {
+            PlannedAttemptCount = 5,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 1
+        };
+        Assert.Equal([CallbackRow()], LedgerValidator.Validate([CallbackRow()], manifest, Identity));
+        var sparse = manifest with { Inventory = [Entry with { Ordinal = 1 }] };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(sparse));
+    }
+
+    [Fact]
+    public void Given_partial_schedule_with_only_retries_of_first_slot_When_validating_manifest_Then_suffix_uses_schedule_progress()
+    {
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        var manifest = Manifest([Entry, retry]) with
+        {
+            PlannedAttemptCount = 2,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 1
+        };
+        var firstRow = CallbackRow();
+        var retryRow = firstRow with { Attempt = retry };
+
+        Assert.Equal([firstRow, retryRow], LedgerValidator.Validate([firstRow, retryRow], manifest, Identity));
+    }
+
+    [Fact]
+    public void Given_retry_changes_key_or_skips_logical_schedule_slot_When_validating_manifest_Then_rejected()
+    {
+        var changedTenantRetry = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            TenantId = "tenant-2",
+            Key = "tenant-2-d0"
+        };
+        var changedKeyManifest = Manifest([Entry, changedTenantRetry]) with { PlannedAttemptCount = 1 };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(changedKeyManifest));
+
+        var skippedSlot = Entry with { Sequence = 1, EventType = "ocr-started" };
+        var skippedManifest = Manifest([skippedSlot]) with
+        {
+            PlannedAttemptCount = 2,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 0
+        };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(skippedManifest));
+    }
+
+    [Fact]
+    public void Given_retry_changes_planned_time_When_registered_or_validated_Then_rejected()
+    {
+        var changedPlannedTimeRetry = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            PlannedMicroseconds = Entry.PlannedMicroseconds + 1
+        };
+        var inventory = new AttemptInventory(Identity, 2);
+        inventory.Register(Entry);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(changedPlannedTimeRetry));
+
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        inventory.Register(retry);
+        var manifest = Manifest([Entry, changedPlannedTimeRetry]) with { PlannedAttemptCount = 1 };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest));
+    }
+
+    internal static RunManifest Manifest(ImmutableArray<AttemptEntry> entries) => new(1, Identity, "1", entries.Length,
+        entries.Length, entries, 1_000_000, 0, "complete", true, null, [],
+        ImmutableDictionary<string, string>.Empty, ImmutableDictionary<string, string>.Empty, []);
+}
