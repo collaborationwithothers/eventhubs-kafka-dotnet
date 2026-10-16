@@ -100,8 +100,6 @@ public static class RunArtifactIndexReader
         ArgumentNullException.ThrowIfNull(openArtifact);
         index.Identity.Validate();
         ValidateBudgets(index.IndexLength, maximumArtifactBytes, maximumAggregateArtifactBytes);
-        if (maximumArtifactBytes > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(maximumArtifactBytes), "Publication reader materialization limit must fit in an Int32-sized buffer.");
         if (index.IndexLength > maximumArtifactBytes) throw Invalid("publication_index_exceeds_artifact_byte_limit");
         if (index.SchemaVersion != 1 || index.WorkerStatus != "complete" || !index.BookkeepingComplete ||
             !index.WorkerComplete || !index.PublicationComplete || index.Artifacts.IsDefault ||
@@ -247,6 +245,10 @@ public static class RunArtifactIndexReader
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumIndexBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumArtifactBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumAggregateArtifactBytes);
+        if (maximumIndexBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumIndexBytes), "Index materialization limit must fit in an Int32-sized buffer.");
+        if (maximumArtifactBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumArtifactBytes), "Artifact materialization limit must fit in an Int32-sized buffer.");
     }
 
     private static bool IsSha256(string value) => value is { Length: 64 } &&

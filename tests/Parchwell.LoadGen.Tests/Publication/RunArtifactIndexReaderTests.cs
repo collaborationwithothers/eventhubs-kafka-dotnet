@@ -139,6 +139,32 @@ public sealed class RunArtifactIndexReaderTests
     }
 
     [Fact]
+    public async Task Given_FileBudgetExceedsMaterializationLimit_When_ReadingOrValidating_Then_RejectsBeforeIo()
+    {
+        const long unsupportedBudget = (long)int.MaxValue + 1;
+        var oversizedIndexStream = new TrackingReadStream();
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RunArtifactIndexReader.ReadAsync(oversizedIndexStream,
+            Identity(), unsupportedBudget, MaximumArtifactBytes, long.MaxValue, TestContext.Current.CancellationToken));
+        Assert.Equal(0, oversizedIndexStream.ReadCount);
+
+        var oversizedArtifactStream = new TrackingReadStream();
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RunArtifactIndexReader.ReadAsync(oversizedArtifactStream,
+            Identity(), MaximumIndexBytes, unsupportedBudget, long.MaxValue, TestContext.Current.CancellationToken));
+        Assert.Equal(0, oversizedArtifactStream.ReadCount);
+
+        var index = new RunArtifactIndex(1, Identity(), "complete", true, true, true,
+            ImmutableArray<RunArtifactDescriptor>.Empty) { IndexLength = 1 };
+        int opened = 0;
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RunArtifactIndexReader.ValidateArtifactSetAsync(index,
+            ObservedNames(), (name, _) =>
+            {
+                Interlocked.Increment(ref opened);
+                return ValueTask.FromResult<Stream>(new MemoryStream());
+            }, unsupportedBudget, long.MaxValue, TestContext.Current.CancellationToken));
+        Assert.Equal(0, opened);
+    }
+
+    [Fact]
     public async Task Given_RehashedMalformedLedgerOrEvidenceArtifacts_When_Validating_Then_RejectsTheArtifactSet()
     {
         RunIdentity identity = Identity();
@@ -255,6 +281,17 @@ public sealed class RunArtifactIndexReaderTests
 
     private static RunIdentity Identity() => new("A01", "C0", "run-index", "instance-index", "instance-index", "loadgen-index");
     private static string[] ObservedNames() => [.. ArtifactNames, "index.json"];
+    private sealed class TrackingReadStream : MemoryStream
+    {
+        public int ReadCount { get; private set; }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ReadCount++;
+            return base.ReadAsync(buffer, cancellationToken);
+        }
+    }
+
     private sealed record Descriptor([property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("length")] long Length, [property: JsonPropertyName("sha256")] string Sha256);
 }
