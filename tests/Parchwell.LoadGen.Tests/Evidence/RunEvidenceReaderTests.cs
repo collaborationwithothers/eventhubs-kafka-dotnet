@@ -103,13 +103,46 @@ public sealed class RunEvidenceReaderTests
 
         string capabilitiesFile = Path.Combine(path, "capabilities.json");
         JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
-        capabilities["guard_observations"] = new JsonArray("broker=broker-1;counter=req_timeouts;observed=1");
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed",
+            "broker=broker-1;counter=req_timeouts;observed=1");
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed");
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_ErrorLifecycleGuardIsErased_When_Read_Then_RejectsOnlyCompleteErrorObservationLoss()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string lifecycleFile = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lifecycleLines = await File.ReadAllLinesAsync(lifecycleFile, TestContext.Current.CancellationToken);
+        int errorIndex = Array.FindIndex(lifecycleLines,
+            line => line.Contains("\"event_type\":\"native_error\"", StringComparison.Ordinal));
+        Assert.True(errorIndex >= 0);
+        JsonNode errorRow = JsonNode.Parse(lifecycleLines[errorIndex])!;
+        Assert.True(errorRow["is_error"]!.GetValue<bool>());
+
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
         capabilities["guard_observations"] = new JsonArray();
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        errorRow["is_error"] = false;
+        lifecycleLines[errorIndex] = errorRow.ToJsonString();
+        await File.WriteAllTextAsync(lifecycleFile, string.Join("\n", lifecycleLines) + "\n", TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+
+        errorRow["is_error"] = true;
+        lifecycleLines[errorIndex] = errorRow.ToJsonString();
+        await File.WriteAllTextAsync(lifecycleFile, string.Join("\n", lifecycleLines) + "\n", TestContext.Current.CancellationToken);
+        capabilities["guard_observations_complete"] = false;
+        capabilities["is_faulted"] = true;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
     }
 
     [Fact]

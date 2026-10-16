@@ -76,15 +76,15 @@ public static class RunEvidenceReader
         var statisticsAttribution = new StatisticsAttribution();
         int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,
             row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics, statisticsAttribution));
-        var lifecycleSequences = new HashSet<long>();
+        var lifecycleAttribution = new LifecycleAttribution();
         int lifecycleCount = ValidateJsonLines(lifecycleBytes, maximumRowBytes, maximumRows,
-            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics, lifecycleSequences));
+            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics, lifecycleAttribution));
 
         using JsonDocument capabilities = ParseDocument(capabilityBytes);
         JsonElement rootElement = capabilities.RootElement;
         RejectDuplicatePropertiesRecursively(rootElement);
         ValidateCapabilityReport(rootElement, expectedIdentity, statisticsCount, maximumRows, maximumDiagnostics,
-            statisticsAttribution.PositiveGuardPairs,
+            statisticsAttribution.PositiveGuardPairs, lifecycleAttribution.HasErrorCallback,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
             out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
             out bool guardObservationsComplete, out ImmutableArray<string> diagnostics);
@@ -263,7 +263,7 @@ public static class RunEvidenceReader
     }
 
     private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics,
-        HashSet<long> receiptSequences)
+        LifecycleAttribution attribution)
     {
         RequireObjectBase(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type");
         RequireSchemaVersion(row);
@@ -271,7 +271,7 @@ public static class RunEvidenceReader
         RequireNonemptyString(Get(row, "session_id"), "session_id");
         long receiptSequence = RequireNonnegativeInt64(Get(row, "receipt_sequence"), "receipt_sequence");
         if (receiptSequence <= 0) throw Invalid("receipt_sequence_must_be_positive");
-        if (!receiptSequences.Add(receiptSequence)) throw Invalid("lifecycle_receipt_sequence_duplicate");
+        if (!attribution.ReceiptSequences.Add(receiptSequence)) throw Invalid("lifecycle_receipt_sequence_duplicate");
         RequireTimestamp(Get(row, "received_at"), "received_at");
         string eventType = RequireString(Get(row, "event_type"), "event_type");
         if (eventType == "native_log")
@@ -302,6 +302,7 @@ public static class RunEvidenceReader
             RequireNonemptyString(Get(row, "error_name"), "error_name");
             RequireNullableString(Get(row, "reason"), "reason");
             RequireBoolean(Get(row, "is_error"), "is_error");
+            if (Get(row, "is_error").GetBoolean()) attribution.HasErrorCallback = true;
             RequireBoolean(Get(row, "is_fatal"), "is_fatal");
             RequireNonemptyString(Get(row, "provenance"), "provenance");
             return;
@@ -311,6 +312,7 @@ public static class RunEvidenceReader
 
     private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected, int statisticsRecordCount,
         int maximumRows, int maximumDiagnostics, HashSet<(string Broker, string Counter)> positiveGuardPairs,
+        bool hasErrorCallback,
         out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
         out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
         out bool guardObservationsComplete, out ImmutableArray<string> diagnostics)
@@ -362,7 +364,11 @@ public static class RunEvidenceReader
         guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
         guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
         if (guardObservationsComplete)
+        {
             ValidatePositiveGuardObservations(guardObservations, positiveGuardPairs);
+            if (hasErrorCallback && !guardObservations.Contains("native_error_callback_observed", StringComparer.Ordinal))
+                throw Invalid("native_error_guard_observation_missing");
+        }
         JsonElement completion = Get(root, "statistics_completion");
         statisticsComplete = null;
         if (completion.ValueKind != JsonValueKind.Null)
@@ -636,6 +642,13 @@ public static class RunEvidenceReader
         public string? NativeName { get; set; }
 
         public HashSet<(string Broker, string Counter)> PositiveGuardPairs { get; } = [];
+    }
+
+    private sealed class LifecycleAttribution
+    {
+        public HashSet<long> ReceiptSequences { get; } = [];
+
+        public bool HasErrorCallback { get; set; }
     }
 
     private static InvalidDataException Invalid(string message) => new(message);
