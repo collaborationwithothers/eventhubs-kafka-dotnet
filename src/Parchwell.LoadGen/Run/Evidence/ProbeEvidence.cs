@@ -106,6 +106,7 @@ public static class PureProbeEvaluator
             }
 
             bool hasUsableWindow = false;
+            string? repeatSessionId = null;
             foreach (KafkaStatisticsReport report in repeat.Reports)
             {
                 if (report is null || report.Identity is null || report.Snapshot is null ||
@@ -120,6 +121,15 @@ public static class PureProbeEvaluator
                     diagnostics.Add("statistics_report_attribution_or_snapshot_invalid");
                     continue;
                 }
+
+                if (string.IsNullOrWhiteSpace(report.SessionId) ||
+                    (repeatSessionId is not null && !StringComparer.Ordinal.Equals(report.SessionId, repeatSessionId)))
+                {
+                    anyUnusableRepeat = true;
+                    diagnostics.Add("statistics_report_session_mismatch");
+                    continue;
+                }
+                repeatSessionId ??= report.SessionId;
 
                 foreach (KafkaBrokerStatistics broker in report.Snapshot.Brokers)
                 {

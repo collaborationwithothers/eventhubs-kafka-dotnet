@@ -77,6 +77,73 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
+    public async Task Given_CapabilityDocumentWithDuplicateTopLevelIdentityOrNestedRequirementProperty_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        string[] malformed =
+        [
+            original.Replace("\"is_faulted\":false", "\"is_faulted\":false,\"is_faulted\":true", StringComparison.Ordinal),
+            original.Replace("\"scenario_id\":\"A01\"", "\"scenario_id\":\"A01\",\"scenario_id\":\"A01\"", StringComparison.Ordinal),
+            original.Replace("\"status\":\"unsupported\"", "\"status\":\"unsupported\",\"status\":\"supported\"", StringComparison.Ordinal)
+        ];
+
+        foreach (string json in malformed)
+        {
+            Assert.NotEqual(original, json);
+            await File.WriteAllTextAsync(file, json, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task Given_ResolvedOverrideFromAnotherScenarioOrConfiguration_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        const string emptyResolved = "\"resolved_configuration\":null";
+        const string resolved = "\"resolved_configuration\":{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenario.json\",\"line\":1,\"column\":1}}}},\"omissions\":[]}";
+        Assert.Contains(emptyResolved, original, StringComparison.Ordinal);
+        string valid = original.Replace(emptyResolved, resolved, StringComparison.Ordinal);
+        await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+
+        foreach ((string expected, string actual) in new[]
+        {
+            ("\"override\":{\"scenario_id\":\"A01\"", "\"override\":{\"scenario_id\":\"A02\""),
+            ("\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\"", "\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C2\"")
+        })
+        {
+            string malformed = valid.Replace(expected, actual, StringComparison.Ordinal);
+            Assert.NotEqual(valid, malformed);
+            await File.WriteAllTextAsync(file, malformed, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task Given_CompleteStatisticsWithDiagnosticsOrMissingBrokers_When_Read_Then_RejectsContradiction()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        string[] malformed =
+        [
+            original.Replace("\"diagnostics\":[],\"missing_brokers\":[]", "\"diagnostics\":[{\"code\":\"capture_loss\",\"broker\":null,\"field\":null}],\"missing_brokers\":[]", StringComparison.Ordinal),
+            original.Replace("\"diagnostics\":[],\"missing_brokers\":[]", "\"diagnostics\":[],\"missing_brokers\":[\"broker-2\"]", StringComparison.Ordinal)
+        ];
+
+        foreach (string json in malformed)
+        {
+            Assert.NotEqual(original, json);
+            await File.WriteAllTextAsync(file, json, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
     public async Task Given_OptionalResolvedConfiguration_When_Validating_Then_AcceptsKnownShapeAndRejectsUnknownNestedMembers()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);

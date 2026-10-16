@@ -63,6 +63,31 @@ public sealed class PureProbeEvaluatorTests
         Assert.Equal(ProbeEvaluationStatus.Inconclusive, PureProbeEvaluator.Evaluate(Gate(), "A01", wrongConfiguration).Status);
     }
 
+    [Fact]
+    public void Given_ProbeRepeatReportsFromOneSession_When_Evaluating_Then_AcceptsThemButRejectsMixedOrEmptySessions()
+    {
+        ProbeRepeatEvidence repeat = Repeat(1, 25_000);
+        KafkaStatisticsReport report = repeat.Reports[0];
+        ProbeRepeatEvidence sameSession = repeat with { Reports = [report, report with { ReceivedAt = report.ReceivedAt.AddSeconds(1) }] };
+        ImmutableArray<ProbeRepeatEvidence> sameSessionRepeats = Enumerable.Range(1, 5)
+            .Select(index => index == 1 ? sameSession : Repeat(index, 25_000)).ToImmutableArray();
+        Assert.Equal(ProbeEvaluationStatus.Pass, PureProbeEvaluator.Evaluate(Gate(), "A01", sameSessionRepeats).Status);
+
+        ProbeRepeatEvidence mixedSession = repeat with { Reports = [report, report with { SessionId = "other-session" }] };
+        ImmutableArray<ProbeRepeatEvidence> mixedSessionRepeats = Enumerable.Range(1, 5)
+            .Select(index => index == 1 ? mixedSession : Repeat(index, 25_000)).ToImmutableArray();
+        ProbeEvaluationResult mixedResult = PureProbeEvaluator.Evaluate(Gate(), "A01", mixedSessionRepeats);
+        Assert.Equal(ProbeEvaluationStatus.Inconclusive, mixedResult.Status);
+        Assert.Contains("statistics_report_session_mismatch", mixedResult.Diagnostics);
+
+        ProbeRepeatEvidence emptySession = repeat with { Reports = [report with { SessionId = " " }] };
+        ImmutableArray<ProbeRepeatEvidence> emptySessionRepeats = Enumerable.Range(1, 5)
+            .Select(index => index == 1 ? emptySession : Repeat(index, 25_000)).ToImmutableArray();
+        ProbeEvaluationResult emptyResult = PureProbeEvaluator.Evaluate(Gate(), "A01", emptySessionRepeats);
+        Assert.Equal(ProbeEvaluationStatus.Inconclusive, emptyResult.Status);
+        Assert.Contains("statistics_report_session_mismatch", emptyResult.Diagnostics);
+    }
+
     private static ProbeGate Gate() => new("C0", new MeasurementRequest("stats.broker.throttle.max", KafkaClientRole.LoadGenProducer),
         ProbeOperator.GreaterThan, 20_000, 5, ["C0", "C2", "C3"]);
 

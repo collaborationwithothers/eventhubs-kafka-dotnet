@@ -39,6 +39,50 @@ public sealed class LoadGenHostProcessTests
     }
 
     [Fact]
+    public async Task Given_MismatchedExpectedInstance_When_StartingChildHost_Then_FailsStartupValidation()
+    {
+        ChildResult result = await RunChildAsync(environment =>
+        {
+            ConfigureValidInputs(environment, Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N")));
+            environment["LoadGen__ExpectedInstanceId"] = "runner-recorded-instance";
+        });
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("loadgen_startup_or_host_failure:OptionsValidationException", result.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("led--ger")]
+    [InlineData("-ledger")]
+    [InlineData("ledger-")]
+    [InlineData("other")]
+    public async Task Given_UnsupportedBlobDestination_When_StartingChildHost_Then_FailsStartupValidation(string container)
+    {
+        ChildResult result = await RunChildAsync(environment =>
+        {
+            ConfigureValidInputs(environment, Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N")));
+            environment["LoadGen__BlobContainer"] = container;
+            environment["LoadGen__BlobEndpoint"] = "https://example.invalid/extra-path";
+        });
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("loadgen_startup_or_host_failure:OptionsValidationException", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_BlobEndpointWithPath_When_StartingChildHost_Then_FailsStartupValidation()
+    {
+        ChildResult result = await RunChildAsync(environment =>
+        {
+            ConfigureValidInputs(environment, Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N")));
+            environment["LoadGen__BlobEndpoint"] = "https://example.invalid/extra-path";
+        });
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("loadgen_startup_or_host_failure:OptionsValidationException", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Given_ValidInputsWithoutProductionAuthentication_When_StartingChildHost_Then_BlocksBeforeNativeProducerAndExitsNonzero()
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N"));
@@ -67,6 +111,8 @@ public sealed class LoadGenHostProcessTests
             UseShellExecute = false,
             WorkingDirectory = FindRepositoryRoot()
         };
+        foreach (string key in start.Environment.Keys.Where(key => key.StartsWith("LoadGen__", StringComparison.OrdinalIgnoreCase)).ToArray())
+            start.Environment.Remove(key);
         start.ArgumentList.Add(assembly);
         configure?.Invoke(start.Environment);
         using Process process = Process.Start(start) ?? throw new InvalidOperationException("child_process_failed_to_start");

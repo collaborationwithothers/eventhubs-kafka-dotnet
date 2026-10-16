@@ -69,6 +69,7 @@ public static class RunEvidenceReader
 
         using JsonDocument capabilities = ParseDocument(capabilityBytes);
         JsonElement rootElement = capabilities.RootElement;
+        RejectDuplicatePropertiesRecursively(rootElement);
         ValidateCapabilityReport(rootElement, expectedIdentity, maximumRows, maximumDiagnostics,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
             out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
@@ -279,7 +280,7 @@ public static class RunEvidenceReader
             throw Invalid("artifact_name_set_mismatch");
 
         JsonElement resolved = Get(root, "resolved_configuration");
-        if (resolved.ValueKind != JsonValueKind.Null) ValidateResolvedConfiguration(resolved, maximumRows);
+        if (resolved.ValueKind != JsonValueKind.Null) ValidateResolvedConfiguration(resolved, expected, maximumRows);
 
         JsonElement requirements = Get(root, "request_lifecycle_requirements");
         RequireArray(requirements, "request_lifecycle_requirements", maximumRows);
@@ -321,15 +322,18 @@ public static class RunEvidenceReader
         {
             RequireObject(completion, "is_complete", "diagnostics", "missing_brokers");
             statisticsComplete = RequireBoolean(Get(completion, "is_complete"), "statistics_completion.is_complete");
-            ValidateStatisticsDiagnostics(Get(completion, "diagnostics"), maximumDiagnostics);
-            RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
+            JsonElement completionDiagnostics = Get(completion, "diagnostics");
+            ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics);
+            ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
+            if (statisticsComplete.Value && (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty))
+                throw Invalid("statistics_completion_contradicts_diagnostics_or_missing_brokers");
         }
         diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
         isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (!guardObservationsComplete && !isFaulted) throw Invalid("guard_observation_truncation_not_faulted");
     }
 
-    private static void ValidateResolvedConfiguration(JsonElement resolved, int maximumRows)
+    private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected, int maximumRows)
     {
         RequireObject(resolved, "role", "settings", "omissions");
         RequireEnumNumber(Get(resolved, "role"), (int)KafkaClientRole.LoadGenProducer, "resolved_configuration.role");
@@ -339,14 +343,14 @@ public static class RunEvidenceReader
         foreach (JsonProperty setting in settings.EnumerateObject())
         {
             if (string.IsNullOrWhiteSpace(setting.Name)) throw Invalid("resolved_setting_name_empty");
-            ValidateResolvedSetting(setting.Value, setting.Name);
+            ValidateResolvedSetting(setting.Value, setting.Name, expected);
         }
         JsonElement omissions = Get(resolved, "omissions");
         RequireArray(omissions, "resolved_configuration.omissions", maximumRows);
         foreach (JsonElement omission in omissions.EnumerateArray()) ValidateSettingMetadata(omission);
     }
 
-    private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey)
+    private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey, RunIdentity expected)
     {
         RequireObject(setting, "value", "baseline", "override");
         RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
@@ -358,8 +362,8 @@ public static class RunEvidenceReader
         if (origin.ValueKind != JsonValueKind.Null)
         {
             RequireObject(origin, "scenario_id", "configuration_id", "location");
-            RequireNonemptyString(Get(origin, "scenario_id"), "override.scenario_id");
-            RequireNonemptyString(Get(origin, "configuration_id"), "override.configuration_id");
+            RequireEqualString(origin, "scenario_id", expected.ScenarioId);
+            RequireEqualString(origin, "configuration_id", expected.ConfigurationId);
             ValidateSourceLocation(Get(origin, "location"));
         }
     }

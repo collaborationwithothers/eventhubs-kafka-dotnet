@@ -169,6 +169,98 @@ public sealed class RunExecutorTests
     }
 
     [Fact]
+    public async Task Given_FinalProduceCancelsRun_When_Executing_Then_DoesNotCompleteRun()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-cancel-final-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var identity = Identity();
+            await using var ledger = new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+                Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            var native = DispatchProxy.Create<IProducer<byte[], byte[]>, CancellingProducer>();
+            ((CancellingProducer)(object)native).Cancel = cancellation;
+            var executor = new RunExecutor(() => native, ledger, TimeProvider.System);
+
+            var result = await executor.ExecuteAsync(Profile(), identity, Options(directory), cancellation.Token);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Equal("failed", result.Manifest.WorkerStatus);
+            Assert.False(result.Manifest.BookkeepingComplete);
+            Assert.Contains("execution_cancelled", result.Manifest.Diagnostics);
+            Assert.Equal(1, ((CancellingProducer)(object)native).ProduceCount);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Given_FlushReturnsZeroAfterDrainDeadline_When_Draining_Then_FailsWithinSingleBudget()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-drain-deadline-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var identity = Identity();
+            await using var ledger = new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+                Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
+            var clock = new AdvancingTimeProvider();
+            var native = DispatchProxy.Create<IProducer<byte[], byte[]>, DeadlineFlushProducer>();
+            ((DeadlineFlushProducer)(object)native).Clock = clock;
+            var executor = new RunExecutor(() => native, ledger, clock);
+
+            var result = await executor.ExecuteAsync(Profile(), identity,
+                Options(directory) with { ProducerDrainTimeout = TimeSpan.FromMilliseconds(250) }, TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("producer_drain_timeout", result.Manifest.Diagnostics);
+            DeadlineFlushProducer producer = (DeadlineFlushProducer)(object)native;
+            Assert.Equal(3, producer.FlushTimeouts.Count);
+            Assert.Equal(TimeSpan.FromMilliseconds(100), producer.FlushTimeouts[0]);
+            Assert.Equal(TimeSpan.FromMilliseconds(100), producer.FlushTimeouts[1]);
+            Assert.Equal(TimeSpan.FromMilliseconds(50), producer.FlushTimeouts[2]);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Given_CancellationDuringFinalFlush_When_Draining_Then_ReturnsFailure()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-cancel-flush-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var identity = Identity();
+            await using var ledger = new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+                Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            var clock = new AdvancingTimeProvider();
+            var native = DispatchProxy.Create<IProducer<byte[], byte[]>, DeadlineFlushProducer>();
+            DeadlineFlushProducer producer = (DeadlineFlushProducer)(object)native;
+            producer.Clock = clock;
+            producer.CancelOnFlush = cancellation;
+            var executor = new RunExecutor(() => native, ledger, clock);
+
+            var result = await executor.ExecuteAsync(Profile(), identity, Options(directory), cancellation.Token);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.False(result.Manifest.BookkeepingComplete);
+            Assert.DoesNotContain("producer_drain_timeout", result.Manifest.Diagnostics);
+            Assert.Contains("execution_cancelled", result.Manifest.Diagnostics);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Given_DeliveryCallbackThrows_When_Executing_Then_LatchesCaptureFaultAndStopsAdmission()
     {
         var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-" + Guid.NewGuid().ToString("N"));
@@ -332,6 +424,76 @@ public sealed class RunExecutorTests
             if (targetMethod?.Name == "Flush") return 0;
             if (targetMethod?.Name == "Dispose") return null;
             throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    public class CancellingProducer : DispatchProxy
+    {
+        public CancellationTokenSource? Cancel { get; set; }
+        public int ProduceCount { get; private set; }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod?.Name == "Produce" && args is { Length: 3 })
+            {
+                ProduceCount++;
+                ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new DeliveryReport<byte[], byte[]>
+                {
+                    Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted
+                });
+                Cancel!.Cancel();
+                return null;
+            }
+            if (targetMethod?.Name == "Flush") return 0;
+            if (targetMethod?.Name == "Dispose") return null;
+            throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    public class DeadlineFlushProducer : DispatchProxy
+    {
+        public AdvancingTimeProvider? Clock { get; set; }
+        public CancellationTokenSource? CancelOnFlush { get; set; }
+        public List<TimeSpan> FlushTimeouts { get; } = [];
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod?.Name == "Produce" && args is { Length: 3 })
+            {
+                ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new DeliveryReport<byte[], byte[]>
+                {
+                    Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted
+                });
+                return null;
+            }
+            if (targetMethod?.Name == "Flush" && args is { Length: 1 })
+            {
+                FlushTimeouts.Add((TimeSpan)args[0]!);
+                Clock!.Advance(TimeSpan.FromMilliseconds(100));
+                CancelOnFlush?.Cancel();
+                return FlushTimeouts.Count == 3 ? 0 : 1;
+            }
+            if (targetMethod?.Name == "Dispose") return null;
+            throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    public sealed class AdvancingTimeProvider : TimeProvider
+    {
+        private long timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref timestamp);
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+            => new NoopTimer();
+
+        public void Advance(TimeSpan value) => Interlocked.Add(ref timestamp, value.Ticks);
+
+        private sealed class NoopTimer : ITimer
+        {
+            public bool Change(TimeSpan dueTime, TimeSpan period) => true;
+            public void Dispose() { }
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
     }
 }

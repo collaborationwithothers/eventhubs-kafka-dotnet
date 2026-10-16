@@ -78,11 +78,29 @@ public sealed class LoadGenWorkerHostTests
         DeleteOutput(publisher);
     }
 
-    private static IHost CreateHost(RecordingPublisher publisher, int durationSeconds,
+    [Fact]
+    public async Task Given_HostIsCancelledDuringPublication_When_PublisherReturns_Then_WorkerDoesNotReportSuccess()
+    {
+        var publisher = new BlockingPublisher();
+        using IHost host = CreateHost(publisher, durationSeconds: 1);
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        await publisher.PublishStarted.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Task stop = host.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        publisher.AllowReturn.TrySetResult();
+        await stop;
+
+        Assert.Equal(1, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+        Assert.True(publisher.Called);
+        DeleteOutput(publisher);
+    }
+
+    private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
         ProducerFactoryTracker? producerFactory = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
-        publisher.OutputRoot = output;
+        if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
+        if (publisher is BlockingPublisher blocking) blocking.OutputRoot = output;
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__ProcessLifetimeTimeout"] = "00:00:15";
         values["LoadGen__StatisticsCompletionTimeout"] = "00:00:00.050";
@@ -214,6 +232,30 @@ public sealed class LoadGenWorkerHostTests
             if (targetMethod?.Name == "Dispose") return null;
             throw new NotSupportedException(targetMethod?.Name);
         }
+    }
+
+    private sealed class BlockingPublisher : IRunArtifactPublisher
+    {
+        public bool IsAvailable => true;
+        public bool Called { get; private set; }
+        public string OutputRoot { get; set; } = string.Empty;
+        public TaskCompletionSource PublishStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource CancellationObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowReturn { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task PublishAsync(Parchwell.LoadGen.Run.Execution.RunExecutionResult result, RunPublicationOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            Called = true;
+            PublishStarted.TrySetResult();
+            using CancellationTokenRegistration registration = cancellationToken.Register(() => CancellationObserved.TrySetResult());
+            await AllowReturn.Task.ConfigureAwait(false);
+        }
+    }
+
+    private static void DeleteOutput(BlockingPublisher publisher)
+    {
+        if (Directory.Exists(publisher.OutputRoot)) Directory.Delete(publisher.OutputRoot, recursive: true);
     }
 }
 #pragma warning restore CA1707

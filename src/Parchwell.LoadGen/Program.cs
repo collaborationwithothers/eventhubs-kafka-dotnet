@@ -2,6 +2,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Reflection;
@@ -17,6 +18,10 @@ namespace Parchwell.LoadGen;
 
 internal static class Program
 {
+    private static readonly Action<ILogger, string, string, Exception?> ProcessWatchdogExpired =
+        LoggerMessage.Define<string, string>(LogLevel.Critical, new EventId(3, nameof(ProcessWatchdogExpired)),
+            "loadgen_process_lifetime_watchdog_expired for scenario {ScenarioId} run {RunId}");
+
     private static async Task<int> Main(string[] args)
     {
         ITimer? processWatchdog = null;
@@ -24,10 +29,17 @@ internal static class Program
         {
             using IHost host = BuildHost(args);
             LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Parchwell.LoadGen.Process");
             processWatchdog = host.Services.GetRequiredService<TimeProvider>().CreateTimer(_ =>
             {
-                Console.Error.WriteLine("loadgen_process_lifetime_watchdog_expired");
-                Environment.Exit(124);
+                try
+                {
+                    ProcessWatchdogExpired(logger, options.ScenarioId, options.RunId, null);
+                }
+                finally
+                {
+                    Environment.Exit(124);
+                }
             }, null, options.ProcessLifetimeTimeout, Timeout.InfiniteTimeSpan);
             await host.StartAsync().ConfigureAwait(false);
             LoadGenWorker worker = host.Services.GetRequiredService<LoadGenWorker>();

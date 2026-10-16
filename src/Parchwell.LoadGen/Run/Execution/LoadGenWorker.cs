@@ -50,6 +50,7 @@ public sealed class LoadGenWorker : BackgroundService
         try
         {
             await ExecuteRunAsync(stoppingToken).ConfigureAwait(false);
+            stoppingToken.ThrowIfCancellationRequested();
             ExitCode = 0;
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -100,9 +101,11 @@ public sealed class LoadGenWorker : BackgroundService
             requiresStatistics, requiresRequests);
         RunExecutionResult result = await session.ExecuteAsync(resolved.Profile, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0) throw new InvalidOperationException("worker_run_incomplete");
+        cancellationToken.ThrowIfCancellationRequested();
         await _publisher.PublishAsync(result, new RunPublicationOptions(options.BlobEndpoint,
             options.BlobContainer, options.UploadTimeout, options.MaxArtifactBytes,
             options.MaxAggregateArtifactBytes), cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
 }

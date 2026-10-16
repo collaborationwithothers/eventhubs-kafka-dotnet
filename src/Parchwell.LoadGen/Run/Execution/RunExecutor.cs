@@ -128,6 +128,7 @@ public sealed class RunExecutor
                         () => Interlocked.Or(ref guardFlags, PossiblyPersisted),
                         () => Interlocked.Or(ref guardFlags, CallbackFailure),
                         () => Interlocked.Or(ref guardFlags, LedgerFailure));
+                cancellationToken.ThrowIfCancellationRequested();
                 inventory.Register(attempt);
                 try
                 {
@@ -155,6 +156,7 @@ public sealed class RunExecutor
                     throw;
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             admissionStopped = true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -311,6 +313,11 @@ public sealed class RunExecutor
             AddDiagnostic("ledger_readback_failed:" + exception.GetType().Name);
         }
 
+        if (cancellationToken.IsCancellationRequested)
+        {
+            workerFailed = true;
+            AddDiagnostic("execution_cancelled");
+        }
         var bookkeepingComplete = readbackComplete && !workerFailed && entries.Length == plannedCount &&
             (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
             (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
@@ -347,18 +354,21 @@ public sealed class RunExecutor
     private async Task<bool> DrainProducerAsync(IProducer<byte[], byte[]> producer, TimeSpan timeout,
         CancellationToken cleanupToken)
     {
+        long drainStarted = clock.GetTimestamp();
         using var drainDeadline = new CancellationTokenSource(timeout, clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cleanupToken, drainDeadline.Token);
         while (!linked.IsCancellationRequested)
         {
-            var remaining = drainDeadline.Token.IsCancellationRequested ? TimeSpan.Zero : timeout;
+            var elapsed = clock.GetElapsedTime(drainStarted, clock.GetTimestamp());
+            var remaining = timeout - elapsed;
             if (remaining <= TimeSpan.Zero) break;
             var queueCount = producer.Flush(remaining < TimeSpan.FromMilliseconds(100)
                 ? remaining : TimeSpan.FromMilliseconds(100));
-            if (queueCount == 0) return true;
+            if (queueCount == 0)
+                return !linked.IsCancellationRequested && clock.GetElapsedTime(drainStarted, clock.GetTimestamp()) <= timeout;
             await Task.Yield();
         }
-        return producer.Flush(TimeSpan.Zero) == 0;
+        return false;
     }
 
     private void RecordDelivery(DeliveryReport<byte[], byte[]> report, RunIdentity identity, AttemptEntry attempt,

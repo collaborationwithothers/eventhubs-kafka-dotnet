@@ -79,16 +79,18 @@ public sealed class LoadGenHostOptions
             if (value.Any(char.IsWhiteSpace))
                 throw new InvalidOperationException("identity_must_not_contain_whitespace");
         }
-        if (!StringComparer.Ordinal.Equals(ActualInstanceId, PodName) ||
+        if (!StringComparer.Ordinal.Equals(ExpectedInstanceId, ActualInstanceId) ||
+            !StringComparer.Ordinal.Equals(ActualInstanceId, PodName) ||
             !StringComparer.Ordinal.Equals(ClientId, PodName))
             throw new InvalidOperationException("worker_and_client_identity_must_match_pod_name");
         if (StringComparer.Ordinal.Equals(ActualInstanceId, "seed"))
             throw new InvalidOperationException("worker_identity_must_not_be_seed");
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps ||
-            string.IsNullOrEmpty(endpoint.Host) || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0)
+            string.IsNullOrEmpty(endpoint.Host) || endpoint.AbsolutePath != "/" || endpoint.UserInfo.Length != 0 ||
+            endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0)
             throw new InvalidOperationException("blob_endpoint_must_be_https_uri");
-        if (BlobContainer.Length is < 3 or > 63 || !BlobContainer.All(character => char.IsAsciiLetterLower(character) || char.IsAsciiDigit(character) || character == '-'))
-            throw new InvalidOperationException("blob_container_name_invalid");
+        if (!StringComparer.Ordinal.Equals(BlobContainer, "ledger"))
+            throw new InvalidOperationException("blob_container_must_be_ledger");
         if (MaxScheduleLateness < TimeSpan.Zero || MaxScheduleLateness == Timeout.InfiniteTimeSpan)
             throw new InvalidOperationException("schedule_lateness_budget_must_be_finite_and_nonnegative");
         foreach (long budget in new long[]
