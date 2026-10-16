@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge.
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Merge rule's last condition changed from a size limit to planned scope in the pull request for issue #72 (2026-10-16). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge.
 
 ### What this repo is
 
@@ -49,7 +49,7 @@ An agent may merge its own pull request only when all of these hold:
 - Codex has completed a review of the head commit (issue #17; with no completed review within the timeout in docs/agents/factory.md "Escalation", the pull request waits for Hari; silence is not a pass);
 - Codex's review raised no P0 or P1 finding, or each finding is resolved in a later commit and Codex has re-reviewed;
 - Codex's security review raised no finding at High severity, or each is resolved and re-reviewed;
-- the pull request is within the size limit in docs/agents/factory.md.
+- the pull request delivers only the scope its approved plan assigns to it (docs/agents/factory.md, "Pull request scope").
 
 Anything else waits for Hari. Never ask for the gate to be relaxed.
 
@@ -150,12 +150,21 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 3. Before every push, including pushes that only contain review fixes, re-read the whole diff against docs/blueprint.md's ADRs, docs/engineering/ and the merge rule. A fix can break another decision.
 4. Compute counts, totals, cross-references and time differences with a script, never by hand.
 5. When a reviewer finds one error, check every instance of that class, not only the one flagged. For recurring findings, consider automated prevention with an existing tool first. A new check needs explicit supported inputs, failure conditions and regression examples. Add it to the same pull request only when it fits the approved scope; otherwise record the proposal on the issue. A finding does not automatically require a new checker capability. Documentation checks start as advisory; making them blocking requires Hari's approval based on observed usefulness and false positives. The local command and supported checks are in [Documentation checks](docs/engineering/documentation-checks.md).
-6. If two review rounds in a row raise new substantive findings, stop and split the pull request. Moving a finding out of scope into a linked issue counts as a split. The threshold is a governance choice, not a measurement; its basis is PR #6, where design findings kept arriving until the pull request was split after round four.
+6. If two review rounds in a row raise new substantive findings, stop and split the pull request. A substantive finding is a P0 or P1. Moving a finding out of scope into a linked issue counts as a split. The threshold is a governance choice, not a measurement; its basis is PR #6, where design findings kept arriving until the pull request was split after round four.
 7. Keep the description short: what changed, why, what to read first, what you are least sure about. Evidence lives in the repository (ADRs, citations, commit messages); the description links to it. If the change cannot be described in a few lines, split it.
-8. Run a cold review before every push. Before the cold review, run `npm run check:docs`; fix each warning or explain in the pull request why it stands. A cold review is a fresh context that applies the `repo-review` skill and is given only the diff by the author. Fix every P0 and P1 it reports, except as the next paragraph allows. Fix each P2, or record it as an issue. Cold-review rounds do not count toward rule 6. If three cold-review rounds in total on the same pull request report P0 or P1 findings that must be fixed, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
+8. Run a cold review before every push. Before the cold review, run `npm run check:docs`; fix each warning or explain in the pull request why it stands. A cold review is a fresh context that applies the `repo-review` skill and is given only the diff by the author. Fix every P0 and P1 it reports, except as the next paragraph allows. Answer each P2 under rule 10. Cold-review rounds do not count toward rule 6. If three cold-review rounds in total on the same pull request report P0 or P1 findings that must be fixed, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
 
    Some Code Review Rules flag work that only Hari can approve: changes to expected outcomes, verdicts or `results/`, and new projects, assembly references or NuGet packages. Keep such work only if the approved plan or the verdict step requires it. In that case, push, list the finding in the pull request description, and leave the merge to Hari. Revert any other such change before the push. This exception does not relax GOVERNANCE "Verdict integrity".
 9. Fill in the pull request template, including its collapsed self-review record. Reply to every Codex finding. When a finding is wrong against its source, start the reply with `Not valid:` and give the evidence. Reply inside the finding's review thread, so the reply stays attached to the finding. Escapes are not counted by hand. A script will compute them (docs/agents/factory.md, "Measuring the gate", "Escapes").
+
+10. Answer review findings by severity. This applies to Codex review and the cold review, in every round. Basis: the review rounds on #70 (#72).
+    - P0 or P1: fix it, or reply `Not valid:` with evidence (rule 9). Rule 8's second paragraph still applies.
+    - P2 that asks for a check, guard or hardening the approved plan does not list: do not fix it. Reply `Out of contract:` and name the plan section. If its absence could make a published result wrong, also comment on the issue being implemented so Hari can decide whether the check joins the plan.
+    - Any other P2: fix it, or give a one-line reason for leaving it.
+
+    The pull request description links its approved plan. The checks a plan lists are its "Enforced checks" field or, for a plan approved before that field existed, the checks its text names. Codex findings are answered in their review thread and cold-review findings in the self-review record.
+
+    A pull request gets at most three completed Codex review rounds. A round is one completed Codex code review of a head commit, however it was triggered; a security review is not a round. When the third completes and a finding still needs a code change, push nothing further and hand off under GOVERNANCE "Handoffs". Only Hari's comment on the issue being implemented, naming the new cap and the pull requests it covers, raises the cap. Three is a governance choice, not a measurement.
 
 ## Code Review Rules
 
