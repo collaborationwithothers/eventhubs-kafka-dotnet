@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
@@ -161,6 +162,133 @@ public sealed class RunEvidenceSessionTests
 
         Assert.Contains("capabilities_write_cancelled", session.Diagnostics);
         Assert.DoesNotContain("evidence_writer_completion_timeout", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_PersistedFaultFlagContradictsLiveState_When_Validating_Then_FailsAndLatchesSession()
+    {
+        string path = NewDirectory();
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(identity,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+        await using var session = new RunEvidenceSession(identity, Options(path), TimeProvider.System, expectations);
+        await session.WriteAsync(Report("{}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        Assert.False(session.IsFaulted);
+        await session.ValidatePersistedAsync(TestContext.Current.CancellationToken);
+
+        string capabilitiesPath = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesPath, TestContext.Current.CancellationToken))!;
+        capabilities["is_faulted"] = true;
+        await File.WriteAllTextAsync(capabilitiesPath, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        InvalidDataException faultStateFailure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => session.ValidatePersistedAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("persisted_evidence_fault_state_mismatch", faultStateFailure.Message);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("persisted_evidence_validation_failed", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_PersistedCompletionMarkerWasNeverProduced_When_Validating_Then_FailsAndLatchesSession()
+    {
+        string path = NewDirectory();
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(identity,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+        await using var session = new RunEvidenceSession(identity, Options(path), TimeProvider.System, expectations);
+        await session.WriteAsync(Report("{}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        await session.ValidatePersistedAsync(TestContext.Current.CancellationToken);
+
+        string capabilitiesPath = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesPath, TestContext.Current.CancellationToken))!;
+        Assert.Null(capabilities["statistics_completion"]);
+        capabilities["statistics_completion"] = JsonNode.Parse("{\"is_complete\":true,\"diagnostics\":[],\"missing_brokers\":[]}");
+        await File.WriteAllTextAsync(capabilitiesPath, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        InvalidDataException completionFailure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => session.ValidatePersistedAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("persisted_evidence_completion_state_mismatch", completionFailure.Message);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("persisted_evidence_validation_failed", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_PersistedGuardMetadataDiffersFromLiveCapture_When_Validating_Then_FailsAndLatchesSession()
+    {
+        string path = NewDirectory();
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(identity,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+        await using var session = new RunEvidenceSession(identity, Options(path), TimeProvider.System, expectations);
+        KafkaStatisticsSnapshot firstSnapshot = Snapshot(0, 0, requestTimeouts: 2);
+        KafkaStatisticsSnapshot laterSnapshot = firstSnapshot with
+        {
+            TimestampMicroseconds = 2,
+            AgeMicroseconds = 2,
+            Brokers = [new KafkaBrokerStatistics("broker-1", 1, "UP", 2, 3, 0, 0, 0, 0,
+                new KafkaWindowStatistics(0, null), new KafkaWindowStatistics(0, null))]
+        };
+        await session.WriteAsync(Report("{}", firstSnapshot), TestContext.Current.CancellationToken);
+        await session.WriteAsync(Report("{}", laterSnapshot), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        Assert.False(session.IsFaulted);
+        Assert.True(session.GuardObservationsComplete);
+        Assert.Equal(["broker=broker-1;counter=req_timeouts;observed=2"], session.GuardObservations);
+        await session.ValidatePersistedAsync(TestContext.Current.CancellationToken);
+
+        string capabilitiesPath = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesPath, TestContext.Current.CancellationToken))!;
+        capabilities["guard_observations"]![0] = "broker=broker-1;counter=req_timeouts;observed=3";
+        await File.WriteAllTextAsync(capabilitiesPath, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        InvalidDataException guardStateFailure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => session.ValidatePersistedAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("persisted_evidence_guard_observation_state_mismatch", guardStateFailure.Message);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("persisted_evidence_validation_failed", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_PersistedGuardCompletenessDiffersFromLiveCapture_When_Validating_Then_FailsAndLatchesSession()
+    {
+        string path = NewDirectory();
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(identity,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+        await using var session = new RunEvidenceSession(identity,
+            Options(path, maximumReportBytes: 32), TimeProvider.System, expectations);
+        await session.WriteAsync(Report("{}", Snapshot(0, 0, requestTimeouts: 2)), TestContext.Current.CancellationToken);
+        session.CaptureLog(new LogMessage("producer-1", SyslogLevel.Warning, "BROKER", "oversized capture"));
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        Assert.True(session.IsFaulted);
+        Assert.True(session.GuardObservationsComplete);
+        await session.ValidatePersistedAsync(TestContext.Current.CancellationToken);
+
+        string capabilitiesPath = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesPath, TestContext.Current.CancellationToken))!;
+        capabilities["guard_observations_complete"] = false;
+        await File.WriteAllTextAsync(capabilitiesPath, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        InvalidDataException guardStateFailure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => session.ValidatePersistedAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("persisted_evidence_guard_observation_state_mismatch", guardStateFailure.Message);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("persisted_evidence_validation_failed", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_StatisticsExpectationHasInvalidBrokerInventory_When_Constructing_Then_RejectsIt()
+    {
+        RunEvidenceExpectations baseline = await RunEvidenceReaderTests.ExpectationsAsync(Identity(),
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+
+        Assert.Throws<ArgumentException>(() => new RunEvidenceExpectations(baseline.ResolvedConfiguration, true, []));
+        Assert.Throws<ArgumentException>(() => new RunEvidenceExpectations(baseline.ResolvedConfiguration, false,
+            ["broker-1", "broker-1"]));
+        Assert.Throws<ArgumentException>(() => new RunEvidenceExpectations(baseline.ResolvedConfiguration, false,
+            ["broker-1", " "]));
     }
 
     [Fact]

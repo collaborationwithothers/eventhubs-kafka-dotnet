@@ -120,13 +120,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     /// <summary>Gets sticky positive statistics guard observations, never cleared by a later zero or reset.</summary>
     public ImmutableArray<string> GuardObservations
     {
-        get
-        {
-            lock (_guardGate)
-            {
-                return _guardObservations.ToImmutableArray();
-            }
-        }
+        get => GetGuardObservationState().Observations;
     }
 
     /// <summary>Whether every positive statistics guard observation fit in the bounded retained set.</summary>
@@ -369,9 +363,22 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
                 throw new InvalidDataException("evidence_writer_not_successfully_closed");
             RunEvidenceExpectations expectations = _expectations
                 ?? throw new InvalidDataException("evidence_read_expectations_required");
-            _ = await RunEvidenceReader.ReadAsync(_directory, _identity, expectations, _options.MaximumFileBytes,
+            bool liveFaultedBeforeRead = IsFaulted;
+            bool? liveStatisticsComplete = _completion?.IsComplete;
+            (ImmutableArray<string> Observations, bool Complete) liveGuardsBeforeRead = GetGuardObservationState();
+            RunEvidenceReadResult result = await RunEvidenceReader.ReadAsync(_directory, _identity, expectations, _options.MaximumFileBytes,
                 (int)Math.Min(_options.MaximumFileBytes, _options.MaximumStatisticsRecordBytes),
                 _options.MaximumDiagnostics, cancellationToken).ConfigureAwait(false);
+            bool liveFaultedAfterRead = IsFaulted;
+            (ImmutableArray<string> Observations, bool Complete) liveGuardsAfterRead = GetGuardObservationState();
+            if (liveFaultedBeforeRead != liveFaultedAfterRead || result.IsFaulted != liveFaultedAfterRead)
+                throw new InvalidDataException("persisted_evidence_fault_state_mismatch");
+            if (result.StatisticsComplete != liveStatisticsComplete || _completion?.IsComplete != liveStatisticsComplete)
+                throw new InvalidDataException("persisted_evidence_completion_state_mismatch");
+            if (!GuardObservationStateMatches(liveGuardsBeforeRead, liveGuardsAfterRead) ||
+                result.GuardObservationsComplete != liveGuardsAfterRead.Complete ||
+                !result.GuardObservations.SequenceEqual(liveGuardsAfterRead.Observations, StringComparer.Ordinal))
+                throw new InvalidDataException("persisted_evidence_guard_observation_state_mismatch");
         }
         catch
         {
@@ -496,6 +503,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
     private async Task WriteCapabilitiesAsync(CancellationToken cancellationToken)
     {
+        (ImmutableArray<string> Observations, bool Complete) guardState = GetGuardObservationState();
         var capability = new
         {
             schema_version = SchemaVersion,
@@ -505,8 +513,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             request_lifecycle_requirements = RequestCapabilityCatalogue.Claims,
             request_capability_supported = false,
             observed_broker_names = GetObservedBrokerNames(),
-            guard_observations = GuardObservations,
-            guard_observations_complete = GuardObservationsComplete,
+            guard_observations = guardState.Observations,
+            guard_observations_complete = guardState.Complete,
             statistics_completion = _completion is null ? null : new
             {
                 _completion.IsComplete,
@@ -529,6 +537,19 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         StringComparer.Ordinal.Equals(identity.RunId, _identity.RunId) &&
         identity.Role == KafkaClientRole.LoadGenProducer &&
         StringComparer.Ordinal.Equals(identity.ClientId, _identity.ClientId);
+
+    private (ImmutableArray<string> Observations, bool Complete) GetGuardObservationState()
+    {
+        lock (_guardGate)
+        {
+            return (_guardObservations.ToImmutableArray(), Volatile.Read(ref _guardObservationsTruncated) == 0);
+        }
+    }
+
+    private static bool GuardObservationStateMatches(
+        (ImmutableArray<string> Observations, bool Complete) left,
+        (ImmutableArray<string> Observations, bool Complete) right) =>
+        left.Complete == right.Complete && left.Observations.SequenceEqual(right.Observations, StringComparer.Ordinal);
 
     private void Latch(string diagnostic)
     {
@@ -554,7 +575,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
                 return;
             }
             _guardKeys.Add((broker, counter));
-            _guardObservations.Add($"broker={broker};counter={counter};observed={value}");
+            _guardObservations.Add(FormattableString.Invariant($"broker={broker};counter={counter};observed={value}"));
         }
     }
 

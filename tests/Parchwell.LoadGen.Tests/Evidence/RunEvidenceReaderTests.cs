@@ -107,6 +107,33 @@ public sealed class RunEvidenceReaderTests
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string statisticsFile = Path.Combine(path, "statistics.jsonl");
+        JsonNode firstStatistics = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
+        firstStatistics["typed_snapshot"]!["brokers"]![0]!["request_timeouts"] = 2;
+        JsonNode secondStatistics = firstStatistics.DeepClone();
+        secondStatistics["typed_snapshot"]!["timestamp_microseconds"] = 2;
+        secondStatistics["typed_snapshot"]!["age_microseconds"] = 2;
+        secondStatistics["typed_snapshot"]!["brokers"]![0]!["request_timeouts"] = 3;
+        await File.WriteAllTextAsync(statisticsFile,
+            firstStatistics.ToJsonString() + "\n" + secondStatistics.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed",
+            "broker=broker-1;counter=req_timeouts;observed=3");
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        // Both snapshots advance and the retained counter value belongs to the later persisted row.
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed");
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_CompleteGuardClaimsAreNotReconciledToPersistedCallbacksAndCounters_When_Read_Then_RejectsThem()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string statisticsFile = Path.Combine(path, "statistics.jsonl");
         JsonNode statistics = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
         statistics["typed_snapshot"]!["brokers"]![0]!["request_timeouts"] = 2;
         await File.WriteAllTextAsync(statisticsFile, statistics.ToJsonString() + "\n", TestContext.Current.CancellationToken);
@@ -114,12 +141,52 @@ public sealed class RunEvidenceReaderTests
         string capabilitiesFile = Path.Combine(path, "capabilities.json");
         JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
         capabilities["guard_observations"] = new JsonArray("native_error_callback_observed",
-            "broker=broker-1;counter=req_timeouts;observed=1");
+            "broker=broker-1;counter=req_timeouts;observed=2");
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
-        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed");
+        string validCounterObservation = "broker=broker-1;counter=req_timeouts;observed=2";
+        string[][] malformedObservations =
+        {
+            ["native_error_callback_observed", validCounterObservation, "broker=broker-1;counter=req_timeouts;observed=999"],
+            ["native_error_callback_observed", validCounterObservation, "broker=unpersisted;counter=txerrs;observed=9"],
+            ["native_error_callback_observed", validCounterObservation, validCounterObservation]
+        };
+        foreach (string[] malformed in malformedObservations)
+        {
+            JsonArray malformedArray = [];
+            foreach (string observation in malformed) malformedArray.Add(observation);
+            capabilities["guard_observations"] = malformedArray;
+            await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+
+        // A faulted capture can retain a guard from a report that failed before it was persisted.
+        statistics["typed_snapshot"]!["brokers"]![0]!["request_timeouts"] = 3;
+        await File.WriteAllTextAsync(statisticsFile, statistics.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed",
+            "broker=broker-1;counter=req_timeouts;observed=2",
+            "broker=unpersisted;counter=txerrs;observed=9");
+        capabilities["is_faulted"] = true;
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_CompleteGuardClaimsNativeErrorHasNoPersistedErrorCallback_When_Read_Then_RejectsOrphan()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string lifecycleFile = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lines = await File.ReadAllLinesAsync(lifecycleFile, TestContext.Current.CancellationToken);
+        int index = Array.FindIndex(lines, line => line.Contains("\"event_type\":\"native_error\"", StringComparison.Ordinal));
+        Assert.True(index >= 0);
+        JsonNode errorRow = JsonNode.Parse(lines[index])!;
+        errorRow["is_error"] = false;
+        errorRow["error_code"] = (int)ErrorCode.NoError;
+        errorRow["error_name"] = ErrorCode.NoError.ToString();
+        lines[index] = errorRow.ToJsonString();
+        await File.WriteAllTextAsync(lifecycleFile, string.Join("\n", lines) + "\n", TestContext.Current.CancellationToken);
+
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
@@ -292,7 +359,11 @@ public sealed class RunEvidenceReaderTests
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string file = Path.Combine(path, "statistics.jsonl");
         string originalLine = (await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken)).TrimEnd('\n');
-        await File.WriteAllTextAsync(file, originalLine + "\n" + originalLine + "\n", TestContext.Current.CancellationToken);
+        JsonNode secondValid = JsonNode.Parse(originalLine)!;
+        secondValid["typed_snapshot"]!["timestamp_microseconds"] = 2;
+        secondValid["typed_snapshot"]!["age_microseconds"] = 2;
+        string secondValidLine = secondValid.ToJsonString();
+        await File.WriteAllTextAsync(file, originalLine + "\n" + secondValidLine + "\n", TestContext.Current.CancellationToken);
         RunEvidenceReadResult consistent = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
         Assert.Equal(2, consistent.StatisticsRecordCount);
 
@@ -307,6 +378,8 @@ public sealed class RunEvidenceReaderTests
         }
         Assert.Equal("run-reader", mixedRow["identity"]!["run_id"]!.GetValue<string>());
         Assert.Equal(Identity().ClientId, mixedRow["identity"]!["client_id"]!.GetValue<string>());
+        mixedRow["typed_snapshot"]!["timestamp_microseconds"] = 2;
+        mixedRow["typed_snapshot"]!["age_microseconds"] = 2;
         await File.WriteAllTextAsync(file, originalLine + "\n" + mixedRow.ToJsonString() + "\n", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
@@ -472,6 +545,171 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
+    public async Task Given_CompleteStatisticsHasReportDiagnosticsOrUnparsedReport_When_Read_Then_RejectsContradiction()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string statisticsFile = Path.Combine(path, "statistics.jsonl");
+        JsonNode validRow = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
+
+        JsonNode diagnosticRow = validRow.DeepClone();
+        diagnosticRow["typed_snapshot"]!["timestamp_microseconds"] = 2;
+        diagnosticRow["typed_snapshot"]!["age_microseconds"] = 2;
+        diagnosticRow["diagnostics"] = new JsonArray
+        {
+            JsonNode.Parse("{\"code\":\"malformed_field\",\"broker\":null,\"field\":\"brokers\"}")
+        };
+        await File.WriteAllTextAsync(statisticsFile,
+            validRow.ToJsonString() + "\n" + diagnosticRow.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
+        capabilities["statistics_completion"]!["is_complete"] = false;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        capabilities["statistics_completion"]!["is_complete"] = true;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        // Parser failures have a null typed snapshot and a diagnostic. Rejecting the null snapshot
+        // independently means erased diagnostics cannot make a complete artifact appear valid.
+        JsonNode unparsedRow = validRow.DeepClone();
+        unparsedRow["typed_snapshot"] = null;
+        unparsedRow["diagnostics"] = new JsonArray();
+        await File.WriteAllTextAsync(statisticsFile,
+            validRow.ToJsonString() + "\n" + unparsedRow.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        capabilities["statistics_completion"]!["is_complete"] = false;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_CompleteStatisticsHidesNativeGenerationOrCounterContradictions_When_Read_Then_RejectsOnlyCompleteReceipt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string statisticsFile = Path.Combine(path, "statistics.jsonl");
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode baseline = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
+
+        async Task VerifyCompleteRejectedIncompleteAccepted(params JsonNode[] rows)
+        {
+            await File.WriteAllTextAsync(statisticsFile,
+                string.Join("\n", rows.Select(row => row.ToJsonString())) + "\n", TestContext.Current.CancellationToken);
+            capabilities["statistics_completion"]!["is_complete"] = true;
+            await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+            capabilities["statistics_completion"]!["is_complete"] = false;
+            await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+            _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        }
+
+        JsonNode duplicateTimestamp = baseline.DeepClone();
+        await VerifyCompleteRejectedIncompleteAccepted(baseline.DeepClone(), duplicateTimestamp);
+        capabilities["statistics_completion"] = null;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        capabilities["statistics_completion"] = new JsonObject
+        {
+            ["is_complete"] = false,
+            ["diagnostics"] = new JsonArray(),
+            ["missing_brokers"] = new JsonArray()
+        };
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+
+        JsonNode changedCreation = baseline.DeepClone();
+        changedCreation["typed_snapshot"]!["timestamp_microseconds"] = 2;
+        changedCreation["typed_snapshot"]!["age_microseconds"] = 0;
+        await VerifyCompleteRejectedIncompleteAccepted(baseline.DeepClone(), changedCreation);
+
+        foreach ((string field, string? guardCounter) in new (string, string?)[]
+        {
+            ("request_timeouts", "req_timeouts"),
+            ("disconnects", null),
+            ("transmission_retries", "txretries"),
+            ("transmission_errors", "txerrs"),
+            ("receive_errors", "rxerrs")
+        })
+        {
+            JsonNode first = baseline.DeepClone();
+            first["typed_snapshot"]!["brokers"]![0]![field] = 5;
+            JsonNode second = baseline.DeepClone();
+            second["typed_snapshot"]!["timestamp_microseconds"] = 2;
+            second["typed_snapshot"]!["age_microseconds"] = 2;
+            second["typed_snapshot"]!["brokers"]![0]![field] = 4;
+            JsonArray guards = new("native_error_callback_observed");
+            if (guardCounter is not null)
+                guards.Add($"broker=broker-1;counter={guardCounter};observed=5");
+            capabilities["guard_observations"] = guards;
+            await VerifyCompleteRejectedIncompleteAccepted(first, second);
+        }
+
+        capabilities["guard_observations"] = new JsonArray("native_error_callback_observed");
+        JsonNode duplicateBroker = baseline.DeepClone();
+        duplicateBroker["typed_snapshot"]!["brokers"]!.AsArray().Add(
+            duplicateBroker["typed_snapshot"]!["brokers"]![0]!.DeepClone());
+        await VerifyCompleteRejectedIncompleteAccepted(duplicateBroker);
+    }
+
+    [Theory]
+    [InlineData("native_log", "provenance", "invented")]
+    [InlineData("native_log", "session_id", "invented")]
+    [InlineData("native_log", "inference", "invented")]
+    [InlineData("native_error", "provenance", "invented")]
+    [InlineData("native_error", "session_id", "invented")]
+    public async Task Given_NativeCallbackHasNoncanonicalAttribution_When_Read_Then_RejectsIt(
+        string eventType, string field, string value)
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lines = await File.ReadAllLinesAsync(file, TestContext.Current.CancellationToken);
+        int index = Array.FindIndex(lines, line => line.Contains("\"event_type\":\"" + eventType + "\"", StringComparison.Ordinal));
+        Assert.True(index >= 0);
+        JsonNode row = JsonNode.Parse(lines[index])!;
+        row[field] = value;
+        lines[index] = row.ToJsonString();
+        await File.WriteAllTextAsync(file, string.Join("\n", lines) + "\n", TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_StatisticsCompletionDisagreesWithTrustedBrokerInventory_When_Read_Then_RejectsMissingExpectedBrokerButAllowsExtraObservedBroker()
+    {
+        RunIdentity identity = Identity();
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity,
+            TestContext.Current.CancellationToken, expectedBrokerNames: ImmutableArray.Create("broker-2")));
+
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
+        capabilities["statistics_completion"]!["is_complete"] = false;
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity,
+            TestContext.Current.CancellationToken, expectedBrokerNames: ImmutableArray.Create("broker-2")));
+
+        capabilities["statistics_completion"]!["missing_brokers"] = new JsonArray("broker-2");
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, identity, TestContext.Current.CancellationToken,
+            expectedBrokerNames: ImmutableArray.Create("broker-2"));
+
+        // Persisted extra brokers may legitimately be observed beyond the independently selected
+        // inventory. They do not invalidate complete coverage of the expected broker set.
+        string extraPath = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
+        string statisticsFile = Path.Combine(extraPath, "statistics.jsonl");
+        JsonNode row = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
+        JsonNode extraBroker = row["typed_snapshot"]!["brokers"]![0]!.DeepClone();
+        extraBroker["name"] = "broker-2";
+        row["typed_snapshot"]!["brokers"]!.AsArray().Add(extraBroker);
+        await File.WriteAllTextAsync(statisticsFile, row.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+        JsonNode extraCapabilities = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(extraPath, "capabilities.json"), TestContext.Current.CancellationToken))!;
+        extraCapabilities["observed_broker_names"] = new JsonArray("broker-1", "broker-2");
+        await File.WriteAllTextAsync(Path.Combine(extraPath, "capabilities.json"), extraCapabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(extraPath, identity, TestContext.Current.CancellationToken,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
+    }
+
+    [Fact]
     public async Task Given_ResolvedConfiguration_When_Validating_Then_RejectsNullAndUnknownNestedMembers()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
@@ -592,14 +830,15 @@ public sealed class RunEvidenceReaderTests
     }
 
     internal static async Task<RunEvidenceExpectations> ExpectationsAsync(RunIdentity identity,
-        bool requireStatisticsEvidence = false)
+        bool requireStatisticsEvidence = false, ImmutableArray<string>? expectedBrokerNames = null)
     {
         ImmutableDictionary<string, ResolvedRoleConfiguration> configurations = StringComparer.Ordinal.Equals(identity.ClientId, Identity().ClientId)
             ? await SelectedConfigurations.Value
             : await LoadSelectedConfigurationsAsync(identity.ClientId);
         if (!configurations.TryGetValue(identity.ConfigurationId, out ResolvedRoleConfiguration? configuration))
             throw new InvalidOperationException("evidence_test_configuration_missing");
-        return new RunEvidenceExpectations(configuration, requireStatisticsEvidence);
+        return new RunEvidenceExpectations(configuration, requireStatisticsEvidence,
+            expectedBrokerNames ?? ImmutableArray.Create("broker-1"));
     }
 
     private static async Task<JsonObject> SerializeSelectedConfigurationAsync(RunIdentity identity)
@@ -609,9 +848,10 @@ public sealed class RunEvidenceReaderTests
     }
 
     private static async Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity,
-        CancellationToken cancellationToken, bool requireStatisticsEvidence = false)
+        CancellationToken cancellationToken, bool requireStatisticsEvidence = false,
+        ImmutableArray<string>? expectedBrokerNames = null)
     {
-        RunEvidenceExpectations expectations = await ExpectationsAsync(identity, requireStatisticsEvidence);
+        RunEvidenceExpectations expectations = await ExpectationsAsync(identity, requireStatisticsEvidence, expectedBrokerNames);
         return await RunEvidenceReader.ReadAsync(path, identity, expectations, 256 * 1024, 64 * 1024, 16,
             cancellationToken);
     }

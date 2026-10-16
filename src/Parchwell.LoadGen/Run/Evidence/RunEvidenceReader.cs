@@ -71,7 +71,10 @@ public static class RunEvidenceReader
         JsonElement rootElement = capabilities.RootElement;
         RejectDuplicatePropertiesRecursively(rootElement);
         ValidateCapabilityReport(rootElement, expectedIdentity, expectations, statisticsCount, maximumRows, maximumDiagnostics,
-            statisticsAttribution.PositiveGuardPairs, statisticsAttribution.ObservedBrokerNames,
+            statisticsAttribution.ObservedBrokerNames, statisticsAttribution.HasReportDiagnostics,
+            statisticsAttribution.HasUnparsedReports, statisticsAttribution.PositiveGuardValues,
+            statisticsAttribution.HasNonIncreasingTimestamp, statisticsAttribution.HasNativeCreationChanged,
+            statisticsAttribution.HasDecreasingCounter, statisticsAttribution.HasDuplicateBrokerName,
             lifecycleAttribution.HasErrorCallback,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
             out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
@@ -183,7 +186,12 @@ public static class RunEvidenceReader
                 throw Invalid("statistics_native_name_changed");
             attribution.NativeName ??= nativeName;
         }
-        ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics);
+        else
+        {
+            attribution.HasUnparsedReports = true;
+        }
+        if (ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics))
+            attribution.HasReportDiagnostics = true;
     }
 
     private static string ValidateSnapshot(JsonElement snapshot, string expectedClientId, int maximumRows,
@@ -193,17 +201,39 @@ public static class RunEvidenceReader
         string nativeName = RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
         RequireEqualString(snapshot, "client_id", expectedClientId);
         RequireEqualString(snapshot, "type", "producer");
-        RequireNonnegativeInt64(Get(snapshot, "timestamp_microseconds"), "typed_snapshot.timestamp_microseconds");
+        long timestamp = RequireNonnegativeInt64(Get(snapshot, "timestamp_microseconds"), "typed_snapshot.timestamp_microseconds");
         RequireNonnegativeInt64(Get(snapshot, "time_seconds"), "typed_snapshot.time_seconds");
-        RequireNonnegativeInt64(Get(snapshot, "age_microseconds"), "typed_snapshot.age_microseconds");
+        long age = RequireNonnegativeInt64(Get(snapshot, "age_microseconds"), "typed_snapshot.age_microseconds");
+        bool generationValid = true;
+        if (attribution.LastNativeTimestamp is long previousTimestamp && timestamp <= previousTimestamp)
+        {
+            attribution.HasNonIncreasingTimestamp = true;
+            generationValid = false;
+        }
+        long creationTimestamp = timestamp - age;
+        if (attribution.NativeCreationTimestamp is long knownCreationTimestamp && creationTimestamp != knownCreationTimestamp)
+        {
+            attribution.HasNativeCreationChanged = true;
+            generationValid = false;
+        }
+        if (generationValid)
+        {
+            attribution.LastNativeTimestamp = timestamp;
+            attribution.NativeCreationTimestamp ??= creationTimestamp;
+        }
         JsonElement brokers = Get(snapshot, "brokers");
         RequireArray(brokers, "typed_snapshot.brokers", maximumRows);
+        var brokerNamesInSnapshot = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement broker in brokers.EnumerateArray())
-            attribution.ObservedBrokerNames.Add(ValidateBroker(broker, attribution.PositiveGuardPairs));
+        {
+            string brokerName = ValidateBroker(broker, attribution, generationValid);
+            if (!brokerNamesInSnapshot.Add(brokerName)) attribution.HasDuplicateBrokerName = true;
+            attribution.ObservedBrokerNames.Add(brokerName);
+        }
         return nativeName;
     }
 
-    private static string ValidateBroker(JsonElement broker, HashSet<(string Broker, string Counter)> positiveGuardPairs)
+    private static string ValidateBroker(JsonElement broker, StatisticsAttribution attribution, bool generationValid)
     {
         RequireObject(broker, "name", "node_id", "state", "state_age_microseconds", "request_timeouts", "disconnects", "transmission_retries", "transmission_errors", "receive_errors", "throttle", "round_trip_time");
         string brokerName = RequireNonemptyString(Get(broker, "name"), "broker.name");
@@ -211,11 +241,11 @@ public static class RunEvidenceReader
         if (nodeId < -1) throw Invalid("broker.node_id_out_of_range");
         RequireString(Get(broker, "state"), "broker.state");
         RequireNonnegativeInt64(Get(broker, "state_age_microseconds"), "broker.state_age_microseconds");
-        RecordPositiveGuard(brokerName, "req_timeouts", Get(broker, "request_timeouts"), "broker.request_timeouts", positiveGuardPairs);
-        RequireNonnegativeInt64(Get(broker, "disconnects"), "broker.disconnects");
-        RecordPositiveGuard(brokerName, "txretries", Get(broker, "transmission_retries"), "broker.transmission_retries", positiveGuardPairs);
-        RecordPositiveGuard(brokerName, "txerrs", Get(broker, "transmission_errors"), "broker.transmission_errors", positiveGuardPairs);
-        RecordPositiveGuard(brokerName, "rxerrs", Get(broker, "receive_errors"), "broker.receive_errors", positiveGuardPairs);
+        RecordCounter(brokerName, "req_timeouts", Get(broker, "request_timeouts"), "broker.request_timeouts", attribution, generationValid, isGuard: true);
+        RecordCounter(brokerName, "disconnects", Get(broker, "disconnects"), "broker.disconnects", attribution, generationValid, isGuard: false);
+        RecordCounter(brokerName, "txretries", Get(broker, "transmission_retries"), "broker.transmission_retries", attribution, generationValid, isGuard: true);
+        RecordCounter(brokerName, "txerrs", Get(broker, "transmission_errors"), "broker.transmission_errors", attribution, generationValid, isGuard: true);
+        RecordCounter(brokerName, "rxerrs", Get(broker, "receive_errors"), "broker.receive_errors", attribution, generationValid, isGuard: true);
         ValidateWindow(Get(broker, "throttle"), "broker.throttle");
         ValidateWindow(Get(broker, "round_trip_time"), "broker.round_trip_time");
         return brokerName;
@@ -240,7 +270,7 @@ public static class RunEvidenceReader
         }
     }
 
-    private static void ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics)
+    private static bool ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics)
     {
         RequireArray(diagnostics, "diagnostics", maximumDiagnostics);
         foreach (JsonElement diagnostic in diagnostics.EnumerateArray())
@@ -250,6 +280,7 @@ public static class RunEvidenceReader
             RequireNullableString(Get(diagnostic, "broker"), "diagnostics.broker");
             RequireNullableString(Get(diagnostic, "field"), "diagnostics.field");
         }
+        return diagnostics.GetArrayLength() != 0;
     }
 
     private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics,
@@ -267,6 +298,7 @@ public static class RunEvidenceReader
         if (eventType == "native_log")
         {
             RequireExactProperties(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "source_event_timestamp", "correlation_id", "source_order", "known_missing_fields", "inference", "event_type", "native_name", "level", "facility", "message", "provenance");
+            RequireEqualString(row, "session_id", "managed_log_callback");
             if (Get(row, "source_event_timestamp").ValueKind != JsonValueKind.Null ||
                 Get(row, "correlation_id").ValueKind != JsonValueKind.Null ||
                 Get(row, "source_order").ValueKind != JsonValueKind.Null)
@@ -275,19 +307,21 @@ public static class RunEvidenceReader
                 "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: false);
             if (!missing.SequenceEqual(KnownMissingLifecycleFields, StringComparer.Ordinal))
                 throw Invalid("native_log_known_missing_fields_mismatch");
-            RequireNullableString(Get(row, "inference"), "inference");
+            if (Get(row, "inference").ValueKind != JsonValueKind.Null)
+                throw Invalid("native_log_inference_must_be_null");
             RequireString(Get(row, "native_name"), "native_name");
             string level = RequireNonemptyString(Get(row, "level"), "level");
             if (!Enum.TryParse<SyslogLevel>(level, ignoreCase: false, out SyslogLevel parsedLevel) || !Enum.IsDefined(parsedLevel))
                 throw Invalid("log_level_invalid");
             RequireString(Get(row, "facility"), "facility");
             RequireString(Get(row, "message"), "message");
-            RequireNonemptyString(Get(row, "provenance"), "provenance");
+            RequireEqualString(row, "provenance", "managed_log_callback");
             return;
         }
         if (eventType == "native_error")
         {
             RequireExactProperties(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type", "error_code", "error_name", "reason", "is_error", "is_fatal", "provenance");
+            RequireEqualString(row, "session_id", "managed_error_callback");
             int errorCode = RequireInt32(Get(row, "error_code"), "error_code");
             if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(row, "error_name"), "error_name"),
                     ((ErrorCode)errorCode).ToString()))
@@ -298,7 +332,7 @@ public static class RunEvidenceReader
                 throw Invalid("native_error_is_error_code_mismatch");
             if (isError) attribution.HasErrorCallback = true;
             RequireBoolean(Get(row, "is_fatal"), "is_fatal");
-            RequireNonemptyString(Get(row, "provenance"), "provenance");
+            RequireEqualString(row, "provenance", "managed_error_callback");
             return;
         }
         throw Invalid("lifecycle_event_type_unknown");
@@ -306,8 +340,12 @@ public static class RunEvidenceReader
 
     private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected,
         RunEvidenceExpectations expectations, int statisticsRecordCount,
-        int maximumRows, int maximumDiagnostics, HashSet<(string Broker, string Counter)> positiveGuardPairs,
-        HashSet<string> statisticsBrokerNames, bool hasErrorCallback,
+        int maximumRows, int maximumDiagnostics,
+        HashSet<string> statisticsBrokerNames, bool hasStatisticsReportDiagnostics, bool hasUnparsedReports,
+        HashSet<(string Broker, string Counter, long Value)> positiveGuardValues,
+        bool hasNonIncreasingTimestamp, bool hasNativeCreationChanged, bool hasDecreasingCounter,
+        bool hasDuplicateBrokerName,
+        bool hasErrorCallback,
         out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
         out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
         out bool guardObservationsComplete, out ImmutableArray<string> diagnostics)
@@ -350,11 +388,10 @@ public static class RunEvidenceReader
             throw Invalid("observed_broker_names_missing_statistics_broker");
         guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
         guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
+        isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (guardObservationsComplete)
         {
-            ValidatePositiveGuardObservations(guardObservations, positiveGuardPairs);
-            if (hasErrorCallback && !guardObservations.Contains("native_error_callback_observed", StringComparer.Ordinal))
-                throw Invalid("native_error_guard_observation_missing");
+            ValidatePositiveGuardObservations(guardObservations, positiveGuardValues, hasErrorCallback, isFaulted);
         }
         JsonElement completion = Get(root, "statistics_completion");
         statisticsComplete = null;
@@ -367,34 +404,107 @@ public static class RunEvidenceReader
             JsonElement completionDiagnostics = Get(completion, "diagnostics");
             ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics);
             ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
-            if (statisticsComplete.Value && (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty))
+            if (statisticsComplete.Value &&
+                (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty || hasStatisticsReportDiagnostics || hasUnparsedReports ||
+                 hasNonIncreasingTimestamp || hasNativeCreationChanged || hasDecreasingCounter || hasDuplicateBrokerName))
                 throw Invalid("statistics_completion_contradicts_diagnostics_or_missing_brokers");
+            HashSet<string> expectedBrokerNames = expectations.ExpectedBrokerNames.ToHashSet(StringComparer.Ordinal);
+            HashSet<string> missingBrokerSet = missingBrokers.ToHashSet(StringComparer.Ordinal);
+            if (missingBrokerSet.Count != missingBrokers.Length || missingBrokerSet.Any(name => !expectedBrokerNames.Contains(name)))
+                throw Invalid("statistics_missing_brokers_outside_expected_inventory");
+            if (expectedBrokerNames.Except(statisticsBrokerNames, StringComparer.Ordinal).Any(name => !missingBrokerSet.Contains(name)))
+                throw Invalid("statistics_expected_unobserved_broker_missing_from_completion");
+            if (statisticsComplete.Value &&
+                (expectedBrokerNames.Count == 0 || !expectedBrokerNames.IsSubsetOf(statisticsBrokerNames)))
+                throw Invalid("statistics_complete_expected_broker_inventory_not_covered");
         }
         if (expectations.RequireStatisticsEvidence && statisticsComplete != true)
             throw Invalid("required_statistics_completion_missing_or_incomplete");
         diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
-        isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (!isFaulted && !observedBrokerNameSet.SetEquals(statisticsBrokerNames))
             throw Invalid("observed_broker_names_statistics_mismatch");
         if (!guardObservationsComplete && !isFaulted) throw Invalid("guard_observation_truncation_not_faulted");
     }
 
-    private static void RecordPositiveGuard(string broker, string counter, JsonElement value, string field,
-        HashSet<(string Broker, string Counter)> positiveGuardPairs)
+    private static void RecordCounter(string broker, string counter, JsonElement value, string field,
+        StatisticsAttribution attribution, bool generationValid, bool isGuard)
     {
-        if (RequireNonnegativeInt64(value, field) > 0) positiveGuardPairs.Add((broker, counter));
+        long observed = RequireNonnegativeInt64(value, field);
+        if (isGuard && observed > 0) attribution.PositiveGuardValues.Add((broker, counter, observed));
+        if (!generationValid) return;
+        var key = (broker, counter);
+        if (attribution.LastCounterValues.TryGetValue(key, out long previous) && observed < previous)
+            attribution.HasDecreasingCounter = true;
+        attribution.LastCounterValues[key] = observed;
     }
 
     private static void ValidatePositiveGuardObservations(ImmutableArray<string> observations,
-        HashSet<(string Broker, string Counter)> positiveGuardPairs)
+        HashSet<(string Broker, string Counter, long Value)> positiveGuardValues,
+        bool hasErrorCallback, bool isFaulted)
     {
-        foreach ((string broker, string counter) in positiveGuardPairs)
+        var valuesByPair = new Dictionary<(string Broker, string Counter), HashSet<string>>();
+        foreach ((string broker, string counter, long value) in positiveGuardValues)
         {
-            string prefix = $"broker={broker};counter={counter};observed=";
-            bool found = observations.Any(observation => observation.StartsWith(prefix, StringComparison.Ordinal) &&
-                long.TryParse(observation.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value) && value > 0);
+            var pair = (broker, counter);
+            if (!valuesByPair.TryGetValue(pair, out HashSet<string>? candidates))
+                valuesByPair.Add(pair, candidates = new HashSet<string>(StringComparer.Ordinal));
+            candidates.Add(FormattableString.Invariant($"broker={broker};counter={counter};observed={value}"));
+        }
+
+        // A faulted writer may have recorded a guard from a report that was rejected before
+        // persistence, including an earlier value for a pair that later appears in persisted rows.
+        // Match its emitted prefix against candidates built from persisted broker/counter fields;
+        // do not parse broker names out of the free-form guard string.
+        if (isFaulted)
+        {
+            if (hasErrorCallback && !observations.Contains("native_error_callback_observed", StringComparer.Ordinal))
+                throw Invalid("native_error_guard_observation_missing");
+            foreach ((string broker, string counter) in valuesByPair.Keys)
+            {
+                string prefix = FormattableString.Invariant($"broker={broker};counter={counter};observed=");
+                bool found = observations.Any(observation => observation.StartsWith(prefix, StringComparison.Ordinal) &&
+                    long.TryParse(observation.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value) && value > 0);
+                if (!found) throw Invalid("statistics_guard_observation_missing");
+            }
+            return;
+        }
+
+        foreach (KeyValuePair<(string Broker, string Counter), HashSet<string>> pair in valuesByPair)
+        {
+            bool found = observations.Any(pair.Value.Contains);
             if (!found) throw Invalid("statistics_guard_observation_missing");
         }
+
+        var candidatePairs = new Dictionary<string, HashSet<(string Broker, string Counter)>>(StringComparer.Ordinal);
+        foreach (KeyValuePair<(string Broker, string Counter), HashSet<string>> pair in valuesByPair)
+        {
+            foreach (string candidate in pair.Value)
+            {
+                if (!candidatePairs.TryGetValue(candidate, out HashSet<(string Broker, string Counter)>? matches))
+                    candidatePairs.Add(candidate, matches = []);
+                matches.Add(pair.Key);
+            }
+        }
+
+        var matchedPairs = new HashSet<(string Broker, string Counter)>();
+        bool errorGuardObserved = false;
+        foreach (string observation in observations)
+        {
+            if (StringComparer.Ordinal.Equals(observation, "native_error_callback_observed"))
+            {
+                if (!hasErrorCallback || errorGuardObserved)
+                    throw Invalid("native_error_guard_observation_orphan_or_duplicate");
+                errorGuardObserved = true;
+                continue;
+            }
+
+            if (!candidatePairs.TryGetValue(observation, out HashSet<(string Broker, string Counter)>? matches) || matches.Count != 1)
+                throw Invalid("statistics_guard_observation_orphan_or_ambiguous");
+            (string Broker, string Counter) matchedPair = matches.Single();
+            if (!matchedPairs.Add(matchedPair)) throw Invalid("statistics_guard_observation_pair_duplicate");
+        }
+        if (hasErrorCallback != errorGuardObserved)
+            throw Invalid("native_error_guard_observation_missing_or_orphan");
     }
 
     private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected,
@@ -755,9 +865,27 @@ public static class RunEvidenceReader
 
         public string? NativeName { get; set; }
 
-        public HashSet<(string Broker, string Counter)> PositiveGuardPairs { get; } = [];
+        public HashSet<(string Broker, string Counter, long Value)> PositiveGuardValues { get; } = [];
 
         public HashSet<string> ObservedBrokerNames { get; } = new(StringComparer.Ordinal);
+
+        public bool HasReportDiagnostics { get; set; }
+
+        public bool HasUnparsedReports { get; set; }
+
+        public long? LastNativeTimestamp { get; set; }
+
+        public long? NativeCreationTimestamp { get; set; }
+
+        public Dictionary<(string Broker, string Counter), long> LastCounterValues { get; } = [];
+
+        public bool HasNonIncreasingTimestamp { get; set; }
+
+        public bool HasNativeCreationChanged { get; set; }
+
+        public bool HasDecreasingCounter { get; set; }
+
+        public bool HasDuplicateBrokerName { get; set; }
     }
 
     private sealed class LifecycleAttribution

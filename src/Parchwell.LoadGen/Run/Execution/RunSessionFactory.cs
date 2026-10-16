@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
@@ -50,7 +51,8 @@ public sealed class RunSessionFactory
         LoadGenHostOptions options = _options;
         Directory.CreateDirectory(options.OutputRoot);
         var expectations = new RunEvidenceExpectations(configuration,
-            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
+            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
+            options.GetExpectedBrokerNames().ToImmutableArray());
         RunEvidenceSession? evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(options.OutputRoot,
             options.EvidenceQueueCapacity, options.MaxReportBytes, options.MaxEvidenceFileBytes,
             options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations);
