@@ -79,10 +79,17 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (!started) return;
-        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await container.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-        await container.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
-        started = false;
+        try
+        {
+            using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await container.StopAsync(stop.Token).WaitAsync(stop.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            using var dispose = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await container.DisposeAsync().AsTask().WaitAsync(dispose.Token).ConfigureAwait(false);
+            started = false;
+        }
     }
 
     /// <summary>Preserves the detected endpoint and credentials while bounding Docker HTTP requests.</summary>
