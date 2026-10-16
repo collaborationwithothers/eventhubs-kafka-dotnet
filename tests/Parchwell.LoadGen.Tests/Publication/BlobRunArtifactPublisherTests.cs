@@ -12,7 +12,7 @@ namespace Parchwell.LoadGen.Tests.Publication;
 public sealed class BlobRunArtifactPublisherTests
 {
     [Fact]
-    public void GivenValidSdkClient_WhenConstructingPublisher_ThenItIsAvailableWithoutRequestingCredentials()
+    public void Given_ValidSdkClient_When_ConstructingPublisher_Then_ItIsAvailableWithoutRequestingCredentials()
     {
         // The production adapter is considered available when its SDK destination is configured; token access happens on upload.
         var client = new BlobServiceClient(new Uri("https://storage.example.test"));
@@ -22,7 +22,7 @@ public sealed class BlobRunArtifactPublisherTests
     }
 
     [Fact]
-    public async Task GivenEndpointDifferentFromInjectedClient_WhenPublishing_ThenRejectsBeforeReadingTheRun()
+    public async Task Given_EndpointDifferentFromInjectedClient_When_Publishing_Then_RejectsBeforeReadingTheRun()
     {
         // A deployment option cannot redirect a client that the composition root constructed for another account.
         BlobRunArtifactPublisher publisher = CreatePublisher("https://storage.example.test");
@@ -34,7 +34,7 @@ public sealed class BlobRunArtifactPublisherTests
     }
 
     [Fact]
-    public async Task GivenFailedWorkerResult_WhenPublishing_ThenRejectsBeforeOpeningArtifactPaths()
+    public async Task Given_FailedWorkerResult_When_Publishing_Then_RejectsBeforeOpeningArtifactPaths()
     {
         // An incomplete worker cannot publish an accepted index even if a Blob destination is reachable.
         BlobRunArtifactPublisher publisher = CreatePublisher("https://storage.example.test");
@@ -48,7 +48,7 @@ public sealed class BlobRunArtifactPublisherTests
     [InlineData("https://user:secret@storage.example.test")]
     [InlineData("https://storage.example.test?sig=secret")]
     [InlineData("https://storage.example.test/path")]
-    public async Task GivenUnsafeEndpoint_WhenPublishing_ThenRejectsItBeforeArtifactAccess(string endpoint)
+    public async Task Given_UnsafeEndpoint_When_Publishing_Then_RejectsItBeforeArtifactAccess(string endpoint)
     {
         // The Blob path is a service-root HTTPS URI and never accepts embedded credentials or query data.
         BlobRunArtifactPublisher publisher = CreatePublisher("https://storage.example.test");
@@ -59,7 +59,7 @@ public sealed class BlobRunArtifactPublisherTests
     }
 
     [Fact]
-    public async Task GivenContainerOutsideLedger_WhenPublishing_ThenRejectsItBeforeArtifactAccess()
+    public async Task Given_ContainerOutsideLedger_When_Publishing_Then_RejectsItBeforeArtifactAccess()
     {
         // The worker credential is scoped to the one approved ledger container.
         BlobRunArtifactPublisher publisher = CreatePublisher("https://storage.example.test");

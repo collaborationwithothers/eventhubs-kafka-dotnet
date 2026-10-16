@@ -109,7 +109,7 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         ArgumentNullException.ThrowIfNull(result.ArtifactPaths);
         if (result.EvidenceExpectations is null)
             throw new InvalidDataException("publication_evidence_expectations_missing");
-        result.Manifest.Identity.Validate();
+        _ = GetRunPrefix(result.Manifest.Identity);
         if (result.ExitCode != 0 || result.Manifest.WorkerStatus != "complete" || !result.Manifest.BookkeepingComplete)
             throw new InvalidDataException("publication_requires_complete_worker_and_bookkeeping");
         LedgerValidator.ValidateManifest(result.Manifest);
@@ -150,6 +150,11 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
     private static string GetRunPrefix(RunIdentity identity)
     {
         identity.Validate();
+        foreach (string segment in new[] { identity.ScenarioId, identity.ConfigurationId, identity.RunId, identity.InstanceId })
+        {
+            if (segment is "." or "..")
+                throw new InvalidDataException("publication_identity_dot_segment_not_allowed");
+        }
         return string.Join('/', Uri.EscapeDataString(identity.ScenarioId), Uri.EscapeDataString(identity.ConfigurationId),
             Uri.EscapeDataString(identity.RunId), Uri.EscapeDataString(identity.InstanceId));
     }

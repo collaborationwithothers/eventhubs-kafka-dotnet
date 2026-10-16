@@ -136,6 +136,47 @@ public sealed class BlobPublicationIntegrationTests
     }
 
     [Theory]
+    [InlineData("scenario", ".")]
+    [InlineData("scenario", "..")]
+    [InlineData("configuration", ".")]
+    [InlineData("configuration", "..")]
+    [InlineData("run", ".")]
+    [InlineData("run", "..")]
+    [InlineData("instance", ".")]
+    [InlineData("instance", "..")]
+    public async Task Given_DotSegmentIdentity_When_Publishing_Then_RejectsBeforeArtifactAccessOrBlobRequests(string field, string segment)
+    {
+        string directory = NewDirectory();
+        try
+        {
+            RunExecutionResult result = await CreateSyntheticCompletedRunAsync(directory);
+            RunIdentity original = result.Manifest.Identity;
+            RunIdentity identity = field switch
+            {
+                "scenario" => original with { ScenarioId = segment },
+                "configuration" => original with { ConfigurationId = segment },
+                "run" => original with { RunId = segment },
+                "instance" => original with { InstanceId = segment, ExpectedInstanceId = segment },
+                _ => throw new InvalidOperationException()
+            };
+            identity.Validate();
+            result = result with { Manifest = result.Manifest with { Identity = identity } };
+            File.Delete(result.ArtifactPaths["ledger"]);
+            using var handler = new RecordingHttpHandler();
+            using var http = new HttpClient(handler);
+            InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                NewPublisher(http).PublishAsync(result, PublicationOptions(), TestContext.Current.CancellationToken));
+            Assert.Equal("publication_identity_dot_segment_not_allowed", failure.Message);
+            Assert.Empty(handler.Requests);
+            Assert.False(File.Exists(Path.Combine(directory, "index.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
     [InlineData("ledger.jsonl", "ledger")]
     [InlineData("capabilities.json", "capabilities.json")]
     public async Task Given_InvalidHeldArtifactAndValidPathReplacement_When_PublishingOpenedSources_Then_RejectsBeforeAnyBlobRequest(
