@@ -21,20 +21,36 @@ internal static class Program
     private static readonly Action<ILogger, string, string, Exception?> ProcessWatchdogExpired =
         LoggerMessage.Define<string, string>(LogLevel.Critical, new EventId(3, nameof(ProcessWatchdogExpired)),
             "loadgen_process_lifetime_watchdog_expired for scenario {ScenarioId} run {RunId}");
+    private static readonly Action<ILogger, string, string, string, Exception?> HostFailure =
+        LoggerMessage.Define<string, string, string>(LogLevel.Critical, new EventId(4, nameof(HostFailure)),
+            "loadgen_startup_or_host_failure:{FailureType} for scenario {ScenarioId} run {RunId}");
 
     private static async Task<int> Main(string[] args)
     {
         ITimer? processWatchdog = null;
+        IHost? host = null;
+        LoadGenHostOptions? runOptions = null;
+        ILogger? logger = null;
+        int exitCode = 1;
         try
         {
-            using IHost host = BuildHost(args);
+            host = BuildHost(args);
             LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
-            ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Parchwell.LoadGen.Process");
+            ILogger processLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Parchwell.LoadGen.Process");
+            if (IsValid(options))
+            {
+                runOptions = options;
+                logger = processLogger;
+            }
             processWatchdog = host.Services.GetRequiredService<TimeProvider>().CreateTimer(_ =>
             {
                 try
                 {
-                    ProcessWatchdogExpired(logger, options.ScenarioId, options.RunId, null);
+                    ProcessWatchdogExpired(processLogger, options.ScenarioId, options.RunId, null);
+                }
+                catch
+                {
+                    Console.Error.WriteLine($"loadgen_process_lifetime_watchdog_expired scenario_id={options.ScenarioId} run_id={options.RunId}");
                 }
                 finally
                 {
@@ -45,17 +61,61 @@ internal static class Program
             LoadGenWorker worker = host.Services.GetRequiredService<LoadGenWorker>();
             await host.WaitForShutdownAsync().ConfigureAwait(false);
             await host.StopAsync().ConfigureAwait(false);
-            return worker.ExitCode;
+            exitCode = worker.ExitCode;
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine("loadgen_startup_or_host_failure:" + exception.GetType().Name);
-            return 1;
+            ReportHostFailure(exception, runOptions, logger);
+            exitCode = 1;
         }
         finally
         {
-            processWatchdog?.Dispose();
+            try
+            {
+                host?.Dispose();
+            }
+            catch (Exception exception)
+            {
+                ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                exitCode = 1;
+            }
+            try
+            {
+                processWatchdog?.Dispose();
+            }
+            catch (Exception exception)
+            {
+                ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                exitCode = 1;
+            }
         }
+        return exitCode;
+    }
+
+    private static void ReportHostFailure(Exception exception, LoadGenHostOptions? options, ILogger? logger,
+        bool alwaysWriteIdentityFallback = false)
+    {
+        if (options is not null && logger is not null)
+        {
+            try
+            {
+                HostFailure(logger, exception.GetType().Name, options.ScenarioId, options.RunId, exception);
+                if (!alwaysWriteIdentityFallback) return;
+            }
+            catch
+            {
+                alwaysWriteIdentityFallback = true;
+            }
+        }
+
+        if (options is not null && alwaysWriteIdentityFallback)
+        {
+            Console.Error.WriteLine($"loadgen_startup_or_host_failure:{exception.GetType().Name} scenario_id={options.ScenarioId} run_id={options.RunId}");
+            return;
+        }
+
+        if (options is null || logger is null)
+            Console.Error.WriteLine("loadgen_startup_or_host_failure:" + exception.GetType().Name);
     }
 
     internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null)

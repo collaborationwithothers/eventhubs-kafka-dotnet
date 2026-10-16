@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Confluent.Kafka;
 using Parchwell.Kafka.Statistics;
@@ -101,59 +102,71 @@ public sealed class RunExecutor
                 var dueTimestamp = AddMicroseconds(startTimestamp, planned.DueMicroseconds, clock.TimestampFrequency);
                 await DelayUntilAsync(dueTimestamp, cancellationToken).ConfigureAwait(false);
                 var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
-                var invokedTimestamp = clock.GetTimestamp();
-                var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - dueTimestamp), clock.TimestampFrequency);
-                if (lateness > DurationMicroseconds(options.MaxScheduleLateness))
-                {
-                    AddDiagnostic("schedule_lateness_limit_exceeded");
-                    break;
-                }
-
-                var attempt = new AttemptEntry(identity.InstanceId,
-                    string.Concat(identity.InstanceId, "-", planned.Ordinal.ToString(CultureInfo.InvariantCulture)), planned.Ordinal,
-                    planned.TenantId, planned.DocumentId, planned.Key, planned.Sequence, planned.EventType,
-                    planned.DueMicroseconds, ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
+                string attemptId = string.Concat(identity.InstanceId, "-", planned.Ordinal.ToString(CultureInfo.InvariantCulture));
+                var reservation = new AttemptEntry(identity.InstanceId, attemptId, planned.Ordinal, planned.TenantId,
+                    planned.DocumentId, planned.Key, planned.Sequence, planned.EventType, planned.DueMicroseconds,
+                    planned.DueMicroseconds);
+                AttemptEntry? attempt = null;
+                long invokedTimestamp = 0;
                 var message = new Message<byte[], byte[]>
                 {
                     Key = Encoding.UTF8.GetBytes(planned.Key),
                     Value = payload,
-                    Headers = CreateHeaders(identity, attempt)
+                    Headers = CreateHeaders(identity, planned, attemptId)
                 };
                 var callbackSeen = 0;
                 Action<DeliveryReport<byte[], byte[]>> deliveryHandler = report =>
-                    RecordDelivery(report, identity, attempt, invokedTimestamp, startTimestamp,
+                    RecordDelivery(report, identity, attempt!, invokedTimestamp, startTimestamp,
                         () => Interlocked.Exchange(ref callbackSeen, 1) == 0,
                         () => Interlocked.Or(ref guardFlags, AsynchronousFailure),
                         () => Interlocked.Or(ref guardFlags, MissingPersistence),
                         () => Interlocked.Or(ref guardFlags, PossiblyPersisted),
                         () => Interlocked.Or(ref guardFlags, CallbackFailure),
                         () => Interlocked.Or(ref guardFlags, LedgerFailure));
-                cancellationToken.ThrowIfCancellationRequested();
-                inventory.Register(attempt);
+                inventory.Reserve(reservation);
+                bool invocationCommitted = false;
                 try
                 {
-                    producer.Produce(options.Topic, message, deliveryHandler);
-                }
-                catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
-                {
-                    var completedTimestamp = clock.GetTimestamp();
-                    var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
-                        (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
-                        ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency), null,
-                        ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency));
-                    if (!ledger.TryAppend(row))
+                    cancellationToken.ThrowIfCancellationRequested();
+                    invokedTimestamp = clock.GetTimestamp();
+                    var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - dueTimestamp), clock.TimestampFrequency);
+                    if (lateness > DurationMicroseconds(options.MaxScheduleLateness))
                     {
-                        Interlocked.Or(ref guardFlags, LedgerFailure);
-                        AddDiagnostic("ledger_append_failed");
-                        workerFailed = true;
+                        AddDiagnostic("schedule_lateness_limit_exceeded");
                         break;
                     }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    attempt = inventory.CommitReservation(ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
+                    invocationCommitted = true;
+                    try
+                    {
+                        producer.Produce(options.Topic, message, deliveryHandler);
+                    }
+                    catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
+                    {
+                        var completedTimestamp = clock.GetTimestamp();
+                        var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
+                            (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
+                            ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency), null,
+                            ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency));
+                        if (!ledger.TryAppend(row))
+                        {
+                            Interlocked.Or(ref guardFlags, LedgerFailure);
+                            AddDiagnostic("ledger_append_failed");
+                            workerFailed = true;
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        Interlocked.Or(ref guardFlags, NativeProducerException);
+                        AddDiagnostic("native_produce_exception");
+                        throw;
+                    }
                 }
-                catch
+                finally
                 {
-                    Interlocked.Or(ref guardFlags, NativeProducerException);
-                    AddDiagnostic("native_produce_exception");
-                    throw;
+                    if (!invocationCommitted) inventory.CancelReservation();
                 }
             }
             cancellationToken.ThrowIfCancellationRequested();
@@ -405,15 +418,15 @@ public sealed class RunExecutor
         }
     }
 
-    private static Headers CreateHeaders(RunIdentity identity, AttemptEntry attempt)
+    private static Headers CreateHeaders(RunIdentity identity, PlannedEvent planned, string attemptId)
     {
         var headers = new Headers();
-        headers.Add("tenant-id", Encoding.UTF8.GetBytes(attempt.TenantId));
-        headers.Add("document-id", Encoding.UTF8.GetBytes(attempt.DocumentId));
-        headers.Add("sequence", Encoding.UTF8.GetBytes(attempt.Sequence.ToString(CultureInfo.InvariantCulture)));
-        headers.Add("event-type", Encoding.UTF8.GetBytes(attempt.EventType));
+        headers.Add("tenant-id", Encoding.UTF8.GetBytes(planned.TenantId));
+        headers.Add("document-id", Encoding.UTF8.GetBytes(planned.DocumentId));
+        headers.Add("sequence", Encoding.UTF8.GetBytes(planned.Sequence.ToString(CultureInfo.InvariantCulture)));
+        headers.Add("event-type", Encoding.UTF8.GetBytes(planned.EventType));
         headers.Add("instance-id", Encoding.UTF8.GetBytes(identity.InstanceId));
-        headers.Add("attempt-id", Encoding.UTF8.GetBytes(attempt.AttemptId));
+        headers.Add("attempt-id", Encoding.UTF8.GetBytes(attemptId));
         return headers;
     }
 
@@ -446,12 +459,19 @@ public sealed class RunExecutor
         lock (diagnostics) diagnosticSnapshot = diagnostics.ToImmutableArray();
         var versions = ImmutableDictionary<string, string>.Empty
             .Add("dotnet", Environment.Version.ToString())
-            .Add("confluent_kafka", typeof(IProducer<byte[], byte[]>).Assembly.GetName().Version?.ToString() ?? "unknown")
+            .Add("confluent_kafka", GetManagedKafkaVersion())
             .Add("librdkafka", Library.VersionString)
             .Add("workload_generator", WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture));
         return new RunManifest(1, identity, WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture),
             plannedCount, entries.Length, entries, frequency, startTimestamp, status, bookkeepingComplete,
             entries.Length < plannedCount ? entries.Length : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
+    }
+
+    private static string GetManagedKafkaVersion()
+    {
+        var assembly = typeof(IProducer<byte[], byte[]>).Assembly;
+        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString() ?? "unknown";
     }
 
     private static ImmutableArray<string> BuildGuardObservations(int flags,

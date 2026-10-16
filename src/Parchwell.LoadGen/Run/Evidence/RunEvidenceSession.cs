@@ -303,13 +303,13 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         }
         _completion = completion;
         _queue.Writer.TryComplete();
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(_options.CompletionTimeout);
+        using var timeout = new CancellationTokenSource(_options.CompletionTimeout, _timeProvider);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             await _writerTask.WaitAsync(deadline.Token).ConfigureAwait(false);
         }
-        catch (TimeoutException)
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             Latch("evidence_writer_completion_timeout");
         }
@@ -328,7 +328,10 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         }
         catch (Exception exception)
         {
-            Latch(exception is OperationCanceledException ? "capabilities_write_cancelled" : "capabilities_write_failed");
+            string diagnostic = exception is OperationCanceledException && timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested
+                ? "evidence_writer_completion_timeout"
+                : exception is OperationCanceledException ? "capabilities_write_cancelled" : "capabilities_write_failed";
+            Latch(diagnostic);
         }
     }
 

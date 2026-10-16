@@ -31,12 +31,23 @@ public static class RunEvidenceReader
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private static readonly JsonDocumentOptions JsonOptions = new() { MaxDepth = MaximumJsonDepth, CommentHandling = JsonCommentHandling.Disallow, AllowTrailingCommas = false };
     private static readonly string[] ArtifactNames = ["statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+    private static readonly string[] KnownMissingLifecycleFields = ["source_event_timestamp", "correlation_id", "source_order"];
     private static readonly string[] IdentityFields = ["scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id"];
     private static readonly string[] CapabilityRequirements =
     [
         "request_identity", "matched_response_error_throttle_attribution", "applicable_deadline_provenance",
         "native_retransmission", "request_ordering", "request_lifecycle_completeness", "broker_instance_lifecycle_inventory"
     ];
+    private static readonly ImmutableDictionary<string, string> ExpectedCapabilityStatuses = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["request_identity"] = "unsupported",
+        ["matched_response_error_throttle_attribution"] = "unsupported",
+        ["applicable_deadline_provenance"] = "unproven",
+        ["native_retransmission"] = "unsupported",
+        ["request_ordering"] = "unproven",
+        ["request_lifecycle_completeness"] = "unsupported",
+        ["broker_instance_lifecycle_inventory"] = "unproven"
+    }.ToImmutableDictionary(StringComparer.Ordinal);
 
     /// <summary>Reads and validates all three artifacts without parsing the native raw JSON string.</summary>
     public static async Task<RunEvidenceReadResult> ReadAsync(
@@ -220,9 +231,20 @@ public static class RunEvidenceReader
     private static void ValidateWindow(JsonElement window, string field)
     {
         RequireObject(window, "count", "value");
-        RequireNonnegativeInt64(Get(window, "count"), field + ".count");
+        long count = RequireNonnegativeInt64(Get(window, "count"), field + ".count");
         JsonElement value = Get(window, "value");
-        if (value.ValueKind != JsonValueKind.Null) RequireNonnegativeInt64(value, field + ".value");
+        if (count == 0)
+        {
+            if (value.ValueKind != JsonValueKind.Null) throw Invalid(field + ".value_must_be_absent_for_empty_window");
+        }
+        else if (value.ValueKind == JsonValueKind.Null)
+        {
+            throw Invalid(field + ".value_required_for_populated_window");
+        }
+        else
+        {
+            RequireNonnegativeInt64(value, field + ".value");
+        }
     }
 
     private static void ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics)
@@ -249,11 +271,14 @@ public static class RunEvidenceReader
         if (eventType == "native_log")
         {
             RequireExactProperties(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "source_event_timestamp", "correlation_id", "source_order", "known_missing_fields", "inference", "event_type", "native_name", "level", "facility", "message", "provenance");
-            RequireNullableTimestamp(Get(row, "source_event_timestamp"), "source_event_timestamp");
-            RequireNullableString(Get(row, "correlation_id"), "correlation_id");
-            RequireNullableNonnegativeInt64(Get(row, "source_order"), "source_order");
-            JsonElement missing = Get(row, "known_missing_fields");
-            RequireStringArray(missing, "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: true);
+            if (Get(row, "source_event_timestamp").ValueKind != JsonValueKind.Null ||
+                Get(row, "correlation_id").ValueKind != JsonValueKind.Null ||
+                Get(row, "source_order").ValueKind != JsonValueKind.Null)
+                throw Invalid("native_log_known_missing_fields_have_values");
+            ImmutableArray<string> missing = RequireStringArray(Get(row, "known_missing_fields"),
+                "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: false);
+            if (!missing.SequenceEqual(KnownMissingLifecycleFields, StringComparer.Ordinal))
+                throw Invalid("native_log_known_missing_fields_mismatch");
             RequireNullableString(Get(row, "inference"), "inference");
             RequireString(Get(row, "native_name"), "native_name");
             string level = RequireNonemptyString(Get(row, "level"), "level");
@@ -299,7 +324,6 @@ public static class RunEvidenceReader
         if (requirements.GetArrayLength() != CapabilityRequirements.Length) throw Invalid("capability_requirement_count_mismatch");
         var statusBuilder = ImmutableArray.CreateBuilder<string>(requirements.GetArrayLength());
         var requirementNames = new HashSet<string>(StringComparer.Ordinal);
-        bool allSupported = true;
         foreach (JsonElement requirement in requirements.EnumerateArray())
         {
             RequireObject(requirement, "requirement", "status", "pinned_version", "source_urls", "source_facts", "inference", "local_test_evidence");
@@ -308,7 +332,8 @@ public static class RunEvidenceReader
                 throw Invalid("capability_requirement_unknown_or_duplicate");
             string status = RequireString(Get(requirement, "status"), "capability.status");
             if (status is not ("supported" or "unsupported" or "unproven")) throw Invalid("capability_status_invalid");
-            allSupported &= status == "supported";
+            if (!StringComparer.Ordinal.Equals(status, ExpectedCapabilityStatuses[name]))
+                throw Invalid("capability_status_mismatch");
             statusBuilder.Add(status);
             if (!StringComparer.Ordinal.Equals(RequireString(Get(requirement, "pinned_version"), "capability.pinned_version"), "2.16.0"))
                 throw Invalid("capability_pinned_version_mismatch");
@@ -324,7 +349,7 @@ public static class RunEvidenceReader
         }
         statuses = statusBuilder.ToImmutable();
         requestCapabilitySupported = RequireBoolean(Get(root, "request_capability_supported"), "request_capability_supported");
-        if (requestCapabilitySupported != allSupported) throw Invalid("request_capability_support_flag_mismatch");
+        if (requestCapabilitySupported) throw Invalid("request_capability_supported_for_schema_v1");
         RequireStringArray(Get(root, "observed_broker_names"), "observed_broker_names", maximumRows, allowEmpty: true);
         guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
         guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
@@ -359,7 +384,8 @@ public static class RunEvidenceReader
         }
         JsonElement omissions = Get(resolved, "omissions");
         RequireArray(omissions, "resolved_configuration.omissions", maximumRows);
-        foreach (JsonElement omission in omissions.EnumerateArray()) ValidateSettingMetadata(omission);
+        foreach (JsonElement omission in omissions.EnumerateArray())
+            ValidateSettingMetadata(omission, (int)KafkaClientRole.LoadGenProducer);
     }
 
     private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey, RunIdentity expected)
@@ -367,7 +393,7 @@ public static class RunEvidenceReader
         RequireObject(setting, "value", "baseline", "override");
         RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
         JsonElement baseline = Get(setting, "baseline");
-        ValidateSettingMetadata(baseline);
+        ValidateSettingMetadata(baseline, (int)KafkaClientRole.LoadGenProducer);
         if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(baseline, "key"), "baseline.key"), dictionaryKey))
             throw Invalid("resolved_setting_key_mismatch");
         JsonElement origin = Get(setting, "override");
@@ -378,14 +404,19 @@ public static class RunEvidenceReader
             RequireEqualString(origin, "configuration_id", expected.ConfigurationId);
             ValidateSourceLocation(Get(origin, "location"));
         }
+        else if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(setting, "value"), "resolved_setting.value"),
+                     RequireNonemptyString(Get(baseline, "value"), "baseline.value")))
+        {
+            throw Invalid("resolved_setting_value_differs_from_unoverridden_baseline");
+        }
     }
 
-    private static void ValidateSettingMetadata(JsonElement metadata)
+    private static void ValidateSettingMetadata(JsonElement metadata, int expectedRole)
     {
         RequireObject(metadata, "key", "value", "role", "disposition", "inventory_ids", "sources", "selection_reason");
         RequireNonemptyString(Get(metadata, "key"), "setting_metadata.key");
         RequireNullableString(Get(metadata, "value"), "setting_metadata.value");
-        RequireDefinedEnumNumber(Get(metadata, "role"), Enum.GetValues<KafkaClientRole>().Length, "setting_metadata.role");
+        RequireEnumNumber(Get(metadata, "role"), expectedRole, "setting_metadata.role");
         int disposition = RequireInt32(Get(metadata, "disposition"), "setting_metadata.disposition");
         if (!Enum.IsDefined((KafkaSettingDisposition)disposition)) throw Invalid("setting_metadata.disposition_invalid");
         ImmutableArray<string> ids = RequireStringArray(Get(metadata, "inventory_ids"), "setting_metadata.inventory_ids", 100, allowEmpty: false);
@@ -539,9 +570,6 @@ public static class RunEvidenceReader
         return value;
     }
 
-    private static long? RequireNullableNonnegativeInt64(JsonElement element, string field)
-        => element.ValueKind == JsonValueKind.Null ? null : RequireNonnegativeInt64(element, field);
-
     private static void RequireNullablePositiveInt32(JsonElement element, string field)
     {
         if (element.ValueKind == JsonValueKind.Null) return;
@@ -553,22 +581,11 @@ public static class RunEvidenceReader
         if (RequireInt32(element, field) != expected) throw Invalid("evidence_enum_mismatch:" + field);
     }
 
-    private static void RequireDefinedEnumNumber(JsonElement element, int count, string field)
-    {
-        int value = RequireInt32(element, field);
-        if (value < 0 || value >= count) throw Invalid("evidence_enum_out_of_range:" + field);
-    }
-
     private static void RequireTimestamp(JsonElement element, string field)
     {
         string value = RequireString(element, field);
         if (!DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
             throw Invalid("evidence_timestamp_invalid:" + field);
-    }
-
-    private static void RequireNullableTimestamp(JsonElement element, string field)
-    {
-        if (element.ValueKind != JsonValueKind.Null) RequireTimestamp(element, field);
     }
 
     private static void RequireEqualString(JsonElement element, string propertyName, string expected)

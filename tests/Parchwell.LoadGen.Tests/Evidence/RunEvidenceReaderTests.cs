@@ -31,12 +31,81 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
+    public async Task Given_VersionOneCapabilityStatusesAreChanged_When_Read_Then_RejectsSupportedClaims()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        JsonNode supported = JsonNode.Parse(original)!;
+        foreach (JsonNode? requirement in supported["request_lifecycle_requirements"]!.AsArray())
+            requirement!["status"] = "supported";
+        supported["request_capability_supported"] = true;
+        await File.WriteAllTextAsync(file, supported.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        JsonNode brokerLifecycle = JsonNode.Parse(original)!;
+        JsonNode brokerRequirement = brokerLifecycle["request_lifecycle_requirements"]!.AsArray()
+            .Single(requirement => requirement!["requirement"]!.GetValue<string>() == "broker_instance_lifecycle_inventory")!;
+        brokerRequirement["status"] = "supported";
+        await File.WriteAllTextAsync(file, brokerLifecycle.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Given_StatisticsArtifactWithWrongIdentity_When_Read_Then_RejectsIt()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         RunIdentity wrong = Identity() with { RunId = "another-run" };
 
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, wrong, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_StatisticsWindowCountAndValueContradict_When_Read_Then_RejectsBothForms()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "statistics.jsonl");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        foreach (string windowName in new[] { "throttle", "round_trip_time" })
+        {
+            foreach ((int count, JsonNode? value) in new (int, JsonNode?)[]
+            {
+                (0, JsonValue.Create(20_001)), (1, null)
+            })
+            {
+                JsonNode row = JsonNode.Parse(original)!;
+                JsonNode window = row["typed_snapshot"]!["brokers"]![0]![windowName]!;
+                window["count"] = count;
+                window["value"] = value?.DeepClone();
+                await File.WriteAllTextAsync(file, row.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+                await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Given_NativeLogHasInventedSourceMetadata_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] originalLines = await File.ReadAllLinesAsync(file, TestContext.Current.CancellationToken);
+        string nativeLog = originalLines.Single(line => line.Contains("\"event_type\":\"native_log\"", StringComparison.Ordinal));
+        string[] malformed =
+        [
+            nativeLog.Replace("\"source_event_timestamp\":null", "\"source_event_timestamp\":\"1970-01-01T00:00:00+00:00\"", StringComparison.Ordinal),
+            nativeLog.Replace("\"correlation_id\":null", "\"correlation_id\":\"request-1\"", StringComparison.Ordinal),
+            nativeLog.Replace("\"source_order\":null", "\"source_order\":1", StringComparison.Ordinal),
+            nativeLog.Replace("\"known_missing_fields\":[\"source_event_timestamp\",\"correlation_id\",\"source_order\"]", "\"known_missing_fields\":[\"source_event_timestamp\",\"correlation_id\"]", StringComparison.Ordinal),
+            nativeLog.Replace("\"known_missing_fields\":[\"source_event_timestamp\",\"correlation_id\",\"source_order\"]", "\"known_missing_fields\":[\"source_event_timestamp\",\"correlation_id\",\"source_order\",\"extra\"]", StringComparison.Ordinal)
+        ];
+
+        foreach (string line in malformed)
+        {
+            Assert.NotEqual(nativeLog, line);
+            string[] changedLines = originalLines.Select(existing => existing == nativeLog ? line : existing).ToArray();
+            await File.WriteAllTextAsync(file, string.Join("\n", changedLines) + "\n", TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
     }
 
     [Theory]
@@ -166,6 +235,31 @@ public sealed class RunEvidenceReaderTests
             string malformed = valid.Replace(expected, actual, StringComparison.Ordinal);
             Assert.NotEqual(valid, malformed);
             await File.WriteAllTextAsync(file, malformed, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task Given_UnoverriddenResolvedSettingDiffersFromBaselineOrRole_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "capabilities.json");
+        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+        const string emptyResolved = "\"resolved_configuration\":null";
+        const string resolved = "\"resolved_configuration\":{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":null}},\"omissions\":[]}";
+        string valid = original.Replace(emptyResolved, resolved, StringComparison.Ordinal);
+        await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+
+        string[] malformed =
+        [
+            valid.Replace("\"value\":\"broker\",\"baseline\"", "\"value\":\"another-broker\",\"baseline\"", StringComparison.Ordinal),
+            valid.Replace("\"value\":\"broker\",\"role\":0", "\"value\":\"broker\",\"role\":1", StringComparison.Ordinal)
+        ];
+        foreach (string json in malformed)
+        {
+            Assert.NotEqual(valid, json);
+            await File.WriteAllTextAsync(file, json, TestContext.Current.CancellationToken);
             await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
         }
     }

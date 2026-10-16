@@ -97,6 +97,35 @@ public sealed class RunEvidenceSessionTests
     }
 
     [Fact]
+    public async Task Given_TimeProviderAdvancesToCompletionDeadline_When_Completed_Then_RecordsTimeoutWithoutWallClockDelay()
+    {
+        string path = NewDirectory();
+        RunEvidenceOptions options = Options(path);
+        var timeProvider = new DeadlineAdvancingTimeProvider();
+        await using var session = new RunEvidenceSession(Identity(), options, timeProvider);
+
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(options.CompletionTimeout, timeProvider.ScheduledDueTime);
+        Assert.Equal(options.CompletionTimeout.Ticks, timeProvider.GetTimestamp());
+        Assert.Contains("evidence_writer_completion_timeout", session.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_CallerCancellationDuringEvidenceCompletion_When_Completed_Then_DoesNotReportDeadlineTimeout()
+    {
+        string path = NewDirectory();
+        await using var session = new RunEvidenceSession(Identity(), Options(path), TimeProvider.System);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await session.CompleteAsync(null, cancellation.Token);
+
+        Assert.Contains("capabilities_write_cancelled", session.Diagnostics);
+        Assert.DoesNotContain("evidence_writer_completion_timeout", session.Diagnostics);
+    }
+
+    [Fact]
     public async Task Given_PositiveStatisticsGuardCounterThenZero_When_ReceivingReports_Then_RetainsPositiveObservation()
     {
         string path = NewDirectory();
@@ -128,4 +157,56 @@ public sealed class RunEvidenceSessionTests
     private static KafkaStatisticsSnapshot Snapshot(long throttle, long count, long requestTimeouts = 0) => new("producer-1", "loadgen-pod-1", "producer", 1, 1, 1,
         [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, requestTimeouts, 0, 0, 0, 0,
             new KafkaWindowStatistics(count, count == 0 ? null : throttle), new KafkaWindowStatistics(0, null))]);
+
+    private sealed class DeadlineAdvancingTimeProvider : TimeProvider
+    {
+        private long _timestamp;
+
+        public TimeSpan? ScheduledDueTime { get; private set; }
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => Interlocked.Read(ref _timestamp);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(callback, state);
+            if (dueTime != Timeout.InfiniteTimeSpan)
+            {
+                ScheduledDueTime = dueTime;
+                timer.Schedule(checked(GetTimestamp() + dueTime.Ticks));
+                AdvanceBy(dueTime);
+                timer.FireIfDue(GetTimestamp());
+            }
+            return timer;
+        }
+
+        private void AdvanceBy(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, elapsed.Ticks);
+    }
+
+    private sealed class ManualTimer(TimerCallback callback, object? state) : ITimer
+    {
+        private int _disposed;
+        private int _fired;
+        private long _dueTimestamp;
+
+        public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _disposed) == 0;
+
+        public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
+
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return ValueTask.CompletedTask;
+        }
+
+        public void Schedule(long dueTimestamp) => _dueTimestamp = dueTimestamp;
+
+        public void FireIfDue(long timestamp)
+        {
+            if (timestamp >= Interlocked.Read(ref _dueTimestamp) &&
+                Volatile.Read(ref _disposed) == 0 && Interlocked.Exchange(ref _fired, 1) == 0)
+                callback(state);
+        }
+    }
 }

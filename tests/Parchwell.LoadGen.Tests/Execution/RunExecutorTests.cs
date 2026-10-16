@@ -35,6 +35,10 @@ public sealed class RunExecutorTests
             Assert.True(result.Manifest.BookkeepingComplete);
             Assert.Equal(1, result.Manifest.AttemptCount);
             Assert.Null(result.Manifest.FirstUnexecutedOrdinal);
+            Assembly kafkaAssembly = typeof(IProducer<byte[], byte[]>).Assembly;
+            string expectedKafkaVersion = kafkaAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? kafkaAssembly.GetName().Version?.ToString() ?? "unknown";
+            Assert.Equal(expectedKafkaVersion, result.Manifest.RuntimeVersions["confluent_kafka"]);
             var rows = await LedgerValidator.ReadValidatedAsync(ledgerPath, manifestPath, identity, 8, 4096,
                 64 * 1024, 64 * 1024, TestContext.Current.CancellationToken);
             var row = Assert.Single(rows);
@@ -261,6 +265,30 @@ public sealed class RunExecutorTests
     }
 
     [Fact]
+    public void Given_InventorySetupConsumesTime_When_ReservationIsFinalizedOrCancelled_Then_UsesFinalTimeWithoutPhantomEntry()
+    {
+        var identity = Identity();
+        var clock = new AdvancingTimeProvider();
+        var cancelledInventory = new AttemptInventory(identity, 8);
+        AttemptEntry draft = DraftAttempt(identity, 0);
+        cancelledInventory.Reserve(draft);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        long sampledMicroseconds = clock.GetElapsedTime(0, clock.GetTimestamp()).Ticks / 10;
+        cancelledInventory.CancelReservation();
+        Assert.Empty(cancelledInventory.Seal());
+
+        var committedInventory = new AttemptInventory(identity, 8);
+        committedInventory.Reserve(draft);
+        clock.Advance(TimeSpan.FromMilliseconds(17));
+        long finalMicroseconds = clock.GetElapsedTime(0, clock.GetTimestamp()).Ticks / 10;
+        AttemptEntry committed = committedInventory.CommitReservation(finalMicroseconds);
+
+        Assert.Equal(finalMicroseconds, committed.InvokedMicroseconds);
+        Assert.True(committed.InvokedMicroseconds > sampledMicroseconds);
+        Assert.Equal(committed, Assert.Single(committedInventory.Seal()));
+    }
+
+    [Fact]
     public async Task Given_DeliveryCallbackThrows_When_Executing_Then_LatchesCaptureFaultAndStopsAdmission()
     {
         var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-" + Guid.NewGuid().ToString("N"));
@@ -342,6 +370,11 @@ public sealed class RunExecutorTests
     }
 
     private static RunIdentity Identity() => new("A01", "baseline", "run-1", "instance-1", "instance-1", "loadgen");
+
+    private static AttemptEntry DraftAttempt(RunIdentity identity, long ordinal) => new(identity.InstanceId,
+        string.Concat(identity.InstanceId, "-", ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture)), ordinal,
+        "tenant", "d" + ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        "tenant-d" + ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture), 0, "uploaded", 0, 0);
 
     private static string HeaderValue(Headers headers, string name)
         => Encoding.UTF8.GetString(headers.Single(header => header.Key == name).GetValueBytes());
