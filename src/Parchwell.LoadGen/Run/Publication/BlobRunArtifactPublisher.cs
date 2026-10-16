@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Azure.Storage.Blobs;
 using Parchwell.LoadGen.Run.Contracts;
-using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Ledger;
 
@@ -51,37 +50,7 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
             ImmutableArray<ArtifactSource> sources = await OpenAndHashSourcesAsync(result, options, token).ConfigureAwait(false);
             try
             {
-                ValidatePersistedManifest(result, sources, options);
-                await ValidatePersistedLedgerAsync(result, sources, options, token).ConfigureAwait(false);
-                await ValidatePersistedEvidenceAsync(result, sources, options, token).ConfigureAwait(false);
-
-                string directory = Path.GetDirectoryName(sources[0].Path)!;
-                string localIndexPath = Path.Combine(directory, "index.json");
-                if (File.Exists(localIndexPath)) throw new IOException("publication_local_index_already_exists");
-
-                long aggregate = sources.Sum(source => source.Length);
-                byte[] indexBytes = SerializeIndex(result, sources);
-                if (indexBytes.LongLength > options.MaxArtifactBytes)
-                    throw new InvalidDataException("publication_index_exceeds_artifact_byte_limit");
-                try { aggregate = checked(aggregate + indexBytes.LongLength); }
-                catch (OverflowException) { throw new InvalidDataException("publication_aggregate_byte_limit_exceeded"); }
-                if (aggregate > options.MaxAggregateArtifactBytes)
-                    throw new InvalidDataException("publication_aggregate_byte_limit_exceeded");
-
-                BlobContainerClient container = _client.GetBlobContainerClient(options.Container);
-                string prefix = GetRunPrefix(result.Manifest.Identity);
-                foreach (ArtifactSource source in sources)
-                {
-                    token.ThrowIfCancellationRequested();
-                    await UploadSourceAsync(container, prefix, source, options.MaxArtifactBytes, token).ConfigureAwait(false);
-                    await VerifySourceUnchangedAsync(source, options.MaxArtifactBytes, token).ConfigureAwait(false);
-                }
-
-                await SaveIndexCreateOnlyAsync(localIndexPath, indexBytes, token).ConfigureAwait(false);
-                token.ThrowIfCancellationRequested();
-                await using var indexStream = new MemoryStream(indexBytes, writable: false);
-                BlobClient indexBlob = container.GetBlobClient(prefix + "/index.json");
-                await indexBlob.UploadAsync(indexStream, overwrite: false, cancellationToken: token).ConfigureAwait(false);
+                await PublishOpenedSourcesAsync(result, options, sources, token).ConfigureAwait(false);
             }
             finally
             {
@@ -92,6 +61,44 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         {
             throw new TimeoutException("artifact_publication_timeout");
         }
+    }
+
+    internal async Task PublishOpenedSourcesAsync(RunExecutionResult result, RunPublicationOptions options,
+        ImmutableArray<ArtifactSource> sources, CancellationToken cancellationToken)
+    {
+        ImmutableDictionary<string, byte[]> payloads = await ReadAndVerifySourcesAsync(sources,
+            options.MaxArtifactBytes, cancellationToken).ConfigureAwait(false);
+        RunManifest persistedManifest = RunArtifactIndexReader.ValidatePayloadSemantics(result.Manifest.Identity,
+            payloads, options.MaxArtifactBytes, cancellationToken);
+        ValidatePersistedManifest(result, payloads["manifest.json"], persistedManifest, options);
+
+        string directory = Path.GetDirectoryName(sources[0].Path)!;
+        string localIndexPath = Path.Combine(directory, "index.json");
+        if (File.Exists(localIndexPath)) throw new IOException("publication_local_index_already_exists");
+
+        long aggregate = sources.Sum(source => source.Length);
+        byte[] indexBytes = SerializeIndex(result, sources);
+        if (indexBytes.LongLength > options.MaxArtifactBytes)
+            throw new InvalidDataException("publication_index_exceeds_artifact_byte_limit");
+        try { aggregate = checked(aggregate + indexBytes.LongLength); }
+        catch (OverflowException) { throw new InvalidDataException("publication_aggregate_byte_limit_exceeded"); }
+        if (aggregate > options.MaxAggregateArtifactBytes)
+            throw new InvalidDataException("publication_aggregate_byte_limit_exceeded");
+
+        BlobContainerClient container = _client.GetBlobContainerClient(options.Container);
+        string prefix = GetRunPrefix(result.Manifest.Identity);
+        foreach (ArtifactSource source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await UploadSourceAsync(container, prefix, source, options.MaxArtifactBytes, cancellationToken).ConfigureAwait(false);
+            await VerifySourceUnchangedAsync(source, options.MaxArtifactBytes, cancellationToken).ConfigureAwait(false);
+        }
+
+        await SaveIndexCreateOnlyAsync(localIndexPath, indexBytes, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var indexStream = new MemoryStream(indexBytes, writable: false);
+        BlobClient indexBlob = container.GetBlobClient(prefix + "/index.json");
+        await indexBlob.UploadAsync(indexStream, overwrite: false, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private static void ValidateSuccessfulResult(RunExecutionResult result)
@@ -143,7 +150,7 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
             Uri.EscapeDataString(identity.RunId), Uri.EscapeDataString(identity.InstanceId));
     }
 
-    private static async Task<ImmutableArray<ArtifactSource>> OpenAndHashSourcesAsync(RunExecutionResult result,
+    internal static async Task<ImmutableArray<ArtifactSource>> OpenAndHashSourcesAsync(RunExecutionResult result,
         RunPublicationOptions options, CancellationToken cancellationToken)
     {
         var paths = RequiredPaths(result);
@@ -213,40 +220,51 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         return required.ToImmutable();
     }
 
-    private static void ValidatePersistedManifest(RunExecutionResult result, ImmutableArray<ArtifactSource> sources,
-        RunPublicationOptions options)
+    private static async Task<ImmutableDictionary<string, byte[]>> ReadAndVerifySourcesAsync(
+        ImmutableArray<ArtifactSource> sources, long maximumArtifactBytes, CancellationToken cancellationToken)
     {
-        ArtifactSource persisted = sources[1];
+        var payloads = ImmutableDictionary.CreateBuilder<string, byte[]>(StringComparer.Ordinal);
+        foreach (ArtifactSource source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (source.Length < 0 || source.Length > maximumArtifactBytes || source.Length > int.MaxValue)
+                throw new InvalidDataException("publication_artifact_exceeds_byte_limit:" + source.Name);
+
+            byte[] bytes = new byte[(int)source.Length];
+            source.Stream.Position = 0;
+            try
+            {
+                int offset = 0;
+                while (offset < bytes.Length)
+                {
+                    int read = await source.Stream.ReadAsync(bytes.AsMemory(offset), cancellationToken).ConfigureAwait(false);
+                    if (read == 0) throw new InvalidDataException("publication_artifact_truncated_during_validation:" + source.Name);
+                    offset += read;
+                }
+                byte[] overflowProbe = new byte[1];
+                if (await source.Stream.ReadAsync(overflowProbe, cancellationToken).ConfigureAwait(false) != 0)
+                    throw new InvalidDataException("publication_artifact_grew_during_validation:" + source.Name);
+                string hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                if (source.Stream.Length != source.Length || !StringComparer.Ordinal.Equals(hash, source.Sha256))
+                    throw new InvalidDataException("publication_artifact_mutated_during_validation:" + source.Name);
+                payloads.Add(source.Name, bytes);
+            }
+            finally
+            {
+                source.Stream.Position = 0;
+            }
+        }
+        return payloads.ToImmutable();
+    }
+
+    private static void ValidatePersistedManifest(RunExecutionResult result, byte[] actual,
+        RunManifest manifest, RunPublicationOptions options)
+    {
         byte[] expected = LedgerValidator.SerializeManifest(result.Manifest, (int)options.MaxArtifactBytes);
-        if (persisted.Length != expected.LongLength + 1 || persisted.Length > int.MaxValue)
+        if (actual.LongLength != expected.LongLength + 1 || actual[^1] != (byte)'\n' ||
+            !expected.AsSpan().SequenceEqual(actual.AsSpan(0, actual.Length - 1)) ||
+            manifest.Identity != result.Manifest.Identity || manifest.WorkerStatus != "complete" || !manifest.BookkeepingComplete)
             throw new InvalidDataException("publication_persisted_manifest_mismatch");
-        byte[] actual = new byte[(int)persisted.Length];
-        persisted.Stream.Position = 0;
-        ReadExactly(persisted.Stream, actual);
-        if (actual[^1] != (byte)'\n' || !expected.AsSpan().SequenceEqual(actual.AsSpan(0, actual.Length - 1)))
-            throw new InvalidDataException("publication_persisted_manifest_mismatch");
-        RunManifest manifest = LedgerValidator.DeserializeManifest(actual.AsSpan(0, actual.Length - 1), result.Manifest.Inventory.Length);
-        if (manifest.Identity != result.Manifest.Identity || manifest.WorkerStatus != "complete" || !manifest.BookkeepingComplete)
-            throw new InvalidDataException("publication_persisted_manifest_mismatch");
-        persisted.Stream.Position = 0;
-    }
-
-    private static async Task ValidatePersistedLedgerAsync(RunExecutionResult result, ImmutableArray<ArtifactSource> sources,
-        RunPublicationOptions options, CancellationToken cancellationToken)
-    {
-        int maxRows = Math.Max(1, result.Manifest.Inventory.Length);
-        int maxBytes = (int)options.MaxArtifactBytes;
-        _ = await LedgerValidator.ReadValidatedAsync(sources[0].Path, sources[1].Path, result.Manifest.Identity,
-            maxRows, maxBytes, options.MaxArtifactBytes, maxBytes, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task ValidatePersistedEvidenceAsync(RunExecutionResult result, ImmutableArray<ArtifactSource> sources,
-        RunPublicationOptions options, CancellationToken cancellationToken)
-    {
-        string root = Path.GetDirectoryName(sources[0].Path)!;
-        RunEvidenceReadResult evidence = await RunEvidenceReader.ReadAsync(root, result.Manifest.Identity,
-            (int)options.MaxArtifactBytes, (int)options.MaxArtifactBytes, int.MaxValue, cancellationToken).ConfigureAwait(false);
-        if (evidence.IsFaulted) throw new InvalidDataException("publication_evidence_capture_faulted");
     }
 
     private static async Task UploadSourceAsync(BlobContainerClient container, string prefix, ArtifactSource source,
@@ -336,21 +354,9 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         stream.Flush(flushToDisk: true);
     }
 
-    private static void ReadExactly(Stream stream, byte[] buffer)
-    {
-        int offset = 0;
-        while (offset < buffer.Length)
-        {
-            int read = stream.Read(buffer, offset, buffer.Length - offset);
-            if (read == 0) throw new InvalidDataException("publication_artifact_truncated_during_read");
-            offset += read;
-        }
-        if (stream.ReadByte() != -1) throw new InvalidDataException("publication_artifact_grew_during_read");
-    }
-
     private static StringComparison StringComparerForPaths
         => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     private sealed record ArtifactSourcePath(string Name, string Path);
-    private sealed record ArtifactSource(string Name, string Path, FileStream Stream, long Length, string Sha256);
+    internal sealed record ArtifactSource(string Name, string Path, FileStream Stream, long Length, string Sha256);
 }

@@ -107,6 +107,84 @@ public sealed class BlobPublicationIntegrationTests
     }
 
     [Theory]
+    [InlineData("ledger.jsonl", "ledger")]
+    [InlineData("capabilities.json", "capabilities.json")]
+    public async Task Given_InvalidHeldArtifactAndValidPathReplacement_When_PublishingOpenedSources_Then_RejectsBeforeAnyBlobRequest(
+        string artifactName, string artifactPathKey)
+    {
+        string directory = NewDirectory();
+        ImmutableArray<BlobRunArtifactPublisher.ArtifactSource> sources = [];
+        try
+        {
+            RunExecutionResult result = await CreateSyntheticCompletedRunAsync(directory);
+            string artifactPath = result.ArtifactPaths[artifactPathKey];
+            byte[] validArtifact = await File.ReadAllBytesAsync(artifactPath, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(artifactPath, "not-valid-artifact-content\n", TestContext.Current.CancellationToken);
+            RunPublicationOptions options = PublicationOptions();
+            sources = await BlobRunArtifactPublisher.OpenAndHashSourcesAsync(result, options, TestContext.Current.CancellationToken);
+            Assert.Contains(sources, source => source.Name == artifactName);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.ThrowsAny<IOException>(() => ReplacePathWhileSourceIsOpen(artifactPath, validArtifact));
+                return;
+            }
+
+            ReplacePathWhileSourceIsOpen(artifactPath, validArtifact);
+
+            using var handler = new RecordingHttpHandler();
+            using var http = new HttpClient(handler);
+            await Assert.ThrowsAsync<InvalidDataException>(() => NewPublisher(http).PublishOpenedSourcesAsync(result,
+                options, sources, TestContext.Current.CancellationToken));
+
+            Assert.Empty(handler.Requests);
+            Assert.False(File.Exists(Path.Combine(directory, "index.json")));
+        }
+        finally
+        {
+            await DisposeSourcesAsync(sources);
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("ledger.jsonl", "ledger")]
+    [InlineData("capabilities.json", "capabilities.json")]
+    public async Task Given_ValidHeldArtifactAndInvalidPathReplacement_When_PublishingOpenedSources_Then_UploadsValidatedOriginalBytes(
+        string artifactName, string artifactPathKey)
+    {
+        string directory = NewDirectory();
+        ImmutableArray<BlobRunArtifactPublisher.ArtifactSource> sources = [];
+        try
+        {
+            RunExecutionResult result = await CreateSyntheticCompletedRunAsync(directory);
+            string artifactPath = result.ArtifactPaths[artifactPathKey];
+            byte[] validArtifact = await File.ReadAllBytesAsync(artifactPath, TestContext.Current.CancellationToken);
+            RunPublicationOptions options = PublicationOptions();
+            sources = await BlobRunArtifactPublisher.OpenAndHashSourcesAsync(result, options, TestContext.Current.CancellationToken);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.ThrowsAny<IOException>(() => ReplacePathWhileSourceIsOpen(artifactPath,
+                    Encoding.UTF8.GetBytes("not-valid-artifact-content\n")));
+                return;
+            }
+
+            ReplacePathWhileSourceIsOpen(artifactPath, Encoding.UTF8.GetBytes("not-valid-artifact-content\n"));
+
+            using var handler = new RecordingHttpHandler();
+            using var http = new HttpClient(handler);
+            await NewPublisher(http).PublishOpenedSourcesAsync(result, options, sources, TestContext.Current.CancellationToken);
+
+            Assert.Equal(validArtifact, handler.StoredByName[artifactName]);
+            Assert.Equal(ArtifactNames.Append("index.json"), handler.Requests.Select(request => request.Name));
+        }
+        finally
+        {
+            await DisposeSourcesAsync(sources);
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
     [InlineData("ledger.jsonl")]
     [InlineData("manifest.json")]
     [InlineData("statistics.jsonl")]
@@ -311,6 +389,18 @@ public sealed class BlobPublicationIntegrationTests
         return await new RunExecutor(() => producer, ledger, TimeProvider.System, evidence: evidence)
             .ExecuteAsync(Profile(), identity, ExecutionOptions(directory, "synthetic-publication-topic"),
                 TestContext.Current.CancellationToken);
+    }
+
+    private static void ReplacePathWhileSourceIsOpen(string path, byte[] replacement)
+    {
+        File.Move(path, path + ".held");
+        File.WriteAllBytes(path, replacement);
+    }
+
+    private static async Task DisposeSourcesAsync(ImmutableArray<BlobRunArtifactPublisher.ArtifactSource> sources)
+    {
+        foreach (BlobRunArtifactPublisher.ArtifactSource source in sources)
+            await source.Stream.DisposeAsync();
     }
 
     private static BlobRunArtifactPublisher NewPublisher(HttpClient http)
