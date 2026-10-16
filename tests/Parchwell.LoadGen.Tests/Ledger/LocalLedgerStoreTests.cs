@@ -141,6 +141,35 @@ public sealed class LocalLedgerStoreTests
     }
 
     [Fact]
+    public async Task Given_invalid_manifest_save_then_valid_diagnostic_save_When_saved_Then_first_failure_remains_latched()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = Paths(directory.Path);
+        await using var store = new LocalLedgerStore(paths.Options);
+        await store.DrainAsync(TestContext.Current.CancellationToken);
+        var invalid = LedgerValidatorTests.Manifest([LedgerValidatorTests.CallbackRow().Attempt]) with
+        {
+            Diagnostics = [null!]
+        };
+
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            store.SaveManifestAsync(invalid, TestContext.Current.CancellationToken));
+
+        Assert.True(store.IsFaulted);
+        Assert.Same(failure, store.Failure);
+        Assert.False(store.TryAppend(LedgerValidatorTests.CallbackRow()));
+        await store.SaveManifestAsync(LedgerValidatorTests.Manifest([LedgerValidatorTests.CallbackRow().Attempt]) with
+        {
+            WorkerStatus = "failed",
+            Diagnostics = ["invalid_manifest_rejected"]
+        }, TestContext.Current.CancellationToken);
+
+        Assert.True(File.Exists(paths.Manifest));
+        Assert.True(store.IsFaulted);
+        Assert.Same(failure, store.Failure);
+    }
+
+    [Fact]
     public async Task Given_blocked_writer_and_full_queue_When_append_is_attempted_Then_capture_failure_sticks_and_missing_rows_are_detected()
     {
         using var directory = new TemporaryDirectory();
@@ -151,8 +180,8 @@ public sealed class LocalLedgerStoreTests
         var gate = new BlockingWriteStream(ledger);
         await using var store = new LocalLedgerStore(options, () => gate);
         var first = LedgerValidatorTests.CallbackRow();
-        var second = first with { Attempt = first.Attempt with { AttemptId = "attempt-2", Ordinal = 1 } };
-        var third = first with { Attempt = first.Attempt with { AttemptId = "attempt-3", Ordinal = 2 } };
+        var second = first with { Attempt = first.Attempt with { AttemptId = "attempt-2", Ordinal = 1, Sequence = 1, EventType = "ocr-started" } };
+        var third = first with { Attempt = first.Attempt with { AttemptId = "attempt-3", Ordinal = 2, Sequence = 2, EventType = "ocr-finished" } };
 
         Assert.True(store.TryAppend(first));
         await gate.WriteStarted.Task.WaitAsync(TestContext.Current.CancellationToken);

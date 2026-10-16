@@ -11,7 +11,7 @@ namespace Parchwell.LoadGen.Tests.Ledger;
 public sealed class LedgerValidatorTests
 {
     private static readonly RunIdentity Identity = new("a01", "default", "run-1", "instance-1", "instance-1", "client-1");
-    private static readonly AttemptEntry Entry = new("instance-1", "attempt-1", 0, "tenant-1", "d0", "tenant-1-d0", 0, "created", 100, 110);
+    private static readonly AttemptEntry Entry = new("instance-1", "attempt-1", 0, "tenant-1", "d0", "tenant-1-d0", 0, "uploaded", 100, 110);
 
     [Fact]
     public void Given_valid_row_When_serialized_Then_schema_uses_snake_case_and_round_trips()
@@ -50,7 +50,7 @@ public sealed class LedgerValidatorTests
         inventory.Register(Entry);
 
         Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2" }));
-        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { Ordinal = 1 }));
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { Ordinal = 1, Sequence = 1, EventType = "ocr-started" }));
     }
 
     [Fact]
@@ -60,9 +60,45 @@ public sealed class LedgerValidatorTests
         inventory.Register(Entry);
 
         Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 0 }));
-        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1 });
+        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1, Sequence = 1, EventType = "ocr-started" });
 
         Assert.Equal(2, inventory.Seal().Length);
+    }
+
+    [Fact]
+    public void Given_invalid_key_When_registering_and_validating_row_Then_rejected_without_reserving_attempt()
+    {
+        var inventory = new AttemptInventory(Identity, 2);
+        var invalid = Entry with { Key = "other-tenant-d0" };
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        inventory.Register(Entry);
+
+        Assert.Equal(Entry, Assert.Single(inventory.Seal()));
+    }
+
+    [Theory]
+    [InlineData(0, 0, "ocr-started", "d0", "tenant-1-d0")]
+    [InlineData(1, 0, "uploaded", "d0", "tenant-1-d0")]
+    [InlineData(1, 1, "ocr-started", "d0", "wrong-tenant-d0")]
+    [InlineData(5, 0, "uploaded", "d0", "tenant-1-d0")]
+    public void Given_attempt_workload_fields_disagree_with_global_ordinal_When_registered_or_validated_Then_rejected(
+        long ordinal, long sequence, string eventType, string documentId, string key)
+    {
+        var invalid = Entry with
+        {
+            Ordinal = ordinal,
+            Sequence = sequence,
+            EventType = eventType,
+            DocumentId = documentId,
+            Key = key
+        };
+        var inventory = new AttemptInventory(Identity, 10);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(invalid));
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateRow(CallbackRow() with { Attempt = invalid }));
+        Assert.Empty(inventory.Seal());
     }
 
     [Fact]
@@ -104,6 +140,22 @@ public sealed class LedgerValidatorTests
         Assert.Throws<InvalidDataException>(() => LedgerValidator.DeserializeManifest(bytes, 0));
     }
 
+    [Fact]
+    public void Given_manifest_collections_with_null_values_When_decoded_Then_rejected()
+    {
+        var json = Encoding.UTF8.GetString(LedgerValidator.SerializeManifest(Manifest([Entry])));
+        var invalidManifests = new[]
+        {
+            json.Replace("\"diagnostics\":[]", "\"diagnostics\":[null]", StringComparison.Ordinal),
+            json.Replace("\"guard_observations\":[]", "\"guard_observations\":[null]", StringComparison.Ordinal),
+            json.Replace("\"runtime_versions\":{}", "\"runtime_versions\":{\"dotnet\":null}", StringComparison.Ordinal),
+            json.Replace("\"evidence_files\":{}", "\"evidence_files\":{\"statistics.jsonl\":null}", StringComparison.Ordinal)
+        };
+
+        foreach (var invalidManifest in invalidManifests)
+            Assert.Throws<InvalidDataException>(() => LedgerValidator.DeserializeManifest(Encoding.UTF8.GetBytes(invalidManifest)));
+    }
+
     internal static LedgerRow CallbackRow() => new(1, Identity, Entry, "callback", true, 0, null, 2,
         "native_callback", 150, 0.04, null);
 
@@ -120,8 +172,8 @@ public sealed class LedgerValidatorTests
     {
         var inventory = new AttemptInventory(Identity, 3);
         inventory.Register(Entry);
-        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 2 }));
-        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1 });
+        Assert.Throws<InvalidOperationException>(() => inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 2, Sequence = 2, EventType = "ocr-finished" }));
+        inventory.Register(Entry with { AttemptId = "attempt-2", Ordinal = 1, Sequence = 1, EventType = "ocr-started" });
         Assert.Equal(new long[] { 0, 1 }, inventory.Seal().Select(item => item.Ordinal));
     }
 

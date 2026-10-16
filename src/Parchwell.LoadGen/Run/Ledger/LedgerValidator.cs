@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Parchwell.LoadGen.Run.Contracts;
@@ -8,6 +9,7 @@ namespace Parchwell.LoadGen.Run.Ledger;
 /// <summary>Strict version 1 JSON codecs and in-memory bookkeeping reconciliation.</summary>
 public static class LedgerValidator
 {
+    private static readonly string[] LifecycleEvents = ["uploaded", "ocr-started", "ocr-finished", "classified", "indexed"];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -143,7 +145,7 @@ public static class LedgerValidator
             (row.PersistenceProvenance == "missing" && row.PersistenceStatus.HasValue) ||
             (synchronous && row.Delivered))
             throw new InvalidDataException("invalid_persistence_or_delivery_status");
-        if (row.ErrorName is { Length: 0 }) throw new InvalidDataException("empty_error_name");
+        if (row.ErrorName is not null) ValidateMetadataText(row.ErrorName, "error_name");
         if (row.Delivered != (row.ErrorCode == 0)) throw new InvalidDataException("delivered_error_code_mismatch");
     }
 
@@ -155,6 +157,20 @@ public static class LedgerValidator
             manifest.Diagnostics.IsDefault || manifest.RuntimeVersions is null || manifest.EvidenceFiles is null || manifest.GuardObservations.IsDefault)
             throw new InvalidDataException("invalid_manifest_required_field");
         manifest.Identity.Validate();
+        ValidateMetadataText(manifest.GeneratorVersion, "generator_version");
+        ValidateMetadataText(manifest.WorkerStatus, "worker_status");
+        foreach (var diagnostic in manifest.Diagnostics) ValidateMetadataText(diagnostic, "diagnostic");
+        foreach (var observation in manifest.GuardObservations) ValidateMetadataText(observation, "guard_observation");
+        foreach (var (key, value) in manifest.RuntimeVersions)
+        {
+            ValidateMetadataText(key, "runtime_version_name");
+            ValidateMetadataText(value, "runtime_version");
+        }
+        foreach (var (key, value) in manifest.EvidenceFiles)
+        {
+            ValidateMetadataText(key, "evidence_file_name");
+            ValidateMetadataText(value, "evidence_file_path");
+        }
         if (manifest.GeneratorVersion != "1" || manifest.WorkerStatus is not ("complete" or "incomplete" or "failed") ||
             manifest.PlannedAttemptCount < 0 || manifest.AttemptCount != manifest.Inventory.Length ||
             manifest.PlannedAttemptCount < manifest.AttemptCount || manifest.TimestampFrequency <= 0 || manifest.StartTimestamp < 0 ||
@@ -199,14 +215,30 @@ public static class LedgerValidator
         return validated.ToImmutable();
     }
 
-    private static void ValidateAttempt(AttemptEntry entry, RunIdentity identity)
+    internal static void ValidateAttempt(AttemptEntry entry, RunIdentity identity)
     {
-        if (entry is null || string.IsNullOrWhiteSpace(entry.InstanceId) || string.IsNullOrWhiteSpace(entry.AttemptId) ||
-            string.IsNullOrWhiteSpace(entry.TenantId) || string.IsNullOrWhiteSpace(entry.DocumentId) || entry.Key is null ||
-            string.IsNullOrWhiteSpace(entry.EventType) || !string.Equals(entry.InstanceId, identity.InstanceId, StringComparison.Ordinal) ||
+        if (entry is null || !IsSafeControlText(entry.InstanceId) || !IsSafeControlText(entry.AttemptId) ||
+            !IsSafeControlText(entry.TenantId) || !IsSafeControlText(entry.DocumentId) || !IsSafeControlText(entry.Key) ||
+            !IsSafeControlText(entry.EventType) || !string.Equals(entry.InstanceId, identity.InstanceId, StringComparison.Ordinal) ||
             entry.Ordinal < 0 || entry.Sequence < 0 || entry.PlannedMicroseconds < 0 || entry.InvokedMicroseconds < entry.PlannedMicroseconds)
             throw new InvalidDataException("invalid_attempt_entry");
+
+        var eventIndex = (int)(entry.Ordinal % LifecycleEvents.Length);
+        var expectedDocumentId = string.Concat("d", (entry.Ordinal / LifecycleEvents.Length).ToString(CultureInfo.InvariantCulture));
+        var expectedKey = string.Concat(entry.TenantId, "-", expectedDocumentId);
+        if (entry.Sequence != eventIndex || !string.Equals(entry.EventType, LifecycleEvents[eventIndex], StringComparison.Ordinal) ||
+            !string.Equals(entry.DocumentId, expectedDocumentId, StringComparison.Ordinal) ||
+            !string.Equals(entry.Key, expectedKey, StringComparison.Ordinal))
+            throw new InvalidDataException("attempt_workload_identity_mismatch");
     }
+
+    private static void ValidateMetadataText(string? value, string fieldName)
+    {
+        if (!IsSafeControlText(value)) throw new InvalidDataException($"invalid_manifest_text:{fieldName}");
+    }
+
+    private static bool IsSafeControlText(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
 
     private static void ValidateObjectProperty(JsonElement parent, string name, string[] expected)
     {

@@ -33,12 +33,7 @@ public sealed class AttemptInventory
                 throw new InvalidOperationException("inventory_already_sealed");
             if (entries.Count >= maximumAttempts)
                 throw new InvalidOperationException("inventory_capacity_exceeded");
-            if (string.IsNullOrWhiteSpace(entry.AttemptId) || string.IsNullOrWhiteSpace(entry.InstanceId) ||
-                !string.Equals(entry.InstanceId, identity.InstanceId, StringComparison.Ordinal) ||
-                entry.Ordinal < 0 || entry.Sequence < 0 || entry.PlannedMicroseconds < 0 || entry.InvokedMicroseconds < entry.PlannedMicroseconds ||
-                string.IsNullOrWhiteSpace(entry.TenantId) || string.IsNullOrWhiteSpace(entry.DocumentId) ||
-                string.IsNullOrWhiteSpace(entry.EventType) || entry.Key is null)
-                throw new ArgumentException("invalid_inventory_entry", nameof(entry));
+            LedgerValidator.ValidateAttempt(entry, identity);
             if (entries.Count > 0 && entry.Ordinal <= entries[^1].Ordinal)
                 throw new InvalidOperationException("inventory_ordinals_must_increase");
             if (entry.Ordinal != entries.Count)

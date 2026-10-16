@@ -93,16 +93,24 @@ public sealed class LocalLedgerStore : ILedgerStore
     /// <inheritdoc />
     public async Task SaveManifestAsync(RunManifest manifest, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(manifest);
-        if (options.MaximumManifestBytes <= 1) throw new InvalidDataException("manifest_byte_limit_exceeded");
-        var bytes = LedgerValidator.SerializeManifest(manifest, options.MaximumManifestBytes - 1);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(options.ManifestPath));
-        if (directory is not null) Directory.CreateDirectory(directory);
-        await using var stream = new FileStream(options.ManifestPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-            bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-        await stream.WriteAsync(Newline, cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ArgumentNullException.ThrowIfNull(manifest);
+            if (options.MaximumManifestBytes <= 1) throw new InvalidDataException("manifest_byte_limit_exceeded");
+            var bytes = LedgerValidator.SerializeManifest(manifest, options.MaximumManifestBytes - 1);
+            var directory = Path.GetDirectoryName(Path.GetFullPath(options.ManifestPath));
+            if (directory is not null) Directory.CreateDirectory(directory);
+            await using var stream = new FileStream(options.ManifestPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+            await stream.WriteAsync(Newline, cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            SetFailure(ex);
+            throw;
+        }
     }
 
     /// <summary>Drains the row writer and persists the supplied independent manifest.</summary>
