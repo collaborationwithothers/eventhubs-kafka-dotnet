@@ -61,17 +61,19 @@ public static class RunEvidenceReader
 
         cancellationToken.ThrowIfCancellationRequested();
         return ReadBytes(statisticsBytes, lifecycleBytes, capabilityBytes, expectedIdentity,
-            maximumFileBytes, maximumRowBytes, maximumDiagnostics);
+            expectations, maximumFileBytes, maximumRowBytes, maximumDiagnostics);
     }
 
     /// <summary>Validates the three evidence artifacts directly from bounded byte buffers without filesystem access.</summary>
     internal static RunEvidenceReadResult ReadBytes(byte[] statisticsBytes, byte[] lifecycleBytes, byte[] capabilityBytes,
-        RunIdentity expectedIdentity, long maximumFileBytes, int maximumRowBytes, int maximumDiagnostics)
+        RunIdentity expectedIdentity, RunEvidenceExpectations expectations, long maximumFileBytes, int maximumRowBytes,
+        int maximumDiagnostics)
     {
         ArgumentNullException.ThrowIfNull(statisticsBytes);
         ArgumentNullException.ThrowIfNull(lifecycleBytes);
         ArgumentNullException.ThrowIfNull(capabilityBytes);
         ArgumentNullException.ThrowIfNull(expectedIdentity);
+        ArgumentNullException.ThrowIfNull(expectations);
         expectedIdentity.Validate();
         if (maximumFileBytes <= 0 || maximumFileBytes > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(maximumFileBytes));
