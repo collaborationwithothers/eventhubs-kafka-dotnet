@@ -49,6 +49,32 @@ public sealed class RunArtifactIndexReaderTests
     }
 
     [Fact]
+    public async Task Given_RehashedStatisticsAndCapabilityBrokerNamesAgreeOnWrongBroker_When_Validating_Then_RejectsAgainstTrustedInventory()
+    {
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations expectations = Expectations(identity);
+        Dictionary<string, byte[]> payloads = await PayloadsAsync(identity, expectations);
+        RunArtifactIndex validIndex = await ReadAsync(CreateIndex(identity, payloads), identity,
+            MaximumIndexBytes, MaximumArtifactBytes, MaximumAggregateBytes);
+        await ValidateAsync(validIndex, expectations, payloads);
+
+        Dictionary<string, byte[]> renamed = payloads.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        byte[] statistics = renamed["statistics.jsonl"];
+        JsonNode report = JsonNode.Parse(statistics.AsSpan(0, statistics.Length - 1))!;
+        report["typed_snapshot"]!["brokers"]!.AsArray()[0]!["name"] = "invented-broker";
+        renamed["statistics.jsonl"] = [.. JsonSerializer.SerializeToUtf8Bytes(report), (byte)'\n'];
+
+        JsonNode capabilities = JsonNode.Parse(renamed["capabilities.json"])!;
+        var observedNames = new JsonArray();
+        observedNames.Add("invented-broker");
+        capabilities["observed_broker_names"] = observedNames;
+        renamed["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capabilities);
+
+        // Rebuilds index hashes for both matching persisted names. Only the independently supplied inventory remains broker-1.
+        await AssertPayloadSetRejectedAsync(identity, expectations, renamed);
+    }
+
+    [Fact]
     public async Task Given_IdentityMismatch_When_ReadingIndex_Then_RejectsItBeforeAcceptingAnyFiles()
     {
         // A valid artifact set from another run must never be attributed to the expected run.
@@ -353,7 +379,8 @@ public sealed class RunArtifactIndexReaderTests
     }
 
     private static RunEvidenceExpectations Expectations(RunIdentity identity) =>
-        new(CreateResolvedConfiguration(identity), requireStatisticsEvidence: true);
+        new(CreateResolvedConfiguration(identity), requireStatisticsEvidence: true,
+            expectedBrokerNames: ImmutableArray.Create("broker-1"));
 
     private static byte[] AddInventedOverride(byte[] capabilityBytes, RunIdentity identity)
     {

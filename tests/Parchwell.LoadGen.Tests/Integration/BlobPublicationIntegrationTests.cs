@@ -55,7 +55,7 @@ public sealed class BlobPublicationIntegrationTests
             WorkloadProfile profile = Profile();
             RunExecutionOptions executionOptions = ExecutionOptions(directory, topic);
             var evidenceExpectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
-                executionOptions.RequireStatisticsEvidence);
+                executionOptions.RequireStatisticsEvidence, executionOptions.ExpectedBrokerNames.ToImmutableArray());
             await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
                 evidenceExpectations);
             await using var ledger = NewLedger(directory);
@@ -414,7 +414,7 @@ public sealed class BlobPublicationIntegrationTests
         await using var ledger = NewLedger(directory);
         RunExecutionOptions executionOptions = ExecutionOptions(directory, "synthetic-publication-topic");
         var expectations = new RunEvidenceExpectations(CreateResolvedConfiguration(identity),
-            executionOptions.RequireStatisticsEvidence);
+            executionOptions.RequireStatisticsEvidence, executionOptions.ExpectedBrokerNames.ToImmutableArray());
         await using var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System,
             expectations);
         var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
