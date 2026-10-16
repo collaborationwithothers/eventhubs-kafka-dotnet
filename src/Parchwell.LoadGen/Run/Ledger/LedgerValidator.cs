@@ -97,6 +97,8 @@ public static class LedgerValidator
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumRows);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumRowBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumLedgerBytes);
+        if (maximumLedgerBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumLedgerBytes), "ledger_readback_limit_exceeds_supported_memory_bound");
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumManifestBytes);
 
         var manifestBytes = await ReadBoundedAsync(manifestPath, maximumManifestBytes, cancellationToken).ConfigureAwait(false);
@@ -173,20 +175,34 @@ public static class LedgerValidator
         }
         if (manifest.GeneratorVersion != "1" || manifest.WorkerStatus is not ("complete" or "incomplete" or "failed") ||
             manifest.PlannedAttemptCount < 0 || manifest.AttemptCount != manifest.Inventory.Length ||
-            manifest.PlannedAttemptCount < manifest.AttemptCount || manifest.TimestampFrequency <= 0 || manifest.StartTimestamp < 0 ||
+            manifest.TimestampFrequency <= 0 || manifest.StartTimestamp < 0 ||
             manifest.FirstUnexecutedOrdinal is < 0 || manifest.FirstUnexecutedOrdinal >= manifest.PlannedAttemptCount && manifest.FirstUnexecutedOrdinal.HasValue)
             throw new InvalidDataException("invalid_manifest_range_or_count");
         var ids = new HashSet<string>(StringComparer.Ordinal);
         var ordinals = new HashSet<long>();
+        var logicalAttempts = new Dictionary<long, AttemptEntry>();
         long expectedOrdinal = 0;
+        long scheduleProgress = 0;
         foreach (var entry in manifest.Inventory)
         {
             ValidateAttempt(entry, manifest.Identity);
-            if (entry.Ordinal != expectedOrdinal++ || entry.Ordinal >= manifest.PlannedAttemptCount ||
-                !ids.Add(entry.AttemptId) || !ordinals.Add(entry.Ordinal))
+            if (entry.Ordinal != expectedOrdinal++ || !ids.Add(entry.AttemptId) || !ordinals.Add(entry.Ordinal))
                 throw new InvalidDataException("duplicate_manifest_inventory_entry");
+            var logicalSlot = GetLogicalScheduleOrdinal(entry);
+            if (logicalSlot >= manifest.PlannedAttemptCount)
+                throw new InvalidDataException("attempt_exceeds_planned_schedule");
+            if (logicalSlot == scheduleProgress)
+            {
+                logicalAttempts.Add(logicalSlot, entry);
+                scheduleProgress = checked(scheduleProgress + 1);
+            }
+            else if (logicalSlot > scheduleProgress || !logicalAttempts.TryGetValue(logicalSlot, out var firstAttempt) ||
+                !SameLogicalAttempt(firstAttempt, entry))
+            {
+                throw new InvalidDataException("invalid_retry_or_skipped_schedule_slot");
+            }
         }
-        var expectedSuffix = manifest.AttemptCount < manifest.PlannedAttemptCount ? manifest.AttemptCount : (long?)null;
+        var expectedSuffix = scheduleProgress < manifest.PlannedAttemptCount ? scheduleProgress : (long?)null;
         if (manifest.FirstUnexecutedOrdinal != expectedSuffix ||
             (manifest.WorkerStatus == "complete" &&
                 (expectedSuffix.HasValue || !manifest.BookkeepingComplete || manifest.PlannedAttemptCount == 0)))
@@ -229,6 +245,26 @@ public static class LedgerValidator
             !string.Equals(entry.Key, string.Concat(entry.TenantId, "-", entry.DocumentId), StringComparison.Ordinal))
             throw new InvalidDataException("attempt_workload_identity_mismatch");
     }
+
+    internal static long GetLogicalScheduleOrdinal(AttemptEntry entry)
+    {
+        var documentOrdinal = long.Parse(entry.DocumentId.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture);
+        try
+        {
+            return checked(documentOrdinal * LifecycleEvents.Length + entry.Sequence);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidDataException("logical_schedule_ordinal_overflow", exception);
+        }
+    }
+
+    internal static bool SameLogicalAttempt(AttemptEntry first, AttemptEntry retry) =>
+        string.Equals(first.TenantId, retry.TenantId, StringComparison.Ordinal) &&
+        string.Equals(first.DocumentId, retry.DocumentId, StringComparison.Ordinal) &&
+        string.Equals(first.Key, retry.Key, StringComparison.Ordinal) && first.Sequence == retry.Sequence &&
+        first.PlannedMicroseconds == retry.PlannedMicroseconds &&
+        string.Equals(first.EventType, retry.EventType, StringComparison.Ordinal);
 
     private static bool IsCanonicalDocumentId(string documentId)
     {

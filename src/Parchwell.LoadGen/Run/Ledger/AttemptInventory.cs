@@ -12,6 +12,8 @@ public sealed class AttemptInventory
     private readonly List<AttemptEntry> entries = [];
     private readonly HashSet<string> attemptIds = new(StringComparer.Ordinal);
     private readonly HashSet<long> ordinals = [];
+    private readonly Dictionary<long, AttemptEntry> logicalAttempts = [];
+    private long scheduleProgress;
     private bool sealedInventory;
 
     /// <summary>Creates an inventory with a finite memory bound.</summary>
@@ -40,9 +42,20 @@ public sealed class AttemptInventory
                 throw new InvalidOperationException("inventory_ordinal_must_be_contiguous");
             if (attemptIds.Contains(entry.AttemptId) || ordinals.Contains(entry.Ordinal))
                 throw new InvalidOperationException("duplicate_inventory_attempt_or_ordinal");
+            var logicalSlot = LedgerValidator.GetLogicalScheduleOrdinal(entry);
+            if (logicalSlot == scheduleProgress)
+            {
+                logicalAttempts.Add(logicalSlot, entry);
+            }
+            else if (logicalSlot > scheduleProgress || !logicalAttempts.TryGetValue(logicalSlot, out var firstAttempt) ||
+                !LedgerValidator.SameLogicalAttempt(firstAttempt, entry))
+            {
+                throw new InvalidDataException("invalid_retry_or_skipped_schedule_slot");
+            }
             attemptIds.Add(entry.AttemptId);
             ordinals.Add(entry.Ordinal);
             entries.Add(entry);
+            if (logicalSlot == scheduleProgress) scheduleProgress = checked(scheduleProgress + 1);
         }
     }
 

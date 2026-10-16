@@ -122,7 +122,7 @@ public sealed class LedgerValidatorTests
         var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
         inventory.Register(first);
         inventory.Register(retry);
-        var manifest = Manifest(inventory.Seal());
+        var manifest = Manifest(inventory.Seal()) with { PlannedAttemptCount = 1 };
         var firstRow = CallbackRow();
         var retryRow = firstRow with { Attempt = retry };
 
@@ -132,11 +132,17 @@ public sealed class LedgerValidatorTests
     [Fact]
     public void Given_new_invocation_ordinal_and_canonical_logical_document_When_registered_Then_accepted()
     {
-        var inventory = new AttemptInventory(Identity, 6);
+        var inventory = new AttemptInventory(Identity, 2);
         inventory.Register(Entry);
-        var otherDocument = Entry with { AttemptId = "attempt-2", Ordinal = 1, DocumentId = "d1", Key = "tenant-1-d1" };
+        var nextLogicalEvent = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            Sequence = 1,
+            EventType = "ocr-started"
+        };
 
-        inventory.Register(otherDocument);
+        inventory.Register(nextLogicalEvent);
 
         Assert.Equal([0L, 1L], inventory.Seal().Select(item => item.Ordinal));
     }
@@ -244,6 +250,65 @@ public sealed class LedgerValidatorTests
         Assert.Equal([CallbackRow()], LedgerValidator.Validate([CallbackRow()], manifest, Identity));
         var sparse = manifest with { Inventory = [Entry with { Ordinal = 1 }] };
         Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(sparse));
+    }
+
+    [Fact]
+    public void Given_partial_schedule_with_only_retries_of_first_slot_When_validating_manifest_Then_suffix_uses_schedule_progress()
+    {
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        var manifest = Manifest([Entry, retry]) with
+        {
+            PlannedAttemptCount = 2,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 1
+        };
+        var firstRow = CallbackRow();
+        var retryRow = firstRow with { Attempt = retry };
+
+        Assert.Equal([firstRow, retryRow], LedgerValidator.Validate([firstRow, retryRow], manifest, Identity));
+    }
+
+    [Fact]
+    public void Given_retry_changes_key_or_skips_logical_schedule_slot_When_validating_manifest_Then_rejected()
+    {
+        var changedTenantRetry = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            TenantId = "tenant-2",
+            Key = "tenant-2-d0"
+        };
+        var changedKeyManifest = Manifest([Entry, changedTenantRetry]) with { PlannedAttemptCount = 1 };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(changedKeyManifest));
+
+        var skippedSlot = Entry with { Sequence = 1, EventType = "ocr-started" };
+        var skippedManifest = Manifest([skippedSlot]) with
+        {
+            PlannedAttemptCount = 2,
+            WorkerStatus = "incomplete",
+            FirstUnexecutedOrdinal = 0
+        };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(skippedManifest));
+    }
+
+    [Fact]
+    public void Given_retry_changes_planned_time_When_registered_or_validated_Then_rejected()
+    {
+        var changedPlannedTimeRetry = Entry with
+        {
+            AttemptId = "attempt-2",
+            Ordinal = 1,
+            PlannedMicroseconds = Entry.PlannedMicroseconds + 1
+        };
+        var inventory = new AttemptInventory(Identity, 2);
+        inventory.Register(Entry);
+
+        Assert.Throws<InvalidDataException>(() => inventory.Register(changedPlannedTimeRetry));
+
+        var retry = Entry with { AttemptId = "attempt-2", Ordinal = 1 };
+        inventory.Register(retry);
+        var manifest = Manifest([Entry, changedPlannedTimeRetry]) with { PlannedAttemptCount = 1 };
+        Assert.Throws<InvalidDataException>(() => LedgerValidator.ValidateManifest(manifest));
     }
 
     internal static RunManifest Manifest(ImmutableArray<AttemptEntry> entries) => new(1, Identity, "1", entries.Length,

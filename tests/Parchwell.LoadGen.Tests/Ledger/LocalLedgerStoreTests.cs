@@ -17,6 +17,16 @@ public sealed class LocalLedgerStoreTests
     }
 
     [Fact]
+    public void Given_ledgerByteLimitAboveReadbackBound_When_ValidatingOptions_Then_RejectsBeforeFileCreation()
+    {
+        using var directory = new TemporaryDirectory();
+        var options = Paths(directory.Path).Options with { MaximumLedgerBytes = (long)int.MaxValue + 1 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(options.Validate);
+        Assert.False(Directory.Exists(directory.Path));
+    }
+
+    [Fact]
     public async Task Given_rows_and_manifest_When_drained_and_read_back_Then_exact_inventory_is_validated()
     {
         using var directory = new TemporaryDirectory();
