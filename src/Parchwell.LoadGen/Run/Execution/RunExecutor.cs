@@ -1,0 +1,515 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
+using Confluent.Kafka;
+using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.LoadGen.Run.Evidence;
+using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Run.Workload;
+using Parchwell.Scenarios;
+
+namespace Parchwell.LoadGen.Run.Execution;
+
+/// <summary>Executes one finite deterministic workload through a native producer and bounded evidence stores.</summary>
+public sealed class RunExecutor
+{
+    private const int AsynchronousFailure = 1;
+    private const int MissingPersistence = 2;
+    private const int PossiblyPersisted = 4;
+    private const int CallbackFailure = 8;
+    private const int LedgerFailure = 16;
+    private const int NativeProducerException = 32;
+    private readonly Func<IProducer<byte[], byte[]>> producerFactory;
+    private readonly ILedgerStore ledger;
+    private readonly TimeProvider clock;
+    private readonly KafkaStatisticsSession? statistics;
+    private readonly RunEvidenceSession? evidence;
+
+    /// <summary>Creates an executor over the native producer, ledger, clock and optional evidence sessions.</summary>
+    public RunExecutor(Func<IProducer<byte[], byte[]>> producerFactory, ILedgerStore ledger,
+        TimeProvider clock, KafkaStatisticsSession? statistics = null, RunEvidenceSession? evidence = null)
+    {
+        this.producerFactory = producerFactory ?? throw new ArgumentNullException(nameof(producerFactory));
+        this.ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
+        this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        this.statistics = statistics;
+        this.evidence = evidence;
+    }
+
+    /// <summary>Runs the offered schedule once, drains native callbacks, persists a final manifest and returns its exit code.</summary>
+    public async Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, RunIdentity identity,
+        RunExecutionOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        identity.Validate();
+
+        var diagnostics = new List<string>();
+        var inventory = new AttemptInventory(identity, options.MaxAttempts);
+        long plannedCount = 0;
+        long startTimestamp = clock.GetTimestamp();
+        IProducer<byte[], byte[]>? producer = null;
+        KafkaStatisticsCompletion? statisticsCompletion = null;
+        var guardFlags = 0;
+        var admissionStopped = false;
+        var workerFailed = false;
+        string[] expectedBrokerNames = [];
+
+        void AddDiagnostic(string diagnostic)
+        {
+            lock (diagnostics)
+            {
+                if (diagnostics.Count < 256 && !diagnostics.Contains(diagnostic, StringComparer.Ordinal))
+                    diagnostics.Add(diagnostic);
+            }
+        }
+
+        try
+        {
+            expectedBrokerNames = options.ExpectedBrokerNames.ToArray();
+            plannedCount = WorkloadGenerator.GetPlannedAttemptCount(profile);
+            if (plannedCount > options.MaxAttempts)
+                throw new InvalidOperationException("planned_attempt_limit_exceeded");
+            _ = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken).GetEnumerator();
+            if (options.RequireRequestEvidence && (evidence is null || !evidence.RequestCapabilitySupported))
+                throw new InvalidOperationException("required_request_evidence_unavailable");
+            if (options.RequireStatisticsEvidence && (statistics is null || expectedBrokerNames.Length == 0))
+                throw new InvalidOperationException("required_statistics_evidence_unavailable");
+            if (ledger.IsFaulted) throw new InvalidOperationException("ledger_capture_faulted_before_run");
+
+            startTimestamp = clock.GetTimestamp();
+            producer = producerFactory() ?? throw new InvalidOperationException("producer_factory_returned_null");
+            var events = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken);
+            foreach (var planned in events)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (evidence is { IsFaulted: true })
+                {
+                    workerFailed = true;
+                    AddDiagnostic("evidence_capture_faulted");
+                    break;
+                }
+                if (ledger.IsFaulted || (Volatile.Read(ref guardFlags) & (CallbackFailure | LedgerFailure)) != 0)
+                {
+                    workerFailed = true;
+                    AddDiagnostic("callback_or_ledger_capture_faulted");
+                    break;
+                }
+                var dueTimestamp = AddMicroseconds(startTimestamp, planned.DueMicroseconds, clock.TimestampFrequency);
+                await DelayUntilAsync(dueTimestamp, cancellationToken).ConfigureAwait(false);
+                var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
+                var invokedTimestamp = clock.GetTimestamp();
+                var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - dueTimestamp), clock.TimestampFrequency);
+                if (lateness > DurationMicroseconds(options.MaxScheduleLateness))
+                {
+                    AddDiagnostic("schedule_lateness_limit_exceeded");
+                    break;
+                }
+
+                var attempt = new AttemptEntry(identity.InstanceId,
+                    string.Concat(identity.InstanceId, "-", planned.Ordinal.ToString(CultureInfo.InvariantCulture)), planned.Ordinal,
+                    planned.TenantId, planned.DocumentId, planned.Key, planned.Sequence, planned.EventType,
+                    planned.DueMicroseconds, ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
+                var message = new Message<byte[], byte[]>
+                {
+                    Key = Encoding.UTF8.GetBytes(planned.Key),
+                    Value = payload,
+                    Headers = CreateHeaders(identity, attempt)
+                };
+                var callbackSeen = 0;
+                Action<DeliveryReport<byte[], byte[]>> deliveryHandler = report =>
+                    RecordDelivery(report, identity, attempt, invokedTimestamp, startTimestamp,
+                        () => Interlocked.Exchange(ref callbackSeen, 1) == 0,
+                        () => Interlocked.Or(ref guardFlags, AsynchronousFailure),
+                        () => Interlocked.Or(ref guardFlags, MissingPersistence),
+                        () => Interlocked.Or(ref guardFlags, PossiblyPersisted),
+                        () => Interlocked.Or(ref guardFlags, CallbackFailure),
+                        () => Interlocked.Or(ref guardFlags, LedgerFailure));
+                inventory.Register(attempt);
+                try
+                {
+                    producer.Produce(options.Topic, message, deliveryHandler);
+                }
+                catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
+                {
+                    var completedTimestamp = clock.GetTimestamp();
+                    var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
+                        (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
+                        ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency), null,
+                        ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency));
+                    if (!ledger.TryAppend(row))
+                    {
+                        Interlocked.Or(ref guardFlags, LedgerFailure);
+                        AddDiagnostic("ledger_append_failed");
+                        workerFailed = true;
+                        break;
+                    }
+                }
+                catch
+                {
+                    Interlocked.Or(ref guardFlags, NativeProducerException);
+                    AddDiagnostic("native_produce_exception");
+                    throw;
+                }
+            }
+            admissionStopped = true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            admissionStopped = true;
+            workerFailed = true;
+            AddDiagnostic("execution_cancelled");
+        }
+        catch (Exception exception)
+        {
+            admissionStopped = true;
+            workerFailed = true;
+            AddDiagnostic("execution_failed:" + exception.GetType().Name);
+        }
+
+        var entries = inventory.Seal();
+        using var cleanupDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
+        try
+        {
+            if (producer is not null)
+            {
+                if (!await DrainProducerAsync(producer, options.ProducerDrainTimeout, cleanupDeadline.Token).ConfigureAwait(false))
+                {
+                    workerFailed = true;
+                    AddDiagnostic("producer_drain_timeout");
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            workerFailed = true;
+            AddDiagnostic("producer_drain_failed:" + exception.GetType().Name);
+        }
+
+        if (!admissionStopped) AddDiagnostic("admission_state_unresolved");
+        if (ledger.IsFaulted)
+        {
+            workerFailed = true;
+            Interlocked.Or(ref guardFlags, LedgerFailure);
+            AddDiagnostic("ledger_capture_faulted");
+        }
+        AddFlagDiagnostic(guardFlags, AsynchronousFailure, "async_delivery_failure_observed", AddDiagnostic);
+        AddFlagDiagnostic(guardFlags, MissingPersistence, "persistence_status_missing", AddDiagnostic);
+        AddFlagDiagnostic(guardFlags, PossiblyPersisted, "possibly_persisted_observed", AddDiagnostic);
+        AddFlagDiagnostic(guardFlags, CallbackFailure, "delivery_callback_failure", AddDiagnostic);
+        AddFlagDiagnostic(guardFlags, LedgerFailure, "ledger_capture_failure", AddDiagnostic);
+        AddFlagDiagnostic(guardFlags, NativeProducerException, "native_produce_exception_observed", AddDiagnostic);
+
+        try
+        {
+            await ledger.DrainAsync(cleanupDeadline.Token).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            workerFailed = true;
+            AddDiagnostic("ledger_drain_failed:" + exception.GetType().Name);
+        }
+
+        if (statistics is not null)
+        {
+            if (expectedBrokerNames.Length == 0)
+            {
+                AddDiagnostic("statistics_expected_broker_inventory_unavailable");
+                if (options.RequireStatisticsEvidence) workerFailed = true;
+                try
+                {
+                    await statistics.DisposeAsync().AsTask().WaitAsync(cleanupDeadline.Token).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    if (options.RequireStatisticsEvidence) workerFailed = true;
+                    AddDiagnostic("statistics_dispose_failed:" + exception.GetType().Name);
+                }
+            }
+            else
+            {
+                try
+                {
+                    statisticsCompletion = await statistics.CompleteAsync(expectedBrokerNames, cleanupDeadline.Token)
+                        .ConfigureAwait(false);
+                    if (!statisticsCompletion.IsComplete && options.RequireStatisticsEvidence)
+                    {
+                        workerFailed = true;
+                        AddDiagnostic("statistics_completion_incomplete");
+                    }
+                    else if (!statisticsCompletion.IsComplete) AddDiagnostic("statistics_completion_incomplete");
+                }
+                catch (Exception exception)
+                {
+                    if (options.RequireStatisticsEvidence) workerFailed = true;
+                    AddDiagnostic("statistics_completion_failed:" + exception.GetType().Name);
+                }
+            }
+        }
+        else if (options.RequireStatisticsEvidence)
+        {
+            workerFailed = true;
+            AddDiagnostic("statistics_session_unavailable");
+        }
+
+        if (producer is not null)
+        {
+            try { producer.Dispose(); }
+            catch (Exception exception) { workerFailed = true; AddDiagnostic("producer_dispose_failed:" + exception.GetType().Name); }
+        }
+
+        if (evidence is not null)
+        {
+            try
+            {
+                await evidence.CompleteAsync(statisticsCompletion, cleanupDeadline.Token).ConfigureAwait(false);
+                await evidence.ValidatePersistedAsync(cleanupDeadline.Token).ConfigureAwait(false);
+                if (evidence.IsFaulted)
+                {
+                    workerFailed = true;
+                    AddDiagnostic("evidence_capture_faulted");
+                }
+                foreach (var item in evidence.Diagnostics) AddDiagnostic("evidence:" + item);
+            }
+            catch (Exception exception)
+            {
+                workerFailed = true;
+                AddDiagnostic("evidence_completion_failed:" + exception.GetType().Name);
+            }
+        }
+
+        if (!options.RequireRequestEvidence && (evidence is null || !evidence.RequestCapabilitySupported))
+            AddDiagnostic("request_evidence_unsupported");
+        AddDiagnostic("broker_lifecycle_inventory_unproven");
+
+        var evidenceFiles = evidence?.ArtifactNames.ToImmutableDictionary(name => name,
+            name => name, StringComparer.Ordinal)
+            ?? ImmutableDictionary<string, string>.Empty;
+        var guardObservations = BuildGuardObservations(guardFlags, statisticsCompletion, evidence);
+        var artifactPaths = evidenceFiles.ToImmutableDictionary(pair => pair.Key,
+            pair => Path.Combine(Path.GetFullPath(options.OutputRoot), pair.Value), StringComparer.Ordinal)
+            .SetItem("ledger", Path.Combine(Path.GetFullPath(options.OutputRoot), "ledger.jsonl"));
+        var manifestPath = Path.Combine(Path.GetFullPath(options.OutputRoot), "manifest.json");
+        artifactPaths = artifactPaths.SetItem("manifest", manifestPath);
+
+        var readbackComplete = false;
+        var candidate = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+            evidenceFiles, guardObservations, workerFailed, readbackComplete, clock.TimestampFrequency);
+        try
+        {
+            var rows = await ReadLedgerRowsAsync(artifactPaths["ledger"], options.MaxAttempts,
+                options.MaxRowBytes, options.MaxLedgerReadbackBytes, cleanupDeadline.Token).ConfigureAwait(false);
+            _ = LedgerValidator.Validate(rows, candidate, identity);
+            readbackComplete = true;
+        }
+        catch (Exception exception)
+        {
+            workerFailed = true;
+            AddDiagnostic("ledger_readback_failed:" + exception.GetType().Name);
+        }
+
+        var bookkeepingComplete = readbackComplete && !workerFailed && entries.Length == plannedCount &&
+            (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
+            (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
+            evidence is not { IsFaulted: true };
+        var manifest = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+            evidenceFiles, guardObservations, workerFailed, bookkeepingComplete, clock.TimestampFrequency);
+        try
+        {
+            _ = LedgerValidator.SerializeManifest(manifest, options.MaxManifestBytes);
+            await ledger.SaveManifestAsync(manifest, cleanupDeadline.Token).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            workerFailed = true;
+            AddDiagnostic("manifest_save_failed:" + exception.GetType().Name);
+            manifest = CreateManifest(identity, entries, plannedCount, startTimestamp, diagnostics,
+                evidenceFiles, guardObservations, workerFailed, false, clock.TimestampFrequency);
+        }
+
+        return new RunExecutionResult(bookkeepingComplete && !workerFailed ? 0 : 1, manifest, artifactPaths);
+    }
+
+    private async Task DelayUntilAsync(long dueTimestamp, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var remaining = dueTimestamp - clock.GetTimestamp();
+            if (remaining <= 0) return;
+            var delay = TimeSpan.FromSeconds((double)remaining / clock.TimestampFrequency);
+            await Task.Delay(delay, clock, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<bool> DrainProducerAsync(IProducer<byte[], byte[]> producer, TimeSpan timeout,
+        CancellationToken cleanupToken)
+    {
+        using var drainDeadline = new CancellationTokenSource(timeout, clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cleanupToken, drainDeadline.Token);
+        while (!linked.IsCancellationRequested)
+        {
+            var remaining = drainDeadline.Token.IsCancellationRequested ? TimeSpan.Zero : timeout;
+            if (remaining <= TimeSpan.Zero) break;
+            var queueCount = producer.Flush(remaining < TimeSpan.FromMilliseconds(100)
+                ? remaining : TimeSpan.FromMilliseconds(100));
+            if (queueCount == 0) return true;
+            await Task.Yield();
+        }
+        return producer.Flush(TimeSpan.Zero) == 0;
+    }
+
+    private void RecordDelivery(DeliveryReport<byte[], byte[]> report, RunIdentity identity, AttemptEntry attempt,
+        long invokedTimestamp, long startTimestamp, Func<bool> tryStart,
+        Action asyncFailure, Action missingPersistence, Action possiblyPersisted, Action callbackFailure, Action ledgerFailure)
+    {
+        try
+        {
+            if (!tryStart())
+            {
+                callbackFailure();
+                return;
+            }
+            var completedTimestamp = clock.GetTimestamp();
+            var errorCode = report.Error.Code;
+            var delivered = !report.Error.IsError;
+            if (!delivered) asyncFailure();
+            int? persistence = report.Status is PersistenceStatus status ? (int)status : null;
+            var provenance = persistence.HasValue ? "native_callback" : "missing";
+            if (!persistence.HasValue) missingPersistence();
+            if (persistence == (int)PersistenceStatus.PossiblyPersisted) possiblyPersisted();
+            var row = new LedgerRow(1, identity, attempt, "callback", delivered, (int)errorCode,
+                Enum.GetName(errorCode), persistence, provenance,
+                ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency),
+                ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency), null);
+            if (!ledger.TryAppend(row))
+            {
+                ledgerFailure();
+            }
+        }
+        catch
+        {
+            callbackFailure();
+        }
+    }
+
+    private static Headers CreateHeaders(RunIdentity identity, AttemptEntry attempt)
+    {
+        var headers = new Headers();
+        headers.Add("tenant-id", Encoding.UTF8.GetBytes(attempt.TenantId));
+        headers.Add("document-id", Encoding.UTF8.GetBytes(attempt.DocumentId));
+        headers.Add("sequence", Encoding.UTF8.GetBytes(attempt.Sequence.ToString(CultureInfo.InvariantCulture)));
+        headers.Add("event-type", Encoding.UTF8.GetBytes(attempt.EventType));
+        headers.Add("instance-id", Encoding.UTF8.GetBytes(identity.InstanceId));
+        headers.Add("attempt-id", Encoding.UTF8.GetBytes(attempt.AttemptId));
+        return headers;
+    }
+
+    private static long AddMicroseconds(long timestamp, long microseconds, long frequency)
+    {
+        var delta = (Int128)microseconds * frequency / 1_000_000;
+        var result = (Int128)timestamp + delta;
+        return result > long.MaxValue ? long.MaxValue : result < long.MinValue ? long.MinValue : (long)result;
+    }
+
+    private static long ToMicroseconds(long timestampDelta, long frequency)
+    {
+        if (frequency <= 0) return 0;
+        var value = (Int128)timestampDelta * 1_000_000 / frequency;
+        return value > long.MaxValue ? long.MaxValue : value < long.MinValue ? long.MinValue : (long)value;
+    }
+
+    private static double ElapsedMilliseconds(long start, long end, long frequency)
+        => Math.Max(0, (double)(end - start) * 1_000 / frequency);
+
+    private static long DurationMicroseconds(TimeSpan duration) => duration.Ticks / 10;
+
+    private static RunManifest CreateManifest(RunIdentity identity, ImmutableArray<AttemptEntry> entries,
+        long plannedCount, long startTimestamp, List<string> diagnostics, ImmutableDictionary<string, string> evidenceFiles,
+        ImmutableArray<string> guardObservations, bool failed, bool bookkeepingComplete, long frequency)
+    {
+        string status = !failed && bookkeepingComplete && entries.Length == plannedCount ? "complete"
+            : failed ? "failed" : "incomplete";
+        ImmutableArray<string> diagnosticSnapshot;
+        lock (diagnostics) diagnosticSnapshot = diagnostics.ToImmutableArray();
+        var versions = ImmutableDictionary<string, string>.Empty
+            .Add("dotnet", Environment.Version.ToString())
+            .Add("confluent_kafka", typeof(IProducer<byte[], byte[]>).Assembly.GetName().Version?.ToString() ?? "unknown")
+            .Add("librdkafka", Library.VersionString)
+            .Add("workload_generator", WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture));
+        return new RunManifest(1, identity, WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture),
+            plannedCount, entries.Length, entries, frequency, startTimestamp, status, bookkeepingComplete,
+            entries.Length < plannedCount ? entries.Length : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
+    }
+
+    private static ImmutableArray<string> BuildGuardObservations(int flags,
+        KafkaStatisticsCompletion? completion, RunEvidenceSession? evidence)
+    {
+        var observations = ImmutableArray.CreateBuilder<string>();
+        if ((flags & AsynchronousFailure) != 0) observations.Add("async_delivery_failure_observed");
+        if ((flags & MissingPersistence) != 0) observations.Add("persistence_status_missing");
+        if ((flags & PossiblyPersisted) != 0) observations.Add("possibly_persisted_observed");
+        if ((flags & CallbackFailure) != 0) observations.Add("delivery_callback_failure");
+        if ((flags & LedgerFailure) != 0) observations.Add("ledger_capture_failure");
+        if ((flags & NativeProducerException) != 0) observations.Add("native_produce_exception_observed");
+        if (completion is null) observations.Add("statistics_guard_unproven");
+        else if (!completion.IsComplete) observations.Add("statistics_guard_incomplete");
+        if (evidence is null)
+        {
+            observations.Add("evidence_capture_unavailable");
+            observations.Add("request_lifecycle_capture_unsupported");
+        }
+        else
+        {
+            if (!evidence.RequestCapabilitySupported) observations.Add("request_lifecycle_capture_unsupported");
+            observations.AddRange(evidence.GuardObservations);
+        }
+        observations.Add("broker_lifecycle_inventory_unproven");
+        return observations.ToImmutable();
+    }
+
+    private static async Task<ImmutableArray<LedgerRow>> ReadLedgerRowsAsync(string path, int maximumRows,
+        int maximumRowBytes, long maximumBytes, CancellationToken cancellationToken)
+    {
+        var result = ImmutableArray.CreateBuilder<LedgerRow>();
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: 8192, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var input = new byte[8192];
+        using var rowBuffer = new MemoryStream(Math.Min(maximumRowBytes, 8192));
+        long totalBytes = 0;
+        while (true)
+        {
+            var read = await stream.ReadAsync(input, cancellationToken).ConfigureAwait(false);
+            if (read == 0) break;
+            totalBytes = checked(totalBytes + read);
+            if (totalBytes > maximumBytes) throw new InvalidDataException("ledger_readback_file_over_limit");
+            for (var index = 0; index < read; index++)
+            {
+                if (input[index] == (byte)'\n')
+                {
+                    if (rowBuffer.Length == 0 || result.Count >= maximumRows)
+                        throw new InvalidDataException("ledger_readback_row_limit_exceeded");
+                    result.Add(LedgerValidator.DeserializeRow(
+                        rowBuffer.GetBuffer().AsSpan(0, checked((int)rowBuffer.Length))));
+                    rowBuffer.SetLength(0);
+                }
+                else
+                {
+                    if (rowBuffer.Length >= maximumRowBytes)
+                        throw new InvalidDataException("ledger_readback_row_limit_exceeded");
+                    rowBuffer.WriteByte(input[index]);
+                }
+            }
+        }
+        if (rowBuffer.Length != 0) throw new InvalidDataException("ledger_readback_truncated_final_row");
+        return result.ToImmutable();
+    }
+
+    private static void AddFlagDiagnostic(int flags, int flag, string diagnostic, Action<string> addDiagnostic)
+    {
+        if ((flags & flag) != 0) addDiagnostic(diagnostic);
+    }
+
+}

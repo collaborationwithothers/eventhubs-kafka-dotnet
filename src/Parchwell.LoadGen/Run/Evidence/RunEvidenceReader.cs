@@ -1,0 +1,570 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using Confluent.Kafka;
+using Parchwell.Kafka.Configuration;
+using Parchwell.LoadGen.Run.Contracts;
+
+namespace Parchwell.LoadGen.Run.Evidence;
+
+/// <summary>Bounded summary of persisted evidence. Record counts describe artifact rows, not Kafka outcomes.</summary>
+public sealed record RunEvidenceReadResult(
+    int StatisticsRecordCount,
+    int LifecycleRecordCount,
+    bool IsFaulted,
+    bool RequestCapabilitySupported,
+    bool? StatisticsComplete,
+    ImmutableArray<string> CapabilityStatuses,
+    ImmutableArray<string> GuardObservations,
+    bool GuardObservationsComplete,
+    ImmutableArray<string> SessionDiagnostics);
+
+/// <summary>Strict, bounded reader for the version 1 evidence artifacts.</summary>
+public static class RunEvidenceReader
+{
+    private const int SchemaVersion = 1;
+    private const int MaximumJsonDepth = 32;
+    private const int MaximumCapabilitySources = 16;
+    private const int MaximumLifecycleFieldNames = 32;
+    private static readonly byte[] Utf8Bom = [0xef, 0xbb, 0xbf];
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private static readonly JsonDocumentOptions JsonOptions = new() { MaxDepth = MaximumJsonDepth, CommentHandling = JsonCommentHandling.Disallow, AllowTrailingCommas = false };
+    private static readonly string[] ArtifactNames = ["statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+    private static readonly string[] IdentityFields = ["scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id"];
+    private static readonly string[] CapabilityRequirements =
+    [
+        "request_identity", "matched_response_error_throttle_attribution", "applicable_deadline_provenance",
+        "native_retransmission", "request_ordering", "request_lifecycle_completeness", "broker_instance_lifecycle_inventory"
+    ];
+
+    /// <summary>Reads and validates all three artifacts without parsing the native raw JSON string.</summary>
+    public static async Task<RunEvidenceReadResult> ReadAsync(
+        string directoryPath,
+        RunIdentity expectedIdentity,
+        long maximumFileBytes,
+        int maximumRowBytes,
+        int maximumDiagnostics,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+        ArgumentNullException.ThrowIfNull(expectedIdentity);
+        expectedIdentity.Validate();
+        if (maximumFileBytes <= 0 || maximumFileBytes > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(maximumFileBytes), "Evidence file limit must fit in a positive Int32-sized buffer.");
+        if (maximumRowBytes <= 0 || maximumRowBytes > maximumFileBytes)
+            throw new ArgumentOutOfRangeException(nameof(maximumRowBytes));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumDiagnostics);
+
+        string root = Path.GetFullPath(directoryPath);
+        byte[] statisticsBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[0]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
+        byte[] lifecycleBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[1]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
+        byte[] capabilityBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[2]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
+
+        int maximumRows = (int)Math.Min(int.MaxValue, maximumFileBytes);
+        int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,
+            row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics));
+        int lifecycleCount = ValidateJsonLines(lifecycleBytes, maximumRowBytes, maximumRows,
+            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics));
+
+        using JsonDocument capabilities = ParseDocument(capabilityBytes);
+        JsonElement rootElement = capabilities.RootElement;
+        ValidateCapabilityReport(rootElement, expectedIdentity, maximumRows, maximumDiagnostics,
+            out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
+            out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
+            out bool guardObservationsComplete, out ImmutableArray<string> diagnostics);
+        return new RunEvidenceReadResult(statisticsCount, lifecycleCount, isFaulted, requestCapabilitySupported,
+            statisticsComplete, statuses, guardObservations, guardObservationsComplete, diagnostics);
+    }
+
+    private static async Task<byte[]> ReadBoundedFileAsync(string path, long maximumBytes, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        long length = stream.Length;
+        if (length < 0 || length > maximumBytes || length > int.MaxValue)
+            throw new InvalidDataException("evidence_file_exceeds_byte_limit");
+        byte[] bytes = new byte[(int)length];
+        int offset = 0;
+        while (offset < bytes.Length)
+        {
+            int read = await stream.ReadAsync(bytes.AsMemory(offset), cancellationToken).ConfigureAwait(false);
+            if (read == 0) throw new InvalidDataException("evidence_file_truncated_during_read");
+            offset += read;
+        }
+        byte[] extra = new byte[1];
+        if (await stream.ReadAsync(extra, cancellationToken).ConfigureAwait(false) != 0)
+            throw new InvalidDataException("evidence_file_grew_beyond_byte_limit");
+        return bytes;
+    }
+
+    private static int ValidateJsonLines(byte[] bytes, int maximumRowBytes, int maximumRows, Action<JsonElement> validateRow)
+    {
+        ValidateUtf8(bytes);
+        if (bytes.AsSpan().StartsWith(Utf8Bom))
+            throw new InvalidDataException("evidence_jsonl_bom_not_allowed");
+        if (bytes.Length == 0) return 0;
+        if (bytes[^1] != (byte)'\n') throw new InvalidDataException("evidence_jsonl_missing_final_lf");
+        int count = 0;
+        int start = 0;
+        for (int index = 0; index < bytes.Length; index++)
+        {
+            if (bytes[index] != (byte)'\n') continue;
+            int rowLength = index - start;
+            if (rowLength == 0) throw new InvalidDataException("evidence_jsonl_empty_row");
+            if (rowLength > maximumRowBytes) throw new InvalidDataException("evidence_jsonl_row_exceeds_byte_limit");
+            if (count >= maximumRows) throw new InvalidDataException("evidence_jsonl_row_count_exceeded");
+            if (bytes[index - 1] == (byte)'\r') throw new InvalidDataException("evidence_jsonl_crlf_not_canonical");
+            using JsonDocument row = JsonDocument.Parse(bytes.AsMemory(start, rowLength), JsonOptions);
+            RejectDuplicatePropertiesRecursively(row.RootElement);
+            validateRow(row.RootElement);
+            count++;
+            start = index + 1;
+        }
+        return count;
+    }
+
+    private static JsonDocument ParseDocument(byte[] bytes)
+    {
+        ValidateUtf8(bytes);
+        if (bytes.AsSpan().StartsWith(Utf8Bom))
+            throw new InvalidDataException("evidence_json_bom_not_allowed");
+        try
+        {
+            return JsonDocument.Parse(bytes, JsonOptions);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException("evidence_json_invalid_utf8", exception);
+        }
+    }
+
+    private static void ValidateUtf8(byte[] bytes)
+    {
+        try
+        {
+            _ = StrictUtf8.GetCharCount(bytes);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException("evidence_json_invalid_utf8", exception);
+        }
+    }
+
+    private static void ValidateStatisticsRecord(JsonElement row, RunIdentity expected, int maximumRows, int maximumDiagnostics)
+    {
+        RequireObject(row, "schema_version", "identity", "statistics_identity", "session_id", "received_at", "receipt_time", "raw_json", "typed_snapshot", "diagnostics");
+        RequireSchemaVersion(row);
+        ValidateIdentity(Get(row, "identity"), expected);
+
+        JsonElement statisticsIdentity = Get(row, "statistics_identity");
+        RequireObject(statisticsIdentity, "scenario_id", "run_id", "role", "client_id");
+        RequireEqualString(statisticsIdentity, "scenario_id", expected.ScenarioId);
+        RequireEqualString(statisticsIdentity, "run_id", expected.RunId);
+        RequireEqualString(statisticsIdentity, "client_id", expected.ClientId);
+        RequireEnumNumber(Get(statisticsIdentity, "role"), (int)KafkaClientRole.LoadGenProducer, "statistics_identity.role");
+        RequireNonemptyString(Get(row, "session_id"), "session_id");
+        RequireTimestamp(Get(row, "received_at"), "received_at");
+        RequireTimestamp(Get(row, "receipt_time"), "receipt_time");
+        RequireString(Get(row, "raw_json"), "raw_json"); // Deliberately opaque: the bridge owns native JSON parsing policy.
+
+        JsonElement snapshot = Get(row, "typed_snapshot");
+        if (snapshot.ValueKind != JsonValueKind.Null) ValidateSnapshot(snapshot, maximumRows);
+        ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics);
+    }
+
+    private static void ValidateSnapshot(JsonElement snapshot, int maximumRows)
+    {
+        RequireObject(snapshot, "name", "client_id", "type", "timestamp_microseconds", "time_seconds", "age_microseconds", "brokers");
+        RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
+        RequireNonemptyString(Get(snapshot, "client_id"), "typed_snapshot.client_id");
+        RequireNonemptyString(Get(snapshot, "type"), "typed_snapshot.type");
+        RequireNonnegativeInt64(Get(snapshot, "timestamp_microseconds"), "typed_snapshot.timestamp_microseconds");
+        RequireNonnegativeInt64(Get(snapshot, "time_seconds"), "typed_snapshot.time_seconds");
+        RequireNonnegativeInt64(Get(snapshot, "age_microseconds"), "typed_snapshot.age_microseconds");
+        JsonElement brokers = Get(snapshot, "brokers");
+        RequireArray(brokers, "typed_snapshot.brokers", maximumRows);
+        foreach (JsonElement broker in brokers.EnumerateArray()) ValidateBroker(broker);
+    }
+
+    private static void ValidateBroker(JsonElement broker)
+    {
+        RequireObject(broker, "name", "node_id", "state", "state_age_microseconds", "request_timeouts", "disconnects", "transmission_retries", "transmission_errors", "receive_errors", "throttle", "round_trip_time");
+        RequireNonemptyString(Get(broker, "name"), "broker.name");
+        int nodeId = RequireInt32(Get(broker, "node_id"), "broker.node_id");
+        if (nodeId < -1) throw Invalid("broker.node_id_out_of_range");
+        RequireString(Get(broker, "state"), "broker.state");
+        RequireNonnegativeInt64(Get(broker, "state_age_microseconds"), "broker.state_age_microseconds");
+        RequireNonnegativeInt64(Get(broker, "request_timeouts"), "broker.request_timeouts");
+        RequireNonnegativeInt64(Get(broker, "disconnects"), "broker.disconnects");
+        RequireNonnegativeInt64(Get(broker, "transmission_retries"), "broker.transmission_retries");
+        RequireNonnegativeInt64(Get(broker, "transmission_errors"), "broker.transmission_errors");
+        RequireNonnegativeInt64(Get(broker, "receive_errors"), "broker.receive_errors");
+        ValidateWindow(Get(broker, "throttle"), "broker.throttle");
+        ValidateWindow(Get(broker, "round_trip_time"), "broker.round_trip_time");
+    }
+
+    private static void ValidateWindow(JsonElement window, string field)
+    {
+        RequireObject(window, "count", "value");
+        RequireNonnegativeInt64(Get(window, "count"), field + ".count");
+        JsonElement value = Get(window, "value");
+        if (value.ValueKind != JsonValueKind.Null) RequireNonnegativeInt64(value, field + ".value");
+    }
+
+    private static void ValidateStatisticsDiagnostics(JsonElement diagnostics, int maximumDiagnostics)
+    {
+        RequireArray(diagnostics, "diagnostics", maximumDiagnostics);
+        foreach (JsonElement diagnostic in diagnostics.EnumerateArray())
+        {
+            RequireObject(diagnostic, "code", "broker", "field");
+            RequireNonemptyString(Get(diagnostic, "code"), "diagnostics.code");
+            RequireNullableString(Get(diagnostic, "broker"), "diagnostics.broker");
+            RequireNullableString(Get(diagnostic, "field"), "diagnostics.field");
+        }
+    }
+
+    private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics)
+    {
+        RequireObjectBase(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type");
+        RequireSchemaVersion(row);
+        ValidateIdentity(Get(row, "identity"), expected);
+        RequireNonemptyString(Get(row, "session_id"), "session_id");
+        if (RequireNonnegativeInt64(Get(row, "receipt_sequence"), "receipt_sequence") <= 0) throw Invalid("receipt_sequence_must_be_positive");
+        RequireTimestamp(Get(row, "received_at"), "received_at");
+        string eventType = RequireString(Get(row, "event_type"), "event_type");
+        if (eventType == "native_log")
+        {
+            RequireExactProperties(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "source_event_timestamp", "correlation_id", "source_order", "known_missing_fields", "inference", "event_type", "native_name", "level", "facility", "message", "provenance");
+            RequireNullableTimestamp(Get(row, "source_event_timestamp"), "source_event_timestamp");
+            RequireNullableString(Get(row, "correlation_id"), "correlation_id");
+            RequireNullableNonnegativeInt64(Get(row, "source_order"), "source_order");
+            JsonElement missing = Get(row, "known_missing_fields");
+            RequireStringArray(missing, "known_missing_fields", MaximumLifecycleFieldNames, allowEmpty: true);
+            RequireNullableString(Get(row, "inference"), "inference");
+            RequireString(Get(row, "native_name"), "native_name");
+            string level = RequireNonemptyString(Get(row, "level"), "level");
+            if (!Enum.TryParse<SyslogLevel>(level, ignoreCase: false, out SyslogLevel parsedLevel) || !Enum.IsDefined(parsedLevel))
+                throw Invalid("log_level_invalid");
+            RequireString(Get(row, "facility"), "facility");
+            RequireString(Get(row, "message"), "message");
+            RequireNonemptyString(Get(row, "provenance"), "provenance");
+            return;
+        }
+        if (eventType == "native_error")
+        {
+            RequireExactProperties(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type", "error_code", "error_name", "reason", "is_error", "is_fatal", "provenance");
+            _ = RequireInt32(Get(row, "error_code"), "error_code");
+            RequireNonemptyString(Get(row, "error_name"), "error_name");
+            RequireNullableString(Get(row, "reason"), "reason");
+            RequireBoolean(Get(row, "is_error"), "is_error");
+            RequireBoolean(Get(row, "is_fatal"), "is_fatal");
+            RequireNonemptyString(Get(row, "provenance"), "provenance");
+            return;
+        }
+        throw Invalid("lifecycle_event_type_unknown");
+    }
+
+    private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected, int maximumRows, int maximumDiagnostics,
+        out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
+        out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
+        out bool guardObservationsComplete, out ImmutableArray<string> diagnostics)
+    {
+        RequireObject(root, "schema_version", "identity", "artifacts", "resolved_configuration", "request_lifecycle_requirements", "request_capability_supported", "observed_broker_names", "guard_observations", "guard_observations_complete", "statistics_completion", "session_diagnostics", "is_faulted");
+        RequireSchemaVersion(root);
+        ValidateIdentity(Get(root, "identity"), expected);
+        JsonElement artifacts = Get(root, "artifacts");
+        ImmutableArray<string> artifactNames = RequireStringArray(artifacts, "artifacts", 3, allowEmpty: false);
+        if (artifactNames.Length != 3 || !artifactNames.ToHashSet(StringComparer.Ordinal).SetEquals(ArtifactNames))
+            throw Invalid("artifact_name_set_mismatch");
+
+        JsonElement resolved = Get(root, "resolved_configuration");
+        if (resolved.ValueKind != JsonValueKind.Null) ValidateResolvedConfiguration(resolved, maximumRows);
+
+        JsonElement requirements = Get(root, "request_lifecycle_requirements");
+        RequireArray(requirements, "request_lifecycle_requirements", maximumRows);
+        if (requirements.GetArrayLength() != CapabilityRequirements.Length) throw Invalid("capability_requirement_count_mismatch");
+        var statusBuilder = ImmutableArray.CreateBuilder<string>(requirements.GetArrayLength());
+        var requirementNames = new HashSet<string>(StringComparer.Ordinal);
+        bool allSupported = true;
+        foreach (JsonElement requirement in requirements.EnumerateArray())
+        {
+            RequireObject(requirement, "requirement", "status", "pinned_version", "source_urls", "source_facts", "inference", "local_test_evidence");
+            string name = RequireNonemptyString(Get(requirement, "requirement"), "capability.requirement");
+            if (!CapabilityRequirements.Contains(name, StringComparer.Ordinal) || !requirementNames.Add(name))
+                throw Invalid("capability_requirement_unknown_or_duplicate");
+            string status = RequireString(Get(requirement, "status"), "capability.status");
+            if (status is not ("supported" or "unsupported" or "unproven")) throw Invalid("capability_status_invalid");
+            allSupported &= status == "supported";
+            statusBuilder.Add(status);
+            if (!StringComparer.Ordinal.Equals(RequireString(Get(requirement, "pinned_version"), "capability.pinned_version"), "2.16.0"))
+                throw Invalid("capability_pinned_version_mismatch");
+            ImmutableArray<string> urls = RequireStringArray(Get(requirement, "source_urls"), "capability.source_urls", MaximumCapabilitySources, allowEmpty: false);
+            foreach (string urlText in urls)
+            {
+                if (!Uri.TryCreate(urlText, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps || !urlText.Contains("v2.16.0", StringComparison.Ordinal))
+                    throw Invalid("capability_source_url_not_pinned_https");
+            }
+            RequireNonemptyString(Get(requirement, "source_facts"), "capability.source_facts");
+            RequireNonemptyString(Get(requirement, "inference"), "capability.inference");
+            RequireNonemptyString(Get(requirement, "local_test_evidence"), "capability.local_test_evidence");
+        }
+        statuses = statusBuilder.ToImmutable();
+        requestCapabilitySupported = RequireBoolean(Get(root, "request_capability_supported"), "request_capability_supported");
+        if (requestCapabilitySupported != allSupported) throw Invalid("request_capability_support_flag_mismatch");
+        RequireStringArray(Get(root, "observed_broker_names"), "observed_broker_names", maximumRows, allowEmpty: true);
+        guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
+        guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
+        JsonElement completion = Get(root, "statistics_completion");
+        statisticsComplete = null;
+        if (completion.ValueKind != JsonValueKind.Null)
+        {
+            RequireObject(completion, "is_complete", "diagnostics", "missing_brokers");
+            statisticsComplete = RequireBoolean(Get(completion, "is_complete"), "statistics_completion.is_complete");
+            ValidateStatisticsDiagnostics(Get(completion, "diagnostics"), maximumDiagnostics);
+            RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
+        }
+        diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
+        isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
+        if (!guardObservationsComplete && !isFaulted) throw Invalid("guard_observation_truncation_not_faulted");
+    }
+
+    private static void ValidateResolvedConfiguration(JsonElement resolved, int maximumRows)
+    {
+        RequireObject(resolved, "role", "settings", "omissions");
+        RequireEnumNumber(Get(resolved, "role"), (int)KafkaClientRole.LoadGenProducer, "resolved_configuration.role");
+        JsonElement settings = Get(resolved, "settings");
+        RequireKind(settings, JsonValueKind.Object, "resolved_configuration.settings");
+        if (settings.EnumerateObject().Count() > maximumRows) throw Invalid("resolved_settings_limit_exceeded");
+        foreach (JsonProperty setting in settings.EnumerateObject())
+        {
+            if (string.IsNullOrWhiteSpace(setting.Name)) throw Invalid("resolved_setting_name_empty");
+            ValidateResolvedSetting(setting.Value, setting.Name);
+        }
+        JsonElement omissions = Get(resolved, "omissions");
+        RequireArray(omissions, "resolved_configuration.omissions", maximumRows);
+        foreach (JsonElement omission in omissions.EnumerateArray()) ValidateSettingMetadata(omission);
+    }
+
+    private static void ValidateResolvedSetting(JsonElement setting, string dictionaryKey)
+    {
+        RequireObject(setting, "value", "baseline", "override");
+        RequireNonemptyString(Get(setting, "value"), "resolved_setting.value");
+        JsonElement baseline = Get(setting, "baseline");
+        ValidateSettingMetadata(baseline);
+        if (!StringComparer.Ordinal.Equals(RequireNonemptyString(Get(baseline, "key"), "baseline.key"), dictionaryKey))
+            throw Invalid("resolved_setting_key_mismatch");
+        JsonElement origin = Get(setting, "override");
+        if (origin.ValueKind != JsonValueKind.Null)
+        {
+            RequireObject(origin, "scenario_id", "configuration_id", "location");
+            RequireNonemptyString(Get(origin, "scenario_id"), "override.scenario_id");
+            RequireNonemptyString(Get(origin, "configuration_id"), "override.configuration_id");
+            ValidateSourceLocation(Get(origin, "location"));
+        }
+    }
+
+    private static void ValidateSettingMetadata(JsonElement metadata)
+    {
+        RequireObject(metadata, "key", "value", "role", "disposition", "inventory_ids", "sources", "selection_reason");
+        RequireNonemptyString(Get(metadata, "key"), "setting_metadata.key");
+        RequireNullableString(Get(metadata, "value"), "setting_metadata.value");
+        RequireDefinedEnumNumber(Get(metadata, "role"), Enum.GetValues<KafkaClientRole>().Length, "setting_metadata.role");
+        int disposition = RequireInt32(Get(metadata, "disposition"), "setting_metadata.disposition");
+        if (!Enum.IsDefined((KafkaSettingDisposition)disposition)) throw Invalid("setting_metadata.disposition_invalid");
+        ImmutableArray<string> ids = RequireStringArray(Get(metadata, "inventory_ids"), "setting_metadata.inventory_ids", 100, allowEmpty: false);
+        if (ids.Any(string.IsNullOrWhiteSpace)) throw Invalid("setting_metadata.inventory_id_empty");
+        JsonElement sources = Get(metadata, "sources");
+        RequireArray(sources, "setting_metadata.sources", 100);
+        foreach (JsonElement source in sources.EnumerateArray())
+        {
+            RequireObject(source, "url", "version_or_date");
+            string urlText = RequireNonemptyString(Get(source, "url"), "setting_source.url");
+            if (!Uri.TryCreate(urlText, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps)
+                throw Invalid("setting_source_url_invalid");
+            RequireNonemptyString(Get(source, "version_or_date"), "setting_source.version_or_date");
+        }
+        RequireNonemptyString(Get(metadata, "selection_reason"), "setting_metadata.selection_reason");
+    }
+
+    private static void ValidateSourceLocation(JsonElement location)
+    {
+        RequireObject(location, "path", "line", "column");
+        RequireNonemptyString(Get(location, "path"), "source_location.path");
+        RequireNullablePositiveInt32(Get(location, "line"), "source_location.line");
+        RequireNullablePositiveInt32(Get(location, "column"), "source_location.column");
+    }
+
+    private static void ValidateIdentity(JsonElement identity, RunIdentity expected)
+    {
+        RequireObject(identity, IdentityFields);
+        RequireEqualString(identity, "scenario_id", expected.ScenarioId);
+        RequireEqualString(identity, "configuration_id", expected.ConfigurationId);
+        RequireEqualString(identity, "run_id", expected.RunId);
+        RequireEqualString(identity, "instance_id", expected.InstanceId);
+        RequireEqualString(identity, "expected_instance_id", expected.ExpectedInstanceId);
+        RequireEqualString(identity, "client_id", expected.ClientId);
+    }
+
+    private static void RequireSchemaVersion(JsonElement element)
+    {
+        if (RequireInt32(Get(element, "schema_version"), "schema_version") != SchemaVersion)
+            throw Invalid("evidence_schema_version_unsupported");
+    }
+
+    private static void RejectDuplicatePropertiesRecursively(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (JsonProperty property in element.EnumerateObject())
+            {
+                if (!names.Add(property.Name)) throw Invalid("evidence_duplicate_property");
+                RejectDuplicatePropertiesRecursively(property.Value);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement value in element.EnumerateArray()) RejectDuplicatePropertiesRecursively(value);
+        }
+    }
+
+    private static void RequireObject(JsonElement element, params string[] requiredProperties)
+        => RequireExactProperties(element, requiredProperties);
+
+    private static void RequireObjectBase(JsonElement element, params string[] requiredProperties)
+    {
+        RequireKind(element, JsonValueKind.Object, "object");
+        var required = requiredProperties.ToHashSet(StringComparer.Ordinal);
+        foreach (string name in requiredProperties)
+            if (!element.TryGetProperty(name, out _)) throw Invalid("evidence_required_property_missing:" + name);
+        foreach (JsonProperty property in element.EnumerateObject())
+            if (!required.Contains(property.Name) && !IsLifecycleBranchField(property.Name))
+                throw Invalid("evidence_property_unknown:" + property.Name);
+    }
+
+    private static bool IsLifecycleBranchField(string name) => name is "source_event_timestamp" or "correlation_id" or "source_order" or "known_missing_fields" or "inference" or "native_name" or "level" or "facility" or "message" or "provenance" or "error_code" or "error_name" or "reason" or "is_error" or "is_fatal";
+
+    private static void RequireExactProperties(JsonElement element, params string[] requiredProperties)
+    {
+        RequireKind(element, JsonValueKind.Object, "object");
+        var required = requiredProperties.ToHashSet(StringComparer.Ordinal);
+        foreach (string name in requiredProperties)
+            if (!element.TryGetProperty(name, out _)) throw Invalid("evidence_required_property_missing:" + name);
+        foreach (JsonProperty property in element.EnumerateObject())
+            if (!required.Contains(property.Name)) throw Invalid("evidence_property_unknown:" + property.Name);
+    }
+
+    private static JsonElement Get(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out JsonElement value)) throw Invalid("evidence_required_property_missing:" + propertyName);
+        return value;
+    }
+
+    private static void RequireKind(JsonElement element, JsonValueKind kind, string field)
+    {
+        if (element.ValueKind != kind) throw Invalid("evidence_type_invalid:" + field);
+    }
+
+    private static void RequireArray(JsonElement element, string field, int maximumItems)
+    {
+        RequireKind(element, JsonValueKind.Array, field);
+        if (element.GetArrayLength() > maximumItems) throw Invalid("evidence_array_limit_exceeded:" + field);
+    }
+
+    private static ImmutableArray<string> RequireStringArray(JsonElement element, string field, int maximumItems, bool allowEmpty)
+    {
+        RequireArray(element, field, maximumItems);
+        var values = ImmutableArray.CreateBuilder<string>(element.GetArrayLength());
+        foreach (JsonElement value in element.EnumerateArray())
+        {
+            string text = RequireString(value, field);
+            if (!allowEmpty && string.IsNullOrWhiteSpace(text)) throw Invalid("evidence_string_array_empty_value:" + field);
+            values.Add(text);
+        }
+        return values.ToImmutable();
+    }
+
+    private static string RequireString(JsonElement element, string field)
+    {
+        RequireKind(element, JsonValueKind.String, field);
+        return element.GetString() ?? throw Invalid("evidence_string_null:" + field);
+    }
+
+    private static string RequireNonemptyString(JsonElement element, string field)
+    {
+        string value = RequireString(element, field);
+        if (string.IsNullOrWhiteSpace(value)) throw Invalid("evidence_string_empty:" + field);
+        return value;
+    }
+
+    private static void RequireNullableString(JsonElement element, string field)
+    {
+        if (element.ValueKind != JsonValueKind.Null) _ = RequireString(element, field);
+    }
+
+    private static bool RequireBoolean(JsonElement element, string field)
+    {
+        RequireKind(element, JsonValueKind.True, JsonValueKind.False, field);
+        return element.GetBoolean();
+    }
+
+    private static int RequireInt32(JsonElement element, string field)
+    {
+        RequireKind(element, JsonValueKind.Number, field);
+        if (!element.TryGetInt32(out int value)) throw Invalid("evidence_int32_invalid:" + field);
+        return value;
+    }
+
+    private static long RequireNonnegativeInt64(JsonElement element, string field)
+    {
+        RequireKind(element, JsonValueKind.Number, field);
+        if (!element.TryGetInt64(out long value) || value < 0) throw Invalid("evidence_nonnegative_int64_invalid:" + field);
+        return value;
+    }
+
+    private static long? RequireNullableNonnegativeInt64(JsonElement element, string field)
+        => element.ValueKind == JsonValueKind.Null ? null : RequireNonnegativeInt64(element, field);
+
+    private static void RequireNullablePositiveInt32(JsonElement element, string field)
+    {
+        if (element.ValueKind == JsonValueKind.Null) return;
+        if (RequireInt32(element, field) <= 0) throw Invalid("evidence_positive_int32_invalid:" + field);
+    }
+
+    private static void RequireEnumNumber(JsonElement element, int expected, string field)
+    {
+        if (RequireInt32(element, field) != expected) throw Invalid("evidence_enum_mismatch:" + field);
+    }
+
+    private static void RequireDefinedEnumNumber(JsonElement element, int count, string field)
+    {
+        int value = RequireInt32(element, field);
+        if (value < 0 || value >= count) throw Invalid("evidence_enum_out_of_range:" + field);
+    }
+
+    private static void RequireTimestamp(JsonElement element, string field)
+    {
+        string value = RequireString(element, field);
+        if (!DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
+            throw Invalid("evidence_timestamp_invalid:" + field);
+    }
+
+    private static void RequireNullableTimestamp(JsonElement element, string field)
+    {
+        if (element.ValueKind != JsonValueKind.Null) RequireTimestamp(element, field);
+    }
+
+    private static void RequireEqualString(JsonElement element, string propertyName, string expected)
+    {
+        string actual = RequireNonemptyString(Get(element, propertyName), propertyName);
+        if (!StringComparer.Ordinal.Equals(actual, expected)) throw Invalid("evidence_identity_mismatch:" + propertyName);
+    }
+
+    private static void RequireKind(JsonElement element, JsonValueKind first, JsonValueKind second, string field)
+    {
+        if (element.ValueKind != first && element.ValueKind != second) throw Invalid("evidence_type_invalid:" + field);
+    }
+
+    private static InvalidDataException Invalid(string message) => new(message);
+}

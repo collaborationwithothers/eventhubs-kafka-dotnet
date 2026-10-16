@@ -4,7 +4,7 @@ The load generator executes a finite synthetic offered schedule and preserves in
 
 ## Delivery stages
 
-The first stage supplies workload generation, an independent inventory, local ledger persistence and strict read-back reconciliation. Worker/client capture and evidence integration follow in the second stage. Blob publication and final process completion follow in the third stage. No stage implements verifier classification or changes scenario expectations.
+The first stage supplies workload generation, an independent inventory, local ledger persistence and strict read-back reconciliation. The second adds the executable worker, native client execution, local evidence capture and explicit exit handling. The third supplies Blob publication required for production completion. No stage implements verifier classification or changes scenario expectations.
 
 ## Workload version 1
 
@@ -42,6 +42,40 @@ The writer uses bounded non-waiting admission and a separate background file wri
 
 Unit tests cover in-memory generation, codecs, inventory and reconciliation. Filesystem cases are component tests in isolated temporary directories. Local tests establish harness behavior, with no live result, verifier totals or A01 verdict.
 
+## Worker inputs and completion
+
+The Generic Host executable binds the `LoadGen` configuration section, including environment variables named `LoadGen__<Property>`. Every property in [LoadGenHostOptions](../../src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs) is an explicit input. Missing inputs fail startup. These include the selected scenario/configuration, run and worker identities, pod-derived client identity, source/output roots, namespace, Blob destination, independent expected broker names and finite parsing, scheduling, queue, file, cleanup, publication and process budgets. Runtime options cannot introduce Kafka settings or disable a measurement declared by the selected scenario.
+
+The filesystem adapter reads only logical scenario and profile paths beneath its configured root and rejects links and path traversal. The existing loader and resolver select the configuration; `expected.yaml` is never read. Effective producer settings and their baseline/override metadata are retained in `capabilities.json`. Resolving a verifier role does not construct a verifier.
+
+The executor creates its producer after preflight, registers each actual invocation independently, stops admission on cancellation, excessive lateness or harness capture failure, and seals the inventory. It drains the producer and ledger, completes statistics while the producer remains alive, disposes the producer while lifecycle capture remains active, then closes evidence and reconciles persisted rows before independently saving the final manifest. The per-call delivery handler records bounded immutable observations without waiting, serializing or writing files. This uses the pinned [Flush contract][native-producer] and [callback path][native-callback]. Only the verified [failed-enqueue path][native-enqueue] is used to label `Local_QueueFull` as a synchronous pre-enqueue rejection; the worker treats application faults and the separate [serializer exception paths][native-serialization] as failures.
+
+An asynchronous delivery failure or uncertain persistence remains a sticky oracle guard observation. A fully reconciled ledger can still be complete bookkeeping. The worker does not calculate verifier counts or declare oracle eligibility. Required capture failure, missing rows, incomplete admissions, cleanup failure or publication failure prevents a successful final exit. A process watchdog also exits nonzero if synchronous native cleanup stalls; a hard termination may leave only partial local artifacts, which cannot establish completion.
+
+Production admission currently reports the missing ADR-003 authentication handler. Until the publication stage supplies its adapter, mandatory publication also remains unavailable at preflight. Neither path substitutes test credentials or local test client settings. Local component fixtures inject Confluent.Kafka's existing native interface and exercise the same executor, callbacks and ledger. They establish harness behavior against the [pinned local broker][local-broker], with no Event Hubs result.
+
+## Statistics and request capability evidence
+
+The second stage adds create-only `statistics.jsonl`, `request-lifecycle.jsonl` and `capabilities.json` files. Statistics envelopes carry the full run identity, the bridge identity/session, original JSON, typed samples and capture diagnostics. Lifecycle records distinguish local receipt time/order from absent native source time/order. Serialization and durable writes run outside native callbacks. Queue, size and writer failures remain sticky.
+
+The selected broker fields retain the bridge's mapping: throttle window maximum in milliseconds, cumulative request-timeout and disconnect counts, and RTT window p99 in microseconds. Empty windows retain an absent value. Positive `req_timeouts`, `txretries`, `txerrs` and `rxerrs` observations remain recorded after later good samples; these are guard inputs, not additional selectable measures. These units and cumulative/window meanings come from [librdkafka 2.16.0 statistics][native-statistics]. Periodic broker names do not supply an independent lifecycle inventory or prove guard completeness.
+
+The pure probe evaluator follows [approved A01 revision 3][a01-plan]: all five distinct, correctly attributed C0 repeats must have usable throttle evidence. Any value strictly above the configured threshold passes; five usable repeats without one yield `UntestableAtBuildScale`; missing or unusable evidence yields `Inconclusive`. Oracle invalidity alone does not erase usable throttle observations. The evaluator neither schedules repeats nor reads expectations.
+
+`capabilities.json` separates source facts from inference for request identity, matched response/error/throttle attribution, deadline provenance, retransmission, ordering, completeness and broker lifecycle inventory. The accepted result is negative: the pinned [managed log fields][native-log-fields], [callback threading contract][native-log-handler], [limited timeout diagnostics][native-timeouts] and [retry/deadline paths][native-request] do not establish the complete collector this adapter would need. No native patch, debug override or packet interception is added. A01's request-level measurement remains unsupported, and complete broker lifecycle coverage remains unproven; worker completion cannot turn either into an available capability.
+
 [design]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/68#issuecomment-6201728123
 [handoff]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/68#issuecomment-6201890702
 [oracle]: ../blueprint.md#adr-012-the-oracle-is-a-per-message-ledger-joined-into-four-outcome-classes
+[native-producer]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs#L211-L244
+[native-callback]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs#L272-L287
+[native-enqueue]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs#L323-L355
+[native-serialization]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Producer.cs#L1035-L1097
+[native-statistics]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+[native-log-fields]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/LogMessage.cs#L45-L71
+[native-log-handler]: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ProducerBuilder.cs#L261-L278
+[native-timeouts]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L968-L1107
+[native-request]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L5030-L5127
+[local-broker]: ../../tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs
+
+[a01-plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6198834304
