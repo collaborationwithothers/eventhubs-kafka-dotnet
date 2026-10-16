@@ -88,6 +88,33 @@ public sealed class PureProbeEvaluatorTests
         Assert.Contains("statistics_report_session_mismatch", emptyResult.Diagnostics);
     }
 
+    [Fact]
+    public void Given_ProbeRepeatWithConsumerSnapshotOrMixedNativeNames_When_Evaluating_Then_IsInconclusive()
+    {
+        ProbeRepeatEvidence repeat = Repeat(1, 25_000);
+        KafkaStatisticsReport report = repeat.Reports[0];
+
+        ProbeRepeatEvidence consumerSnapshot = repeat with
+        {
+            Reports = [report with { Snapshot = report.Snapshot! with { Type = "consumer" } }]
+        };
+        ImmutableArray<ProbeRepeatEvidence> consumerRepeats = Enumerable.Range(1, 5)
+            .Select(index => index == 1 ? consumerSnapshot : Repeat(index, 25_000)).ToImmutableArray();
+        ProbeEvaluationResult consumerResult = PureProbeEvaluator.Evaluate(Gate(), "A01", consumerRepeats);
+        Assert.Equal(ProbeEvaluationStatus.Inconclusive, consumerResult.Status);
+        Assert.Contains("statistics_report_client_type_mismatch", consumerResult.Diagnostics);
+
+        ProbeRepeatEvidence mixedNativeNames = repeat with
+        {
+            Reports = [report, report with { Snapshot = report.Snapshot! with { Name = "another-native-producer" } }]
+        };
+        ImmutableArray<ProbeRepeatEvidence> mixedNameRepeats = Enumerable.Range(1, 5)
+            .Select(index => index == 1 ? mixedNativeNames : Repeat(index, 25_000)).ToImmutableArray();
+        ProbeEvaluationResult mixedNameResult = PureProbeEvaluator.Evaluate(Gate(), "A01", mixedNameRepeats);
+        Assert.Equal(ProbeEvaluationStatus.Inconclusive, mixedNameResult.Status);
+        Assert.Contains("statistics_report_native_name_mismatch", mixedNameResult.Diagnostics);
+    }
+
     private static ProbeGate Gate() => new("C0", new MeasurementRequest("stats.broker.throttle.max", KafkaClientRole.LoadGenProducer),
         ProbeOperator.GreaterThan, 20_000, 5, ["C0", "C2", "C3"]);
 

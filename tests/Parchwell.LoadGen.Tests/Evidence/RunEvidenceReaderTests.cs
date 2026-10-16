@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
@@ -36,6 +37,52 @@ public sealed class RunEvidenceReaderTests
         RunIdentity wrong = Identity() with { RunId = "another-run" };
 
         await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, wrong, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("client_id", "another-client")]
+    [InlineData("type", "consumer")]
+    public async Task Given_StatisticsSnapshotWithWrongClientOrRole_When_Read_Then_RejectsContradictoryAttribution(string field, string value)
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "statistics.jsonl");
+        JsonNode row = JsonNode.Parse(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!;
+        row["typed_snapshot"]![field] = value;
+        Assert.Equal("A01", row["identity"]!["scenario_id"]!.GetValue<string>());
+        Assert.Equal("run-reader", row["identity"]!["run_id"]!.GetValue<string>());
+        Assert.Equal(Identity().ClientId, row["identity"]!["client_id"]!.GetValue<string>());
+        Assert.Equal(Identity().ClientId, row["statistics_identity"]!["client_id"]!.GetValue<string>());
+        await File.WriteAllTextAsync(file, row.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("session_id", "stats-session-other")]
+    [InlineData("native_name", "another-native-producer")]
+    public async Task Given_StatisticsArtifactWithMixedSessionOrNativeName_When_Read_Then_RejectsMixedAttribution(string field, string value)
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "statistics.jsonl");
+        string originalLine = (await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken)).TrimEnd('\n');
+        await File.WriteAllTextAsync(file, originalLine + "\n" + originalLine + "\n", TestContext.Current.CancellationToken);
+        RunEvidenceReadResult consistent = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+        Assert.Equal(2, consistent.StatisticsRecordCount);
+
+        JsonNode mixedRow = JsonNode.Parse(originalLine)!;
+        if (field == "native_name")
+        {
+            mixedRow["typed_snapshot"]!["name"] = value;
+        }
+        else
+        {
+            mixedRow[field] = value;
+        }
+        Assert.Equal("run-reader", mixedRow["identity"]!["run_id"]!.GetValue<string>());
+        Assert.Equal(Identity().ClientId, mixedRow["identity"]!["client_id"]!.GetValue<string>());
+        await File.WriteAllTextAsync(file, originalLine + "\n" + mixedRow.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
     }
 
     [Fact]

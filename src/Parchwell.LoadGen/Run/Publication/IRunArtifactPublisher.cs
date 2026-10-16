@@ -17,7 +17,7 @@ public interface IRunArtifactPublisher
 public sealed record RunPublicationOptions(string Endpoint, string Container, TimeSpan UploadTimeout,
     long MaxArtifactBytes, long MaxAggregateArtifactBytes);
 
-/// <summary>Production publication remains blocked until the Blob implementation is supplied.</summary>
+/// <summary>Explicit unavailable fallback for compositions without a publication adapter.</summary>
 public sealed class UnavailableRunArtifactPublisher : IRunArtifactPublisher
 {
     /// <inheritdoc />

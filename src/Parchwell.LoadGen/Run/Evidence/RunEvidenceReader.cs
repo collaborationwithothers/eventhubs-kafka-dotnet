@@ -62,8 +62,9 @@ public static class RunEvidenceReader
         byte[] capabilityBytes = await ReadBoundedFileAsync(Path.Combine(root, ArtifactNames[2]), maximumFileBytes, cancellationToken).ConfigureAwait(false);
 
         int maximumRows = (int)Math.Min(int.MaxValue, maximumFileBytes);
+        var statisticsAttribution = new StatisticsAttribution();
         int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,
-            row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics));
+            row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics, statisticsAttribution));
         int lifecycleCount = ValidateJsonLines(lifecycleBytes, maximumRowBytes, maximumRows,
             row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics));
 
@@ -152,7 +153,8 @@ public static class RunEvidenceReader
         }
     }
 
-    private static void ValidateStatisticsRecord(JsonElement row, RunIdentity expected, int maximumRows, int maximumDiagnostics)
+    private static void ValidateStatisticsRecord(JsonElement row, RunIdentity expected, int maximumRows, int maximumDiagnostics,
+        StatisticsAttribution attribution)
     {
         RequireObject(row, "schema_version", "identity", "statistics_identity", "session_id", "received_at", "receipt_time", "raw_json", "typed_snapshot", "diagnostics");
         RequireSchemaVersion(row);
@@ -164,28 +166,38 @@ public static class RunEvidenceReader
         RequireEqualString(statisticsIdentity, "run_id", expected.RunId);
         RequireEqualString(statisticsIdentity, "client_id", expected.ClientId);
         RequireEnumNumber(Get(statisticsIdentity, "role"), (int)KafkaClientRole.LoadGenProducer, "statistics_identity.role");
-        RequireNonemptyString(Get(row, "session_id"), "session_id");
+        string sessionId = RequireNonemptyString(Get(row, "session_id"), "session_id");
+        if (attribution.SessionId is not null && !StringComparer.Ordinal.Equals(sessionId, attribution.SessionId))
+            throw Invalid("statistics_session_id_changed");
+        attribution.SessionId ??= sessionId;
         RequireTimestamp(Get(row, "received_at"), "received_at");
         RequireTimestamp(Get(row, "receipt_time"), "receipt_time");
         RequireString(Get(row, "raw_json"), "raw_json"); // Deliberately opaque: the bridge owns native JSON parsing policy.
 
         JsonElement snapshot = Get(row, "typed_snapshot");
-        if (snapshot.ValueKind != JsonValueKind.Null) ValidateSnapshot(snapshot, maximumRows);
+        if (snapshot.ValueKind != JsonValueKind.Null)
+        {
+            string nativeName = ValidateSnapshot(snapshot, expected.ClientId, maximumRows);
+            if (attribution.NativeName is not null && !StringComparer.Ordinal.Equals(nativeName, attribution.NativeName))
+                throw Invalid("statistics_native_name_changed");
+            attribution.NativeName ??= nativeName;
+        }
         ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics);
     }
 
-    private static void ValidateSnapshot(JsonElement snapshot, int maximumRows)
+    private static string ValidateSnapshot(JsonElement snapshot, string expectedClientId, int maximumRows)
     {
         RequireObject(snapshot, "name", "client_id", "type", "timestamp_microseconds", "time_seconds", "age_microseconds", "brokers");
-        RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
-        RequireNonemptyString(Get(snapshot, "client_id"), "typed_snapshot.client_id");
-        RequireNonemptyString(Get(snapshot, "type"), "typed_snapshot.type");
+        string nativeName = RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
+        RequireEqualString(snapshot, "client_id", expectedClientId);
+        RequireEqualString(snapshot, "type", "producer");
         RequireNonnegativeInt64(Get(snapshot, "timestamp_microseconds"), "typed_snapshot.timestamp_microseconds");
         RequireNonnegativeInt64(Get(snapshot, "time_seconds"), "typed_snapshot.time_seconds");
         RequireNonnegativeInt64(Get(snapshot, "age_microseconds"), "typed_snapshot.age_microseconds");
         JsonElement brokers = Get(snapshot, "brokers");
         RequireArray(brokers, "typed_snapshot.brokers", maximumRows);
         foreach (JsonElement broker in brokers.EnumerateArray()) ValidateBroker(broker);
+        return nativeName;
     }
 
     private static void ValidateBroker(JsonElement broker)
@@ -568,6 +580,13 @@ public static class RunEvidenceReader
     private static void RequireKind(JsonElement element, JsonValueKind first, JsonValueKind second, string field)
     {
         if (element.ValueKind != first && element.ValueKind != second) throw Invalid("evidence_type_invalid:" + field);
+    }
+
+    private sealed class StatisticsAttribution
+    {
+        public string? SessionId { get; set; }
+
+        public string? NativeName { get; set; }
     }
 
     private static InvalidDataException Invalid(string message) => new(message);
