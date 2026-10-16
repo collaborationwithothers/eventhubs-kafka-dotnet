@@ -257,8 +257,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
                         _guardObservations.Add("native_error_callback_observed");
                     else
                     {
-                        Interlocked.Exchange(ref _guardObservationsTruncated, 1);
-                        Latch("statistics_guard_observations_truncated");
+                        LatchGuardObservationTruncation();
                     }
                 }
             }
@@ -569,16 +568,21 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         RecordDiagnostic(diagnostic);
     }
 
+    private void LatchGuardObservationTruncation()
+    {
+        if (Interlocked.Exchange(ref _guardObservationsTruncated, 1) == 0)
+            Latch("statistics_guard_observations_truncated");
+    }
+
     private void RecordPositiveGuard(string broker, string counter, long value)
     {
         if (value <= 0) return;
         lock (_guardGate)
         {
             if (_guardKeys.Contains((broker, counter))) return;
-            if (_guardKeys.Count >= _options.MaximumDiagnostics)
+            if (_guardObservations.Count >= _options.MaximumDiagnostics)
             {
-                Interlocked.Exchange(ref _guardObservationsTruncated, 1);
-                Latch("statistics_guard_observations_truncated");
+                LatchGuardObservationTruncation();
                 return;
             }
             _guardKeys.Add((broker, counter));

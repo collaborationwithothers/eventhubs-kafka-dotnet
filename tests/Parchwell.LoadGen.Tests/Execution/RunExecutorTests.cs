@@ -64,6 +64,38 @@ public sealed class RunExecutorTests
     }
 
     [Fact]
+    public async Task Given_ProducerConstructionConsumesTime_When_Executing_Then_StartsOfferedScheduleAfterConstruction()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-producer-start-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var identity = Identity();
+            await using var ledger = new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+                Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(2)));
+            var clock = new AdvancingTimeProvider();
+            var native = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
+            var executor = new RunExecutor(() =>
+            {
+                clock.Advance(TimeSpan.FromSeconds(2));
+                return native;
+            }, ledger, clock);
+
+            var result = await executor.ExecuteAsync(Profile(), identity, Options(directory), TestContext.Current.CancellationToken);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(TimeSpan.FromSeconds(2).Ticks, result.Manifest.StartTimestamp);
+            Assert.Equal(1, ((SuccessfulProducer)(object)native).ProduceCount);
+            Assert.Equal(0, result.Manifest.Inventory[0].PlannedMicroseconds);
+            Assert.Equal(0, result.Manifest.Inventory[0].InvokedMicroseconds);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Given_RequiredRequestCapabilityIsUnsupported_When_Executing_Then_BlocksBeforeProducerConstructionAndSavesFailure()
     {
         var directory = Path.Combine(Path.GetTempPath(), "loadgen-executor-" + Guid.NewGuid().ToString("N"));

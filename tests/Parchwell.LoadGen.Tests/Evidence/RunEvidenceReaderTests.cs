@@ -84,6 +84,55 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
+    public async Task Given_CompletedStatisticsArtifactHasNoRows_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(path, "statistics.jsonl"), string.Empty, TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_PositiveStatisticsGuardCounterIsMissingFromCompleteObservations_When_Read_Then_RejectsIt()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string statisticsFile = Path.Combine(path, "statistics.jsonl");
+        JsonNode statistics = JsonNode.Parse(await File.ReadAllTextAsync(statisticsFile, TestContext.Current.CancellationToken))!;
+        statistics["typed_snapshot"]!["brokers"]![0]!["request_timeouts"] = 2;
+        await File.WriteAllTextAsync(statisticsFile, statistics.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, TestContext.Current.CancellationToken))!;
+        capabilities["guard_observations"] = new JsonArray("broker=broker-1;counter=req_timeouts;observed=1");
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+
+        capabilities["guard_observations"] = new JsonArray();
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Given_LifecycleReceiptSequenceIsDuplicated_When_Read_Then_RejectsItButAllowsConcurrentQueueOrderRegression()
+    {
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
+        string file = Path.Combine(path, "request-lifecycle.jsonl");
+        string[] lines = await File.ReadAllLinesAsync(file, TestContext.Current.CancellationToken);
+        Assert.Equal(2, lines.Length);
+        JsonNode first = JsonNode.Parse(lines[0])!;
+        JsonNode second = JsonNode.Parse(lines[1])!;
+
+        second["receipt_sequence"] = first["receipt_sequence"]!.GetValue<long>();
+        await File.WriteAllTextAsync(file, first.ToJsonString() + "\n" + second.ToJsonString() + "\n", TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        long secondSequence = JsonNode.Parse(lines[1])!["receipt_sequence"]!.GetValue<long>();
+        first["receipt_sequence"] = secondSequence + 1;
+        await File.WriteAllTextAsync(file, first.ToJsonString() + "\n" + lines[1] + "\n", TestContext.Current.CancellationToken);
+        _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task Given_NativeLogHasInventedSourceMetadata_When_Read_Then_RejectsIt()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
@@ -219,10 +268,10 @@ public sealed class RunEvidenceReaderTests
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string file = Path.Combine(path, "capabilities.json");
         string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        const string emptyResolved = "\"resolved_configuration\":null";
         const string resolved = "\"resolved_configuration\":{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"location\":{\"path\":\"scenario.json\",\"line\":1,\"column\":1}}}},\"omissions\":[]}";
-        Assert.Contains(emptyResolved, original, StringComparison.Ordinal);
-        string valid = original.Replace(emptyResolved, resolved, StringComparison.Ordinal);
+        JsonNode validNode = JsonNode.Parse(original)!;
+        validNode["resolved_configuration"] = JsonNode.Parse("{" + resolved + "}")!["resolved_configuration"]!.DeepClone();
+        string valid = validNode.ToJsonString();
         await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
@@ -244,10 +293,7 @@ public sealed class RunEvidenceReaderTests
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string file = Path.Combine(path, "capabilities.json");
-        string original = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        const string emptyResolved = "\"resolved_configuration\":null";
-        const string resolved = "\"resolved_configuration\":{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":null}},\"omissions\":[]}";
-        string valid = original.Replace(emptyResolved, resolved, StringComparison.Ordinal);
+        string valid = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(file, valid, TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
@@ -285,16 +331,19 @@ public sealed class RunEvidenceReaderTests
     }
 
     [Fact]
-    public async Task Given_OptionalResolvedConfiguration_When_Validating_Then_AcceptsKnownShapeAndRejectsUnknownNestedMembers()
+    public async Task Given_ResolvedConfiguration_When_Validating_Then_RejectsNullAndUnknownNestedMembers()
     {
         string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken);
         string file = Path.Combine(path, "capabilities.json");
         string json = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
-        const string noResolvedConfiguration = "\"resolved_configuration\":null";
-        Assert.Contains(noResolvedConfiguration, json, StringComparison.Ordinal);
-        await File.WriteAllTextAsync(file, json.Replace(noResolvedConfiguration,
-            "\"resolved_configuration\":{\"role\":0,\"settings\":{},\"omissions\":[]}", StringComparison.Ordinal),
-            TestContext.Current.CancellationToken);
+        JsonNode nullConfiguration = JsonNode.Parse(json)!;
+        nullConfiguration["resolved_configuration"] = null;
+        await File.WriteAllTextAsync(file, nullConfiguration.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, Identity(), TestContext.Current.CancellationToken));
+
+        JsonNode emptyConfiguration = JsonNode.Parse(json)!;
+        emptyConfiguration["resolved_configuration"] = JsonNode.Parse("{\"role\":0,\"settings\":{},\"omissions\":[]}");
+        await File.WriteAllTextAsync(file, emptyConfiguration.ToJsonString(), TestContext.Current.CancellationToken);
         _ = await ReadAsync(path, Identity(), TestContext.Current.CancellationToken);
 
         string withResolvedConfiguration = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
@@ -332,8 +381,15 @@ public sealed class RunEvidenceReaderTests
         session.CaptureError(new Error(ErrorCode.Local_TimedOut));
         await session.CompleteAsync(new KafkaStatisticsCompletion(true, ImmutableArray<KafkaStatisticsDiagnostic>.Empty, ImmutableArray<string>.Empty), cancellationToken);
         Assert.False(session.IsFaulted);
+        string capabilitiesFile = Path.Combine(path, "capabilities.json");
+        JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesFile, cancellationToken))!;
+        capabilities["resolved_configuration"] = SyntheticResolvedConfiguration();
+        await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), cancellationToken);
         return path;
     }
+
+    private static JsonNode SyntheticResolvedConfiguration() => JsonNode.Parse(
+        "{\"role\":0,\"settings\":{\"bootstrap.servers\":{\"value\":\"broker\",\"baseline\":{\"key\":\"bootstrap.servers\",\"value\":\"broker\",\"role\":0,\"disposition\":0,\"inventory_ids\":[\"fixture\"],\"sources\":[{\"url\":\"https://example.test/source\",\"version_or_date\":\"fixture\"}],\"selection_reason\":\"fixture\"},\"override\":null}},\"omissions\":[]}")!;
 
     private static Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity, CancellationToken cancellationToken) =>
         RunEvidenceReader.ReadAsync(path, identity, 256 * 1024, 64 * 1024, 16, cancellationToken);

@@ -76,13 +76,15 @@ public static class RunEvidenceReader
         var statisticsAttribution = new StatisticsAttribution();
         int statisticsCount = ValidateJsonLines(statisticsBytes, maximumRowBytes, maximumRows,
             row => ValidateStatisticsRecord(row, expectedIdentity, maximumRows, maximumDiagnostics, statisticsAttribution));
+        var lifecycleSequences = new HashSet<long>();
         int lifecycleCount = ValidateJsonLines(lifecycleBytes, maximumRowBytes, maximumRows,
-            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics));
+            row => ValidateLifecycleRecord(row, expectedIdentity, maximumDiagnostics, lifecycleSequences));
 
         using JsonDocument capabilities = ParseDocument(capabilityBytes);
         JsonElement rootElement = capabilities.RootElement;
         RejectDuplicatePropertiesRecursively(rootElement);
-        ValidateCapabilityReport(rootElement, expectedIdentity, maximumRows, maximumDiagnostics,
+        ValidateCapabilityReport(rootElement, expectedIdentity, statisticsCount, maximumRows, maximumDiagnostics,
+            statisticsAttribution.PositiveGuardPairs,
             out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
             out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
             out bool guardObservationsComplete, out ImmutableArray<string> diagnostics);
@@ -188,7 +190,7 @@ public static class RunEvidenceReader
         JsonElement snapshot = Get(row, "typed_snapshot");
         if (snapshot.ValueKind != JsonValueKind.Null)
         {
-            string nativeName = ValidateSnapshot(snapshot, expected.ClientId, maximumRows);
+            string nativeName = ValidateSnapshot(snapshot, expected.ClientId, maximumRows, attribution);
             if (attribution.NativeName is not null && !StringComparer.Ordinal.Equals(nativeName, attribution.NativeName))
                 throw Invalid("statistics_native_name_changed");
             attribution.NativeName ??= nativeName;
@@ -196,7 +198,8 @@ public static class RunEvidenceReader
         ValidateStatisticsDiagnostics(Get(row, "diagnostics"), maximumDiagnostics);
     }
 
-    private static string ValidateSnapshot(JsonElement snapshot, string expectedClientId, int maximumRows)
+    private static string ValidateSnapshot(JsonElement snapshot, string expectedClientId, int maximumRows,
+        StatisticsAttribution attribution)
     {
         RequireObject(snapshot, "name", "client_id", "type", "timestamp_microseconds", "time_seconds", "age_microseconds", "brokers");
         string nativeName = RequireNonemptyString(Get(snapshot, "name"), "typed_snapshot.name");
@@ -207,23 +210,23 @@ public static class RunEvidenceReader
         RequireNonnegativeInt64(Get(snapshot, "age_microseconds"), "typed_snapshot.age_microseconds");
         JsonElement brokers = Get(snapshot, "brokers");
         RequireArray(brokers, "typed_snapshot.brokers", maximumRows);
-        foreach (JsonElement broker in brokers.EnumerateArray()) ValidateBroker(broker);
+        foreach (JsonElement broker in brokers.EnumerateArray()) ValidateBroker(broker, attribution.PositiveGuardPairs);
         return nativeName;
     }
 
-    private static void ValidateBroker(JsonElement broker)
+    private static void ValidateBroker(JsonElement broker, HashSet<(string Broker, string Counter)> positiveGuardPairs)
     {
         RequireObject(broker, "name", "node_id", "state", "state_age_microseconds", "request_timeouts", "disconnects", "transmission_retries", "transmission_errors", "receive_errors", "throttle", "round_trip_time");
-        RequireNonemptyString(Get(broker, "name"), "broker.name");
+        string brokerName = RequireNonemptyString(Get(broker, "name"), "broker.name");
         int nodeId = RequireInt32(Get(broker, "node_id"), "broker.node_id");
         if (nodeId < -1) throw Invalid("broker.node_id_out_of_range");
         RequireString(Get(broker, "state"), "broker.state");
         RequireNonnegativeInt64(Get(broker, "state_age_microseconds"), "broker.state_age_microseconds");
-        RequireNonnegativeInt64(Get(broker, "request_timeouts"), "broker.request_timeouts");
+        RecordPositiveGuard(brokerName, "req_timeouts", Get(broker, "request_timeouts"), "broker.request_timeouts", positiveGuardPairs);
         RequireNonnegativeInt64(Get(broker, "disconnects"), "broker.disconnects");
-        RequireNonnegativeInt64(Get(broker, "transmission_retries"), "broker.transmission_retries");
-        RequireNonnegativeInt64(Get(broker, "transmission_errors"), "broker.transmission_errors");
-        RequireNonnegativeInt64(Get(broker, "receive_errors"), "broker.receive_errors");
+        RecordPositiveGuard(brokerName, "txretries", Get(broker, "transmission_retries"), "broker.transmission_retries", positiveGuardPairs);
+        RecordPositiveGuard(brokerName, "txerrs", Get(broker, "transmission_errors"), "broker.transmission_errors", positiveGuardPairs);
+        RecordPositiveGuard(brokerName, "rxerrs", Get(broker, "receive_errors"), "broker.receive_errors", positiveGuardPairs);
         ValidateWindow(Get(broker, "throttle"), "broker.throttle");
         ValidateWindow(Get(broker, "round_trip_time"), "broker.round_trip_time");
     }
@@ -259,13 +262,16 @@ public static class RunEvidenceReader
         }
     }
 
-    private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics)
+    private static void ValidateLifecycleRecord(JsonElement row, RunIdentity expected, int maximumDiagnostics,
+        HashSet<long> receiptSequences)
     {
         RequireObjectBase(row, "schema_version", "identity", "session_id", "receipt_sequence", "received_at", "event_type");
         RequireSchemaVersion(row);
         ValidateIdentity(Get(row, "identity"), expected);
         RequireNonemptyString(Get(row, "session_id"), "session_id");
-        if (RequireNonnegativeInt64(Get(row, "receipt_sequence"), "receipt_sequence") <= 0) throw Invalid("receipt_sequence_must_be_positive");
+        long receiptSequence = RequireNonnegativeInt64(Get(row, "receipt_sequence"), "receipt_sequence");
+        if (receiptSequence <= 0) throw Invalid("receipt_sequence_must_be_positive");
+        if (!receiptSequences.Add(receiptSequence)) throw Invalid("lifecycle_receipt_sequence_duplicate");
         RequireTimestamp(Get(row, "received_at"), "received_at");
         string eventType = RequireString(Get(row, "event_type"), "event_type");
         if (eventType == "native_log")
@@ -303,7 +309,8 @@ public static class RunEvidenceReader
         throw Invalid("lifecycle_event_type_unknown");
     }
 
-    private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected, int maximumRows, int maximumDiagnostics,
+    private static void ValidateCapabilityReport(JsonElement root, RunIdentity expected, int statisticsRecordCount,
+        int maximumRows, int maximumDiagnostics, HashSet<(string Broker, string Counter)> positiveGuardPairs,
         out bool isFaulted, out bool requestCapabilitySupported, out bool? statisticsComplete,
         out ImmutableArray<string> statuses, out ImmutableArray<string> guardObservations,
         out bool guardObservationsComplete, out ImmutableArray<string> diagnostics)
@@ -317,7 +324,8 @@ public static class RunEvidenceReader
             throw Invalid("artifact_name_set_mismatch");
 
         JsonElement resolved = Get(root, "resolved_configuration");
-        if (resolved.ValueKind != JsonValueKind.Null) ValidateResolvedConfiguration(resolved, expected, maximumRows);
+        if (resolved.ValueKind == JsonValueKind.Null) throw Invalid("resolved_configuration_required");
+        ValidateResolvedConfiguration(resolved, expected, maximumRows);
 
         JsonElement requirements = Get(root, "request_lifecycle_requirements");
         RequireArray(requirements, "request_lifecycle_requirements", maximumRows);
@@ -353,12 +361,16 @@ public static class RunEvidenceReader
         RequireStringArray(Get(root, "observed_broker_names"), "observed_broker_names", maximumRows, allowEmpty: true);
         guardObservations = RequireStringArray(Get(root, "guard_observations"), "guard_observations", maximumDiagnostics, allowEmpty: true);
         guardObservationsComplete = RequireBoolean(Get(root, "guard_observations_complete"), "guard_observations_complete");
+        if (guardObservationsComplete)
+            ValidatePositiveGuardObservations(guardObservations, positiveGuardPairs);
         JsonElement completion = Get(root, "statistics_completion");
         statisticsComplete = null;
         if (completion.ValueKind != JsonValueKind.Null)
         {
             RequireObject(completion, "is_complete", "diagnostics", "missing_brokers");
             statisticsComplete = RequireBoolean(Get(completion, "is_complete"), "statistics_completion.is_complete");
+            if (statisticsComplete.Value && statisticsRecordCount == 0)
+                throw Invalid("statistics_completion_without_records");
             JsonElement completionDiagnostics = Get(completion, "diagnostics");
             ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics);
             ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true);
@@ -368,6 +380,24 @@ public static class RunEvidenceReader
         diagnostics = RequireStringArray(Get(root, "session_diagnostics"), "session_diagnostics", maximumDiagnostics, allowEmpty: true);
         isFaulted = RequireBoolean(Get(root, "is_faulted"), "is_faulted");
         if (!guardObservationsComplete && !isFaulted) throw Invalid("guard_observation_truncation_not_faulted");
+    }
+
+    private static void RecordPositiveGuard(string broker, string counter, JsonElement value, string field,
+        HashSet<(string Broker, string Counter)> positiveGuardPairs)
+    {
+        if (RequireNonnegativeInt64(value, field) > 0) positiveGuardPairs.Add((broker, counter));
+    }
+
+    private static void ValidatePositiveGuardObservations(ImmutableArray<string> observations,
+        HashSet<(string Broker, string Counter)> positiveGuardPairs)
+    {
+        foreach ((string broker, string counter) in positiveGuardPairs)
+        {
+            string prefix = $"broker={broker};counter={counter};observed=";
+            bool found = observations.Any(observation => observation.StartsWith(prefix, StringComparison.Ordinal) &&
+                long.TryParse(observation.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value) && value > 0);
+            if (!found) throw Invalid("statistics_guard_observation_missing");
+        }
     }
 
     private static void ValidateResolvedConfiguration(JsonElement resolved, RunIdentity expected, int maximumRows)
@@ -604,6 +634,8 @@ public static class RunEvidenceReader
         public string? SessionId { get; set; }
 
         public string? NativeName { get; set; }
+
+        public HashSet<(string Broker, string Counter)> PositiveGuardPairs { get; } = [];
     }
 
     private static InvalidDataException Invalid(string message) => new(message);

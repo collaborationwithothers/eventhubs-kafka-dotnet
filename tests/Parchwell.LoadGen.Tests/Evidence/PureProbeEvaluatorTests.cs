@@ -53,6 +53,33 @@ public sealed class PureProbeEvaluatorTests
     }
 
     [Fact]
+    public void Given_DefaultOrMalformedBrokerCollection_When_Evaluating_Then_IsInconclusive()
+    {
+        ProbeRepeatEvidence basis = Repeat(1, 25_000);
+        KafkaStatisticsReport report = basis.Reports[0];
+        KafkaStatisticsSnapshot snapshot = report.Snapshot!;
+        KafkaBrokerStatistics broker = snapshot.Brokers[0];
+        KafkaStatisticsSnapshot[] malformedSnapshots =
+        [
+            snapshot with { Brokers = default },
+            snapshot with { Brokers = [(KafkaBrokerStatistics)null!] },
+            snapshot with { Brokers = [broker with { Throttle = null! }] }
+        ];
+
+        foreach (KafkaStatisticsSnapshot malformedSnapshot in malformedSnapshots)
+        {
+            ProbeRepeatEvidence malformedRepeat = basis with { Reports = [report with { Snapshot = malformedSnapshot }] };
+            ImmutableArray<ProbeRepeatEvidence> repeats = Enumerable.Range(1, 5)
+                .Select(index => index == 1 ? malformedRepeat : Repeat(index, 25_000)).ToImmutableArray();
+
+            ProbeEvaluationResult result = PureProbeEvaluator.Evaluate(Gate(), "A01", repeats);
+
+            Assert.Equal(ProbeEvaluationStatus.Inconclusive, result.Status);
+            Assert.Contains("statistics_broker_collection_invalid", result.Diagnostics);
+        }
+    }
+
+    [Fact]
     public void Given_DuplicateRunIdentityOrWrongConfiguration_When_Evaluating_Then_IsInconclusive()
     {
         ImmutableArray<ProbeRepeatEvidence> duplicate = Enumerable.Range(1, 5).Select(index => Repeat(index == 5 ? 4 : index, 25_000)).ToImmutableArray();

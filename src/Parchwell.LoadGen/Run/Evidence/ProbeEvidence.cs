@@ -148,6 +148,13 @@ public static class PureProbeEvaluator
                 }
                 repeatNativeName ??= report.Snapshot.Name;
 
+                if (report.Snapshot.Brokers.IsDefault || report.Snapshot.Brokers.Any(broker => !IsUsableBroker(broker)))
+                {
+                    anyUnusableRepeat = true;
+                    diagnostics.Add("statistics_broker_collection_invalid");
+                    continue;
+                }
+
                 foreach (KafkaBrokerStatistics broker in report.Snapshot.Brokers)
                 {
                     if (broker.Throttle.Count <= 0 || broker.Throttle.Value is null)
@@ -177,4 +184,13 @@ public static class PureProbeEvaluator
             ? new(ProbeEvaluationStatus.Pass, diagnostics.ToImmutable())
             : new(ProbeEvaluationStatus.UntestableAtBuildScale, diagnostics.ToImmutable());
     }
+
+    private static bool IsUsableBroker(KafkaBrokerStatistics? broker) => broker is not null &&
+        !string.IsNullOrWhiteSpace(broker.Name) && broker.NodeId >= -1 && !string.IsNullOrWhiteSpace(broker.State) &&
+        broker.StateAgeMicroseconds >= 0 && broker.RequestTimeouts >= 0 && broker.Disconnects >= 0 &&
+        broker.TransmissionRetries >= 0 && broker.TransmissionErrors >= 0 && broker.ReceiveErrors >= 0 &&
+        IsUsableWindow(broker.Throttle) && IsUsableWindow(broker.RoundTripTime);
+
+    private static bool IsUsableWindow(KafkaWindowStatistics? window) => window is not null && window.Count >= 0 &&
+        (window.Count == 0 ? window.Value is null : window.Value is >= 0);
 }

@@ -138,6 +138,53 @@ public sealed class RunEvidenceSessionTests
         await session.CompleteAsync(null, TestContext.Current.CancellationToken);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_NativeErrorAndCounterGuardsExceedSharedCapacity_When_Capturing_Then_SticksToTheBound(bool errorFirst)
+    {
+        string path = NewDirectory();
+        await using var session = new RunEvidenceSession(Identity(), Options(path, maximumDiagnostics: 1), TimeProvider.System);
+
+        if (errorFirst) session.CaptureError(new Error(ErrorCode.Local_TimedOut));
+        await session.WriteAsync(Report("{}", Snapshot(0, 0, requestTimeouts: 2)), TestContext.Current.CancellationToken);
+        if (!errorFirst) session.CaptureError(new Error(ErrorCode.Local_TimedOut));
+
+        Assert.Single(session.GuardObservations);
+        Assert.False(session.GuardObservationsComplete);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("statistics_guard_observations_truncated", session.Diagnostics);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_ConcurrentNativeErrorAndCounterGuards_When_CapacityIsOne_Then_RetainsAtMostOneObservation()
+    {
+        string path = NewDirectory();
+        await using var session = new RunEvidenceSession(Identity(), Options(path, maximumDiagnostics: 1), TimeProvider.System);
+        using var barrier = new Barrier(3);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        Task statisticsCapture = Task.Run(async () =>
+        {
+            if (!barrier.SignalAndWait(TimeSpan.FromSeconds(5), cancellationToken)) throw new TimeoutException("statistics_capture_barrier_timeout");
+            await session.WriteAsync(Report("{}", Snapshot(0, 0, requestTimeouts: 2)), cancellationToken);
+        }, cancellationToken);
+        Task errorCapture = Task.Run(() =>
+        {
+            if (!barrier.SignalAndWait(TimeSpan.FromSeconds(5), cancellationToken)) throw new TimeoutException("error_capture_barrier_timeout");
+            session.CaptureError(new Error(ErrorCode.Local_TimedOut));
+        }, cancellationToken);
+
+        Assert.True(barrier.SignalAndWait(TimeSpan.FromSeconds(5), cancellationToken));
+        await Task.WhenAll(statisticsCapture, errorCapture);
+
+        Assert.Single(session.GuardObservations);
+        Assert.False(session.GuardObservationsComplete);
+        Assert.True(session.IsFaulted);
+        Assert.Contains("statistics_guard_observations_truncated", session.Diagnostics);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+    }
+
     private static string NewDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), "loadgen-evidence-" + Guid.NewGuid().ToString("N"));
@@ -145,8 +192,9 @@ public sealed class RunEvidenceSessionTests
         return path;
     }
 
-    private static RunEvidenceOptions Options(string path, int maximumReportBytes = 4096, long maximumFileBytes = 64 * 1024) =>
-        new(path, 8, maximumReportBytes, maximumFileBytes, 16, TimeSpan.FromSeconds(2));
+    private static RunEvidenceOptions Options(string path, int maximumReportBytes = 4096, long maximumFileBytes = 64 * 1024,
+        int maximumDiagnostics = 16) =>
+        new(path, 8, maximumReportBytes, maximumFileBytes, maximumDiagnostics, TimeSpan.FromSeconds(2));
 
     private static RunIdentity Identity() => new("A01", "C0", "run-1", "instance-1", "instance-1", "loadgen-pod-1");
 

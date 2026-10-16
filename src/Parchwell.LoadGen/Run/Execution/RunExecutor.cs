@@ -81,8 +81,8 @@ public sealed class RunExecutor
                 throw new InvalidOperationException("required_statistics_evidence_unavailable");
             if (ledger.IsFaulted) throw new InvalidOperationException("ledger_capture_faulted_before_run");
 
-            startTimestamp = clock.GetTimestamp();
             producer = producerFactory() ?? throw new InvalidOperationException("producer_factory_returned_null");
+            startTimestamp = clock.GetTimestamp();
             var events = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken);
             foreach (var planned in events)
             {
