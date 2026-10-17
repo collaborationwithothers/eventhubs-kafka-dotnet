@@ -540,6 +540,29 @@ What the tools offer, verified 2026-10-13 (S47 on 2026-10-14):
 - Exit path: if the measured escape rate on same-vendor pull requests exceeds the cross-vendor rate, or the pause rate costs Hari more than the metered spend would, option 2 is the next step, after the governance change that hard safety rule 3 requires. The implementer roles stay; Claude gains the reviewer role for Codex-authored pull requests, and credentials move to metered keys.
 - A Codex implementation path in GitHub Actions does not exist yet. Until one is built, Codex implements only in sessions Hari starts himself, as on [cdc-platform-azure](https://github.com/collaborationwithothers/cdc-platform-azure).
 
+### ADR-019: The verifier is the only judge of run evidence; its checks come from the item's decision rules; only checked evidence is published
+
+**Context.** ADR-012 puts one check in two places on purpose: the load generator reads the persisted ledger back against the sealed inventory before upload, and the verifier repeats the set, count and row checks. No ADR says who judges the rest of a run's evidence, such as client statistics, lifecycle events, capability claims and resolved settings. The #68 plan, decision 7, said "Readers must reject missing, inconsistent or incomplete evidence" without a closed list (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/68#issuecomment-6201728123). The load generator merged in #70 and #71 therefore also validates that evidence semantically, in `Run/Evidence/RunEvidenceReader.cs` at the end of the run and again in `Run/Publication/RunArtifactIndex.cs` at publication. The postmortem in #72 traces most of #70's seven Codex review rounds to that open-ended validator (causes 1 and 2) and leaves this decision to Hari as action A5, before the verifier plan (#9, step 7). Decided by Hari on 2026-10-17, in a grilling session in the control room.
+
+**Options considered.**
+1. Freeze. Keep the load generator's semantic checks, add no new ones, and give the verifier its own closed list. Two checkers of the same evidence must then agree forever.
+2. Move. The verifier alone judges evidence. The load generator keeps only the checks that catch its own bookkeeping faults.
+3. Share. One implementation that both workers call. Likely a new project, which is a P1 under the Code Review Rules, and it still needs a closed list.
+4. Cut the load generator's ledger read-back to a byte-for-byte round trip as well. Needs an amendment to ADR-012 and a code change, for little gain: a sticky store fault and the verifier's repeat already catch a lost row (inference).
+
+**Decision.** Option 2.
+- The load generator keeps three kinds of check: the ledger read-back exactly as ADR-012 defines it; rejection of evidence files that do not parse under the schema rules in docs/operations/loadgen-contract.md; and the sticky store fault. ADR-012 is unchanged.
+- The verifier is the only component that judges whether a run's evidence is valid and complete.
+- The verifier's checks are a closed list: the invalid-run conditions in ADR-012 and ADR-013, plus the checks that the item's approved "Decision rules" need for the evidence they read (docs/agents/factory.md, plan template). The verifier plan writes that list in its "Enforced checks" field. A check that no decision rule or invalid-run condition needs is dropped, not moved.
+- `results/` carries the evidence pack contents that docs/agents/factory.md "Evidence pack" lists, and other captured evidence only where a decision rule reads it and the verifier checks it. Captured evidence that nothing checks is not published. Whether it is retained for diagnosis is decided with the verifier, as ADR-012 leaves the ledger's retention.
+- From this ADR's merge, no new semantic check is added to `Parchwell.LoadGen`.
+
+**Consequences.**
+- A review finding that asks the load generator to reject more evidence is out of contract (AGENTS.md "Before opening a pull request", rule 10). A finding that asks the verifier for a check outside its "Enforced checks" list is also out of contract. If the missing check could make a published result wrong, it goes to the item's issue for Hari to decide whether it joins the plan.
+- The load generator's existing semantic checks stay in place until a later pull request removes them, with the matching text in docs/operations/loadgen-contract.md. That pull request is opened under its own issue after the verifier (#9, step 7) merges, so the verifier's list is written before the old checks go. It deletes tests together with the code they test, which the Code Review Rules flag as P1, so Hari merges it.
+- Settings and other evidence reach the public pack only when a decision rule reads them. For example, A01 revision 4's H3 rule depends on `enable.idempotence=false`, so the verifier checks that setting and the pack may publish it (inference from the approved A01 plan on #14). Evidence that matters to no rule stays out of `results/`, which makes the pack narrower than what the load generator captures.
+- ADR-012's duplicate ledger check stays. It is small and fully specified, so the two copies are unlikely to drift (opinion); the verifier's repeat is the authoritative one.
+
 ---
 
 ## 5. Failure modes
