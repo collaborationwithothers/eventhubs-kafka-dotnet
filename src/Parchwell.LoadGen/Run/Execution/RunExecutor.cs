@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using Confluent.Kafka;
 using Parchwell.Kafka.Statistics;
+using Parchwell.Kafka.Authentication;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Ledger;
@@ -26,16 +27,19 @@ public sealed class RunExecutor
     private readonly TimeProvider clock;
     private readonly KafkaStatisticsSession? statistics;
     private readonly RunEvidenceSession? evidence;
+    private readonly KafkaOAuthBearerSession? authentication;
 
     /// <summary>Creates an executor over the native producer, ledger, clock and optional evidence sessions.</summary>
     public RunExecutor(Func<IProducer<byte[], byte[]>> producerFactory, ILedgerStore ledger,
-        TimeProvider clock, KafkaStatisticsSession? statistics = null, RunEvidenceSession? evidence = null)
+        TimeProvider clock, KafkaStatisticsSession? statistics = null, RunEvidenceSession? evidence = null,
+        KafkaOAuthBearerSession? authentication = null)
     {
         this.producerFactory = producerFactory ?? throw new ArgumentNullException(nameof(producerFactory));
         this.ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
         this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
         this.statistics = statistics;
         this.evidence = evidence;
+        this.authentication = authentication;
     }
 
     /// <summary>Runs the offered schedule once, drains native callbacks, persists a final manifest and returns its exit code.</summary>
@@ -69,6 +73,16 @@ public sealed class RunExecutor
             }
         }
 
+        bool ObserveInitialAuthenticationFailure()
+        {
+            Task<KafkaAuthenticationFailure>? failureTask = authentication?.InitialFailureTask;
+            if (failureTask is not { IsCompletedSuccessfully: true }) return false;
+            KafkaAuthenticationFailure failure = failureTask.GetAwaiter().GetResult();
+            workerFailed = true;
+            AddDiagnostic("oauthbearer_initial_failure:" + failure.Reason);
+            return true;
+        }
+
         try
         {
             expectedBrokerNames = options.ExpectedBrokerNames.ToArray();
@@ -83,10 +97,12 @@ public sealed class RunExecutor
             if (ledger.IsFaulted) throw new InvalidOperationException("ledger_capture_faulted_before_run");
 
             producer = producerFactory() ?? throw new InvalidOperationException("producer_factory_returned_null");
+            if (ObserveInitialAuthenticationFailure()) admissionStopped = true;
             startTimestamp = clock.GetTimestamp();
             var events = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken);
             foreach (var planned in events)
             {
+                if (ObserveInitialAuthenticationFailure()) break;
                 cancellationToken.ThrowIfCancellationRequested();
                 if (evidence is { IsFaulted: true })
                 {
@@ -101,7 +117,8 @@ public sealed class RunExecutor
                     break;
                 }
                 var dueTimestamp = AddMicroseconds(startTimestamp, planned.DueMicroseconds, clock.TimestampFrequency);
-                await DelayUntilAsync(dueTimestamp, cancellationToken).ConfigureAwait(false);
+                await DelayUntilAsync(dueTimestamp, authentication?.InitialFailureTask, cancellationToken).ConfigureAwait(false);
+                if (ObserveInitialAuthenticationFailure()) break;
                 var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
                 string attemptId = string.Concat(identity.InstanceId, "-", planned.Ordinal.ToString(CultureInfo.InvariantCulture));
                 var reservation = new AttemptEntry(identity.InstanceId, attemptId, planned.Ordinal, planned.TenantId,
@@ -129,6 +146,7 @@ public sealed class RunExecutor
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (ObserveInitialAuthenticationFailure()) break;
                     if (evidence is { IsFaulted: true })
                     {
                         workerFailed = true;
@@ -149,6 +167,7 @@ public sealed class RunExecutor
                         break;
                     }
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (ObserveInitialAuthenticationFailure()) break;
                     attempt = inventory.CommitReservation(ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
                     invocationCommitted = true;
                     admittedAttemptCount = checked(admittedAttemptCount + 1);
@@ -294,6 +313,7 @@ public sealed class RunExecutor
             try { producer.Dispose(); }
             catch (Exception exception) { workerFailed = true; AddDiagnostic("producer_dispose_failed:" + exception.GetType().Name); }
         }
+        _ = ObserveInitialAuthenticationFailure();
 
         if (evidence is not null)
         {
@@ -350,6 +370,7 @@ public sealed class RunExecutor
             workerFailed = true;
             AddDiagnostic("execution_cancelled");
         }
+        _ = ObserveInitialAuthenticationFailure();
         var bookkeepingComplete = readbackComplete && !workerFailed && admittedAttemptCount == plannedCount &&
             (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
             (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
@@ -373,14 +394,31 @@ public sealed class RunExecutor
             evidence?.Expectations);
     }
 
-    private async Task DelayUntilAsync(long dueTimestamp, CancellationToken cancellationToken)
+    private async Task DelayUntilAsync(long dueTimestamp, Task<KafkaAuthenticationFailure>? initialFailureTask,
+        CancellationToken cancellationToken)
     {
         while (true)
         {
             var remaining = dueTimestamp - clock.GetTimestamp();
             if (remaining <= 0) return;
             var delay = TimeSpan.FromSeconds((double)remaining / clock.TimestampFrequency);
-            await Task.Delay(delay, clock, cancellationToken).ConfigureAwait(false);
+            if (initialFailureTask is null)
+            {
+                await Task.Delay(delay, clock, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            using var delayCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Task delayTask = Task.Delay(delay, clock, delayCancellation.Token);
+            Task completed = await Task.WhenAny(delayTask, initialFailureTask).ConfigureAwait(false);
+            if (completed == initialFailureTask)
+            {
+                delayCancellation.Cancel();
+                try { await delayTask.ConfigureAwait(false); }
+                catch (OperationCanceledException) when (delayCancellation.IsCancellationRequested) { }
+                return;
+            }
+            await delayTask.ConfigureAwait(false);
         }
     }
 

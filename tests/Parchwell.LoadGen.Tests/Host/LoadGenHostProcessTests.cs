@@ -108,21 +108,66 @@ public sealed class LoadGenHostProcessTests
     }
 
     [Fact]
-    public async Task Given_ValidInputsWithoutProductionAuthentication_When_StartingChildHost_Then_BlocksBeforeNativeProducerAndExitsNonzero()
+    public async Task Given_MissingWorkloadTenant_When_StartingChildHost_Then_FailsBeforeProducerAndArtifacts()
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N"));
         try
         {
-            ChildResult result = await RunChildAsync(environment => ConfigureValidInputs(environment, output));
+            ChildResult result = await RunChildAsync(environment =>
+            {
+                ConfigureValidInputs(environment, output);
+                environment.Remove("AZURE_TENANT_ID");
+            });
 
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("production_oauthbearer_refresh_handler_unavailable", result.Output, StringComparison.Ordinal);
-            Assert.Contains("Load generator worker failed for scenario A01 run child-run", result.Output, StringComparison.Ordinal);
+            Assert.Contains("OptionsValidationException", result.Output, StringComparison.Ordinal);
+            Assert.Contains("TenantId is required.", result.Output, StringComparison.Ordinal);
+            Assert.Contains("scenario A01 run child-run", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Microsoft.Hosting.Lifetime", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Application started", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Hosting environment:", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Content root path:", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Application is shutting down", result.Output, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(output));
+        }
+        finally
+        {
+            if (Directory.Exists(output)) Directory.Delete(output, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("AZURE_TENANT_ID", "<missing>")]
+    [InlineData("AZURE_TENANT_ID", "")]
+    [InlineData("AZURE_TENANT_ID", " ")]
+    [InlineData("AZURE_CLIENT_ID", "<missing>")]
+    [InlineData("AZURE_CLIENT_ID", "")]
+    [InlineData("AZURE_CLIENT_ID", "  ")]
+    [InlineData("AZURE_FEDERATED_TOKEN_FILE", "<missing>")]
+    [InlineData("AZURE_FEDERATED_TOKEN_FILE", "")]
+    [InlineData("AZURE_FEDERATED_TOKEN_FILE", "  ")]
+    public async Task Given_MissingOrWhitespaceWorkloadIdentity_When_StartingChildHost_Then_FailsBeforeArtifacts(string key, string value)
+    {
+        string output = Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            ChildResult result = await RunChildAsync(environment =>
+            {
+                ConfigureValidInputs(environment, output);
+                if (value == "<missing>") environment.Remove(key);
+                else environment[key] = value;
+            });
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("OptionsValidationException", result.Output, StringComparison.Ordinal);
+            Assert.Contains(key switch
+            {
+                "AZURE_TENANT_ID" => "TenantId is required.",
+                "AZURE_CLIENT_ID" => "ClientId is required.",
+                _ => "TokenFilePath is required."
+            }, result.Output, StringComparison.Ordinal);
+            Assert.Contains("scenario A01 run child-run", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Microsoft.Hosting.Lifetime", result.Output, StringComparison.Ordinal);
             Assert.False(Directory.Exists(output));
         }
         finally
@@ -188,7 +233,11 @@ public sealed class LoadGenHostProcessTests
             ["ProcessLifetimeTimeout"] = "00:00:10", ["RequireStatisticsEvidence"] = "false",
             ["RequireRequestEvidence"] = "false"
         };
-        return values.ToDictionary(pair => "LoadGen__" + pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        Dictionary<string, string> result = values.ToDictionary(pair => "LoadGen__" + pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        result["AZURE_TENANT_ID"] = "synthetic-tenant";
+        result["AZURE_CLIENT_ID"] = "synthetic-credential-app";
+        result["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
+        return result;
     }
 
     private static void ConfigureValidInputs(IDictionary<string, string?> environment, string output)

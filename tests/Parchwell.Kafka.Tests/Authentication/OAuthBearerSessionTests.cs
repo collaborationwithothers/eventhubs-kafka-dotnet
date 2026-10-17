@@ -38,11 +38,12 @@ public sealed class OAuthBearerSessionTests
         Assert.Equal(Now.AddHours(1), session.InstalledTokenExpiresOn);
         Assert.Null(session.InitialFailure);
         Assert.Null(session.LatestFailure);
+        Assert.False(session.InitialFailureTask.IsCompleted);
         Assert.Equal("https://namespace.servicebus.windows.net/.default", provider.Scope);
     }
 
     [Fact]
-    public void Given_InitialAcquisitionFailureThenSuccess_When_Refreshing_Then_InitialFailureStaysLatched()
+    public async Task Given_InitialAcquisitionFailureThenSuccess_When_Refreshing_Then_InitialFailureStaysLatched()
     {
         using var metrics = new KafkaAuthenticationMetrics();
         var provider = new StubTokenProvider(new InvalidOperationException("sensitive credential text"),
@@ -52,6 +53,7 @@ public sealed class OAuthBearerSessionTests
 
         session.Refresh((_, _, _) => throw new InvalidOperationException("must not install"), reported.Add);
         KafkaAuthenticationFailure initialFailure = Assert.IsType<KafkaAuthenticationFailure>(session.InitialFailure);
+        Assert.Same(initialFailure, await session.InitialFailureTask);
         session.Refresh((_, _, _) => { }, reported.Add);
 
         Assert.Equal("initial", initialFailure.Phase);
@@ -63,7 +65,7 @@ public sealed class OAuthBearerSessionTests
     }
 
     [Fact]
-    public void Given_InitialInstallationFailureThenSuccess_When_Refreshing_Then_InitialFailureStaysLatched()
+    public async Task Given_InitialInstallationFailureThenSuccess_When_Refreshing_Then_InitialFailureStaysLatched()
     {
         using var metrics = new KafkaAuthenticationMetrics();
         var provider = new StubTokenProvider(new AccessToken("first-token", Now.AddHours(1)),
@@ -75,6 +77,7 @@ public sealed class OAuthBearerSessionTests
 
         Assert.Equal("initial", session.InitialFailure?.Phase);
         Assert.Equal("installation", session.InitialFailure?.Reason);
+        Assert.Same(session.InitialFailure, await session.InitialFailureTask);
         Assert.Equal(Now.AddHours(2), session.InstalledTokenExpiresOn);
         Assert.Same(session.InitialFailure, session.LatestFailure);
     }
@@ -98,7 +101,7 @@ public sealed class OAuthBearerSessionTests
     [InlineData("empty")]
     [InlineData("expired")]
     [InlineData("exact_now")]
-    public void Given_InvalidToken_When_Refreshing_Then_ReportsSanitizedValidationFailure(string tokenKind)
+    public async Task Given_InvalidToken_When_Refreshing_Then_ReportsSanitizedValidationFailure(string tokenKind)
     {
         using var metrics = new KafkaAuthenticationMetrics();
         AccessToken token = tokenKind switch
@@ -107,7 +110,8 @@ public sealed class OAuthBearerSessionTests
             "expired" => new AccessToken("opaque-token", Now.AddTicks(-1)),
             _ => new AccessToken("opaque-token", Now)
         };
-        var session = NewSession(new StubTokenProvider(token), metrics, TestContext.Current.CancellationToken);
+        var session = NewSession(new StubTokenProvider(token,
+            new AccessToken("valid-replacement", Now.AddHours(2))), metrics, TestContext.Current.CancellationToken);
         string? reported = null;
 
         session.Refresh((_, _, _) => throw new InvalidOperationException("must not install"), value => reported = value);
@@ -115,7 +119,15 @@ public sealed class OAuthBearerSessionTests
         Assert.Equal("token_validation", reported);
         Assert.Equal("initial", session.InitialFailure?.Phase);
         Assert.Equal("token_validation", session.InitialFailure?.Reason);
+        Assert.Same(session.InitialFailure, await session.InitialFailureTask);
         Assert.Null(session.InstalledTokenExpiresOn);
+
+        KafkaAuthenticationFailure initialFailure = await session.InitialFailureTask;
+        session.Refresh((_, _, _) => { }, _ => { });
+
+        Assert.Equal(Now.AddHours(2), session.InstalledTokenExpiresOn);
+        Assert.Same(initialFailure, session.InitialFailure);
+        Assert.Same(initialFailure, await session.InitialFailureTask);
     }
 
     [Fact]
@@ -135,6 +147,7 @@ public sealed class OAuthBearerSessionTests
         Assert.Null(session.InitialFailure);
         Assert.Equal("refresh", session.LatestFailure?.Phase);
         Assert.Equal("installation", session.LatestFailure?.Reason);
+        Assert.False(session.InitialFailureTask.IsCompleted);
     }
 
     [Theory]
@@ -155,6 +168,7 @@ public sealed class OAuthBearerSessionTests
         Assert.Null(session.InitialFailure);
         Assert.Equal("refresh", session.LatestFailure?.Phase);
         Assert.Equal(reason, session.LatestFailure?.Reason);
+        Assert.False(session.InitialFailureTask.IsCompleted);
 
         session.Refresh((_, _, _) => { }, _ => { });
 
@@ -183,6 +197,7 @@ public sealed class OAuthBearerSessionTests
         Assert.Same(refreshFailure, session.LatestFailure);
         Assert.Null(session.InitialFailure);
         Assert.Equal(Now.AddHours(2), session.InstalledTokenExpiresOn);
+        Assert.False(session.InitialFailureTask.IsCompleted);
         Assert.Equal(AcquisitionReasons, reported);
     }
 
@@ -210,16 +225,23 @@ public sealed class OAuthBearerSessionTests
     }
 
     [Fact]
-    public void Given_FailureReporterThrows_When_Refreshing_Then_CallbackReturnsWithOneFailureState()
+    public async Task Given_FailureReporterThrows_When_Refreshing_Then_CallbackReturnsWithOneFailureState()
     {
         using var metrics = new KafkaAuthenticationMetrics();
         var provider = new StubTokenProvider(new InvalidOperationException("secret"));
         var session = NewSession(provider, metrics, TestContext.Current.CancellationToken);
+        bool notificationCompletedBeforeReport = false;
 
-        session.Refresh((_, _, _) => { }, _ => throw new InvalidOperationException("native error"));
+        session.Refresh((_, _, _) => { }, _ =>
+        {
+            notificationCompletedBeforeReport = session.InitialFailureTask.IsCompletedSuccessfully;
+            throw new InvalidOperationException("native error");
+        });
 
         Assert.Equal("acquisition", session.InitialFailure?.Reason);
         Assert.Same(session.InitialFailure, session.LatestFailure);
+        Assert.Same(session.InitialFailure, await session.InitialFailureTask);
+        Assert.True(notificationCompletedBeforeReport);
     }
 
     private static KafkaOAuthBearerSession NewSession(

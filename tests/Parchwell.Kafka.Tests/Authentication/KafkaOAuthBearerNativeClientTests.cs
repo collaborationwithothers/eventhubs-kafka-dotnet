@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Azure.Core;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
@@ -203,6 +204,117 @@ public sealed class KafkaOAuthBearerNativeClientTests
         Assert.DoesNotContain("synthetic-excluded-value", error.Message, StringComparison.Ordinal);
         Assert.Equal("synthetic-excluded-value", configuration.Get("sasl.username"));
         Assert.Equal(0, tokenProvider.Calls);
+        ProducerBuilder<Null, string> validBuilder = factory.CreateProducerBuilder<Null, string>(
+            services.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer().Configuration, session);
+        Assert.NotNull(validBuilder);
+        Assert.Equal(0, tokenProvider.Calls);
+    }
+
+    [Fact]
+    public async Task Given_OneProducerBuilderBuiltForTwoClients_When_CallbacksRun_Then_SecondClientCannotUseSession()
+    {
+        const string runId = "session-reuse-native-metric-test";
+        long failureMeasurements = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, currentListener) =>
+        {
+            if (instrument.Meter.Name == "Parchwell.Kafka.Authentication" &&
+                instrument.Name == "parchwell.kafka.oauthbearer.refresh_handler.errors")
+                currentListener.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            if (tags.ToArray().Any(tag => tag.Key == "run" && Equals(tag.Value, runId)))
+                Interlocked.Add(ref failureMeasurements, value);
+        });
+        listener.Start();
+        var provider = new SyntheticTokenProvider(() => new AccessToken(
+            "header.payload.signature", TimeProvider.System.GetUtcNow().AddHours(1)));
+        using ServiceProvider services = CreateServices(provider);
+        KafkaAuthenticationFactory factory = services.GetRequiredService<KafkaAuthenticationFactory>();
+        ProducerConfig configuration = services.GetRequiredService<KafkaConfigurationFactory>()
+            .CreateLoadGenProducer().Configuration;
+        configuration.BootstrapServers = "127.0.0.1:1";
+        KafkaOAuthBearerSession session = factory.CreateSession(new KafkaAuthenticationIdentity(
+            "synthetic-scenario", runId, KafkaClientRole.LoadGenProducer, "synthetic-producer"), TestContext.Current.CancellationToken);
+        TaskCompletionSource<Error> nativeFailure = NewNativeFailureSignal();
+        ProducerBuilder<Null, string> builder = factory.CreateProducerBuilder<Null, string>(configuration, session)
+            .SetErrorHandler((_, error) =>
+            {
+                if (error.Code == ErrorCode.Local_Application &&
+                    error.Reason.Contains("OAuth bearer session callback belongs to a different native client.", StringComparison.Ordinal))
+                    nativeFailure.TrySetResult(error);
+            });
+
+        using IProducer<Null, string> first = builder.Build();
+        Assert.True(WaitUntil(() => session.InstalledTokenExpiresOn is not null, TimeSpan.FromSeconds(15)));
+        DateTimeOffset firstExpiry = Assert.IsType<DateTimeOffset>(session.InstalledTokenExpiresOn);
+        using IProducer<Null, string> second = builder.Build();
+
+        Assert.True(WaitUntil(() => nativeFailure.Task.IsCompleted, TimeSpan.FromSeconds(15)),
+            "The pinned Confluent client did not surface its caught callback exception through the error handler.");
+        Assert.Equal(1, provider.Calls);
+        Assert.Equal(firstExpiry, session.InstalledTokenExpiresOn);
+        Assert.Null(session.InitialFailure);
+        Assert.Null(session.LatestFailure);
+        Assert.Equal(0, Volatile.Read(ref failureMeasurements));
+        Error observed = await nativeFailure.Task;
+        Assert.Equal(ErrorCode.Local_Application, observed.Code);
+        Assert.Contains("OAuth bearer session callback belongs to a different native client.", observed.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Given_OneConsumerBuilderBuiltForTwoClients_When_SecondPolls_Then_ConsumeSurfacesCallbackRejection()
+    {
+        var provider = new SyntheticTokenProvider(() => new AccessToken(
+            "header.payload.signature", TimeProvider.System.GetUtcNow().AddHours(1)));
+        using ServiceProvider services = CreateServices(provider);
+        KafkaAuthenticationFactory factory = services.GetRequiredService<KafkaAuthenticationFactory>();
+        ConsumerConfig configuration = services.GetRequiredService<KafkaConfigurationFactory>()
+            .CreateVerifierConsumer().Configuration;
+        configuration.BootstrapServers = "127.0.0.1:1";
+        KafkaOAuthBearerSession session = factory.CreateSession(Identity(KafkaClientRole.VerifierConsumer), TestContext.Current.CancellationToken);
+        ConsumerBuilder<Ignore, string> builder = factory.CreateConsumerBuilder<Ignore, string>(configuration, session);
+
+        using IConsumer<Ignore, string> first = builder.Build();
+        Assert.True(WaitUntil(() =>
+        {
+            try
+            {
+                first.Consume(TimeSpan.FromMilliseconds(20));
+            }
+            catch (KafkaException)
+            {
+                // Broker connection failure is unrelated; keep polling for the OAuth callback.
+            }
+            return session.InstalledTokenExpiresOn is not null;
+        }, TimeSpan.FromSeconds(15)));
+        DateTimeOffset firstExpiry = Assert.IsType<DateTimeOffset>(session.InstalledTokenExpiresOn);
+        using IConsumer<Ignore, string> second = builder.Build();
+
+        InvalidOperationException? rejection = null;
+        Assert.True(WaitUntil(() =>
+        {
+            try
+            {
+                second.Consume(TimeSpan.FromMilliseconds(20));
+            }
+            catch (InvalidOperationException exception)
+            {
+                rejection = exception;
+            }
+            catch (KafkaException)
+            {
+                // Broker connection failure is unrelated; continue until the pinned callback error is surfaced.
+            }
+            return rejection is not null;
+        }, TimeSpan.FromSeconds(15)), "Pinned Consumer.Consume did not surface the caught callback exception.");
+
+        Assert.Equal("OAuth bearer session callback belongs to a different native client.", rejection!.Message);
+        Assert.Equal(1, provider.Calls);
+        Assert.Equal(firstExpiry, session.InstalledTokenExpiresOn);
+        Assert.Null(session.InitialFailure);
+        Assert.Null(session.LatestFailure);
     }
 
     private static ServiceProvider CreateServices(SyntheticTokenProvider tokenProvider)

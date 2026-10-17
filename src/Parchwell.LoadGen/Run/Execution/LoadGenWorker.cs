@@ -87,8 +87,7 @@ public sealed class LoadGenWorker : BackgroundService
 
         ProducerConfig producerConfig = _runSessionFactory.ResolveProducerConfiguration(role);
 
-        // ADR-003 selects a custom OAUTHBEARER refresh handler. No production handler exists yet.
-        // This admission check runs after pure configuration resolution and before any native client.
+        // Admission validates the final baseline before output files or a native client are created.
         _admission.EnsureProducerAuthenticationAvailable(producerConfig);
         if (!_publisher.IsAvailable)
             throw new InvalidOperationException("artifact_publication_unavailable");
@@ -98,7 +97,7 @@ public sealed class LoadGenWorker : BackgroundService
         bool requiresRequests = resolved.Definition.Measures.Any(measure => measure.Role == KafkaClientRole.LoadGenProducer &&
             string.Equals(measure.Id, "producer.request_timeout", StringComparison.Ordinal));
         await using RunSession session = await _runSessionFactory.CreateAsync(identity, role, producerConfig,
-            requiresStatistics, requiresRequests);
+            requiresStatistics, requiresRequests, cancellationToken);
         RunExecutionResult result = await session.ExecuteAsync(resolved.Profile, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0) throw new InvalidOperationException("worker_run_incomplete");
         cancellationToken.ThrowIfCancellationRequested();

@@ -11,6 +11,9 @@ namespace Parchwell.Kafka.Authentication;
 public sealed class KafkaOAuthBearerSession
 {
     private readonly object _gate = new();
+    private readonly object _attachmentGate = new();
+    private readonly TaskCompletionSource<KafkaAuthenticationFailure> _initialFailureSignal =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly KafkaAuthenticationIdentity _identity;
     private readonly string _scope;
     private readonly string _principalName;
@@ -21,6 +24,8 @@ public sealed class KafkaOAuthBearerSession
     private DateTimeOffset? _installedTokenExpiresOn;
     private KafkaAuthenticationFailure? _initialFailure;
     private KafkaAuthenticationFailure? _latestFailure;
+    private bool _attached;
+    private Confluent.Kafka.IClient? _callbackClient;
 
     /// <summary>Creates a session for one native Kafka client.</summary>
     /// <param name="identity">The scenario run and Kafka client identity.</param>
@@ -73,6 +78,14 @@ public sealed class KafkaOAuthBearerSession
         }
     }
 
+    /// <summary>Gets a notification that completes when the first failure occurs before token installation.</summary>
+    /// <remarks>
+    /// The task completes with the same sticky failure exposed by <see cref="InitialFailure"/>. It never
+    /// resets after later success and remains pending for refresh-only failures. A session is intended for
+    /// one native client lifetime.
+    /// </remarks>
+    public Task<KafkaAuthenticationFailure> InitialFailureTask => _initialFailureSignal.Task;
+
     /// <summary>Gets the most recent handler failure, including failures after a successful install.</summary>
     /// <remarks>A refresh error alone does not set <see cref="InitialFailure"/> or decide run eligibility.</remarks>
     public KafkaAuthenticationFailure? LatestFailure
@@ -91,12 +104,41 @@ public sealed class KafkaOAuthBearerSession
     internal void Refresh(Confluent.Kafka.IClient client)
     {
         ArgumentNullException.ThrowIfNull(client);
+        BindCallbackClient(client);
         // The pinned API takes absolute epoch milliseconds and optional SASL extensions:
         // https://github.com/confluentinc/confluent-kafka-dotnet/blob/56ef87df3402861f0dc72ef921fcfac702ae1f16/src/Confluent.Kafka/ClientExtensions.cs#L39-L91
         Refresh(
             (token, expiry, principal) => client.OAuthBearerSetToken(
                 token, expiry, principal, new Dictionary<string, string>(StringComparer.Ordinal)),
             error => client.OAuthBearerSetTokenFailure(error));
+    }
+
+    /// <summary>Claims this session for one validated native builder attachment.</summary>
+    /// <remarks>A claim is permanent, including when building or disposing the native client later fails.</remarks>
+    /// <exception cref="InvalidOperationException">The session has already been claimed by a builder.</exception>
+    internal void ClaimAttachment()
+    {
+        lock (_attachmentGate)
+        {
+            if (_attached)
+                throw new InvalidOperationException("OAuth bearer session is already attached to a native client.");
+            _attached = true;
+        }
+    }
+
+    private void BindCallbackClient(Confluent.Kafka.IClient client)
+    {
+        lock (_attachmentGate)
+        {
+            if (_callbackClient is null)
+            {
+                _callbackClient = client;
+                return;
+            }
+
+            if (!ReferenceEquals(_callbackClient, client))
+                throw new InvalidOperationException("OAuth bearer session callback belongs to a different native client.");
+        }
     }
 
     /// <summary>Refreshes a token using the supplied native operations.</summary>
@@ -159,6 +201,7 @@ public sealed class KafkaOAuthBearerSession
         if (StringComparer.Ordinal.Equals(phase, "initial"))
         {
             _initialFailure ??= failure;
+            _initialFailureSignal.TrySetResult(failure);
         }
 
         // Count here: native failure reporting can coalesce repeated identical errors and retains
