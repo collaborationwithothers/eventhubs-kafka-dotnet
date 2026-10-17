@@ -2,7 +2,7 @@
 
 How agents build this repository, and where Hari's judgment stays.
 
-Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" steps 1 and 3, "Escalation" layer 1, the new "Pull request scope" section, and the plan template's "Pull requests" and "Enforced checks" fields.
+Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" step 1 and the plan template's "Enforced checks" field.
 
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
@@ -35,17 +35,11 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 
 ## Item lifecycle
 
-1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below. Before approval, a session other than the drafting one checks the plan against the template and reports any field that is empty or open-ended, such as a validator without a numbered "Enforced checks" list or a pull request without a one-line scope (#72).
+1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below. Before approval, a session other than the drafting one checks the plan against the template. It reports any field that is empty or open-ended, such as a validator without a numbered "Enforced checks" list, as a comment on the issue before Hari applies `ready-for-agent` (#72).
 2. **Approve.** Hari applies `ready-for-agent`. This is approval of the plan and the trigger for implementation. Before applying the label, he names the implementing tool, Claude Code or Codex, in a comment on the issue; no such comment at the time the label is applied means Claude Code, and a session of the other tool does not claim the issue (ADR-018).
-3. **Implement.** One session claims the issue, builds what the plan needs in the pull requests the plan lists, and merges or escalates each under the merge rule.
+3. **Implement.** One session claims the issue, builds what the plan needs in pull requests within the size limit, and merges or escalates each under the merge rule.
 4. **Run.** The agent starts the scenario workflow. The workflow checks the cost limit, applies the ephemeral layer, runs the repeats, collects evidence, and destroys.
 5. **Verdict.** The agent opens a pull request labelled `verdict` with the evidence pack and the proposed verdict. Hari approves or rejects it.
-
-## Pull request scope
-
-The plan lists the pull requests that deliver the item, in dependency order, with one line of scope each. A pull request delivers only its line. Other work, including a check a reviewer suggests, goes back to the plan through Hari. The split is decided once, when Hari approves the plan.
-
-This replaces a size limit, which GOVERNANCE "Merge rule" cited but this file never defined (#25). A line-count limit was considered and rejected: a numeric target invites splits at arbitrary points rather than at coherent boundaries (#72).
 
 ## Plan template
 
@@ -57,7 +51,6 @@ Fault injected: <none, or which harness capability>
 Measures: <metrics, verifier counts, KQL queries>
 Repeats: <at least 5 per configuration>
 Harness changes needed: <none, or the capability to add>
-Pull requests: <in dependency order, one line of scope each>
 Enforced checks: <for a component that validates or rejects input, a numbered list of every check it enforces; "none" otherwise>
 Estimated cost: <harness hours x GBP 1.56, plus Log Analytics> against limit <S/M/L>
 Expected outcome file: scenarios/<ID>/expected.yaml (approved with this plan)
@@ -79,7 +72,7 @@ Every verdict pull request contains:
 
 Layer 1 decides; layer 2 can only add.
 
-1. **Deterministic rules.** The `main-protection` ruleset's required reviewers rule lists every protected path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one. `.github/CODEOWNERS` mirrors the same list so GitHub requests Hari's review automatically, but it is not the gate (see "Ruleset" below). Rules that paths cannot express are checked by a required status check: new NuGet packages and changes to assertions in tests. Pull request scope is judged against the plan ("Pull request scope"). Two more deterministic rules belong to the merge workflow planned under issue #17 (ADR-018):
+1. **Deterministic rules.** The `main-protection` ruleset's required reviewers rule lists every protected path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one. `.github/CODEOWNERS` mirrors the same list so GitHub requests Hari's review automatically, but it is not the gate (see "Ruleset" below). Rules that paths cannot express are checked by a required status check: pull request size, new NuGet packages, and changes to assertions in tests. Two more deterministic rules belong to the merge workflow planned under issue #17 (ADR-018):
    - Implementer. The merge workflow, planned under issue #17 and added by Hari at step 4 of "Sequence to start the factory", will read the `Co-Authored-By` trailers on the pull request's commits, ignoring merge commits and untrailed commits authored by Hari's account, and label the pull request `same-vendor-review` when any remaining commit carries a Codex trailer or no tool trailer, re-checking on every push and removing the label when no remaining commit does (AGENTS.md "Implementer and reviewer" defines the trailers and the ignored commits). Agents never apply or remove that label. Neither the label nor the workflow exists yet.
    - Review unavailable. The same workflow will post `**Review unavailable:**` on the pull request when Codex has completed no review of the head commit within 60 minutes of the push; the pull request then waits for Hari. This covers a Codex usage-limit refusal (ADR-018, S35) and any other silence. The marker differs from the session handoff marker `**Decision needed:**` so that the workflow's comment never satisfies, or doubles, a session's Stop hook (CLAUDE.md "Handoffs"). 60 minutes is a governance choice, not a measurement; revisit it with the data recorded under issue #17. The check depends on Codex posting a completed review on a clean pull request, which the pilot verifies (third bullet below). Until then agents do not merge (step 5 of "Sequence to start the factory"), so the timeout has nothing to enforce; a session whose pull request waits for a review that does not come hands off under GOVERNANCE "Handoffs". If the pilot finds that Codex posts only a reaction on a clean pull request, the merge workflow must obtain a completed review, for example by commenting `@codex review`, before the merge rule can pass; that is a design item under issue #17.
 2. **Codex review.** Any unresolved P0 or P1 code review finding, or High security review finding, blocks agent merge. Codex reads docs/threat-model.md for security reviews once it exists; until then it generates its own threat model on every review. Codex reviews every pull request, whichever tool implemented it (ADR-018).
