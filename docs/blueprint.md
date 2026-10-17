@@ -195,7 +195,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 1. SAS connection strings (PLAIN).
 2. librdkafka built-in OIDC client credentials (`sasl.oauthbearer.method = oidc`) with a client secret.
 3. librdkafka `azure_imds`.
-4. Confluent.Kafka `SetOAuthBearerTokenRefreshHandler` calling `WorkloadIdentityCredential` (Azure.Identity) for scope `https://<namespace>.servicebus.windows.net/.default`.
+4. Confluent.Kafka `SetOAuthBearerTokenRefreshHandler` calling `WorkloadIdentityCredential` from Azure.Core 1.53.0+ (in the `Azure.Identity` namespace; no Azure.Identity package reference is required) for scope `https://<namespace>.servicebus.windows.net/.default` ([Azure.Core 1.60.0](https://nuget.org/packages/Azure.Core/1.60.0)).
 
 **Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only on Event Hubs. Ledger container roles for `loadgen` and `verifier` are in ADR-012.
 

@@ -522,6 +522,7 @@
       "parchwell.kafka": {
         "type": "Project",
         "dependencies": {
+          "Azure.Core": "[1.60.0, )",
           "Confluent.Kafka": "[2.16.0, )",
           "Microsoft.Extensions.Options": "[10.0.13, )"
         }

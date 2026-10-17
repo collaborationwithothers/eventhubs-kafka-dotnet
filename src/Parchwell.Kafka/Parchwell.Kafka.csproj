@@ -3,6 +3,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Azure.Core" />
     <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
