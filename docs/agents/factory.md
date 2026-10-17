@@ -2,7 +2,7 @@
 
 How agents build this repository, and where Hari's judgment stays.
 
-Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" step 1 and the plan template's "Enforced checks" field; amended again in the pull request for the #72 follow-ups (2026-10-17): "Item lifecycle" step 1 and the plan template's "Decision rules" field.
+Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" step 1 and the plan template's "Enforced checks" field; amended again in the follow-up pull request for issue #72 (2026-10-17): "Item lifecycle" step 1 and the plan template's "Hypothesis" and "Decision rules" fields.
 
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
@@ -46,7 +46,7 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 ```
 Item: <ID> <title>
 Hypothesis: <one or more labelled hypotheses: what the documentation claims, and what we expect to observe>
-Decision rules: <for each hypothesis the item decides: the evidence, when observation ends, when that evidence counts as complete, and which outcome supports each verdict in "Evidence pack"; "recorded only" for a hypothesis with no verdict. The same rules are written into expected.yaml, which wins if the two differ (ADR-014)>
+Decision rules: <for each hypothesis the item decides: the evidence, when observation ends, when that evidence counts as complete, and which outcome supports each verdict in "Evidence pack"; "recorded only" for a hypothesis with no verdict. The same rules are written into expected.yaml, the protected file that holds the hypotheses (ADR-014)>
 Configurations: <settings varied, one line each>
 Fault injected: <none, or which harness capability>
 Measures: <metrics, verifier counts, KQL queries>

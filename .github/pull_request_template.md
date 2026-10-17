@@ -1,7 +1,7 @@
 <!-- Two or three plain sentences: what changed and why. A reader could stop here and still leave right. -->
 
 **Approved plan:** <link to the plan comment, or "none" for a pull request with no item plan>
-**Disputed or escalated findings:** <cold-review P0/P1 answered `Not valid:`, and work kept under AGENTS.md rule 8's second paragraph, or "none">
+**Disputed or escalated findings:** <cold-review P0/P1 answered `Not valid:`, and work kept under AGENTS.md "Before opening a pull request" rule 8, second paragraph, or "none">
 **Read first:** 
 **Least sure about:** 
 
