@@ -35,7 +35,7 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 
 ## Item lifecycle
 
-1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below. Plan text follows AGENTS.md "Before opening a pull request" rules 1, 2 and 4: every factual claim is verified against its cited source and counts are computed by script. Before approval, a session that Hari starts and that did not draft the plan checks the plan against the template and its sources. It reports any field that is empty or open-ended, such as a validator without a numbered "Enforced checks" list, as a comment on the issue before Hari applies `ready-for-agent` (#72).
+1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below. Plan text follows AGENTS.md "Before opening a pull request" rules 1, 2 and 4. Before approval, a session other than the drafting one checks the plan against the template and its sources. It reports any field that is empty or open-ended, such as a validator without a numbered "Enforced checks" list, as a comment on the issue before Hari applies `ready-for-agent` (#72).
 2. **Approve.** Hari applies `ready-for-agent`. This is approval of the plan and the trigger for implementation. Before applying the label, he names the implementing tool, Claude Code or Codex, in a comment on the issue; no such comment at the time the label is applied means Claude Code, and a session of the other tool does not claim the issue (ADR-018).
 3. **Implement.** One session claims the issue, builds what the plan needs in pull requests within the size limit, and merges or escalates each under the merge rule.
 4. **Run.** The agent starts the scenario workflow. The workflow checks the cost limit, applies the ephemeral layer, runs the repeats, collects evidence, and destroys.
@@ -45,8 +45,8 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 
 ```
 Item: <ID> <title>
-Hypothesis: <what the documentation claims, and what we expect to observe>
-Decision rules: <for each hypothesis the item decides: the evidence, when observation ends, when that evidence counts as complete, and what holds, what contradicts and what is inconclusive; "recorded only" for hypotheses with no verdict>
+Hypothesis: <one or more labelled hypotheses: what the documentation claims, and what we expect to observe>
+Decision rules: <for each hypothesis the item decides: the evidence, when observation ends, when that evidence counts as complete, and which outcome supports each verdict in "Evidence pack"; "recorded only" for a hypothesis with no verdict. The same rules are written into expected.yaml, which wins if the two differ (ADR-014)>
 Configurations: <settings varied, one line each>
 Fault injected: <none, or which harness capability>
 Measures: <metrics, verifier counts, KQL queries>
