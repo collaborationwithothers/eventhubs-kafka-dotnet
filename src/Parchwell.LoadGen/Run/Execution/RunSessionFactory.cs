@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
@@ -20,18 +21,20 @@ public sealed class RunSessionFactory
     private readonly KafkaStatisticsBridgeFactory _statisticsFactory;
     private readonly KafkaConfigurationFactory _configurationFactory;
     private readonly TimeProvider _timeProvider;
-    private readonly Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>> _producerFactory;
+    private readonly KafkaAuthenticationFactory _authenticationFactory;
+    private readonly Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> _producerFactory;
 
     public RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
         KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
-        TimeProvider timeProvider,
-        Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>> producerFactory)
+        TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
+        Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory)
     {
         _options = options.Value;
         _sinkRouter = sinkRouter;
         _statisticsFactory = statisticsFactory;
         _configurationFactory = configurationFactory;
         _timeProvider = timeProvider;
+        _authenticationFactory = authenticationFactory;
         _producerFactory = producerFactory;
     }
 
@@ -46,9 +49,12 @@ public sealed class RunSessionFactory
     }
 
     public async Task<RunSession> CreateAsync(RunIdentity identity, ResolvedRoleConfiguration configuration, ProducerConfig producerConfig,
-        bool requiresStatisticsEvidence, bool requiresRequestEvidence)
+        bool requiresStatisticsEvidence, bool requiresRequestEvidence, CancellationToken cancellationToken)
     {
         LoadGenHostOptions options = _options;
+        var authentication = _authenticationFactory.CreateSession(new KafkaAuthenticationIdentity(
+            identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer,
+            producerConfig.ClientId!), cancellationToken);
         Directory.CreateDirectory(options.OutputRoot);
         var expectations = new RunEvidenceExpectations(configuration,
             requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
@@ -74,7 +80,7 @@ public sealed class RunSessionFactory
                 requiresRequestEvidence || options.RequireRequestEvidence!.Value,
                 requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
             var executor = new RunExecutor(() => _producerFactory(
-                producerConfig, statistics, evidence), ledger, _timeProvider, statistics, evidence);
+                producerConfig, statistics, evidence, authentication), ledger, _timeProvider, statistics, evidence, authentication);
             return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions);
         }
         catch (Exception failure)

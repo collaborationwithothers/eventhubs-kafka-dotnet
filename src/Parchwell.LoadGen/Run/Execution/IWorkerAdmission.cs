@@ -1,21 +1,27 @@
 using Confluent.Kafka;
+using Parchwell.Kafka.Authentication;
 
 namespace Parchwell.LoadGen.Run.Execution;
 
-/// <summary>Blocks production admission until the configured native authentication path is available.</summary>
+/// <summary>Checks production authentication wiring before output and native client creation.</summary>
 public interface IWorkerAdmission
 {
-    /// <summary>Checks that production authentication is ready before a native producer is created.</summary>
+    /// <summary>Validates the approved producer authentication configuration without acquiring a token.</summary>
     void EnsureProducerAuthenticationAvailable(ProducerConfig configuration);
 }
 
-/// <summary>Honest production gate while the ADR-003 workload-identity refresh handler is unavailable.</summary>
-public sealed class UnavailableWorkerAdmission : IWorkerAdmission
+/// <summary>Validates producer authentication configuration through the shared Kafka factory.</summary>
+public sealed class OAuthBearerWorkerAdmission(KafkaAuthenticationFactory authenticationFactory) : IWorkerAdmission
 {
-    /// <inheritdoc />
+    private readonly KafkaAuthenticationFactory _authenticationFactory = authenticationFactory
+        ?? throw new ArgumentNullException(nameof(authenticationFactory));
+
+    /// <summary>Checks the existing authentication baseline without acquiring credentials or constructing a client.</summary>
+    /// <param name="configuration">The final resolved load generator producer configuration.</param>
+    /// <exception cref="ArgumentNullException">The configuration is null.</exception>
+    /// <exception cref="InvalidOperationException">The authentication settings do not satisfy the approved baseline.</exception>
     public void EnsureProducerAuthenticationAvailable(ProducerConfig configuration)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-        throw new InvalidOperationException("production_oauthbearer_refresh_handler_unavailable");
+        _authenticationFactory.ValidateProducerConfiguration(configuration);
     }
 }

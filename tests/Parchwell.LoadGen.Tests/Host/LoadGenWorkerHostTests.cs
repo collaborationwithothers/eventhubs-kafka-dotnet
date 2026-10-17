@@ -1,10 +1,14 @@
 using System.Reflection;
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
+using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Parchwell.LoadGen;
 using Parchwell.Kafka.Statistics;
+using Parchwell.Kafka.Authentication;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Input;
@@ -17,6 +21,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 public sealed class LoadGenWorkerHostTests
 {
+    private static readonly string[] AuthenticationMetricTagNames = ["client_id", "phase", "reason", "role", "run", "scenario"];
     [Fact]
     public async Task Given_AdmittedLocalWorker_When_RunAndPublicationComplete_Then_HostReturnsSuccessAfterPublisherSeesArtifacts()
     {
@@ -95,13 +100,131 @@ public sealed class LoadGenWorkerHostTests
         DeleteOutput(publisher);
     }
 
+    [Theory]
+    [InlineData("acquisition")]
+    [InlineData("installation")]
+    public async Task Given_InitialAuthenticationFailureAtHostBoundary_When_RunCompletes_Then_SavesIncompleteStateAndSkipsPublisher(string failure)
+    {
+        var publisher = new RecordingPublisher();
+        Action<KafkaOAuthBearerSession, RunEvidenceSession> fail = failure == "acquisition"
+            ? (session, evidence) => session.Refresh((_, _, _) => { }, error =>
+                evidence.CaptureError(new Error(ErrorCode.Local_Authentication, "OAuth bearer " + error)))
+            : (session, evidence) => session.Refresh((_, _, _) => throw new InvalidOperationException("synthetic-install-secret"), error =>
+                evidence.CaptureError(new Error(ErrorCode.Local_Authentication, "OAuth bearer " + error)));
+        using IHost host = CreateHost(publisher, durationSeconds: 1, authenticationCallback: fail,
+            tokenProvider: failure == "acquisition" ? new ThrowingTokenProvider() : new SyntheticTokenProvider());
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
+        await host.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+        Assert.False(publisher.Called);
+        Assert.True(File.Exists(Path.Combine(publisher.OutputRoot, "manifest.json")));
+        using JsonDocument manifest = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(publisher.OutputRoot, "manifest.json"), TestContext.Current.CancellationToken));
+        Assert.Equal("failed", manifest.RootElement.GetProperty("worker_status").GetString());
+        Assert.False(manifest.RootElement.GetProperty("bookkeeping_complete").GetBoolean());
+        Assert.Contains("oauthbearer_initial_failure:" + failure, manifest.RootElement.GetProperty("diagnostics")
+            .EnumerateArray().Select(item => item.GetString()), StringComparer.Ordinal);
+        Assert.Contains("native_error_callback_observed", manifest.RootElement.GetProperty("guard_observations")
+            .EnumerateArray().Select(item => item.GetString()), StringComparer.Ordinal);
+        DeleteOutput(publisher);
+    }
+
+    [Theory]
+    [InlineData("acquisition")]
+    [InlineData("installation")]
+    public async Task Given_RefreshAuthenticationFailureWithInstalledToken_When_RunCompletes_Then_PublishesAndRetainsNativeGuard(string failure)
+    {
+        var publisher = new RecordingPublisher();
+        var tracker = new AuthenticationTracker();
+        var tokenProvider = new SyntheticTokenProvider();
+        var measurements = new ConcurrentQueue<(long Value, Dictionary<string, string> Tags)>();
+        string? measurementUnit = null;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == "Parchwell.Kafka.Authentication" &&
+                instrument.Name == "parchwell.kafka.oauthbearer.refresh_handler.errors")
+            {
+                measurementUnit = instrument.Unit;
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
+        {
+            if (instrument.Name == "parchwell.kafka.oauthbearer.refresh_handler.errors" &&
+                tags.ToArray().Any(tag => tag.Key == "run" && StringComparer.Ordinal.Equals(tag.Value?.ToString(), publisher.RunId)))
+                measurements.Enqueue((value, tags.ToArray().ToDictionary(item => item.Key, item => item.Value?.ToString() ?? "", StringComparer.Ordinal)));
+        });
+        listener.Start();
+        int installs = 0;
+        Action<KafkaOAuthBearerSession, RunEvidenceSession> refresh = (session, evidence) =>
+        {
+            void Install(string token, long expiry, string principal)
+            {
+                _ = token;
+                _ = expiry;
+                _ = principal;
+                if (Interlocked.Increment(ref installs) is 2 or 3 && failure == "installation")
+                    throw new InvalidOperationException("synthetic-install-secret");
+            }
+
+            void Report(string reason) => evidence.CaptureError(
+                new Error(ErrorCode.Local_Authentication, "OAuth bearer " + reason));
+            session.Refresh(Install, Report);
+            tracker.InstalledExpiry = session.InstalledTokenExpiresOn;
+            session.Refresh(Install, Report);
+            session.Refresh(Install, Report);
+            tracker.Session = session;
+        };
+        using IHost host = CreateHost(publisher, durationSeconds: 1, authenticationCallback: refresh,
+            tokenProvider: failure == "acquisition" ? new FailOnSecondTokenProvider() : tokenProvider);
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
+        await host.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+        Assert.True(publisher.Called);
+        Assert.True(publisher.SawLedgerAndManifest);
+        Assert.NotNull(tracker.InstalledExpiry);
+        Assert.Equal(tracker.InstalledExpiry, tracker.Session?.InstalledTokenExpiresOn);
+        Assert.Null(tracker.Session?.InitialFailure);
+        Assert.Equal("refresh", tracker.Session?.LatestFailure?.Phase);
+        Assert.Equal(failure, tracker.Session?.LatestFailure?.Reason);
+        if (failure == "installation") Assert.True(tokenProvider.CancellationObserved);
+        Assert.Equal(2, measurements.Count);
+        Assert.All(measurements, measurement =>
+        {
+            Assert.Equal(1, measurement.Value);
+            Assert.Equal("count", measurementUnit);
+            Assert.Equal(AuthenticationMetricTagNames, measurement.Tags.Keys.Order(StringComparer.Ordinal));
+            Assert.Equal("A01", measurement.Tags["scenario"]);
+            Assert.Equal(publisher.RunId, measurement.Tags["run"]);
+            Assert.Equal("LoadGenProducer", measurement.Tags["role"]);
+            Assert.Equal("worker-pod", measurement.Tags["client_id"]);
+            Assert.Equal("refresh", measurement.Tags["phase"]);
+            Assert.Equal(failure, measurement.Tags["reason"]);
+        });
+        using JsonDocument manifest = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(publisher.OutputRoot, "manifest.json"), TestContext.Current.CancellationToken));
+        Assert.True(manifest.RootElement.GetProperty("bookkeeping_complete").GetBoolean());
+        Assert.Contains("native_error_callback_observed", manifest.RootElement.GetProperty("guard_observations")
+            .EnumerateArray().Select(item => item.GetString()), StringComparer.Ordinal);
+        DeleteOutput(publisher);
+    }
+
     private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
-        ProducerFactoryTracker? producerFactory = null)
+        ProducerFactoryTracker? producerFactory = null,
+        Action<KafkaOAuthBearerSession, RunEvidenceSession>? authenticationCallback = null,
+        IKafkaTokenProvider? tokenProvider = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
         if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
         if (publisher is BlockingPublisher blocking) blocking.OutputRoot = output;
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
+        values["LoadGen__RunId"] = "host-run-" + Guid.NewGuid().ToString("N");
+        if (publisher is RecordingPublisher runPublisher) runPublisher.RunId = values["LoadGen__RunId"];
         values["LoadGen__ProcessLifetimeTimeout"] = "00:00:15";
         values["LoadGen__StatisticsCompletionTimeout"] = "00:00:00.050";
         values["LoadGen__CleanupTimeout"] = "00:00:01";
@@ -109,6 +232,9 @@ public sealed class LoadGenWorkerHostTests
         values["LoadGen__EvidenceCompletionTimeout"] = "00:00:01";
         values["LoadGen__MaxAttempts"] = "2";
         values["LoadGen__MaxScheduleLateness"] = "00:00:05";
+        values["AZURE_TENANT_ID"] = "synthetic-tenant";
+        values["AZURE_CLIENT_ID"] = "synthetic-credential-app";
+        values["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
 
         return Program.BuildHost(args, services =>
@@ -117,15 +243,17 @@ public sealed class LoadGenWorkerHostTests
             services.AddSingleton<IScenarioSource>(new ScenarioMemorySource(
                 ("scenarios/A01/scenario.yaml", Scenario()),
                 ("scenarios/profiles/synthetic.yaml", Profile(durationSeconds))));
-            services.RemoveAll<IWorkerAdmission>();
-            services.AddSingleton<IWorkerAdmission, AllowLocalAdmission>();
+            services.RemoveAll<IKafkaTokenProvider>();
+            services.AddSingleton<IKafkaTokenProvider>(tokenProvider ?? new SyntheticTokenProvider());
             services.RemoveAll<IRunArtifactPublisher>();
             services.AddSingleton<IRunArtifactPublisher>(publisher);
-            services.RemoveAll<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>>>();
-            services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>>>(
-                _ => (_, _, _) =>
+            services.RemoveAll<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>();
+            services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
+                _ => (configuration, statistics, evidence, authentication) =>
                 {
                     if (producerFactory is not null) producerFactory.Called = true;
+                    if (authenticationCallback is not null)
+                        authenticationCallback(authentication, evidence);
                     return DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
                 });
         });
@@ -167,12 +295,6 @@ public sealed class LoadGenWorkerHostTests
         if (Directory.Exists(publisher.OutputRoot)) Directory.Delete(publisher.OutputRoot, recursive: true);
     }
 
-    private sealed class AllowLocalAdmission : IWorkerAdmission
-    {
-        public void EnsureProducerAuthenticationAvailable(ProducerConfig configuration) =>
-            Assert.NotNull(configuration);
-    }
-
     private sealed class ScenarioMemorySource(params (string Path, string Text)[] documents) : IScenarioSource
     {
         private readonly Dictionary<string, string> _documents = documents.ToDictionary(
@@ -192,12 +314,50 @@ public sealed class LoadGenWorkerHostTests
         public bool Called { get; set; }
     }
 
+    private sealed class SyntheticTokenProvider : IKafkaTokenProvider
+    {
+        private int _cancellationObserved;
+        public bool CancellationObserved => Volatile.Read(ref _cancellationObserved) != 0;
+
+        public Azure.Core.AccessToken GetToken(string scope, CancellationToken cancellationToken)
+        {
+            cancellationToken.Register(() => Interlocked.Exchange(ref _cancellationObserved, 1));
+            cancellationToken.ThrowIfCancellationRequested();
+            return new Azure.Core.AccessToken("synthetic-token", DateTimeOffset.MaxValue);
+        }
+    }
+
+    private sealed class ThrowingTokenProvider : IKafkaTokenProvider
+    {
+        public Azure.Core.AccessToken GetToken(string scope, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("synthetic-credential-secret");
+    }
+
+    private sealed class FailOnSecondTokenProvider : IKafkaTokenProvider
+    {
+        private int _calls;
+        public Azure.Core.AccessToken GetToken(string scope, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Interlocked.Increment(ref _calls) > 1)
+                throw new InvalidOperationException("synthetic-refresh-secret");
+            return new Azure.Core.AccessToken("synthetic-token", DateTimeOffset.MaxValue);
+        }
+    }
+
+    private sealed class AuthenticationTracker
+    {
+        public KafkaOAuthBearerSession? Session { get; set; }
+        public DateTimeOffset? InstalledExpiry { get; set; }
+    }
+
     private sealed class RecordingPublisher(bool throwOnPublish = false, bool available = true) : IRunArtifactPublisher
     {
         public bool IsAvailable => available;
         public bool Called { get; private set; }
         public bool SawLedgerAndManifest { get; private set; }
         public string OutputRoot { get; set; } = string.Empty;
+        public string RunId { get; set; } = string.Empty;
 
         public Task PublishAsync(Parchwell.LoadGen.Run.Execution.RunExecutionResult result, RunPublicationOptions options,
             CancellationToken cancellationToken = default)

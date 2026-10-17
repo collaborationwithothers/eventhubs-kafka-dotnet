@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Reflection;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
@@ -155,6 +156,13 @@ internal static class Program
             });
         }
 
+        builder.Services.AddParchwellKafkaAuthentication(options =>
+        {
+            options.TenantId = builder.Configuration["AZURE_TENANT_ID"];
+            options.ClientId = builder.Configuration["AZURE_CLIENT_ID"];
+            options.TokenFilePath = builder.Configuration["AZURE_FEDERATED_TOKEN_FILE"];
+        });
+
         builder.Services.AddParchwellKafkaStatistics(statisticsOptions =>
         {
             LoadGenHostOptions hostOptions = ReadOptions(builder.Configuration);
@@ -164,7 +172,7 @@ internal static class Program
             statisticsOptions.CompletionTimeout = hostOptions.StatisticsCompletionTimeout;
         });
 
-        builder.Services.AddSingleton<IWorkerAdmission, UnavailableWorkerAdmission>();
+        builder.Services.AddSingleton<IWorkerAdmission, OAuthBearerWorkerAdmission>();
         builder.Services.AddSingleton<IRunArtifactPublisher>(provider =>
         {
             LoadGenHostOptions hostOptions = provider.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
@@ -178,8 +186,10 @@ internal static class Program
                 new WorkloadIdentityCredential(), new BlobClientOptions());
             return new BlobRunArtifactPublisher(client, provider.GetRequiredService<TimeProvider>());
         });
-        builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, IProducer<byte[], byte[]>>>(
-            _ => (configuration, statistics, evidence) => new ProducerBuilder<byte[], byte[]>(configuration)
+        builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
+            provider => (configuration, statistics, evidence, authentication) => provider
+                .GetRequiredService<KafkaAuthenticationFactory>()
+                .CreateProducerBuilder<byte[], byte[]>(configuration, authentication)
                 .SetStatisticsHandler((_, report) => statistics.Capture(report))
                 .SetLogHandler((_, message) => evidence.CaptureLog(message))
                 .SetErrorHandler((_, error) => evidence.CaptureError(error))
