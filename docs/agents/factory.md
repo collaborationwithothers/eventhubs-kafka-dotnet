@@ -2,7 +2,7 @@
 
 How agents build this repository, and where Hari's judgment stays.
 
-Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval.
+Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" step 1 and the plan template's "Enforced checks" field.
 
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
@@ -35,7 +35,7 @@ Following Osmani's distinction between loops a human reviews and loops nobody re
 
 ## Item lifecycle
 
-1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below.
+1. **Plan.** An agent drafts the plan as a comment on the item's issue, using the template below. Before approval, a session other than the drafting one checks the plan against the template. It reports any field that is empty or open-ended, such as a validator without a numbered "Enforced checks" list, as a comment on the issue before Hari applies `ready-for-agent` (#72).
 2. **Approve.** Hari applies `ready-for-agent`. This is approval of the plan and the trigger for implementation. Before applying the label, he names the implementing tool, Claude Code or Codex, in a comment on the issue; no such comment at the time the label is applied means Claude Code, and a session of the other tool does not claim the issue (ADR-018).
 3. **Implement.** One session claims the issue, builds what the plan needs in pull requests within the size limit, and merges or escalates each under the merge rule.
 4. **Run.** The agent starts the scenario workflow. The workflow checks the cost limit, applies the ephemeral layer, runs the repeats, collects evidence, and destroys.
@@ -51,6 +51,7 @@ Fault injected: <none, or which harness capability>
 Measures: <metrics, verifier counts, KQL queries>
 Repeats: <at least 5 per configuration>
 Harness changes needed: <none, or the capability to add>
+Enforced checks: <for a component that validates or rejects input, a numbered list of every check it enforces; "none" otherwise>
 Estimated cost: <harness hours x GBP 1.56, plus Log Analytics> against limit <S/M/L>
 Expected outcome file: scenarios/<ID>/expected.yaml (approved with this plan)
 ```
