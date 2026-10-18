@@ -14,8 +14,8 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 ## Steps
 
 1. Read AGENTS.md, docs/agents/factory.md, the issue body and every comment on the issue, as AGENTS.md "GitHub issues and pull requests" describes. Use subagents at high effort for reading. Done when the issue body, every comment page and the decisions linked from issue comments have been read, the authorities are listed in creation order, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
-2. Name the selected pull request and read on `main` every file the plan will change. Done when each change you plan has its current text in hand.
+2. Name the selected pull request, or retain its name for a revision, and read on `main` every file the plan will change. Done when each change you plan has its current text in hand.
 3. Write the plan to factory.md "Item lifecycle" step 3's definition of implementation-grade. Done when every part of that definition is met, each plan-check question in step 1 has an answer, and every point the authorities leave open is under "Open questions for Hari".
 4. Re-read the issue body, all comments and the decisions linked from issue comments. Done when their text is unchanged since step 1, or candidate selection and the plan have been revised for every addition, edit or deletion.
-5. Post the plan as one comment on the issue, headed exactly `<PR name> implementation-grade plan`, with the short name chosen in step 2.
+5. Post a new plan as one comment on the issue, or update the selected plan comment for a revision under factory.md "Item lifecycle" step 3. Head it exactly `<PR name> implementation-grade plan`, with the short name from step 2.
 6. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to review the plan.
