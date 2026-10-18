@@ -569,6 +569,33 @@ public sealed class StrictParserTests
     }
 
     [Fact]
+    public void Given_NativeWrongKindAndMissingBrokerFields_When_Read_Then_PreservesBothRoutesWithoutValue()
+    {
+        const string mixed = "{\"ts\":1,\"age\":2,\"brokers\":{\"b\":{\"name\":1}}}";
+        InputLimits limits = Limits();
+        ParseResult<NativeClientReport> parsed = NativeStatisticsReader.Read(
+            Encoding.UTF8.GetBytes(mixed), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
+
+        Assert.Null(parsed.Value);
+        Assert.False(parsed.IsSuccess);
+        Assert.Equal(ParseFailureKind.Structural, parsed.FailureKind);
+        Assert.Collection(parsed.Problems,
+            problem => Assert.Equal(new StructuralProblem(20, "wrong_json_kind", "statistics.jsonl", null, "brokers.b.name", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.nodeid", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.source", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.state", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.req_timeouts", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.txretries", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.txerrs", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.rxerrs", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.disconnects", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.throttle.cnt", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.throttle.max", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.rtt.cnt", null), problem),
+            problem => Assert.Equal(new StructuralProblem(21, "missing_required_field", "statistics.jsonl", null, "brokers.b.rtt.p99", null), problem));
+    }
+
+    [Fact]
     public void Given_NativeRawReportHasIndependentShape_When_Read_Then_AllowsExtraFieldsAndRoutesNativeProblems()
     {
         const string report = "{\"ordinary_top\":true,\"ts\":-1,\"age\":long.MaxValue,\"time\":1,\"brokers\":{\"dictionary-key\":{\"name\":\"different-name\",\"nodeid\":2147483648,\"source\":\"free-source\",\"state\":\"free-state\",\"req_timeouts\":0,\"txretries\":0,\"txerrs\":0,\"rxerrs\":0,\"disconnects\":0,\"throttle\":{\"cnt\":0,\"max\":0,\"p99\":{}},\"rtt\":{\"cnt\":0,\"p99\":0,\"max\":{}},\"extra_broker\":\"accepted\"}}}";

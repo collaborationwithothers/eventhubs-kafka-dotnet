@@ -24,9 +24,14 @@ internal static class NativeStatisticsReader
         using JsonDocument document = parsed.Value!;
         var parser = new NativeParser(artifact, budget, maxBrokerEntries);
         NativeClientReport? report = parser.Read(document.RootElement);
-        return parser.Problems.Count != 0 || report is null
-            ? ParseResult<NativeClientReport>.Failure(parser.Problems)
-            : new ParseResult<NativeClientReport>(report, parser.MissingFields);
+        if (parser.Problems.Count != 0 || report is null)
+        {
+            var problems = new List<StructuralProblem>(parser.Problems);
+            problems.AddRange(parser.MissingFields);
+            return ParseResult<NativeClientReport>.Failure(problems);
+        }
+
+        return new ParseResult<NativeClientReport>(report, parser.MissingFields);
     }
 
     private sealed class NativeParser(string artifact, InputBudget budget, long maxBrokerEntries)
