@@ -59,7 +59,7 @@ internal sealed class VerifierHostOptions
     public long? MaxInventoryEntries { get; set; }
     public int? MaxNativeReportBytes { get; set; }
     public int? MaxBrokerEntries { get; set; }
-    public VerifierScenarioLimits? ScenarioLimits { get; set; }
+    public VerifierScenarioLoadOptions? ScenarioLoadOptions { get; set; }
 
     public string? GateOutputPath { get; set; }
     public List<ExpectedProbeRepeat>? ExpectedRepeats { get; set; }
@@ -67,7 +67,7 @@ internal sealed class VerifierHostOptions
 }
 
 /// <summary>Provides the explicit parser limits used while loading a scenario.</summary>
-internal sealed class VerifierScenarioLimits
+internal sealed class VerifierScenarioLoadOptions
 {
     public int? MaxDocumentCharacters { get; set; }
     public int? MaxNestingDepth { get; set; }

@@ -474,6 +474,58 @@ public sealed class StrictParserTests
         Assert.True(ManifestReader.Read(manifestWithLf, Limits(), new InputBudget(Limits()), 2).IsSuccess);
     }
 
+    [Fact]
+    public void Given_ZeroByteJsonl_When_Read_Then_ReturnsEmptyRowsForEachReader()
+    {
+        InputLimits limits = Limits();
+        ParseResult<IReadOnlyList<LedgerRow>> ledger = LedgerReader.ReadRows(
+            ReadOnlyMemory<byte>.Empty, limits, new InputBudget(limits));
+        ParseResult<IReadOnlyList<StatisticsEnvelope>> statistics = CapturedEvidenceReader.ReadStatistics(
+            ReadOnlyMemory<byte>.Empty, "statistics.jsonl", limits, new InputBudget(limits));
+        ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle = CapturedEvidenceReader.ReadLifecycle(
+            ReadOnlyMemory<byte>.Empty, "request-lifecycle.jsonl", limits, new InputBudget(limits));
+
+        Assert.True(ledger.IsSuccess);
+        Assert.NotNull(ledger.Value);
+        Assert.Empty(ledger.Value);
+        Assert.Empty(ledger.Problems);
+        Assert.True(statistics.IsSuccess);
+        Assert.NotNull(statistics.Value);
+        Assert.Empty(statistics.Value);
+        Assert.Empty(statistics.Problems);
+        Assert.True(lifecycle.IsSuccess);
+        Assert.NotNull(lifecycle.Value);
+        Assert.Empty(lifecycle.Value);
+        Assert.Empty(lifecycle.Problems);
+    }
+
+    [Fact]
+    public void Given_LfOnlyOrUnterminatedJsonl_When_Read_Then_RoutesFramingProblemToEachReader()
+    {
+        InputLimits limits = Limits();
+        byte[] lfOnly = [(byte)'\n'];
+        byte[] unterminated = Encoding.UTF8.GetBytes("{}");
+
+        ParseResult<IReadOnlyList<LedgerRow>> ledgerLf = LedgerReader.ReadRows(lfOnly, limits, new InputBudget(limits));
+        Assert.Contains(ledgerLf.Problems, p => p.CheckNumber == 1 && p.Code == "jsonl_blank_row");
+        ParseResult<IReadOnlyList<LedgerRow>> ledgerUnterminated = LedgerReader.ReadRows(unterminated, limits, new InputBudget(limits));
+        Assert.Contains(ledgerUnterminated.Problems, p => p.CheckNumber == 1 && p.Code == "jsonl_missing_final_lf");
+
+        ParseResult<IReadOnlyList<StatisticsEnvelope>> statisticsLf = CapturedEvidenceReader.ReadStatistics(
+            lfOnly, "statistics.jsonl", limits, new InputBudget(limits));
+        Assert.Contains(statisticsLf.Problems, p => p.CheckNumber == 17 && p.Code == "jsonl_blank_row");
+        ParseResult<IReadOnlyList<StatisticsEnvelope>> statisticsUnterminated = CapturedEvidenceReader.ReadStatistics(
+            unterminated, "statistics.jsonl", limits, new InputBudget(limits));
+        Assert.Contains(statisticsUnterminated.Problems, p => p.CheckNumber == 17 && p.Code == "jsonl_missing_final_lf");
+
+        ParseResult<IReadOnlyList<LifecycleEvent>> lifecycleLf = CapturedEvidenceReader.ReadLifecycle(
+            lfOnly, "request-lifecycle.jsonl", limits, new InputBudget(limits));
+        Assert.Contains(lifecycleLf.Problems, p => p.CheckNumber == 17 && p.Code == "jsonl_blank_row");
+        ParseResult<IReadOnlyList<LifecycleEvent>> lifecycleUnterminated = CapturedEvidenceReader.ReadLifecycle(
+            unterminated, "request-lifecycle.jsonl", limits, new InputBudget(limits));
+        Assert.Contains(lifecycleUnterminated.Problems, p => p.CheckNumber == 17 && p.Code == "jsonl_missing_final_lf");
+    }
+
     [Theory]
     [MemberData(nameof(InvalidEscapedSurrogateCases))]
     public void Given_InvalidEscapedSurrogateInPropertyOrValue_When_Read_Then_RoutesAsMalformedJson(

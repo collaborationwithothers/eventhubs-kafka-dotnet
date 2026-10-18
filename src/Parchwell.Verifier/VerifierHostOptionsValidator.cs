@@ -41,7 +41,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             case VerifierMode.Verify:
                 AddKafkaInputs(options, errors, requiredBudgets);
                 AddPositive(options.IoTimeout, "Verifier:IoTimeout", errors, requiredBudgets);
-                RequireText(options.LedgerContainer, "Verifier:LedgerContainer", errors);
+                ValidateContainerName(options.LedgerContainer, "Verifier:LedgerContainer", errors);
                 RequireText(options.ArtifactPrefix, "Verifier:ArtifactPrefix", errors);
                 RequireText(options.StartLineInputName, "Verifier:StartLineInputName", errors);
                 RequireText(options.ResultOutputName, "Verifier:ResultOutputName", errors);
@@ -57,7 +57,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
                 RequirePositive(options.MaxNativeReportBytes, "Verifier:MaxNativeReportBytes", errors);
                 RequirePositive(options.MaxBrokerEntries, "Verifier:MaxBrokerEntries", errors);
-                ValidateScenarioLimits(options.ScenarioLimits, errors);
+                ValidateScenarioLoadOptions(options.ScenarioLoadOptions, errors);
                 if (StringComparer.Ordinal.Equals(options.VerifierContainer, options.LedgerContainer))
                 {
                     errors.Add("Verifier:VerifierContainer must be separate from Verifier:LedgerContainer.");
@@ -72,7 +72,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequirePositive(options.MaxArtifactBytes, "Verifier:MaxArtifactBytes", errors);
                 RequirePositive(options.MaxTotalInputBytes, "Verifier:MaxTotalInputBytes", errors);
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
-                ValidateScenarioLimits(options.ScenarioLimits, errors);
+                ValidateScenarioLoadOptions(options.ScenarioLoadOptions, errors);
                 ValidateExpectedRepeats(options.ExpectedRepeats, errors);
                 RequireCollection(options.RepeatResultPaths, "Verifier:RepeatResultPaths", errors);
                 break;
@@ -95,7 +95,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.VerifierClientId, "Verifier:VerifierClientId", errors);
         RequireText(options.NamespaceName, "Verifier:NamespaceName", errors);
         RequireAbsoluteUri(options.BlobServiceUri, "Verifier:BlobServiceUri", errors);
-        RequireText(options.VerifierContainer, "Verifier:VerifierContainer", errors);
+        ValidateContainerName(options.VerifierContainer, "Verifier:VerifierContainer", errors);
         RequireText(options.TenantId, "Verifier:TenantId", errors);
         RequireText(options.WorkloadIdentityClientId, "Verifier:WorkloadIdentityClientId", errors);
         RequireText(options.FederatedTokenFilePath, "Verifier:FederatedTokenFilePath", errors);
@@ -106,19 +106,68 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         AddPositive(options.BlobIoTimeout, "Verifier:BlobIoTimeout", errors, requiredBudgets);
     }
 
-    private static void ValidateScenarioLimits(VerifierScenarioLimits? limits, List<string> errors)
+    private static void ValidateScenarioLoadOptions(VerifierScenarioLoadOptions? limits, List<string> errors)
     {
         if (limits is null)
         {
-            errors.Add("Verifier:ScenarioLimits is required.");
+            errors.Add("Verifier:ScenarioLoadOptions is required.");
             return;
         }
 
-        RequirePositive(limits.MaxDocumentCharacters, "Verifier:ScenarioLimits:MaxDocumentCharacters", errors);
-        RequirePositive(limits.MaxNestingDepth, "Verifier:ScenarioLimits:MaxNestingDepth", errors);
-        RequirePositive(limits.MaxScalarCharacters, "Verifier:ScenarioLimits:MaxScalarCharacters", errors);
-        RequirePositive(limits.MaxParserEvents, "Verifier:ScenarioLimits:MaxParserEvents", errors);
+        RequirePositive(limits.MaxDocumentCharacters, "Verifier:ScenarioLoadOptions:MaxDocumentCharacters", errors);
+        RequirePositive(limits.MaxNestingDepth, "Verifier:ScenarioLoadOptions:MaxNestingDepth", errors);
+        RequirePositive(limits.MaxScalarCharacters, "Verifier:ScenarioLoadOptions:MaxScalarCharacters", errors);
+        RequirePositive(limits.MaxParserEvents, "Verifier:ScenarioLoadOptions:MaxParserEvents", errors);
     }
+
+    /// <summary>
+    /// Validates Azure Blob container name syntax without checking whether the container exists or can be written.
+    /// </summary>
+    /// <remarks>
+    /// Ordinary names follow Microsoft's 3-63 character lowercase alphanumeric and hyphen rules, with
+    /// alphanumeric ends and no consecutive hyphens. The pinned Azure Storage SDK also defines the special
+    /// container names <c>$root</c>, <c>$logs</c> and <c>$web</c>.
+    /// Naming rules: MicrosoftDocs/azure-docs at commit 75162ac564772aaf7e37a740dbc56540e08b377e,
+    /// includes/storage-dev-guides/storage-dev-guide-about-container-naming.md; edge and dash rules:
+    /// MicrosoftDocs/azure-docs at commit 8ef1ae8a3759ddb2ed2e437bf38083aa2268c39f,
+    /// articles/databox/data-box-troubleshoot.md (ERROR_CONTAINER_OR_SHARE_NAME_LENGTH,
+    /// ALPHA_NUMERIC_DASH and IMPROPER_DASH); special names: Azure/azure-sdk-for-net at commit
+    /// 999c8a67bd73f03457eb7e1406059764c4a28c32, sdk/storage/Azure.Storage.Blobs/src/BlobContainerClient.cs
+    /// and sdk/storage/Azure.Storage.Common/src/Shared/Constants.cs.
+    /// </remarks>
+    private static void ValidateContainerName(string? value, string optionName, List<string> errors)
+    {
+        RequireText(value, optionName, errors);
+        if (string.IsNullOrWhiteSpace(value)
+            || StringComparer.Ordinal.Equals(value, "$root")
+            || StringComparer.Ordinal.Equals(value, "$logs")
+            || StringComparer.Ordinal.Equals(value, "$web"))
+        {
+            return;
+        }
+
+        if (value.Length is < 3 or > 63
+            || value[0] == '-'
+            || value[^1] == '-'
+            || value.Contains("--", StringComparison.Ordinal))
+        {
+            errors.Add($"{optionName} is not a valid Azure Blob container name.");
+            return;
+        }
+
+        foreach (char character in value)
+        {
+            if (!IsLowercaseAsciiLetterOrDigit(character) && character != '-')
+            {
+                errors.Add($"{optionName} is not a valid Azure Blob container name.");
+                return;
+            }
+        }
+
+    }
+
+    private static bool IsLowercaseAsciiLetterOrDigit(char value) =>
+        value is >= 'a' and <= 'z' or >= '0' and <= '9';
 
     private static void ValidateExpectedRepeats(List<ExpectedProbeRepeat>? repeats, List<string> errors)
     {

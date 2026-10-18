@@ -114,7 +114,12 @@ internal static class StrictJson
             throw new InputLimitExceededException($"{artifact} exceeds the configured byte limit.");
         }
 
-        if (utf8.Length == 0 || utf8.Span[^1] != (byte)'\n')
+        if (utf8.Length == 0)
+        {
+            return ParseResult<IReadOnlyList<ReadOnlyMemory<byte>>>.Success(Array.Empty<ReadOnlyMemory<byte>>());
+        }
+
+        if (utf8.Span[^1] != (byte)'\n')
         {
             return ParseResult<IReadOnlyList<ReadOnlyMemory<byte>>>.Failure(Problem("jsonl_missing_final_lf", artifact, checkNumber));
         }

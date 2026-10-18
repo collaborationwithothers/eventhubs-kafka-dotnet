@@ -40,9 +40,9 @@ public sealed class VerifierHostTests
 
     public static IEnumerable<object[]> RequiredOptions =>
         RequiredOptionsFor("probe-gate",
-            "GateOutputPath", "ScenarioRoot", "ScenarioLimits", "ExpectedRepeats", "RepeatResultPaths", "IoTimeout",
-            "ScenarioLimits.MaxDocumentCharacters", "ScenarioLimits.MaxNestingDepth",
-            "ScenarioLimits.MaxScalarCharacters", "ScenarioLimits.MaxParserEvents",
+            "GateOutputPath", "ScenarioRoot", "ScenarioLoadOptions", "ExpectedRepeats", "RepeatResultPaths", "IoTimeout",
+            "ScenarioLoadOptions.MaxDocumentCharacters", "ScenarioLoadOptions.MaxNestingDepth",
+            "ScenarioLoadOptions.MaxScalarCharacters", "ScenarioLoadOptions.MaxParserEvents",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxInputDepth")
         .Concat(RequiredOptionsFor("probe-gate",
             "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
@@ -60,12 +60,34 @@ public sealed class VerifierHostTests
             "StartLineInputName", "ResultOutputName", "ScenarioRoot", "ExpectedBrokerNames", "SafetyStop",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxRowBytes", "MaxRowsPerArtifact",
             "MaxInventoryEntries", "MaxPartitions", "MaxInputDepth", "MaxNativeReportBytes",
-            "MaxBrokerEntries", "ScenarioLimits"))
+            "MaxBrokerEntries", "ScenarioLoadOptions"))
         .Concat(RequiredOptionsFor("verify",
-            "ScenarioLimits.MaxDocumentCharacters", "ScenarioLimits.MaxNestingDepth",
-            "ScenarioLimits.MaxScalarCharacters", "ScenarioLimits.MaxParserEvents"))
+            "ScenarioLoadOptions.MaxDocumentCharacters", "ScenarioLoadOptions.MaxNestingDepth",
+            "ScenarioLoadOptions.MaxScalarCharacters", "ScenarioLoadOptions.MaxParserEvents"))
         .Concat(SharedRequiredOptions.SelectMany(property =>
             AllModes.Select(mode => new object[] { mode, property })));
+
+    [Fact]
+    public void Given_LiteralScenarioLoadOptionsConfigurationKeys_When_Bound_Then_UsesAllParserLimits()
+    {
+        string[] args = ArgumentsFor("probe-gate", TempPath())
+            .Concat(
+            [
+                "--Verifier:ScenarioLoadOptions:MaxDocumentCharacters=101",
+                "--Verifier:ScenarioLoadOptions:MaxNestingDepth=102",
+                "--Verifier:ScenarioLoadOptions:MaxScalarCharacters=103",
+                "--Verifier:ScenarioLoadOptions:MaxParserEvents=104"
+            ])
+            .ToArray();
+
+        using IHost host = Program.BuildHost(args);
+        VerifierHostOptions options = host.Services.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+
+        Assert.Equal(101, options.ScenarioLoadOptions!.MaxDocumentCharacters);
+        Assert.Equal(102, options.ScenarioLoadOptions.MaxNestingDepth);
+        Assert.Equal(103, options.ScenarioLoadOptions.MaxScalarCharacters);
+        Assert.Equal(104, options.ScenarioLoadOptions.MaxParserEvents);
+    }
 
     [Theory]
     [MemberData(nameof(RequiredOptions))]
@@ -101,6 +123,50 @@ public sealed class VerifierHostTests
         Assert.False(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
     }
 
+    public static IEnumerable<object[]> ValidContainerNames =>
+        new[] { "abc", "a0z", "0-ab-9", new string('a', 63), "$root", "$logs", "$web" }
+            .SelectMany(containerName => new[]
+            {
+                new object[] { "start-line", "VerifierContainer", containerName },
+                new object[] { "verify", "VerifierContainer", containerName },
+                new object[] { "verify", "LedgerContainer", containerName }
+            });
+
+    [Theory]
+    [MemberData(nameof(ValidContainerNames))]
+    public void Given_ValidBlobContainerName_When_Validated_Then_AllowsIt(
+        string mode,
+        string propertyName,
+        string containerName)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        SetOptionValue(options, propertyName, containerName);
+
+        Assert.True(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
+    }
+
+    public static IEnumerable<object[]> InvalidContainerNames =>
+        new[] { "ab", "Aaa", "-abc", "abc-", "a--b", "$container", new string('a', 64), "ébc" }
+            .SelectMany(containerName => new[]
+            {
+                new object[] { "start-line", "VerifierContainer", containerName },
+                new object[] { "verify", "VerifierContainer", containerName },
+                new object[] { "verify", "LedgerContainer", containerName }
+            });
+
+    [Theory]
+    [MemberData(nameof(InvalidContainerNames))]
+    public void Given_InvalidBlobContainerName_When_Validated_Then_ReportsStartupFailure(
+        string mode,
+        string propertyName,
+        string containerName)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        SetOptionValue(options, propertyName, containerName);
+
+        Assert.False(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
+    }
+
     public static IEnumerable<object[]> RequiredBudgets =>
         new[]
         {
@@ -131,10 +197,10 @@ public sealed class VerifierHostTests
             ("probe-gate", "MaxOutputBytes"), ("probe-gate", "MaxDiagnosticsPerCheck"),
             ("probe-gate", "MaxDiagnosticBytes"), ("probe-gate", "MaxArtifactBytes"),
             ("probe-gate", "MaxTotalInputBytes"), ("probe-gate", "MaxInputDepth"),
-            ("probe-gate", "ScenarioLimits.MaxDocumentCharacters"),
-            ("probe-gate", "ScenarioLimits.MaxNestingDepth"),
-            ("probe-gate", "ScenarioLimits.MaxScalarCharacters"),
-            ("probe-gate", "ScenarioLimits.MaxParserEvents"),
+            ("probe-gate", "ScenarioLoadOptions.MaxDocumentCharacters"),
+            ("probe-gate", "ScenarioLoadOptions.MaxNestingDepth"),
+            ("probe-gate", "ScenarioLoadOptions.MaxScalarCharacters"),
+            ("probe-gate", "ScenarioLoadOptions.MaxParserEvents"),
             ("start-line", "MaxOutputBytes"), ("start-line", "MaxDiagnosticsPerCheck"),
             ("start-line", "MaxDiagnosticBytes"), ("start-line", "MaxPartitions"),
             ("start-line", "MaxInputDepth"),
@@ -144,10 +210,10 @@ public sealed class VerifierHostTests
             ("verify", "MaxRowsPerArtifact"), ("verify", "MaxInventoryEntries"),
             ("verify", "MaxPartitions"), ("verify", "MaxInputDepth"), ("verify", "MaxNativeReportBytes"),
             ("verify", "MaxBrokerEntries"),
-            ("verify", "ScenarioLimits.MaxDocumentCharacters"),
-            ("verify", "ScenarioLimits.MaxNestingDepth"),
-            ("verify", "ScenarioLimits.MaxScalarCharacters"),
-            ("verify", "ScenarioLimits.MaxParserEvents")
+            ("verify", "ScenarioLoadOptions.MaxDocumentCharacters"),
+            ("verify", "ScenarioLoadOptions.MaxNestingDepth"),
+            ("verify", "ScenarioLoadOptions.MaxScalarCharacters"),
+            ("verify", "ScenarioLoadOptions.MaxParserEvents")
         }.SelectMany(item => new[] { 0, -1 }.Select(value => new object[] { item.Item1, item.Item2, value }));
 
     [Theory]
@@ -434,7 +500,7 @@ public sealed class VerifierHostTests
         MaxInventoryEntries = 1_000,
         MaxNativeReportBytes = 65_536,
         MaxBrokerEntries = 16,
-        ScenarioLimits = new VerifierScenarioLimits
+        ScenarioLoadOptions = new VerifierScenarioLoadOptions
         {
             MaxDocumentCharacters = 16_384,
             MaxNestingDepth = 32,
@@ -582,7 +648,7 @@ public sealed class VerifierHostTests
                 "--Verifier:MaxNativeReportBytes=65536",
                 "--Verifier:MaxBrokerEntries=16"
             ]);
-            AddScenarioLimits(args);
+            AddScenarioLoadOptions(args);
         }
         else
         {
@@ -594,7 +660,7 @@ public sealed class VerifierHostTests
                 "--Verifier:MaxTotalInputBytes=4194304",
                 "--Verifier:MaxInputDepth=16"
             ]);
-            AddScenarioLimits(args);
+            AddScenarioLoadOptions(args);
             for (var index = 0; index < 5; index++)
             {
                 args.Add($"--Verifier:ExpectedRepeats:{index}:ScenarioId=A01");
@@ -610,12 +676,12 @@ public sealed class VerifierHostTests
         return args.ToArray();
     }
 
-    private static void AddScenarioLimits(List<string> args)
+    private static void AddScenarioLoadOptions(List<string> args)
     {
-        args.Add("--Verifier:ScenarioLimits:MaxDocumentCharacters=16384");
-        args.Add("--Verifier:ScenarioLimits:MaxNestingDepth=32");
-        args.Add("--Verifier:ScenarioLimits:MaxScalarCharacters=2048");
-        args.Add("--Verifier:ScenarioLimits:MaxParserEvents=2000");
+        args.Add("--Verifier:ScenarioLoadOptions:MaxDocumentCharacters=16384");
+        args.Add("--Verifier:ScenarioLoadOptions:MaxNestingDepth=32");
+        args.Add("--Verifier:ScenarioLoadOptions:MaxScalarCharacters=2048");
+        args.Add("--Verifier:ScenarioLoadOptions:MaxParserEvents=2000");
     }
 
     private static string TempPath() => Path.Combine(Path.GetTempPath(), "verifier-host-" + Guid.NewGuid().ToString("N") + ".json");
