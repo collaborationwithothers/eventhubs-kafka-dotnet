@@ -179,6 +179,43 @@ public sealed class LedgerValidatorTests
     }
 
     [Fact]
+    public void Given_manifest_dictionaries_When_serialized_Then_both_overloads_use_ordinal_order_and_round_trip_strictly()
+    {
+        ImmutableDictionary<string, string>.Builder runtimeVersionBuilder =
+            ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        runtimeVersionBuilder.Add("zeta", "2");
+        runtimeVersionBuilder.Add("alpha", "1");
+        ImmutableDictionary<string, string> runtimeVersions = runtimeVersionBuilder.ToImmutable();
+        ImmutableDictionary<string, string>.Builder evidenceFileBuilder =
+            ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        evidenceFileBuilder.Add("statistics.jsonl", "stats");
+        evidenceFileBuilder.Add("ledger.jsonl", "ledger");
+        ImmutableDictionary<string, string> evidenceFiles = evidenceFileBuilder.ToImmutable();
+        RunManifest manifest = Manifest([Entry]) with
+        {
+            RuntimeVersions = runtimeVersions,
+            EvidenceFiles = evidenceFiles
+        };
+
+        byte[] unbounded = LedgerValidator.SerializeManifest(manifest);
+        byte[] bounded = LedgerValidator.SerializeManifest(manifest, 16 * 1024);
+
+        Assert.Equal(unbounded, bounded);
+        using (JsonDocument document = JsonDocument.Parse(unbounded))
+        {
+            Assert.Equal(["alpha", "zeta"], document.RootElement.GetProperty("runtime_versions")
+                .EnumerateObject().Select(property => property.Name));
+            Assert.Equal(["ledger.jsonl", "statistics.jsonl"], document.RootElement.GetProperty("evidence_files")
+                .EnumerateObject().Select(property => property.Name));
+        }
+
+        RunManifest roundTripped = LedgerValidator.DeserializeManifest(unbounded);
+        Assert.Equal(runtimeVersions, roundTripped.RuntimeVersions);
+        Assert.Equal(evidenceFiles, roundTripped.EvidenceFiles);
+        Assert.Equal(unbounded, LedgerValidator.SerializeManifest(roundTripped));
+    }
+
+    [Fact]
     public void Given_manifest_inventory_above_entry_budget_When_decoded_Then_rejected_before_model_creation()
     {
         var bytes = LedgerValidator.SerializeManifest(Manifest([Entry]));

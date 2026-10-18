@@ -117,16 +117,25 @@ internal sealed class ManualTimeProvider : TimeProvider
 {
     private readonly object _gate = new();
     private readonly HashSet<ManualTimer> _timers = [];
-    private long _timestampMicroseconds = 10_000_000;
-    private DateTimeOffset _utcNow = DateTimeOffset.UnixEpoch.AddSeconds(10);
+    private readonly long _timestampFrequency;
+    private long _timestamp;
+    private DateTimeOffset _utcNow;
 
-    public override long TimestampFrequency => 1_000_000;
+    internal ManualTimeProvider(long timestampFrequency = 1_000_000, long initialTimestamp = 10_000_000)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timestampFrequency);
+        _timestampFrequency = timestampFrequency;
+        _timestamp = initialTimestamp;
+        _utcNow = DateTimeOffset.UnixEpoch.AddTicks(checked(initialTimestamp * TimeSpan.TicksPerSecond / timestampFrequency));
+    }
+
+    public override long TimestampFrequency => _timestampFrequency;
 
     public override long GetTimestamp()
     {
         lock (_gate)
         {
-            return _timestampMicroseconds;
+            return _timestamp;
         }
     }
 
@@ -158,7 +167,7 @@ internal sealed class ManualTimeProvider : TimeProvider
         List<(TimerCallback Callback, object? State)> callbacks = [];
         lock (_gate)
         {
-            long target = checked(_timestampMicroseconds + ToMicroseconds(amount));
+            long target = checked(_timestamp + ToTimestampUnits(amount, _timestampFrequency));
             _utcNow += amount;
             while (true)
             {
@@ -171,7 +180,7 @@ internal sealed class ManualTimeProvider : TimeProvider
                     break;
                 }
 
-                _timestampMicroseconds = due.DueTimestamp;
+                _timestamp = due.DueTimestamp;
                 callbacks.Add((due.Callback, due.State));
                 due.Reschedule();
                 if (due.PeriodMicroseconds == 0)
@@ -180,7 +189,7 @@ internal sealed class ManualTimeProvider : TimeProvider
                 }
             }
 
-            _timestampMicroseconds = target;
+            _timestamp = target;
         }
 
         foreach ((TimerCallback callback, object? state) in callbacks)
@@ -189,7 +198,8 @@ internal sealed class ManualTimeProvider : TimeProvider
         }
     }
 
-    private static long ToMicroseconds(TimeSpan value) => checked(value.Ticks / 10);
+    private static long ToTimestampUnits(TimeSpan value, long frequency) =>
+        checked(value.Ticks * frequency / TimeSpan.TicksPerSecond);
 
     private void Remove(ManualTimer timer)
     {
@@ -239,8 +249,8 @@ internal sealed class ManualTimeProvider : TimeProvider
             long now = _owner.GetTimestamp();
             _dueTimestamp = dueTime == Timeout.InfiniteTimeSpan
                 ? long.MaxValue
-                : checked(now + ToMicroseconds(dueTime));
-            _periodMicroseconds = period == Timeout.InfiniteTimeSpan ? 0 : ToMicroseconds(period);
+                : checked(now + ToTimestampUnits(dueTime, _owner.TimestampFrequency));
+            _periodMicroseconds = period == Timeout.InfiniteTimeSpan ? 0 : ToTimestampUnits(period, _owner.TimestampFrequency);
             return true;
         }
 

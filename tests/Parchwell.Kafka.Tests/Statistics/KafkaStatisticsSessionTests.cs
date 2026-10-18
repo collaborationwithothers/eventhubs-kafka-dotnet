@@ -13,6 +13,51 @@ public sealed class KafkaStatisticsSessionTests
     private static readonly string[] ExpectedBroker = ["broker/1"];
 
     [Fact]
+    public async Task Given_CompatibleClock_When_StatisticsCompletionStarts_Then_ReturnsTheCapturedDrainBoundary()
+    {
+        var clock = new ManualTimeProvider(timestampFrequency: 10_000_000, initialTimestamp: 100_000_001);
+        var sink = new RecordingStatisticsSink();
+        using var metrics = new KafkaStatisticsMetrics();
+        await using var session = NewSession(clock, sink, metrics);
+
+        Task<KafkaStatisticsCompletion> completionTask = CompleteAsync(session);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        session.Capture(StatisticsTestSupport.Report("test-client", 10_900_001, 900_000));
+
+        KafkaStatisticsCompletion completion = await completionTask;
+
+        Assert.True(completion.IsComplete);
+        Assert.Equal(10_000_001L, completion.DrainBoundaryMicroseconds);
+        Assert.Empty(completion.Diagnostics);
+        Assert.Empty(completion.MissingBrokers);
+    }
+
+    [Fact]
+    public async Task Given_IncompleteStatisticsCompletion_When_ReceiptIsReturned_Then_PreservesItsCapturedBoundary()
+    {
+        var clock = new ManualTimeProvider(timestampFrequency: 10_000_000, initialTimestamp: 100_000_001);
+        var sink = new RecordingStatisticsSink();
+        using var metrics = new KafkaStatisticsMetrics();
+        await using var session = NewSession(clock, sink, metrics);
+        using var cancellation = new CancellationTokenSource();
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellation.Token, TestContext.Current.CancellationToken);
+
+        Task<KafkaStatisticsCompletion> completionTask = session.CompleteAsync(ExpectedBroker, linkedCancellation.Token);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        session.Capture(StatisticsTestSupport.Report("test-client", 10_000_001, 0));
+        await sink.WaitForReportsAsync(1);
+        cancellation.Cancel();
+
+        KafkaStatisticsCompletion completion = await completionTask;
+
+        Assert.False(completion.IsComplete);
+        Assert.Equal(10_000_001L, completion.DrainBoundaryMicroseconds);
+        Assert.Equal(["completion_cancelled"], completion.Diagnostics.Select(item => item.Code));
+        Assert.Equal(ExpectedBroker, completion.MissingBrokers);
+    }
+
+    [Fact]
     public async Task Given_ValidPreAndPostDrainReports_When_Completing_Then_RetainsImmutableEvidenceAndFreshCoverage()
     {
         var clock = new ManualTimeProvider();
@@ -214,6 +259,25 @@ public sealed class KafkaStatisticsSessionTests
         KafkaStatisticsCompletion completion = await CompleteAsync(session);
 
         Assert.False(completion.IsComplete);
+        Assert.Null(completion.DrainBoundaryMicroseconds);
+        Assert.Contains(completion.Diagnostics, item => item.Code == "clock_unverified");
+        Assert.Contains("broker/1", completion.MissingBrokers);
+        await sink.WaitForReportsAsync(1);
+    }
+
+    [Fact]
+    public async Task Given_UnverifiedClock_When_ReceiptIsReturned_Then_BoundaryRemainsAbsent()
+    {
+        var clock = new ManualTimeProvider();
+        var sink = new RecordingStatisticsSink();
+        using var metrics = new KafkaStatisticsMetrics();
+        await using var session = NewSession(clock, sink, metrics, nativeClockCompatible: false);
+
+        session.Capture(StatisticsTestSupport.Report("test-client", 11_000_000, 1_000_000));
+        KafkaStatisticsCompletion completion = await CompleteAsync(session);
+
+        Assert.False(completion.IsComplete);
+        Assert.Null(completion.DrainBoundaryMicroseconds);
         Assert.Contains(completion.Diagnostics, item => item.Code == "clock_unverified");
         Assert.Contains("broker/1", completion.MissingBrokers);
         await sink.WaitForReportsAsync(1);

@@ -601,7 +601,10 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
                 && diagnostics.IsEmpty
                 && missing.Length == 0;
             _completionFinished = true;
-            return new KafkaStatisticsCompletion(complete, diagnostics, missing.ToImmutableArray());
+            return new KafkaStatisticsCompletion(complete, diagnostics, missing.ToImmutableArray())
+            {
+                DrainBoundaryMicroseconds = _completionBoundaryMicroseconds
+            };
         }
     }
 

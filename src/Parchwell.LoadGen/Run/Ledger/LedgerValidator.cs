@@ -54,14 +54,14 @@ public static class LedgerValidator
     public static byte[] SerializeManifest(RunManifest manifest)
     {
         ValidateManifest(manifest);
-        return JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions);
+        return JsonSerializer.SerializeToUtf8Bytes(CreateManifestSerializationModel(manifest), JsonOptions);
     }
 
     /// <summary>Serializes a manifest without allowing the JSON writer to grow beyond the supplied byte budget.</summary>
     public static byte[] SerializeManifest(RunManifest manifest, int maximumBytes)
     {
         ValidateManifest(manifest);
-        return SerializeBounded(manifest, maximumBytes);
+        return SerializeBounded(CreateManifestSerializationModel(manifest), maximumBytes);
     }
 
     /// <summary>Parses a strict manifest, including every nested inventory entry.</summary>
@@ -282,6 +282,31 @@ public static class LedgerValidator
     private static bool IsSafeControlText(string? value) =>
         !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
 
+    private static ManifestSerializationModel CreateManifestSerializationModel(RunManifest manifest) => new(
+        manifest.SchemaVersion,
+        manifest.Identity,
+        manifest.GeneratorVersion,
+        manifest.PlannedAttemptCount,
+        manifest.AttemptCount,
+        manifest.Inventory,
+        manifest.TimestampFrequency,
+        manifest.StartTimestamp,
+        manifest.WorkerStatus,
+        manifest.BookkeepingComplete,
+        manifest.FirstUnexecutedOrdinal,
+        manifest.Diagnostics,
+        ToOrdinalDictionary(manifest.RuntimeVersions),
+        ToOrdinalDictionary(manifest.EvidenceFiles),
+        manifest.GuardObservations);
+
+    private static SortedDictionary<string, string> ToOrdinalDictionary(ImmutableDictionary<string, string> values)
+    {
+        var ordered = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach ((string key, string value) in values.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+            ordered.Add(key, value);
+        return ordered;
+    }
+
     private static void ValidateObjectProperty(JsonElement parent, string name, string[] expected)
     {
         if (!parent.TryGetProperty(name, out var element)) throw new JsonException($"missing_property:{name}");
@@ -392,4 +417,21 @@ public static class LedgerValidator
             Array.Resize(ref buffer, Math.Min(maximumBytes, Math.Max(required, doubled)));
         }
     }
+
+    private sealed record ManifestSerializationModel(
+        int SchemaVersion,
+        RunIdentity Identity,
+        string GeneratorVersion,
+        long PlannedAttemptCount,
+        long AttemptCount,
+        ImmutableArray<AttemptEntry> Inventory,
+        long TimestampFrequency,
+        long StartTimestamp,
+        string WorkerStatus,
+        bool BookkeepingComplete,
+        long? FirstUnexecutedOrdinal,
+        ImmutableArray<string> Diagnostics,
+        SortedDictionary<string, string> RuntimeVersions,
+        SortedDictionary<string, string> EvidenceFiles,
+        ImmutableArray<string> GuardObservations);
 }
