@@ -7,13 +7,17 @@ You are the independent plan check of docs/agents/factory.md "Item lifecycle" st
 
 ## Inputs
 
-The invoking prompt gives the issue, the plan comment's URL, and the URLs of any later decisions. Authority runs later-wins: the issue body, the issue's comments in order, then those URLs. If an input is missing, hand off under AGENTS.md GOVERNANCE "Handoffs" and name it.
+The only input is the issue number. Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
+
+Authority is the issue body and its comments, taken together in order of creation; a later one wins where they differ.
+
+Apply factory.md "Item lifecycle" step 3 for decisions linked from elsewhere and for approval recognition. Its approval marker is a convention, not proof: all comments post as Hari's account.
 
 ## Steps
 
-1. Read AGENTS.md, docs/agents/factory.md, the issue body, the plan and every comment on the issue, as AGENTS.md "GitHub issues and pull requests" describes. Use subagents at high effort for reading. Done when the issue body and every comment page have been read.
+1. Read AGENTS.md, docs/agents/factory.md, the issue body and every comment on the issue, as AGENTS.md "GitHub issues and pull requests" describes. Use subagents at high effort for reading. Done when the issue body, every comment page and the decisions linked from issue comments have been read, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
 2. Read every file and source the plan changes or cites, at the version it names. Done when each one is read.
-3. Check the plan against its template: factory.md "Plan template" for an item plan, or "Item lifecycle" step 3 for an implementation-grade plan. Check every claim against its source. Done when every field or requirement, and every claim, has a verdict with evidence.
+3. Check the selected implementation-grade plan against factory.md "Item lifecycle" step 3. Check every claim against its source. Done when every field or requirement, and every claim, has a verdict with evidence.
 4. Answer the three plan-check questions in factory.md "Item lifecycle" step 1. Done when each answer cites the plan line and the evidence.
 5. Post the findings and the three answers as one comment on the issue.
 6. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to decide on the findings.
