@@ -28,9 +28,13 @@ public sealed class VerifierHostTests
     public async Task Given_MissingOrUnknownMode_When_HostStarts_Then_ExitsNonzeroBeforeIo(string? mode)
     {
         string outputPath = TempPath();
-        int exitCode = await Program.RunAsync(mode is null ? [] : [$"--Verifier:Mode={mode}"]);
+        var handlerCalls = 0;
+        int exitCode = await Program.RunAsync(
+            mode is null ? [] : [$"--Verifier:Mode={mode}"],
+            services => services.AddSingleton<IVerifierModeHandler>(new CountingHandler(() => handlerCalls++)));
 
         Assert.NotEqual(0, exitCode);
+        Assert.Equal(0, handlerCalls);
         Assert.False(File.Exists(outputPath));
     }
 
@@ -40,6 +44,9 @@ public sealed class VerifierHostTests
             "ScenarioLimits.MaxDocumentCharacters", "ScenarioLimits.MaxNestingDepth",
             "ScenarioLimits.MaxScalarCharacters", "ScenarioLimits.MaxParserEvents",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxInputDepth")
+        .Concat(RequiredOptionsFor("probe-gate",
+            "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
+            "ExpectedRepeats.0.InstanceId", "ExpectedRepeats.0.ExpectedInstanceId", "ExpectedRepeats.0.ClientId"))
         .Concat(RequiredOptionsFor("start-line",
             "ConfigurationId", "RunId", "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId",
             "NamespaceName", "BlobServiceUri", "VerifierContainer", "TokenTimeout", "MetadataTimeout",
@@ -73,6 +80,27 @@ public sealed class VerifierHostTests
         Assert.NotEmpty(result.Failures!);
     }
 
+    [Theory]
+    [MemberData(nameof(RequiredTextOptions))]
+    public void Given_BlankRequiredTextOption_When_Validated_Then_ReportsStartupFailure(string mode, string propertyName)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        SetOptionValue(options, propertyName, " \t ");
+
+        Assert.False(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
+    }
+
+    [Theory]
+    [InlineData("start-line")]
+    [InlineData("verify")]
+    public void Given_RelativeBlobServiceUri_When_Validated_Then_ReportsStartupFailure(string mode)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        options.BlobServiceUri = "storage.example/container";
+
+        Assert.False(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
+    }
+
     public static IEnumerable<object[]> RequiredBudgets =>
         new[]
         {
@@ -83,6 +111,19 @@ public sealed class VerifierHostTests
             ("verify", "TokenTimeout"), ("verify", "MetadataTimeout"), ("verify", "WatermarkTimeout"),
             ("verify", "PollSlice"), ("verify", "IoTimeout"), ("verify", "BlobIoTimeout"), ("verify", "SafetyStop")
         }.SelectMany(item => new[] { 0, -1 }.Select(value => new object[] { item.Item1, item.Item2, value }));
+
+    public static IEnumerable<object[]> RequiredTextOptions =>
+        RequiredOptionsFor("probe-gate", "ScenarioId", "VerifierCommit", "GateOutputPath", "ScenarioRoot",
+            "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
+            "ExpectedRepeats.0.InstanceId", "ExpectedRepeats.0.ExpectedInstanceId", "ExpectedRepeats.0.ClientId")
+        .Concat(RequiredOptionsFor("start-line", "ScenarioId", "VerifierCommit", "ConfigurationId", "RunId",
+            "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId", "NamespaceName",
+            "VerifierContainer", "TenantId", "WorkloadIdentityClientId", "FederatedTokenFilePath",
+            "StartLineOutputName"))
+        .Concat(RequiredOptionsFor("verify", "ScenarioId", "VerifierCommit", "ConfigurationId", "RunId",
+            "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId", "NamespaceName",
+            "VerifierContainer", "TenantId", "WorkloadIdentityClientId", "FederatedTokenFilePath",
+            "LedgerContainer", "ArtifactPrefix", "StartLineInputName", "ResultOutputName", "ScenarioRoot"));
 
     public static IEnumerable<object[]> RequiredLimits =>
         new[]
@@ -175,6 +216,11 @@ public sealed class VerifierHostTests
 
     [Theory]
     [InlineData("probe-gate", "TokenTimeout")]
+    [InlineData("probe-gate", "MetadataTimeout")]
+    [InlineData("probe-gate", "WatermarkTimeout")]
+    [InlineData("probe-gate", "PollSlice")]
+    [InlineData("probe-gate", "BlobIoTimeout")]
+    [InlineData("probe-gate", "SafetyStop")]
     [InlineData("start-line", "IoTimeout")]
     [InlineData("start-line", "SafetyStop")]
     public async Task Given_MalformedInactiveBudget_When_HostBindsOptions_Then_IgnoresTheValue(string mode, string propertyName)
@@ -440,15 +486,34 @@ public sealed class VerifierHostTests
 
     private static void SetOptionNull(VerifierHostOptions options, string propertyName)
     {
+        (object owner, string property) = ResolveOwner(options, propertyName);
+        owner.GetType().GetProperty(property)!.SetValue(owner, null);
+    }
+
+    private static void SetOptionValue(VerifierHostOptions options, string propertyName, object value)
+    {
+        (object owner, string property) = ResolveOwner(options, propertyName);
+        owner.GetType().GetProperty(property)!.SetValue(owner, value);
+    }
+
+    private static (object Owner, string Property) ResolveOwner(VerifierHostOptions options, string propertyName)
+    {
         string[] propertyPath = propertyName.Split('.');
         object owner = options;
         for (var index = 0; index < propertyPath.Length - 1; index++)
         {
-            PropertyInfo nestedProperty = owner.GetType().GetProperty(propertyPath[index])!;
-            owner = nestedProperty.GetValue(owner)!;
+            if (int.TryParse(propertyPath[index], out int listIndex))
+            {
+                owner = ((System.Collections.IList)owner)[listIndex]!;
+            }
+            else
+            {
+                PropertyInfo nestedProperty = owner.GetType().GetProperty(propertyPath[index])!;
+                owner = nestedProperty.GetValue(owner)!;
+            }
         }
 
-        owner.GetType().GetProperty(propertyPath[^1])!.SetValue(owner, null);
+        return (owner, propertyPath[^1]);
     }
 
     internal static string[] ArgumentsFor(string mode, string outputPath)
@@ -612,6 +677,17 @@ public sealed class VerifierHostTests
         public VerifierMode Mode { get; }
 
         public Task ExecuteAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class CountingHandler(Action onExecute) : IVerifierModeHandler
+    {
+        public VerifierMode Mode => VerifierMode.ProbeGate;
+
+        public Task ExecuteAsync(CancellationToken cancellationToken)
+        {
+            onExecute();
+            return Task.CompletedTask;
+        }
     }
 
 }

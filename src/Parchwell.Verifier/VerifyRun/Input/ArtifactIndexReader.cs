@@ -16,21 +16,21 @@ internal static class ArtifactIndexReader
     private static readonly IReadOnlySet<string> DescriptorFields = Fields("name", "length", "sha256");
     private static readonly IReadOnlySet<string> WorkerStatuses = Fields("complete");
 
-    /// <summary>Returns structural index data; a caller treats any parse problem as an execution failure.</summary>
+    /// <summary>Returns declared index data or an unowned execution failure for missing or malformed input.</summary>
     public static ParseResult<ArtifactIndex> Read(ReadOnlyMemory<byte>? source, InputLimits limits, InputBudget budget)
     {
         if (source is null)
-            return ParseResult<ArtifactIndex>.Failure(new StructuralProblem(null, "missing_input", Artifact, null, null, null));
+            return ParseResult<ArtifactIndex>.ExecutionFailure(new StructuralProblem(null, "missing_input", Artifact, null, null, null));
         ReadOnlyMemory<byte> utf8 = source.Value;
         budget.ConsumeBytes(utf8.Length);
         ParseResult<JsonDocument> parsed = StrictJson.ParseDocument(utf8, Artifact, limits, null);
-        if (!parsed.IsSuccess) return ParseResult<ArtifactIndex>.Failure(parsed.Problems);
+        if (!parsed.IsSuccess) return ParseResult<ArtifactIndex>.ExecutionFailure(parsed.Problems);
         using JsonDocument document = parsed.Value!;
         var parser = new IndexParser(budget);
         ArtifactIndex? value = parser.Read(document.RootElement);
         return parser.Problems.Count == 0 && value is not null
             ? ParseResult<ArtifactIndex>.Success(value)
-            : ParseResult<ArtifactIndex>.Failure(parser.Problems);
+            : ParseResult<ArtifactIndex>.ExecutionFailure(parser.Problems);
     }
 
     private static HashSet<string> Fields(params string[] names) => new(names, StringComparer.Ordinal);

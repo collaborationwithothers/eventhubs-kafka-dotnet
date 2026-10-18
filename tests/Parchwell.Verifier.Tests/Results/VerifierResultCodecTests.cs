@@ -39,7 +39,8 @@ public sealed class VerifierResultCodecTests
     {
         VerifierResult result = Result(VerifierResultStatus.CompleteValid, counts: new OutcomeCounts(11, 12, 13, 14, 15, 16));
 
-        using JsonDocument json = JsonDocument.Parse(VerifierResultCodec.Write(result, OutputLimits));
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
         JsonElement root = json.RootElement;
 
         Assert.Equal(11, root.GetProperty("ok").GetInt64());
@@ -48,6 +49,14 @@ public sealed class VerifierResultCodecTests
         Assert.Equal(14, root.GetProperty("reported_failure").GetInt64());
         Assert.Equal(15, root.GetProperty("duplicate").GetInt64());
         Assert.Equal(16, root.GetProperty("reorder").GetInt64());
+
+        OutcomeCounts roundTripped = Read(bytes).Counts!;
+        Assert.Equal(11, roundTripped.Ok);
+        Assert.Equal(12, roundTripped.Loss);
+        Assert.Equal(13, roundTripped.Phantom);
+        Assert.Equal(14, roundTripped.ReportedFailure);
+        Assert.Equal(15, roundTripped.Duplicate);
+        Assert.Equal(16, roundTripped.Reorder);
     }
 
     [Fact]
@@ -113,6 +122,7 @@ public sealed class VerifierResultCodecTests
 
         Assert.Equal(1250, json.RootElement.GetProperty("drain_time").GetInt64());
         Assert.False(json.RootElement.TryGetProperty("drain_elapsed_at_stop", out _));
+        Assert.False(json.RootElement.TryGetProperty("drain_elapsed_at_stop_lower_bound", out _));
         Assert.Equal(1250m, roundTripped.DrainTimeMilliseconds);
     }
 
@@ -162,11 +172,111 @@ public sealed class VerifierResultCodecTests
         Assert.Equal("10.0.0", json.RootElement.GetProperty("runtime_versions").GetProperty("runtime").GetString());
         Assert.Equal("verifier-commit", json.RootElement.GetProperty("verifier_commit").GetString());
         Assert.Equal("2.16.0", json.RootElement.GetProperty("verifier_confluent_kafka_version").GetString());
+        JsonElement diagnostic = json.RootElement.GetProperty("diagnostics")[0];
+        Assert.Equal(1, diagnostic.GetProperty("check").GetInt32());
+        Assert.Equal("bad_row", diagnostic.GetProperty("code").GetString());
+        Assert.Equal("ledger.jsonl", diagnostic.GetProperty("artifact").GetString());
+        Assert.Equal(3, diagnostic.GetProperty("row").GetInt64());
+        Assert.Equal("delivered", diagnostic.GetProperty("field").GetString());
+        Assert.Equal("false", diagnostic.GetProperty("snippet").GetString());
         Assert.Equal(FailedOneAndTwo, Read(bytes).FailedChecks);
         Assert.DoesNotContain("raw_json", text, StringComparison.Ordinal);
         Assert.DoesNotContain("typed_snapshot", text, StringComparison.Ordinal);
         Assert.DoesNotContain("request_lifecycle_requirements", text, StringComparison.Ordinal);
         Assert.DoesNotContain("index_hash", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Given_ProducerAndVerifierVersionsDiffer_When_RoundTripped_Then_CopiesEachSourceSeparately()
+    {
+        VerifierResult result = Result(VerifierResultStatus.Invalid) with
+        {
+            GeneratorVersion = "producer-generator-4.2.0",
+            RuntimeVersions = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["dotnet"] = "producer-dotnet-10.0.0",
+                ["confluent_kafka"] = "producer-managed-3.8.0",
+                ["librdkafka"] = "producer-native-2.4.0",
+                ["workload_generator"] = "producer-workload-4.2.0"
+            },
+            VerifierCommit = "verifier-commit-abc",
+            VerifierConfluentKafkaVersion = "verifier-managed-2.16.0",
+            VerifierLibrdkafkaVersion = "verifier-native-2.16.0"
+        };
+
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        JsonElement root = json.RootElement;
+
+        Assert.Equal("producer-generator-4.2.0", root.GetProperty("generator_version").GetString());
+        Assert.Equal("producer-dotnet-10.0.0", root.GetProperty("runtime_versions").GetProperty("dotnet").GetString());
+        Assert.Equal("producer-managed-3.8.0", root.GetProperty("runtime_versions").GetProperty("confluent_kafka").GetString());
+        Assert.Equal("producer-native-2.4.0", root.GetProperty("runtime_versions").GetProperty("librdkafka").GetString());
+        Assert.Equal("producer-workload-4.2.0", root.GetProperty("runtime_versions").GetProperty("workload_generator").GetString());
+        Assert.Equal("verifier-commit-abc", root.GetProperty("verifier_commit").GetString());
+        Assert.Equal("verifier-managed-2.16.0", root.GetProperty("verifier_confluent_kafka_version").GetString());
+        Assert.Equal("verifier-native-2.16.0", root.GetProperty("verifier_librdkafka_version").GetString());
+
+        VerifierResult roundTripped = Read(bytes);
+        Assert.Equal("producer-generator-4.2.0", roundTripped.GeneratorVersion);
+        Assert.Equal(result.RuntimeVersions, roundTripped.RuntimeVersions);
+        Assert.Equal("verifier-commit-abc", roundTripped.VerifierCommit);
+        Assert.Equal("verifier-managed-2.16.0", roundTripped.VerifierConfluentKafkaVersion);
+        Assert.Equal("verifier-native-2.16.0", roundTripped.VerifierLibrdkafkaVersion);
+    }
+
+    [Fact]
+    public void Given_AbsentAndObservedEmptyBoundaries_When_RoundTripped_Then_PreservesTheDistinction()
+    {
+        byte[] absentBytes = VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits);
+        using JsonDocument absentJson = JsonDocument.Parse(absentBytes);
+        VerifierResult absent = Read(absentBytes);
+
+        Assert.False(absentJson.RootElement.TryGetProperty("start_line", out _));
+        Assert.False(absentJson.RootElement.TryGetProperty("end_line", out _));
+        Assert.Null(absent.StartLine);
+        Assert.Null(absent.EndLine);
+
+        VerifierResult observedEmptyResult = Result(VerifierResultStatus.Invalid) with
+        {
+            StartLine = [],
+            EndLine = []
+        };
+        byte[] emptyBytes = VerifierResultCodec.Write(observedEmptyResult, OutputLimits);
+        using JsonDocument emptyJson = JsonDocument.Parse(emptyBytes);
+        VerifierResult observedEmpty = Read(emptyBytes);
+
+        Assert.Equal(JsonValueKind.Array, emptyJson.RootElement.GetProperty("start_line").ValueKind);
+        Assert.Equal(0, emptyJson.RootElement.GetProperty("start_line").GetArrayLength());
+        Assert.Equal(JsonValueKind.Array, emptyJson.RootElement.GetProperty("end_line").ValueKind);
+        Assert.Equal(0, emptyJson.RootElement.GetProperty("end_line").GetArrayLength());
+        Assert.NotNull(observedEmpty.StartLine);
+        Assert.Empty(observedEmpty.StartLine!);
+        Assert.NotNull(observedEmpty.EndLine);
+        Assert.Empty(observedEmpty.EndLine!);
+
+        VerifierResult observedResult = Result(VerifierResultStatus.Invalid) with
+        {
+            StartLine = [new WatermarkOffset(0, 7), new WatermarkOffset(1, 0)],
+            EndLine = [new WatermarkOffset(0, 9)]
+        };
+        byte[] observedBytes = VerifierResultCodec.Write(observedResult, OutputLimits);
+        using JsonDocument observedJson = JsonDocument.Parse(observedBytes);
+        JsonElement start = observedJson.RootElement.GetProperty("start_line");
+        JsonElement end = observedJson.RootElement.GetProperty("end_line");
+        Assert.Equal(2, start.GetArrayLength());
+        Assert.Equal(0, start[0].GetProperty("partition").GetInt32());
+        Assert.Equal(7, start[0].GetProperty("offset").GetInt64());
+        Assert.Equal(1, start[1].GetProperty("partition").GetInt32());
+        Assert.Equal(0, start[1].GetProperty("offset").GetInt64());
+        Assert.Equal(1, end.GetArrayLength());
+        Assert.Equal(0, end[0].GetProperty("partition").GetInt32());
+        Assert.Equal(9, end[0].GetProperty("offset").GetInt64());
+        VerifierResult observed = Read(observedBytes);
+        Assert.Equal(2, observed.StartLine!.Count);
+        Assert.Equal(new WatermarkOffset(0, 7), observed.StartLine[0]);
+        Assert.Equal(new WatermarkOffset(1, 0), observed.StartLine[1]);
+        Assert.Equal(new WatermarkOffset(0, 9), Assert.Single(observed.EndLine!));
     }
 
     [Fact]
@@ -264,11 +374,38 @@ public sealed class VerifierResultCodecTests
 
         Assert.Equal(VerifierResultStatus.Invalid, roundTripped.Status);
         Assert.Equal(FailedTwelve, roundTripped.FailedChecks);
+        using JsonDocument json = JsonDocument.Parse(VerifierResultCodec.Write(result, OutputLimits));
+        JsonElement probe = json.RootElement.GetProperty("probe_observation");
+        Assert.True(probe.GetProperty("usable").GetBoolean());
+        Assert.False(probe.GetProperty("qualifying").GetBoolean());
+        Assert.Equal("broker-1", probe.GetProperty("broker").GetString());
+        Assert.Equal(10, probe.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(1, probe.GetProperty("window_count").GetInt64());
+        Assert.Equal(0, probe.GetProperty("window_maximum").GetInt64());
         Assert.True(roundTripped.ProbeObservation!.Usable);
         Assert.False(roundTripped.ProbeObservation.Qualifying);
+        Assert.Equal("broker-1", roundTripped.ProbeObservation.Broker);
+        Assert.Equal(10, roundTripped.ProbeObservation.ReportTimestamp);
+        Assert.Equal(1, roundTripped.ProbeObservation.WindowCount);
         Assert.Equal(0, roundTripped.ProbeObservation.WindowMaximum);
-        using JsonDocument json = JsonDocument.Parse(VerifierResultCodec.Write(result, OutputLimits));
         Assert.False(json.RootElement.TryGetProperty("ok", out _));
+
+        VerifierResult withoutMeasurements = Result(VerifierResultStatus.Invalid) with
+        {
+            ProbeObservation = new ProbeRepeatObservation(false, false, null, null, null, null)
+        };
+        byte[] absentBytes = VerifierResultCodec.Write(withoutMeasurements, OutputLimits);
+        using JsonDocument absentJson = JsonDocument.Parse(absentBytes);
+        JsonElement absentProbe = absentJson.RootElement.GetProperty("probe_observation");
+        Assert.False(absentProbe.TryGetProperty("broker", out _));
+        Assert.False(absentProbe.TryGetProperty("report_timestamp", out _));
+        Assert.False(absentProbe.TryGetProperty("window_count", out _));
+        Assert.False(absentProbe.TryGetProperty("window_maximum", out _));
+        ProbeRepeatObservation readAbsent = Read(absentBytes).ProbeObservation!;
+        Assert.Null(readAbsent.Broker);
+        Assert.Null(readAbsent.ReportTimestamp);
+        Assert.Null(readAbsent.WindowCount);
+        Assert.Null(readAbsent.WindowMaximum);
     }
 
     [Fact]
@@ -288,6 +425,12 @@ public sealed class VerifierResultCodecTests
         Assert.Equal(8, broker.GetProperty("first_post_drain").GetInt64());
         Assert.True(broker.GetProperty("lower_bound").GetBoolean());
         Assert.Equal(9, Read(bytes).BrokerCount!.Maximum);
+        BrokerConnectionCount readBroker = Read(bytes).BrokerCount!;
+        Assert.Equal("producer", readBroker.Role);
+        Assert.Equal("producer-1", readBroker.ClientId);
+        Assert.Equal(9, readBroker.Maximum);
+        Assert.Equal(8, readBroker.FirstPostDrain);
+        Assert.True(readBroker.LowerBound);
 
         byte[] absentMeasurement = VerifierResultCodec.Write(result with
         {
@@ -296,6 +439,9 @@ public sealed class VerifierResultCodecTests
         using JsonDocument absentJson = JsonDocument.Parse(absentMeasurement);
         Assert.False(absentJson.RootElement.GetProperty("broker_count").TryGetProperty("maximum", out _));
         Assert.False(absentJson.RootElement.GetProperty("broker_count").TryGetProperty("first_post_drain", out _));
+        BrokerConnectionCount readAbsentBroker = Read(absentMeasurement).BrokerCount!;
+        Assert.Null(readAbsentBroker.Maximum);
+        Assert.Null(readAbsentBroker.FirstPostDrain);
 
         Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(result with
         {
@@ -332,9 +478,25 @@ public sealed class VerifierResultCodecTests
         Assert.Equal("fail", actualAssessment.GetProperty("disposition").GetString());
         Assert.Equal("invalid", actualAssessment.GetProperty("classification").GetString());
         Assert.Equal("enable.idempotence", fidelity.GetProperty("differences")[0].GetProperty("setting").GetString());
+        Assert.Equal("true", fidelity.GetProperty("differences")[0].GetProperty("expected").GetString());
         Assert.Equal("false", fidelity.GetProperty("differences")[0].GetProperty("actual").GetString());
         Assert.False(fidelity.GetProperty("differences")[1].TryGetProperty("expected", out _));
         Assert.Equal(AssessmentDisposition.Fail, Read(bytes).ConfigurationFidelity!.Assessment.Disposition);
+        ConfigurationFidelityResult readFidelity = Read(bytes).ConfigurationFidelity!;
+        Assert.Equal(AssessmentEvaluation.Evaluated, readFidelity.Assessment.Evaluation);
+        Assert.Equal(AssessmentDisposition.Fail, readFidelity.Assessment.Disposition);
+        Assert.Equal(AssessmentClassification.Invalid, readFidelity.Assessment.Classification);
+        Assert.Equal("capabilities.json", readFidelity.Assessment.Artifact);
+        Assert.Equal(2, readFidelity.Assessment.Row);
+        Assert.Equal("settings.enable.idempotence", readFidelity.Assessment.Field);
+        Assert.Equal("setting_mismatch", readFidelity.Assessment.Code);
+        Assert.Equal("false", readFidelity.Assessment.Snippet);
+        Assert.Equal("enable.idempotence", readFidelity.Differences[0].Setting);
+        Assert.Equal("true", readFidelity.Differences[0].Expected);
+        Assert.Equal("false", readFidelity.Differences[0].Actual);
+        Assert.Equal("acks", readFidelity.Differences[1].Setting);
+        Assert.Null(readFidelity.Differences[1].Expected);
+        Assert.Equal("all", readFidelity.Differences[1].Actual);
     }
 
     [Fact]
@@ -354,11 +516,34 @@ public sealed class VerifierResultCodecTests
         JsonElement absentWindow = evidence.GetProperty("windows")[1];
 
         Assert.Equal(-184, evidence.GetProperty("delivery_error_codes")[0].GetInt32());
+        Assert.Equal("broker-1", window.GetProperty("broker").GetString());
+        Assert.Equal(10, window.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(9, window.GetProperty("native_timestamp").GetInt64());
+        Assert.Equal(2, window.GetProperty("request_timeouts_increment").GetInt64());
+        Assert.Equal(1, window.GetProperty("disconnects_increment").GetInt64());
         Assert.Equal(17, window.GetProperty("throttle_maximum_ms").GetInt64());
         Assert.Equal(99327, window.GetProperty("round_trip_p99_us").GetInt64());
+        Assert.Equal("broker-2", absentWindow.GetProperty("broker").GetString());
+        Assert.Equal(11, absentWindow.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(10, absentWindow.GetProperty("native_timestamp").GetInt64());
+        Assert.False(absentWindow.TryGetProperty("request_timeouts_increment", out _));
+        Assert.False(absentWindow.TryGetProperty("disconnects_increment", out _));
         Assert.False(absentWindow.TryGetProperty("throttle_maximum_ms", out _));
         Assert.False(absentWindow.TryGetProperty("round_trip_p99_us", out _));
         Assert.Equal(99327, Read(bytes).A01RecordedEvidence!.Windows[0].RoundTripP99Microseconds);
+        A01RecordedEvidence readEvidence = Read(bytes).A01RecordedEvidence!;
+        Assert.Equal(-184, readEvidence.DeliveryErrorCodes[0]);
+        Assert.Equal("broker-1", readEvidence.Windows[0].Broker);
+        Assert.Equal(10, readEvidence.Windows[0].ReportTimestamp);
+        Assert.Equal(9, readEvidence.Windows[0].NativeTimestamp);
+        Assert.Equal(2, readEvidence.Windows[0].RequestTimeoutsIncrement);
+        Assert.Equal(1, readEvidence.Windows[0].DisconnectsIncrement);
+        Assert.Equal(17, readEvidence.Windows[0].ThrottleMaximumMilliseconds);
+        Assert.Equal(99327, readEvidence.Windows[0].RoundTripP99Microseconds);
+        Assert.Null(readEvidence.Windows[1].RequestTimeoutsIncrement);
+        Assert.Null(readEvidence.Windows[1].DisconnectsIncrement);
+        Assert.Null(readEvidence.Windows[1].ThrottleMaximumMilliseconds);
+        Assert.Null(readEvidence.Windows[1].RoundTripP99Microseconds);
     }
 
     [Fact]

@@ -158,7 +158,14 @@ public sealed class StrictParserTests
         ParseResult<SealedRunManifest> manifestProjection = ManifestReader.Read(Serialize(reorderedManifest), Limits(), new InputBudget(Limits()), 2);
         Assert.True(manifestProjection.IsSuccess);
         Assert.Equal("golden-run-001", manifestProjection.Value!.Identity.RunId);
+        Assert.Equal("A01", manifestProjection.Value.Identity.ScenarioId);
+        Assert.Equal("C0", manifestProjection.Value.Identity.ConfigurationId);
+        Assert.Equal("golden-instance-001", manifestProjection.Value.Identity.InstanceId);
+        Assert.Equal("golden-instance-001", manifestProjection.Value.Identity.ExpectedInstanceId);
+        Assert.Equal("golden-loadgen-client", manifestProjection.Value.Identity.ClientId);
         Assert.Equal(2L, manifestProjection.Value.AttemptCount);
+        Assert.Equal("2.16.0", manifestProjection.Value.RuntimeVersions["confluent_kafka"]);
+        Assert.Equal("statistics.jsonl", manifestProjection.Value.EvidenceFiles["statistics.jsonl"]);
 
         JsonNode statistics = JsonNode.Parse(SecondJsonLine(ReadGolden("statistics")))!;
         statistics["statistics_identity"]!["role"] = int.MaxValue;
@@ -203,8 +210,18 @@ public sealed class StrictParserTests
         manifest["guard_observations"]!.AsArray().Add("future-guard-observation");
         Assert.Contains("future-guard-observation", ManifestReader.Read(Serialize(manifest), Limits(), new InputBudget(Limits()), 2).Value!.GuardObservations);
         JsonNode index = JsonNode.Parse(ReadGolden("index"))!;
+        index["bookkeeping_complete"] = false;
         index["worker_complete"] = false;
         index["publication_complete"] = false;
+        index["artifacts"]![0]!["length"] = 1;
+        index["artifacts"]![0]!["sha256"] = new string('a', 64);
+        ParseResult<ArtifactIndex> semanticIndex = ArtifactIndexReader.Read(Serialize(index), Limits(), new InputBudget(Limits()));
+        Assert.True(semanticIndex.IsSuccess);
+        Assert.False(semanticIndex.Value!.BookkeepingComplete);
+        Assert.False(semanticIndex.Value.WorkerComplete);
+        Assert.False(semanticIndex.Value.PublicationComplete);
+        Assert.Equal(1L, semanticIndex.Value.Artifacts[0].Length);
+        Assert.Equal(new string('a', 64), semanticIndex.Value.Artifacts[0].Sha256);
         Assert.False(ArtifactIndexReader.Read(Serialize(index), Limits(), new InputBudget(Limits())).Value!.WorkerComplete);
         Assert.False(ArtifactIndexReader.Read(Serialize(index), Limits(), new InputBudget(Limits())).Value!.PublicationComplete);
 
@@ -230,13 +247,22 @@ public sealed class StrictParserTests
         ParseResult<IReadOnlyList<StatisticsEnvelope>> gap = CapturedEvidenceReader.ReadStatistics(
             JsonLine(Serialize(syntheticGap)), "statistics.jsonl", Limits(), new InputBudget(Limits()));
         Assert.True(gap.IsSuccess);
+        Assert.Single(gap.Value![0].Diagnostics);
         Assert.Equal("synthetic_gap", gap.Value![0].Diagnostics[0].Code);
         Assert.Equal(FieldPresence.Null, gap.Value[0].Diagnostics[0].Broker.Presence);
+        Assert.Equal(FieldPresence.Null, gap.Value[0].Diagnostics[0].Field.Presence);
 
         ParseResult<NativeClientReport> ten = NativeStatisticsReader.Read(Encoding.UTF8.GetBytes("{\"ts\":10,\"age\":1,\"brokers\":{}}"), "statistics.jsonl", Limits(), new InputBudget(Limits()), 4096, 1);
         ParseResult<NativeClientReport> nine = NativeStatisticsReader.Read(Encoding.UTF8.GetBytes("{\"ts\":9,\"age\":1,\"brokers\":{}}"), "statistics.jsonl", Limits(), new InputBudget(Limits()), 4096, 1);
         Assert.Equal(10L, ten.Value!.TimestampMicroseconds.Value);
         Assert.Equal(9L, nine.Value!.TimestampMicroseconds.Value);
+
+        JsonNode nonzeroNativeTimeouts = JsonNode.Parse(ValidNativeReport())!;
+        nonzeroNativeTimeouts["brokers"]!["b"]!["req_timeouts"] = 1;
+        ParseResult<NativeClientReport> retainedNativeTimeouts = NativeStatisticsReader.Read(
+            Serialize(nonzeroNativeTimeouts), "statistics.jsonl", Limits(), new InputBudget(Limits()), 4096, 1);
+        Assert.True(retainedNativeTimeouts.IsSuccess);
+        Assert.Equal(1L, retainedNativeTimeouts.Value!.Brokers.Value!["b"].RequestTimeouts.Value);
     }
 
     [Fact]
@@ -437,6 +463,10 @@ public sealed class StrictParserTests
             Assert.All(problems, p => Assert.Equal(1, p.CheckNumber));
         }
 
+        byte[] validGoldenLedgerRowWithoutFinalLf = Encoding.UTF8.GetBytes(FirstJsonLine(ReadGolden("ledger")));
+        Assert.Contains(Parse("ledger", validGoldenLedgerRowWithoutFinalLf),
+            p => p.CheckNumber == 1 && p.Code == "jsonl_missing_final_lf");
+
         byte[] extraRoot = Encoding.UTF8.GetBytes(FirstJsonLine(ReadGolden("ledger")) + "{}\n");
         Assert.Contains(Parse("ledger", extraRoot), p => p.CheckNumber == 1 && p.Code == "malformed_json");
         Assert.True(ManifestReader.Read(ReadGolden("manifest"), Limits(), new InputBudget(Limits()), 2).IsSuccess);
@@ -556,12 +586,27 @@ public sealed class StrictParserTests
         string optionalTopFieldsAbsent = "{\"ts\":1,\"age\":2,\"brokers\":{}}";
         Assert.True(NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(optionalTopFieldsAbsent), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4).IsSuccess);
 
+        JsonNode topicsWithoutStateAge = JsonNode.Parse(ValidNativeReport())!;
+        topicsWithoutStateAge["brokers"]!["b"]!["topics"] = new JsonObject();
+        topicsWithoutStateAge["brokers"]!["b"]!["throttle"]!["max"] = 17;
+        ParseResult<NativeClientReport> topicsReport = NativeStatisticsReader.Read(
+            Serialize(topicsWithoutStateAge), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
+        Assert.True(topicsReport.IsSuccess);
+        Assert.Equal(17L, topicsReport.Value!.Brokers.Value!["b"].Throttle.Value!.Maximum.Value);
+
+        JsonNode stateAgePresent = JsonNode.Parse(ValidNativeReport())!;
+        stateAgePresent["brokers"]!["b"]!["stateage"] = 123;
+        ParseResult<NativeClientReport> stateAgeReport = NativeStatisticsReader.Read(
+            Serialize(stateAgePresent), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
+        Assert.True(stateAgeReport.IsSuccess);
+
         string missingBrokerField = "{\"ts\":1,\"age\":2,\"brokers\":{\"b\":{}}}";
         ParseResult<NativeClientReport> missing = NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(missingBrokerField), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
         Assert.NotNull(missing.Value);
         Assert.Contains(missing.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b.name");
         Assert.Contains(missing.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b.throttle.cnt");
         Assert.Contains(missing.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b.throttle.max");
+        Assert.Contains(missing.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b.rtt.cnt");
         Assert.Contains(missing.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b.rtt.p99");
         NativeBrokerReport missingBroker = missing.Value!.Brokers.Value!["b"];
         Assert.Equal(FieldPresence.Missing, missingBroker.Name.Presence);
@@ -581,6 +626,25 @@ public sealed class StrictParserTests
                 Encoding.UTF8.GetBytes(variant.ToJsonString()), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
             Assert.NotNull(partial.Value);
             Assert.Contains(partial.Problems, p => p.CheckNumber == 21 && p.Field == "brokers.b." + path);
+            NativeBrokerReport partialBroker = partial.Value!.Brokers.Value!["b"];
+            FieldPresence presence = path switch
+            {
+                "name" => partialBroker.Name.Presence,
+                "nodeid" => partialBroker.NodeId.Presence,
+                "source" => partialBroker.Source.Presence,
+                "state" => partialBroker.State.Presence,
+                "req_timeouts" => partialBroker.RequestTimeouts.Presence,
+                "txretries" => partialBroker.TransmissionRetries.Presence,
+                "txerrs" => partialBroker.TransmissionErrors.Presence,
+                "rxerrs" => partialBroker.ReceiveErrors.Presence,
+                "disconnects" => partialBroker.Disconnects.Presence,
+                "throttle.cnt" => partialBroker.Throttle.Value!.Count.Presence,
+                "throttle.max" => partialBroker.Throttle.Value!.Maximum.Presence,
+                "rtt.cnt" => partialBroker.RoundTripTime.Value!.Count.Presence,
+                "rtt.p99" => partialBroker.RoundTripTime.Value!.P99.Presence,
+                _ => throw new ArgumentOutOfRangeException(nameof(path), path, "Unknown native field test case.")
+            };
+            Assert.Equal(FieldPresence.Missing, presence);
         }
 
         foreach (string field in new[] { "ts", "age", "brokers" })
@@ -605,6 +669,18 @@ public sealed class StrictParserTests
         string wrongBrokerKind = "{\"ts\":1,\"age\":2,\"brokers\":{\"b\":{\"nodeid\":\"1\"}}}";
         Assert.Contains(NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(wrongBrokerKind), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4).Problems,
             p => p.CheckNumber == 20 && p.Field == "brokers.b.nodeid");
+
+        const string nonObjectBrokers = "{\"ts\":1,\"age\":2,\"brokers\":[]}";
+        ParseResult<NativeClientReport> nonObject = NativeStatisticsReader.Read(
+            Encoding.UTF8.GetBytes(nonObjectBrokers), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
+        Assert.Null(nonObject.Value);
+        Assert.Contains(nonObject.Problems, p => p.CheckNumber == 20 && p.Field == "brokers");
+
+        const string ageOutsideInt64 = "{\"ts\":1,\"age\":9223372036854775808,\"brokers\":{}}";
+        ParseResult<NativeClientReport> overflow = NativeStatisticsReader.Read(
+            Encoding.UTF8.GetBytes(ageOutsideInt64), "statistics.jsonl", limits, new InputBudget(limits), 4096, 4);
+        Assert.Null(overflow.Value);
+        Assert.Contains(overflow.Problems, p => p.CheckNumber == 20 && p.Field == "age");
 
         foreach (string invalid in new[] { "{", "{\"ts\":\"1\",\"age\":2,\"brokers\":{}}", "{\"ts\":1,\"age\":2}", "{\"ts\":1,\"ts\":2,\"age\":3,\"brokers\":{}}" })
         {
@@ -703,6 +779,10 @@ public sealed class StrictParserTests
         InputLimits limits = Limits();
         Assert.Contains(LedgerReader.ReadRows(null, limits, new InputBudget(limits)).Problems, p => p.CheckNumber == 1 && p.Code == "missing_input");
         Assert.Contains(ManifestReader.Read(null, limits, new InputBudget(limits), 2).Problems, p => p.CheckNumber == 2 && p.Code == "missing_input");
+        ParseResult<ArtifactIndex> missingIndex = ArtifactIndexReader.Read(null, limits, new InputBudget(limits));
+        Assert.True(missingIndex.IsExecutionFailure);
+        Assert.Equal(ParseFailureKind.Execution, missingIndex.FailureKind);
+        Assert.Contains(missingIndex.Problems, p => p.CheckNumber is null && p.Code == "missing_input");
         Assert.Contains(ArtifactIndexReader.Read(null, limits, new InputBudget(limits)).Problems, p => p.CheckNumber is null && p.Code == "missing_input");
         Assert.Contains(CapturedEvidenceReader.ReadStatistics(null, "statistics.jsonl", limits, new InputBudget(limits)).Problems,
             p => p.CheckNumber == 17 && p.Code == "missing_input");
@@ -710,6 +790,37 @@ public sealed class StrictParserTests
             p => p.CheckNumber == 17 && p.Code == "missing_input");
         Assert.Contains(CapturedEvidenceReader.ReadCapabilities(null, "capabilities.json", limits, new InputBudget(limits)).Problems,
             p => p.CheckNumber == 17 && p.Code == "missing_input");
+    }
+
+    [Fact]
+    public void Given_MissingIndex_When_Read_Then_ReturnsExecutionFailure()
+    {
+        InputLimits limits = Limits();
+        ParseResult<ArtifactIndex> result = ArtifactIndexReader.Read(null, limits, new InputBudget(limits));
+
+        Assert.True(result.IsExecutionFailure);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ParseFailureKind.Execution, result.FailureKind);
+        StructuralProblem problem = Assert.Single(result.Problems);
+        Assert.Null(problem.CheckNumber);
+        Assert.Equal("missing_input", problem.Code);
+        Assert.Equal("index.json", problem.Artifact);
+    }
+
+    [Theory]
+    [InlineData("{", "malformed_json")]
+    [InlineData("{}", "missing_property")]
+    public void Given_MalformedIndex_When_Read_Then_ReturnsExecutionFailure(string json, string expectedCode)
+    {
+        InputLimits limits = Limits();
+        ParseResult<ArtifactIndex> result = ArtifactIndexReader.Read(
+            Encoding.UTF8.GetBytes(json), limits, new InputBudget(limits));
+
+        Assert.True(result.IsExecutionFailure);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ParseFailureKind.Execution, result.FailureKind);
+        Assert.Contains(result.Problems, problem => problem.Code == expectedCode && problem.Artifact == "index.json");
+        Assert.All(result.Problems, problem => Assert.Null(problem.CheckNumber));
     }
 
     public static IEnumerable<object[]> RequiredPropertyCases()
@@ -781,7 +892,7 @@ public sealed class StrictParserTests
         {
             "ledger" => LedgerReader.ReadRows(input, limits, budget).Problems,
             "manifest" => ManifestReader.Read(input, limits, budget, 100).Problems,
-            "index" => ArtifactIndexReader.Read(input, limits, budget).Problems,
+            "index" => ReadIndexProblems(input),
             "statistics" => CapturedEvidenceReader.ReadStatistics(input, "statistics.jsonl", limits, budget).Problems,
             "lifecycle" => CapturedEvidenceReader.ReadLifecycle(input, "request-lifecycle.jsonl", limits, budget).Problems,
             "capabilities" => CapturedEvidenceReader.ReadCapabilities(input, "capabilities.json", limits, budget).Problems,
@@ -791,6 +902,16 @@ public sealed class StrictParserTests
             "capabilities-override" => CapturedEvidenceReader.ReadCapabilities(input, "capabilities.json", limits, budget).Problems,
             _ => throw new ArgumentOutOfRangeException(nameof(artifact), artifact, "Unknown test artifact.")
         };
+    }
+
+    private static IReadOnlyList<StructuralProblem> ReadIndexProblems(byte[] input)
+    {
+        InputLimits limits = Limits();
+        ParseResult<ArtifactIndex> result = ArtifactIndexReader.Read(input, limits, new InputBudget(limits));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ParseFailureKind.Execution, result.FailureKind);
+        Assert.All(result.Problems, problem => Assert.Null(problem.CheckNumber));
+        return result.Problems;
     }
 
     private static byte[] Mutate(string artifact, string path, bool remove = false, bool wrongKind = false)

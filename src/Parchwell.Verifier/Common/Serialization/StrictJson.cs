@@ -348,20 +348,44 @@ internal sealed record StructuralProblem(
     string? Field,
     string? Snippet);
 
-/// <summary>Contains a parsed value or one or more bounded structural problems.</summary>
-internal readonly record struct ParseResult<T>(T? Value, IReadOnlyList<StructuralProblem> Problems)
+/// <summary>Classifies a structural parse failure or an input-level execution failure.</summary>
+internal enum ParseFailureKind
+{
+    Structural,
+    Execution
+}
+
+/// <summary>Contains a parsed value, recoverable evidence, or a classified parse failure.</summary>
+/// <remarks>Execution classification is an input outcome only; it does not judge run validity.</remarks>
+internal readonly record struct ParseResult<T>(
+    T? Value,
+    IReadOnlyList<StructuralProblem> Problems,
+    ParseFailureKind? FailureKind = null)
 {
     /// <summary>Gets whether parsing produced no structural problems.</summary>
     internal bool IsSuccess => Problems.Count == 0;
 
+    /// <summary>Gets whether this result explicitly represents an execution failure.</summary>
+    internal bool IsExecutionFailure => FailureKind == ParseFailureKind.Execution;
+
     /// <summary>Creates a successful parse result.</summary>
     internal static ParseResult<T> Success(T value) => new(value, Array.Empty<StructuralProblem>());
 
-    /// <summary>Creates a failed parse result.</summary>
-    internal static ParseResult<T> Failure(StructuralProblem problem) => new(default, [problem]);
+    /// <summary>Creates a structural parse failure.</summary>
+    internal static ParseResult<T> Failure(StructuralProblem problem) =>
+        new(default, [problem], ParseFailureKind.Structural);
 
-    /// <summary>Creates a failed parse result containing multiple structural problems.</summary>
-    internal static ParseResult<T> Failure(IReadOnlyList<StructuralProblem> problems) => new(default, problems);
+    /// <summary>Creates a structural parse failure containing multiple problems.</summary>
+    internal static ParseResult<T> Failure(IReadOnlyList<StructuralProblem> problems) =>
+        new(default, problems, ParseFailureKind.Structural);
+
+    /// <summary>Creates an execution failure retaining its input problem.</summary>
+    internal static ParseResult<T> ExecutionFailure(StructuralProblem problem) =>
+        new(default, [problem], ParseFailureKind.Execution);
+
+    /// <summary>Creates an execution failure retaining all input problems.</summary>
+    internal static ParseResult<T> ExecutionFailure(IReadOnlyList<StructuralProblem> problems) =>
+        new(default, problems, ParseFailureKind.Execution);
 }
 
 /// <summary>Supplies hard bounds for verifier input parsing.</summary>

@@ -68,6 +68,7 @@ public sealed class GoldenArtifactReaderTests
 
         ParseResult<ArtifactIndex> index = ArtifactIndexReader.Read(indexBytes, limits, budget);
         Assert.True(index.IsSuccess);
+        Assert.False(index.IsExecutionFailure);
         Assert.Equal("golden-run-001", index.Value!.Identity.RunId);
         AssertIdentity(index.Value.Identity);
         Assert.Equal(1, index.Value.SchemaVersion);
@@ -76,6 +77,7 @@ public sealed class GoldenArtifactReaderTests
         Assert.True(index.Value.WorkerComplete);
         Assert.True(index.Value.PublicationComplete);
         Assert.Equal(5, index.Value.Artifacts.Count);
+        Assert.DoesNotContain(index.Value.Artifacts, artifact => artifact.Name == "index.json");
         Assert.Equal("ledger.jsonl", index.Value.Artifacts[0].Name);
         Assert.Equal(1467L, index.Value.Artifacts[0].Length);
         Assert.Equal("bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1", index.Value.Artifacts[0].Sha256);
@@ -110,8 +112,10 @@ public sealed class GoldenArtifactReaderTests
             Encoding.UTF8.GetBytes(statistics.Value[1].RawJson), "statistics.jsonl", limits, budget, 65536, 20);
         Assert.True(nativeSecond.IsSuccess);
         Assert.Equal(15_000_000L, nativeSecond.Value!.TimestampMicroseconds.Value);
+        Assert.Equal(6_000_000L, nativeSecond.Value.AgeMicroseconds.Value);
         Assert.Equal(2L, nativeSecond.Value.Brokers.Value!["broker-a/1"].Throttle.Value!.Count.Value);
         Assert.Equal(17L, nativeSecond.Value.Brokers.Value!["broker-a/1"].Throttle.Value!.Maximum.Value);
+        Assert.Equal(4L, nativeSecond.Value.Brokers.Value!["broker-a/1"].RoundTripTime.Value!.Count.Value);
         Assert.Equal(99_327L, nativeSecond.Value.Brokers.Value["broker-a/1"].RoundTripTime.Value!.P99.Value);
 
         ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle = CapturedEvidenceReader.ReadLifecycle(
@@ -124,6 +128,9 @@ public sealed class GoldenArtifactReaderTests
         Assert.Equal("managed_log_callback", nativeLog.SessionId);
         Assert.Equal(1L, nativeLog.ReceiptSequence);
         Assert.Equal(FieldPresence.Null, nativeLog.SourceEventTimestamp.Presence);
+        Assert.Equal(FieldPresence.Null, nativeLog.CorrelationId.Presence);
+        Assert.Equal(FieldPresence.Null, nativeLog.SourceOrder.Presence);
+        Assert.Equal(FieldPresence.Null, nativeLog.Inference.Presence);
         Assert.Equal(3, nativeLog.KnownMissingFields.Count);
         Assert.Equal("Info", nativeLog.Level);
         Assert.Equal("BROKER", nativeLog.Facility);
