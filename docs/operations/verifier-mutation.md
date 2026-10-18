@@ -1,6 +1,6 @@
 # Verifier mutation record
 
-Stryker.NET 5.0.0 measured PR 3's foundation at 80.34% on commit `610625f4fa19972c48c8d315442982542b257cd8`. The replay sample found one normal-MTP assertion-result disagreement and 17 compilation failures before MTP; Hari must review those differences before merge. This is a foundation baseline, not a final mutation threshold or evidence of live readiness.
+Stryker.NET 5.0.0 measured PR 3's foundation at 80.34% on commit `610625f4fa19972c48c8d315442982542b257cd8` ([measurement excerpts](#measurement-excerpts)). The replay sample found one normal-MTP assertion-result disagreement and 17 compilation failures before MTP; Hari must review those differences before merge. This is a foundation baseline, not a final mutation threshold or evidence of live readiness.
 
 ## Authority and tested content
 
@@ -18,7 +18,7 @@ The tested content tree is `ba7e9aeb7a68b7f565652cda831f412e438d54c8`. The later
 
 ## Ordinary validation
 
-All commands below completed successfully on the tested content before mutation. Evidence is retained under `.artifacts/verifier-mutation/resumed-validation/`; `validation.json` records exact commands, timestamps, exit codes and the SHA/tree.
+All commands below completed successfully on the tested content before mutation; their counters and timestamps are reproduced in the [measurement excerpts](#measurement-excerpts). Evidence is retained under `.artifacts/verifier-mutation/resumed-validation/`; `validation.json` records exact commands, timestamps, exit codes and the SHA/tree.
 
 | Command or check | Actual result |
 | --- | --- |
@@ -60,7 +60,7 @@ The command exited 0. Its wrapper elapsed 2161.186865 s, measured from the times
 | Valid: Killed + Timeout + Survived + NoCoverage | 3159 |
 | Measured score | 80.34% |
 
-Counts were computed from the fresh schema-2 JSON report, which contains 18 source-file entries and 13 files with mutants. The [pinned score implementation](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs#L31-L73) calculates `2538 / 3159 * 100`; Timeout is detected under that convention, not killed by an assertion. CompileError and Ignored are outside the denominator. The report has actual killed/tested mutants and is not an empty run.
+Counts were computed from the fresh schema-2 JSON report, whose complete status/ID projection is in the [measurement excerpts](#measurement-excerpts), which contains 18 source-file entries and 13 files with mutants. The [pinned score implementation](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs#L31-L73) calculates `2538 / 3159 * 100`; Timeout is detected under that convention, not killed by an assertion. CompileError and Ignored are outside the denominator. The report has actual killed/tested mutants and is not an empty run.
 
 | Retained file under `.artifacts/verifier-mutation/` | SHA-256 |
 | --- | --- |
@@ -68,7 +68,7 @@ Counts were computed from the fresh schema-2 JSON report, which contains 18 sour
 | `run.y53la5z6/reports/mutation-report.html` | `dc5d1df2663fdc8947d5cb7531417536a76cb372d517e9e7bf4190f52f21074c` |
 | `run.y53la5z6/command.log` | `f2f2a8d2402b3ff641a83d5050fd35b801479197d29238da5a6e95c63dc4fc50` |
 
-Reports, logs, XML and helper scripts are retained locally under that ignored artifact directory; they are not committed to Git. This document preserves the measured summary, report digest, coverage tables and full survivor inventory. The summary calculation is retained as `verifier-fresh-mutation-summary.json`.
+Full reports, logs, XML and helper scripts are retained locally under that ignored artifact directory. The [measurement excerpts](#measurement-excerpts) commit the raw run counters, timing records and complete status/replay ID projections; the full original artifact files are not committed. This document preserves the measured summary, report digest, coverage tables and full survivor inventory. The summary calculation is retained as `verifier-fresh-mutation-summary.json`.
 
 ## Discovery, warnings and non-assertion statuses
 
@@ -92,7 +92,7 @@ These mechanisms are source-based inferences, not observed per-test timeout caus
 
 ## Runner-validation sample and disagreement
 
-The two exhaustive batches were interrupted on Hari's decision with 351 completed replay records retained. Eight additional survivors filled the eight uncovered survivor-source files and three uncovered mutators; selection and stop provenance are retained in `gap-fill-selection.json` and `survivor-replay-stop.json`. The resulting sample has 359 completed replays: 341 full-suite passes, 17 compilation failures before MTP, and one complete test run with an assertion failure. The remaining 262 survivors are `not reviewed`.
+The two exhaustive batches were interrupted on Hari's decision with 351 completed replay records retained; the [published measurement projections](#measurement-excerpts) identify each completed replay and its recorded outcome. Eight additional survivors filled the eight uncovered survivor-source files and three uncovered mutators; selection and stop provenance are retained in `gap-fill-selection.json` and `survivor-replay-stop.json`. The resulting sample has 359 completed replays: 341 full-suite passes, 17 compilation failures before MTP, and one complete test run with an assertion failure. The remaining 262 survivors are `not reviewed`.
 
 Every source file with a survivor and every mutator type among survivors has a normal-MTP observation in the final sample. `CapturedArtifacts.cs` has two Killed mutants and no survivor available to sample, so the sample does not claim to replay that mutated file. Coverage is by file and mutator separately, not every file/mutator combination, and the sample does not establish all un-replayed outcomes.
 
@@ -111,6 +111,891 @@ The runtime proofs use .NET 10.0.13 source commit `6aa72daa24f66c01c3d7b6a32519e
 - [JsonDocument.Dispose](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Text.Json/src/System/Text/Json/Document/JsonDocument.cs#L61-L88) changes resource lifecycle; a removal is not called equivalent merely because parse-result assertions still pass.
 - Continuation scheduling uses [Task.ConfigureAwait](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs#L2451-L2453) and its [context/scheduler handling](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs#L2494-L2516). The sampled equivalence inference is limited to the normal Main console entrypoint; it does not cover internal callers with a custom context or scheduler.
 - Host proofs use the pinned [Host implementation](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/Microsoft.Extensions.Hosting/src/Internal/Host.cs#L19), [configuration registration](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/Microsoft.Extensions.Hosting/src/HostBuilder.cs#L305-L306), [logging registration](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/Microsoft.Extensions.Logging/src/LoggingServiceCollectionExtensions.cs#L38), and [category logger cache](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/Microsoft.Extensions.Logging/src/LoggerFactory.cs#L140-L157). Claims are confined to the graph constructed by this executable, as stated in the individual rows.
+## Measurement excerpts
+
+These excerpts come from retained run logs/XML. The inventory is generated from the cited fresh report and replay CSVs; the generator runs no build, test, Stryker, or replay command.
+
+- Tested commit: `610625f4fa19972c48c8d315442982542b257cd8`; tree: `ba7e9aeb7a68b7f565652cda831f412e438d54c8`.
+- Fresh report: `.artifacts/verifier-mutation/run.y53la5z6/reports/mutation-report.json`; SHA-256: `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d`.
+- Embedded inventory SHA-256: `ff84b00cb09df3e47bd3be6e2900f23d55a45dc6c2fc49753bda5d29379ca0e8` (UTF-8/ASCII bytes of the standalone JSON file, with one trailing newline).
+- Baseline XML source: `.artifacts/verifier-mutation/fresh-replays/batch-1/baseline/results/results.xml`; SHA-256: `57956f34061636d7a067448a52b414909e081b19b1691f112aacc5403fc3d9ab`.
+
+### Fresh Stryker command log excerpt
+
+Source: `.artifacts/verifier-mutation/run.y53la5z6/command.log`; SHA-256: `f2f2a8d2402b3ff641a83d5050fd35b801479197d29238da5a6e95c63dc4fc50`. Each JSON string decodes to the exact source line from `Version:` through the final score line, including whitespace.
+
+```jsonl
+"Version: 5.0.0"
+""
+"[07:03:59 INF] Analysis starting."
+"[07:03:59 INF] Using project configuration/platform 'Release|`default`'."
+"[07:03:59 INF] Analyzing 1 test project(s)."
+"[07:04:00 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj. Assuming selected framework (net10.0) is present."
+"[07:04:01 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Assuming selected framework (net10.0) is present."
+"[07:04:01 INF] Found project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj to mutate."
+"[07:04:01 INF] Analysis complete."
+"[07:04:01 INF] Building test project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (1/1)"
+"[07:04:02 INF] Building project Parchwell.Verifier.Tests.csproj using dotnet build Parchwell.Verifier.Tests.csproj -c Release --property:Platform=AnyCPU (directory /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests.)"
+"[07:04:07 WRN] The Microsoft Test Platform testrunner is currently in preview. Results should be verified since this feature is still being tested."
+"[07:04:08 INF] Number of tests found: 1044 for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Initial test run started."
+"[07:04:34 INF] 3825 mutants created"
+"[07:04:34 INF] Capture mutant coverage using 'CoverageBasedTest' mode."
+"[07:04:34 INF] Starting per-test coverage capture for MTP runner"
+"[07:04:34 INF] Capturing per-test coverage for 1044 tests across 1 assemblies"
+"[07:05:16 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test 4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58; marking as Dubious"
+"[07:05:26 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c; marking as Dubious"
+"[07:05:26 INF] Per-test coverage capture complete: 1044 tests captured"
+"Hint: by passing \"--open-report or -o\" the report will open automatically and "
+"update the report in real-time."
+"[07:05:27 INF] 255   mutants got status CompileError. Reason: Mutant caused compile errors"
+"[07:05:27 INF] 411   mutants got status Ignored.      Reason: Removed by block already covered filter"
+"[07:05:27 INF] 666   total mutants are skipped for the above mentioned reasons"
+"[07:05:27 INF] 3159  total mutants will be tested"
+""
+"Killed:   2531"
+"Survived:  621"
+"Timeout:     7"
+"Errors:     0"
+""
+"Your json report has been generated at:"
+"file:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/run.y53la5"
+"z6/reports/mutation-report.json"
+""
+"Your html report has been generated at:"
+"file:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/run.y53la5"
+"z6/reports/mutation-report.html"
+"You can open it in your browser of choice."
+"[07:39:59 INF] Time Elapsed 00:36:00.5251622"
+"[07:39:59 INF] The final mutation score is 80.34 %"
+```
+
+### Fresh replay baseline XML excerpt
+
+Source: `.artifacts/verifier-mutation/fresh-replays/batch-1/baseline/results/results.xml`; the excerpt is its exact `<assembly>` opening element.
+
+```xml
+<assembly environment="64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]" id="e0cb095d-24c1-4107-b61f-1a7125558fca" name="/workspace/scratch/verifier-fresh-replay-batch-1/isolated-checkout/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll" run-date="2026-10-18" run-time="07:42:07" start-rtf="2026-10-18T07:42:07.0083630+00:00" test-framework="xUnit.net v3 4.0.2+0c7aa4991f" target-framework=".NETCoreApp,Version=v10.0" errors="0" failed="0" finish-rtf="2026-10-18T07:42:10.6727261+00:00" not-run="0" passed="1044" skipped="0" time="3.666" time-rtf="00:00:03.6660000" total="1044">
+```
+
+### Build, full-suite, and documentation evidence
+
+#### Release build from `resumed-validation/build.log`
+
+```text
+    Build succeeded.
+        0 Warning(s)
+        0 Error(s)
+```
+
+#### Full verification project summaries from `resumed-validation/full-verification.log`
+
+```text
+      Parchwell.ArchitectureTests: 8 passed; checked report.
+      Parchwell.Kafka.Tests: 306 passed; checked report.
+      Parchwell.LoadGen.Tests: 262 passed; checked report.
+      Parchwell.Scenarios.Tests: 94 passed; checked report.
+      Parchwell.Verifier.Tests: 1044 passed; checked report.
+    Verification passed. Per-project reports identify the tests executed.
+```
+
+#### Documentation test summary from `resumed-validation/docs-tests.log`
+
+The following JSON strings decode to the exact UTF-8 lines in the raw test log.
+
+```jsonl
+"\u2139 tests 27"
+"\u2139 pass 27"
+"\u2139 fail 0"
+```
+
+#### Documentation check from `resumed-validation/docs-check.log`
+
+```text
+
+> check:docs
+> node scripts/check-docs.mjs
+
+.agents/skills/repo-review/SKILL.md: no issues found
+.claude/agents/repo-reviewer.md: no issues found
+.github/pull_request_template.md: no issues found
+AGENTS.md: no issues found
+CLAUDE.md: no issues found
+CONTEXT.md: no issues found
+docs/agents/factory.md: no issues found
+docs/blueprint.md: no issues found
+docs/engineering/code-comments.md: no issues found
+docs/engineering/documentation-checks.md: no issues found
+docs/engineering/dotnet-verification.md: no issues found
+docs/engineering/dotnet.md: no issues found
+docs/engineering/terraform.md: no issues found
+docs/networking/hub-firewall.md: no issues found
+docs/operations/kafka-authentication.md: no issues found
+docs/operations/kafka-baseline.md: no issues found
+docs/operations/kafka-configuration-explained.md: no issues found
+docs/operations/loadgen-contract.md: no issues found
+docs/operations/phantom-spike/README.md: no issues found
+docs/operations/scenario-contract.md: no issues found
+docs/operations/statistics-bridge.md: no issues found
+docs/operations/verifier-contract.md: no issues found
+docs/research/kubernetes-kafka-clients.md: no issues found
+README.md: no issues found
+tests/fixtures/verifier-v1/README.md: no issues found
+Documentation scan completed. Warnings are advisory; external URLs were not checked.
+```
+
+The `docs-tests.log` summary lines are JSON-string escaped; decoding each quoted string reproduces the exact UTF-8 source line. The 27 value is a test-case count, not a Markdown-file count.
+
+Elapsed seconds are differences of the raw start/end timestamps below. The targeted-results XML SHA-256 is from `resumed-validation/validation.json`.
+
+```json
+{
+  "validation_started": "2026-10-18T06:58:02.184328+00:00",
+  "validation_finished": "2026-10-18T07:03:52.118743+00:00",
+  "validation_elapsed_seconds": 349.934415,
+  "full_verification_started": "2026-10-18T06:58:29.698190+00:00",
+  "full_verification_finished": "2026-10-18T07:03:40.110336+00:00",
+  "full_verification_elapsed_seconds": 310.412146,
+  "stryker_started": "2026-10-18T07:03:58.700888+00:00",
+  "stryker_finished": "2026-10-18T07:39:59.887753+00:00",
+  "stryker_elapsed_seconds": 2161.186865,
+  "targeted_xml_sha256": "fb02ef5dad0df3b15c2b73dcd15c355d62bab57a3a701c43d0d7d661b3745403"
+}
+```
+
+<details><summary>Complete mutant and replay measurement inventory</summary>
+
+### Recountable inventory
+
+The JSON lists all 3,825 fresh Stryker IDs by source file and report status, the 359 completed replay IDs by CSV outcome, and the 262 fresh survivors outside the completed sample. Replay outcome and report status are separate dimensions; `not_reviewed_fresh_ids` is a set difference, not a replay outcome.
+
+Inventory SHA-256: `ff84b00cb09df3e47bd3be6e2900f23d55a45dc6c2fc49753bda5d29379ca0e8`.
+
+```json
+{
+  "tested_commit": "610625f4fa19972c48c8d315442982542b257cd8",
+  "tree": "ba7e9aeb7a68b7f565652cda831f412e438d54c8",
+  "report_path": ".artifacts/verifier-mutation/run.y53la5z6/reports/mutation-report.json",
+  "report_sha256": "feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d",
+  "report_inventory": {
+    "schema_version": "2",
+    "mutant_count": 3825,
+    "status_counts": {
+      "CompileError": 255,
+      "Ignored": 411,
+      "Killed": 2531,
+      "NoCoverage": 0,
+      "Pending": 0,
+      "RuntimeError": 0,
+      "Survived": 621,
+      "Timeout": 7
+    },
+    "fresh_survived_or_nocoverage_count": 621,
+    "mutants_by_file_and_status": [
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs",
+        "statuses": {
+          "CompileError": ["67", "70", "106", "109", "136", "137", "248", "249", "311", "314", "355", "363", "373", "393", "396", "399", "420", "423", "426", "429", "459", "480", "483", "531", "582", "583", "584", "585", "586", "587", "691", "696", "698", "702", "704", "712", "716", "720", "724", "728", "732", "735", "738", "741", "744", "848", "851", "855", "863", "864", "865", "867", "869", "872", "876", "879", "883", "893", "894", "895", "897", "899", "902", "905", "908", "911", "914", "915", "916", "917", "918", "919", "954", "955", "965", "966", "969", "970", "986", "998", "1009", "1016", "1026", "1033", "1043", "1070", "1072", "1074"],
+          "Ignored": ["35", "42", "71", "78", "102", "157", "162", "173", "178", "186", "202", "226", "234", "241", "247", "256", "264", "281", "284", "287", "292", "295", "303", "321", "331", "344", "383", "403", "412", "435", "439", "447", "451", "470", "473", "477", "484", "488", "494", "500", "506", "512", "518", "523", "525", "528", "530", "537", "539", "542", "544", "552", "556", "559", "567", "573", "581", "602", "606", "609", "622", "628", "634", "639", "650", "663", "667", "677", "748", "761", "767", "784", "796", "800", "816", "822", "828", "938", "939", "947", "948", "951", "953", "962", "968", "971", "982", "987", "991", "993", "996", "1002", "1004", "1007", "1013", "1015", "1021", "1024", "1030", "1032", "1038", "1041", "1047", "1053", "1055", "1058", "1061", "1063", "1066", "1069", "1080", "1082", "1084", "1093", "1105", "1108", "1111", "1114"],
+          "Killed": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "36", "37", "38", "41", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "68", "69", "72", "73", "74", "75", "76", "77", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100", "101", "103", "104", "105", "107", "108", "110", "111", "114", "117", "118", "119", "122", "123", "124", "125", "128", "129", "132", "133", "138", "139", "140", "143", "144", "145", "146", "147", "148", "149", "150", "151", "152", "153", "156", "158", "161", "163", "167", "168", "169", "172", "176", "177", "179", "180", "181", "182", "185", "189", "190", "191", "192", "193", "194", "195", "196", "197", "198", "199", "200", "201", "203", "204", "205", "206", "207", "208", "209", "210", "211", "212", "214", "215", "216", "217", "220", "221", "222", "223", "224", "233", "242", "244", "251", "253", "257", "258", "259", "260", "262", "265", "266", "267", "268", "269", "270", "271", "272", "273", "274", "275", "276", "277", "278", "279", "280", "282", "283", "285", "286", "288", "289", "290", "291", "293", "294", "296", "297", "298", "299", "300", "301", "302", "304", "305", "306", "307", "308", "309", "310", "312", "313", "315", "316", "317", "318", "319", "320", "322", "323", "324", "325", "326", "327", "328", "329", "330", "332", "333", "334", "335", "336", "337", "338", "339", "340", "341", "342", "343", "345", "346", "347", "348", "349", "350", "351", "352", "353", "354", "356", "357", "358", "360", "362", "364", "365", "367", "368", "369", "371", "372", "374", "375", "376", "377", "378", "379", "380", "381", "382", "384", "385", "386", "387", "388", "389", "390", "391", "392", "394", "395", "397", "398", "400", "401", "402", "404", "405", "406", "407", "408", "409", "410", "411", "413", "414", "415", "416", "417", "418", "419", "421", "422", "424", "425", "427", "428", "430", "431", "432", "433", "434", "436", "437", "438", "440", "441", "442", "443", "444", "445", "446", "448", "449", "450", "452", "453", "454", "455", "456", "457", "458", "460", "461", "462", "463", "464", "465", "466", "467", "468", "469", "471", "472", "474", "475", "476", "478", "479", "481", "482", "486", "487", "492", "493", "498", "499", "504", "505", "510", "511", "516", "517", "522", "524", "529", "535", "536", "538", "543", "548", "551", "553", "554", "555", "561", "562", "563", "565", "566", "571", "572", "577", "580", "588", "589", "590", "591", "592", "593", "594", "595", "596", "597", "598", "599", "601", "603", "604", "605", "610", "611", "612", "613", "614", "615", "616", "617", "618", "620", "621", "626", "627", "632", "633", "638", "640", "642", "643", "644", "646", "647", "649", "651", "652", "653", "654", "655", "657", "658", "661", "662", "669", "670", "671", "672", "673", "675", "676", "681", "682", "684", "685", "687", "690", "692", "693", "694", "697", "703", "708", "709", "710", "711", "717", "719", "725", "726", "733", "736", "739", "742", "745", "747", "749", "750", "751", "752", "753", "754", "755", "756", "757", "759", "760", "765", "766", "771", "772", "774", "775", "777", "778", "780", "781", "783", "785", "786", "787", "788", "789", "791", "792", "794", "795", "802", "803", "804", "805", "806", "807", "808", "809", "810", "811", "812", "814", "815", "820", "821", "826", "827", "832", "833", "835", "836", "838", "839", "841", "842", "844", "847", "849", "850", "857", "858", "859", "860", "861", "866", "868", "875", "877", "878", "884", "885", "886", "887", "888", "889", "890", "891", "892", "896", "898", "903", "904", "906", "909", "912", "920", "921", "922", "924", "925", "926", "928", "929", "930", "932", "934", "937", "940", "941", "942", "943", "945", "949", "950", "952", "956", "957", "958", "959", "960", "964", "967", "972", "974", "975", "976", "977", "978", "979", "980", "981", "984", "985", "988", "992", "994", "995", "997", "1003", "1005", "1006", "1008", "1014", "1020", "1022", "1023", "1025", "1027", "1029", "1031", "1037", "1039", "1040", "1042", "1048", "1049", "1050", "1052", "1054", "1057", "1059", "1060", "1062", "1064", "1071", "1073", "1075", "1077", "1078", "1079", "1085", "1086", "1087", "1088", "1089", "1090", "1094", "1095", "1096", "1097", "1098", "1099", "1100", "1101", "1102", "1103", "1104", "1106", "1107", "1109", "1110", "1115", "1116", "1117", "1118", "1119", "1120", "1121", "1122"],
+          "Survived": ["39", "40", "112", "113", "115", "116", "120", "121", "126", "127", "130", "131", "134", "135", "141", "142", "154", "155", "159", "160", "164", "165", "166", "170", "171", "174", "175", "183", "184", "187", "188", "213", "218", "219", "225", "227", "228", "229", "230", "231", "232", "235", "236", "237", "238", "239", "240", "243", "245", "246", "250", "252", "254", "255", "261", "263", "359", "361", "366", "370", "485", "489", "490", "491", "495", "496", "497", "501", "502", "503", "507", "508", "509", "513", "514", "515", "519", "520", "521", "526", "527", "532", "533", "534", "540", "541", "545", "546", "547", "549", "550", "557", "558", "560", "564", "568", "569", "570", "574", "575", "576", "578", "579", "600", "607", "608", "619", "623", "624", "625", "629", "630", "631", "635", "636", "637", "641", "645", "648", "656", "659", "660", "664", "665", "666", "668", "674", "678", "679", "680", "683", "686", "688", "689", "695", "699", "700", "701", "705", "706", "707", "713", "714", "715", "718", "721", "722", "723", "727", "729", "730", "731", "734", "737", "740", "743", "746", "758", "762", "763", "764", "768", "769", "770", "773", "776", "779", "782", "790", "793", "797", "798", "799", "801", "813", "817", "818", "819", "823", "824", "825", "829", "830", "831", "834", "837", "840", "843", "845", "846", "852", "853", "854", "856", "862", "870", "871", "873", "874", "880", "881", "882", "900", "901", "907", "910", "913", "923", "927", "931", "933", "935", "936", "944", "946", "961", "963", "973", "983", "989", "990", "999", "1000", "1001", "1010", "1011", "1012", "1017", "1018", "1019", "1028", "1034", "1035", "1036", "1044", "1045", "1046", "1051", "1056", "1065", "1067", "1068", "1076", "1081", "1083", "1091", "1092", "1112", "1113", "1123"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
+        "statuses": {
+          "CompileError": ["1189", "1190", "1240", "1243", "1264", "1279", "1281", "1301", "1305", "1307", "1310", "1323", "1324"],
+          "Ignored": ["1124", "1130", "1133", "1142", "1146", "1148", "1150", "1152", "1154", "1156", "1158", "1160", "1163", "1165", "1168", "1172", "1179", "1184", "1186", "1192", "1197", "1212", "1216", "1218", "1222", "1225", "1228", "1233", "1237", "1244", "1246", "1247", "1249", "1253", "1254", "1258", "1262", "1271", "1285", "1291", "1295", "1298", "1302", "1306", "1311", "1313", "1315", "1326", "1327", "1330", "1336", "1339", "1340", "1343", "1349"],
+          "Killed": ["1125", "1126", "1127", "1128", "1129", "1134", "1135", "1136", "1137", "1138", "1139", "1140", "1141", "1145", "1151", "1153", "1157", "1159", "1161", "1164", "1166", "1169", "1170", "1171", "1173", "1175", "1176", "1177", "1178", "1180", "1181", "1182", "1183", "1185", "1187", "1188", "1191", "1194", "1195", "1196", "1200", "1201", "1203", "1205", "1206", "1207", "1208", "1209", "1210", "1213", "1215", "1217", "1219", "1221", "1223", "1224", "1226", "1227", "1229", "1230", "1231", "1232", "1234", "1235", "1238", "1239", "1241", "1242", "1245", "1248", "1250", "1251", "1252", "1255", "1256", "1259", "1260", "1261", "1263", "1265", "1266", "1267", "1268", "1269", "1270", "1272", "1274", "1275", "1276", "1277", "1278", "1280", "1282", "1283", "1284", "1286", "1287", "1288", "1289", "1290", "1292", "1294", "1296", "1297", "1299", "1300", "1303", "1304", "1308", "1309", "1312", "1314", "1316", "1318", "1319", "1320", "1321", "1322", "1325", "1329", "1333", "1334", "1335", "1337", "1346", "1348"],
+          "Survived": ["1131", "1132", "1143", "1144", "1147", "1149", "1155", "1162", "1167", "1174", "1193", "1198", "1199", "1202", "1204", "1211", "1214", "1220", "1236", "1257", "1273", "1293", "1317", "1328", "1331", "1332", "1338", "1341", "1342", "1344", "1345", "1347", "1350", "1351"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
+        "statuses": {
+          "CompileError": ["1412", "1415", "1461", "1464", "1496", "1499", "1540", "1541"],
+          "Ignored": ["1371", "1377", "1380", "1390", "1408", "1419", "1423", "1450", "1456", "1459", "1476", "1493", "1500", "1504", "1510", "1516", "1522", "1528", "1534", "1539", "1542", "1553", "1555", "1557", "1560", "1563", "1566"],
+          "Killed": ["1352", "1353", "1354", "1355", "1356", "1357", "1358", "1359", "1360", "1361", "1362", "1363", "1364", "1365", "1366", "1367", "1368", "1369", "1370", "1376", "1381", "1382", "1383", "1384", "1385", "1386", "1387", "1388", "1389", "1392", "1393", "1394", "1395", "1396", "1397", "1398", "1399", "1400", "1401", "1402", "1403", "1404", "1405", "1406", "1407", "1409", "1410", "1411", "1413", "1414", "1416", "1417", "1418", "1420", "1422", "1424", "1425", "1426", "1427", "1428", "1429", "1430", "1432", "1433", "1434", "1436", "1437", "1438", "1440", "1441", "1442", "1444", "1445", "1446", "1448", "1449", "1451", "1453", "1455", "1457", "1460", "1462", "1463", "1465", "1466", "1467", "1469", "1470", "1471", "1473", "1477", "1478", "1479", "1480", "1481", "1482", "1483", "1484", "1485", "1486", "1487", "1488", "1489", "1490", "1491", "1492", "1494", "1495", "1497", "1498", "1501", "1502", "1503", "1505", "1507", "1508", "1509", "1511", "1513", "1514", "1515", "1517", "1519", "1520", "1521", "1523", "1525", "1526", "1527", "1529", "1531", "1532", "1533", "1535", "1537", "1538", "1543", "1544", "1545", "1546", "1547", "1548", "1549", "1550", "1551", "1552", "1554", "1556", "1559", "1562", "1567", "1568", "1569", "1571", "1573", "1574"],
+          "Survived": ["1372", "1373", "1374", "1375", "1378", "1379", "1391", "1421", "1431", "1435", "1439", "1443", "1447", "1452", "1454", "1458", "1468", "1472", "1474", "1475", "1506", "1512", "1518", "1524", "1530", "1536", "1558", "1561", "1564", "1565", "1570", "1572", "1575"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
+        "statuses": {
+          "CompileError": ["1624", "1643", "1644", "1645", "1646", "1647", "1649", "1650", "1652", "1653", "1657", "1663", "1672"],
+          "Ignored": ["1576", "1586", "1587", "1589", "1594", "1599", "1601", "1606", "1612", "1613", "1616", "1618", "1623", "1625", "1628", "1630", "1632", "1639", "1640", "1654", "1660", "1666", "1670", "1679"],
+          "Killed": ["1579", "1583", "1584", "1592", "1611", "1614", "1638", "1641", "1655", "1656", "1658", "1661", "1662", "1664", "1667", "1668", "1673", "1674", "1675", "1676", "1677", "1678", "1680", "1681", "1682", "1683", "1684", "1685", "1686", "1687", "1688", "1689"],
+          "Survived": ["1577", "1578", "1580", "1581", "1582", "1591", "1593", "1595", "1596", "1597", "1598", "1600", "1602", "1603", "1604", "1605", "1607", "1608", "1609", "1610", "1615", "1617", "1619", "1620", "1621", "1622", "1626", "1627", "1629", "1631", "1633", "1634", "1635", "1636", "1637", "1642", "1659", "1665", "1669", "1671", "1690"],
+          "Timeout": ["1585", "1588", "1590", "1648", "1651"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
+        "statuses": {
+          "CompileError": ["1696"],
+          "Ignored": ["1691"],
+          "Killed": ["1693", "1694", "1695", "1697", "1698", "1700"],
+          "Survived": ["1692", "1699"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
+        "statuses": {
+          "CompileError": ["1786", "1787", "1843", "1845"],
+          "Ignored": ["1701", "1704", "1788", "1823", "1825", "1837", "1839", "1847", "1849", "1865", "1870", "1873", "1880", "1883", "1884", "1885", "1889", "1891", "1896", "1906", "1912", "1917", "1922", "1925", "1927", "1930", "1932"],
+          "Killed": ["1703", "1707", "1709", "1711", "1713", "1715", "1717", "1719", "1721", "1722", "1724", "1726", "1728", "1729", "1731", "1733", "1735", "1737", "1739", "1741", "1743", "1745", "1747", "1749", "1751", "1753", "1755", "1757", "1759", "1761", "1763", "1767", "1769", "1771", "1773", "1775", "1777", "1779", "1780", "1781", "1783", "1784", "1785", "1789", "1791", "1793", "1795", "1797", "1799", "1801", "1803", "1805", "1807", "1809", "1811", "1813", "1815", "1817", "1819", "1821", "1824", "1826", "1828", "1829", "1831", "1833", "1835", "1838", "1840", "1842", "1844", "1846", "1848", "1853", "1855", "1857", "1859", "1861", "1863", "1866", "1867", "1868", "1869", "1871", "1872", "1877", "1878", "1879", "1881", "1886", "1887", "1888", "1890", "1892", "1893", "1894", "1895", "1897", "1899", "1900", "1901", "1902", "1903", "1904", "1907", "1908", "1909", "1910", "1911", "1913", "1915", "1916", "1918", "1919", "1920", "1921", "1923", "1926", "1928", "1931", "1933"],
+          "Survived": ["1702", "1705", "1706", "1708", "1710", "1712", "1714", "1716", "1718", "1720", "1723", "1725", "1727", "1730", "1732", "1734", "1736", "1738", "1740", "1742", "1744", "1746", "1748", "1750", "1752", "1754", "1756", "1758", "1760", "1762", "1764", "1765", "1766", "1768", "1770", "1772", "1774", "1776", "1778", "1782", "1790", "1792", "1794", "1796", "1798", "1800", "1802", "1804", "1806", "1808", "1810", "1812", "1814", "1816", "1818", "1820", "1822", "1827", "1830", "1832", "1834", "1836", "1841", "1850", "1851", "1852", "1854", "1856", "1858", "1860", "1862", "1864", "1874", "1875", "1876", "1882", "1898", "1905", "1914", "1924", "1929", "1934"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs",
+        "statuses": {
+          "Ignored": ["1936", "1937", "1939", "1943", "1948", "1950", "1952", "1954", "1956", "1960", "1962", "1965"],
+          "Killed": ["1935", "1938", "1941", "1942", "1944", "1947"],
+          "Survived": ["1940", "1945", "1946", "1949", "1951", "1953", "1957", "1958", "1959", "1963", "1964", "1966"],
+          "Timeout": ["1955", "1961"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
+        "statuses": {
+          "CompileError": ["1992", "1993", "2025", "2026", "2124", "2125", "2126", "2129", "2130", "2132", "2133", "2136", "2137", "2138", "2141", "2142", "2144", "2145"],
+          "Ignored": ["1984", "1995", "2035", "2064", "2067", "2072", "2077", "2081", "2099", "2101", "2105", "2108", "2110", "2114", "2121", "2148", "2150", "2155"],
+          "Killed": ["1967", "1968", "1969", "1970", "1971", "1972", "1973", "1974", "1975", "1976", "1977", "1978", "1979", "1980", "1981", "1982", "1983", "1985", "1986", "1987", "1988", "1989", "1990", "1991", "1994", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2027", "2028", "2029", "2030", "2031", "2032", "2033", "2034", "2036", "2037", "2038", "2039", "2040", "2041", "2042", "2043", "2044", "2045", "2046", "2047", "2048", "2049", "2050", "2051", "2052", "2053", "2054", "2055", "2056", "2057", "2058", "2059", "2060", "2061", "2062", "2063", "2065", "2066", "2071", "2073", "2075", "2076", "2078", "2079", "2080", "2085", "2086", "2087", "2088", "2089", "2090", "2091", "2092", "2093", "2094", "2095", "2096", "2097", "2098", "2100", "2104", "2106", "2109", "2113", "2115", "2117", "2118", "2119", "2120", "2122", "2131", "2143", "2146", "2149", "2153", "2154", "2156"],
+          "Survived": ["2005", "2068", "2069", "2070", "2074", "2082", "2083", "2084", "2102", "2103", "2107", "2111", "2112", "2116", "2123", "2127", "2128", "2134", "2135", "2139", "2140", "2147", "2151", "2152", "2157"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs",
+        "statuses": {
+          "Killed": ["2158", "2159"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
+        "statuses": {
+          "CompileError": ["2166", "2167", "2168", "2170", "2179", "2180", "2186", "2187", "2194", "2195", "2196", "2198", "2207", "2208", "2214", "2215", "2226", "2227", "2271", "2272", "2360", "2361", "2423", "2424", "2500", "2501", "2889", "2892", "2982", "2983", "2984", "2987", "2988", "2990", "2991", "2994", "2995", "2996", "2999", "3000", "3002", "3003", "3031", "3032", "3043", "3044"],
+          "Ignored": ["2160", "2172", "2175", "2188", "2200", "2203", "2220", "2229", "2281", "2283", "2297", "2373", "2435", "2512", "2537", "2576", "2637", "2649", "2664", "2683", "2701", "2738", "2752", "2772", "2787", "2826", "2852", "2854", "2858", "2862", "2866", "2872", "2874", "2878", "2884", "2886", "2896", "2898", "2902", "2906", "2914", "2916", "2922", "2928", "2962", "2964", "2968", "2971", "2973", "2975", "2979", "3006", "3008", "3013", "3016", "3018", "3025", "3027", "3036", "3038", "3048"],
+          "Killed": ["2161", "2162", "2163", "2164", "2165", "2169", "2171", "2173", "2174", "2178", "2181", "2182", "2183", "2184", "2185", "2189", "2190", "2191", "2192", "2193", "2197", "2199", "2201", "2202", "2206", "2209", "2210", "2211", "2212", "2213", "2216", "2217", "2218", "2219", "2221", "2222", "2223", "2224", "2225", "2228", "2230", "2231", "2232", "2233", "2234", "2235", "2236", "2237", "2238", "2239", "2240", "2241", "2242", "2243", "2244", "2245", "2246", "2247", "2248", "2249", "2250", "2251", "2252", "2253", "2254", "2255", "2256", "2257", "2258", "2259", "2260", "2261", "2262", "2263", "2264", "2265", "2266", "2267", "2268", "2269", "2270", "2273", "2274", "2275", "2276", "2277", "2278", "2279", "2280", "2282", "2287", "2288", "2289", "2290", "2291", "2292", "2293", "2298", "2299", "2300", "2301", "2302", "2303", "2304", "2305", "2306", "2307", "2308", "2309", "2310", "2311", "2312", "2313", "2314", "2315", "2316", "2317", "2318", "2319", "2320", "2321", "2322", "2323", "2324", "2325", "2326", "2327", "2328", "2329", "2330", "2331", "2332", "2333", "2334", "2335", "2336", "2337", "2338", "2339", "2340", "2341", "2342", "2343", "2344", "2345", "2346", "2347", "2348", "2349", "2350", "2351", "2352", "2353", "2354", "2355", "2356", "2357", "2358", "2359", "2362", "2363", "2364", "2365", "2366", "2367", "2368", "2369", "2370", "2371", "2372", "2374", "2375", "2376", "2377", "2378", "2379", "2380", "2381", "2382", "2383", "2384", "2385", "2386", "2387", "2388", "2389", "2390", "2391", "2392", "2393", "2394", "2395", "2396", "2397", "2398", "2399", "2400", "2401", "2402", "2403", "2404", "2405", "2406", "2407", "2408", "2409", "2410", "2411", "2412", "2413", "2414", "2415", "2416", "2417", "2418", "2419", "2420", "2421", "2422", "2425", "2426", "2427", "2428", "2429", "2430", "2431", "2432", "2433", "2434", "2436", "2437", "2438", "2439", "2440", "2441", "2442", "2443", "2444", "2445", "2446", "2447", "2448", "2449", "2450", "2451", "2452", "2453", "2454", "2455", "2456", "2457", "2458", "2459", "2460", "2461", "2462", "2463", "2464", "2465", "2466", "2467", "2468", "2469", "2470", "2471", "2472", "2473", "2474", "2475", "2476", "2477", "2478", "2479", "2480", "2481", "2482", "2483", "2484", "2485", "2486", "2487", "2488", "2489", "2490", "2491", "2492", "2493", "2494", "2495", "2496", "2497", "2498", "2499", "2502", "2503", "2504", "2505", "2506", "2507", "2508", "2509", "2510", "2511", "2513", "2514", "2515", "2516", "2517", "2518", "2519", "2520", "2521", "2522", "2523", "2524", "2525", "2526", "2527", "2528", "2529", "2530", "2531", "2532", "2533", "2534", "2535", "2536", "2538", "2539", "2540", "2541", "2542", "2543", "2544", "2545", "2546", "2547", "2548", "2549", "2550", "2551", "2552", "2553", "2554", "2555", "2556", "2557", "2558", "2559", "2560", "2561", "2562", "2563", "2564", "2565", "2566", "2567", "2568", "2569", "2570", "2571", "2572", "2573", "2574", "2575", "2577", "2578", "2579", "2580", "2581", "2582", "2583", "2584", "2585", "2586", "2587", "2588", "2589", "2590", "2591", "2592", "2593", "2594", "2595", "2596", "2597", "2598", "2599", "2600", "2601", "2602", "2603", "2604", "2605", "2606", "2607", "2608", "2609", "2610", "2611", "2612", "2613", "2614", "2615", "2616", "2617", "2618", "2619", "2620", "2621", "2622", "2623", "2624", "2625", "2626", "2627", "2628", "2629", "2630", "2631", "2632", "2633", "2634", "2635", "2636", "2638", "2639", "2640", "2641", "2642", "2643", "2644", "2645", "2646", "2647", "2648", "2650", "2651", "2652", "2653", "2654", "2655", "2656", "2657", "2658", "2659", "2660", "2661", "2662", "2663", "2665", "2666", "2667", "2668", "2669", "2670", "2671", "2672", "2673", "2674", "2675", "2676", "2677", "2678", "2679", "2680", "2681", "2682", "2684", "2685", "2686", "2687", "2688", "2689", "2690", "2691", "2692", "2693", "2694", "2695", "2696", "2697", "2698", "2699", "2700", "2702", "2703", "2704", "2705", "2706", "2707", "2708", "2709", "2710", "2711", "2712", "2713", "2714", "2715", "2716", "2717", "2718", "2719", "2720", "2721", "2722", "2723", "2724", "2725", "2726", "2727", "2728", "2729", "2730", "2731", "2732", "2733", "2734", "2735", "2736", "2737", "2739", "2740", "2741", "2742", "2743", "2744", "2745", "2746", "2747", "2748", "2749", "2750", "2751", "2753", "2754", "2755", "2756", "2757", "2758", "2759", "2760", "2761", "2762", "2763", "2764", "2765", "2766", "2767", "2768", "2769", "2770", "2771", "2773", "2774", "2775", "2776", "2777", "2778", "2779", "2780", "2781", "2782", "2783", "2784", "2785", "2786", "2788", "2789", "2790", "2791", "2792", "2793", "2794", "2795", "2796", "2797", "2798", "2799", "2800", "2801", "2802", "2803", "2804", "2805", "2806", "2807", "2808", "2809", "2810", "2811", "2812", "2813", "2814", "2815", "2816", "2817", "2818", "2819", "2820", "2821", "2822", "2823", "2824", "2825", "2827", "2828", "2829", "2830", "2831", "2832", "2833", "2834", "2835", "2836", "2837", "2838", "2839", "2840", "2841", "2842", "2843", "2844", "2845", "2846", "2847", "2848", "2849", "2850", "2851", "2853", "2857", "2859", "2861", "2863", "2864", "2865", "2870", "2871", "2873", "2877", "2879", "2881", "2882", "2883", "2885", "2893", "2894", "2895", "2897", "2901", "2903", "2905", "2907", "2911", "2912", "2913", "2915", "2917", "2920", "2921", "2923", "2925", "2926", "2927", "2929", "2930", "2931", "2932", "2933", "2934", "2935", "2936", "2937", "2938", "2939", "2940", "2941", "2942", "2943", "2944", "2945", "2946", "2947", "2948", "2949", "2950", "2951", "2952", "2953", "2954", "2955", "2956", "2957", "2958", "2959", "2960", "2961", "2963", "2967", "2969", "2972", "2974", "2976", "2978", "2980", "2989", "2992", "3001", "3004", "3007", "3011", "3012", "3014", "3017", "3021", "3022", "3023", "3026", "3030", "3034", "3037", "3039", "3042", "3045", "3046", "3049", "3050", "3051", "3052", "3053", "3055"],
+          "Survived": ["2176", "2177", "2204", "2205", "2284", "2285", "2286", "2294", "2295", "2296", "2855", "2856", "2860", "2867", "2868", "2869", "2875", "2876", "2880", "2887", "2888", "2890", "2891", "2899", "2900", "2904", "2908", "2909", "2910", "2918", "2919", "2924", "2965", "2966", "2970", "2977", "2981", "2985", "2986", "2993", "2997", "2998", "3005", "3009", "3010", "3015", "3019", "3020", "3024", "3028", "3029", "3033", "3035", "3040", "3041", "3047", "3054"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
+        "statuses": {
+          "CompileError": ["3090", "3091", "3092", "3094", "3103", "3106", "3114", "3115", "3167", "3168", "3213", "3214", "3254", "3255", "3256", "3259", "3260", "3262", "3263", "3266", "3267", "3268", "3271", "3272", "3274", "3275", "3297", "3298", "3336", "3337", "3338", "3339", "3340", "3341"],
+          "Ignored": ["3083", "3096", "3099", "3107", "3110", "3116", "3125", "3178", "3225", "3227", "3232", "3237", "3239", "3243", "3246", "3251", "3278", "3280", "3285", "3288", "3294", "3302", "3308"],
+          "Killed": ["3056", "3057", "3058", "3059", "3060", "3061", "3062", "3063", "3064", "3065", "3066", "3067", "3068", "3069", "3070", "3071", "3072", "3073", "3074", "3075", "3076", "3077", "3078", "3079", "3080", "3081", "3082", "3084", "3085", "3086", "3087", "3088", "3089", "3093", "3095", "3097", "3098", "3102", "3104", "3105", "3108", "3109", "3111", "3112", "3113", "3117", "3118", "3119", "3120", "3121", "3122", "3123", "3124", "3126", "3128", "3129", "3130", "3131", "3132", "3133", "3134", "3135", "3136", "3137", "3138", "3139", "3140", "3141", "3142", "3143", "3144", "3145", "3146", "3147", "3148", "3149", "3150", "3151", "3152", "3153", "3154", "3155", "3156", "3157", "3158", "3159", "3160", "3161", "3162", "3163", "3164", "3165", "3166", "3169", "3170", "3171", "3172", "3173", "3174", "3175", "3176", "3177", "3179", "3180", "3181", "3182", "3183", "3184", "3185", "3186", "3187", "3188", "3189", "3190", "3191", "3192", "3193", "3194", "3195", "3196", "3197", "3198", "3199", "3200", "3201", "3202", "3203", "3204", "3205", "3206", "3207", "3208", "3209", "3210", "3211", "3212", "3215", "3216", "3217", "3218", "3219", "3220", "3221", "3222", "3223", "3224", "3226", "3228", "3229", "3230", "3231", "3238", "3242", "3244", "3247", "3248", "3249", "3250", "3252", "3261", "3264", "3273", "3276", "3279", "3283", "3284", "3286", "3289", "3290", "3291", "3292", "3295", "3296", "3299", "3300", "3303", "3304", "3305", "3306", "3309", "3310", "3311", "3312", "3313", "3314", "3315", "3316", "3317", "3318", "3319", "3320", "3321", "3322", "3323", "3324", "3325", "3326", "3327", "3328", "3329", "3330", "3331", "3332", "3333", "3334", "3335", "3346"],
+          "Survived": ["3100", "3101", "3127", "3233", "3234", "3235", "3236", "3240", "3241", "3245", "3253", "3257", "3258", "3265", "3269", "3270", "3277", "3281", "3282", "3287", "3293", "3301", "3307", "3342", "3343", "3344", "3345"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
+        "statuses": {
+          "CompileError": ["3389", "3390", "3448", "3449", "3621", "3622", "3623", "3626", "3627", "3629", "3630", "3633", "3634", "3635", "3638", "3639", "3641", "3642", "3658", "3659"],
+          "Ignored": ["3381", "3392", "3465", "3493", "3495", "3499", "3508", "3512", "3557", "3559", "3561", "3565", "3569", "3577", "3579", "3583", "3589", "3595", "3597", "3601", "3604", "3606", "3610", "3613", "3618", "3645", "3647", "3652", "3655"],
+          "Killed": ["3347", "3348", "3349", "3350", "3351", "3352", "3353", "3354", "3355", "3356", "3357", "3358", "3359", "3360", "3361", "3362", "3363", "3364", "3365", "3366", "3367", "3368", "3369", "3370", "3371", "3372", "3373", "3374", "3375", "3376", "3377", "3378", "3379", "3380", "3382", "3383", "3384", "3385", "3386", "3387", "3388", "3391", "3393", "3394", "3395", "3396", "3397", "3398", "3399", "3400", "3401", "3403", "3404", "3405", "3406", "3407", "3408", "3409", "3410", "3411", "3412", "3413", "3414", "3415", "3416", "3417", "3418", "3419", "3420", "3421", "3422", "3423", "3424", "3425", "3426", "3427", "3428", "3429", "3430", "3431", "3432", "3433", "3434", "3435", "3436", "3437", "3438", "3439", "3440", "3441", "3442", "3443", "3444", "3445", "3446", "3447", "3450", "3451", "3452", "3453", "3454", "3455", "3456", "3457", "3458", "3459", "3460", "3461", "3462", "3463", "3464", "3466", "3467", "3468", "3469", "3470", "3471", "3472", "3473", "3474", "3475", "3476", "3477", "3478", "3479", "3480", "3481", "3482", "3483", "3484", "3485", "3486", "3487", "3488", "3489", "3490", "3491", "3492", "3494", "3498", "3500", "3502", "3503", "3504", "3505", "3507", "3509", "3510", "3511", "3516", "3517", "3518", "3519", "3520", "3521", "3522", "3523", "3524", "3525", "3526", "3527", "3528", "3529", "3530", "3531", "3532", "3533", "3534", "3535", "3536", "3537", "3538", "3539", "3540", "3541", "3542", "3543", "3544", "3545", "3546", "3547", "3548", "3549", "3550", "3551", "3552", "3553", "3554", "3555", "3556", "3558", "3560", "3564", "3566", "3568", "3570", "3574", "3575", "3576", "3578", "3582", "3584", "3586", "3587", "3588", "3590", "3594", "3596", "3600", "3602", "3605", "3609", "3611", "3614", "3615", "3616", "3617", "3619", "3628", "3631", "3640", "3643", "3646", "3650", "3651", "3653", "3656", "3657", "3661"],
+          "Survived": ["3402", "3496", "3497", "3501", "3506", "3513", "3514", "3515", "3562", "3563", "3567", "3571", "3572", "3573", "3580", "3581", "3585", "3591", "3592", "3593", "3598", "3599", "3603", "3607", "3608", "3612", "3620", "3624", "3625", "3632", "3636", "3637", "3644", "3648", "3649", "3654", "3660", "3662"]
+        }
+      },
+      {
+        "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
+        "statuses": {
+          "CompileError": ["3674", "3675", "3701", "3702", "3772", "3773", "3780", "3814", "3815", "3816"],
+          "Ignored": ["3663", "3677", "3679", "3707", "3710", "3715", "3727", "3729", "3736", "3774", "3776", "3783", "3803", "3805", "3811", "3813"],
+          "Killed": ["3664", "3665", "3666", "3669", "3670", "3671", "3672", "3673", "3676", "3678", "3683", "3684", "3685", "3686", "3687", "3688", "3689", "3690", "3691", "3692", "3693", "3694", "3695", "3696", "3697", "3698", "3699", "3700", "3703", "3704", "3705", "3708", "3709", "3711", "3713", "3714", "3716", "3718", "3719", "3720", "3721", "3722", "3723", "3724", "3726", "3728", "3734", "3735", "3737", "3738", "3739", "3740", "3741", "3742", "3743", "3744", "3745", "3746", "3747", "3748", "3749", "3750", "3751", "3752", "3753", "3754", "3755", "3756", "3757", "3758", "3759", "3760", "3761", "3762", "3763", "3764", "3765", "3766", "3767", "3768", "3769", "3770", "3771", "3775", "3777", "3778", "3779", "3781", "3782", "3786", "3787", "3788", "3789", "3790", "3791", "3792", "3793", "3794", "3795", "3796", "3797", "3798", "3799", "3800", "3801", "3802", "3804", "3806", "3807", "3808", "3812", "3817", "3819", "3820", "3821", "3822"],
+          "Survived": ["3667", "3668", "3680", "3681", "3682", "3706", "3712", "3717", "3725", "3730", "3731", "3732", "3733", "3784", "3785", "3809", "3810", "3818", "3823", "3824"]
+        }
+      }
+    ]
+  },
+  "sample_replay_inventory": {
+    "completed_sample_count": 359,
+    "sample_outcome_counts": {
+      "compile_error": 17,
+      "complete_test_failures_cause_review": 1,
+      "validated_pass": 341
+    },
+    "sampled_fresh_ids_by_outcome": {
+      "compile_error": ["39", "218", "245", "254", "1091", "1331", "1332", "1344", "1345", "1596", "1600", "1605", "1607", "1617", "1619", "1631", "1633"],
+      "complete_test_failures_cause_review": ["2134"],
+      "validated_pass": ["40", "112", "113", "115", "116", "120", "121", "126", "127", "130", "131", "134", "135", "141", "142", "154", "155", "159", "160", "164", "165", "166", "170", "171", "174", "175", "183", "184", "187", "188", "213", "219", "225", "227", "228", "229", "230", "231", "232", "235", "236", "237", "238", "239", "240", "243", "246", "250", "252", "255", "261", "263", "359", "361", "366", "370", "485", "489", "490", "491", "495", "496", "497", "501", "502", "503", "507", "508", "509", "513", "514", "515", "519", "520", "521", "526", "527", "532", "533", "534", "540", "541", "545", "546", "547", "549", "550", "557", "558", "560", "564", "568", "569", "570", "574", "575", "576", "578", "579", "600", "607", "608", "619", "623", "624", "625", "629", "630", "631", "635", "636", "637", "641", "645", "648", "656", "659", "660", "664", "665", "666", "668", "674", "678", "679", "680", "683", "686", "688", "689", "695", "699", "700", "701", "705", "706", "707", "713", "714", "715", "718", "721", "722", "723", "727", "729", "730", "731", "734", "737", "740", "743", "746", "758", "762", "763", "764", "768", "769", "770", "773", "776", "779", "782", "790", "793", "797", "798", "799", "801", "813", "817", "818", "819", "823", "824", "825", "829", "830", "831", "834", "837", "840", "843", "845", "846", "852", "853", "854", "856", "862", "870", "871", "873", "874", "880", "881", "882", "900", "901", "907", "910", "913", "923", "927", "931", "933", "935", "936", "944", "946", "961", "963", "973", "983", "989", "990", "999", "1000", "1001", "1010", "1011", "1012", "1017", "1018", "1019", "1028", "1034", "1035", "1036", "1044", "1045", "1046", "1051", "1056", "1065", "1067", "1068", "1076", "1081", "1083", "1092", "1112", "1113", "1123", "1131", "1132", "1143", "1144", "1147", "1149", "1155", "1162", "1167", "1174", "1193", "1198", "1199", "1202", "1204", "1211", "1214", "1220", "1236", "1257", "1273", "1293", "1317", "1328", "1338", "1341", "1342", "1347", "1350", "1351", "1372", "1373", "1374", "1375", "1378", "1379", "1391", "1421", "1431", "1435", "1439", "1443", "1447", "1452", "1454", "1458", "1468", "1472", "1474", "1475", "1506", "1512", "1518", "1524", "1530", "1536", "1558", "1561", "1564", "1565", "1570", "1572", "1575", "1577", "1578", "1580", "1581", "1582", "1591", "1593", "1595", "1597", "1598", "1602", "1603", "1604", "1608", "1609", "1610", "1615", "1620", "1621", "1622", "1626", "1627", "1629", "1634", "1636", "1642", "1692", "1764", "1940", "2285", "3127", "3402", "3706"]
+    },
+    "not_reviewed_count": 262,
+    "not_reviewed_fresh_ids": ["1635", "1637", "1659", "1665", "1669", "1671", "1690", "1699", "1702", "1705", "1706", "1708", "1710", "1712", "1714", "1716", "1718", "1720", "1723", "1725", "1727", "1730", "1732", "1734", "1736", "1738", "1740", "1742", "1744", "1746", "1748", "1750", "1752", "1754", "1756", "1758", "1760", "1762", "1765", "1766", "1768", "1770", "1772", "1774", "1776", "1778", "1782", "1790", "1792", "1794", "1796", "1798", "1800", "1802", "1804", "1806", "1808", "1810", "1812", "1814", "1816", "1818", "1820", "1822", "1827", "1830", "1832", "1834", "1836", "1841", "1850", "1851", "1852", "1854", "1856", "1858", "1860", "1862", "1864", "1874", "1875", "1876", "1882", "1898", "1905", "1914", "1924", "1929", "1934", "1945", "1946", "1949", "1951", "1953", "1957", "1958", "1959", "1963", "1964", "1966", "2005", "2068", "2069", "2070", "2074", "2082", "2083", "2084", "2102", "2103", "2107", "2111", "2112", "2116", "2123", "2127", "2128", "2135", "2139", "2140", "2147", "2151", "2152", "2157", "2176", "2177", "2204", "2205", "2284", "2286", "2294", "2295", "2296", "2855", "2856", "2860", "2867", "2868", "2869", "2875", "2876", "2880", "2887", "2888", "2890", "2891", "2899", "2900", "2904", "2908", "2909", "2910", "2918", "2919", "2924", "2965", "2966", "2970", "2977", "2981", "2985", "2986", "2993", "2997", "2998", "3005", "3009", "3010", "3015", "3019", "3020", "3024", "3028", "3029", "3033", "3035", "3040", "3041", "3047", "3054", "3100", "3101", "3233", "3234", "3235", "3236", "3240", "3241", "3245", "3253", "3257", "3258", "3265", "3269", "3270", "3277", "3281", "3282", "3287", "3293", "3301", "3307", "3342", "3343", "3344", "3345", "3496", "3497", "3501", "3506", "3513", "3514", "3515", "3562", "3563", "3567", "3571", "3572", "3573", "3580", "3581", "3585", "3591", "3592", "3593", "3598", "3599", "3603", "3607", "3608", "3612", "3620", "3624", "3625", "3632", "3636", "3637", "3644", "3648", "3649", "3654", "3660", "3662", "3667", "3668", "3680", "3681", "3682", "3712", "3717", "3725", "3730", "3731", "3732", "3733", "3784", "3785", "3809", "3810", "3818", "3823", "3824"],
+    "completed_replay_batches_by_fresh_id": {
+      "39": "batch-1",
+      "40": "batch-2",
+      "112": "batch-1",
+      "113": "batch-2",
+      "115": "batch-1",
+      "116": "batch-2",
+      "120": "batch-1",
+      "121": "batch-2",
+      "126": "batch-1",
+      "127": "batch-2",
+      "130": "batch-1",
+      "131": "batch-2",
+      "134": "batch-1",
+      "135": "batch-2",
+      "141": "batch-1",
+      "142": "batch-2",
+      "154": "batch-1",
+      "155": "batch-2",
+      "159": "batch-1",
+      "160": "batch-2",
+      "164": "batch-1",
+      "165": "batch-2",
+      "166": "batch-1",
+      "170": "batch-2",
+      "171": "batch-1",
+      "174": "batch-2",
+      "175": "batch-1",
+      "183": "batch-2",
+      "184": "batch-1",
+      "187": "batch-2",
+      "188": "batch-1",
+      "213": "batch-2",
+      "218": "batch-1",
+      "219": "batch-2",
+      "225": "batch-1",
+      "227": "batch-2",
+      "228": "batch-1",
+      "229": "batch-2",
+      "230": "batch-1",
+      "231": "batch-2",
+      "232": "batch-1",
+      "235": "batch-2",
+      "236": "batch-1",
+      "237": "batch-2",
+      "238": "batch-1",
+      "239": "batch-2",
+      "240": "batch-1",
+      "243": "batch-2",
+      "245": "batch-1",
+      "246": "batch-2",
+      "250": "batch-1",
+      "252": "batch-2",
+      "254": "batch-1",
+      "255": "batch-2",
+      "261": "batch-1",
+      "263": "batch-2",
+      "359": "batch-1",
+      "361": "batch-2",
+      "366": "batch-1",
+      "370": "batch-2",
+      "485": "batch-1",
+      "489": "batch-2",
+      "490": "batch-1",
+      "491": "batch-2",
+      "495": "batch-1",
+      "496": "batch-2",
+      "497": "batch-1",
+      "501": "batch-2",
+      "502": "batch-1",
+      "503": "batch-2",
+      "507": "batch-1",
+      "508": "batch-2",
+      "509": "batch-1",
+      "513": "batch-2",
+      "514": "batch-1",
+      "515": "batch-2",
+      "519": "batch-1",
+      "520": "batch-2",
+      "521": "batch-1",
+      "526": "batch-2",
+      "527": "batch-1",
+      "532": "batch-2",
+      "533": "batch-1",
+      "534": "batch-2",
+      "540": "batch-1",
+      "541": "batch-2",
+      "545": "batch-1",
+      "546": "batch-2",
+      "547": "batch-1",
+      "549": "batch-2",
+      "550": "batch-1",
+      "557": "batch-2",
+      "558": "batch-1",
+      "560": "batch-2",
+      "564": "batch-1",
+      "568": "batch-2",
+      "569": "batch-1",
+      "570": "batch-2",
+      "574": "batch-1",
+      "575": "batch-2",
+      "576": "batch-1",
+      "578": "batch-2",
+      "579": "batch-1",
+      "600": "batch-2",
+      "607": "batch-1",
+      "608": "batch-2",
+      "619": "batch-1",
+      "623": "batch-2",
+      "624": "batch-1",
+      "625": "batch-2",
+      "629": "batch-1",
+      "630": "batch-2",
+      "631": "batch-1",
+      "635": "batch-2",
+      "636": "batch-1",
+      "637": "batch-2",
+      "641": "batch-1",
+      "645": "batch-2",
+      "648": "batch-1",
+      "656": "batch-2",
+      "659": "batch-1",
+      "660": "batch-2",
+      "664": "batch-1",
+      "665": "batch-2",
+      "666": "batch-1",
+      "668": "batch-2",
+      "674": "batch-1",
+      "678": "batch-2",
+      "679": "batch-1",
+      "680": "batch-2",
+      "683": "batch-1",
+      "686": "batch-2",
+      "688": "batch-1",
+      "689": "batch-2",
+      "695": "batch-1",
+      "699": "batch-2",
+      "700": "batch-1",
+      "701": "batch-2",
+      "705": "batch-1",
+      "706": "batch-2",
+      "707": "batch-1",
+      "713": "batch-2",
+      "714": "batch-1",
+      "715": "batch-2",
+      "718": "batch-1",
+      "721": "batch-2",
+      "722": "batch-1",
+      "723": "batch-2",
+      "727": "batch-1",
+      "729": "batch-2",
+      "730": "batch-1",
+      "731": "batch-2",
+      "734": "batch-1",
+      "737": "batch-2",
+      "740": "batch-1",
+      "743": "batch-2",
+      "746": "batch-1",
+      "758": "batch-2",
+      "762": "batch-1",
+      "763": "batch-2",
+      "764": "batch-1",
+      "768": "batch-2",
+      "769": "batch-1",
+      "770": "batch-2",
+      "773": "batch-1",
+      "776": "batch-2",
+      "779": "batch-1",
+      "782": "batch-2",
+      "790": "batch-1",
+      "793": "batch-2",
+      "797": "batch-1",
+      "798": "batch-2",
+      "799": "batch-1",
+      "801": "batch-2",
+      "813": "batch-1",
+      "817": "batch-2",
+      "818": "batch-1",
+      "819": "batch-2",
+      "823": "batch-1",
+      "824": "batch-2",
+      "825": "batch-1",
+      "829": "batch-2",
+      "830": "batch-1",
+      "831": "batch-2",
+      "834": "batch-1",
+      "837": "batch-2",
+      "840": "batch-1",
+      "843": "batch-2",
+      "845": "batch-1",
+      "846": "batch-2",
+      "852": "batch-1",
+      "853": "batch-2",
+      "854": "batch-1",
+      "856": "batch-2",
+      "862": "batch-1",
+      "870": "batch-2",
+      "871": "batch-1",
+      "873": "batch-2",
+      "874": "batch-1",
+      "880": "batch-2",
+      "881": "batch-1",
+      "882": "batch-2",
+      "900": "batch-1",
+      "901": "batch-2",
+      "907": "batch-1",
+      "910": "batch-2",
+      "913": "batch-1",
+      "923": "batch-2",
+      "927": "batch-1",
+      "931": "batch-2",
+      "933": "batch-1",
+      "935": "batch-2",
+      "936": "batch-1",
+      "944": "batch-2",
+      "946": "batch-1",
+      "961": "batch-2",
+      "963": "batch-1",
+      "973": "batch-2",
+      "983": "batch-1",
+      "989": "batch-2",
+      "990": "batch-1",
+      "999": "batch-2",
+      "1000": "batch-1",
+      "1001": "batch-2",
+      "1010": "batch-1",
+      "1011": "batch-2",
+      "1012": "batch-1",
+      "1017": "batch-2",
+      "1018": "batch-1",
+      "1019": "batch-2",
+      "1028": "batch-1",
+      "1034": "batch-2",
+      "1035": "batch-1",
+      "1036": "batch-2",
+      "1044": "batch-1",
+      "1045": "batch-2",
+      "1046": "batch-1",
+      "1051": "batch-2",
+      "1056": "batch-1",
+      "1065": "batch-2",
+      "1067": "batch-1",
+      "1068": "batch-2",
+      "1076": "batch-1",
+      "1081": "batch-2",
+      "1083": "batch-1",
+      "1091": "batch-2",
+      "1092": "batch-1",
+      "1112": "batch-2",
+      "1113": "batch-1",
+      "1123": "batch-2",
+      "1131": "batch-1",
+      "1132": "batch-2",
+      "1143": "batch-1",
+      "1144": "batch-2",
+      "1147": "batch-1",
+      "1149": "batch-2",
+      "1155": "batch-1",
+      "1162": "batch-2",
+      "1167": "batch-1",
+      "1174": "batch-2",
+      "1193": "batch-1",
+      "1198": "batch-2",
+      "1199": "batch-1",
+      "1202": "batch-2",
+      "1204": "batch-1",
+      "1211": "batch-2",
+      "1214": "batch-1",
+      "1220": "batch-2",
+      "1236": "batch-1",
+      "1257": "batch-2",
+      "1273": "batch-1",
+      "1293": "batch-2",
+      "1317": "batch-1",
+      "1328": "batch-2",
+      "1331": "batch-1",
+      "1332": "batch-2",
+      "1338": "batch-1",
+      "1341": "batch-2",
+      "1342": "batch-1",
+      "1344": "batch-2",
+      "1345": "batch-1",
+      "1347": "batch-2",
+      "1350": "batch-1",
+      "1351": "batch-2",
+      "1372": "batch-1",
+      "1373": "batch-2",
+      "1374": "batch-1",
+      "1375": "batch-2",
+      "1378": "batch-1",
+      "1379": "batch-2",
+      "1391": "batch-1",
+      "1421": "batch-2",
+      "1431": "batch-1",
+      "1435": "batch-2",
+      "1439": "batch-1",
+      "1443": "batch-2",
+      "1447": "batch-1",
+      "1452": "batch-2",
+      "1454": "batch-1",
+      "1458": "batch-2",
+      "1468": "batch-1",
+      "1472": "batch-2",
+      "1474": "batch-1",
+      "1475": "batch-2",
+      "1506": "batch-1",
+      "1512": "batch-2",
+      "1518": "batch-1",
+      "1524": "batch-2",
+      "1530": "batch-1",
+      "1536": "batch-2",
+      "1558": "batch-1",
+      "1561": "batch-2",
+      "1564": "batch-1",
+      "1565": "batch-2",
+      "1570": "batch-1",
+      "1572": "batch-2",
+      "1575": "batch-1",
+      "1577": "batch-2",
+      "1578": "batch-1",
+      "1580": "batch-2",
+      "1581": "batch-1",
+      "1582": "batch-2",
+      "1591": "batch-1",
+      "1593": "batch-2",
+      "1595": "batch-1",
+      "1596": "batch-2",
+      "1597": "batch-1",
+      "1598": "batch-2",
+      "1600": "batch-1",
+      "1602": "batch-2",
+      "1603": "batch-1",
+      "1604": "batch-2",
+      "1605": "batch-1",
+      "1607": "batch-2",
+      "1608": "batch-1",
+      "1609": "batch-2",
+      "1610": "batch-1",
+      "1615": "batch-2",
+      "1617": "batch-1",
+      "1619": "batch-2",
+      "1620": "batch-1",
+      "1621": "batch-2",
+      "1622": "batch-1",
+      "1626": "batch-2",
+      "1627": "batch-1",
+      "1629": "batch-2",
+      "1631": "batch-1",
+      "1633": "batch-2",
+      "1634": "batch-1",
+      "1636": "batch-1",
+      "1642": "batch-1",
+      "1692": "gap-fill",
+      "1764": "gap-fill",
+      "1940": "gap-fill",
+      "2134": "gap-fill",
+      "2285": "gap-fill",
+      "3127": "gap-fill",
+      "3402": "gap-fill",
+      "3706": "gap-fill"
+    },
+    "replay_csv_sha256": {
+      ".artifacts/verifier-mutation/fresh-replays/batch-1/mutants.csv": "1f9af26bc7447a1e3b99ea218477fbe0f87aa797773ecd1c3c1786eb1e2437f3",
+      ".artifacts/verifier-mutation/fresh-replays/batch-2/mutants.csv": "0ae0bd2e494a8541403436963d269b1233859f01856710b4a1af9c6c06d16cd8",
+      ".artifacts/verifier-mutation/fresh-replays/gap-fill/mutants.csv": "66938761c2a347fed61cdcd9b002e8586eade6a402ef3f4999f4b56abc37f4c3"
+    },
+    "replay_run_json_sha256": {
+      ".artifacts/verifier-mutation/fresh-replays/batch-1/run.json": "12ecff00bd7da5225a24540b1be5d0f732f90dee3f9602f2330b7a122fb36c2a",
+      ".artifacts/verifier-mutation/fresh-replays/batch-2/run.json": "0f867494f69fa23a989b444ed1892baf007322d4f1b0f43252559f218df2acc1",
+      ".artifacts/verifier-mutation/fresh-replays/gap-fill/run.json": "b6942617e1c97d7e6ee86d268dd05de558f8f5a1ecf2ae248337aa7fe303d259"
+    },
+    "retention_manifest_sha256": "5001d7cbaad5bb0d80c7d8db6db98a8d8eb03b6744d3827b4d540e68c8ef3274"
+  },
+  "count_integrity": {
+    "all_report_ids_unique": true,
+    "status_groups_cover_every_report_id_once": true,
+    "completed_sample_ids_unique": true,
+    "sample_and_not_reviewed_partition_fresh_survivors": true
+  }
+}
+```
+
+</details>
+
+### Raw input provenance
+
+| Artifact path | SHA-256 |
+| --- | --- |
+| `.artifacts/verifier-mutation/fresh-replays/batch-1/baseline/results/results.xml` | `57956f34061636d7a067448a52b414909e081b19b1691f112aacc5403fc3d9ab` |
+| `.artifacts/verifier-mutation/fresh-replays/batch-1/mutants.csv` | `1f9af26bc7447a1e3b99ea218477fbe0f87aa797773ecd1c3c1786eb1e2437f3` |
+| `.artifacts/verifier-mutation/fresh-replays/batch-1/run.json` | `12ecff00bd7da5225a24540b1be5d0f732f90dee3f9602f2330b7a122fb36c2a` |
+| `.artifacts/verifier-mutation/fresh-replays/batch-2/mutants.csv` | `0ae0bd2e494a8541403436963d269b1233859f01856710b4a1af9c6c06d16cd8` |
+| `.artifacts/verifier-mutation/fresh-replays/batch-2/run.json` | `0f867494f69fa23a989b444ed1892baf007322d4f1b0f43252559f218df2acc1` |
+| `.artifacts/verifier-mutation/fresh-replays/gap-fill/mutants.csv` | `66938761c2a347fed61cdcd9b002e8586eade6a402ef3f4999f4b56abc37f4c3` |
+| `.artifacts/verifier-mutation/fresh-replays/gap-fill/run.json` | `b6942617e1c97d7e6ee86d268dd05de558f8f5a1ecf2ae248337aa7fe303d259` |
+| `.artifacts/verifier-mutation/fresh-replays/retention-manifest.json` | `5001d7cbaad5bb0d80c7d8db6db98a8d8eb03b6744d3827b4d540e68c8ef3274` |
+| `.artifacts/verifier-mutation/resumed-validation/build.log` | `8237d6bf24adaab02c4df85204e3cf0a526c28b8e6ceff9bf89c04071a9ded06` |
+| `.artifacts/verifier-mutation/resumed-validation/docs-check.log` | `3bb854fb916f7009d8f139c6a427acd677b9641997dd0595a01a3d0b6be9ad1e` |
+| `.artifacts/verifier-mutation/resumed-validation/docs-tests.log` | `76ba2de37e61ad23ea3edb58453999c0419d97a4276b285b79238804f157bcb9` |
+| `.artifacts/verifier-mutation/resumed-validation/full-verification.log` | `8e1ed1800afc7e1b40dfd2bec53e668ca4c058b50f6833581d8a155a02367422` |
+| `.artifacts/verifier-mutation/resumed-validation/validation.json` | `da094d3fd15b308ea731f8547b16adbfc52397a51f254c986c46e40b90e93b81` |
+| `.artifacts/verifier-mutation/run.y53la5z6/command.log` | `f2f2a8d2402b3ff641a83d5050fd35b801479197d29238da5a6e95c63dc4fc50` |
+| `.artifacts/verifier-mutation/run.y53la5z6/reports/mutation-report.json` | `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d` |
+| `.artifacts/verifier-mutation/run.y53la5z6/run.json` | `95e5be349680d1df46fa75d2d8ab51879ea9578d23599816282c83a3d3727933` |
+| `/workspace/scratch/build_verifier_measurement_excerpts.py` | `107c951e08cf303edc34cc4d4478d0166e31059ae8cc662dbe3f3e3d7ccd42c9` |
+### Additional measurement fields
+
+These fields complement the measurement excerpts in this document.
+
+#### Source-file inventory and status counts
+
+Report: `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/run.y53la5z6/reports/mutation-report.json`
+
+SHA-256: `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d`
+
+File entries: 18; entries with at least one mutant: 13; generated mutant records: 3825.
+
+| Source file | Records | Killed | Survived | Timeout | CompileError | Ignored | NoCoverage | RuntimeError | Pending |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `src/Parchwell.Verifier/AssemblyInfo.cs` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Results/VerifierResult.cs` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs` | 1124 | 668 | 250 | 0 | 88 | 118 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 228 | 126 | 34 | 0 | 13 | 55 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Window/StartLineNote.cs` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 224 | 156 | 33 | 0 | 8 | 27 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/Program.cs` | 115 | 32 | 41 | 5 | 13 | 24 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifierHostOptions.cs` | 10 | 6 | 2 | 0 | 1 | 1 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 234 | 121 | 82 | 0 | 4 | 27 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifierWorker.cs` | 32 | 6 | 12 | 2 | 0 | 12 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 191 | 130 | 25 | 0 | 18 | 18 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs` | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 896 | 732 | 57 | 0 | 46 | 61 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 291 | 207 | 27 | 0 | 34 | 23 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 316 | 229 | 38 | 0 | 20 | 29 | 0 | 0 | 0 |
+| `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 162 | 116 | 20 | 0 | 10 | 16 | 0 | 0 | 0 |
+| **Total** | **3825** | **2531** | **621** | **7** | **255** | **411** | **0** | **0** | **0** |
+
+The 18 source-file entries include five with zero generated mutants; 13 have one or more. Status totals are counted from each file entry's `mutants` array.
+
+#### Compile-error and ignored status metadata
+
+Every CompileError record has `statusReason: "Mutant caused compile errors"` (255 records total). Every Ignored record has mutator `Block removal mutation`, replacement `{}`, and `statusReason: "Removed by block already covered filter"` (411 records total).
+
+| Status | Mutator name | Records |
+| --- | --- | ---: |
+| CompileError | `Arithmetic mutation` | 11 |
+| CompileError | `Block removal mutation` | 45 |
+| CompileError | `Conditional (false) mutation` | 2 |
+| CompileError | `Conditional (true) mutation` | 2 |
+| CompileError | `Equality mutation` | 56 |
+| CompileError | `Linq method mutation (AsEnumerable() to Reverse())` | 1 |
+| CompileError | `Linq method mutation (Count() to Sum())` | 42 |
+| CompileError | `Logical mutation` | 35 |
+| CompileError | `LogicalNotExpression to un-LogicalNotExpression mutation` | 35 |
+| CompileError | `Negate expression` | 22 |
+| CompileError | `Statement mutation` | 1 |
+| CompileError | `String mutation` | 3 |
+| Ignored | `Block removal mutation` | 411 |
+
+#### Timeout rows from report
+
+`statusReason` is absent for all seven Timeout rows. The report has empty `killedBy` arrays for all seven; the table does not infer which test or host behavior caused a timeout. `coveredBy` is omitted because the report associates tests with a mutant but does not establish a per-test execution outcome.
+
+| ID | Source | Span | Mutator | Replacement | `killedBy` count | `statusReason` |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1585 | `src/Parchwell.Verifier/Program.cs` | `50:9-50:61` | `Statement mutation` | `;` | 0 | not supplied |
+| 1588 | `src/Parchwell.Verifier/Program.cs` | `67:25-67:60` | `Null coalescing mutation (remove left)` | `TimeProvider.System` | 0 | not supplied |
+| 1590 | `src/Parchwell.Verifier/Program.cs` | `75:17-75:63` | `Statement mutation` | `;` | 0 | not supplied |
+| 1648 | `src/Parchwell.Verifier/Program.cs` | `176:64-176:89` | `Equality mutation` | `lifetime > TimeSpan.Zero` | 0 | not supplied |
+| 1651 | `src/Parchwell.Verifier/Program.cs` | `182:13-182:30` | `Statement mutation` | `;` | 0 | not supplied |
+| 1955 | `src/Parchwell.Verifier/VerifierWorker.cs` | `85:13-85:52` | `Statement mutation` | `;` | 0 | not supplied |
+| 1961 | `src/Parchwell.Verifier/VerifierWorker.cs` | `134:13-134:31` | `Equality mutation` | `_timer is null` | 0 | not supplied |
+
+#### Test metadata group reconciliation
+
+The Stryker report contains 1044 test metadata records. Reconciliation with the ordinary XML groups them into 68 exact source/type/method keys; the `Rows` column records per-method test-case multiplicity. Literal test IDs are format-specific and are not treated as equivalent identifiers.
+
+| Source file | Type | Method | Rows | Stryker source span |
+| --- | --- | --- | ---: | --- |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_AnyConfiguredModeWithoutHandler_When_WorkerRuns_Then_ExitsNonzeroWithoutOutput` | 3 | `270:5-281:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_BlankRequiredTextOption_When_Validated_Then_ReportsStartupFailure` | 42 | `83:5-91:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_DuplicateRepeatResultPaths_When_OptionsAreValidated_Then_PreservesThemForCheck32` | 1 | `320:5-330:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ExpectedIdentityCardinalityOtherThanFive_When_OptionsAreValidated_Then_PreservesItForCheck32` | 4 | `332:5-346:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedDuration_When_Bound_Then_ReportsStartupFailure` | 1 | `179:5-189:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedInactiveBudget_When_HostBindsOptions_Then_IgnoresTheValue` | 8 | `217:5-249:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingOrUnknownMode_When_HostStarts_Then_ExitsNonzeroBeforeIo` | 4 | `23:5-39:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingRequiredOption_When_Validated_Then_ReportsStartupFailure` | 99 | `70:5-81:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredBudget_When_Validated_Then_ReportsStartupFailure` | 38 | `153:5-164:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredLimit_When_Validated_Then_ReportsStartupFailure` | 62 | `166:5-177:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProbeGateMode_When_HostBuilds_Then_RequiresNoKafkaOrAzureServices` | 1 | `251:5-268:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeAtBudgetSum_When_Validated_Then_RejectsEqualityAndAcceptsGreaterValue` | 1 | `191:5-215:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | 2 | `348:5-390:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_RelativeBlobServiceUri_When_Validated_Then_ReportsStartupFailure` | 2 | `93:5-102:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_UnexpectedRepeatInputCardinality_When_OptionsAreValidated_Then_PreservesItForFutureGateJudgement` | 4 | `304:5-318:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_WorkerExceptionCancellationOrHostStop_When_ExecutionEnds_Then_DoesNotReportSuccess` | 3 | `283:5-302:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierWatchdogChildProcessTests` | `Given_ChildWatchdogMarker_When_Run_Then_UsesProductionHardExit` | 1 | `698:5-719:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs` | `Parchwell.Verifier.Tests.Input.GoldenArtifactReaderTests` | `Given_GoldenArtifacts_When_IndependentReadersParse_Then_PreserveSchemaOneEvidence` | 1 | `11:5-163:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_DuplicatePropertyAtNestedDepth_When_Read_Then_ReportsDuplicateToOwner` | 217 | `426:5-445:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InputExceedsConfiguredLimits_When_Read_Then_ThrowsExecutionLimitWithoutCheckRouting` | 1 | `705:5-774:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidEscapedSurrogateInPropertyOrValue_When_Read_Then_RoutesAsMalformedJson` | 30 | `477:5-493:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidUtf8TruncatedOrBadJsonlFraming_When_Read_Then_RoutesEnvelopeProblem` | 1 | `447:5-475:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedIndex_When_Read_Then_ReturnsExecutionFailure` | 2 | `810:5-824:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedRawJsonInValidStatisticsEnvelope_When_Read_Then_EnvelopeAndNativeProblemsStaySeparate` | 1 | `692:5-703:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingIndex_When_Read_Then_ReturnsExecutionFailure` | 1 | `795:5-808:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingInputSource_When_Read_Then_RoutesAbsenceToItsOwner` | 1 | `776:5-793:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingOrNullCompletionReceipt_When_CapabilitiesAreRead_Then_PreservesPresenceAndFalseValues` | 1 | `34:5-76:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NativeRawReportHasIndependentShape_When_Read_Then_AllowsExtraFieldsAndRoutesNativeProblems` | 1 | `571:5-690:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NullCallbackPersistenceAndNullableLifecycleReason_When_Read_Then_PreservesNullWithoutValidityDecision` | 1 | `78:5-96:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_OnlyHarnessOwnedScalarValues_When_Read_Then_UsesExactWriterSetsAndKeepsOrdinaryStringsFree` | 1 | `98:5-146:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ReorderedPropertiesAndUninterpretedEvidence_When_Read_Then_PreservesDataWithoutSemanticGates` | 1 | `148:5-266:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyHasWrongJsonKind_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `24:5-32:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyMissing_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `14:5-22:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineContainerHasUnknownOrDuplicateProperty_When_Read_Then_RoutesToCheckSeven` | 6 | `382:5-412:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineRequiredPropertyInvalid_When_Read_Then_RoutesProblemToCheckSeven` | 32 | `304:5-316:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnknownHarnessField_When_EnvelopeIsRead_Then_RejectsItAtEachClosedShape` | 1 | `330:5-380:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnsupportedHarnessScalarsOrSchema_When_Read_Then_RoutesStructuralProblem` | 1 | `268:5-302:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ValidEscapedSurrogatePairInValuesAndOpenMapKeys_When_Read_Then_PreservesDecodedText` | 1 | `507:5-522:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_A01RecordedEvidence_When_RoundTripped_Then_PreservesSelectedInt64FieldsAndOmissions` | 1 | `502:5-547:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AbsentAndObservedEmptyBoundaries_When_RoundTripped_Then_PreservesTheDistinction` | 1 | `228:5-280:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AssessmentSnippetExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `628:5-637:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountLowerBoundFalse_When_Read_Then_ReturnsStructuralProblem` | 1 | `452:5-462:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountProjection_When_RoundTripped_Then_PreservesOnlySuppliedMeasurements` | 1 | `411:5-450:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithObservedZeros_When_Serialized_Then_AllSixZeroCountsRemainPresent` | 1 | `62:5-73:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithoutCounts_When_Serialized_Then_ThrowsCodecError` | 1 | `75:5-81:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResult_When_Serialized_Then_AllSixOutcomeKeysArePresent` | 1 | `37:5-60:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompletedDrain_When_RoundTripped_Then_EmitsOnlyDrainTimeInMilliseconds` | 2 | `110:5-127:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ConfigurationFidelityDifferences_When_RoundTripped_Then_EmitsBoundedSnakeCaseProjection` | 1 | `464:5-500:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticAndAssessmentExceedPerCheckLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `639:5-651:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticsForDifferentChecks_When_Read_Then_JsonlRowLimitDoesNotApply` | 1 | `598:5-614:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_FailedAndUnevaluatedAssessments_When_RoundTripped_Then_PreservesTheirDistinctStates` | 1 | `83:5-108:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_HashAndBoundedDiagnostics_When_Serialized_Then_EmitsOnlyResultProjection` | 1 | `157:5-187:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidButUsableProbeProjection_When_RoundTripped_Then_PreservesIndependentEvidence` | 1 | `364:5-409:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidOrIncompleteResult_When_Serialized_Then_AllSixOutcomeKeysAreAbsent` | 2 | `21:5-35:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MalformedStartLineNote_When_Read_Then_ReturnsStructuralProblemForFutureCheckSeven` | 1 | `351:5-362:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MissingNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `315:5-325:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NegativeFractionalDuration_When_Serialized_Then_TruncatesTowardZero` | 1 | `571:5-580:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NullableDiagnosticFields_When_RoundTripped_Then_EmitsAndReadsExplicitNulls` | 1 | `282:5-301:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_OutputExceedsConfiguredBytes_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `549:5-558:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PartitionCountExceedsConfiguredMaximum_When_ReadStartLine_Then_ThrowsExecutionLimit` | 1 | `653:5-662:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PreBoundaryOrOutOfRangeOrIoTermination_When_Serialized_Then_BothDrainFieldsAreAbsent` | 2 | `144:5-155:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ProducerAndVerifierVersionsDiffer_When_RoundTripped_Then_CopiesEachSourceSeparately` | 1 | `189:5-226:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ResultExceedsAggregateEntryLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `582:5-596:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_SafetyStopDuration_When_RoundTripped_Then_EmitsOnlyLabelledLowerBound` | 1 | `129:5-142:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_StartLineNote_When_RoundTripped_Then_PreservesOffsetsWithoutSelfHash` | 1 | `327:5-349:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `616:5-626:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsUtf8Limit_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `560:5-569:6` |
+| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_WrongKindNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `303:5-313:6` |
+
+This table gives the reconciled group names, multiplicities, and Stryker source spans. Span punctuation is normalized to ASCII; method names are retained exactly.
+### Version-option evidence
+
+The plan's version-option command was rechecked while publishing these excerpts; it performs no mutation run. The recorded response and pinned help explain the nonzero result.
+
+```json
+{
+  "command": [
+    "dotnet",
+    "stryker",
+    "--version"
+  ],
+  "observed_exit_code": 1,
+  "head": "f162e3aebb6d0e369eb144af915f27d200a15513",
+  "output": "Specify --help for a list of available options and commands.\nMissing value for option 'version'\n"
+}
+```
+
+Excerpt from the retained `stryker-help.log`:
+
+```text
+  -v|--version                        Project version used in dashboard reporter
+                                      and baseline feature. | default: ''
+```
 ## Runner sample coverage
 
 Tested commit `610625f4fa19972c48c8d315442982542b257cd8`; Stryker report SHA-256 `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d`.
