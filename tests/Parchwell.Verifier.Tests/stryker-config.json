@@ -1,0 +1,28 @@
+{
+  "stryker-config": {
+    "project": "Parchwell.Verifier.csproj",
+    "test-runner": "mtp",
+    "configuration": "Release",
+    "target-framework": "net10.0",
+    "reporters": [
+      "json",
+      "html",
+      "progress"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    },
+    "mutate": [
+      "Program.cs",
+      "VerifierHostOptions*.cs",
+      "VerifierWorker.cs",
+      "Common/Contracts/*.cs",
+      "Common/Serialization/*.cs",
+      "Common/Window/*.cs",
+      "Common/Results/*.cs",
+      "VerifyRun/Input/*.cs"
+    ]
+  }
+}
