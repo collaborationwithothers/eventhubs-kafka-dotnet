@@ -8,4 +8,11 @@
     <PackageReference Include="xunit.v3.mtp-v2" />
     <ProjectReference Include="../../src/Parchwell.Verifier/Parchwell.Verifier.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="../fixtures/verifier-v1/**/*">
+      <Link>fixtures/verifier-v1/%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 </Project>
