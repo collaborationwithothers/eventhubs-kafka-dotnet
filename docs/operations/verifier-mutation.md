@@ -1,164 +1,185 @@
 # Verifier mutation record
 
-The current PR 3 foundation baseline is 80.53% on commit `cc8279c3d0687ac540cdc7385968b6f72af13ae2`. It contains 3826 mutants, including 615 current Survived/NoCoverage rows. Every current survivor is marked `not reviewed`; the earlier replay sample below applies only to its own tested SHA and report.
+The current PR 3 foundation baseline is 80.71% on commit `0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90`. It contains 3877 mutants, including 618 current Survived/NoCoverage rows. Every current survivor is marked `not reviewed`; the earlier replay sample below applies only to its own tested SHA and report.
 
-Hari's [sampled-survivor decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6247408154) retains the completed runner-validation sample, fills uncovered survivor source files or mutator types, and marks other un-replayed survivors `not reviewed`. No old sample disposition or test outcome is transferred to a current row. The full current report facts and measurement excerpts follow; replay status is not inferred from mutation coverage.
+Hari's decision on 2026-10-18 [accepts the mutant 2134 preview-vs-normal-MTP disagreement and 17 pre-test compilation differences](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728) for PR 3. The Stryker baseline remains as measured; the accepted differences do not alter its score or status counts. Before PR 6 sets a break threshold, PR 6 must replay a small sample of Killed mutants under normal MTP and record the result with the survivor review. The completed 610625f runner-validation sample remains historical context; newly uncovered current survivor source files or mutator types are reported as sample gaps, and every current survivor remains `not reviewed`. No old sample disposition or test outcome transfers to a current row.
 
-The historical sample recorded one preview-vs-normal-MTP assertion disagreement (old mutant 2134, an `ArtifactIndexReader` wrong-kind diagnostic case) and 17 pre-test compilation failures. The current Stryker status does not establish whether the old disagreement was caused by Stryker or the test runner, and the compilation rows still have no normal-MTP result. Hari must review these differences before merge.
+The historical sample recorded one preview-vs-normal-MTP assertion disagreement (old mutant 2134, an `ArtifactIndexReader` wrong-kind diagnostic case) and 17 pre-test compilation failures. Hari accepted these differences for PR 3 on 2026-10-18; see the decision linked above. Their raw historical evidence is retained below and their statuses and score remain unchanged.
 
 ## Current report summary
 
 | Measure | Current result |
 | --- | ---: |
-| Tested commit | `cc8279c3d0687ac540cdc7385968b6f72af13ae2` |
-| Tested tree | `3b5e677acbd3d9bf253909f65b897e5fa25b845a` |
-| Stryker report SHA-256 | `ef019222382fc446b239de3cace46a8fc43e9dbb5b7b976ba311bdf1ddf9d43a` |
-| Total mutants | 3826 |
-| Survived/NoCoverage rows | 615 |
-| Killed + Timeout / tested denominator | 2544 / 3159 |
-| Score | 80.53% |
+| Tested commit | `0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90` |
+| Tested tree | `52706c46059bcab835f2190e228ac70701ab7a89` |
+| Stryker report SHA-256 | `782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df` |
+| Total mutants | 3877 |
+| Survived/NoCoverage rows | 618 |
+| Killed + Timeout / tested denominator | 2585 / 3203 |
+| Score | 80.71% |
 | Current replayed rows in this record | 0 |
 
 | Stryker report status | Count |
 | --- | ---: |
-| Killed | 2537 |
-| Survived | 615 |
+| Killed | 2578 |
+| Survived | 618 |
 | Timeout | 7 |
-| CompileError | 255 |
-| Ignored | 412 |
+| CompileError | 257 |
+| Ignored | 417 |
 | NoCoverage | 0 |
 | RuntimeError | 0 |
 | Pending | 0 |
 
 
-Wrapper elapsed time: 2219.423 seconds, from the published `run.json` record. The run record, including timestamps, exit status, command, and report hashes, is reproduced in the current measurement excerpts below.
+Wrapper elapsed time: 2071.492 seconds, from the published `run.json` record. The run record, including timestamps, exit status, command, and report hashes, is reproduced in the current measurement excerpts below.
 
 The score formula is `(Killed + Timeout) / (Killed + Timeout + Survived + NoCoverage)`, matching the [pinned Stryker score implementation](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs#L31-L73). Timeout remains a separate status and is not called an assertion kill. CompileError and Ignored are outside this denominator. The Stryker report and embedded ID/status inventory are independently linked by their SHA-256 values in the following current measurement excerpts.
 
 | Toolchain | Evidence |
 | --- | --- |
 | .NET SDK 10.0.402 | [`global.json`](../../global.json) |
-| .NET test runtime | `64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]` from the targeted XML assembly metadata |
+| .NET test runtime | `64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]` from the targeted XML assembly metadata; runtime 10.0.13 source revision [6aa72daa24f66c01c3d7b6a32519e9d21396deec](https://github.com/dotnet/runtime/tree/6aa72daa24f66c01c3d7b6a32519e9d21396deec) |
 | Microsoft.Testing.Platform 2.5.1 | [`tests/Parchwell.Verifier.Tests/packages.lock.json`](../../tests/Parchwell.Verifier.Tests/packages.lock.json) |
 | xunit.v3.mtp-v2 4.0.2 | [`tests/Parchwell.Verifier.Tests/packages.lock.json`](../../tests/Parchwell.Verifier.Tests/packages.lock.json) |
 | dotnet-stryker 5.0.0 | [`dotnet-tools.json`](../../.config/dotnet-tools.json) and the current command log version banner below |
 
 ## Current ordinary validation
 
-The validation record for `cc8279c3d0687ac540cdc7385968b6f72af13ae2` spans 354.325701 seconds from its recorded start and end timestamps. All 10 recorded commands exited 0; the full verification command took 310.468 seconds. Its five project XML reports total 1715/1715 passed, with no failed, skipped, errored, or not-run tests. The targeted Verifier report records 1045/1045 passed. The Release build reported 0 warnings and 0 errors. The documentation test command passed 27 cases; the documentation check command exited 0.
+The validation record for `0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90` spans 345.994385 seconds from its recorded start and end timestamps. All 10 recorded commands exited 0; the full verification command took 308.580 seconds. Its five project XML reports total 1763/1763 passed, with no failed, skipped, errored, or not-run tests. The targeted Verifier report records 1093/1093 passed. The Release build reported 0 warnings and 0 errors. The documentation test command passed 27 cases; the documentation check command exited 0.
 
-The current Stryker run captured per-test coverage for 1045 tests across 1 assembly. Its metadata reconciliation matches 1045 test rows against 69 exact source/type/method groups and ordinary XML multiplicities. This is metadata reconciliation, not proof of per-test initial execution outcomes. The 2 coverage relay acknowledgements marked `Dubious` are watchdog warnings for tests; they are distinct from the 7 Stryker mutant `Timeout` statuses.
+The current Stryker run captured per-test coverage for 1093 tests across 1 assembly. Its metadata reconciliation matches 1093 test rows against 74 exact source/type/method groups and ordinary XML multiplicities. This is metadata reconciliation, not proof of per-test initial execution outcomes. The 2 coverage relay acknowledgements marked `Dubious` are watchdog warnings for tests; they are distinct from the 7 Stryker mutant `Timeout` statuses.
 
-The single `dotnet stryker --version` probe exited 1 because this CLI requires a value for `--version`; the recorded probe expected that exit, while tool-list output and the pinned manifest identify version 5.0.0. This failed option probe is recorded separately from the ten-command validation sequence.
+The single `dotnet stryker --version` probe exited 1 because this CLI requires a value for `--version`; the recorded probe expected that exit, while tool-list output and the pinned manifest identify version 5.0.0. The probe is not counted as a failed validation command.
 
 ## Current measurement evidence
 
 This excerpt is rendered from retained files only; it does not run Stryker, build, tests, or the preview runner. Current replay dispositions are not inferred from coverage or mutation status. The embedded inventory below preserves every mutant ID grouped by report status and source.
 
-- Tested commit: `cc8279c3d0687ac540cdc7385968b6f72af13ae2`
-- Stryker report: `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/reports/mutation-report.json`, SHA-256 `ef019222382fc446b239de3cace46a8fc43e9dbb5b7b976ba311bdf1ddf9d43a`
-- Run metadata: `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/run.json`, SHA-256 `538c90a73009a26d5da49fa45e1d2f3246f4d8f852f1d56e4ba364ed186eeb23`
-- Mutants: 3826; statuses: `{"CompileError": 255, "Ignored": 412, "Killed": 2537, "Survived": 615, "Timeout": 7}`
-- Survived or NoCoverage: 615
-- Baseline XML: `.artifacts/verifier-mutation/p2-fix-validation/targeted-results/results.xml`, SHA-256 `b3d9ec08602cece73b2f0cfb2a707048150e49ee1e67ea1b8e89ca1e8ea30044`, assembly metadata `[{"environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]", "errors": "0", "failed": "0", "finish-rtf": "2026-10-18T08:46:18.6113031+00:00", "id": "ea72fb19-1ba8-4bd1-8290-5c5dd18b48d1", "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll", "not-run": "0", "passed": "1045", "run-date": "2026-10-18", "run-time": "08:46:15", "skipped": "0", "start-rtf": "2026-10-18T08:46:15.9841255+00:00", "target-framework": ".NETCoreApp,Version=v10.0", "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f", "time": "2.629", "time-rtf": "00:00:02.6290000", "total": "1045"}]`
+- Tested commit: `0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90`
+- Stryker report: `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json`, SHA-256 `782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df`
+- Run metadata: `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/run.json`, SHA-256 `98de441f72fda1d59c7d46ebb7247ab970a4b0c9c73472546a627ca327881b40`
+- Mutants: 3877; statuses: `{"CompileError": 257, "Ignored": 417, "Killed": 2578, "Survived": 618, "Timeout": 7}`
+- Survived or NoCoverage: 618
+- Baseline XML: `.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results.xml`, SHA-256 `47689e2e6bdde0e296ec259ff560af87493039d9d025ab04909e431f4e9849b8`, assembly metadata `[{"environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]", "errors": "0", "failed": "0", "finish-rtf": "2026-10-18T10:57:58.1747580+00:00", "id": "d7a6980b-49ef-408b-a30c-5f4205605b91", "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll", "not-run": "0", "passed": "1093", "run-date": "2026-10-18", "run-time": "10:57:55", "skipped": "0", "start-rtf": "2026-10-18T10:57:55.0250391+00:00", "target-framework": ".NETCoreApp,Version=v10.0", "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f", "time": "3.150", "time-rtf": "00:00:03.1500000", "total": "1093"}]`
 
-### `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/command.log` (SHA-256 `1e84b93cb858d8b5d90550eae12e6a02d1505ec4adf0416d1db56be1ed7f9357`)
-
-Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
-
-```json
-"\n   _____ _              _               _   _ ______ _______ \u00a0\n  / ____| |            | |             | \\ | |  ____|__   __|\u00a0\n | (___ | |_ _ __ _   _| | _____ _ __  |  \\| | |__     | |   \u00a0\n  \\___ \\| __| '__| | | | |/ / _ \\ '__| | . ` |  __|    | |   \u00a0\n  ____) | |_| |  | |_| |   <  __/ |    | |\\  | |____   | |   \u00a0\n |_____/ \\__|_|   \\__, |_|\\_\\___|_| (_)|_| \\_|______|  |_|   \u00a0\n                   __/ |                                     \u00a0\n                  |___/                                      \u00a0\n\n\nVersion: 5.0.0\n\n[08:51:53 INF] Analysis starting.\n[08:51:53 INF] Using project configuration/platform 'Release|`default`'.\n[08:51:53 INF] Analyzing 1 test project(s).\n[08:51:54 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj. Assuming selected framework (net10.0) is present.\n[08:51:55 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Assuming selected framework (net10.0) is present.\n[08:51:56 INF] Found project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj to mutate.\n[08:51:56 INF] Analysis complete.\n[08:51:56 INF] Building test project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (1/1)\n[08:51:56 INF] Building project Parchwell.Verifier.Tests.csproj using dotnet build Parchwell.Verifier.Tests.csproj -c Release --property:Platform=AnyCPU (directory /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests.)\n[08:52:01 WRN] The Microsoft Test Platform testrunner is currently in preview. Results should be verified since this feature is still being tested.\n[08:52:02 INF] Number of tests found: 1045 for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Initial test run started.\n[08:52:30 INF] 3826 mutants created\n[08:52:30 INF] Capture mutant coverage using 'CoverageBasedTest' mode.\n[08:52:30 INF] Starting per-test coverage capture for MTP runner\n[08:52:30 INF] Capturing per-test coverage for 1045 tests across 1 assemblies\n[08:53:09 WRN] MtpRunner-0: Timed out waiting for coverage relay ack for test 4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58; marking as Dubious\n[08:53:20 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c; marking as Dubious\n[08:53:20 INF] Per-test coverage capture complete: 1045 tests captured\nHint: by passing \"--open-report or -o\" the report will open automatically and \nupdate the report in real-time.\n[08:53:20 INF] 255   mutants got status CompileError. Reason: Mutant caused compile errors\n[08:53:20 INF] 412   mutants got status Ignored.      Reason: Removed by block already covered filter\n[08:53:20 INF] 667   total mutants are skipped for the above mentioned reasons\n[08:53:20 INF] 3159  total mutants will be tested\n\nKilled:   2537\nSurvived:  615\nTimeout:     7\nErrors:     0\n\nYour json report has been generated at:\nfile:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run\n.2dplpgxt/reports/mutation-report.json\n\nYour html report has been generated at:\nfile:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run\n.2dplpgxt/reports/mutation-report.html\nYou can open it in your browser of choice.\n[09:28:51 INF] Time Elapsed 00:36:58.6908649\n[09:28:51 INF] The final mutation score is 80.53 %\n"
-```
-### `.artifacts/verifier-mutation/p2-fix-validation/locked-restore.log` (SHA-256 `ffb28aad9fbdb9bfc7c7a6803b659b6333ff7912d8d9d4d07b583581fc354df8`)
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/command.log` (SHA-256 `e661843940b1efc481b453efae3368a2fe4781d5d808c06158c5b1281cdf8f76`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"  Determining projects to restore...\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/Parchwell.Kafka.csproj (in 1.21 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj (in 1.28 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Parchwell.Scenarios.csproj (in 1.22 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (in 1.31 sec).\n  7 of 11 projects are up-to-date for restore.\n"
+"\n   _____ _              _               _   _ ______ _______ \u00a0\n  / ____| |            | |             | \\ | |  ____|__   __|\u00a0\n | (___ | |_ _ __ _   _| | _____ _ __  |  \\| | |__     | |   \u00a0\n  \\___ \\| __| '__| | | | |/ / _ \\ '__| | . ` |  __|    | |   \u00a0\n  ____) | |_| |  | |_| |   <  __/ |    | |\\  | |____   | |   \u00a0\n |_____/ \\__|_|   \\__, |_|\\_\\___|_| (_)|_| \\_|______|  |_|   \u00a0\n                   __/ |                                     \u00a0\n                  |___/                                      \u00a0\n\n\nVersion: 5.0.0\n\n[11:03:32 INF] Analysis starting.\n[11:03:32 INF] Using project configuration/platform 'Release|`default`'.\n[11:03:32 INF] Analyzing 1 test project(s).\n[11:03:33 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj. Assuming selected framework (net10.0) is present.\n[11:03:34 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Assuming selected framework (net10.0) is present.\n[11:03:34 INF] Found project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj to mutate.\n[11:03:34 INF] Analysis complete.\n[11:03:34 INF] Building test project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (1/1)\n[11:03:34 INF] Building project Parchwell.Verifier.Tests.csproj using dotnet build Parchwell.Verifier.Tests.csproj -c Release --property:Platform=AnyCPU (directory /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests.)\n[11:03:39 WRN] The Microsoft Test Platform testrunner is currently in preview. Results should be verified since this feature is still being tested.\n[11:03:39 INF] Number of tests found: 1093 for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Initial test run started.\n[11:04:04 INF] 3877 mutants created\n[11:04:04 INF] Capture mutant coverage using 'CoverageBasedTest' mode.\n[11:04:04 INF] Starting per-test coverage capture for MTP runner\n[11:04:04 INF] Capturing per-test coverage for 1093 tests across 1 assemblies\n[11:04:44 WRN] MtpRunner-0: Timed out waiting for coverage relay ack for test 4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58; marking as Dubious\n[11:04:54 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c; marking as Dubious\n[11:04:54 INF] Per-test coverage capture complete: 1093 tests captured\nHint: by passing \"--open-report or -o\" the report will open automatically and \nupdate the report in real-time.\n[11:04:55 INF] 257   mutants got status CompileError. Reason: Mutant caused compile errors\n[11:04:55 INF] 417   mutants got status Ignored.      Reason: Removed by block already covered filter\n[11:04:55 INF] 674   total mutants are skipped for the above mentioned reasons\n[11:04:55 INF] 3203  total mutants will be tested\n\nKilled:   2578\nSurvived:  618\nTimeout:     7\nErrors:     0\n\nYour json report has been generated at:\nfile:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-rev\niew-fix-run.pt82vy66/reports/mutation-report.json\n\nYour html report has been generated at:\nfile:///workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-rev\niew-fix-run.pt82vy66/reports/mutation-report.html\nYou can open it in your browser of choice.\n[11:38:03 INF] Time Elapsed 00:34:30.8124456\n[11:38:03 INF] The final mutation score is 80.71 %\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/solution-build.log` (SHA-256 `1d0170612ca4520d4e108470480a8d38a665f926c853cfe7bef766a1a0afc4dd`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/locked-restore.log` (SHA-256 `b3e03ae18735bb5229ce1346f601c3429e93710ba35f7bfb6be0849356438084`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"  Parchwell.Enrichment -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/bin/Release/net10.0/Parchwell.Enrichment.dll\n  Parchwell.Enrichment.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/bin/Release/net10.0/Parchwell.Enrichment.Tests.dll\n  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll\n  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll\n  Parchwell.Kafka.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll\n  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll\n  Parchwell.Scenarios.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll\n  Parchwell.LoadGen -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/bin/Release/net10.0/Parchwell.LoadGen.dll\n  Parchwell.LoadGen.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll\n  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll\n  Parchwell.ArchitectureTests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:21.86\n"
+"  Determining projects to restore...\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/Parchwell.Kafka.csproj (in 1.1 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj (in 1.15 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Parchwell.Scenarios.csproj (in 1.1 sec).\n  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (in 1.16 sec).\n  7 of 11 projects are up-to-date for restore.\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/targeted-tests.log` (SHA-256 `352a3892f25b27967577fc0b4fbb9aa4292a044a5a46d5680005b774aa6c7105`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/solution-build.log` (SHA-256 `ab3c3b8a6f31add0a2a4f8853aa1c80ff479fb4dd2bddf60a7caa18888f0184f`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)\n/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64) passed (3s 269ms)\n\n  In process file artifacts produced:\n    - /workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-results/results.xml\n\nTest run summary: Passed!\n  total: 1045\n  failed: 0\n  succeeded: 1045\n  skipped: 0\n  duration: 3s 523ms\n"
+"  Parchwell.Enrichment -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/bin/Release/net10.0/Parchwell.Enrichment.dll\n  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll\n  Parchwell.Enrichment.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/bin/Release/net10.0/Parchwell.Enrichment.Tests.dll\n  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll\n  Parchwell.Kafka.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll\n  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll\n  Parchwell.LoadGen -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/bin/Release/net10.0/Parchwell.LoadGen.dll\n  Parchwell.Scenarios.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll\n  Parchwell.ArchitectureTests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll\n  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll\n  Parchwell.LoadGen.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:16.69\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/targeted-report.log` (SHA-256 `691ac40f3c130d76871c3e2a17f65db5df0d82cc8ee5df00f0c0e3eff5bac844`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/targeted-tests.log` (SHA-256 `390337b588f784190638d3a6a98430fcd96f4085514edcdd889d91a9fb67e73b`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"  Parchwell.Verifier.Tests: 1045 passed; checked report.\n"
+"Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)\n/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64) passed (3s 658ms)\n\n  In process file artifacts produced:\n    - /workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results/results.xml\n\nTest run summary: Passed!\n  total: 1093\n  failed: 0\n  succeeded: 1093\n  skipped: 0\n  duration: 3s 973ms\n"
 ```
-### `/workspace/scratch/p2-fix-full-verification-excerpt.log` (SHA-256 `53f8b042565ba80a0d027c90a6647fef67bc6f604c10aa909777aa273a3daf5b`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/targeted-report.log` (SHA-256 `ed15cf2622bc3f061246329affc24e28bb2bde4617506d0a781a69d0e6bf4c71`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"Source log: /workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/full-verification.log\nSource SHA-256: b1f96473c9cb53e356a92232e64570cec27321bcec6291fe8ca9c97e92d4d30a\nSelected source line numbers: 9, 6760, 6763, 6766, 6769, 6770, 6771, 6772, 6773\nThe excerpt lines below are copied verbatim from those source line numbers.\n  Parchwell.ArchitectureTests: 8 passed; checked report.\n  Parchwell.Kafka.Tests: 306 passed; checked report.\n  Parchwell.LoadGen.Tests: 262 passed; checked report.\n  Parchwell.Scenarios.Tests: 94 passed; checked report.\n  Parchwell.Verifier.Tests: 1045 passed; checked report.\nWarning control restore: passed\nWarning control valid counterpart: passed\nWarning-as-error control: valid counterpart built; intended CS1030 error rejected.\nVerification passed. Per-project reports identify the tests executed.\n"
+"  Parchwell.Verifier.Tests: 1093 passed; checked report.\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/tool-restore.log` (SHA-256 `f32acacaadbccc1bd8588e6c00105e460719fb5fe6b0b3f4ada628b641c21b89`)
+### `/workspace/scratch/round2-full-verification-excerpt.log` (SHA-256 `9d60f61615412b01034dc3a805778bb58a514ae7da96e372a4ca3efb442bfe2a`)
+
+Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
+
+```json
+"Selected PR 3 verification summary excerpt; this is not the full verification log.\nSource file: /workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/full-verification.log\nSource SHA-256: 9c50ea07c754103b454c330d3fc967eb91f91f2620c6d3cca3670d127a204c50\nSelected source line numbers: 9, 6760, 6763, 6766, 6769, 6770, 6771, 6772, 6773\nThe lines below are copied verbatim from the retained source log. The complete log remains at the source path above; validation.json retains the command record and original log hash.\n  Parchwell.ArchitectureTests: 8 passed; checked report.\n  Parchwell.Kafka.Tests: 306 passed; checked report.\n  Parchwell.LoadGen.Tests: 262 passed; checked report.\n  Parchwell.Scenarios.Tests: 94 passed; checked report.\n  Parchwell.Verifier.Tests: 1093 passed; checked report.\nWarning control restore: passed\nWarning control valid counterpart: passed\nWarning-as-error control: valid counterpart built; intended CS1030 error rejected.\nVerification passed. Per-project reports identify the tests executed.\n"
+```
+### `.artifacts/verifier-mutation/round2-review-fix-validation/tool-restore.log` (SHA-256 `f32acacaadbccc1bd8588e6c00105e460719fb5fe6b0b3f4ada628b641c21b89`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
 "Tool 'dotnet-stryker' (version '5.0.0') was restored. Available commands: dotnet-stryker\n\nRestore was successful.\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/tool-list.log` (SHA-256 `7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/tool-list.log` (SHA-256 `7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
 "Package Id          Version      Commands            Manifest                                                   \n----------------------------------------------------------------------------------------------------------------\ndotnet-stryker      5.0.0        dotnet-stryker      /workspace/eventhubs-kafka-dotnet/.config/dotnet-tools.json\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/npm-ci.log` (SHA-256 `27bc9fb7f1ef583c8dda54eb98b843af89c8745b122e6941ba93454439bacc54`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/npm-ci.log` (SHA-256 `127980fa8adb22146136668362a44131e468647ba9b8e56a97197337e8205be4`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\n\nadded 191 packages in 2s\n"
+"npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\n\nadded 191 packages in 936ms\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/docs-tests.log` (SHA-256 `d9dc05a098903b642aef0e47c2495763104a5d33a9e1bed7bb0f2be6818bb582`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/docs-tests.log` (SHA-256 `ac3c32c9fa1880b878df89459c4ea15484855f64e3b784da51e274c68cb4894a`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"\n> test:docs\n> node --test scripts/tests/docs-check.test.mjs\n\n\u2714 recorded mistake classes are reported in an advisory scan (259.356096ms)\n\u2714 valid prose and Markdown examples do not produce false identifier findings (231.440216ms)\n\u2714 document source namespaces are local and exact (226.787766ms)\n\u2714 discovery excludes pinned skills and untracked documents, but includes owned and uppercase Markdown (244.057778ms)\n\u2714 broken configuration fails the scan rather than appearing successful (174.812865ms)\n\u2714 scan is read-only and external links require no successful response (237.980706ms)\n\u2714 image descriptions are checked for punctuation in direct and reference images (244.445075ms)\n\u2714 only autolinks and exactly matching link labels are excluded from prose scans (228.970568ms)\n\u2714 source descriptions are declarations in both tables and lists but still check punctuation (232.555881ms)\n\u2714 split definition identifiers do not resolve references, while whole formatted identifiers do (238.990735ms)\n\u2714 source ID cell S999 ![icon](icon.png) does not define a source (230.389143ms)\n\u2714 source ID cell S999 ![icon][picture] does not define a source (238.071349ms)\n\u2714 source ID cell S999 `extra` does not define a source (235.11748ms)\n\u2714 source ID cell `S999` does not define a source (231.367269ms)\n\u2714 source ID cell **S999 ![icon](icon.png)** does not define a source (231.064256ms)\n\u2714 source ID cell S999 extra does not define a source (224.606576ms)\n\u2714 whole source ID cell S999 resolves its reference (230.563728ms)\n\u2714 whole source ID cell **S999** resolves its reference (235.834321ms)\n\u2714 whole source ID cell *S999* resolves its reference (229.808691ms)\n\u2714 whole source ID cell ~~S999~~ resolves its reference (215.461972ms)\n\u2714 whole source ID cell ***S999*** resolves its reference (227.682533ms)\n\u2714 whole source ID cell [S999](https://example.invalid) resolves its reference (215.313422ms)\n\u2714 ordinary undefined source references are reported without a definition (227.173475ms)\n\u2714 non-text content in link labels cannot make them equal their destinations (222.461302ms)\n\u2714 non-text content separates ADR heading text without hiding a valid prefix (247.934059ms)\n\u2714 non-text content cannot create a source list declaration prefix (214.065954ms)\n\u2714 Unicode word characters do not delimit identifier references or ADR declarations (237.171509ms)\n\u2139 tests 27\n\u2139 suites 0\n\u2139 pass 27\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 6296.673878\n"
+"\n> test:docs\n> node --test scripts/tests/docs-check.test.mjs\n\n\u2714 recorded mistake classes are reported in an advisory scan (240.099587ms)\n\u2714 valid prose and Markdown examples do not produce false identifier findings (365.564456ms)\n\u2714 document source namespaces are local and exact (354.027386ms)\n\u2714 discovery excludes pinned skills and untracked documents, but includes owned and uppercase Markdown (282.651707ms)\n\u2714 broken configuration fails the scan rather than appearing successful (185.119492ms)\n\u2714 scan is read-only and external links require no successful response (201.19204ms)\n\u2714 image descriptions are checked for punctuation in direct and reference images (246.88487ms)\n\u2714 only autolinks and exactly matching link labels are excluded from prose scans (210.629083ms)\n\u2714 source descriptions are declarations in both tables and lists but still check punctuation (205.940981ms)\n\u2714 split definition identifiers do not resolve references, while whole formatted identifiers do (241.594544ms)\n\u2714 source ID cell S999 ![icon](icon.png) does not define a source (227.848262ms)\n\u2714 source ID cell S999 ![icon][picture] does not define a source (209.180556ms)\n\u2714 source ID cell S999 `extra` does not define a source (213.202129ms)\n\u2714 source ID cell `S999` does not define a source (231.308407ms)\n\u2714 source ID cell **S999 ![icon](icon.png)** does not define a source (232.385174ms)\n\u2714 source ID cell S999 extra does not define a source (210.330166ms)\n\u2714 whole source ID cell S999 resolves its reference (221.037433ms)\n\u2714 whole source ID cell **S999** resolves its reference (202.681059ms)\n\u2714 whole source ID cell *S999* resolves its reference (196.508579ms)\n\u2714 whole source ID cell ~~S999~~ resolves its reference (214.138295ms)\n\u2714 whole source ID cell ***S999*** resolves its reference (198.41771ms)\n\u2714 whole source ID cell [S999](https://example.invalid) resolves its reference (233.863191ms)\n\u2714 ordinary undefined source references are reported without a definition (218.937068ms)\n\u2714 non-text content in link labels cannot make them equal their destinations (211.908803ms)\n\u2714 non-text content separates ADR heading text without hiding a valid prefix (207.411852ms)\n\u2714 non-text content cannot create a source list declaration prefix (210.842444ms)\n\u2714 Unicode word characters do not delimit identifier references or ADR declarations (226.948839ms)\n\u2139 tests 27\n\u2139 suites 0\n\u2139 pass 27\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 6270.060279\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-validation/docs-check.log` (SHA-256 `1fccbd25a0eb178f07601adbe849619b2aee26abe27cdfc26f3162d759d17c5d`)
+### `.artifacts/verifier-mutation/round2-review-fix-validation/docs-check.log` (SHA-256 `1fccbd25a0eb178f07601adbe849619b2aee26abe27cdfc26f3162d759d17c5d`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
 "\n> check:docs\n> node scripts/check-docs.mjs\n\n.agents/skills/repo-review/SKILL.md: no issues found\n.claude/agents/repo-reviewer.md: no issues found\n.github/pull_request_template.md: no issues found\nAGENTS.md: no issues found\nCLAUDE.md: no issues found\nCONTEXT.md: no issues found\ndocs/agents/factory.md: no issues found\ndocs/blueprint.md: no issues found\ndocs/engineering/code-comments.md: no issues found\ndocs/engineering/documentation-checks.md: no issues found\ndocs/engineering/dotnet-verification.md: no issues found\ndocs/engineering/dotnet.md: no issues found\ndocs/engineering/terraform.md: no issues found\ndocs/networking/hub-firewall.md: no issues found\ndocs/operations/kafka-authentication.md: no issues found\ndocs/operations/kafka-baseline.md: no issues found\ndocs/operations/kafka-configuration-explained.md: no issues found\ndocs/operations/loadgen-contract.md: no issues found\ndocs/operations/phantom-spike/README.md: no issues found\ndocs/operations/scenario-contract.md: no issues found\ndocs/operations/statistics-bridge.md: no issues found\ndocs/operations/verifier-contract.md: no issues found\ndocs/operations/verifier-mutation.md: no issues found\ndocs/research/kubernetes-kafka-clients.md: no issues found\nREADME.md: no issues found\ntests/fixtures/verifier-v1/README.md: no issues found\nDocumentation scan completed. Warnings are advisory; external URLs were not checked.\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/test-metadata-reconciliation.md` (SHA-256 `b9903a04d47fe4c6faaa1f8e038d7fa4f4d14a2acab42fd571ead3783cc41181`)
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md` (SHA-256 `fea2426c186d9e3393acccd60c0d859360b6b18cab418442bf79e0194232933e`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"# Stryker test metadata reconciliation\n\nInputs: `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/reports/mutation-report.json`; `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-results.xml`; `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/command.log`.\n\n## Reconciliation\n\n- Stryker `testFiles` test metadata rows: 1045 across 69 exact source/type/method groups.\n- Ordinary xUnit test rows: 1045; assembly counts: `{\"errors\": 0, \"failed\": 0, \"not-run\": 0, \"passed\": 1045, \"skipped\": 0, \"total\": 1045}`.\n- Exact source path + type + method multiplicities match for all 69 groups; every XML source line falls within its Stryker source span.\n- Stryker `testFiles` entries are inventory metadata; this reconciliation does not infer Stryker test outcomes or coverage from those entries.\n\n## Coverage relay warning IDs from the supplied command log\n\nThe script extracted 2 IDs from the log. Each occurs in the Stryker inventory and reconciles to an exact xUnit source/type/method group.\n\n| ID from command log | Stryker inventory test name | Exact source/type/method group | Stryker span | xUnit rows in group |\n| --- | --- | --- | --- | ---: |\n| `4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58` | `Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124(System.String)` | `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs :: Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | `348:5\u2013390:6` | 2 |\n| `a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c` | `Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124(System.String)` | `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs :: Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | `348:5\u2013390:6` | 2 |\n\n## Exact method-group multiplicities and spans\n\n| Source file | Type | Method | Rows | Stryker source span |\n| --- | --- | --- | ---: | --- |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_AnyConfiguredModeWithoutHandler_When_WorkerRuns_Then_ExitsNonzeroWithoutOutput` | 3 | `270:5\u2013281:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_BlankRequiredTextOption_When_Validated_Then_ReportsStartupFailure` | 42 | `83:5\u201391:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_DuplicateRepeatResultPaths_When_OptionsAreValidated_Then_PreservesThemForCheck32` | 1 | `320:5\u2013330:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ExpectedIdentityCardinalityOtherThanFive_When_OptionsAreValidated_Then_PreservesItForCheck32` | 4 | `332:5\u2013346:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedDuration_When_Bound_Then_ReportsStartupFailure` | 1 | `179:5\u2013189:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedInactiveBudget_When_HostBindsOptions_Then_IgnoresTheValue` | 8 | `217:5\u2013249:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingOrUnknownMode_When_HostStarts_Then_ExitsNonzeroBeforeIo` | 4 | `23:5\u201339:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingRequiredOption_When_Validated_Then_ReportsStartupFailure` | 99 | `70:5\u201381:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredBudget_When_Validated_Then_ReportsStartupFailure` | 38 | `153:5\u2013164:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredLimit_When_Validated_Then_ReportsStartupFailure` | 62 | `166:5\u2013177:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProbeGateMode_When_HostBuilds_Then_RequiresNoKafkaOrAzureServices` | 1 | `251:5\u2013268:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeAtBudgetSum_When_Validated_Then_RejectsEqualityAndAcceptsGreaterValue` | 1 | `191:5\u2013215:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | 2 | `348:5\u2013390:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_RelativeBlobServiceUri_When_Validated_Then_ReportsStartupFailure` | 2 | `93:5\u2013102:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_UnexpectedRepeatInputCardinality_When_OptionsAreValidated_Then_PreservesItForFutureGateJudgement` | 4 | `304:5\u2013318:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_WorkerExceptionCancellationOrHostStop_When_ExecutionEnds_Then_DoesNotReportSuccess` | 3 | `283:5\u2013302:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierWatchdogChildProcessTests` | `Given_ChildWatchdogMarker_When_Run_Then_UsesProductionHardExit` | 1 | `698:5\u2013719:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs` | `Parchwell.Verifier.Tests.Input.GoldenArtifactReaderTests` | `Given_GoldenArtifacts_When_IndependentReadersParse_Then_PreserveSchemaOneEvidence` | 1 | `11:5\u2013163:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_DuplicatePropertyAtNestedDepth_When_Read_Then_ReportsDuplicateToOwner` | 217 | `426:5\u2013445:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InputExceedsConfiguredLimits_When_Read_Then_ThrowsExecutionLimitWithoutCheckRouting` | 1 | `732:5\u2013801:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidEscapedSurrogateInPropertyOrValue_When_Read_Then_RoutesAsMalformedJson` | 30 | `477:5\u2013493:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidUtf8TruncatedOrBadJsonlFraming_When_Read_Then_RoutesEnvelopeProblem` | 1 | `447:5\u2013475:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedIndex_When_Read_Then_ReturnsExecutionFailure` | 2 | `837:5\u2013851:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedRawJsonInValidStatisticsEnvelope_When_Read_Then_EnvelopeAndNativeProblemsStaySeparate` | 1 | `719:5\u2013730:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingIndex_When_Read_Then_ReturnsExecutionFailure` | 1 | `822:5\u2013835:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingInputSource_When_Read_Then_RoutesAbsenceToItsOwner` | 1 | `803:5\u2013820:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingOrNullCompletionReceipt_When_CapabilitiesAreRead_Then_PreservesPresenceAndFalseValues` | 1 | `34:5\u201376:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NativeRawReportHasIndependentShape_When_Read_Then_AllowsExtraFieldsAndRoutesNativeProblems` | 1 | `598:5\u2013717:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NativeWrongKindAndMissingBrokerFields_When_Read_Then_PreservesBothRoutesWithoutValue` | 1 | `571:5\u2013596:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NullCallbackPersistenceAndNullableLifecycleReason_When_Read_Then_PreservesNullWithoutValidityDecision` | 1 | `78:5\u201396:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_OnlyHarnessOwnedScalarValues_When_Read_Then_UsesExactWriterSetsAndKeepsOrdinaryStringsFree` | 1 | `98:5\u2013146:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ReorderedPropertiesAndUninterpretedEvidence_When_Read_Then_PreservesDataWithoutSemanticGates` | 1 | `148:5\u2013266:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyHasWrongJsonKind_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `24:5\u201332:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyMissing_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `14:5\u201322:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineContainerHasUnknownOrDuplicateProperty_When_Read_Then_RoutesToCheckSeven` | 6 | `382:5\u2013412:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineRequiredPropertyInvalid_When_Read_Then_RoutesProblemToCheckSeven` | 32 | `304:5\u2013316:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnknownHarnessField_When_EnvelopeIsRead_Then_RejectsItAtEachClosedShape` | 1 | `330:5\u2013380:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnsupportedHarnessScalarsOrSchema_When_Read_Then_RoutesStructuralProblem` | 1 | `268:5\u2013302:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ValidEscapedSurrogatePairInValuesAndOpenMapKeys_When_Read_Then_PreservesDecodedText` | 1 | `507:5\u2013522:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_A01RecordedEvidence_When_RoundTripped_Then_PreservesSelectedInt64FieldsAndOmissions` | 1 | `502:5\u2013547:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AbsentAndObservedEmptyBoundaries_When_RoundTripped_Then_PreservesTheDistinction` | 1 | `228:5\u2013280:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AssessmentSnippetExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `628:5\u2013637:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountLowerBoundFalse_When_Read_Then_ReturnsStructuralProblem` | 1 | `452:5\u2013462:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountProjection_When_RoundTripped_Then_PreservesOnlySuppliedMeasurements` | 1 | `411:5\u2013450:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithObservedZeros_When_Serialized_Then_AllSixZeroCountsRemainPresent` | 1 | `62:5\u201373:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithoutCounts_When_Serialized_Then_ThrowsCodecError` | 1 | `75:5\u201381:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResult_When_Serialized_Then_AllSixOutcomeKeysArePresent` | 1 | `37:5\u201360:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompletedDrain_When_RoundTripped_Then_EmitsOnlyDrainTimeInMilliseconds` | 2 | `110:5\u2013127:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ConfigurationFidelityDifferences_When_RoundTripped_Then_EmitsBoundedSnakeCaseProjection` | 1 | `464:5\u2013500:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticAndAssessmentExceedPerCheckLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `639:5\u2013651:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticsForDifferentChecks_When_Read_Then_JsonlRowLimitDoesNotApply` | 1 | `598:5\u2013614:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_FailedAndUnevaluatedAssessments_When_RoundTripped_Then_PreservesTheirDistinctStates` | 1 | `83:5\u2013108:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_HashAndBoundedDiagnostics_When_Serialized_Then_EmitsOnlyResultProjection` | 1 | `157:5\u2013187:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidButUsableProbeProjection_When_RoundTripped_Then_PreservesIndependentEvidence` | 1 | `364:5\u2013409:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidOrIncompleteResult_When_Serialized_Then_AllSixOutcomeKeysAreAbsent` | 2 | `21:5\u201335:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MalformedStartLineNote_When_Read_Then_ReturnsStructuralProblemForFutureCheckSeven` | 1 | `351:5\u2013362:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MissingNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `315:5\u2013325:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NegativeFractionalDuration_When_Serialized_Then_TruncatesTowardZero` | 1 | `571:5\u2013580:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NullableDiagnosticFields_When_RoundTripped_Then_EmitsAndReadsExplicitNulls` | 1 | `282:5\u2013301:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_OutputExceedsConfiguredBytes_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `549:5\u2013558:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PartitionCountExceedsConfiguredMaximum_When_ReadStartLine_Then_ThrowsExecutionLimit` | 1 | `653:5\u2013662:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PreBoundaryOrOutOfRangeOrIoTermination_When_Serialized_Then_BothDrainFieldsAreAbsent` | 2 | `144:5\u2013155:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ProducerAndVerifierVersionsDiffer_When_RoundTripped_Then_CopiesEachSourceSeparately` | 1 | `189:5\u2013226:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ResultExceedsAggregateEntryLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `582:5\u2013596:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_SafetyStopDuration_When_RoundTripped_Then_EmitsOnlyLabelledLowerBound` | 1 | `129:5\u2013142:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_StartLineNote_When_RoundTripped_Then_PreservesOffsetsWithoutSelfHash` | 1 | `327:5\u2013349:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `616:5\u2013626:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsUtf8Limit_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `560:5\u2013569:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_WrongKindNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `303:5\u2013313:6` |\n"
+"# Stryker test metadata reconciliation\n\nInputs: `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json`; `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results.xml`; `/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/command.log`.\n\n## Reconciliation\n\n- Stryker `testFiles` test metadata rows: 1093 across 74 exact source/type/method groups.\n- Ordinary xUnit test rows: 1093; assembly counts: `{\"errors\": 0, \"failed\": 0, \"not-run\": 0, \"passed\": 1093, \"skipped\": 0, \"total\": 1093}`.\n- Exact source path + type + method multiplicities match for all 74 groups; every XML source line falls within its Stryker source span.\n- Stryker `testFiles` entries are inventory metadata; this reconciliation does not infer Stryker test outcomes or coverage from those entries.\n\n## Coverage relay warning IDs from the supplied command log\n\nThe script extracted 2 IDs from the log. Each occurs in the Stryker inventory and reconciles to an exact xUnit source/type/method group.\n\n| ID from command log | Stryker inventory test name | Exact source/type/method group | Stryker span | xUnit rows in group |\n| --- | --- | --- | --- | ---: |\n| `4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58` | `Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124(System.String)` | `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs :: Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | `414:5\u2013456:6` | 2 |\n| `a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c` | `Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124(System.String)` | `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs :: Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | `414:5\u2013456:6` | 2 |\n\n## Exact method-group multiplicities and spans\n\n| Source file | Type | Method | Rows | Stryker source span |\n| --- | --- | --- | ---: | --- |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_AnyConfiguredModeWithoutHandler_When_WorkerRuns_Then_ExitsNonzeroWithoutOutput` | 3 | `336:5\u2013347:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_BlankRequiredTextOption_When_Validated_Then_ReportsStartupFailure` | 42 | `105:5\u2013113:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_DuplicateRepeatResultPaths_When_OptionsAreValidated_Then_PreservesThemForCheck32` | 1 | `386:5\u2013396:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ExpectedIdentityCardinalityOtherThanFive_When_OptionsAreValidated_Then_PreservesItForCheck32` | 4 | `398:5\u2013412:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_InvalidBlobContainerName_When_Validated_Then_ReportsStartupFailure` | 24 | `157:5\u2013168:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_LiteralScenarioLoadOptionsConfigurationKeys_When_Bound_Then_UsesAllParserLimits` | 1 | `70:5\u201390:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedDuration_When_Bound_Then_ReportsStartupFailure` | 1 | `245:5\u2013255:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MalformedInactiveBudget_When_HostBindsOptions_Then_IgnoresTheValue` | 8 | `283:5\u2013315:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingOrUnknownMode_When_HostStarts_Then_ExitsNonzeroBeforeIo` | 4 | `23:5\u201339:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_MissingRequiredOption_When_Validated_Then_ReportsStartupFailure` | 99 | `92:5\u2013103:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredBudget_When_Validated_Then_ReportsStartupFailure` | 38 | `219:5\u2013230:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_NonpositiveRequiredLimit_When_Validated_Then_ReportsStartupFailure` | 62 | `232:5\u2013243:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProbeGateMode_When_HostBuilds_Then_RequiresNoKafkaOrAzureServices` | 1 | `317:5\u2013334:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeAtBudgetSum_When_Validated_Then_RejectsEqualityAndAcceptsGreaterValue` | 1 | `257:5\u2013281:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ProcessLifetimeExpiresWhileWorkBlocks_When_WatchdogFires_Then_ChildExits124` | 2 | `414:5\u2013456:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_RelativeBlobServiceUri_When_Validated_Then_ReportsStartupFailure` | 2 | `115:5\u2013124:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_UnexpectedRepeatInputCardinality_When_OptionsAreValidated_Then_PreservesItForFutureGateJudgement` | 4 | `370:5\u2013384:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_ValidBlobContainerName_When_Validated_Then_AllowsIt` | 21 | `135:5\u2013146:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierHostTests` | `Given_WorkerExceptionCancellationOrHostStop_When_ExecutionEnds_Then_DoesNotReportSuccess` | 3 | `349:5\u2013368:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs` | `Parchwell.Verifier.Tests.Host.VerifierWatchdogChildProcessTests` | `Given_ChildWatchdogMarker_When_Run_Then_UsesProductionHardExit` | 1 | `764:5\u2013785:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs` | `Parchwell.Verifier.Tests.Input.GoldenArtifactReaderTests` | `Given_GoldenArtifacts_When_IndependentReadersParse_Then_PreserveSchemaOneEvidence` | 1 | `11:5\u2013163:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_DuplicatePropertyAtNestedDepth_When_Read_Then_ReportsDuplicateToOwner` | 217 | `426:5\u2013445:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InputExceedsConfiguredLimits_When_Read_Then_ThrowsExecutionLimitWithoutCheckRouting` | 1 | `784:5\u2013853:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidEscapedSurrogateInPropertyOrValue_When_Read_Then_RoutesAsMalformedJson` | 30 | `529:5\u2013545:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_InvalidUtf8TruncatedOrBadJsonlFraming_When_Read_Then_RoutesEnvelopeProblem` | 1 | `447:5\u2013475:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_LfOnlyOrUnterminatedJsonl_When_Read_Then_RoutesFramingProblemToEachReader` | 1 | `502:5\u2013527:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedIndex_When_Read_Then_ReturnsExecutionFailure` | 2 | `889:5\u2013903:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MalformedRawJsonInValidStatisticsEnvelope_When_Read_Then_EnvelopeAndNativeProblemsStaySeparate` | 1 | `771:5\u2013782:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingIndex_When_Read_Then_ReturnsExecutionFailure` | 1 | `874:5\u2013887:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingInputSource_When_Read_Then_RoutesAbsenceToItsOwner` | 1 | `855:5\u2013872:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_MissingOrNullCompletionReceipt_When_CapabilitiesAreRead_Then_PreservesPresenceAndFalseValues` | 1 | `34:5\u201376:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NativeRawReportHasIndependentShape_When_Read_Then_AllowsExtraFieldsAndRoutesNativeProblems` | 1 | `650:5\u2013769:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NativeWrongKindAndMissingBrokerFields_When_Read_Then_PreservesBothRoutesWithoutValue` | 1 | `623:5\u2013648:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_NullCallbackPersistenceAndNullableLifecycleReason_When_Read_Then_PreservesNullWithoutValidityDecision` | 1 | `78:5\u201396:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_OnlyHarnessOwnedScalarValues_When_Read_Then_UsesExactWriterSetsAndKeepsOrdinaryStringsFree` | 1 | `98:5\u2013146:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ReorderedPropertiesAndUninterpretedEvidence_When_Read_Then_PreservesDataWithoutSemanticGates` | 1 | `148:5\u2013266:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyHasWrongJsonKind_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `24:5\u201332:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_RequiredPropertyMissing_When_Read_Then_RoutesProblemToOwningCheck` | 217 | `14:5\u201322:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineContainerHasUnknownOrDuplicateProperty_When_Read_Then_RoutesToCheckSeven` | 6 | `382:5\u2013412:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_StartLineRequiredPropertyInvalid_When_Read_Then_RoutesProblemToCheckSeven` | 32 | `304:5\u2013316:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnknownHarnessField_When_EnvelopeIsRead_Then_RejectsItAtEachClosedShape` | 1 | `330:5\u2013380:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_UnsupportedHarnessScalarsOrSchema_When_Read_Then_RoutesStructuralProblem` | 1 | `268:5\u2013302:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ValidEscapedSurrogatePairInValuesAndOpenMapKeys_When_Read_Then_PreservesDecodedText` | 1 | `559:5\u2013574:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs` | `Parchwell.Verifier.Tests.Input.StrictParserTests` | `Given_ZeroByteJsonl_When_Read_Then_ReturnsEmptyRowsForEachReader` | 1 | `477:5\u2013500:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_A01RecordedEvidence_When_RoundTripped_Then_PreservesSelectedInt64FieldsAndOmissions` | 1 | `502:5\u2013547:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AbsentAndObservedEmptyBoundaries_When_RoundTripped_Then_PreservesTheDistinction` | 1 | `228:5\u2013280:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_AssessmentSnippetExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `628:5\u2013637:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountLowerBoundFalse_When_Read_Then_ReturnsStructuralProblem` | 1 | `452:5\u2013462:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_BrokerCountProjection_When_RoundTripped_Then_PreservesOnlySuppliedMeasurements` | 1 | `411:5\u2013450:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithObservedZeros_When_Serialized_Then_AllSixZeroCountsRemainPresent` | 1 | `62:5\u201373:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResultWithoutCounts_When_Serialized_Then_ThrowsCodecError` | 1 | `75:5\u201381:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompleteValidResult_When_Serialized_Then_AllSixOutcomeKeysArePresent` | 1 | `37:5\u201360:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_CompletedDrain_When_RoundTripped_Then_EmitsOnlyDrainTimeInMilliseconds` | 2 | `110:5\u2013127:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ConfigurationFidelityDifferences_When_RoundTripped_Then_EmitsBoundedSnakeCaseProjection` | 1 | `464:5\u2013500:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticAndAssessmentExceedPerCheckLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `639:5\u2013651:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_DiagnosticsForDifferentChecks_When_Read_Then_JsonlRowLimitDoesNotApply` | 1 | `598:5\u2013614:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_FailedAndUnevaluatedAssessments_When_RoundTripped_Then_PreservesTheirDistinctStates` | 1 | `83:5\u2013108:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_HashAndBoundedDiagnostics_When_Serialized_Then_EmitsOnlyResultProjection` | 1 | `157:5\u2013187:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidButUsableProbeProjection_When_RoundTripped_Then_PreservesIndependentEvidence` | 1 | `364:5\u2013409:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_InvalidOrIncompleteResult_When_Serialized_Then_AllSixOutcomeKeysAreAbsent` | 2 | `21:5\u201335:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MalformedStartLineNote_When_Read_Then_ReturnsStructuralProblemForFutureCheckSeven` | 1 | `351:5\u2013362:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_MissingNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `315:5\u2013325:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NegativeFractionalDuration_When_Serialized_Then_TruncatesTowardZero` | 1 | `571:5\u2013580:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_NullableDiagnosticFields_When_RoundTripped_Then_EmitsAndReadsExplicitNulls` | 1 | `282:5\u2013301:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_OutputExceedsConfiguredBytes_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `549:5\u2013558:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PartitionCountExceedsConfiguredMaximum_When_ReadStartLine_Then_ThrowsExecutionLimit` | 1 | `653:5\u2013662:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_PreBoundaryOrOutOfRangeOrIoTermination_When_Serialized_Then_BothDrainFieldsAreAbsent` | 2 | `144:5\u2013155:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ProducerAndVerifierVersionsDiffer_When_RoundTripped_Then_CopiesEachSourceSeparately` | 1 | `189:5\u2013226:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_ResultExceedsAggregateEntryLimit_When_Read_Then_ThrowsExecutionLimit` | 1 | `582:5\u2013596:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_SafetyStopDuration_When_RoundTripped_Then_EmitsOnlyLabelledLowerBound` | 1 | `129:5\u2013142:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_StartLineNote_When_RoundTripped_Then_PreservesOffsetsWithoutSelfHash` | 1 | `327:5\u2013349:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsConfiguredUtf8Limit_When_Read_Then_ThrowsExecutionLimit` | 1 | `616:5\u2013626:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_UnicodeDiagnosticExceedsUtf8Limit_When_Serialized_Then_ThrowsExecutionLimit` | 1 | `560:5\u2013569:6` |\n| `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs` | `Parchwell.Verifier.Tests.Results.VerifierResultCodecTests` | `Given_WrongKindNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem` | 1 | `303:5\u2013313:6` |\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/stryker-version-probe.log` (SHA-256 `c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d`)
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation-command.log` (SHA-256 `8c33081d0b3b83263264038ff666789f15ffc59cc9a06f57d5612efe05ae1790`)
+
+Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
+
+```json
+"Wrote /workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md\nStryker inventory rows=1093; xUnit rows=1093; exact method groups=74; command-log warning IDs=2\nInput SHA-256: report=782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df xml=47689e2e6bdde0e296ec259ff560af87493039d9d025ab04909e431f4e9849b8 log=e661843940b1efc481b453efae3368a2fe4781d5d808c06158c5b1281cdf8f76\n"
+```
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.log` (SHA-256 `c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
 "Specify --help for a list of available options and commands.\nMissing value for option 'version'\n"
 ```
-### `.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/stryker-version-probe.json` (SHA-256 `55ae37d93534cb37526d83f5ab27ac3794df4729e1a42be00038805aaa2f671a`)
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.json` (SHA-256 `3316ee96772245f49f72b7a9751f64786615055067d52d2c649ec7588df15065`)
 
 Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
 
 ```json
-"{\n  \"command\": [\n    \"dotnet\",\n    \"stryker\",\n    \"--version\"\n  ],\n  \"cwd\": \"/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests\",\n  \"started_utc\": \"2026-10-18T09:29:27.213610+00:00\",\n  \"ended_utc\": \"2026-10-18T09:29:27.739162+00:00\",\n  \"exit_code\": 1,\n  \"expected_exit_code\": 1,\n  \"log\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/stryker-version-probe.log\",\n  \"log_sha256\": \"c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d\",\n  \"pinned_tool_version\": \"5.0.0\",\n  \"output\": \"Specify --help for a list of available options and commands.\\nMissing value for option 'version'\\n\",\n  \"tool_version_evidence\": {\n    \"path\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/tool-list.log\",\n    \"sha256\": \"7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78\"\n  }\n}\n"
+"{\n  \"command\": [\n    \"dotnet\",\n    \"stryker\",\n    \"--version\"\n  ],\n  \"cwd\": \"/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests\",\n  \"started_utc\": \"2026-10-18T11:38:03.563800+00:00\",\n  \"ended_utc\": \"2026-10-18T11:38:03.953428+00:00\",\n  \"exit_code\": 1,\n  \"expected_exit_code\": 1,\n  \"log\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.log\",\n  \"log_sha256\": \"c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d\",\n  \"pinned_tool_version\": \"5.0.0\",\n  \"tool_version_evidence\": {\n    \"path\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/tool-list.log\",\n    \"sha256\": \"7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78\"\n  },\n  \"output\": \"Specify --help for a list of available options and commands.\\nMissing value for option 'version'\\n\"\n}\n"
+```
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/run-original-wrapper.json` (SHA-256 `86e6c1ea360e94603ac6fa3dcd80cb123c3b9e165de869e78abca2a2c8f63e04`)
+
+Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
+
+```json
+"{\n  \"sha\": \"0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90\",\n  \"tree\": \"52706c46059bcab835f2190e228ac70701ab7a89\",\n  \"command\": [\n    \"dotnet\",\n    \"stryker\",\n    \"--config-file\",\n    \"stryker-config.json\",\n    \"--output\",\n    \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66\"\n  ],\n  \"cwd\": \"/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests\",\n  \"started_utc\": \"2026-10-18T11:03:31.662029+00:00\",\n  \"validation_json_sha256\": \"5a8b50d7e958328718296b218e97db100d9ff8f7204445d7d96656ebfc5a1f9e\",\n  \"ended_utc\": \"2026-10-18T11:38:03.154506+00:00\",\n  \"elapsed_seconds\": 2071.492,\n  \"exit_code\": 0,\n  \"command_log_sha256\": \"e661843940b1efc481b453efae3368a2fe4781d5d808c06158c5b1281cdf8f76\",\n  \"report\": {\n    \"json_path\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json\",\n    \"json_sha256\": \"782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df\",\n    \"html_path\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.html\",\n    \"html_sha256\": \"45c5051416b5ddf533011dc8de70835e83202654016f22a3e71172fc395e9d07\",\n    \"source_file_entries\": 18,\n    \"mutant_records\": 3877,\n    \"statuses\": {\n      \"Killed\": 2578,\n      \"Survived\": 618,\n      \"Timeout\": 7,\n      \"CompileError\": 257,\n      \"Ignored\": 417,\n      \"NoCoverage\": 0,\n      \"RuntimeError\": 0,\n      \"Pending\": 0\n    },\n    \"score_percent\": 80.71\n  },\n  \"warnings\": {\n    \"warning_lines\": [],\n    \"h7_dubious_coverage_relay_ids\": []\n  },\n  \"test_metadata_reconciliation\": {\n    \"command\": [\n      \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\",\n      \"/workspace/scratch/reconcile_verifier_resume.py\",\n      \"--report\",\n      \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json\",\n      \"--xml\",\n      \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results.xml\",\n      \"--log\",\n      \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/command.log\",\n      \"--output\",\n      \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md\"\n    ],\n    \"exit_code\": 0,\n    \"output\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md\",\n    \"output_sha256\": \"fea2426c186d9e3393acccd60c0d859360b6b18cab418442bf79e0194232933e\",\n    \"log\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation-command.log\"\n  },\n  \"version_probe\": {\n    \"metadata\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.json\",\n    \"metadata_sha256\": \"3316ee96772245f49f72b7a9751f64786615055067d52d2c649ec7588df15065\",\n    \"log\": \"/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.log\",\n    \"log_sha256\": \"c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d\"\n  }\n}\n"
+```
+### `.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/tested-content.txt` (SHA-256 `730927e90dc06d7c3b39be0f42dbedc00ea3373fe7b231de49d3482e91ca6a43`)
+
+Exact UTF-8 text represented as a JSON string; escapes preserve line breaks, trailing whitespace, and non-ASCII characters.
+
+```json
+"0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90\n52706c46059bcab835f2190e228ac70701ab7a89\n"
 ```
 
 ### Complete run metadata
@@ -167,49 +188,100 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
 
 ```json
 {
-  "sha": "cc8279c3d0687ac540cdc7385968b6f72af13ae2",
-  "tree": "3b5e677acbd3d9bf253909f65b897e5fa25b845a",
+  "sha": "0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90",
+  "tree": "52706c46059bcab835f2190e228ac70701ab7a89",
   "command": [
     "dotnet",
     "stryker",
     "--config-file",
     "stryker-config.json",
     "--output",
-    "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt"
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66"
   ],
   "cwd": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests",
-  "started_utc": "2026-10-18T08:51:52.551291+00:00",
-  "validation_json_sha256": "af5d63de5fb35fc7de7bca39857eeb67e6fa14fbd80de9d60d2a0309e8c8b503",
-  "ended_utc": "2026-10-18T09:28:51.974651+00:00",
-  "elapsed_seconds": 2219.423,
+  "started_utc": "2026-10-18T11:03:31.662029+00:00",
+  "validation_json_sha256": "5a8b50d7e958328718296b218e97db100d9ff8f7204445d7d96656ebfc5a1f9e",
+  "ended_utc": "2026-10-18T11:38:03.154506+00:00",
+  "elapsed_seconds": 2071.492,
   "exit_code": 0,
-  "command_log_sha256": "1e84b93cb858d8b5d90550eae12e6a02d1505ec4adf0416d1db56be1ed7f9357",
+  "command_log_sha256": "e661843940b1efc481b453efae3368a2fe4781d5d808c06158c5b1281cdf8f76",
   "report": {
-    "json_path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/reports/mutation-report.json",
-    "json_sha256": "ef019222382fc446b239de3cace46a8fc43e9dbb5b7b976ba311bdf1ddf9d43a",
-    "html_path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-run.2dplpgxt/reports/mutation-report.html",
-    "html_sha256": "1a104e5aae5cc4e102d8591dd1e35d9b857010796aee9e68cde98a05f6c2f683",
+    "json_path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json",
+    "json_sha256": "782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df",
+    "html_path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.html",
+    "html_sha256": "45c5051416b5ddf533011dc8de70835e83202654016f22a3e71172fc395e9d07",
     "source_file_entries": 18,
-    "mutant_records": 3826,
+    "mutant_records": 3877,
     "statuses": {
-      "CompileError": 255,
-      "Ignored": 412,
-      "Killed": 2537,
-      "Survived": 615,
-      "Timeout": 7
-    }
+      "Killed": 2578,
+      "Survived": 618,
+      "Timeout": 7,
+      "CompileError": 257,
+      "Ignored": 417,
+      "NoCoverage": 0,
+      "RuntimeError": 0,
+      "Pending": 0
+    },
+    "score_percent": 80.71
+  },
+  "warnings": {
+    "warning_lines": [
+      "[11:03:33 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj. Assuming selected framework (net10.0) is present.",
+      "[11:03:34 WRN] Failed to identify target frameworks for project /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Assuming selected framework (net10.0) is present.",
+      "[11:03:39 WRN] The Microsoft Test Platform testrunner is currently in preview. Results should be verified since this feature is still being tested.",
+      "[11:04:44 WRN] MtpRunner-0: Timed out waiting for coverage relay ack for test 4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58; marking as Dubious",
+      "[11:04:54 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c; marking as Dubious"
+    ],
+    "h7_dubious_coverage_relay_ids": [
+      "4fd698566276569298a5d5f0e7c59ab3b89d77919f831d43e0321e0335b3bd58",
+      "a5bc4404fb7cbd1d315169a41e71c21563ab88f526beda546eebf8608f3c087c"
+    ]
+  },
+  "test_metadata_reconciliation": {
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "/workspace/scratch/reconcile_verifier_resume.py",
+      "--report",
+      "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/reports/mutation-report.json",
+      "--xml",
+      "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results.xml",
+      "--log",
+      "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/command.log",
+      "--output",
+      "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md"
+    ],
+    "exit_code": 0,
+    "output": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation.md",
+    "output_sha256": "fea2426c186d9e3393acccd60c0d859360b6b18cab418442bf79e0194232933e",
+    "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/test-metadata-reconciliation-command.log"
+  },
+  "version_probe": {
+    "metadata": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.json",
+    "metadata_sha256": "3316ee96772245f49f72b7a9751f64786615055067d52d2c649ec7588df15065",
+    "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/stryker-version-probe.log",
+    "log_sha256": "c4dbaf14f8fc877d690ff4ad91bad0d0dd6fc707e0b382135f910029814d9c3d"
+  },
+  "warning_extraction_correction": {
+    "reason": "Initial wrapper filter searched for literal [WRN], while Stryker uses timestamped [HH:mm:ss WRN] lines.",
+    "source_log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/command.log",
+    "regex": "\\bWRN\\]",
+    "source_log_sha256": "e661843940b1efc481b453efae3368a2fe4781d5d808c06158c5b1281cdf8f76",
+    "original_run_json_backup": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-run.pt82vy66/run-original-wrapper.json",
+    "original_run_json_sha256": "86e6c1ea360e94603ac6fa3dcd80cb123c3b9e165de869e78abca2a2c8f63e04",
+    "corrected_warning_lines": 5,
+    "corrected_dubious_relay_ids": 2
   }
 }
 ```
 
 ### Validation records
 
-#### `.artifacts/verifier-mutation/p2-fix-validation/validation.json` (SHA-256 `af5d63de5fb35fc7de7bca39857eeb67e6fa14fbd80de9d60d2a0309e8c8b503`)
+#### `.artifacts/verifier-mutation/round2-review-fix-validation/validation.json` (SHA-256 `5a8b50d7e958328718296b218e97db100d9ff8f7204445d7d96656ebfc5a1f9e`)
 
 ```json
 {
-  "expected_sha": "cc8279c3d0687ac540cdc7385968b6f72af13ae2",
-  "started_utc": "2026-10-18T08:45:49.070072+00:00",
+  "expected_sha": "0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90",
+  "started_utc": "2026-10-18T10:57:33.776143+00:00",
   "commands": [
     {
       "name": "locked-restore",
@@ -219,12 +291,12 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "Parchwell.slnx",
         "--locked-mode"
       ],
-      "started_utc": "2026-10-18T08:45:49.082893+00:00",
-      "ended_utc": "2026-10-18T08:45:52.256453+00:00",
-      "elapsed_seconds": 3.174,
+      "started_utc": "2026-10-18T10:57:33.789681+00:00",
+      "ended_utc": "2026-10-18T10:57:36.828706+00:00",
+      "elapsed_seconds": 3.039,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/locked-restore.log",
-      "log_sha256": "ffb28aad9fbdb9bfc7c7a6803b659b6333ff7912d8d9d4d07b583581fc354df8"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/locked-restore.log",
+      "log_sha256": "b3e03ae18735bb5229ce1346f601c3429e93710ba35f7bfb6be0849356438084"
     },
     {
       "name": "solution-build",
@@ -236,12 +308,12 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "Release",
         "--no-restore"
       ],
-      "started_utc": "2026-10-18T08:45:52.257277+00:00",
-      "ended_utc": "2026-10-18T08:46:14.540800+00:00",
-      "elapsed_seconds": 22.283,
+      "started_utc": "2026-10-18T10:57:36.829112+00:00",
+      "ended_utc": "2026-10-18T10:57:53.789736+00:00",
+      "elapsed_seconds": 16.961,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/solution-build.log",
-      "log_sha256": "1d0170612ca4520d4e108470480a8d38a665f926c853cfe7bef766a1a0afc4dd"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/solution-build.log",
+      "log_sha256": "ab3c3b8a6f31add0a2a4f8853aa1c80ff479fb4dd2bddf60a7caa18888f0184f"
     },
     {
       "name": "targeted-tests",
@@ -256,18 +328,18 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "--minimum-expected-tests",
         "1",
         "--results-directory",
-        "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-results",
+        "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results",
         "--",
         "--report-xunit-xml",
         "--report-xunit-xml-filename",
         "results.xml"
       ],
-      "started_utc": "2026-10-18T08:46:14.545289+00:00",
-      "ended_utc": "2026-10-18T08:46:18.921954+00:00",
-      "elapsed_seconds": 4.377,
+      "started_utc": "2026-10-18T10:57:53.790292+00:00",
+      "ended_utc": "2026-10-18T10:57:58.325743+00:00",
+      "elapsed_seconds": 4.535,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-tests.log",
-      "log_sha256": "352a3892f25b27967577fc0b4fbb9aa4292a044a5a46d5680005b774aa6c7105"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-tests.log",
+      "log_sha256": "390337b588f784190638d3a6a98430fcd96f4085514edcdd889d91a9fb67e73b"
     },
     {
       "name": "targeted-report",
@@ -276,28 +348,28 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "msbuild",
         "scripts/dotnet-verification.proj",
         "-t:ValidateReport",
-        "-p:Report=/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-results/results.xml",
+        "-p:Report=/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results/results.xml",
         "-p:ExpectedAssembly=Parchwell.Verifier.Tests",
         "-nologo"
       ],
-      "started_utc": "2026-10-18T08:46:18.922796+00:00",
-      "ended_utc": "2026-10-18T08:46:20.246445+00:00",
-      "elapsed_seconds": 1.324,
+      "started_utc": "2026-10-18T10:57:58.326206+00:00",
+      "ended_utc": "2026-10-18T10:57:59.283825+00:00",
+      "elapsed_seconds": 0.958,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-report.log",
-      "log_sha256": "691ac40f3c130d76871c3e2a17f65db5df0d82cc8ee5df00f0c0e3eff5bac844"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-report.log",
+      "log_sha256": "ed15cf2622bc3f061246329affc24e28bb2bde4617506d0a781a69d0e6bf4c71"
     },
     {
       "name": "full-verification",
       "command": [
         "./scripts/verify-dotnet.sh"
       ],
-      "started_utc": "2026-10-18T08:46:20.260682+00:00",
-      "ended_utc": "2026-10-18T08:51:30.728923+00:00",
-      "elapsed_seconds": 310.468,
+      "started_utc": "2026-10-18T10:57:59.297823+00:00",
+      "ended_utc": "2026-10-18T11:03:07.877887+00:00",
+      "elapsed_seconds": 308.58,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/full-verification.log",
-      "log_sha256": "b1f96473c9cb53e356a92232e64570cec27321bcec6291fe8ca9c97e92d4d30a"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/full-verification.log",
+      "log_sha256": "9c50ea07c754103b454c330d3fc967eb91f91f2620c6d3cca3670d127a204c50"
     },
     {
       "name": "tool-restore",
@@ -306,11 +378,11 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "tool",
         "restore"
       ],
-      "started_utc": "2026-10-18T08:51:30.821335+00:00",
-      "ended_utc": "2026-10-18T08:51:31.149395+00:00",
-      "elapsed_seconds": 0.328,
+      "started_utc": "2026-10-18T11:03:08.016602+00:00",
+      "ended_utc": "2026-10-18T11:03:08.264124+00:00",
+      "elapsed_seconds": 0.247,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/tool-restore.log",
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/tool-restore.log",
       "log_sha256": "f32acacaadbccc1bd8588e6c00105e460719fb5fe6b0b3f4ada628b641c21b89"
     },
     {
@@ -321,11 +393,11 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "list",
         "--local"
       ],
-      "started_utc": "2026-10-18T08:51:31.149910+00:00",
-      "ended_utc": "2026-10-18T08:51:31.398217+00:00",
-      "elapsed_seconds": 0.248,
+      "started_utc": "2026-10-18T11:03:08.265347+00:00",
+      "ended_utc": "2026-10-18T11:03:08.449695+00:00",
+      "elapsed_seconds": 0.184,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/tool-list.log",
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/tool-list.log",
       "log_sha256": "7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78"
     },
     {
@@ -335,12 +407,12 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "ci",
         "--ignore-scripts"
       ],
-      "started_utc": "2026-10-18T08:51:31.398764+00:00",
-      "ended_utc": "2026-10-18T08:51:33.257047+00:00",
-      "elapsed_seconds": 1.858,
+      "started_utc": "2026-10-18T11:03:08.450198+00:00",
+      "ended_utc": "2026-10-18T11:03:09.502557+00:00",
+      "elapsed_seconds": 1.052,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/npm-ci.log",
-      "log_sha256": "27bc9fb7f1ef583c8dda54eb98b843af89c8745b122e6941ba93454439bacc54"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/npm-ci.log",
+      "log_sha256": "127980fa8adb22146136668362a44131e468647ba9b8e56a97197337e8205be4"
     },
     {
       "name": "docs-tests",
@@ -349,12 +421,12 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "run",
         "test:docs"
       ],
-      "started_utc": "2026-10-18T08:51:33.260917+00:00",
-      "ended_utc": "2026-10-18T08:51:39.764097+00:00",
-      "elapsed_seconds": 6.503,
+      "started_utc": "2026-10-18T11:03:09.503922+00:00",
+      "ended_utc": "2026-10-18T11:03:15.926557+00:00",
+      "elapsed_seconds": 6.423,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/docs-tests.log",
-      "log_sha256": "d9dc05a098903b642aef0e47c2495763104a5d33a9e1bed7bb0f2be6818bb582"
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/docs-tests.log",
+      "log_sha256": "ac3c32c9fa1880b878df89459c4ea15484855f64e3b784da51e274c68cb4894a"
     },
     {
       "name": "docs-check",
@@ -363,30 +435,30 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
         "run",
         "check:docs"
       ],
-      "started_utc": "2026-10-18T08:51:39.765101+00:00",
-      "ended_utc": "2026-10-18T08:51:43.394515+00:00",
-      "elapsed_seconds": 3.629,
+      "started_utc": "2026-10-18T11:03:15.928082+00:00",
+      "ended_utc": "2026-10-18T11:03:19.769845+00:00",
+      "elapsed_seconds": 3.842,
       "exit_code": 0,
-      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/docs-check.log",
+      "log": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/docs-check.log",
       "log_sha256": "1fccbd25a0eb178f07601adbe849619b2aee26abe27cdfc26f3162d759d17c5d"
     }
   ],
-  "sha": "cc8279c3d0687ac540cdc7385968b6f72af13ae2",
-  "tree": "3b5e677acbd3d9bf253909f65b897e5fa25b845a",
+  "sha": "0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90",
+  "tree": "52706c46059bcab835f2190e228ac70701ab7a89",
   "git_status": "clean",
   "lock_review": {
     "reviewed_baseline": "610625f4fa19972c48c8d315442982542b257cd8",
-    "baseline_lock_review_json": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/baseline-lock-review.json",
-    "baseline_lock_review_diff": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/baseline-lock-review.diff",
-    "p2_lock_files_changed_since_baseline": [],
+    "baseline_lock_review_json": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/baseline-lock-review.json",
+    "baseline_lock_review_diff": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/baseline-lock-review.diff",
+    "round2_lock_files_changed_since_baseline": [],
     "restore_mode": "locked-mode"
   },
   "targeted_test_report": {
-    "path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/p2-fix-validation/targeted-results.xml",
-    "sha256": "b3d9ec08602cece73b2f0cfb2a707048150e49ee1e67ea1b8e89ca1e8ea30044",
+    "path": "/workspace/eventhubs-kafka-dotnet/.artifacts/verifier-mutation/round2-review-fix-validation/targeted-results.xml",
+    "sha256": "47689e2e6bdde0e296ec259ff560af87493039d9d025ab04909e431f4e9849b8",
     "counts": {
-      "total": 1045,
-      "passed": 1045,
+      "total": 1093,
+      "passed": 1093,
       "failed": 0,
       "skipped": 0,
       "errors": 0,
@@ -395,9 +467,9 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
   },
   "full_verification_test_reports": [
     {
-      "source_path": "/tmp/parchwell-dotnet-verification.4jQMSgMr/Parchwell.ArchitectureTests/results.xml",
+      "source_path": "/tmp/parchwell-dotnet-verification.5URrDExk/Parchwell.ArchitectureTests/results.xml",
       "relative_path": "Parchwell.ArchitectureTests/results.xml",
-      "sha256": "ae95223a10daf1d8681e3b06e336b8975bed6157cdc1314737c734bed0f40920",
+      "sha256": "522214abd1712be512c3574cb4bb60a41a0c592e0b0cbdbe51d131df005cd396",
       "counts": {
         "total": 8,
         "passed": 8,
@@ -408,9 +480,9 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
       }
     },
     {
-      "source_path": "/tmp/parchwell-dotnet-verification.4jQMSgMr/Parchwell.Kafka.Tests/results.xml",
+      "source_path": "/tmp/parchwell-dotnet-verification.5URrDExk/Parchwell.Kafka.Tests/results.xml",
       "relative_path": "Parchwell.Kafka.Tests/results.xml",
-      "sha256": "1d031fb2b2dc72b476e335b0176abbcfc04f7e1b9d74dc046fd9ed5ca2d61047",
+      "sha256": "b8018cbbc2b5e17015be231e1c08555920e65ba7dd1b392a866d7fafe331c62c",
       "counts": {
         "total": 306,
         "passed": 306,
@@ -421,9 +493,9 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
       }
     },
     {
-      "source_path": "/tmp/parchwell-dotnet-verification.4jQMSgMr/Parchwell.LoadGen.Tests/results.xml",
+      "source_path": "/tmp/parchwell-dotnet-verification.5URrDExk/Parchwell.LoadGen.Tests/results.xml",
       "relative_path": "Parchwell.LoadGen.Tests/results.xml",
-      "sha256": "d26a6861f1dc4888a19c3dd0c7b284d6d3bff0d67bf5064d43c10451359ac194",
+      "sha256": "afebc6dc5910888bdb7b96df19f794c5eed4dd825633c3bdcb5f321aec4a54ff",
       "counts": {
         "total": 262,
         "passed": 262,
@@ -434,9 +506,9 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
       }
     },
     {
-      "source_path": "/tmp/parchwell-dotnet-verification.4jQMSgMr/Parchwell.Scenarios.Tests/results.xml",
+      "source_path": "/tmp/parchwell-dotnet-verification.5URrDExk/Parchwell.Scenarios.Tests/results.xml",
       "relative_path": "Parchwell.Scenarios.Tests/results.xml",
-      "sha256": "f45806a9f9edad826339ca8a90cbe770826ee7e270b604b16e31708e3fe7e0bb",
+      "sha256": "667200696d425a915f514d39597078f5ccd8d30cf3461d070f00f03787294ad3",
       "counts": {
         "total": 94,
         "passed": 94,
@@ -447,12 +519,12 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
       }
     },
     {
-      "source_path": "/tmp/parchwell-dotnet-verification.4jQMSgMr/Parchwell.Verifier.Tests/results.xml",
+      "source_path": "/tmp/parchwell-dotnet-verification.5URrDExk/Parchwell.Verifier.Tests/results.xml",
       "relative_path": "Parchwell.Verifier.Tests/results.xml",
-      "sha256": "9b26a1d6887eb263f4d22b7ab61b0eeec3739a53d2e558ad54686cef250ecedd",
+      "sha256": "3a86e7e08710073b0b35e29ac2b2a3c5247fef5dbf4eec7ce396fbffdd55aab7",
       "counts": {
-        "total": 1045,
-        "passed": 1045,
+        "total": 1093,
+        "passed": 1093,
         "failed": 0,
         "skipped": 0,
         "errors": 0,
@@ -461,24 +533,24 @@ The complete final wrapper record is reproduced from `run.json`; its `started_ut
     }
   ],
   "full_verification_report_count": 5,
-  "ended_utc": "2026-10-18T08:51:43.395773+00:00"
+  "ended_utc": "2026-10-18T11:03:19.770528+00:00"
 }
 ```
 
 ### Complete status and ID inventory
 
-The following compact JSON projection is embedded in this document, so the report population can be independently recounted without the ignored local artifact JSON. Each row contains one source/status group, its count, and the complete comma-separated ID list. Projection SHA-256: `486186e31eddf20a387195041bc16e843db705617af40a67edb045b9efe0d78c`.
+The following compact JSON projection is embedded in this document, so the report population can be independently recounted without the ignored local artifact JSON. Each row contains one source/status group, its count, and the complete comma-separated ID list. Projection SHA-256: `107cd996ddd52fd9c5d32498604b4bdc9918ea4f2632c8dcc1feec7bfb83cffd`.
 
 ```json
 {
-  "tested_sha": "cc8279c3d0687ac540cdc7385968b6f72af13ae2",
-  "report_sha256": "ef019222382fc446b239de3cace46a8fc43e9dbb5b7b976ba311bdf1ddf9d43a",
-  "mutant_count": 3826,
+  "tested_sha": "0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90",
+  "report_sha256": "782fba5355bb644133bacdbe608dcc4a3b17cfdb99728b7758aa7534e99063df",
+  "mutant_count": 3877,
   "status_counts": {
-    "CompileError": 255,
-    "Ignored": 412,
-    "Killed": 2537,
-    "Survived": 615,
+    "CompileError": 257,
+    "Ignored": 417,
+    "Killed": 2578,
+    "Survived": 618,
     "Timeout": 7
   },
   "mutants_by_file_and_status": [
@@ -510,288 +582,288 @@ The following compact JSON projection is embedded in this document, so the repor
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
       "status": "CompileError",
       "count": 13,
-      "ids": "1189,1190,1240,1243,1264,1279,1281,1301,1305,1307,1310,1323,1324"
+      "ids": "1188,1189,1239,1242,1263,1278,1280,1300,1304,1306,1309,1322,1323"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
       "status": "Ignored",
       "count": 55,
-      "ids": "1124,1130,1133,1142,1146,1148,1150,1152,1154,1156,1158,1160,1163,1165,1168,1172,1179,1184,1186,1192,1197,1212,1216,1218,1222,1225,1228,1233,1237,1244,1246,1247,1249,1253,1254,1258,1262,1271,1285,1291,1295,1298,1302,1306,1311,1313,1315,1326,1327,1330,1336,1339,1340,1343,1349"
+      "ids": "1124,1130,1133,1142,1146,1148,1150,1152,1154,1156,1158,1160,1163,1165,1168,1172,1178,1183,1185,1191,1196,1211,1215,1217,1221,1224,1227,1232,1236,1243,1245,1246,1248,1252,1253,1257,1261,1270,1284,1290,1294,1297,1301,1305,1310,1312,1314,1325,1326,1329,1335,1338,1339,1342,1348"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
       "status": "Killed",
       "count": 126,
-      "ids": "1125,1126,1127,1128,1129,1134,1135,1136,1137,1138,1139,1140,1141,1145,1151,1153,1157,1159,1161,1164,1166,1169,1170,1171,1173,1175,1176,1177,1178,1180,1181,1182,1183,1185,1187,1188,1191,1194,1195,1196,1200,1201,1203,1205,1206,1207,1208,1209,1210,1213,1215,1217,1219,1221,1223,1224,1226,1227,1229,1230,1231,1232,1234,1235,1238,1239,1241,1242,1245,1248,1250,1251,1252,1255,1256,1259,1260,1261,1263,1265,1266,1267,1268,1269,1270,1272,1274,1275,1276,1277,1278,1280,1282,1283,1284,1286,1287,1288,1289,1290,1292,1294,1296,1297,1299,1300,1303,1304,1308,1309,1312,1314,1316,1318,1319,1320,1321,1322,1325,1329,1333,1334,1335,1337,1346,1348"
+      "ids": "1125,1126,1127,1128,1129,1134,1135,1136,1137,1138,1139,1140,1141,1145,1151,1153,1157,1159,1161,1164,1166,1169,1170,1171,1173,1175,1176,1177,1179,1180,1181,1182,1184,1186,1187,1190,1192,1193,1194,1195,1199,1200,1202,1204,1205,1206,1207,1208,1209,1212,1214,1216,1218,1220,1222,1223,1225,1226,1228,1229,1230,1231,1233,1234,1237,1238,1240,1241,1244,1247,1249,1250,1251,1254,1255,1258,1259,1260,1262,1264,1265,1266,1267,1268,1269,1271,1273,1274,1275,1276,1277,1279,1281,1282,1283,1285,1286,1287,1288,1289,1291,1293,1295,1296,1298,1299,1302,1303,1307,1308,1311,1313,1315,1317,1318,1319,1320,1321,1324,1328,1332,1333,1334,1336,1345,1347"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
       "status": "Survived",
-      "count": 34,
-      "ids": "1131,1132,1143,1144,1147,1149,1155,1162,1167,1174,1193,1198,1199,1202,1204,1211,1214,1220,1236,1257,1273,1293,1317,1328,1331,1332,1338,1341,1342,1344,1345,1347,1350,1351"
+      "count": 33,
+      "ids": "1131,1132,1143,1144,1147,1149,1155,1162,1167,1174,1197,1198,1201,1203,1210,1213,1219,1235,1256,1272,1292,1316,1327,1330,1331,1337,1340,1341,1343,1344,1346,1349,1350"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
       "status": "CompileError",
       "count": 8,
-      "ids": "1412,1415,1461,1464,1496,1499,1540,1541"
+      "ids": "1411,1414,1460,1463,1495,1498,1539,1540"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
       "status": "Ignored",
       "count": 27,
-      "ids": "1371,1377,1380,1390,1408,1419,1423,1450,1456,1459,1476,1493,1500,1504,1510,1516,1522,1528,1534,1539,1542,1553,1555,1557,1560,1563,1566"
+      "ids": "1370,1376,1379,1389,1407,1418,1422,1449,1455,1458,1475,1492,1499,1503,1509,1515,1521,1527,1533,1538,1541,1552,1554,1556,1559,1562,1565"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
       "status": "Killed",
       "count": 156,
-      "ids": "1352,1353,1354,1355,1356,1357,1358,1359,1360,1361,1362,1363,1364,1365,1366,1367,1368,1369,1370,1376,1381,1382,1383,1384,1385,1386,1387,1388,1389,1392,1393,1394,1395,1396,1397,1398,1399,1400,1401,1402,1403,1404,1405,1406,1407,1409,1410,1411,1413,1414,1416,1417,1418,1420,1422,1424,1425,1426,1427,1428,1429,1430,1432,1433,1434,1436,1437,1438,1440,1441,1442,1444,1445,1446,1448,1449,1451,1453,1455,1457,1460,1462,1463,1465,1466,1467,1469,1470,1471,1473,1477,1478,1479,1480,1481,1482,1483,1484,1485,1486,1487,1488,1489,1490,1491,1492,1494,1495,1497,1498,1501,1502,1503,1505,1507,1508,1509,1511,1513,1514,1515,1517,1519,1520,1521,1523,1525,1526,1527,1529,1531,1532,1533,1535,1537,1538,1543,1544,1545,1546,1547,1548,1549,1550,1551,1552,1554,1556,1559,1562,1567,1568,1569,1571,1573,1574"
+      "ids": "1351,1352,1353,1354,1355,1356,1357,1358,1359,1360,1361,1362,1363,1364,1365,1366,1367,1368,1369,1375,1380,1381,1382,1383,1384,1385,1386,1387,1388,1391,1392,1393,1394,1395,1396,1397,1398,1399,1400,1401,1402,1403,1404,1405,1406,1408,1409,1410,1412,1413,1415,1416,1417,1419,1421,1423,1424,1425,1426,1427,1428,1429,1431,1432,1433,1435,1436,1437,1439,1440,1441,1443,1444,1445,1447,1448,1450,1452,1454,1456,1459,1461,1462,1464,1465,1466,1468,1469,1470,1472,1476,1477,1478,1479,1480,1481,1482,1483,1484,1485,1486,1487,1488,1489,1490,1491,1493,1494,1496,1497,1500,1501,1502,1504,1506,1507,1508,1510,1512,1513,1514,1516,1518,1519,1520,1522,1524,1525,1526,1528,1530,1531,1532,1534,1536,1537,1542,1543,1544,1545,1546,1547,1548,1549,1550,1551,1553,1555,1558,1561,1566,1567,1568,1570,1572,1573"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
       "status": "Survived",
       "count": 33,
-      "ids": "1372,1373,1374,1375,1378,1379,1391,1421,1431,1435,1439,1443,1447,1452,1454,1458,1468,1472,1474,1475,1506,1512,1518,1524,1530,1536,1558,1561,1564,1565,1570,1572,1575"
+      "ids": "1371,1372,1373,1374,1377,1378,1390,1420,1430,1434,1438,1442,1446,1451,1453,1457,1467,1471,1473,1474,1505,1511,1517,1523,1529,1535,1557,1560,1563,1564,1569,1571,1574"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
       "status": "CompileError",
       "count": 13,
-      "ids": "1624,1643,1644,1645,1646,1647,1649,1650,1652,1653,1657,1663,1672"
+      "ids": "1623,1642,1643,1644,1645,1646,1648,1649,1651,1652,1656,1662,1671"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
       "status": "Ignored",
       "count": 24,
-      "ids": "1576,1586,1587,1589,1594,1599,1601,1606,1612,1613,1616,1618,1623,1625,1628,1630,1632,1639,1640,1654,1660,1666,1670,1679"
+      "ids": "1575,1585,1586,1588,1593,1598,1600,1605,1611,1612,1615,1617,1622,1624,1627,1629,1631,1638,1639,1653,1659,1665,1669,1678"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
       "status": "Killed",
       "count": 32,
-      "ids": "1579,1583,1584,1592,1611,1614,1638,1641,1655,1656,1658,1661,1662,1664,1667,1668,1673,1674,1675,1676,1677,1678,1680,1681,1682,1683,1684,1685,1686,1687,1688,1689"
+      "ids": "1578,1582,1583,1591,1610,1613,1637,1640,1654,1655,1657,1660,1661,1663,1666,1667,1672,1673,1674,1675,1676,1677,1679,1680,1681,1682,1683,1684,1685,1686,1687,1688"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
       "status": "Survived",
       "count": 41,
-      "ids": "1577,1578,1580,1581,1582,1591,1593,1595,1596,1597,1598,1600,1602,1603,1604,1605,1607,1608,1609,1610,1615,1617,1619,1620,1621,1622,1626,1627,1629,1631,1633,1634,1635,1636,1637,1642,1659,1665,1669,1671,1690"
+      "ids": "1576,1577,1579,1580,1581,1590,1592,1594,1595,1596,1597,1599,1601,1602,1603,1604,1606,1607,1608,1609,1614,1616,1618,1619,1620,1621,1625,1626,1628,1630,1632,1633,1634,1635,1636,1641,1658,1664,1668,1670,1689"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs",
       "status": "Timeout",
       "count": 5,
-      "ids": "1585,1588,1590,1648,1651"
+      "ids": "1584,1587,1589,1647,1650"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
       "status": "CompileError",
       "count": 1,
-      "ids": "1696"
+      "ids": "1695"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
       "status": "Ignored",
+      "count": 1,
+      "ids": "1690"
+    },
+    {
+      "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
+      "status": "Killed",
+      "count": 7,
+      "ids": "1692,1693,1694,1696,1697,1698,1699"
+    },
+    {
+      "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
+      "status": "Survived",
       "count": 1,
       "ids": "1691"
     },
     {
-      "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
-      "status": "Killed",
-      "count": 6,
-      "ids": "1693,1694,1695,1697,1698,1700"
-    },
-    {
-      "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptions.cs",
-      "status": "Survived",
-      "count": 2,
-      "ids": "1692,1699"
-    },
-    {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
       "status": "CompileError",
-      "count": 4,
-      "ids": "1786,1787,1843,1845"
+      "count": 6,
+      "ids": "1785,1786,1855,1877,1894,1896"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
       "status": "Ignored",
-      "count": 27,
-      "ids": "1701,1704,1788,1823,1825,1837,1839,1847,1849,1865,1870,1873,1880,1883,1884,1885,1889,1891,1896,1906,1912,1917,1922,1925,1927,1930,1932"
+      "count": 32,
+      "ids": "1700,1703,1787,1822,1824,1836,1848,1863,1867,1872,1888,1890,1898,1900,1916,1921,1924,1931,1934,1935,1936,1940,1942,1947,1957,1963,1968,1973,1976,1978,1981,1983"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
       "status": "Killed",
-      "count": 121,
-      "ids": "1703,1707,1709,1711,1713,1715,1717,1719,1721,1722,1724,1726,1728,1729,1731,1733,1735,1737,1739,1741,1743,1745,1747,1749,1751,1753,1755,1757,1759,1761,1763,1767,1769,1771,1773,1775,1777,1779,1780,1781,1783,1784,1785,1789,1791,1793,1795,1797,1799,1801,1803,1805,1807,1809,1811,1813,1815,1817,1819,1821,1824,1826,1828,1829,1831,1833,1835,1838,1840,1842,1844,1846,1848,1853,1855,1857,1859,1861,1863,1866,1867,1868,1869,1871,1872,1877,1878,1879,1881,1886,1887,1888,1890,1892,1893,1894,1895,1897,1899,1900,1901,1902,1903,1904,1907,1908,1909,1910,1911,1913,1915,1916,1918,1919,1920,1921,1923,1926,1928,1931,1933"
+      "count": 163,
+      "ids": "1702,1706,1708,1710,1712,1714,1716,1718,1720,1721,1723,1725,1727,1728,1730,1732,1734,1736,1738,1740,1742,1744,1746,1748,1750,1752,1754,1756,1758,1760,1762,1763,1766,1768,1770,1772,1774,1776,1778,1779,1780,1782,1783,1784,1788,1790,1792,1794,1796,1798,1800,1802,1804,1806,1808,1810,1812,1814,1816,1818,1820,1823,1825,1827,1828,1830,1832,1834,1837,1838,1839,1840,1841,1842,1843,1844,1845,1846,1847,1849,1850,1851,1852,1853,1854,1856,1857,1858,1859,1860,1861,1862,1864,1868,1869,1870,1871,1873,1876,1878,1879,1880,1881,1882,1883,1884,1885,1886,1887,1889,1891,1893,1895,1897,1899,1904,1906,1908,1910,1912,1914,1917,1918,1919,1920,1922,1923,1928,1929,1930,1932,1937,1938,1939,1941,1943,1944,1945,1946,1948,1950,1951,1952,1953,1954,1955,1958,1959,1960,1961,1962,1964,1966,1967,1969,1970,1971,1972,1974,1977,1979,1982,1984"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
       "status": "Survived",
-      "count": 82,
-      "ids": "1702,1705,1706,1708,1710,1712,1714,1716,1718,1720,1723,1725,1727,1730,1732,1734,1736,1738,1740,1742,1744,1746,1748,1750,1752,1754,1756,1758,1760,1762,1764,1765,1766,1768,1770,1772,1774,1776,1778,1782,1790,1792,1794,1796,1798,1800,1802,1804,1806,1808,1810,1812,1814,1816,1818,1820,1822,1827,1830,1832,1834,1836,1841,1850,1851,1852,1854,1856,1858,1860,1862,1864,1874,1875,1876,1882,1898,1905,1914,1924,1929,1934"
+      "count": 85,
+      "ids": "1701,1704,1705,1707,1709,1711,1713,1715,1717,1719,1722,1724,1726,1729,1731,1733,1735,1737,1739,1741,1743,1745,1747,1749,1751,1753,1755,1757,1759,1761,1764,1765,1767,1769,1771,1773,1775,1777,1781,1789,1791,1793,1795,1797,1799,1801,1803,1805,1807,1809,1811,1813,1815,1817,1819,1821,1826,1829,1831,1833,1835,1865,1866,1874,1875,1892,1901,1902,1903,1905,1907,1909,1911,1913,1915,1925,1926,1927,1933,1949,1956,1965,1975,1980,1985"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs",
       "status": "Ignored",
       "count": 12,
-      "ids": "1936,1937,1939,1943,1948,1950,1952,1954,1956,1960,1962,1965"
+      "ids": "1987,1988,1990,1994,1999,2001,2003,2005,2007,2011,2013,2016"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs",
       "status": "Killed",
       "count": 6,
-      "ids": "1935,1938,1941,1942,1944,1947"
+      "ids": "1986,1989,1992,1993,1995,1998"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs",
       "status": "Survived",
       "count": 12,
-      "ids": "1940,1945,1946,1949,1951,1953,1957,1958,1959,1963,1964,1966"
+      "ids": "1991,1996,1997,2000,2002,2004,2008,2009,2010,2014,2015,2017"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs",
       "status": "Timeout",
       "count": 2,
-      "ids": "1955,1961"
+      "ids": "2006,2012"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
       "status": "CompileError",
       "count": 18,
-      "ids": "1992,1993,2025,2026,2124,2125,2126,2129,2130,2132,2133,2136,2137,2138,2141,2142,2144,2145"
+      "ids": "2043,2044,2076,2077,2175,2176,2177,2180,2181,2183,2184,2187,2188,2189,2192,2193,2195,2196"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
       "status": "Ignored",
       "count": 18,
-      "ids": "1984,1995,2035,2064,2067,2072,2077,2081,2099,2101,2105,2108,2110,2114,2121,2148,2150,2155"
+      "ids": "2035,2046,2086,2115,2118,2123,2128,2132,2150,2152,2156,2159,2161,2165,2172,2199,2201,2206"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
       "status": "Killed",
-      "count": 133,
-      "ids": "1967,1968,1969,1970,1971,1972,1973,1974,1975,1976,1977,1978,1979,1980,1981,1982,1983,1985,1986,1987,1988,1989,1990,1991,1994,1996,1997,1998,1999,2000,2001,2002,2003,2004,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2027,2028,2029,2030,2031,2032,2033,2034,2036,2037,2038,2039,2040,2041,2042,2043,2044,2045,2046,2047,2048,2049,2050,2051,2052,2053,2054,2055,2056,2057,2058,2059,2060,2061,2062,2063,2065,2066,2071,2073,2075,2076,2078,2079,2080,2085,2086,2087,2088,2089,2090,2091,2092,2093,2094,2095,2096,2097,2098,2100,2102,2104,2106,2109,2111,2113,2115,2117,2118,2119,2120,2122,2131,2134,2143,2146,2149,2153,2154,2156"
+      "count": 131,
+      "ids": "2018,2019,2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,2034,2036,2037,2038,2039,2040,2041,2042,2045,2047,2048,2049,2050,2051,2052,2053,2054,2055,2057,2058,2059,2060,2061,2062,2063,2064,2065,2066,2067,2068,2069,2070,2071,2072,2073,2074,2075,2078,2079,2080,2081,2082,2083,2084,2085,2087,2088,2089,2090,2091,2092,2093,2094,2095,2096,2097,2098,2099,2100,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112,2113,2114,2116,2117,2122,2124,2126,2127,2129,2130,2131,2136,2137,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148,2149,2151,2155,2160,2162,2164,2166,2168,2169,2170,2171,2173,2182,2185,2194,2197,2200,2204,2205,2207"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
       "status": "Survived",
-      "count": 22,
-      "ids": "2005,2068,2069,2070,2074,2082,2083,2084,2103,2107,2112,2116,2123,2127,2128,2135,2139,2140,2147,2151,2152,2157"
+      "count": 24,
+      "ids": "2056,2119,2120,2121,2125,2133,2134,2135,2153,2154,2157,2158,2163,2167,2174,2178,2179,2186,2190,2191,2198,2202,2203,2208"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs",
       "status": "Killed",
       "count": 2,
-      "ids": "2158,2159"
+      "ids": "2209,2210"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
       "status": "CompileError",
       "count": 46,
-      "ids": "2166,2167,2168,2170,2179,2180,2186,2187,2194,2195,2196,2198,2207,2208,2214,2215,2226,2227,2271,2272,2360,2361,2423,2424,2500,2501,2889,2892,2982,2983,2984,2987,2988,2990,2991,2994,2995,2996,2999,3000,3002,3003,3031,3032,3043,3044"
+      "ids": "2217,2218,2219,2221,2230,2231,2237,2238,2245,2246,2247,2249,2258,2259,2265,2266,2277,2278,2322,2323,2411,2412,2474,2475,2551,2552,2940,2943,3033,3034,3035,3038,3039,3041,3042,3045,3046,3047,3050,3051,3053,3054,3082,3083,3094,3095"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
       "status": "Ignored",
       "count": 61,
-      "ids": "2160,2172,2175,2188,2200,2203,2220,2229,2281,2283,2297,2373,2435,2512,2537,2576,2637,2649,2664,2683,2701,2738,2752,2772,2787,2826,2852,2854,2858,2862,2866,2872,2874,2878,2884,2886,2896,2898,2902,2906,2914,2916,2922,2928,2962,2964,2968,2971,2973,2975,2979,3006,3008,3013,3016,3018,3025,3027,3036,3038,3048"
+      "ids": "2211,2223,2226,2239,2251,2254,2271,2280,2332,2334,2348,2424,2486,2563,2588,2627,2688,2700,2715,2734,2752,2789,2803,2823,2838,2877,2903,2905,2909,2913,2917,2923,2925,2929,2935,2937,2947,2949,2953,2957,2965,2967,2973,2979,3013,3015,3019,3022,3024,3026,3030,3057,3059,3064,3067,3069,3076,3078,3087,3089,3099"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
       "status": "Killed",
       "count": 732,
-      "ids": "2161,2162,2163,2164,2165,2169,2171,2173,2174,2178,2181,2182,2183,2184,2185,2189,2190,2191,2192,2193,2197,2199,2201,2202,2206,2209,2210,2211,2212,2213,2216,2217,2218,2219,2221,2222,2223,2224,2225,2228,2230,2231,2232,2233,2234,2235,2236,2237,2238,2239,2240,2241,2242,2243,2244,2245,2246,2247,2248,2249,2250,2251,2252,2253,2254,2255,2256,2257,2258,2259,2260,2261,2262,2263,2264,2265,2266,2267,2268,2269,2270,2273,2274,2275,2276,2277,2278,2279,2280,2282,2287,2288,2289,2290,2291,2292,2293,2298,2299,2300,2301,2302,2303,2304,2305,2306,2307,2308,2309,2310,2311,2312,2313,2314,2315,2316,2317,2318,2319,2320,2321,2322,2323,2324,2325,2326,2327,2328,2329,2330,2331,2332,2333,2334,2335,2336,2337,2338,2339,2340,2341,2342,2343,2344,2345,2346,2347,2348,2349,2350,2351,2352,2353,2354,2355,2356,2357,2358,2359,2362,2363,2364,2365,2366,2367,2368,2369,2370,2371,2372,2374,2375,2376,2377,2378,2379,2380,2381,2382,2383,2384,2385,2386,2387,2388,2389,2390,2391,2392,2393,2394,2395,2396,2397,2398,2399,2400,2401,2402,2403,2404,2405,2406,2407,2408,2409,2410,2411,2412,2413,2414,2415,2416,2417,2418,2419,2420,2421,2422,2425,2426,2427,2428,2429,2430,2431,2432,2433,2434,2436,2437,2438,2439,2440,2441,2442,2443,2444,2445,2446,2447,2448,2449,2450,2451,2452,2453,2454,2455,2456,2457,2458,2459,2460,2461,2462,2463,2464,2465,2466,2467,2468,2469,2470,2471,2472,2473,2474,2475,2476,2477,2478,2479,2480,2481,2482,2483,2484,2485,2486,2487,2488,2489,2490,2491,2492,2493,2494,2495,2496,2497,2498,2499,2502,2503,2504,2505,2506,2507,2508,2509,2510,2511,2513,2514,2515,2516,2517,2518,2519,2520,2521,2522,2523,2524,2525,2526,2527,2528,2529,2530,2531,2532,2533,2534,2535,2536,2538,2539,2540,2541,2542,2543,2544,2545,2546,2547,2548,2549,2550,2551,2552,2553,2554,2555,2556,2557,2558,2559,2560,2561,2562,2563,2564,2565,2566,2567,2568,2569,2570,2571,2572,2573,2574,2575,2577,2578,2579,2580,2581,2582,2583,2584,2585,2586,2587,2588,2589,2590,2591,2592,2593,2594,2595,2596,2597,2598,2599,2600,2601,2602,2603,2604,2605,2606,2607,2608,2609,2610,2611,2612,2613,2614,2615,2616,2617,2618,2619,2620,2621,2622,2623,2624,2625,2626,2627,2628,2629,2630,2631,2632,2633,2634,2635,2636,2638,2639,2640,2641,2642,2643,2644,2645,2646,2647,2648,2650,2651,2652,2653,2654,2655,2656,2657,2658,2659,2660,2661,2662,2663,2665,2666,2667,2668,2669,2670,2671,2672,2673,2674,2675,2676,2677,2678,2679,2680,2681,2682,2684,2685,2686,2687,2688,2689,2690,2691,2692,2693,2694,2695,2696,2697,2698,2699,2700,2702,2703,2704,2705,2706,2707,2708,2709,2710,2711,2712,2713,2714,2715,2716,2717,2718,2719,2720,2721,2722,2723,2724,2725,2726,2727,2728,2729,2730,2731,2732,2733,2734,2735,2736,2737,2739,2740,2741,2742,2743,2744,2745,2746,2747,2748,2749,2750,2751,2753,2754,2755,2756,2757,2758,2759,2760,2761,2762,2763,2764,2765,2766,2767,2768,2769,2770,2771,2773,2774,2775,2776,2777,2778,2779,2780,2781,2782,2783,2784,2785,2786,2788,2789,2790,2791,2792,2793,2794,2795,2796,2797,2798,2799,2800,2801,2802,2803,2804,2805,2806,2807,2808,2809,2810,2811,2812,2813,2814,2815,2816,2817,2818,2819,2820,2821,2822,2823,2824,2825,2827,2828,2829,2830,2831,2832,2833,2834,2835,2836,2837,2838,2839,2840,2841,2842,2843,2844,2845,2846,2847,2848,2849,2850,2851,2853,2857,2859,2861,2863,2864,2865,2870,2871,2873,2877,2879,2881,2882,2883,2885,2893,2894,2895,2897,2901,2903,2905,2907,2911,2912,2913,2915,2917,2920,2921,2923,2925,2926,2927,2929,2930,2931,2932,2933,2934,2935,2936,2937,2938,2939,2940,2941,2942,2943,2944,2945,2946,2947,2948,2949,2950,2951,2952,2953,2954,2955,2956,2957,2958,2959,2960,2961,2963,2967,2969,2972,2974,2976,2978,2980,2989,2992,3001,3004,3007,3011,3012,3014,3017,3021,3022,3023,3026,3030,3034,3037,3039,3042,3045,3046,3049,3050,3051,3052,3053,3055"
+      "ids": "2212,2213,2214,2215,2216,2220,2222,2224,2225,2229,2232,2233,2234,2235,2236,2240,2241,2242,2243,2244,2248,2250,2252,2253,2257,2260,2261,2262,2263,2264,2267,2268,2269,2270,2272,2273,2274,2275,2276,2279,2281,2282,2283,2284,2285,2286,2287,2288,2289,2290,2291,2292,2293,2294,2295,2296,2297,2298,2299,2300,2301,2302,2303,2304,2305,2306,2307,2308,2309,2310,2311,2312,2313,2314,2315,2316,2317,2318,2319,2320,2321,2324,2325,2326,2327,2328,2329,2330,2331,2333,2338,2339,2340,2341,2342,2343,2344,2349,2350,2351,2352,2353,2354,2355,2356,2357,2358,2359,2360,2361,2362,2363,2364,2365,2366,2367,2368,2369,2370,2371,2372,2373,2374,2375,2376,2377,2378,2379,2380,2381,2382,2383,2384,2385,2386,2387,2388,2389,2390,2391,2392,2393,2394,2395,2396,2397,2398,2399,2400,2401,2402,2403,2404,2405,2406,2407,2408,2409,2410,2413,2414,2415,2416,2417,2418,2419,2420,2421,2422,2423,2425,2426,2427,2428,2429,2430,2431,2432,2433,2434,2435,2436,2437,2438,2439,2440,2441,2442,2443,2444,2445,2446,2447,2448,2449,2450,2451,2452,2453,2454,2455,2456,2457,2458,2459,2460,2461,2462,2463,2464,2465,2466,2467,2468,2469,2470,2471,2472,2473,2476,2477,2478,2479,2480,2481,2482,2483,2484,2485,2487,2488,2489,2490,2491,2492,2493,2494,2495,2496,2497,2498,2499,2500,2501,2502,2503,2504,2505,2506,2507,2508,2509,2510,2511,2512,2513,2514,2515,2516,2517,2518,2519,2520,2521,2522,2523,2524,2525,2526,2527,2528,2529,2530,2531,2532,2533,2534,2535,2536,2537,2538,2539,2540,2541,2542,2543,2544,2545,2546,2547,2548,2549,2550,2553,2554,2555,2556,2557,2558,2559,2560,2561,2562,2564,2565,2566,2567,2568,2569,2570,2571,2572,2573,2574,2575,2576,2577,2578,2579,2580,2581,2582,2583,2584,2585,2586,2587,2589,2590,2591,2592,2593,2594,2595,2596,2597,2598,2599,2600,2601,2602,2603,2604,2605,2606,2607,2608,2609,2610,2611,2612,2613,2614,2615,2616,2617,2618,2619,2620,2621,2622,2623,2624,2625,2626,2628,2629,2630,2631,2632,2633,2634,2635,2636,2637,2638,2639,2640,2641,2642,2643,2644,2645,2646,2647,2648,2649,2650,2651,2652,2653,2654,2655,2656,2657,2658,2659,2660,2661,2662,2663,2664,2665,2666,2667,2668,2669,2670,2671,2672,2673,2674,2675,2676,2677,2678,2679,2680,2681,2682,2683,2684,2685,2686,2687,2689,2690,2691,2692,2693,2694,2695,2696,2697,2698,2699,2701,2702,2703,2704,2705,2706,2707,2708,2709,2710,2711,2712,2713,2714,2716,2717,2718,2719,2720,2721,2722,2723,2724,2725,2726,2727,2728,2729,2730,2731,2732,2733,2735,2736,2737,2738,2739,2740,2741,2742,2743,2744,2745,2746,2747,2748,2749,2750,2751,2753,2754,2755,2756,2757,2758,2759,2760,2761,2762,2763,2764,2765,2766,2767,2768,2769,2770,2771,2772,2773,2774,2775,2776,2777,2778,2779,2780,2781,2782,2783,2784,2785,2786,2787,2788,2790,2791,2792,2793,2794,2795,2796,2797,2798,2799,2800,2801,2802,2804,2805,2806,2807,2808,2809,2810,2811,2812,2813,2814,2815,2816,2817,2818,2819,2820,2821,2822,2824,2825,2826,2827,2828,2829,2830,2831,2832,2833,2834,2835,2836,2837,2839,2840,2841,2842,2843,2844,2845,2846,2847,2848,2849,2850,2851,2852,2853,2854,2855,2856,2857,2858,2859,2860,2861,2862,2863,2864,2865,2866,2867,2868,2869,2870,2871,2872,2873,2874,2875,2876,2878,2879,2880,2881,2882,2883,2884,2885,2886,2887,2888,2889,2890,2891,2892,2893,2894,2895,2896,2897,2898,2899,2900,2901,2902,2904,2908,2910,2912,2914,2915,2916,2921,2922,2924,2928,2930,2932,2933,2934,2936,2944,2945,2946,2948,2952,2954,2956,2958,2962,2963,2964,2966,2968,2971,2972,2974,2976,2977,2978,2980,2981,2982,2983,2984,2985,2986,2987,2988,2989,2990,2991,2992,2993,2994,2995,2996,2997,2998,2999,3000,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,3014,3018,3020,3023,3025,3027,3029,3031,3040,3043,3052,3055,3058,3062,3063,3065,3068,3072,3073,3074,3077,3081,3085,3088,3090,3093,3096,3097,3100,3101,3102,3103,3104,3106"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
       "status": "Survived",
       "count": 57,
-      "ids": "2176,2177,2204,2205,2284,2285,2286,2294,2295,2296,2855,2856,2860,2867,2868,2869,2875,2876,2880,2887,2888,2890,2891,2899,2900,2904,2908,2909,2910,2918,2919,2924,2965,2966,2970,2977,2981,2985,2986,2993,2997,2998,3005,3009,3010,3015,3019,3020,3024,3028,3029,3033,3035,3040,3041,3047,3054"
+      "ids": "2227,2228,2255,2256,2335,2336,2337,2345,2346,2347,2906,2907,2911,2918,2919,2920,2926,2927,2931,2938,2939,2941,2942,2950,2951,2955,2959,2960,2961,2969,2970,2975,3016,3017,3021,3028,3032,3036,3037,3044,3048,3049,3056,3060,3061,3066,3070,3071,3075,3079,3080,3084,3086,3091,3092,3098,3105"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
       "status": "CompileError",
       "count": 34,
-      "ids": "3090,3091,3092,3094,3103,3106,3114,3115,3167,3168,3213,3214,3254,3255,3256,3259,3260,3262,3263,3266,3267,3268,3271,3272,3274,3275,3297,3298,3336,3337,3338,3339,3340,3341"
+      "ids": "3141,3142,3143,3145,3154,3157,3165,3166,3218,3219,3264,3265,3305,3306,3307,3310,3311,3313,3314,3317,3318,3319,3322,3323,3325,3326,3348,3349,3387,3388,3389,3390,3391,3392"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
       "status": "Ignored",
       "count": 23,
-      "ids": "3083,3096,3099,3107,3110,3116,3125,3178,3225,3227,3232,3237,3239,3243,3246,3251,3278,3280,3285,3288,3294,3302,3308"
+      "ids": "3134,3147,3150,3158,3161,3167,3176,3229,3276,3278,3283,3288,3290,3294,3297,3302,3329,3331,3336,3339,3345,3353,3359"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
       "status": "Killed",
       "count": 207,
-      "ids": "3056,3057,3058,3059,3060,3061,3062,3063,3064,3065,3066,3067,3068,3069,3070,3071,3072,3073,3074,3075,3076,3077,3078,3079,3080,3081,3082,3084,3085,3086,3087,3088,3089,3093,3095,3097,3098,3102,3104,3105,3108,3109,3111,3112,3113,3117,3118,3119,3120,3121,3122,3123,3124,3126,3128,3129,3130,3131,3132,3133,3134,3135,3136,3137,3138,3139,3140,3141,3142,3143,3144,3145,3146,3147,3148,3149,3150,3151,3152,3153,3154,3155,3156,3157,3158,3159,3160,3161,3162,3163,3164,3165,3166,3169,3170,3171,3172,3173,3174,3175,3176,3177,3179,3180,3181,3182,3183,3184,3185,3186,3187,3188,3189,3190,3191,3192,3193,3194,3195,3196,3197,3198,3199,3200,3201,3202,3203,3204,3205,3206,3207,3208,3209,3210,3211,3212,3215,3216,3217,3218,3219,3220,3221,3222,3223,3224,3226,3228,3229,3230,3231,3238,3242,3244,3247,3248,3249,3250,3252,3261,3264,3273,3276,3279,3283,3284,3286,3289,3290,3291,3292,3295,3296,3299,3300,3303,3304,3305,3306,3309,3310,3311,3312,3313,3314,3315,3316,3317,3318,3319,3320,3321,3322,3323,3324,3325,3326,3327,3328,3329,3330,3331,3332,3333,3334,3335,3346"
+      "ids": "3107,3108,3109,3110,3111,3112,3113,3114,3115,3116,3117,3118,3119,3120,3121,3122,3123,3124,3125,3126,3127,3128,3129,3130,3131,3132,3133,3135,3136,3137,3138,3139,3140,3144,3146,3148,3149,3153,3155,3156,3159,3160,3162,3163,3164,3168,3169,3170,3171,3172,3173,3174,3175,3177,3179,3180,3181,3182,3183,3184,3185,3186,3187,3188,3189,3190,3191,3192,3193,3194,3195,3196,3197,3198,3199,3200,3201,3202,3203,3204,3205,3206,3207,3208,3209,3210,3211,3212,3213,3214,3215,3216,3217,3220,3221,3222,3223,3224,3225,3226,3227,3228,3230,3231,3232,3233,3234,3235,3236,3237,3238,3239,3240,3241,3242,3243,3244,3245,3246,3247,3248,3249,3250,3251,3252,3253,3254,3255,3256,3257,3258,3259,3260,3261,3262,3263,3266,3267,3268,3269,3270,3271,3272,3273,3274,3275,3277,3279,3280,3281,3282,3289,3293,3295,3298,3299,3300,3301,3303,3312,3315,3324,3327,3330,3334,3335,3337,3340,3341,3342,3343,3346,3347,3350,3351,3354,3355,3356,3357,3360,3361,3362,3363,3364,3365,3366,3367,3368,3369,3370,3371,3372,3373,3374,3375,3376,3377,3378,3379,3380,3381,3382,3383,3384,3385,3386,3397"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
       "status": "Survived",
       "count": 27,
-      "ids": "3100,3101,3127,3233,3234,3235,3236,3240,3241,3245,3253,3257,3258,3265,3269,3270,3277,3281,3282,3287,3293,3301,3307,3342,3343,3344,3345"
+      "ids": "3151,3152,3178,3284,3285,3286,3287,3291,3292,3296,3304,3308,3309,3316,3320,3321,3328,3332,3333,3338,3344,3352,3358,3393,3394,3395,3396"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
       "status": "CompileError",
       "count": 20,
-      "ids": "3389,3390,3448,3449,3621,3622,3623,3626,3627,3629,3630,3633,3634,3635,3638,3639,3641,3642,3658,3659"
+      "ids": "3440,3441,3499,3500,3672,3673,3674,3677,3678,3680,3681,3684,3685,3686,3689,3690,3692,3693,3709,3710"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
       "status": "Ignored",
       "count": 29,
-      "ids": "3381,3392,3465,3493,3495,3499,3508,3512,3557,3559,3561,3565,3569,3577,3579,3583,3589,3595,3597,3601,3604,3606,3610,3613,3618,3645,3647,3652,3655"
+      "ids": "3432,3443,3516,3544,3546,3550,3559,3563,3608,3610,3612,3616,3620,3628,3630,3634,3640,3646,3648,3652,3655,3657,3661,3664,3669,3696,3698,3703,3706"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
       "status": "Killed",
       "count": 229,
-      "ids": "3347,3348,3349,3350,3351,3352,3353,3354,3355,3356,3357,3358,3359,3360,3361,3362,3363,3364,3365,3366,3367,3368,3369,3370,3371,3372,3373,3374,3375,3376,3377,3378,3379,3380,3382,3383,3384,3385,3386,3387,3388,3391,3393,3394,3395,3396,3397,3398,3399,3400,3401,3403,3404,3405,3406,3407,3408,3409,3410,3411,3412,3413,3414,3415,3416,3417,3418,3419,3420,3421,3422,3423,3424,3425,3426,3427,3428,3429,3430,3431,3432,3433,3434,3435,3436,3437,3438,3439,3440,3441,3442,3443,3444,3445,3446,3447,3450,3451,3452,3453,3454,3455,3456,3457,3458,3459,3460,3461,3462,3463,3464,3466,3467,3468,3469,3470,3471,3472,3473,3474,3475,3476,3477,3478,3479,3480,3481,3482,3483,3484,3485,3486,3487,3488,3489,3490,3491,3492,3494,3498,3500,3502,3503,3504,3505,3507,3509,3510,3511,3516,3517,3518,3519,3520,3521,3522,3523,3524,3525,3526,3527,3528,3529,3530,3531,3532,3533,3534,3535,3536,3537,3538,3539,3540,3541,3542,3543,3544,3545,3546,3547,3548,3549,3550,3551,3552,3553,3554,3555,3556,3558,3560,3564,3566,3568,3570,3574,3575,3576,3578,3582,3584,3586,3587,3588,3590,3594,3596,3600,3602,3605,3609,3611,3614,3615,3616,3617,3619,3628,3631,3640,3643,3646,3650,3651,3653,3656,3657,3661"
+      "ids": "3398,3399,3400,3401,3402,3403,3404,3405,3406,3407,3408,3409,3410,3411,3412,3413,3414,3415,3416,3417,3418,3419,3420,3421,3422,3423,3424,3425,3426,3427,3428,3429,3430,3431,3433,3434,3435,3436,3437,3438,3439,3442,3444,3445,3446,3447,3448,3449,3450,3451,3452,3454,3455,3456,3457,3458,3459,3460,3461,3462,3463,3464,3465,3466,3467,3468,3469,3470,3471,3472,3473,3474,3475,3476,3477,3478,3479,3480,3481,3482,3483,3484,3485,3486,3487,3488,3489,3490,3491,3492,3493,3494,3495,3496,3497,3498,3501,3502,3503,3504,3505,3506,3507,3508,3509,3510,3511,3512,3513,3514,3515,3517,3518,3519,3520,3521,3522,3523,3524,3525,3526,3527,3528,3529,3530,3531,3532,3533,3534,3535,3536,3537,3538,3539,3540,3541,3542,3543,3545,3549,3551,3553,3554,3555,3556,3558,3560,3561,3562,3567,3568,3569,3570,3571,3572,3573,3574,3575,3576,3577,3578,3579,3580,3581,3582,3583,3584,3585,3586,3587,3588,3589,3590,3591,3592,3593,3594,3595,3596,3597,3598,3599,3600,3601,3602,3603,3604,3605,3606,3607,3609,3611,3615,3617,3619,3621,3625,3626,3627,3629,3633,3635,3637,3638,3639,3641,3645,3647,3651,3653,3656,3660,3662,3665,3666,3667,3668,3670,3679,3682,3691,3694,3697,3701,3702,3704,3707,3708,3712"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
       "status": "Survived",
       "count": 38,
-      "ids": "3402,3496,3497,3501,3506,3513,3514,3515,3562,3563,3567,3571,3572,3573,3580,3581,3585,3591,3592,3593,3598,3599,3603,3607,3608,3612,3620,3624,3625,3632,3636,3637,3644,3648,3649,3654,3660,3662"
+      "ids": "3453,3547,3548,3552,3557,3564,3565,3566,3613,3614,3618,3622,3623,3624,3631,3632,3636,3642,3643,3644,3649,3650,3654,3658,3659,3663,3671,3675,3676,3683,3687,3688,3695,3699,3700,3705,3711,3713"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
       "status": "CompileError",
       "count": 10,
-      "ids": "3673,3674,3702,3703,3773,3774,3781,3815,3816,3817"
+      "ids": "3724,3725,3753,3754,3824,3825,3832,3866,3867,3868"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
       "status": "Ignored",
       "count": 17,
-      "ids": "3663,3676,3678,3680,3708,3711,3716,3728,3730,3737,3775,3777,3784,3804,3806,3812,3814"
+      "ids": "3714,3727,3729,3731,3759,3762,3767,3779,3781,3788,3826,3828,3835,3855,3857,3863,3865"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
       "status": "Killed",
       "count": 119,
-      "ids": "3664,3665,3666,3669,3670,3671,3672,3675,3677,3679,3684,3685,3686,3687,3688,3689,3690,3691,3692,3693,3694,3695,3696,3697,3698,3699,3700,3701,3704,3705,3706,3709,3710,3712,3714,3715,3717,3719,3720,3721,3722,3723,3724,3725,3727,3729,3735,3736,3738,3739,3740,3741,3742,3743,3744,3745,3746,3747,3748,3749,3750,3751,3752,3753,3754,3755,3756,3757,3758,3759,3760,3761,3762,3763,3764,3765,3766,3767,3768,3769,3770,3771,3772,3776,3778,3779,3780,3782,3783,3787,3788,3789,3790,3791,3792,3793,3794,3795,3796,3797,3798,3799,3800,3801,3802,3803,3805,3807,3808,3809,3810,3811,3813,3818,3820,3821,3822,3823,3825"
+      "ids": "3715,3716,3717,3720,3721,3722,3723,3726,3728,3730,3735,3736,3737,3738,3739,3740,3741,3742,3743,3744,3745,3746,3747,3748,3749,3750,3751,3752,3755,3756,3757,3760,3761,3763,3765,3766,3768,3770,3771,3772,3773,3774,3775,3776,3778,3780,3786,3787,3789,3790,3791,3792,3793,3794,3795,3796,3797,3798,3799,3800,3801,3802,3803,3804,3805,3806,3807,3808,3809,3810,3811,3812,3813,3814,3815,3816,3817,3818,3819,3820,3821,3822,3823,3827,3829,3830,3831,3833,3834,3838,3839,3840,3841,3842,3843,3844,3845,3846,3847,3848,3849,3850,3851,3852,3853,3854,3856,3858,3859,3860,3861,3862,3864,3869,3871,3872,3873,3874,3876"
     },
     {
       "path": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
       "status": "Survived",
       "count": 17,
-      "ids": "3667,3668,3681,3682,3683,3707,3713,3718,3726,3731,3732,3733,3734,3785,3786,3819,3824"
+      "ids": "3718,3719,3732,3733,3734,3758,3764,3769,3777,3782,3783,3784,3785,3836,3837,3870,3875"
     }
   ]
 }
 ```
 
-The full machine-readable inventory is `/workspace/scratch/p2-fix-current-evidence-inventory.json` (SHA-256 `618ace684e43986bee3d0f16bdcb10a8b06393d88cf0e0629c1f2218520a559e`).
+The full machine-readable inventory is `/workspace/scratch/round2-v2-current-evidence-inventory.json` (SHA-256 `2ef15c645ac7de7fea331a01bfc86e93faa2a03d84517ea2ce599d28eccd2e26`).
 
 
 ## Current Survived and NoCoverage rows
 
-These 615 current report rows are all exactly `not reviewed`. The historical ID column is a composite source/span/replacement match only; it is not evidence that current code was replayed or adjudicated. Newly uncovered source/mutator categories requiring sample gap fills: 0 source files and 0 mutator types.
+These 618 current report rows are all exactly `not reviewed`. The historical ID column is a composite source/span/replacement match only; it is not evidence that current code was replayed or adjudicated. Newly uncovered source/mutator categories requiring sample gap fills: 0 source files and 0 mutator types.
 
 | Current ID | Full source path | Exact span | Mutator | Replacement (JSON string) | Current report status | Historical sample reference only | Current replay state |
 | ---: | --- | --- | --- | --- | --- | --- | --- |
@@ -1055,374 +1127,377 @@ These 615 current report rows are all exactly `not reviewed`. The historical ID 
 | 1162 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 90:38-90:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1162 (historical match only) | not reviewed |
 | 1167 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 98:38-98:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1167 (historical match only) | not reviewed |
 | 1174 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 114:51-114:99 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1174 (historical match only) | not reviewed |
-| 1193 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 136:89-136:106 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1193 (historical match only) | not reviewed |
-| 1198 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 141:17-141:125 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1198 (historical match only) | not reviewed |
-| 1199 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 141:55-141:123 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1199 (historical match only) | not reviewed |
-| 1202 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 151:13-151:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1202 (historical match only) | not reviewed |
-| 1204 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 153:23-153:43 | Remove checked expression | <code>&quot;entries + 1&quot;</code> | Survived | old ID 1204 (historical match only) | not reviewed |
-| 1211 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 154:56-154:83 | Equality mutation | <code>&quot;entries &gt;= limits.MaxEntries&quot;</code> | Survived | old ID 1211 (historical match only) | not reviewed |
-| 1214 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 156:55-156:111 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1214 (historical match only) | not reviewed |
-| 1220 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 174:18-174:30 | String mutation | <code>&quot;\&quot;Stryker was here!\&quot;&quot;</code> | Survived | old ID 1220 (historical match only) | not reviewed |
-| 1236 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 206:17-206:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1236 (historical match only) | not reviewed |
-| 1257 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 238:51-238:58 | PostIncrementExpression to PostDecrementExpression mutation | <code>&quot;index--&quot;</code> | Survived | old ID 1257 (historical match only) | not reviewed |
-| 1273 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 263:55-263:106 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1273 (historical match only) | not reviewed |
-| 1293 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 273:59-273:108 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1293 (historical match only) | not reviewed |
-| 1317 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 311:37-311:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1317 (historical match only) | not reviewed |
-| 1328 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 420:22-420:45 | Remove checked expression | <code>&quot;_bytes + count&quot;</code> | Survived | old ID 1328 (historical match only) | not reviewed |
-| 1331 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 424:13-424:138 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1331 (historical match only) | not reviewed |
-| 1332 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 424:51-424:136 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1332 (historical match only) | not reviewed |
-| 1338 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 429:51-429:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1338 (historical match only) | not reviewed |
-| 1341 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 437:24-437:49 | Remove checked expression | <code>&quot;_entries + count&quot;</code> | Survived | old ID 1341 (historical match only) | not reviewed |
-| 1342 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 437:32-437:48 | Arithmetic mutation | <code>&quot;_entries - count&quot;</code> | Survived | old ID 1342 (historical match only) | not reviewed |
-| 1344 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 441:13-441:139 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1344 (historical match only) | not reviewed |
-| 1345 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 441:51-441:137 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1345 (historical match only) | not reviewed |
-| 1347 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 444:13-444:41 | Equality mutation | <code>&quot;_entries &gt;= limits.MaxEntries&quot;</code> | Survived | old ID 1347 (historical match only) | not reviewed |
-| 1350 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 446:13-446:118 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1350 (historical match only) | not reviewed |
-| 1351 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 446:51-446:116 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1351 (historical match only) | not reviewed |
-| 1372 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 29:9-29:49 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1372 (historical match only) | not reviewed |
-| 1373 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 30:9-30:51 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1373 (historical match only) | not reviewed |
-| 1374 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 31:9-31:58 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1374 (historical match only) | not reviewed |
-| 1375 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 32:9-32:64 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1375 (historical match only) | not reviewed |
-| 1378 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 35:13-35:102 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1378 (historical match only) | not reviewed |
-| 1379 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 35:41-35:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1379 (historical match only) | not reviewed |
-| 1391 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 49:17-49:57 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1391 (historical match only) | not reviewed |
-| 1421 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 91:56-91:73 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1421 (historical match only) | not reviewed |
-| 1431 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 104:93-104:110 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1431 (historical match only) | not reviewed |
-| 1435 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 105:110-105:127 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1435 (historical match only) | not reviewed |
-| 1439 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 106:122-106:139 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1439 (historical match only) | not reviewed |
-| 1443 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 107:136-107:153 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1443 (historical match only) | not reviewed |
-| 1447 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 108:131-108:148 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1447 (historical match only) | not reviewed |
-| 1452 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 113:57-113:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1452 (historical match only) | not reviewed |
-| 1454 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 116:13-116:58 | Equality mutation | <code>&quot;highsElement.GetArrayLength() &gt;= maxPartitions&quot;</code> | Survived | old ID 1454 (historical match only) | not reviewed |
-| 1458 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 118:51-118:112 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1458 (historical match only) | not reviewed |
-| 1468 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 129:112-129:129 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1468 (historical match only) | not reviewed |
-| 1472 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 130:98-130:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1472 (historical match only) | not reviewed |
-| 1474 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 132:13-132:21 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1474 (historical match only) | not reviewed |
-| 1475 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 132:13-132:20 | PostIncrementExpression to PostDecrementExpression mutation | <code>&quot;index--&quot;</code> | Survived | old ID 1475 (historical match only) | not reviewed |
-| 1506 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 169:125-169:142 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1506 (historical match only) | not reviewed |
-| 1512 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 170:140-170:157 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1512 (historical match only) | not reviewed |
-| 1518 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 171:110-171:127 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1518 (historical match only) | not reviewed |
-| 1524 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 172:125-172:142 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1524 (historical match only) | not reviewed |
-| 1530 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 173:151-173:168 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1530 (historical match only) | not reviewed |
-| 1536 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 174:119-174:136 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1536 (historical match only) | not reviewed |
-| 1558 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 215:13-215:38 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1558 (historical match only) | not reviewed |
-| 1561 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 221:13-221:46 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1561 (historical match only) | not reviewed |
-| 1564 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 227:13-227:34 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1564 (historical match only) | not reviewed |
-| 1565 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 228:13-228:35 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1565 (historical match only) | not reviewed |
-| 1570 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 233:17-233:26 | Equality mutation | <code>&quot;count &lt;= 0&quot;</code> | Survived | old ID 1570 (historical match only) | not reviewed |
-| 1572 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 233:30-233:59 | Equality mutation | <code>&quot;Length &gt;= maximumBytes - count&quot;</code> | Survived | old ID 1572 (historical match only) | not reviewed |
-| 1575 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 234:55-234:118 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1575 (historical match only) | not reviewed |
-| 1577 | `src/Parchwell.Verifier/Program.cs` | 36:9-36:49 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1577 (historical match only) | not reviewed |
-| 1578 | `src/Parchwell.Verifier/Program.cs` | 39:9-41:32 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1578 (historical match only) | not reviewed |
-| 1580 | `src/Parchwell.Verifier/Program.cs` | 44:9-44:110 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1580 (historical match only) | not reviewed |
-| 1581 | `src/Parchwell.Verifier/Program.cs` | 45:9-45:76 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1581 (historical match only) | not reviewed |
-| 1582 | `src/Parchwell.Verifier/Program.cs` | 45:39-45:74 | Null coalescing mutation (remove left) | <code>&quot;TimeProvider.System&quot;</code> | Survived | old ID 1582 (historical match only) | not reviewed |
-| 1591 | `src/Parchwell.Verifier/Program.cs` | 75:56-75:61 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1591 (historical match only) | not reviewed |
-| 1593 | `src/Parchwell.Verifier/Program.cs` | 77:37-77:42 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1593 (historical match only) | not reviewed |
-| 1595 | `src/Parchwell.Verifier/Program.cs` | 81:17-81:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1595 (historical match only) | not reviewed |
-| 1596 | `src/Parchwell.Verifier/Program.cs` | 82:17-86:54 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1596 (historical match only) | not reviewed |
-| 1597 | `src/Parchwell.Verifier/Program.cs` | 85:36-85:57 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1597 (historical match only) | not reviewed |
-| 1598 | `src/Parchwell.Verifier/Program.cs` | 86:35-86:51 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1598 (historical match only) | not reviewed |
-| 1600 | `src/Parchwell.Verifier/Program.cs` | 91:17-91:33 | Equality mutation | <code>&quot;host is null&quot;</code> | Survived | old ID 1600 (historical match only) | not reviewed |
-| 1602 | `src/Parchwell.Verifier/Program.cs` | 93:17-93:101 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;logger = host.Services.GetService&lt;ILoggerFactory&gt;()?.CreateLogger(nameof(Program))&quot;</code> | Survived | old ID 1602 (historical match only) | not reviewed |
-| 1603 | `src/Parchwell.Verifier/Program.cs` | 94:17-94:77 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;configuration = host.Services.GetService&lt;IConfiguration&gt;()&quot;</code> | Survived | old ID 1603 (historical match only) | not reviewed |
-| 1604 | `src/Parchwell.Verifier/Program.cs` | 95:17-95:77 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;state = host.Services.GetService&lt;VerifierExecutionState&gt;()&quot;</code> | Survived | old ID 1604 (historical match only) | not reviewed |
-| 1605 | `src/Parchwell.Verifier/Program.cs` | 96:21-96:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1605 (historical match only) | not reviewed |
-| 1607 | `src/Parchwell.Verifier/Program.cs` | 98:21-102:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1607 (historical match only) | not reviewed |
-| 1608 | `src/Parchwell.Verifier/Program.cs` | 101:40-101:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1608 (historical match only) | not reviewed |
-| 1609 | `src/Parchwell.Verifier/Program.cs` | 102:40-102:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1609 (historical match only) | not reviewed |
-| 1610 | `src/Parchwell.Verifier/Program.cs` | 105:17-105:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1610 (historical match only) | not reviewed |
-| 1615 | `src/Parchwell.Verifier/Program.cs` | 113:55-113:60 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1615 (historical match only) | not reviewed |
-| 1617 | `src/Parchwell.Verifier/Program.cs` | 117:21-117:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1617 (historical match only) | not reviewed |
-| 1619 | `src/Parchwell.Verifier/Program.cs` | 119:21-123:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1619 (historical match only) | not reviewed |
-| 1620 | `src/Parchwell.Verifier/Program.cs` | 122:40-122:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1620 (historical match only) | not reviewed |
-| 1621 | `src/Parchwell.Verifier/Program.cs` | 123:40-123:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1621 (historical match only) | not reviewed |
-| 1622 | `src/Parchwell.Verifier/Program.cs` | 126:17-126:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1622 (historical match only) | not reviewed |
-| 1626 | `src/Parchwell.Verifier/Program.cs` | 133:21-133:80 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1626 (historical match only) | not reviewed |
-| 1627 | `src/Parchwell.Verifier/Program.cs` | 133:73-133:78 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1627 (historical match only) | not reviewed |
-| 1629 | `src/Parchwell.Verifier/Program.cs` | 137:21-137:36 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1629 (historical match only) | not reviewed |
-| 1631 | `src/Parchwell.Verifier/Program.cs` | 142:21-142:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1631 (historical match only) | not reviewed |
-| 1633 | `src/Parchwell.Verifier/Program.cs` | 144:21-148:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1633 (historical match only) | not reviewed |
-| 1634 | `src/Parchwell.Verifier/Program.cs` | 147:40-147:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1634 (historical match only) | not reviewed |
-| 1635 | `src/Parchwell.Verifier/Program.cs` | 148:40-148:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1636 | `src/Parchwell.Verifier/Program.cs` | 151:17-151:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1636 (historical match only) | not reviewed |
-| 1637 | `src/Parchwell.Verifier/Program.cs` | 155:9-155:29 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1642 | `src/Parchwell.Verifier/Program.cs` | 163:101-163:106 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1642 (historical match only) | not reviewed |
-| 1659 | `src/Parchwell.Verifier/Program.cs` | 222:37-222:45 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1665 | `src/Parchwell.Verifier/Program.cs` | 227:37-227:45 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1669 | `src/Parchwell.Verifier/Program.cs` | 232:21-232:29 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1671 | `src/Parchwell.Verifier/Program.cs` | 234:13-234:69 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1690 | `src/Parchwell.Verifier/Program.cs` | 257:9-258:107 | Logical mutation | <code>&quot;property.Equals(nameof(VerifierHostOptions.ProcessLifetime), StringComparison.OrdinalIgnoreCase)\n        &amp;&amp; property.Equals(nameof(VerifierHostOptions.CleanupTimeout), StringComparison.OrdinalIgnoreCase)&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1692 | `src/Parchwell.Verifier/VerifierHostOptions.cs` | 96:13-96:25 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1692 (historical match only) | not reviewed |
-| 1699 | `src/Parchwell.Verifier/VerifierHostOptions.cs` | 102:41-102:49 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1702 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 13:9-13:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1705 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 18:13-18:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1706 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 18:24-18:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1708 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 22:41-22:62 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1710 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 23:45-23:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1712 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 24:49-24:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1714 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 25:57-25:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1716 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 26:53-26:82 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1718 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 29:45-29:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1720 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 30:46-30:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1723 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 36:58-36:88 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1725 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 37:56-37:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1727 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 38:56-38:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1730 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 43:48-43:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1732 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 44:54-44:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1734 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 45:53-45:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1736 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 46:57-46:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1738 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 47:55-47:82 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1740 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 48:51-48:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1742 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 49:64-49:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1744 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 50:49-50:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1746 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 51:59-51:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1748 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 52:61-52:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1750 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 53:54-53:76 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1752 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 54:61-54:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1754 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 55:62-55:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1756 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 56:56-56:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1758 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 57:56-57:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1760 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 58:63-58:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1762 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 59:59-59:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1764 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 61:21-61:102 | Negate expression | <code>&quot;!(StringComparer.Ordinal.Equals(options.VerifierContainer, options.LedgerContainer))&quot;</code> | Survived | old ID 1764 (historical match only) | not reviewed |
-| 1765 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 63:21-63:110 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1766 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 63:32-63:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1768 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 69:48-69:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1770 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 70:53-70:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1772 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 71:51-71:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1774 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 72:59-72:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1776 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 73:61-73:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1778 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 74:56-74:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1782 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 77:62-77:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1790 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 90:46-90:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1792 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 91:36-91:52 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1794 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 92:41-92:62 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1796 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 93:49-93:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1798 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 94:39-94:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1800 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 95:47-95:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1802 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 96:44-96:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1804 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 97:52-97:77 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1806 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 98:48-98:76 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1808 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 99:39-99:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1810 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 100:55-100:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1812 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 101:53-101:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1814 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 102:43-102:66 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1816 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 103:46-103:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1818 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 104:47-104:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1820 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 105:40-105:60 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1822 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 106:44-106:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1827 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 113:24-113:62 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1830 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 117:55-117:102 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1832 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 118:49-118:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1834 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 119:53-119:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1836 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 120:49-120:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1841 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 127:24-127:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1850 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 136:17-136:78 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1851 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 136:28-136:76 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1852 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 137:17-137:26 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1854 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 140:44-140:90 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1856 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 141:49-141:100 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1858 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 142:39-142:80 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1860 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 143:44-143:90 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1862 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 144:52-144:106 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1864 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 145:42-145:86 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1874 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 161:13-161:96 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1875 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 161:24-161:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1876 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 162:13-162:20 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1882 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 167:24-167:121 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1898 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 198:24-198:99 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1905 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 206:34-206:68 | Equality mutation | <code>&quot;value.Ticks &lt; MaximumTimeoutTicks&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1914 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 212:24-212:61 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1924 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 223:24-223:66 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1929 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 231:24-231:46 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1934 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 239:24-239:58 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1940 | `src/Parchwell.Verifier/VerifierWorker.cs` | 47:31-47:56 | Linq method mutation (SingleOrDefault() to Single()) | <code>&quot;_handlers.Single&quot;</code> | Survived | old ID 1940 (historical match only) | not reviewed |
-| 1945 | `src/Parchwell.Verifier/VerifierWorker.cs` | 50:78-50:83 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1946 | `src/Parchwell.Verifier/VerifierWorker.cs` | 51:21-51:66 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1949 | `src/Parchwell.Verifier/VerifierWorker.cs` | 56:21-60:47 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1951 | `src/Parchwell.Verifier/VerifierWorker.cs` | 67:13-71:39 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1953 | `src/Parchwell.Verifier/VerifierWorker.cs` | 76:13-81:39 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1957 | `src/Parchwell.Verifier/VerifierWorker.cs` | 124:9-124:57 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1958 | `src/Parchwell.Verifier/VerifierWorker.cs` | 125:9-125:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1959 | `src/Parchwell.Verifier/VerifierWorker.cs` | 129:21-129:57 | Null coalescing mutation (remove left) | <code>&quot;Environment.Exit&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1963 | `src/Parchwell.Verifier/VerifierWorker.cs` | 136:13-136:94 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1964 | `src/Parchwell.Verifier/VerifierWorker.cs` | 136:49-136:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 1966 | `src/Parchwell.Verifier/VerifierWorker.cs` | 148:9-148:27 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2005 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 46:56-46:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2068 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:77-80:114 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2069 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:81-80:99 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2070 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:101-80:112 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2074 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 81:63-81:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2082 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:63-88:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2083 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:67-88:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2084 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:93-88:102 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2103 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 101:80-101:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2107 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 102:64-102:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2112 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 111:80-111:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2116 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 112:75-112:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2123 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 113:73-113:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2127 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 119:76-119:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2128 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 119:80-119:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2135 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 120:114-120:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2139 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 126:76-126:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2140 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 126:80-126:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2147 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 127:115-127:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2151 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 133:76-133:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2152 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 133:80-133:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2157 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 134:91-134:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2176 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 28:40-28:77 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2177 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 28:78-28:87 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2204 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 56:40-56:77 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2205 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 56:78-56:87 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2284 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:59-117:88 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2285 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:63-117:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 2285 (historical match only) | not reviewed |
-| 2286 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:82-117:85 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2294 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:13-122:56 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2295 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:17-122:40 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2296 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:42-122:54 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2855 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 361:76-361:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2856 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 361:80-361:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2860 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 362:63-362:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2867 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:63-369:96 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2868 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:67-369:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2869 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:97-369:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2875 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 378:74-378:104 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2876 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 378:78-378:96 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2880 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 379:62-379:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2887 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:69-386:116 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2888 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:73-386:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2890 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:99-386:102 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2891 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:117-386:126 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2899 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 395:76-395:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2900 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 395:80-395:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2904 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 396:63-396:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2908 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:70-402:113 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2909 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:74-402:91 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2910 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:93-402:111 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2918 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 415:17-415:47 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2919 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 415:21-415:39 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2924 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 419:64-419:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2965 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 440:76-440:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2966 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 440:80-440:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2970 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 441:64-441:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2977 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 456:80-456:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2981 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 457:75-457:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2985 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 463:76-463:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2986 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 463:80-463:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2993 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 464:114-464:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2997 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 470:76-470:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 2998 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 470:80-470:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3005 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 471:115-471:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3009 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 477:76-477:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3010 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 477:80-477:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3015 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 478:91-478:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3019 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 484:76-484:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3020 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 484:80-484:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3024 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 487:17-487:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3028 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 492:76-492:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3029 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 492:80-492:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3033 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 494:17-494:56 | Equality mutation | <code>&quot;value.ValueKind != JsonValueKind.Number&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3035 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 495:17-495:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3040 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 502:36-502:66 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3041 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 502:40-502:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3047 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 507:17-507:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3054 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 510:87-510:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3100 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 45:17-45:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3101 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 46:17-46:26 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3127 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 79:21-79:49 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 3127 (historical match only) | not reviewed |
-| 3233 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:21-138:100 | Conditional (true) mutation | <code>&quot;(true?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3234 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:21-138:100 | Conditional (false) mutation | <code>&quot;(false?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3235 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:62-138:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3236 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:82-138:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3240 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 147:76-147:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3241 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 147:80-147:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3245 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 148:75-148:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3253 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 155:73-155:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3257 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 161:76-161:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3258 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 161:80-161:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3265 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 162:114-162:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3269 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 168:76-168:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3270 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 168:80-168:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3277 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 169:115-169:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3281 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 175:76-175:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3282 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 175:80-175:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3287 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 176:91-176:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3293 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 185:17-185:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3301 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 194:17-194:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3307 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 203:17-203:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3342 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:55-232:131 | Conditional (true) mutation | <code>&quot;(true?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3343 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:55-232:131 | Conditional (false) mutation | <code>&quot;(false?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3344 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:93-232:110 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3345 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:113-232:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3402 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 50:56-50:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 3402 (historical match only) | not reviewed |
-| 3496 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 94:76-94:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3497 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 94:80-94:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3501 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 95:63-95:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3506 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 97:55-97:114 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3513 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:64-104:97 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3514 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:68-104:85 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3515 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:98-104:107 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3562 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 128:76-128:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3563 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 128:80-128:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3567 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 129:63-129:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3571 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:71-135:114 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3572 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:75-135:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3573 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:94-135:112 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3580 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 144:74-144:104 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3581 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 144:78-144:96 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3585 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 145:62-145:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3591 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:76-152:122 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3592 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:80-152:97 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3593 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:99-152:120 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3598 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 160:76-160:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3599 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 160:80-160:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3603 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 161:64-161:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3607 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 170:76-170:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3608 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 170:80-170:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3612 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 171:75-171:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3620 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 178:73-178:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3624 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 184:76-184:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3625 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 184:80-184:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3632 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 185:114-185:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3636 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 191:76-191:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3637 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 191:80-191:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3644 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 192:115-192:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3648 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 198:76-198:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3649 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 198:80-198:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3654 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 199:91-199:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3660 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 207:17-207:56 | Equality mutation | <code>&quot;value.ValueKind != JsonValueKind.Number&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3662 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 208:17-208:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3667 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 19:13-19:115 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3668 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 19:51-19:113 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3681 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:17-47:51 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3682 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:21-47:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3683 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:40-47:43 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3707 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 60:13-62:14 | Block removal mutation | <code>&quot;{}&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3713 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 71:21-71:39 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3718 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 76:21-76:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3726 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 83:55-83:118 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3731 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:21-91:76 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3732 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:25-91:42 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3733 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:44-91:54 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3734 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 92:21-92:30 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3785 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 128:17-128:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3786 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 128:21-128:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3819 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 158:63-158:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
-| 3824 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 164:17-164:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1197 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 146:17-146:125 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1198 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 146:55-146:123 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1201 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 156:13-156:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1203 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 158:23-158:43 | Remove checked expression | <code>&quot;entries + 1&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1210 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 159:56-159:83 | Equality mutation | <code>&quot;entries &gt;= limits.MaxEntries&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1213 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 161:55-161:111 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1219 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 179:18-179:30 | String mutation | <code>&quot;\&quot;Stryker was here!\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1235 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 211:17-211:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1256 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 243:51-243:58 | PostIncrementExpression to PostDecrementExpression mutation | <code>&quot;index--&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1272 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 268:55-268:106 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1292 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 278:59-278:108 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1316 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 316:37-316:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1327 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 425:22-425:45 | Remove checked expression | <code>&quot;_bytes + count&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1330 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 429:13-429:138 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1331 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 429:51-429:136 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1337 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 434:51-434:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1340 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 442:24-442:49 | Remove checked expression | <code>&quot;_entries + count&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1341 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 442:32-442:48 | Arithmetic mutation | <code>&quot;_entries - count&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1343 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 446:13-446:139 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1344 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 446:51-446:137 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1346 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 449:13-449:41 | Equality mutation | <code>&quot;_entries &gt;= limits.MaxEntries&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1349 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 451:13-451:118 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1350 | `src/Parchwell.Verifier/Common/Serialization/StrictJson.cs` | 451:51-451:116 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1371 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 29:9-29:49 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1372 (historical match only) | not reviewed |
+| 1372 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 30:9-30:51 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1373 (historical match only) | not reviewed |
+| 1373 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 31:9-31:58 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1374 (historical match only) | not reviewed |
+| 1374 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 32:9-32:64 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1375 (historical match only) | not reviewed |
+| 1377 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 35:13-35:102 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1378 (historical match only) | not reviewed |
+| 1378 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 35:41-35:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1379 (historical match only) | not reviewed |
+| 1390 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 49:17-49:57 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1391 (historical match only) | not reviewed |
+| 1420 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 91:56-91:73 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1421 (historical match only) | not reviewed |
+| 1430 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 104:93-104:110 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1431 (historical match only) | not reviewed |
+| 1434 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 105:110-105:127 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1435 (historical match only) | not reviewed |
+| 1438 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 106:122-106:139 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1439 (historical match only) | not reviewed |
+| 1442 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 107:136-107:153 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1443 (historical match only) | not reviewed |
+| 1446 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 108:131-108:148 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1447 (historical match only) | not reviewed |
+| 1451 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 113:57-113:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1452 (historical match only) | not reviewed |
+| 1453 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 116:13-116:58 | Equality mutation | <code>&quot;highsElement.GetArrayLength() &gt;= maxPartitions&quot;</code> | Survived | old ID 1454 (historical match only) | not reviewed |
+| 1457 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 118:51-118:112 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | old ID 1458 (historical match only) | not reviewed |
+| 1467 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 129:112-129:129 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1468 (historical match only) | not reviewed |
+| 1471 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 130:98-130:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1472 (historical match only) | not reviewed |
+| 1473 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 132:13-132:21 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1474 (historical match only) | not reviewed |
+| 1474 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 132:13-132:20 | PostIncrementExpression to PostDecrementExpression mutation | <code>&quot;index--&quot;</code> | Survived | old ID 1475 (historical match only) | not reviewed |
+| 1505 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 169:125-169:142 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1506 (historical match only) | not reviewed |
+| 1511 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 170:140-170:157 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1512 (historical match only) | not reviewed |
+| 1517 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 171:110-171:127 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1518 (historical match only) | not reviewed |
+| 1523 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 172:125-172:142 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1524 (historical match only) | not reviewed |
+| 1529 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 173:151-173:168 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1530 (historical match only) | not reviewed |
+| 1535 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 174:119-174:136 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1536 (historical match only) | not reviewed |
+| 1557 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 215:13-215:38 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1558 (historical match only) | not reviewed |
+| 1560 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 221:13-221:46 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1561 (historical match only) | not reviewed |
+| 1563 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 227:13-227:34 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1564 (historical match only) | not reviewed |
+| 1564 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 228:13-228:35 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1565 (historical match only) | not reviewed |
+| 1569 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 233:17-233:26 | Equality mutation | <code>&quot;count &lt;= 0&quot;</code> | Survived | old ID 1570 (historical match only) | not reviewed |
+| 1571 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 233:30-233:59 | Equality mutation | <code>&quot;Length &gt;= maximumBytes - count&quot;</code> | Survived | old ID 1572 (historical match only) | not reviewed |
+| 1574 | `src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs` | 234:55-234:118 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1575 (historical match only) | not reviewed |
+| 1576 | `src/Parchwell.Verifier/Program.cs` | 36:9-36:49 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1577 (historical match only) | not reviewed |
+| 1577 | `src/Parchwell.Verifier/Program.cs` | 39:9-41:32 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1578 (historical match only) | not reviewed |
+| 1579 | `src/Parchwell.Verifier/Program.cs` | 44:9-44:110 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1580 (historical match only) | not reviewed |
+| 1580 | `src/Parchwell.Verifier/Program.cs` | 45:9-45:76 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1581 (historical match only) | not reviewed |
+| 1581 | `src/Parchwell.Verifier/Program.cs` | 45:39-45:74 | Null coalescing mutation (remove left) | <code>&quot;TimeProvider.System&quot;</code> | Survived | old ID 1582 (historical match only) | not reviewed |
+| 1590 | `src/Parchwell.Verifier/Program.cs` | 75:56-75:61 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1591 (historical match only) | not reviewed |
+| 1592 | `src/Parchwell.Verifier/Program.cs` | 77:37-77:42 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1593 (historical match only) | not reviewed |
+| 1594 | `src/Parchwell.Verifier/Program.cs` | 81:17-81:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1595 (historical match only) | not reviewed |
+| 1595 | `src/Parchwell.Verifier/Program.cs` | 82:17-86:54 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1596 (historical match only) | not reviewed |
+| 1596 | `src/Parchwell.Verifier/Program.cs` | 85:36-85:57 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1597 (historical match only) | not reviewed |
+| 1597 | `src/Parchwell.Verifier/Program.cs` | 86:35-86:51 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1598 (historical match only) | not reviewed |
+| 1599 | `src/Parchwell.Verifier/Program.cs` | 91:17-91:33 | Equality mutation | <code>&quot;host is null&quot;</code> | Survived | old ID 1600 (historical match only) | not reviewed |
+| 1601 | `src/Parchwell.Verifier/Program.cs` | 93:17-93:101 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;logger = host.Services.GetService&lt;ILoggerFactory&gt;()?.CreateLogger(nameof(Program))&quot;</code> | Survived | old ID 1602 (historical match only) | not reviewed |
+| 1602 | `src/Parchwell.Verifier/Program.cs` | 94:17-94:77 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;configuration = host.Services.GetService&lt;IConfiguration&gt;()&quot;</code> | Survived | old ID 1603 (historical match only) | not reviewed |
+| 1603 | `src/Parchwell.Verifier/Program.cs` | 95:17-95:77 | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | <code>&quot;state = host.Services.GetService&lt;VerifierExecutionState&gt;()&quot;</code> | Survived | old ID 1604 (historical match only) | not reviewed |
+| 1604 | `src/Parchwell.Verifier/Program.cs` | 96:21-96:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1605 (historical match only) | not reviewed |
+| 1606 | `src/Parchwell.Verifier/Program.cs` | 98:21-102:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1607 (historical match only) | not reviewed |
+| 1607 | `src/Parchwell.Verifier/Program.cs` | 101:40-101:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1608 (historical match only) | not reviewed |
+| 1608 | `src/Parchwell.Verifier/Program.cs` | 102:40-102:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1609 (historical match only) | not reviewed |
+| 1609 | `src/Parchwell.Verifier/Program.cs` | 105:17-105:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1610 (historical match only) | not reviewed |
+| 1614 | `src/Parchwell.Verifier/Program.cs` | 113:55-113:60 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1615 (historical match only) | not reviewed |
+| 1616 | `src/Parchwell.Verifier/Program.cs` | 117:21-117:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1617 (historical match only) | not reviewed |
+| 1618 | `src/Parchwell.Verifier/Program.cs` | 119:21-123:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1619 (historical match only) | not reviewed |
+| 1619 | `src/Parchwell.Verifier/Program.cs` | 122:40-122:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1620 (historical match only) | not reviewed |
+| 1620 | `src/Parchwell.Verifier/Program.cs` | 123:40-123:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1621 (historical match only) | not reviewed |
+| 1621 | `src/Parchwell.Verifier/Program.cs` | 126:17-126:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1622 (historical match only) | not reviewed |
+| 1625 | `src/Parchwell.Verifier/Program.cs` | 133:21-133:80 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1626 (historical match only) | not reviewed |
+| 1626 | `src/Parchwell.Verifier/Program.cs` | 133:73-133:78 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1627 (historical match only) | not reviewed |
+| 1628 | `src/Parchwell.Verifier/Program.cs` | 137:21-137:36 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1629 (historical match only) | not reviewed |
+| 1630 | `src/Parchwell.Verifier/Program.cs` | 142:21-142:39 | Equality mutation | <code>&quot;logger is null&quot;</code> | Survived | old ID 1631 (historical match only) | not reviewed |
+| 1632 | `src/Parchwell.Verifier/Program.cs` | 144:21-148:59 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1633 (historical match only) | not reviewed |
+| 1633 | `src/Parchwell.Verifier/Program.cs` | 147:40-147:61 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1634 (historical match only) | not reviewed |
+| 1634 | `src/Parchwell.Verifier/Program.cs` | 148:40-148:56 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1635 | `src/Parchwell.Verifier/Program.cs` | 151:17-151:37 | Statement mutation | <code>&quot;;&quot;</code> | Survived | old ID 1636 (historical match only) | not reviewed |
+| 1636 | `src/Parchwell.Verifier/Program.cs` | 155:9-155:29 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1641 | `src/Parchwell.Verifier/Program.cs` | 163:101-163:106 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | old ID 1642 (historical match only) | not reviewed |
+| 1658 | `src/Parchwell.Verifier/Program.cs` | 222:37-222:45 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1664 | `src/Parchwell.Verifier/Program.cs` | 227:37-227:45 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1668 | `src/Parchwell.Verifier/Program.cs` | 232:21-232:29 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1670 | `src/Parchwell.Verifier/Program.cs` | 234:13-234:69 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1689 | `src/Parchwell.Verifier/Program.cs` | 257:9-258:107 | Logical mutation | <code>&quot;property.Equals(nameof(VerifierHostOptions.ProcessLifetime), StringComparison.OrdinalIgnoreCase)\n        &amp;&amp; property.Equals(nameof(VerifierHostOptions.CleanupTimeout), StringComparison.OrdinalIgnoreCase)&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1691 | `src/Parchwell.Verifier/VerifierHostOptions.cs` | 96:13-96:25 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 1692 (historical match only) | not reviewed |
+| 1701 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 13:9-13:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1704 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 18:13-18:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1705 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 18:24-18:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1707 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 22:41-22:62 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1709 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 23:45-23:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1711 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 24:49-24:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1713 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 25:57-25:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1715 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 26:53-26:82 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1717 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 29:45-29:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1719 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 30:46-30:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1722 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 36:58-36:88 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1724 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 37:56-37:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1726 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 38:56-38:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1729 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 43:48-43:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1731 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 44:64-44:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1733 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 45:53-45:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1735 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 46:57-46:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1737 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 47:55-47:82 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1739 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 48:51-48:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1741 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 49:64-49:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1743 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 50:49-50:70 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1745 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 51:59-51:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1747 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 52:61-52:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1749 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 53:54-53:76 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1751 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 54:61-54:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1753 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 55:62-55:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1755 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 56:56-56:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1757 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 57:56-57:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1759 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 58:63-58:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1761 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 59:59-59:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1764 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 63:21-63:110 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1765 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 63:32-63:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1767 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 69:48-69:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1769 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 70:53-70:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1771 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 71:51-71:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1773 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 72:59-72:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1775 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 73:61-73:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1777 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 74:56-74:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1781 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 77:62-77:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1789 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 90:46-90:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1791 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 91:36-91:52 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1793 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 92:41-92:62 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1795 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 93:49-93:78 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1797 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 94:39-94:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1799 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 95:47-95:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1801 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 96:44-96:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1803 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 97:52-97:77 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1805 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 98:58-98:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1807 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 99:39-99:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1809 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 100:55-100:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1811 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 101:53-101:86 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1813 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 102:43-102:66 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1815 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 103:46-103:72 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1817 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 104:47-104:74 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1819 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 105:40-105:60 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1821 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 106:44-106:68 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1826 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 113:24-113:67 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1829 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 117:55-117:107 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1831 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 118:49-118:95 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1833 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 119:53-119:103 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1835 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 120:49-120:95 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1865 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 154:24-154:81 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1866 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 155:13-155:20 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1874 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 162:28-162:85 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1875 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 163:17-163:24 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1892 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 176:24-176:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1901 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 185:17-185:78 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1902 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 185:28-185:76 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1903 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 186:17-186:26 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1905 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 189:44-189:90 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1907 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 190:49-190:100 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1909 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 191:39-191:80 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1911 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 192:44-192:90 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1913 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 193:52-193:106 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1915 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 194:42-194:86 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1925 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 210:13-210:96 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1926 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 210:24-210:94 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1927 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 211:13-211:20 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1933 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 216:24-216:121 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1949 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 247:24-247:99 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1956 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 255:34-255:68 | Equality mutation | <code>&quot;value.Ticks &lt; MaximumTimeoutTicks&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1965 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 261:24-261:61 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1975 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 272:24-272:66 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1980 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 280:24-280:46 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1985 | `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` | 288:24-288:58 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1991 | `src/Parchwell.Verifier/VerifierWorker.cs` | 47:31-47:56 | Linq method mutation (SingleOrDefault() to Single()) | <code>&quot;_handlers.Single&quot;</code> | Survived | old ID 1940 (historical match only) | not reviewed |
+| 1996 | `src/Parchwell.Verifier/VerifierWorker.cs` | 50:78-50:83 | Boolean mutation | <code>&quot;true&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 1997 | `src/Parchwell.Verifier/VerifierWorker.cs` | 51:21-51:66 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2000 | `src/Parchwell.Verifier/VerifierWorker.cs` | 56:21-60:47 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2002 | `src/Parchwell.Verifier/VerifierWorker.cs` | 67:13-71:39 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2004 | `src/Parchwell.Verifier/VerifierWorker.cs` | 76:13-81:39 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2008 | `src/Parchwell.Verifier/VerifierWorker.cs` | 124:9-124:57 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2009 | `src/Parchwell.Verifier/VerifierWorker.cs` | 125:9-125:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2010 | `src/Parchwell.Verifier/VerifierWorker.cs` | 129:21-129:57 | Null coalescing mutation (remove left) | <code>&quot;Environment.Exit&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2014 | `src/Parchwell.Verifier/VerifierWorker.cs` | 136:13-136:94 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2015 | `src/Parchwell.Verifier/VerifierWorker.cs` | 136:49-136:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2017 | `src/Parchwell.Verifier/VerifierWorker.cs` | 148:9-148:27 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2056 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 46:56-46:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2119 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:77-80:114 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2120 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:81-80:99 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2121 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 80:101-80:112 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2125 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 81:63-81:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2133 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:63-88:92 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2134 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:67-88:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2135 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 88:93-88:102 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2153 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 101:76-101:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2154 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 101:80-101:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2157 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 102:60-102:89 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2158 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 102:64-102:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2163 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 111:80-111:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2167 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 112:75-112:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2174 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 113:73-113:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2178 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 119:76-119:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2179 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 119:80-119:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2186 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 120:114-120:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2190 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 126:76-126:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2191 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 126:80-126:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2198 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 127:115-127:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2202 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 133:76-133:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2203 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 133:80-133:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2208 | `src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs` | 134:91-134:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2227 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 28:40-28:77 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2228 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 28:78-28:87 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2255 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 56:40-56:77 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2256 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 56:78-56:87 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2335 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:59-117:88 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2336 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:63-117:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 2285 (historical match only) | not reviewed |
+| 2337 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 117:82-117:85 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2345 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:13-122:56 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2346 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:17-122:40 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2347 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 122:42-122:54 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2906 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 361:76-361:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2907 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 361:80-361:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2911 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 362:63-362:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2918 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:63-369:96 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2919 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:67-369:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2920 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 369:97-369:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2926 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 378:74-378:104 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2927 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 378:78-378:96 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2931 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 379:62-379:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2938 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:69-386:116 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2939 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:73-386:90 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2941 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:99-386:102 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2942 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 386:117-386:126 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2950 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 395:76-395:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2951 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 395:80-395:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2955 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 396:63-396:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2959 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:70-402:113 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2960 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:74-402:91 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2961 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 402:93-402:111 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2969 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 415:17-415:47 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2970 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 415:21-415:39 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 2975 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 419:64-419:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3016 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 440:76-440:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3017 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 440:80-440:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3021 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 441:64-441:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3028 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 456:80-456:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3032 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 457:75-457:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3036 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 463:76-463:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3037 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 463:80-463:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3044 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 464:114-464:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3048 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 470:76-470:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3049 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 470:80-470:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3056 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 471:115-471:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3060 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 477:76-477:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3061 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 477:80-477:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3066 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 478:91-478:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3070 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 484:76-484:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3071 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 484:80-484:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3075 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 487:17-487:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3079 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 492:76-492:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3080 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 492:80-492:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3084 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 494:17-494:56 | Equality mutation | <code>&quot;value.ValueKind != JsonValueKind.Number&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3086 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 495:17-495:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3091 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 502:36-502:66 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3092 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 502:40-502:58 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3098 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 507:17-507:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3105 | `src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs` | 510:87-510:115 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3151 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 45:17-45:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3152 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 46:17-46:26 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3178 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 79:21-79:49 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 3127 (historical match only) | not reviewed |
+| 3284 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:21-138:100 | Conditional (true) mutation | <code>&quot;(true?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3285 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:21-138:100 | Conditional (false) mutation | <code>&quot;(false?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3286 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:62-138:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3287 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 138:82-138:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3291 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 147:76-147:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3292 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 147:80-147:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3296 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 148:75-148:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3304 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 155:73-155:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3308 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 161:76-161:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3309 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 161:80-161:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3316 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 162:114-162:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3320 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 168:76-168:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3321 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 168:80-168:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3328 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 169:115-169:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3332 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 175:76-175:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3333 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 175:80-175:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3338 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 176:91-176:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3344 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 185:17-185:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3352 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 194:17-194:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3358 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 203:17-203:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3393 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:55-232:131 | Conditional (true) mutation | <code>&quot;(true?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3394 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:55-232:131 | Conditional (false) mutation | <code>&quot;(false?\&quot;wrong_json_kind\&quot; :\&quot;missing_property\&quot;)&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3395 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:93-232:110 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3396 | `src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs` | 232:113-232:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3453 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 50:56-50:84 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | old ID 3402 (historical match only) | not reviewed |
+| 3547 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 94:76-94:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3548 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 94:80-94:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3552 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 95:63-95:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3557 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 97:55-97:114 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3564 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:64-104:97 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3565 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:68-104:85 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3566 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 104:98-104:107 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3613 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 128:76-128:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3614 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 128:80-128:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3618 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 129:63-129:80 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3622 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:71-135:114 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3623 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:75-135:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3624 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 135:94-135:112 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3631 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 144:74-144:104 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3632 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 144:78-144:96 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3636 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 145:62-145:79 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3642 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:76-152:122 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3643 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:80-152:97 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3644 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 152:99-152:120 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3649 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 160:76-160:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3650 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 160:80-160:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3654 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 161:64-161:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3658 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 170:76-170:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3659 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 170:80-170:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3663 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 171:75-171:92 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3671 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 178:73-178:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3675 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 184:76-184:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3676 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 184:80-184:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3683 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 185:114-185:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3687 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 191:76-191:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3688 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 191:80-191:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3695 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 192:115-192:132 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3699 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 198:76-198:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3700 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 198:80-198:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3705 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 199:91-199:108 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3711 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 207:17-207:56 | Equality mutation | <code>&quot;value.ValueKind != JsonValueKind.Number&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3713 | `src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs` | 208:17-208:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3718 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 19:13-19:115 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3719 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 19:51-19:113 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3732 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:17-47:51 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3733 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:21-47:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3734 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 47:40-47:43 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3758 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 60:13-62:14 | Block removal mutation | <code>&quot;{}&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3764 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 71:21-71:39 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3769 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 76:21-76:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3777 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 83:55-83:118 | String mutation | <code>&quot;$\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3782 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:21-91:76 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3783 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:25-91:42 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3784 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 91:44-91:54 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3785 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 92:21-92:30 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3836 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 128:17-128:52 | Statement mutation | <code>&quot;;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3837 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 128:21-128:38 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3870 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 158:63-158:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
+| 3875 | `src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs` | 164:17-164:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | no exact historical sample match | not reviewed |
 ## Historical runner-validation evidence
 
-The following complete prior document snapshot retains the original measurement excerpts, pinned-source citations, all 621 survivor rows, and all 359 completed sample proofs. It is scoped only to commit `610625f4fa19972c48c8d315442982542b257cd8` and report SHA-256 `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d`. Of 359 retained rows, 342 reached normal MTP: 341 passes and one complete MTP test failure; 17 compilation failures before MTP are retained as discrepancies but excluded from runner-validation coverage. The normal-MTP sample covers 342 observations across 12 source files and 15 mutator types. This history does not establish current-head replay results.
+The following complete prior document snapshot retains the original measurement excerpts, pinned-source citations, all 621 survivor rows, and all 359 completed sample proofs. It is scoped only to commit `610625f4fa19972c48c8d315442982542b257cd8` and report SHA-256 `feba974fbcf0ab1fda67fd6a42d9fec4a9e3900c792bc81fa4bfb2642b20fe3d`. Of 359 retained rows, 342 reached normal MTP: 341 passes and one complete MTP test failure; 17 compilation failures before MTP are retained as discrepancies but excluded from runner-validation coverage. The normal-MTP sample covers 342 observations across 12 source files and 15 mutator types. Hari accepted the mutant 2134 and 17 compilation differences for PR 3 on 2026-10-18 (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728); raw historical evidence and measured results below remain unchanged. This history does not establish current-head replay results.
 
 ## Historical record: commit 610625f4fa19972c48c8d315442982542b257cd8
 
-Stryker.NET 5.0.0 measured PR 3's foundation at 80.34% on commit `610625f4fa19972c48c8d315442982542b257cd8` ([measurement excerpts](#measurement-excerpts)). The replay sample found one normal-MTP assertion-result disagreement and 17 compilation failures before MTP; Hari must review those differences before merge. This is a foundation baseline, not a final mutation threshold or evidence of live readiness.
+Stryker.NET 5.0.0 measured PR 3's foundation at 80.34% on commit `610625f4fa19972c48c8d315442982542b257cd8` ([measurement excerpts](#measurement-excerpts)). The replay sample found one normal-MTP assertion-result disagreement and 17 compilation failures before MTP. Hari accepted these differences for PR 3 on 2026-10-18 (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728); the historical statuses and score remain unchanged. This is a foundation baseline, not a final mutation threshold or evidence of live readiness.
 
 ### Authority and tested content
 
 The [PR 3 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6245697297) applies with the later decisions linked in the [verifier contract](verifier-contract.md). Hari's [sampled survivor-review decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6247408154) replaces exhaustive PR 3 survivor review: retain the completed runner-validation sample, fill uncovered survivor files or mutators, and mark every un-replayed survivor `not reviewed`. Full dispositions belong to PR 6 on the final code, before Hari chooses the break threshold on #13 and before live use. The configured break value remains 0.
 
-The tested content tree is `ba7e9aeb7a68b7f565652cda831f412e438d54c8`. This historical report measured commit `610625f4fa19972c48c8d315442982542b257cd8` and tree `ba7e9aeb7a68b7f565652cda831f412e438d54c8`. The current code-bearing commit is `cc8279c3d0687ac540cdc7385968b6f72af13ae2`; its current report and validation are documented above. Historical replay outcomes below do not transfer to current code.
+The tested content tree is `ba7e9aeb7a68b7f565652cda831f412e438d54c8`. This historical report measured commit `610625f4fa19972c48c8d315442982542b257cd8` and tree `ba7e9aeb7a68b7f565652cda831f412e438d54c8`. The current code-bearing commit is `0f9eb0aa50e9a4e2f88e8bee0ac9b254132c9b90`; its current report and validation are documented above. Hari accepted the historical sample's replay differences for PR 3 on 2026-10-18; see https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728. Historical replay outcomes below do not transfer to current code.
 
 | Component | Recorded version and evidence |
 | --- | --- |
@@ -1512,7 +1587,7 @@ The two exhaustive batches were interrupted on Hari's decision with 351 complete
 
 Every source file with a survivor and every mutator type among survivors has a normal-MTP observation in the final sample. `CapturedArtifacts.cs` has two Killed mutants and no survivor available to sample, so the sample does not claim to replay that mutated file. Coverage is by file and mutator separately, not every file/mutator combination, and the sample does not establish all un-replayed outcomes.
 
-Mutant **2134**, `ArtifactIndexReader.cs:120:110-120:139`, removes `Add("wrong_json_kind", path);`. Stryker reported Survived. The isolated normal MTP run built successfully and executed 1044 tests: 1043 passed, one failed, none skipped or not-run, and no runner errors. The index/schema_version wrong-kind case failed with `Xunit.Sdk.FalseException` at `StrictParserTests.ReadIndexProblems`, line 911: removing the diagnostic leaves an empty problem list, so `IsSuccess` becomes true. This is a confirmed preview-versus-normal assertion-result disagreement. Its cause inside Stryker is not established; Hari must decide it before merge. The JSON report status and 80.34% score are not rewritten.
+Mutant **2134**, `ArtifactIndexReader.cs:120:110-120:139`, removes `Add("wrong_json_kind", path);`. Stryker reported Survived. The isolated normal MTP run built successfully and executed 1044 tests: 1043 passed, one failed, none skipped or not-run, and no runner errors. The index/schema_version wrong-kind case failed with `Xunit.Sdk.FalseException` at `StrictParserTests.ReadIndexProblems`, line 911: removing the diagnostic leaves an empty problem list, so `IsSuccess` becomes true. This is a confirmed preview-versus-normal assertion-result disagreement. Its cause inside Stryker is not established. Hari accepted this difference for PR 3 on 2026-10-18 (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728). The JSON report status and 80.34% score are not rewritten.
 
 The other differences are ordinary compiler rejections of mutants Stryker reported as Survived. Their exact IDs, spans and diagnostics are retained in `sample-compile-discrepancies.json` and the full table below. Normal builds retain warnings-as-errors; none of these failures is called an assertion kill. The pinned Stryker [compilation options](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Utilities/Buildalyzer/IAnalyzerResultCSharpExtensions.cs#L17-L39) and [diagnostic-option mapping](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Utilities/Buildalyzer/IAnalyzerResultExtensions.cs#L257-L282) do not map global `TreatWarningsAsErrors` to the in-process Roslyn compilation; this explains a compilation-policy difference without altering the repository setting.
 
@@ -3152,7 +3227,7 @@ Replay directories are relative to `.artifacts/verifier-mutation/fresh-replays/`
 | 2123 | VerifyRun/Input/ArtifactIndexReader.cs | 113:73-113:100 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 2127 | VerifyRun/Input/ArtifactIndexReader.cs | 119:76-119:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 2128 | VerifyRun/Input/ArtifactIndexReader.cs | 119:80-119:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
-| 2134 | VerifyRun/Input/ArtifactIndexReader.cs | 120:110-120:139 | Statement mutation | <code>&quot;;&quot;</code> | Survived | current / T093 | gap-fill/0005-2134 | complete_test_failures_cause_review | preview-runner discrepancy | The `RequiredPropertyCases` row for `index` / `schema_version` replaces the present scalar with `{}`. That reaches the Int32 wrong-kind branch while leaving every required property present, so this `Add("wrong_json_kind", path)` is the only problem for `schema_version`. If the statement is removed, the reader returns an execution failure with an empty Problems list because its parsed value is null; `ParseResult.IsSuccess` is defined by `Problems.Count == 0`, so `ReadIndexProblems`'s `Assert.False(result.IsSuccess)` should fail first. If execution reached the enclosing `Assert.Contains`, it would also lack the owner-null plus field `schema_version` finding. The normal-MTP replay confirmed the first assertion failure; the result is recorded separately from the unchanged Stryker Survived status. | Normal MTP completed 1044 cases with 1043 passed and one Xunit.Sdk.FalseException at ReadIndexProblems line 911 for index/schema_version wrong kind. Removing Add leaves an empty problem list and IsSuccess true. Stryker recorded Survived. Hari must decide this disagreement before merge. |
+| 2134 | VerifyRun/Input/ArtifactIndexReader.cs | 120:110-120:139 | Statement mutation | <code>&quot;;&quot;</code> | Survived | current / T093 | gap-fill/0005-2134 | complete_test_failures_cause_review | preview-runner discrepancy | The `RequiredPropertyCases` row for `index` / `schema_version` replaces the present scalar with `{}`. That reaches the Int32 wrong-kind branch while leaving every required property present, so this `Add("wrong_json_kind", path)` is the only problem for `schema_version`. If the statement is removed, the reader returns an execution failure with an empty Problems list because its parsed value is null; `ParseResult.IsSuccess` is defined by `Problems.Count == 0`, so `ReadIndexProblems`'s `Assert.False(result.IsSuccess)` should fail first. If execution reached the enclosing `Assert.Contains`, it would also lack the owner-null plus field `schema_version` finding. The normal-MTP replay confirmed the first assertion failure; the result is recorded separately from the unchanged Stryker Survived status. | Normal MTP completed 1044 cases with 1043 passed and one Xunit.Sdk.FalseException at ReadIndexProblems line 911 for index/schema_version wrong kind. Removing Add leaves an empty problem list and IsSuccess true. Stryker recorded Survived. Hari accepted this difference for PR 3 on 2026-10-18 (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/84#issuecomment-6248723728). |
 | 2135 | VerifyRun/Input/ArtifactIndexReader.cs | 120:114-120:131 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 2139 | VerifyRun/Input/ArtifactIndexReader.cs | 126:76-126:106 | Statement mutation | <code>&quot;;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 2140 | VerifyRun/Input/ArtifactIndexReader.cs | 126:80-126:98 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
