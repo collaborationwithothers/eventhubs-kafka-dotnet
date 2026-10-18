@@ -93,7 +93,7 @@ internal sealed record JudgedFileHash(string Name, string Sha256);
 internal sealed record ResultDiagnostic(
     int Check,
     string Code,
-    string Artifact,
+    string? Artifact,
     long? Row,
     string? Field,
     string? Snippet);

@@ -170,6 +170,51 @@ public sealed class VerifierResultCodecTests
     }
 
     [Fact]
+    public void Given_NullableDiagnosticFields_When_RoundTripped_Then_EmitsAndReadsExplicitNulls()
+    {
+        const string json = "{\"schema_version\":1,\"identity\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"run-1\",\"instance_id\":\"instance-1\",\"expected_instance_id\":\"instance-1\",\"client_id\":\"producer-1\"},\"generator_version\":\"loadgen-4.2.0\",\"runtime_versions\":{\"runtime\":\"10.0.0\"},\"verifier_commit\":\"verifier-commit\",\"verifier_confluent_kafka_version\":\"2.16.0\",\"verifier_librdkafka_version\":\"2.16.0\",\"status\":\"invalid\",\"failed_checks\":[],\"judged_file_hashes\":[],\"diagnostics\":[{\"check\":1,\"code\":\"diagnostic\",\"artifact\":null,\"row\":null,\"field\":null,\"snippet\":null}]}";
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(
+            Encoding.UTF8.GetBytes(json), "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+        Assert.True(parsed.IsSuccess);
+        ResultDiagnostic diagnostic = parsed.Value!.Diagnostics[0];
+        Assert.Null(diagnostic.Artifact);
+        Assert.Null(diagnostic.Row);
+        Assert.Null(diagnostic.Field);
+        Assert.Null(diagnostic.Snippet);
+
+        using JsonDocument written = JsonDocument.Parse(VerifierResultCodec.Write(parsed.Value, OutputLimits));
+        JsonElement writtenDiagnostic = written.RootElement.GetProperty("diagnostics")[0];
+        Assert.Equal(JsonValueKind.Null, writtenDiagnostic.GetProperty("artifact").ValueKind);
+        Assert.Equal(JsonValueKind.Null, writtenDiagnostic.GetProperty("row").ValueKind);
+        Assert.Equal(JsonValueKind.Null, writtenDiagnostic.GetProperty("field").ValueKind);
+        Assert.Equal(JsonValueKind.Null, writtenDiagnostic.GetProperty("snippet").ValueKind);
+    }
+
+    [Fact]
+    public void Given_WrongKindNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem()
+    {
+        const string json = "{\"schema_version\":1,\"identity\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"run-1\",\"instance_id\":\"instance-1\",\"expected_instance_id\":\"instance-1\",\"client_id\":\"producer-1\"},\"generator_version\":\"loadgen-4.2.0\",\"runtime_versions\":{\"runtime\":\"10.0.0\"},\"verifier_commit\":\"verifier-commit\",\"verifier_confluent_kafka_version\":\"2.16.0\",\"verifier_librdkafka_version\":\"2.16.0\",\"status\":\"invalid\",\"failed_checks\":[],\"judged_file_hashes\":[],\"diagnostics\":[{\"check\":1,\"code\":\"diagnostic\",\"artifact\":17,\"row\":null,\"field\":null,\"snippet\":null}]}";
+
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(
+            Encoding.UTF8.GetBytes(json), "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+
+        Assert.False(parsed.IsSuccess);
+        Assert.Equal("diagnostics[0].artifact", parsed.Problems[0].Field);
+    }
+
+    [Fact]
+    public void Given_MissingNullableDiagnosticField_When_Read_Then_ReturnsStructuralProblem()
+    {
+        const string json = "{\"schema_version\":1,\"identity\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"run-1\",\"instance_id\":\"instance-1\",\"expected_instance_id\":\"instance-1\",\"client_id\":\"producer-1\"},\"generator_version\":\"loadgen-4.2.0\",\"runtime_versions\":{\"runtime\":\"10.0.0\"},\"verifier_commit\":\"verifier-commit\",\"verifier_confluent_kafka_version\":\"2.16.0\",\"verifier_librdkafka_version\":\"2.16.0\",\"status\":\"invalid\",\"failed_checks\":[],\"judged_file_hashes\":[],\"diagnostics\":[{\"check\":1,\"code\":\"diagnostic\",\"artifact\":null,\"row\":null,\"field\":null}]}";
+
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(
+            Encoding.UTF8.GetBytes(json), "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+
+        Assert.False(parsed.IsSuccess);
+        Assert.Equal("diagnostics[0].snippet", parsed.Problems[0].Field);
+    }
+
+    [Fact]
     public void Given_StartLineNote_When_RoundTripped_Then_PreservesOffsetsWithoutSelfHash()
     {
         var note = new StartLineNote(
@@ -246,11 +291,28 @@ public sealed class VerifierResultCodecTests
 
         byte[] absentMeasurement = VerifierResultCodec.Write(result with
         {
-            BrokerCount = new BrokerConnectionCount("producer", "producer-1", null, null, false)
+            BrokerCount = new BrokerConnectionCount("producer", "producer-1", null, null, true)
         }, OutputLimits);
         using JsonDocument absentJson = JsonDocument.Parse(absentMeasurement);
         Assert.False(absentJson.RootElement.GetProperty("broker_count").TryGetProperty("maximum", out _));
         Assert.False(absentJson.RootElement.GetProperty("broker_count").TryGetProperty("first_post_drain", out _));
+
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(result with
+        {
+            BrokerCount = new BrokerConnectionCount("producer", "producer-1", 9, 8, false)
+        }, OutputLimits));
+    }
+
+    [Fact]
+    public void Given_BrokerCountLowerBoundFalse_When_Read_Then_ReturnsStructuralProblem()
+    {
+        const string json = "{\"schema_version\":1,\"identity\":{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"run-1\",\"instance_id\":\"instance-1\",\"expected_instance_id\":\"instance-1\",\"client_id\":\"producer-1\"},\"generator_version\":\"loadgen-4.2.0\",\"runtime_versions\":{\"runtime\":\"10.0.0\"},\"verifier_commit\":\"verifier-commit\",\"verifier_confluent_kafka_version\":\"2.16.0\",\"verifier_librdkafka_version\":\"2.16.0\",\"status\":\"invalid\",\"failed_checks\":[],\"judged_file_hashes\":[],\"diagnostics\":[],\"broker_count\":{\"role\":\"producer\",\"client_id\":\"producer-1\",\"lower_bound\":false}}";
+
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(
+            Encoding.UTF8.GetBytes(json), "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+
+        Assert.False(parsed.IsSuccess);
+        Assert.Equal("broker_count.lower_bound", parsed.Problems[0].Field);
     }
 
     [Fact]

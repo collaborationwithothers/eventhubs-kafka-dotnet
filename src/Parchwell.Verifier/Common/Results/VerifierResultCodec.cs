@@ -189,6 +189,8 @@ internal static class VerifierResultCodec
             throw new ArgumentException("A complete_valid result requires all six supplied outcome counts.", nameof(result));
         if (result.DrainTimeMilliseconds is not null && result.DrainElapsedAtStopMilliseconds is not null)
             throw new ArgumentException("drain_time and drain_elapsed_at_stop are mutually exclusive.", nameof(result));
+        if (result.BrokerCount is not null && !result.BrokerCount.LowerBound)
+            throw new ArgumentException("A broker_count projection requires lower_bound=true.", nameof(result));
 
         var perCheck = new Dictionary<int, int>();
         foreach (ResultDiagnostic diagnostic in result.Diagnostics)
@@ -287,7 +289,7 @@ internal static class VerifierResultCodec
         writer.WriteString("client_id", value.ClientId);
         if (value.Maximum is long maximum) writer.WriteNumber("maximum", maximum);
         if (value.FirstPostDrain is long first) writer.WriteNumber("first_post_drain", first);
-        writer.WriteBoolean("lower_bound", value.LowerBound);
+        writer.WriteBoolean("lower_bound", true);
         writer.WriteEndObject();
     }
 
@@ -387,10 +389,10 @@ internal static class VerifierResultCodec
             writer.WriteStartObject();
             writer.WriteNumber("check", value.Check);
             writer.WriteString("code", value.Code);
-            writer.WriteString("artifact", value.Artifact);
-            if (value.Row is long row) writer.WriteNumber("row", row);
-            WriteOptionalString(writer, "field", value.Field);
-            WriteOptionalString(writer, "snippet", value.Snippet);
+            WriteNullableString(writer, "artifact", value.Artifact);
+            if (value.Row is long row) writer.WriteNumber("row", row); else writer.WriteNull("row");
+            WriteNullableString(writer, "field", value.Field);
+            WriteNullableString(writer, "snippet", value.Snippet);
             writer.WriteEndObject();
         }
         writer.WriteEndArray();
@@ -399,6 +401,12 @@ internal static class VerifierResultCodec
     private static void WriteOptionalString(Utf8JsonWriter writer, string name, string? value)
     {
         if (value is not null) writer.WriteString(name, value);
+    }
+
+    private static void WriteNullableString(Utf8JsonWriter writer, string name, string? value)
+    {
+        if (value is null) writer.WriteNull(name);
+        else writer.WriteString(name, value);
     }
 
     private static bool TryIdentity(JsonElement root, string artifact, out RunIdentity? identity, out StructuralProblem? problem)
@@ -508,6 +516,7 @@ internal static class VerifierResultCodec
         if (!TryString(element, "role", out string? role)) { problem = Problem(artifact, path + ".role", "wrong_json_kind"); return false; }
         if (!TryString(element, "client_id", out string? clientId)) { problem = Problem(artifact, path + ".client_id", "wrong_json_kind"); return false; }
         if (!TryBool(element, "lower_bound", out bool lowerBound)) { problem = Problem(artifact, path + ".lower_bound", "wrong_json_kind"); return false; }
+        if (!lowerBound) { problem = Problem(artifact, path + ".lower_bound", "expected_true"); return false; }
         if (!TryOptionalInt64(element, "maximum", artifact, path, out long? maximum, out problem)) return false;
         if (!TryOptionalInt64(element, "first_post_drain", artifact, path, out long? first, out problem)) return false;
         value = new BrokerConnectionCount(role!, clientId!, maximum, first, lowerBound);
@@ -633,13 +642,15 @@ internal static class VerifierResultCodec
         foreach (JsonElement item in array.EnumerateArray())
         {
             string path = $"diagnostics[{index}]";
-            if (!Validate(item, path, Set("check", "code", "artifact"), Set("check", "code", "artifact", "row", "field", "snippet"), artifact, out problem)) return false;
-            if (!TryInt32(item, "check", out int check) || !TryString(item, "code", out string? code) || !TryString(item, "artifact", out string? artifactName))
+            IReadOnlySet<string> diagnosticFields = Set("check", "code", "artifact", "row", "field", "snippet");
+            if (!Validate(item, path, diagnosticFields, diagnosticFields, artifact, out problem)) return false;
+            if (!TryInt32(item, "check", out int check) || !TryString(item, "code", out string? code))
             { problem = Problem(artifact, path, "wrong_json_kind"); return false; }
-            if (!TryOptionalInt64(item, "row", artifact, path, out long? row, out problem)) return false;
-            if (!TryOptionalString(item, "field", artifact, path, out string? field, out problem)) return false;
-            if (!TryOptionalString(item, "snippet", artifact, path, out string? snippet, out problem)) return false;
-            if (Encoding.UTF8.GetByteCount(code!) > maxDiagnosticBytes || Encoding.UTF8.GetByteCount(artifactName!) > maxDiagnosticBytes ||
+            if (!TryNullableString(item, "artifact", artifact, path, out string? artifactName, out problem)) return false;
+            if (!TryNullableInt64(item, "row", artifact, path, out long? row, out problem)) return false;
+            if (!TryNullableString(item, "field", artifact, path, out string? field, out problem)) return false;
+            if (!TryNullableString(item, "snippet", artifact, path, out string? snippet, out problem)) return false;
+            if (Encoding.UTF8.GetByteCount(code!) > maxDiagnosticBytes || (artifactName is not null && Encoding.UTF8.GetByteCount(artifactName) > maxDiagnosticBytes) ||
                 (field is not null && Encoding.UTF8.GetByteCount(field) > maxDiagnosticBytes) ||
                 (snippet is not null && Encoding.UTF8.GetByteCount(snippet) > maxDiagnosticBytes))
                 throw new InputLimitExceededException($"{artifact} diagnostic {index} exceeds the configured diagnostic byte limit.");
@@ -729,6 +740,34 @@ internal static class VerifierResultCodec
     {
         problem = null;
         if (!parent.TryGetProperty(name, out JsonElement element)) { value = null; return true; }
+        if (StrictJson.TryGetInt64(element, out long parsed)) { value = parsed; return true; }
+        value = null; problem = Problem(artifact, path + "." + name, "wrong_json_kind"); return false;
+    }
+
+    private static bool TryNullableString(JsonElement parent, string name, string artifact, string path, out string? value, out StructuralProblem? problem)
+    {
+        problem = null;
+        if (!parent.TryGetProperty(name, out JsonElement element))
+        {
+            value = null;
+            problem = Problem(artifact, path + "." + name, "missing_property");
+            return false;
+        }
+        if (element.ValueKind == JsonValueKind.Null) { value = null; return true; }
+        if (StrictJson.TryGetString(element, out string parsed)) { value = parsed; return true; }
+        value = null; problem = Problem(artifact, path + "." + name, "wrong_json_kind"); return false;
+    }
+
+    private static bool TryNullableInt64(JsonElement parent, string name, string artifact, string path, out long? value, out StructuralProblem? problem)
+    {
+        problem = null;
+        if (!parent.TryGetProperty(name, out JsonElement element))
+        {
+            value = null;
+            problem = Problem(artifact, path + "." + name, "missing_property");
+            return false;
+        }
+        if (element.ValueKind == JsonValueKind.Null) { value = null; return true; }
         if (StrictJson.TryGetInt64(element, out long parsed)) { value = parsed; return true; }
         value = null; problem = Problem(artifact, path + "." + name, "wrong_json_kind"); return false;
     }
