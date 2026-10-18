@@ -1,7 +1,7 @@
 namespace Parchwell.Verifier.Common.Contracts;
 
 /// <summary>Identifies one captured producer run independently of its artifact representation.</summary>
-/// <remarks>Its six fields are the identity shape specified by ADR-012.</remarks>
+/// <remarks>Uses the independent identity shape in the <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6245697297">approved PR 3 wire catalogue</see>.</remarks>
 internal sealed record RunIdentity(
     string ScenarioId,
     string ConfigurationId,
