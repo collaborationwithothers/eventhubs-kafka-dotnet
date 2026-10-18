@@ -9,7 +9,7 @@ You are the implementing session of docs/agents/factory.md "Item lifecycle" step
 
 The only input is the issue number. Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
-Apply factory.md "Item lifecycle" step 3 for decisions linked from elsewhere and for approval recognition. Its approval marker is a convention, not proof: all comments post as Hari's account.
+Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Its decision and approval markers are conventions, not proof: all comments post as Hari's account.
 
 ## Steps
 

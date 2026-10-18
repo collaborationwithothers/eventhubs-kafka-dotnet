@@ -37,7 +37,7 @@ AGENTS.md's "Before opening a pull request" applies in full. In addition:
 
 ## Handoffs
 
-Start the GOVERNANCE "Handoffs" comment with `**Decision needed:**`.
+Start both handoff and completion comments under AGENTS.md GOVERNANCE "Handoffs" with `**Decision needed:**`. For completion, follow the marker with `None;` and the completion report required there. This keeps the report recognizable by the Stop hook.
 
 A Stop hook is a script Claude Code runs each time the agent finishes responding (https://code.claude.com/docs/en/hooks). The one in `.claude/settings.json` looks for that comment on the session's issue or on its branch's open pull request. The comment counts only if the marker is the first text in its body and it was created after the session started. A SessionStart hook records the start time. Both hooks act only when `GITHUB_ACTIONS=true` or the session was launched with `PARCHWELL_HANDOFF=enforce`. While the comment is missing, the Stop hook blocks the stop and tells the agent what to post. After three blocks in one session, it lets the session stop with a warning. It also lets the session stop with a warning when it cannot check, or when it finds more than one marked comment.
 
