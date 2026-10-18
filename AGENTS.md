@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge. Hard safety rule 10 amended in the pull request for issue #85 (2026-10-18).
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge. Hard safety rule 10 and "Handoffs" amended in the pull request for issue #85 (2026-10-18).
 
 ### What this repo is
 
@@ -55,7 +55,7 @@ Anything else waits for Hari. Never ask for the gate to be relaxed.
 
 ### Handoffs
 
-A session that stops for any reason ends with exactly one comment on its issue or pull request, stating the decision it needs from Hari in one sentence, with the evidence linked. No silent stops.
+A session that stops for any reason ends with exactly one comment on its issue or pull request, stating the decision it needs from Hari in one sentence, with the evidence linked. A session that has merged its pull request and has no pending decision instead posts one completion comment on the originating issue, stating that no decision is needed and linking the evidence. No silent stops.
 
 ### Truth and verification
 
@@ -104,9 +104,9 @@ Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, sym
 Four skills are owned by this repository rather than pinned from a third party. They are not in `skills-lock.json` and change only through a pull request to Hari.
 
 - `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines.
-- `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle" (#85 decision 7). The prompt that starts a session names the skill and its inputs, for example "Use the implement-plan skill for issue #80, PR 4".
+- `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle" (#85 decision 7). The prompt that starts a session names the skill and supplies its "Inputs".
 
-A repository-owned skill, and any prompt that starts a session, cites a rule by file and section and never paraphrases a rule that stops, caps or gates work (#85 decision 3). An implementation prompt holds only the `implement-plan` skill's inputs: the pull request, the plan URL and the URLs of later decisions.
+A repository-owned skill, and any prompt that starts a session, cites a rule by file and section and never paraphrases a rule that stops, caps or gates work (#85 decision 3). An implementation prompt names `implement-plan` and supplies the inputs defined in that skill's "Inputs" section.
 
 Adding or removing a skill is a governance change and goes to Hari.
 
@@ -171,7 +171,7 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 
     A pull request gets at most three completed Codex review rounds. A round is one completed Codex code review of a head commit, however it was triggered; a security review is not a round. When the third completes and a finding still needs a code change, push nothing further and hand off under GOVERNANCE "Handoffs". Only Hari's comment on the issue being implemented, naming the new cap and the pull requests it covers, raises the cap. Three is a governance choice, not a measurement.
 
-11. Stop at the first measurement of work sized at runtime. If a step's workload depends on a count known only at runtime, such as mutants, survivors, findings, retries or files, and the approved plan gives no cap or sample size for it, stop after the first measurement. Hand off under GOVERNANCE "Handoffs" with the count and an estimate of the time to finish (hard safety rule 11), and continue only after Hari answers. Basis: #85 decision 1; on #80 PR 3, 621 surviving mutants were replayed by hand before anyone saw the count.
+11. Stop at the first measurement of work sized at runtime. If a step's workload depends on a count known only at runtime, such as mutants, survivors, findings, retries or files, and the approved plan gives no cap or sample size for it, stop after the first measurement. Hand off under GOVERNANCE "Handoffs" with the count and an estimate of the time to finish (hard safety rule 11), and continue only after Hari answers. Required authority reads for planning, plan checking or implementation are exempt: the issue body, its comments, the plan and later decisions. Reading the files and sources needed to write or independently check a plan under docs/agents/factory.md "Item lifecycle" steps 1 and 3 is also exempt. Execution work and finding dispositions identified by those reads remain subject to this rule. Basis: #85 decision 1; the [PR 3 replay decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6247408154) records 621 survivors and 267 reported replays when Hari changed the requirement to a sample.
 
 12. A backup push saves work in progress. A session may push its work to `<its branch>-wip`, its own branch name with `-wip` appended. It never opens a pull request from that branch, and deletes it once its own branch is pushed. A backup push is exempt from rule 8; every other rule applies. No workflow runs on it: on `main` at 0e9b78be2a3a175c6a27926479fe5cfe96ab1888, `dotnet-verification.yml` triggers on pull requests, pushes to `main` and manual dispatch, and `docs-advisory.yml` on pull requests. Basis: #85 decision 5; validated commits were lost when a Codex session resumed in a fresh workspace.
 
