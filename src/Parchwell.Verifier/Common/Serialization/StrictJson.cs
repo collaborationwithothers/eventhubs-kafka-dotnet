@@ -7,6 +7,8 @@ namespace Parchwell.Verifier.Common.Serialization;
 /// <remarks>Structural parsing is separate from the evidence decisions in ADR-012 and ADR-013.</remarks>
 internal static class StrictJson
 {
+    private const string JsonRethrowableExceptionSource = "System.Text.Json.Rethrowable";
+
     /// <summary>Parses a bounded JSON document and rejects duplicate properties at every depth.</summary>
     internal static ParseResult<JsonDocument> ParseDocument(
         ReadOnlyMemory<byte> utf8,
@@ -274,11 +276,11 @@ internal static class StrictJson
 
             if (reader.TokenType == JsonTokenType.PropertyName)
             {
-                _ = reader.GetString();
+                ValidateUtf16String(ref reader);
             }
             else if (reader.TokenType == JsonTokenType.String)
             {
-                _ = reader.GetString();
+                ValidateUtf16String(ref reader);
             }
 
             if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
@@ -292,6 +294,21 @@ internal static class StrictJson
                     containers.Pop();
                 }
             }
+        }
+    }
+
+    private static void ValidateUtf16String(ref Utf8JsonReader reader)
+    {
+        try
+        {
+            _ = reader.GetString();
+        }
+        catch (InvalidOperationException exception) when (
+            string.Equals(exception.Source, JsonRethrowableExceptionSource, StringComparison.Ordinal))
+        {
+            // Pinned .NET 10 routes invalid escaped UTF-16 through this marked exception.
+            // Convert only at this string-decoding boundary so ParseDocument can return malformed_json.
+            throw new JsonException("The JSON string contains an invalid UTF-16 escape sequence.", exception);
         }
     }
 

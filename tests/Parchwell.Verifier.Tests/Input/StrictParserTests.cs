@@ -444,6 +444,100 @@ public sealed class StrictParserTests
         Assert.True(ManifestReader.Read(manifestWithLf, Limits(), new InputBudget(Limits()), 2).IsSuccess);
     }
 
+    [Theory]
+    [MemberData(nameof(InvalidEscapedSurrogateCases))]
+    public void Given_InvalidEscapedSurrogateInPropertyOrValue_When_Read_Then_RoutesAsMalformedJson(
+        string artifact, string malformedEscape, bool propertyName, int? owner)
+    {
+        byte[] input = InvalidEscapedSurrogateInput(artifact, malformedEscape, propertyName);
+        IReadOnlyList<StructuralProblem> problems = artifact switch
+        {
+            "native" => NativeStatisticsReader.Read(input, "statistics.jsonl", Limits(), new InputBudget(Limits()), 4096, 4).Problems,
+            "ledger" => Parse(artifact, input),
+            "manifest" => Parse(artifact, input),
+            "index" => Parse(artifact, input),
+            "statistics" => Parse(artifact, input),
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact), artifact, "Unknown surrogate test artifact.")
+        };
+        Assert.Contains(problems, problem => problem.CheckNumber == owner && problem.Code == "malformed_json");
+    }
+
+    public static IEnumerable<object?[]> InvalidEscapedSurrogateCases()
+    {
+        string[] malformedEscapes = ["\\uD800", "\\uDC00", "\\uD800\\u0041"];
+        foreach (string artifact in new[] { "ledger", "manifest", "statistics", "native", "index" })
+        {
+            int? owner = artifact switch { "ledger" => 1, "manifest" => 2, "statistics" => 17, "native" => 20, _ => null };
+            foreach (string malformedEscape in malformedEscapes)
+                foreach (bool propertyName in new[] { false, true })
+                    yield return [artifact, malformedEscape, propertyName, owner];
+        }
+    }
+
+    [Fact]
+    public void Given_ValidEscapedSurrogatePairInValuesAndOpenMapKeys_When_Read_Then_PreservesDecodedText()
+    {
+        string ledgerRow = FirstJsonLine(ReadGolden("ledger")).Replace("\"A01\"", "\"\\uD83D\\uDE00\"", StringComparison.Ordinal);
+        ParseResult<IReadOnlyList<LedgerRow>> ledger = LedgerReader.ReadRows(
+            JsonLine(Encoding.UTF8.GetBytes(ledgerRow)), Limits(), new InputBudget(Limits()));
+        Assert.True(ledger.IsSuccess);
+        Assert.Equal("😀", ledger.Value![0].Identity.ScenarioId);
+
+        string manifestJson = Encoding.UTF8.GetString(ReadGolden("manifest")).Replace(
+            "\"confluent_kafka\"", "\"\\uD83D\\uDE00\"", StringComparison.Ordinal);
+        ParseResult<SealedRunManifest> manifest = ManifestReader.Read(
+            Encoding.UTF8.GetBytes(manifestJson), Limits(), new InputBudget(Limits()), 2);
+        Assert.True(manifest.IsSuccess);
+        Assert.Equal("2.16.0", manifest.Value!.RuntimeVersions["😀"]);
+    }
+
+    private static byte[] InvalidEscapedSurrogateInput(string artifact, string malformedEscape, bool propertyName)
+    {
+        string source = artifact switch
+        {
+            "ledger" => FirstJsonLine(ReadGolden("ledger")),
+            "manifest" => Encoding.UTF8.GetString(ReadGolden("manifest")),
+            "index" => Encoding.UTF8.GetString(ReadGolden("index")),
+            "statistics" => FirstJsonLine(ReadGolden("statistics")),
+            "native" => "{\"ts\":1,\"age\":2,\"brokers\":{}}",
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact), artifact, "Unknown surrogate test artifact.")
+        };
+        string key = artifact switch
+        {
+            "ledger" => "scenario_id",
+            "manifest" => "worker_status",
+            "index" => "worker_status",
+            "statistics" => "session_id",
+            "native" => "name",
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact), artifact, "Unknown surrogate test artifact.")
+        };
+
+        if (artifact == "native")
+        {
+            source = propertyName
+                ? "{\"ts\":1,\"age\":2,\"" + malformedEscape + "\":\"x\",\"brokers\":{}}"
+                : "{\"ts\":1,\"age\":2,\"name\":\"" + malformedEscape + "\",\"brokers\":{}}";
+        }
+        else if (propertyName)
+        {
+            source = source.Replace("\"" + key + "\":", "\"" + malformedEscape + "\":", StringComparison.Ordinal);
+        }
+        else
+        {
+            string expectedValue = artifact switch
+            {
+                "ledger" => "A01",
+                "manifest" or "index" => "complete",
+                "statistics" => "golden-statistics-session",
+                _ => throw new ArgumentOutOfRangeException(nameof(artifact), artifact, "Unknown surrogate test artifact.")
+            };
+            source = source.Replace("\"" + expectedValue + "\"", "\"" + malformedEscape + "\"", StringComparison.Ordinal);
+        }
+
+        byte[] bytes = Encoding.UTF8.GetBytes(source);
+        return artifact is "ledger" or "statistics" ? JsonLine(bytes) : bytes;
+    }
+
     [Fact]
     public void Given_NativeRawReportHasIndependentShape_When_Read_Then_AllowsExtraFieldsAndRoutesNativeProblems()
     {
