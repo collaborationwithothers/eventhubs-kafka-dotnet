@@ -57,6 +57,63 @@ public sealed class RunEvidenceSessionTests
     }
 
     [Fact]
+    public async Task Given_CompletionBoundary_When_CapabilitiesAreWritten_Then_PersistsTheExactMicroseconds()
+    {
+        RunEvidenceExpectations expectations = await RunEvidenceReaderTests.ExpectationsAsync(Identity());
+        string boundedPath = NewDirectory();
+        await using (var session = new RunEvidenceSession(Identity(), Options(boundedPath), TimeProvider.System, expectations))
+        {
+            await session.WriteAsync(Report("{}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+            await session.CompleteAsync(new KafkaStatisticsCompletion(true,
+                ImmutableArray<KafkaStatisticsDiagnostic>.Empty, ImmutableArray<string>.Empty)
+            {
+                DrainBoundaryMicroseconds = 10_000_001
+            }, TestContext.Current.CancellationToken);
+        }
+
+        using (JsonDocument capabilities = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(boundedPath, "capabilities.json"), TestContext.Current.CancellationToken)))
+        {
+            JsonElement completion = capabilities.RootElement.GetProperty("statistics_completion");
+            Assert.Equal(JsonValueKind.Number, completion.GetProperty("drain_boundary_microseconds").ValueKind);
+            Assert.Equal(10_000_001L, completion.GetProperty("drain_boundary_microseconds").GetInt64());
+            string[] settingNames = capabilities.RootElement.GetProperty("resolved_configuration")
+                .GetProperty("settings").EnumerateObject().Select(property => property.Name).ToArray();
+            Assert.Equal(settingNames.OrderBy(name => name, StringComparer.Ordinal), settingNames);
+        }
+
+        string unverifiedPath = NewDirectory();
+        await using (var session = new RunEvidenceSession(Identity(), Options(unverifiedPath), TimeProvider.System, expectations))
+        {
+            await session.WriteAsync(Report("{}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+            await session.CompleteAsync(new KafkaStatisticsCompletion(false,
+                [new KafkaStatisticsDiagnostic("clock_unverified")], ["broker-1"])
+            {
+                DrainBoundaryMicroseconds = null
+            }, TestContext.Current.CancellationToken);
+        }
+
+        using (JsonDocument capabilities = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(unverifiedPath, "capabilities.json"), TestContext.Current.CancellationToken)))
+        {
+            JsonElement completion = capabilities.RootElement.GetProperty("statistics_completion");
+            Assert.Equal(JsonValueKind.Null, completion.GetProperty("drain_boundary_microseconds").ValueKind);
+        }
+
+        string absentCompletionPath = NewDirectory();
+        await using (var session = new RunEvidenceSession(Identity(), Options(absentCompletionPath), TimeProvider.System, expectations))
+        {
+            await session.WriteAsync(Report("{}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+            await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        }
+
+        using JsonDocument absentCompletionCapabilities = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(absentCompletionPath, "capabilities.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(JsonValueKind.Null,
+            absentCompletionCapabilities.RootElement.GetProperty("statistics_completion").ValueKind);
+    }
+
+    [Fact]
     public async Task Given_OverLimitRawReport_When_Writing_Then_FaultsAndDoesNotQueueIt()
     {
         string path = NewDirectory();
@@ -204,7 +261,7 @@ public sealed class RunEvidenceSessionTests
         string capabilitiesPath = Path.Combine(path, "capabilities.json");
         JsonNode capabilities = JsonNode.Parse(await File.ReadAllTextAsync(capabilitiesPath, TestContext.Current.CancellationToken))!;
         Assert.Null(capabilities["statistics_completion"]);
-        capabilities["statistics_completion"] = JsonNode.Parse("{\"is_complete\":true,\"diagnostics\":[],\"missing_brokers\":[]}");
+        capabilities["statistics_completion"] = JsonNode.Parse("{\"is_complete\":true,\"diagnostics\":[],\"missing_brokers\":[],\"drain_boundary_microseconds\":null}");
         await File.WriteAllTextAsync(capabilitiesPath, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
 
         InvalidDataException completionFailure = await Assert.ThrowsAsync<InvalidDataException>(

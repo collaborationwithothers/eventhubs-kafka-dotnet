@@ -70,9 +70,9 @@ The library uses the [.NET 10 metrics API][histogram] without an OpenTelemetry p
 
 After the producer is drained, call `CompleteAsync(expectedBrokerNames)` while keeping the client alive and its callbacks served. The producer's [Flush contract][flush] concerns outstanding requests and delivery callbacks; it promises no fresh statistics report. Completion waits for reports generated strictly after its post-drain boundary for the supplied broker keys, then stops capture and finishes accepted work within its configured deadline.
 
-Callback receipt after drain is insufficient: a queued report may have been generated earlier. Native [report generation][generation] records `ts` from [rd_clock][native-clock] while formatting the JSON. On Linux, this is `CLOCK_MONOTONIC` in microseconds. The .NET 10 [system TimeProvider][time-provider] delegates to [Unix Stopwatch][stopwatch], through [System.Native][pal-time], to the [Linux monotonic clock][dotnet-clock]. Its timestamps are nanoseconds on this path.
+Callback receipt after drain is insufficient: a queued report may have been generated earlier. Native [report generation][generation] records `ts` from [rd_clock][native-clock] while formatting the JSON. On Linux, this is `CLOCK_MONOTONIC` in microseconds. The .NET 10 [system TimeProvider][time-provider] delegates to [Unix Stopwatch][stopwatch], through [System.Native][pal-time], to minipal's Linux `CLOCK_MONOTONIC` path [implementation][dotnet-clock]. Its timestamps are nanoseconds on this path.
 
-Production freshness comparison is therefore supported only on Linux with `TimeProvider.System`. Convert the boundary upward to microseconds and require a strictly later native `ts`; same-microsecond ambiguity cannot pass. Other providers/platforms return an unverified-clock/incomplete result. Tests model the native clock through an internal seam, without exposing a caller-controlled assertion of clock compatibility in the public interface.
+The same-host comparison between these two implementations is an inference from that pinned source chain: on Linux with `TimeProvider.System`, they call `CLOCK_MONOTONIC` on the same host, with native `ts` reported in microseconds and .NET timestamps in nanoseconds. Production freshness comparison is enabled only on that platform/provider combination. The session rounds the captured boundary up to microseconds and retains it as `KafkaStatisticsCompletion.DrainBoundaryMicroseconds`, including on an incomplete receipt; it remains null when the clock is unverified. Completion behavior is unchanged: a qualifying report must have native `ts` strictly greater than the rounded boundary, and equality does not satisfy LoadGen's freshness rule. Other providers/platforms return an unverified-clock/incomplete result. Tests model the native clock through an internal seam, without exposing a caller-controlled assertion of clock compatibility in the public interface.
 
 Missing broker keys, stale reports, source-clock uncertainty, prior capture failures, cancellation and deadline expiry prevent complete statistics status. Disposing the session without successful completion does not establish final evidence. The harness must inspect the returned status before accepting evidence.
 
@@ -102,9 +102,9 @@ The delivery adds no Azure run, result, verdict, scenario prediction, request co
 [generation]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L1892-L1915
 [native-clock]: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdtime.h#L85-L111
 [time-provider]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L83-L97
-[stopwatch]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Stopwatch.Unix.cs
-[pal-time]: https://github.com/dotnet/runtime/blob/v10.0.13/src/native/libs/System.Native/pal_time.c
-[dotnet-clock]: https://github.com/dotnet/runtime/blob/v10.0.13/src/native/minipal/time.c
+[stopwatch]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Stopwatch.Unix.cs#L8-L14
+[pal-time]: https://github.com/dotnet/runtime/blob/v10.0.13/src/native/libs/System.Native/pal_time.c#L82-L85
+[dotnet-clock]: https://github.com/dotnet/runtime/blob/v10.0.13/src/native/minipal/time.c#L76-L90
 [histogram]: https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Diagnostics.DiagnosticSource/src/System/Diagnostics/Metrics/Histogram.cs
 [otel]: https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.12.0/src/OpenTelemetry/Metrics/View/HistogramConfiguration.cs
 [azure]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Monitor.OpenTelemetry.Exporter_1.4.0/sdk/monitor/Azure.Monitor.OpenTelemetry.Exporter/src/Customizations/Models/MetricDataPoint.cs

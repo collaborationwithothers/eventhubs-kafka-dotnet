@@ -13,4 +13,8 @@ namespace Parchwell.Kafka.Statistics;
 public sealed record KafkaStatisticsCompletion(
     bool IsComplete,
     ImmutableArray<KafkaStatisticsDiagnostic> Diagnostics,
-    ImmutableArray<string> MissingBrokers);
+    ImmutableArray<string> MissingBrokers)
+{
+    /// <summary>Gets the native-clock boundary captured when statistics completion began, in microseconds.</summary>
+    public long? DrainBoundaryMicroseconds { get; init; }
+}

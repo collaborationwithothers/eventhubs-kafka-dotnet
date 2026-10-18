@@ -25,6 +25,49 @@ public sealed class RunEvidenceReaderTests
         new(LoadSelectedConfigurationsAsync);
 
     [Fact]
+    public async Task Given_CompletionBoundary_When_Read_Then_AcceptsNullableInt64AndRejectsInvalidValues()
+    {
+        RunIdentity identity = Identity();
+        string path = await CreateEvidenceAsync(TestContext.Current.CancellationToken, identity);
+        string file = Path.Combine(path, "capabilities.json");
+        JsonObject original = JsonNode.Parse(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.AsObject();
+
+        foreach (JsonNode? boundary in new JsonNode?[]
+        {
+            null,
+            JsonValue.Create(long.MinValue),
+            JsonValue.Create(long.MaxValue),
+            JsonValue.Create(-1L)
+        })
+        {
+            JsonObject valid = original.DeepClone().AsObject();
+            valid["statistics_completion"]!["drain_boundary_microseconds"] = boundary?.DeepClone();
+            await File.WriteAllTextAsync(file, valid.ToJsonString(), TestContext.Current.CancellationToken);
+            _ = await ReadAsync(path, identity, TestContext.Current.CancellationToken);
+        }
+
+        JsonObject missing = original.DeepClone().AsObject();
+        missing["statistics_completion"]!.AsObject().Remove("drain_boundary_microseconds");
+        await File.WriteAllTextAsync(file, missing.ToJsonString(), TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity, TestContext.Current.CancellationToken));
+
+        foreach (JsonNode invalidBoundary in new JsonNode[]
+        {
+            JsonValue.Create("10")!,
+            JsonValue.Create(10.5)!,
+            JsonValue.Create(true)!,
+            JsonNode.Parse("9223372036854775808")!,
+            JsonNode.Parse("-9223372036854775809")!
+        })
+        {
+            JsonObject invalid = original.DeepClone().AsObject();
+            invalid["statistics_completion"]!["drain_boundary_microseconds"] = invalidBoundary.DeepClone();
+            await File.WriteAllTextAsync(file, invalid.ToJsonString(), TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(path, identity, TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
     public void Given_Utf8CharacterCrossesValidationChunk_When_Parsing_Then_AcceptsValidAndRejectsTruncatedEncoding()
     {
         string value = new string('a', 8185) + "😀" + new string('b', 8192);
@@ -664,7 +707,8 @@ public sealed class RunEvidenceReaderTests
         {
             ["is_complete"] = false,
             ["diagnostics"] = new JsonArray(),
-            ["missing_brokers"] = new JsonArray()
+            ["missing_brokers"] = new JsonArray(),
+            ["drain_boundary_microseconds"] = null
         };
         await File.WriteAllTextAsync(capabilitiesFile, capabilities.ToJsonString(), TestContext.Current.CancellationToken);
 

@@ -8,6 +8,7 @@ using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Evidence;
 
@@ -504,12 +505,23 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     private async Task WriteCapabilitiesAsync(CancellationToken cancellationToken)
     {
         (ImmutableArray<string> Observations, bool Complete) guardState = GetGuardObservationState();
+        object? resolvedConfiguration = _expectations?.ResolvedConfiguration is ResolvedRoleConfiguration resolved
+            ? new
+            {
+                role = resolved.Role,
+                settings = new SortedDictionary<string, ResolvedSetting>(
+                    resolved.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal)
+                        .ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+                omissions = resolved.Omissions
+            }
+            : null;
         var capability = new
         {
             schema_version = SchemaVersion,
             identity = _identity,
             artifacts = ArtifactNames,
-            resolved_configuration = _expectations?.ResolvedConfiguration,
+            resolved_configuration = resolvedConfiguration,
             request_lifecycle_requirements = RequestCapabilityCatalogue.Claims,
             request_capability_supported = false,
             observed_broker_names = GetObservedBrokerNames(),
@@ -518,6 +530,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             statistics_completion = _completion is null ? null : new
             {
                 _completion.IsComplete,
+                drain_boundary_microseconds = _completion.DrainBoundaryMicroseconds,
                 diagnostics = _completion.Diagnostics,
                 missing_brokers = _completion.MissingBrokers
             },

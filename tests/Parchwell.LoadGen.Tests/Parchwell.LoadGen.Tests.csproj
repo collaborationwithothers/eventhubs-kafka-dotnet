@@ -9,4 +9,9 @@
     <PackageReference Include="Testcontainers" />
     <ProjectReference Include="../../src/Parchwell.LoadGen/Parchwell.LoadGen.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="../../tests/fixtures/verifier-v1/captured-run/**/*"
+          Link="fixtures/verifier-v1/captured-run/%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

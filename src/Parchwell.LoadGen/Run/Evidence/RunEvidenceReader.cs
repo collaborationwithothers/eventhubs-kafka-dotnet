@@ -446,8 +446,9 @@ public static class RunEvidenceReader
         statisticsComplete = null;
         if (completion.ValueKind != JsonValueKind.Null)
         {
-            RequireObject(completion, "is_complete", "diagnostics", "missing_brokers");
+            RequireObject(completion, "is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers");
             statisticsComplete = RequireBoolean(Get(completion, "is_complete"), "statistics_completion.is_complete");
+            RequireNullableInt64(Get(completion, "drain_boundary_microseconds"), "statistics_completion.drain_boundary_microseconds");
             if (statisticsComplete.Value && statisticsRecordCount == 0)
                 throw Invalid("statistics_completion_without_records");
             JsonElement completionDiagnostics = Get(completion, "diagnostics");
@@ -897,6 +898,14 @@ public static class RunEvidenceReader
     {
         RequireKind(element, JsonValueKind.Number, field);
         if (!element.TryGetInt64(out long value) || value < 0) throw Invalid("evidence_nonnegative_int64_invalid:" + field);
+        return value;
+    }
+
+    private static long? RequireNullableInt64(JsonElement element, string field)
+    {
+        if (element.ValueKind == JsonValueKind.Null) return null;
+        if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt64(out long value))
+            throw Invalid(field + "_must_be_nullable_int64");
         return value;
     }
 
