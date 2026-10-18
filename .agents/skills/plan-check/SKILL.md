@@ -17,5 +17,6 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 2. Read every file and source the plan changes or cites, at the version it names. Done when each one is read.
 3. Check the selected plan against factory.md "Plan template" for an item plan, or "Item lifecycle" step 3 for an implementation-grade plan. Check every claim against its source. Done when every field or requirement, and every claim, has a verdict with evidence.
 4. Answer the three plan-check questions in factory.md "Item lifecycle" step 1. Done when each answer cites the plan line and the evidence.
-5. Post the findings and the three answers as one comment on the issue.
-6. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to decide on the findings.
+5. Re-read the issue body, all comments, the selected plan and the decisions linked from issue comments. Repeat steps 1 to 4 if any were added, edited or deleted. Done when the check reflects the current candidate and authority.
+6. Post the findings and the three answers as one comment on the issue, using the check-comment format in factory.md "Item lifecycle" step 1.
+7. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to approve or reject the checked plan in light of the findings and the three answers.
