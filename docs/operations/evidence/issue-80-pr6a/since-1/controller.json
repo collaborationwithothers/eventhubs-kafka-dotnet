@@ -1,0 +1,54 @@
+{
+  "mode": "since",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/controller-invocations.json",
+  "command": [
+    "dotnet",
+    "stryker",
+    "--config-file",
+    "stryker-config.json",
+    "--output",
+    "../../.artifacts/issue-80-pr6a/since-1",
+    "--since:37c361bf7b8dbdc09e7417dae5488ffa5613b4cb"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true",
+    "MSBUILDDISABLENODEREUSE": "1",
+    "DOTNET_CLI_USE_MSBUILD_SERVER": "0"
+  },
+  "tested_commit": "a4c6b8cc8dee29bb1ab2e4864e05d0b3717395f5",
+  "comparison_commit": "37c361bf7b8dbdc09e7417dae5488ffa5613b4cb",
+  "replacement_since": true,
+  "replacement_decision": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435",
+  "replacement_baseline_commit": "37c361bf7b8dbdc09e7417dae5488ffa5613b4cb",
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "84bd6c92c3d0b94571ad5873ab309b69a3a8d98c9a49e38f4effccb3c8755161",
+  "wall_time_cap_seconds": 1800.0,
+  "generated_mutant_cap": 10000,
+  "observed_generated_counts": [
+    5670
+  ],
+  "maximum_observed_generated_count": 5670,
+  "started_utc": "2026-10-19T14:20:50.596292+00:00",
+  "elapsed_seconds": 1800.0808507879992,
+  "exit_code": -9,
+  "exit_reason": "elapsed-cap",
+  "termination": {
+    "process_group": 32526,
+    "signal": "SIGKILL",
+    "utc": "2026-10-19T14:50:50.599149+00:00"
+  },
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "incomplete-or-missing",
+  "expected_report": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/since-1/reports/mutation-report.json",
+  "expected_xml": [],
+  "process_group": 32526,
+  "finished_utc": "2026-10-19T14:50:50.677628+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": false,
+  "xml_presence": {},
+  "command_log_sha256": "f7fc10fdb532a21506db1f6272c6dcf80f7ff2b6ca40840b0b37c3fcd42cddf9",
+  "execution_evidence_complete": false
+}

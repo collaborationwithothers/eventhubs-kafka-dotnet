@@ -2,15 +2,17 @@
 
 ## PR 6a judgement measurement
 
-The sole full mutation invocation reached its 3600-second cap after logging 5670 generated mutants. The controller killed its process group before Stryker published a JSON report, so PR 6a has no measured score or serialized mutant-status counts. Full mutation acceptance remains incomplete and needs a new bounded allowance from Hari; this document does not claim a pass.
+The sole full mutation invocation reached its 3600-second cap after logging 5670 generated mutants. The controller killed its process group before Stryker published a JSON report, so that full invocation has no measured score or serialized mutant-status counts. Hari's [replacement-measurement decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435) preserves this evidence and authorizes one bounded `since` run against PR 6a's original main base, with no new full-run allowance. The replacement measurement is recorded separately below; the capped full run is not a pass.
 
-PR 6a measures the judgement scope in the [approved revision 3 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265325109), as amended by the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265509393) and the [approval's preceding-tested-head correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787). The selected patterns are `VerifyRun/Judgement/*.cs`, `VerifyRun/Window/*.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs` and `ProbeGate/ProbeGateEvaluator.cs`. Release, `net10.0`, the pinned MTP runner, the configured reporters, high/low thresholds and `break: 0` are retained. Parser, codec, host, transport, DTO and orchestration code have no added mutation scope, and no score-improving exclusions are introduced.
+PR 6a measures the judgement scope in the [approved revision 3 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265325109), as amended by the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265509393), the [approval's preceding-tested-head correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787), and the [replacement-measurement decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435). The selected patterns are `VerifyRun/Judgement/*.cs`, `VerifyRun/Window/*.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs` and `ProbeGate/ProbeGateEvaluator.cs`. Release, `net10.0`, the pinned MTP runner, the configured reporters, high/low thresholds and `break: 0` are retained. Parser, codec, host, transport, DTO and orchestration code have no added mutation scope, and no score-improving exclusions are introduced.
 
 These files are local implementation-support measurements. They do not constitute scenario verdicts or evidence under `results/`. Final-code survivor dispositions, survivor replays, independent preview-runner verification, a threshold proposal, Hari's accepted number on #13 and the break-threshold edit belong to PR 6b. PR 6a performs zero manual survivor dispositions and zero manual survivor replays. The historical PR 3-5 measurements below retain their original scope and tested identities; the historical PR 5 score is not a PR 6a measurement or a threshold proposal. The item-plan threshold requirement still precedes live use.
 
+The [later decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435) assigns the final full mutation run to PR 6b. Hari expects it to exceed 3600 seconds; this is the decision's expectation, not a measured final-code duration. PR 6b's plan proposes its cap using this evidence and weighs #89. After the replacement measurement, both Codex code and security reviews are requested again on PR #91's final head; the protected-path merge rule remains unchanged.
+
 ### Execution bounds and retained support
 
-The split decision Q1 authorizes one full mutation invocation before the first push, limited to 3600 seconds and 10000 generated mutants; at most six review-fix `since` invocations, each limited to 1200 seconds and 10000 generated mutants; and at most three full component-suite invocations, each limited to 1800 seconds. Failed invocations consume the same allowance. During a running mutation or suite command, the session waits with one blocking call bounded by the remaining cap and does not poll. Other runtime-sized work follows `AGENTS.md` "Before opening a pull request" rule 11.
+The split decision Q1's sole full mutation invocation was capped at 3600 seconds and 10000 generated mutants; its evidence remains retained. The [later decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435) amends that requirement for PR 6a only: one replacement `since` invocation compares against exactly `37c361bf7b8dbdc09e7417dae5488ffa5613b4cb`, capped at 1800 seconds and 10000 generated mutants. It consumes the first of the existing six `since` invocations and grants no additional full mutation or component-suite invocation. Later review-fix invocations compare to the immediately preceding tested head, each capped at 1200 seconds and 10000 generated mutants within the remaining allowance. Failed invocations consume that allowance. All three full component-suite invocations have been used. During a running command, the session waits with one blocking call bounded by the remaining cap and does not poll. If the replacement reaches its cap, the session stops and hands off. Other runtime-sized work follows `AGENTS.md` "Before opening a pull request" rule 11.
 
 The retained [exact controller source](evidence/issue-80-pr6a/controller.py) starts a process group, captures the child command log, enforces the authorized elapsed and generated-mutant limits, terminates the process group on a limit and never restarts the child. Its [full-run receipt](evidence/issue-80-pr6a/controller.json) records the child argv, cwd, command-scoped environment overrides, invocation ordinal, tested and comparison commits, termination/completeness information, elapsed time and observed generated counts. The [tested-source manifest](evidence/issue-80-pr6a/tested-source.json) records the tested commit/tree, dirty-diff identity, source-input hashes, configuration hash and exact controller hash; the receipt also records whether source/configuration inputs changed during the command.
 
@@ -154,22 +156,79 @@ Exact warning lines and frequencies remain in the extraction summary. Runner war
 
 Evidence is incomplete or unreconciled: child exit -9; controller termination {"process_group": 24102, "signal": "SIGKILL", "utc": "2026-10-19T12:57:38.692596+00:00"}; the original mutation report was missing; authorized extraction did not complete; extraction failure: retained report missing; no report enumeration performed; extraction report completeness is incomplete-or-missing; serialized Stryker discovery metadata was not established. No serialized score is available and no passing acceptance or threshold is claimed. No restart, historical substitution, survivor replay or survivor remediation is inferred.
 
-### Review-fix invocations
+### Replacement and review-fix invocations
 
-Each actual review-fix invocation retains a separate `since-<n>/` receipt, source identity, command log, report, discovery and extraction summary under `evidence/issue-80-pr6a/`. The [approval amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787) requires `--since:<preceding-tested-head>`: the first compares with the full-run tested head, and each subsequent invocation compares with the head tested by the preceding mutation invocation. Every receipt names both the comparison and tested commits. The [pinned since configuration](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/docs/configuration.md#since-flag-committish) defines the flag.
+The first `since` invocation is the replacement measurement authorized by [decision 6269344435](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435), comparing against PR 6a's original main base with the 1800-second and 10000-generated-mutant limits above. Each actual invocation retains separate evidence under `evidence/issue-80-pr6a/since-<n>/`. Later review-fix runs follow the [approval amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787): `--since:<preceding-tested-head>`, comparing to the head tested by the immediately preceding mutation invocation within the remaining original allowance and its 1200-second/10000-generated-mutant limits. Every receipt records both comparison and tested commits. The [pinned since configuration](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/docs/configuration.md#since-flag-committish) defines the flag.
+
+The authorized later review-fix child command shape is shown below; it does not claim that such an invocation occurred:
 
 ```bash
 ParchwellVerifierMutationOnly=true dotnet stryker --config-file stryker-config.json --output ../../.artifacts/issue-80-pr6a/since-<n> --since:<preceding-tested-head>
 ```
 
-The command above is the authorized invocation pattern; it is not evidence that an incremental invocation occurred.
+#### Actual replacement invocation: since-1
 
-No `since` invocation evidence is retained; no incremental measurement is claimed.
+[controller source](evidence/issue-80-pr6a/since-1/controller.py), [receipt](evidence/issue-80-pr6a/since-1/controller.json), [source identity](evidence/issue-80-pr6a/since-1/tested-source.json), [command log](evidence/issue-80-pr6a/since-1/command.log.gz), [discovery](evidence/issue-80-pr6a/since-1/discovery.json), [extraction](evidence/issue-80-pr6a/since-1/extraction-summary.json), [log summary](evidence/issue-80-pr6a/since-1/log-summary.json)
 
-The capped invocation tested `539d525251ecae74348621701cfcb294e83db94b`. Subsequent evidence and documentation changes do not change the recorded source inputs; this identity does not supply a completed mutation measurement. Historical PR 5 results do not substitute for PR 6a coverage.
+No JSON report was produced or retained. Serialized test names, mutant-status counts and a score are unavailable.
 
+The controller recorded cwd `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests` and these exact command-scoped environment settings and child argv:
 
-Full-run dirty-diff scope: `tracked HEAD diff excluding this PR's retained evidence directory`.
+```bash
+env ParchwellVerifierMutationOnly=true MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 dotnet stryker --config-file stryker-config.json --output ../../.artifacts/issue-80-pr6a/since-1 --since:37c361bf7b8dbdc09e7417dae5488ffa5613b4cb
+```
+
+| Measure | Recorded value |
+| --- | --- |
+| Tested commit | a4c6b8cc8dee29bb1ab2e4864e05d0b3717395f5 |
+| Comparison commit | 37c361bf7b8dbdc09e7417dae5488ffa5613b4cb |
+| Tested tree | 978dc1fdff87a6fd187186321443a0e04383e958 |
+| Dirty diff SHA-256 / bytes | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 / 0 |
+| Source-input manifest SHA-256 | 1ae80d7cce1c5f7c1f8cbceee31276ead5b75d2577cbf3b1334c894704554130 |
+| Configuration SHA-256 | ab8155d8269027faebbe082a319bd76bf2c86b3cbc9e993ddc65a6e853d6c68b |
+| Exact controller SHA-256 | 86f09da67eed4867d405e3d8527a48967f3b5101d92cef62d83cb54a25d9d67b |
+| Source inputs unchanged | true |
+| Start / finish UTC | 2026-10-19T14:20:50.596292+00:00 / 2026-10-19T14:50:50.677628+00:00 |
+| Elapsed seconds | 1800.0808507879992 |
+| Wall-time / generated-mutant limits | 1800.0 seconds / 10000 |
+| Exit / reason | -9 / elapsed-cap |
+| Termination | {"process_group": 32526, "signal": "SIGKILL", "utc": "2026-10-19T14:50:50.599149+00:00"} |
+| Invocation ordinal / replacement decision | 1 / https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6269344435 |
+| Generated-count observations / maximum | [5670] / 5670 |
+| Serialized mutant records | unavailable |
+| Generated minus serialized | unavailable |
+| Generated/serialized reconciliation | unavailable |
+| Uncompressed JSON-report SHA-256 | unavailable |
+| Report path / bytes | /workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/since-1/reports/mutation-report.json / unavailable |
+| Report completeness | incomplete-or-missing |
+| Score numerator / denominator | unavailable / unavailable |
+| Score percent | unavailable |
+| Tested statuses outside selected scope | unavailable |
+| Internal discovered tests | 2079 |
+| Serialized test files / tests | unavailable / unavailable |
+| Serialized component entries | unavailable |
+| Tool warning occurrences | 332 |
+
+Configured selected source files: `ProbeGate/ProbeGateEvaluator.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs`, `VerifyRun/Judgement/BookkeepingChecks.cs`, `VerifyRun/Judgement/BrokerCountRecorder.cs`, `VerifyRun/Judgement/ConfigurationFidelityCheck.cs`, `VerifyRun/Judgement/LateWriteChecks.cs`, `VerifyRun/Judgement/OutcomeClassifier.cs`, `VerifyRun/Judgement/RunJudgement.cs`, `VerifyRun/Judgement/StatisticsChecks.cs`, `VerifyRun/Window/ConsumedRecordBudget.cs`, `VerifyRun/Window/MessageIdentityReader.cs`, `VerifyRun/Window/RunWindow.cs`, `VerifyRun/Window/WindowConsumer.cs`. The baseline configures the replacement incremental measurement; the missing report cannot establish its tested population or a final full-scope score.
+
+No serialized status counts are available; none are inferred.
+
+| Warning category | Occurrences |
+| --- | --- |
+| Compilation warning | 1 |
+| Coverage relay acknowledgement / Dubious | 328 |
+| Framework discovery / assumption | 2 |
+| Preview runner | 1 |
+
+Exact warnings and initialization-discovery lines remain in the linked log summary. Runner coverage warnings are distinct from mutant Timeout statuses. The independent preflight remains separately retained. Serialized discovery is unavailable for this invocation and the preflight does not substitute for it.
+
+Replacement acceptance is incomplete: retained report missing; no report enumeration performed. No passing mutation outcome is claimed. The single replacement allowance is consumed; no retry or extra full/component invocation is inferred.
+
+No later review-fix `since` invocation has occurred. Any later authorized review-fix comparison would start from `a4c6b8cc8dee29bb1ab2e4864e05d0b3717395f5`, the head tested by this replacement invocation; its cap currently requires handoff.
+
+The replacement tested `a4c6b8cc8dee29bb1ab2e4864e05d0b3717395f5`. Subsequent evidence and documentation changes retain the same runtime source inputs; the recorded source identity defines the measured code. Historical PR 5 results do not substitute for PR 6a measurement.
+
+The replacement is incomplete; no passing mutation acceptance is claimed, and the next bounded measurement step needs Hari's decision.
 
 ## PR 5 window scope
 
