@@ -1,0 +1,17 @@
+{
+  "kind": "independent mutation-only MTP preflight, not Stryker discovery",
+  "command": "ParchwellVerifierMutationOnly=true dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests",
+  "preceding_build": "ParchwellVerifierMutationOnly=true dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-restore -m:1",
+  "tested_commit": "7738e73e3bcab70d756029e65204be108fa10d75",
+  "test_count": 2079,
+  "listed_name_count": 2079,
+  "component_test_names": [],
+  "assembly_sha256": "c316032dd72db728e2703fc33adc3273ceb929aa52c1a03e7e0a0d0cca1e1196",
+  "raw_log_sha256": "abb3414d5644296da788543c82f96a1661d997e554858e63b87c5de7dc405cee",
+  "new_test_class_counts": {
+    ".A01.A01EvidenceRecorderTests.": 63,
+    ".ProbeGate.ProbeGateEvaluatorTests.": 48,
+    ".ProbeGate.ProbeGateHostTests.": 57,
+    ".Host.VerifyRunDiagnosticTests.": 23
+  }
+}
