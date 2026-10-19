@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-restore",
+    "-m:1",
+    "-nodeReuse:false"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 6.7973371719999705,
+  "timeout_seconds": 300
+}

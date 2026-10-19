@@ -1,0 +1,38 @@
+{
+  "argv": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "1",
+    "--results-directory",
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/missing-parent/green",
+    "--",
+    "--filter-method",
+    "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.*",
+    "--report-xunit-xml",
+    "--report-xunit-xml-filename",
+    "results.xml"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "exit_code": 2,
+  "elapsed_seconds": 9.69669144799991,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "started_utc": "2026-10-19T15:39:08.828195+00:00",
+  "finished_utc": "2026-10-19T15:39:18.524889+00:00",
+  "tested_head": "1525d4d444315751fc3701799d7eea1605bb140b",
+  "source_sha256": {
+    "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+    "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "d6e6f04d155854caf57f32b35bb4b8494d023d6f58bf0a05f40ba544b6466aa6"
+  },
+  "environment_overrides": {
+    "MSBUILDDISABLENODEREUSE": "1",
+    "DOTNET_CLI_USE_MSBUILD_SERVER": "0"
+  },
+  "source_inputs_unchanged": true
+}

@@ -95,7 +95,7 @@ internal sealed class ProbeGateHandler(IOptions<VerifierHostOptions> configured,
                 return parsed.IsSuccess ? new(path, ProbeGateInputStatus.Readable, parsed.Value) :
                     new(path, ProbeGateInputStatus.Unreadable, null);
             }
-            catch (FileNotFoundException)
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
             {
                 CheckDeadline(origin, options.IoTimeout!.Value, cancellationToken);
                 return new(path, ProbeGateInputStatus.Missing, null);

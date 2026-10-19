@@ -1,0 +1,75 @@
+{
+  "note": "Initial post-fix invocation exposed an error in the new expected fixture: observation:null was encoded although the existing codec omits absent observation. All assertions were retained; only new expected JSON was corrected. Initial receipts and artifacts remain verbatim in red-initial and green-initial; their argv record the original red/green directories before relocation. Final red/green use identical corrected test source. No tests rerun after final green pass.",
+  "invocations": [
+    {
+      "retained_directory": ".artifacts/issue-80-pr6a/missing-parent/red-initial",
+      "test_receipt": ".artifacts/issue-80-pr6a/missing-parent/red-initial/command.json",
+      "build_receipt": ".artifacts/issue-80-pr6a/missing-parent/red-initial/build.json",
+      "elapsed_seconds": 2.2863144599996303,
+      "test_exit_code": 2,
+      "executed": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "build_exit_code": 0,
+      "build_elapsed_seconds": 13.251134685999205,
+      "source_sha256": {
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "5da42ae223684329ccd94892691eeb99be00afcaef24f03ff11f11dfe7c79958",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "d6e6f04d155854caf57f32b35bb4b8494d023d6f58bf0a05f40ba544b6466aa6"
+      }
+    },
+    {
+      "retained_directory": ".artifacts/issue-80-pr6a/missing-parent/green-initial",
+      "test_receipt": ".artifacts/issue-80-pr6a/missing-parent/green-initial/command.json",
+      "build_receipt": ".artifacts/issue-80-pr6a/missing-parent/green-initial/build.json",
+      "elapsed_seconds": 9.69669144799991,
+      "test_exit_code": 2,
+      "executed": 59,
+      "passed": 58,
+      "failed": 1,
+      "skipped": 0,
+      "build_exit_code": 0,
+      "build_elapsed_seconds": 6.7973371719999705,
+      "source_sha256": {
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "d6e6f04d155854caf57f32b35bb4b8494d023d6f58bf0a05f40ba544b6466aa6"
+      }
+    },
+    {
+      "retained_directory": ".artifacts/issue-80-pr6a/missing-parent/red",
+      "test_receipt": ".artifacts/issue-80-pr6a/missing-parent/red/command.json",
+      "build_receipt": ".artifacts/issue-80-pr6a/missing-parent/red/build.json",
+      "elapsed_seconds": 2.180353847999868,
+      "test_exit_code": 2,
+      "executed": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "build_exit_code": 0,
+      "build_elapsed_seconds": 10.306088670999088,
+      "source_sha256": {
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "5da42ae223684329ccd94892691eeb99be00afcaef24f03ff11f11dfe7c79958",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087"
+      }
+    },
+    {
+      "retained_directory": ".artifacts/issue-80-pr6a/missing-parent/green",
+      "test_receipt": ".artifacts/issue-80-pr6a/missing-parent/green/command.json",
+      "build_receipt": ".artifacts/issue-80-pr6a/missing-parent/green/build.json",
+      "elapsed_seconds": 11.06735959300022,
+      "test_exit_code": 0,
+      "executed": 59,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "build_exit_code": 0,
+      "build_elapsed_seconds": 5.24066424099874,
+      "source_sha256": {
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087"
+      }
+    }
+  ],
+  "corrected_test_source_identical": true,
+  "red_handler_matches_head_1525d4d": true
+}

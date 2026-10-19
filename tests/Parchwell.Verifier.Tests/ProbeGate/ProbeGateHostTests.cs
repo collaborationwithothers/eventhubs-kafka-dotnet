@@ -25,6 +25,34 @@ public sealed class ProbeGateHostTests
         Assert.Equal(ExpectedGateBytes(fixture), await File.ReadAllBytesAsync(fixture.Options.GateOutputPath!, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task Given_RepeatResultParentIsMissing_When_ProductionProcessRuns_Then_RetainsAllRepeatsAndReportsMissingResult()
+    {
+        using var fixture = new ProbeGateEvidenceBuilder();
+        fixture.WriteLocalInputs();
+        string missingPath = Path.Combine(fixture.Root, "missing-parent", "probe-1.json");
+        fixture.Options.RepeatResultPaths![0] = missingPath;
+        Assert.False(Directory.Exists(Path.GetDirectoryName(missingPath)));
+        JsonObject expected = JsonNode.Parse(ExpectedGateBytes(fixture))!.AsObject();
+        expected["outcome"] = "inconclusive";
+        expected["repeats"]!.AsArray()[0] = new JsonObject
+        {
+            ["path"] = missingPath, ["identity"] = null, ["usable"] = false,
+            ["qualifying"] = false, ["reason"] = "missing_result"
+        };
+
+        (int exitCode, string log) = await RunProductionAsync(fixture.Arguments());
+
+        Assert.True(exitCode == 0, log);
+        byte[] actual = await File.ReadAllBytesAsync(fixture.Options.GateOutputPath!, TestContext.Current.CancellationToken);
+        using JsonDocument output = JsonDocument.Parse(actual);
+        Assert.Equal("inconclusive", output.RootElement.GetProperty("outcome").GetString());
+        Assert.Equal(5, output.RootElement.GetProperty("repeats").GetArrayLength());
+        Assert.Equal("missing_result", output.RootElement.GetProperty("repeats")[0].GetProperty("reason").GetString());
+        Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expected), actual);
+        Assert.False(Directory.Exists(Path.GetDirectoryName(missingPath)));
+    }
+
     [Theory]
     [InlineData("pass", "pass")]
     [InlineData("untestable", "untestable_at_build_scale")]
