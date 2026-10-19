@@ -176,11 +176,13 @@ internal static class StatisticsChecks
             HashSet<string>? allowed = null;
             for (int index = 0; index <= prefixEnd; index++)
             {
-                if (reportSets[index] is not { } current)
+                var observedSet = reportSets[index];
+                if (!observedSet.HasValue)
                 {
                     checks[26].Missing = true;
                     continue;
                 }
+                var current = observedSet.Value;
                 if (current.Unknown.Count != 0) checks[26].Missing = true;
                 var currentAllowed = new HashSet<string>(current.Included, StringComparer.Ordinal);
                 currentAllowed.UnionWith(current.Unknown);
