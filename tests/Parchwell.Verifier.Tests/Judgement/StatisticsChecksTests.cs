@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun.Input;
@@ -378,6 +379,101 @@ public sealed class StatisticsChecksTests
         request = WithReports(request, [request.Reports[0], request.Reports[1], request.Reports[2] with { Native = ReadNative("{") }]);
         AssertCheck(request, 24, true);
         AssertCheck(request, 26, true);
+        AssertNotEvaluated(request, 25);
+    }
+
+    [Fact]
+    public void Given_BrokerChurnBeforeUnreadableTimestamp_When_Evaluated_Then_Check26RetainsWitnessedFailure()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40),
+            RecordedEvidence.Report(95, 45, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")]),
+            RecordedEvidence.Report(100, 50) with { Native = ReadNative("{") },
+            RecordedEvidence.Report(110, 60, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        AssertCheck(request, 26, false);
+        AssertNotEvaluated(request, 25);
+        ResultDiagnostic diagnostic = StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics[0];
+        Assert.Equal(2, diagnostic.Row);
+        Assert.Equal("brokers", diagnostic.Field);
+    }
+
+    [Fact]
+    public void Given_StablePrefixAndChurnOnlyAfterUnreadableTimestamp_When_Evaluated_Then_Check26IsUnevaluated()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40), RecordedEvidence.Report(95, 45),
+            RecordedEvidence.Report(100, 50) with { Native = ReadNative("{") },
+            RecordedEvidence.Report(110, 60, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        AssertNotEvaluated(request, 26);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Given_MissingSourceAndDefiniteKeyAdditionOrRemoval_When_Evaluated_Then_Check26Fails(bool removal)
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        NativeBrokerReport uncertain = a with { Source = ParsedField<string>.Missing() };
+        NativeBrokerReport[] before = removal ? [a, b] : [a];
+        NativeBrokerReport[] after = removal ? [uncertain] : [uncertain, b];
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, before), RecordedEvidence.Report(100, 50, after)]);
+        AssertCheck(request, 21, false);
+        AssertCheck(request, 26, false);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Given_OnlyAmbiguousSourceKeyAdditionOrRemoval_When_Evaluated_Then_Check26DoesNotInventAChange(bool removal)
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport uncertain = RecordedEvidence.Broker("broker-b") with { Source = ParsedField<string>.Missing() };
+        NativeBrokerReport[] before = removal ? [a, uncertain] : [a];
+        NativeBrokerReport[] after = removal ? [a] : [a, uncertain];
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, before), RecordedEvidence.Report(100, 50, after)]);
+        AssertCheck(request, 21, false);
+        AssertNotEvaluated(request, 26);
+    }
+
+    [Fact]
+    public void Given_PreBoundaryChurnWithoutPostDrainReport_When_Evaluated_Then_Check26RetainsWitnessedFailure()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40),
+            RecordedEvidence.Report(95, 45, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        AssertCheck(request, 25, false);
+        AssertCheck(request, 26, false);
+    }
+
+    [Fact]
+    public void Given_ChurnWithoutDrainBoundary_When_Evaluated_Then_Check26HasNoDefinedPrefix()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40),
+            RecordedEvidence.Report(100, 50, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        request = WithCompletion(request, request.Capabilities.Value!.StatisticsCompletion.Value! with
+        {
+            DrainBoundaryMicroseconds = ParsedField<long>.Missing()
+        });
+        AssertCheck(request, 19, false);
+        AssertNotEvaluated(request, 26);
+    }
+
+    [Fact]
+    public void Given_SyntheticUnknownTimestampWithDefiniteChurn_When_Evaluated_Then_UnknownEndpointReportIsIncluded()
+    {
+        ReportAssociation uncertain = RecordedEvidence.Report(100, 50, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")]);
+        uncertain = uncertain with { Native = ParseResult<NativeClientReport>.Success(uncertain.Native.Value! with
+        {
+            TimestampMicroseconds = ParsedField<long>.Missing()
+        }) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40), uncertain,
+            RecordedEvidence.Report(110, 60, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        AssertCheck(request, 26, false);
         AssertNotEvaluated(request, 25);
     }
 

@@ -32,7 +32,8 @@ internal static class OutcomeClassifier
             long? maximum = null;
             foreach (ConsumedRecord record in partitionKey.OrderBy(r => r.Offset))
             {
-                if (record.Sequence is not long sequence) continue;
+                if (!record.Sequence.HasValue) continue;
+                long sequence = record.Sequence.Value;
                 if (maximum.HasValue && sequence < maximum.Value) reorder++;
                 if (!maximum.HasValue || sequence > maximum.Value) maximum = sequence;
             }

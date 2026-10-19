@@ -49,9 +49,10 @@ internal static class StatisticsChecks
         var counters = new Dictionary<(string Broker, string Field), long>();
         var observed = new HashSet<string>(StringComparer.Ordinal);
         var qualifying = new HashSet<string>(StringComparer.Ordinal);
-        var reportSets = new List<HashSet<string>?>();
+        var reportSets = new List<(HashSet<string> Included, HashSet<string> Unknown)?>();
         int? selected = null;
         bool selectionUnknown = !associationsComplete;
+        int? firstUnknownTimestamp = associationsComplete ? null : 0;
         bool boundaryAvailable = completion is not null && completion.DrainBoundaryMicroseconds.Presence == FieldPresence.Value;
 
         for (int index = 0; index < request.Reports.Count; index++)
@@ -67,7 +68,11 @@ internal static class StatisticsChecks
             {
                 foreach (int number in new[] { 21, 22, 23, 25 }) checks[number].Missing = true;
                 reportSets.Add(null);
-                if (selected is null) selectionUnknown = true;
+                if (selected is null)
+                {
+                    selectionUnknown = true;
+                    firstUnknownTimestamp ??= index;
+                }
                 continue;
             }
 
@@ -91,7 +96,11 @@ internal static class StatisticsChecks
             else
             {
                 checks[22].Missing = true;
-                if (selected is null) selectionUnknown = true;
+                if (selected is null)
+                {
+                    selectionUnknown = true;
+                    firstUnknownTimestamp ??= index;
+                }
             }
 
             if (report.Brokers.Presence != FieldPresence.Value)
@@ -101,7 +110,7 @@ internal static class StatisticsChecks
                 continue;
             }
             var keys = new HashSet<string>(StringComparer.Ordinal);
-            bool sourceMissing = false;
+            var unknown = new HashSet<string>(StringComparer.Ordinal);
             foreach (NativeBrokerReport broker in report.Brokers.Value!.Values)
             {
                 string key = broker.DictionaryKey;
@@ -120,11 +129,11 @@ internal static class StatisticsChecks
                 }
                 RequireWindow(checks[21], broker.Throttle, row, key, "throttle", maximum: true);
                 RequireWindow(checks[21], broker.RoundTripTime, row, key, "rtt", maximum: false);
-                if (broker.Source.Presence != FieldPresence.Value) sourceMissing = true;
+                if (broker.Source.Presence != FieldPresence.Value) unknown.Add(key);
                 else if (IsQualifyingSource(broker.Source.Value)) { keys.Add(key); qualifying.Add(key); }
             }
-            reportSets.Add(sourceMissing ? null : keys);
-            if (sourceMissing) checks[25].Missing = true;
+            reportSets.Add((keys, unknown));
+            if (unknown.Count != 0) checks[25].Missing = true;
         }
 
         if (completion is null) checks[24].Missing = true;
@@ -156,15 +165,31 @@ internal static class StatisticsChecks
                     if (!report.Brokers.Value!.ContainsKey(key)) checks[25].Fail("statistics.jsonl", first + 1L, "brokers." + key);
             }
             else checks[25].Missing = true;
-            HashSet<string>? initial = null;
-            for (int index = 0; index <= first; index++)
+        }
+
+        if (boundaryAvailable)
+        {
+            int prefixEnd = selected ?? reportSets.Count - 1;
+            if (firstUnknownTimestamp is int uncertain) prefixEnd = Math.Min(prefixEnd, uncertain);
+            if (selected is null || selectionUnknown) checks[26].Missing = true;
+            var included = new HashSet<string>(StringComparer.Ordinal);
+            HashSet<string>? allowed = null;
+            for (int index = 0; index <= prefixEnd; index++)
             {
-                if (reportSets[index] is not { } current) checks[26].Missing = true;
-                else
+                if (reportSets[index] is not { } current)
                 {
-                    initial ??= current;
-                    if (!initial.SetEquals(current)) checks[26].Fail("statistics.jsonl", index + 1L, "brokers");
+                    checks[26].Missing = true;
+                    continue;
                 }
+                if (current.Unknown.Count != 0) checks[26].Missing = true;
+                var currentAllowed = new HashSet<string>(current.Included, StringComparer.Ordinal);
+                currentAllowed.UnionWith(current.Unknown);
+                // Present versus definitely absent witnesses a change even with partial reports.
+                if ((allowed is not null && !current.Included.IsSubsetOf(allowed)) || !included.IsSubsetOf(currentAllowed))
+                    checks[26].Fail("statistics.jsonl", index + 1L, "brokers");
+                included.UnionWith(current.Included);
+                if (allowed is null) allowed = currentAllowed;
+                else allowed.IntersectWith(currentAllowed);
             }
         }
         return checks.Values.Select(check => check.Result()).ToArray();
