@@ -1,5 +1,176 @@
 # Verifier mutation record
 
+## PR 6a judgement measurement
+
+The sole full mutation invocation reached its 3600-second cap after logging 5670 generated mutants. The controller killed its process group before Stryker published a JSON report, so PR 6a has no measured score or serialized mutant-status counts. Full mutation acceptance remains incomplete and needs a new bounded allowance from Hari; this document does not claim a pass.
+
+PR 6a measures the judgement scope in the [approved revision 3 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265325109), as amended by the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6265509393) and the [approval's preceding-tested-head correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787). The selected patterns are `VerifyRun/Judgement/*.cs`, `VerifyRun/Window/*.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs` and `ProbeGate/ProbeGateEvaluator.cs`. Release, `net10.0`, the pinned MTP runner, the configured reporters, high/low thresholds and `break: 0` are retained. Parser, codec, host, transport, DTO and orchestration code have no added mutation scope, and no score-improving exclusions are introduced.
+
+These files are local implementation-support measurements. They do not constitute scenario verdicts or evidence under `results/`. Final-code survivor dispositions, survivor replays, independent preview-runner verification, a threshold proposal, Hari's accepted number on #13 and the break-threshold edit belong to PR 6b. PR 6a performs zero manual survivor dispositions and zero manual survivor replays. The historical PR 3-5 measurements below retain their original scope and tested identities; the historical PR 5 score is not a PR 6a measurement or a threshold proposal. The item-plan threshold requirement still precedes live use.
+
+### Execution bounds and retained support
+
+The split decision Q1 authorizes one full mutation invocation before the first push, limited to 3600 seconds and 10000 generated mutants; at most six review-fix `since` invocations, each limited to 1200 seconds and 10000 generated mutants; and at most three full component-suite invocations, each limited to 1800 seconds. Failed invocations consume the same allowance. During a running mutation or suite command, the session waits with one blocking call bounded by the remaining cap and does not poll. Other runtime-sized work follows `AGENTS.md` "Before opening a pull request" rule 11.
+
+The retained [exact controller source](evidence/issue-80-pr6a/controller.py) starts a process group, captures the child command log, enforces the authorized elapsed and generated-mutant limits, terminates the process group on a limit and never restarts the child. Its [full-run receipt](evidence/issue-80-pr6a/controller.json) records the child argv, cwd, command-scoped environment overrides, invocation ordinal, tested and comparison commits, termination/completeness information, elapsed time and observed generated counts. The [tested-source manifest](evidence/issue-80-pr6a/tested-source.json) records the tested commit/tree, dirty-diff identity, source-input hashes, configuration hash and exact controller hash; the receipt also records whether source/configuration inputs changed during the command.
+
+The retained [command log](evidence/issue-80-pr6a/command.log.gz), [discovery availability record](evidence/issue-80-pr6a/discovery.json), [extraction summary](evidence/issue-80-pr6a/extraction-summary.json) and [log summary](evidence/issue-80-pr6a/log-summary.json) preserve the available evidence. Decompress the log with `gzip -dc`. The one authorized extraction attempt found no report and enumerated no mutant records; serialized counts, reconciliation and score are unavailable. A separate post-completion log scan retained discovery and warning metadata. Missing reports, capped runs, empty discovery, incomplete statuses and tool warnings remain explicit; historical evidence is never substituted for them.
+
+### Compile inventories and discovery timing
+
+The retained [normal Compile inventory](evidence/issue-80-pr6a/compile-normal.json) contains 35 entries, and the [mutation-only Compile inventory](evidence/issue-80-pr6a/compile-mutation.json) contains 28. Their [reconciliation](evidence/issue-80-pr6a/compile-reconciliation.json) removes exactly `Component/**/*.cs` and `Support/ComponentEvidenceBuilder.cs`, adds no files and retains the deterministic A01 recorder, gate evaluator, local gate host and diagnostic test sources. These evaluated inventories were retained before the mutation invocation.
+
+The [independent mutation-only preflight](evidence/issue-80-pr6a/preflight-discovery.json) and [raw discovery log](evidence/issue-80-pr6a/preflight-discovery.log.gz) record independent mutation-only MTP preflight, not Stryker discovery. Tested commit: `7738e73e3bcab70d756029e65204be108fa10d75`; assembly SHA-256: `c316032dd72db728e2703fc33adc3273ceb929aa52c1a03e7e0a0d0cca1e1196`. The preflight records 2079 tests and 0 component test names.
+
+The recorded preceding mutation-only build is:
+
+```bash
+ParchwellVerifierMutationOnly=true dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-restore -m:1
+```
+
+The recorded independent discovery command is:
+
+```bash
+ParchwellVerifierMutationOnly=true dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests
+```
+
+| New deterministic class-name substring | Listed tests |
+| --- | --- |
+| .A01.A01EvidenceRecorderTests. | 63 |
+| .Host.VerifyRunDiagnosticTests. | 23 |
+| .ProbeGate.ProbeGateEvaluatorTests. | 48 |
+| .ProbeGate.ProbeGateHostTests. | 57 |
+
+Pinned Stryker 5.0.0 has no documented standalone discovery-only command in its [configuration reference](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/docs/configuration.md). Its own discovery occurs within the single authorized full invocation, before mutation generation: [ProjectOrchestrator obtains initialized test inputs before calling MutateProject](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Initialisation/ProjectOrchestrator.cs#L62-L67), and [InitialisationProcess discovers tests and logs their count before the initial test run](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Initialisation/InitialisationProcess.cs#L81-L92). The stock [JSON reporter writes the report at OnAllMutantsTested](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReporter.cs#L25-L32) and [does not write an OnMutantsCreated report](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReporter.cs#L57-L60). The independent discovery preflight precedes the invocation; Stryker's internal discovery count is retained in that invocation's log, and serialized test-name metadata is available only if the invocation produces its report. The completed-report artifact was not available before the invocation.
+
+Stryker logged 2079 discovered tests during initialization, matching the independent preflight count. The capped invocation produced no serialized test-name metadata. Its component-test absence cannot be independently reconciled from a report; the preflight absence is retained separately.
+
+Stryker's report uses [absolute file keys and the mutation project's full path as projectRoot](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs#L22-L29), with [fileComponent.FullPath keys](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs#L64-L68). Extraction normalizes path separators and removes only an exact `projectRoot/` prefix before matching the selected patterns. A foreign absolute path cannot pass through a matching suffix.
+
+### Component-suite evidence
+
+The component allowance is recorded per actual invocation, including unsuccessful execution.
+
+| Invocation | Tested commit | Command and observed result | Elapsed seconds | Retained evidence |
+| --- | --- | --- | --- | --- |
+| 1 | `882f0fccdc18b2b8dbfeaecc21e41779cd055916` | Dedicated verifier suite; exit 0; XML totals {"errors": 0, "failed": 0, "not-run": 0, "passed": 2088, "skipped": 0, "total": 2088} | 148.296951638 | [Receipt](evidence/issue-80-pr6a/validation/verifier/controller.json), [source identity](evidence/issue-80-pr6a/validation/verifier/tested-source.json), [log](evidence/issue-80-pr6a/validation/verifier/command.log.gz), [results.xml.gz](evidence/issue-80-pr6a/validation/verifier/results.xml.gz) |
+| 2 | `3d0b03d84681f94b5033adc528ddb91bb4f0c509` | verify-dotnet.sh first invocation; exit 1; build diagnostic MSB4166 | 12.749410620000049 | [Receipt](evidence/issue-80-pr6a/validation/verify-dotnet-failed/controller.json), [source identity](evidence/issue-80-pr6a/validation/verify-dotnet-failed/tested-source.json), [log](evidence/issue-80-pr6a/validation/verify-dotnet-failed/command.log.gz) |
+| 3 | `3d0b03d84681f94b5033adc528ddb91bb4f0c509` | verify-dotnet.sh final invocation; exit 0; XML totals {"errors": 0, "failed": 0, "not-run": 0, "passed": 2761, "skipped": 0, "total": 2761} | 642.436325708 | [Receipt](evidence/issue-80-pr6a/validation/verify-dotnet/controller.json), [source identity](evidence/issue-80-pr6a/validation/verify-dotnet/tested-source.json), [log](evidence/issue-80-pr6a/validation/verify-dotnet/command.log.gz), [Parchwell.ArchitectureTests.xml.gz](evidence/issue-80-pr6a/validation/verify-dotnet/Parchwell.ArchitectureTests.xml.gz), [Parchwell.Kafka.Tests.xml.gz](evidence/issue-80-pr6a/validation/verify-dotnet/Parchwell.Kafka.Tests.xml.gz), [Parchwell.LoadGen.Tests.xml.gz](evidence/issue-80-pr6a/validation/verify-dotnet/Parchwell.LoadGen.Tests.xml.gz), [Parchwell.Scenarios.Tests.xml.gz](evidence/issue-80-pr6a/validation/verify-dotnet/Parchwell.Scenarios.Tests.xml.gz), [Parchwell.Verifier.Tests.xml.gz](evidence/issue-80-pr6a/validation/verify-dotnet/Parchwell.Verifier.Tests.xml.gz) |
+
+Actual child cwd: `/workspace/eventhubs-kafka-dotnet`. Command-scoped environment overrides: `{"DOTNET_PROCESSOR_COUNT": "1", "MSBUILDDISABLENODEREUSE": "1"}`.
+
+```bash
+env DOTNET_PROCESSOR_COUNT=1 MSBUILDDISABLENODEREUSE=1 ./scripts/verify-dotnet.sh
+```
+
+| Assembly | XML total | Passed | Failed | Skipped | Errors | Not run |
+| --- | --- | --- | --- | --- | --- | --- |
+| /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll | 8 | 8 | 0 | 0 | 0 | 0 |
+| /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll | 306 | 306 | 0 | 0 | 0 | 0 |
+| /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll | 262 | 262 | 0 | 0 | 0 | 0 |
+| /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll | 94 | 94 | 0 | 0 | 0 | 0 |
+| /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll | 2091 | 2091 | 0 | 0 | 0 | 0 |
+
+A separate discovery total is not inferred from an execution XML total. The retained script summary records:
+
+- Locked restore: passed
+- Solution build: passed
+- Kafka XML inventory consistency: passed
+- Parchwell.ArchitectureTests tests: passed
+- Parchwell.ArchitectureTests report: passed
+-   Parchwell.ArchitectureTests: 8 passed; checked report.
+- Unit scaffold inventory: passed
+- Parchwell.Kafka.Tests tests: passed
+- Parchwell.Kafka.Tests report: passed
+-   Parchwell.Kafka.Tests: 306 passed; checked report.
+- Parchwell.LoadGen.Tests tests: passed
+- Parchwell.LoadGen.Tests report: passed
+-   Parchwell.LoadGen.Tests: 262 passed; checked report.
+- Parchwell.Scenarios.Tests tests: passed
+- Parchwell.Scenarios.Tests report: passed
+-   Parchwell.Scenarios.Tests: 94 passed; checked report.
+- Parchwell.Verifier.Tests tests: passed
+- Parchwell.Verifier.Tests report: passed
+-   Parchwell.Verifier.Tests: 2091 passed; checked report.
+- Warning control restore: passed
+- Warning control valid counterpart: passed
+- Warning-as-error control: valid counterpart built; intended CS1030 error rejected.
+- Verification passed. Per-project reports identify the tests executed.
+
+### Full mutation report
+
+Configured SDK: `10.0.402` from `global.json`; configured xunit.v3.mtp-v2: `4.0.2` from `Directory.Packages.props`; locked Microsoft.Testing.Platform versions: `["2.5.1"]`; configured dotnet-stryker: `5.0.0` from `.config/dotnet-tools.json`. These are configured/locked identities, not a new tool-version execution. Retained suite XML execution environments: `["64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 1 thread)]"]`. Current version-source bytes match the tested-source manifest as follows: `{".config/dotnet-tools.json": true, "Directory.Packages.props": true, "global.json": true, "tests/Parchwell.Verifier.Tests/packages.lock.json": true}`. A false entry means that current configured version is not established as the tested input.
+
+The child command runs from `tests/Parchwell.Verifier.Tests`, under the retained bounded controller:
+
+```bash
+env ParchwellVerifierMutationOnly=true MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 dotnet stryker --config-file stryker-config.json --output ../../.artifacts/issue-80-pr6a/mutation-full
+```
+
+Actual child cwd: `/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests`. Command-scoped environment overrides: `{"DOTNET_CLI_USE_MSBUILD_SERVER": "0", "MSBUILDDISABLENODEREUSE": "1", "ParchwellVerifierMutationOnly": "true"}`. Invocation ordinal: 1.
+
+| Measure | Recorded value |
+| --- | --- |
+| Tested commit | `539d525251ecae74348621701cfcb294e83db94b` |
+| Comparison commit | `null` (full invocation) |
+| Actual wall-time / generated-mutant limits | 3600 seconds / 10000 mutants |
+| Tested commit tree | `c6e5e4d41450c8c61f8a073603674d4835480787` |
+| Dirty diff SHA-256 and bytes | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`; 0 bytes |
+| Source-input manifest SHA-256 | `1ae80d7cce1c5f7c1f8cbceee31276ead5b75d2577cbf3b1334c894704554130` |
+| Configuration SHA-256 | `ab8155d8269027faebbe082a319bd76bf2c86b3cbc9e993ddc65a6e853d6c68b` |
+| Exact controller SHA-256 | `595b54581b234e4706447ce0caa2be16167fae04bd3473c5b3df28056c3583c8` |
+| Source/configuration inputs unchanged during execution | true |
+| Start and finish UTC | 2026-10-19T11:57:38.689714+00:00 / 2026-10-19T12:57:38.759512+00:00 |
+| Elapsed seconds | 3600.0695566080003 |
+| Child exit status and controller exit reason | -9 / elapsed-cap |
+| Termination / cap reached | {"process_group": 24102, "signal": "SIGKILL", "utc": "2026-10-19T12:57:38.692596+00:00"} |
+| Log generated-count observations and maximum | [5670]; maximum 5670 |
+| JSON-report serialized mutant records | not recorded |
+| Generated minus serialized records | not recorded |
+| Generated/serialized reconciliation | not recorded |
+| Uncompressed JSON-report SHA-256 | `not recorded` |
+| Report path and bytes | /workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/mutation-full/reports/mutation-report.json; not recorded bytes |
+| Report completeness | incomplete-or-missing |
+| Score numerator / denominator | not recorded / not recorded |
+| Score | not recorded (undefined/unavailable) |
+| Selected source files | `ProbeGate/ProbeGateEvaluator.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs`, `VerifyRun/Judgement/BookkeepingChecks.cs`, `VerifyRun/Judgement/BrokerCountRecorder.cs`, `VerifyRun/Judgement/ConfigurationFidelityCheck.cs`, `VerifyRun/Judgement/LateWriteChecks.cs`, `VerifyRun/Judgement/OutcomeClassifier.cs`, `VerifyRun/Judgement/RunJudgement.cs`, `VerifyRun/Judgement/StatisticsChecks.cs`, `VerifyRun/Window/ConsumedRecordBudget.cs`, `VerifyRun/Window/MessageIdentityReader.cs`, `VerifyRun/Window/RunWindow.cs`, `VerifyRun/Window/WindowConsumer.cs` |
+| Tested statuses outside selected scope | not recorded |
+| Tool warning occurrences | 695; see warning summary below |
+
+No serialized status counts are available from the authorized extraction; none are inferred.
+
+The score is `(Killed + Timeout) / (Killed + Timeout + Survived + NoCoverage) * 100`, following the [pinned score implementation](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs#L31-L73). CompileError, RuntimeError and Ignored are outside that denominator. Timeout remains a separate status. A zero denominator has no defined score. A score from an incomplete or capped population is provisional and cannot establish passing evidence.
+
+The post-completion log scan retains 695 warning-line occurrences, copied into the extraction summary as log metadata.
+
+| Warning category | Occurrences |
+| --- | --- |
+| Compilation warning | 1 |
+| Coverage relay acknowledgement / Dubious | 691 |
+| Preview-runner warning | 1 |
+| Target-framework discovery / assumption | 2 |
+
+Exact warning lines and frequencies remain in the extraction summary. Runner warnings and Dubious coverage acknowledgements are distinct from mutant Timeout statuses. Preview-runner interpretation remains PR 6b work; no survivor disposition is made here.
+
+Evidence is incomplete or unreconciled: child exit -9; controller termination {"process_group": 24102, "signal": "SIGKILL", "utc": "2026-10-19T12:57:38.692596+00:00"}; the original mutation report was missing; authorized extraction did not complete; extraction failure: retained report missing; no report enumeration performed; extraction report completeness is incomplete-or-missing; serialized Stryker discovery metadata was not established. No serialized score is available and no passing acceptance or threshold is claimed. No restart, historical substitution, survivor replay or survivor remediation is inferred.
+
+### Review-fix invocations
+
+Each actual review-fix invocation retains a separate `since-<n>/` receipt, source identity, command log, report, discovery and extraction summary under `evidence/issue-80-pr6a/`. The [approval amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6266145787) requires `--since:<preceding-tested-head>`: the first compares with the full-run tested head, and each subsequent invocation compares with the head tested by the preceding mutation invocation. Every receipt names both the comparison and tested commits. The [pinned since configuration](https://github.com/stryker-mutator/stryker-net/blob/dotnet-stryker@5.0.0/docs/configuration.md#since-flag-committish) defines the flag.
+
+```bash
+ParchwellVerifierMutationOnly=true dotnet stryker --config-file stryker-config.json --output ../../.artifacts/issue-80-pr6a/since-<n> --since:<preceding-tested-head>
+```
+
+The command above is the authorized invocation pattern; it is not evidence that an incremental invocation occurred.
+
+No `since` invocation evidence is retained; no incremental measurement is claimed.
+
+The capped invocation tested `539d525251ecae74348621701cfcb294e83db94b`. Subsequent evidence and documentation changes do not change the recorded source inputs; this identity does not supply a completed mutation measurement. Historical PR 5 results do not substitute for PR 6a coverage.
+
+
+Full-run dirty-diff scope: `tracked HEAD diff excluding this PR's retained evidence directory`.
+
 ## PR 5 window scope
 
 PR 5 measures the existing judgement code and the new Kafka window decisions. The selected globs are `VerifyRun/Judgement/*.cs` and `VerifyRun/Window/*.cs`; orchestration, Blob/auth lifetime, host code and passive codecs remain outside judgement scope under [the approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6259391036) and [Q6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6259492117). PR 6 retains final survivor dispositions and the measured break threshold; break remains zero.
