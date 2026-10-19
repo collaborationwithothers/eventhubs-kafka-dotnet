@@ -29,6 +29,7 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
     internal Dictionary<string, byte[]> Inputs { get; } = new(StringComparer.Ordinal);
     internal Dictionary<string, byte[]> Outputs { get; } = new(StringComparer.Ordinal);
     internal Action? AfterEndQuery { get; set; }
+    internal Action? AfterAssign { get; set; }
     internal List<ErrorCode> NativeErrors { get; } = [];
     internal VerifierHostOptions Options { get; } = new()
     {
@@ -155,6 +156,12 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
             {
                 var action = AfterEndQuery;
                 AfterEndQuery = null;
+                action?.Invoke();
+            }
+            if (end && method.Name == "Assign")
+            {
+                var action = AfterAssign;
+                AfterAssign = null;
                 action?.Invoke();
             }
             return result;

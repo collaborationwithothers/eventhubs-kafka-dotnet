@@ -60,7 +60,7 @@ internal sealed class VerifierKafkaSession
     }
 
     public IReadOnlyDictionary<int, long> ReadHighWatermarks(Action? beforeFirstWatermark = null,
-        CancellationToken cancellationToken = default)
+        Func<TimeSpan>? remainingSafetyTime = null, CancellationToken cancellationToken = default)
     {
         if (!installed)
             throw new VerifierKafkaOperationException("Kafka token installation has not completed.");
@@ -85,13 +85,23 @@ internal sealed class VerifierKafkaSession
             {
                 if (highs.Count == 0)
                     beforeFirstWatermark?.Invoke();
-                TimeSpan remaining = Remaining(origin, budget, cancellationToken);
+                TimeSpan remaining = RemainingWatermarkTime();
                 WatermarkOffsets offsets = Consumer.QueryWatermarkOffsets(
                     new TopicPartition(Topic, partition.PartitionId), remaining);
-                _ = Remaining(origin, budget, cancellationToken);
+                _ = RemainingWatermarkTime();
                 highs.Add(partition.PartitionId, offsets.High.Value);
             }
             return highs;
+
+            TimeSpan RemainingWatermarkTime()
+            {
+                TimeSpan remaining = Remaining(origin, budget, cancellationToken);
+                if (remainingSafetyTime is null) return remaining;
+                TimeSpan safetyRemaining = remainingSafetyTime();
+                if (safetyRemaining <= TimeSpan.Zero)
+                    throw new TimeoutException("Kafka watermark safety budget expired.");
+                return safetyRemaining < remaining ? safetyRemaining : remaining;
+            }
         }
         catch (Exception exception) when (exception is KafkaException or TimeoutException or OperationCanceledException)
         {

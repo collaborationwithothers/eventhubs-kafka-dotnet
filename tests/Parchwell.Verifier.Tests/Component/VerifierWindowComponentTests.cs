@@ -130,7 +130,7 @@ public sealed class VerifierWindowComponentTests
         else
         {
             run.Options.SafetyStop = TimeSpan.FromMilliseconds(1000);
-            run.AfterEndQuery = () => Task.Delay(TimeSpan.FromMilliseconds(1001), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+            run.AfterAssign = () => Task.Delay(TimeSpan.FromMilliseconds(1001), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
         }
         Assert.Equal(1, await run.VerifyAsync(TestContext.Current.CancellationToken));
         AssertFailed(run, failedCheck, defect == "safety-stop" ? "incomplete" : "invalid");

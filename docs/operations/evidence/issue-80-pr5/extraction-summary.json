@@ -24,6 +24,7 @@
   "test_file_count": 23,
   "test_count": 1810,
   "component_tests": [],
+  "test_grouping_method": "Case-sensitive substring match of Window or Judgement anywhere in the full test name; not namespace or directory counts.",
   "window_test_count": 140,
   "judgement_test_count": 382,
   "manual_survivor_replays": 0,

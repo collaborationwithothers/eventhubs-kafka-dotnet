@@ -11,6 +11,17 @@ namespace Parchwell.Verifier.Tests.Host;
 public sealed class StartLineHandlerTests
 {
     [Fact]
+    public async Task Given_SafetyBudgetShorterThanQuery_When_CapturingStartLine_Then_OnlyWatermarkPhaseBudgetApplies()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.Options.SafetyStop = TimeSpan.FromMilliseconds(10);
+        fixture.Kafka.Query = _ => { fixture.Kafka.Clock.Advance(100); return new WatermarkOffsets(0, 0); };
+        Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
+        Assert.Equal([TimeSpan.FromMilliseconds(1000)], fixture.Kafka.QueryTimeouts);
+        Assert.Equal(1, fixture.Creates);
+    }
+
+    [Fact]
     public async Task Given_EmptyPartition_When_Capturing_Then_CleansNativeClientsBeforeOneSuccessfulNotePublication()
     {
         using var fixture = new HostEvidenceBuilder();

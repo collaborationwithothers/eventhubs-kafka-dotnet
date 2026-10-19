@@ -93,7 +93,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 {
                     origin = clock.GetTimestamp();
                     safetyTimer = clock.CreateTimer(_ => kafkaWork.Cancel(), null, options.SafetyStop!.Value, Timeout.InfiniteTimeSpan);
-                }, cancellationToken);
+                }, () => options.SafetyStop!.Value - clock.GetElapsedTime(origin), kafkaWork.Token);
                 assessments.Add(RunWindow.Pass(11));
             }
             catch (VerifierKafkaOperationException)

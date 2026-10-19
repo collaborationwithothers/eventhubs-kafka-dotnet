@@ -370,6 +370,55 @@ public sealed class VerifyRunHandlerTests
         if (phase == "upload") Assert.NotNull(fixture.Output);
     }
 
+    [Theory]
+    [InlineData(999, false)]
+    [InlineData(1000, false)]
+    [InlineData(1001, false)]
+    [InlineData(999, true)]
+    [InlineData(1000, true)]
+    [InlineData(1001, true)]
+    public async Task Given_WatermarkBudgetLongerThanSafety_When_QueryReturnsNearSafetyDeadline_Then_NativeTimeoutAndCheckElevenHonorSafety(int elapsed, bool delayedTimers)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.Kafka.Options.WatermarkTimeout = TimeSpan.FromMilliseconds(2000);
+        if (delayedTimers) fixture.DelayHandlerTimerCallbacks();
+        fixture.Kafka.Query = _ =>
+        {
+            fixture.Kafka.Clock.Advance(elapsed);
+            return new WatermarkOffsets(0, 1);
+        };
+        Assert.Equal(elapsed < 1000 ? 0 : 1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        Assert.Equal([TimeSpan.FromMilliseconds(1000)], fixture.Kafka.QueryTimeouts);
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        if (elapsed < 1000)
+        {
+            Assert.Equal("complete_valid", output.RootElement.GetProperty("status").GetString());
+            Assert.Equal(1, output.RootElement.GetProperty("ok").GetInt64());
+        }
+        else
+        {
+            AssertFailure(output.RootElement, "incomplete", 11);
+            Assert.DoesNotContain(10, FailedChecks(output.RootElement));
+            Assert.False(output.RootElement.TryGetProperty("end_line", out _));
+            AssertNoDurations(output.RootElement);
+        }
+        Assert.Equal(1, fixture.Creates);
+        Assert.Equal(["admin-dispose", "consumer-dispose"], fixture.Kafka.Events);
+        Assert.Equal("create", fixture.Events[^1]);
+    }
+
+    [Fact]
+    public async Task Given_HostCancellationDuringEndQuery_When_Verifying_Then_CleansAndPropagatesCancellationWithoutPublication()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        using var host = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        fixture.Kafka.Query = _ => { host.Cancel(); return new WatermarkOffsets(0, 1); };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Verify().ExecuteAsync(host.Token));
+        Assert.Equal(["admin-dispose", "consumer-dispose"], fixture.Kafka.Events);
+        Assert.Equal(0, fixture.Creates);
+        Assert.Null(fixture.Output);
+    }
+
     private static void ExpireQuery(HostEvidenceBuilder fixture, string phase, int elapsed)
     {
         if (phase == "token") fixture.Kafka.Poll = () => fixture.Kafka.Clock.Advance(elapsed);

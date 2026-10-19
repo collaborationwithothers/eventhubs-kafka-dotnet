@@ -132,10 +132,53 @@ public sealed class TokenPumpTests
             callbacks++;
             Assert.Empty(fixture.QueryTimeouts);
             Assert.Equal(TimeSpan.FromMilliseconds(300).Ticks, fixture.Clock.GetTimestamp());
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(5, highs[0]);
         Assert.Equal(6, highs[1]);
         Assert.Equal([TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(800)], fixture.QueryTimeouts);
+    }
+
+    [Theory]
+    [InlineData(999)]
+    [InlineData(1000)]
+    [InlineData(1001)]
+    public void Given_MultiplePartitionsWithSafetyBudget_When_ReadingWatermarks_Then_EachNativeTimeoutUsesTheEarlierRemainingDeadline(int safetyMilliseconds)
+    {
+        using var fixture = new KafkaSessionTestSupport();
+        fixture.Install();
+        fixture.ReadMetadata = () => { fixture.Clock.Advance(300); return KafkaSessionTestSupport.Metadata(0, 1); };
+        fixture.Query = partition =>
+        {
+            fixture.Clock.Advance(200);
+            return new WatermarkOffsets(0, partition.Partition.Value + 5);
+        };
+        long origin = 0;
+        IReadOnlyDictionary<int, long> highs = fixture.Session.ReadHighWatermarks(
+            () => origin = fixture.Clock.GetTimestamp(),
+            () => TimeSpan.FromMilliseconds(safetyMilliseconds) - fixture.Clock.GetElapsedTime(origin),
+            TestContext.Current.CancellationToken);
+        int firstBudget = Math.Min(safetyMilliseconds, 1000);
+        Assert.Equal([TimeSpan.FromMilliseconds(firstBudget), TimeSpan.FromMilliseconds(firstBudget - 200)], fixture.QueryTimeouts);
+        Assert.Equal(5, highs[0]);
+        Assert.Equal(6, highs[1]);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Given_SafetyBudgetAlreadyAtBoundary_When_StartingWatermarkQuery_Then_NoNativeCallStartsWithoutTime(int remainingMilliseconds)
+    {
+        using var fixture = new KafkaSessionTestSupport();
+        fixture.Install();
+        if (remainingMilliseconds > 0)
+            Assert.Equal(0, fixture.Session.ReadHighWatermarks(cancellationToken: TestContext.Current.CancellationToken,
+                remainingSafetyTime: () => TimeSpan.FromMilliseconds(remainingMilliseconds))[0]);
+        else
+            Assert.Throws<VerifierKafkaOperationException>(() => fixture.Session.ReadHighWatermarks(
+                cancellationToken: TestContext.Current.CancellationToken,
+                remainingSafetyTime: () => TimeSpan.FromMilliseconds(remainingMilliseconds)));
+        Assert.Equal(remainingMilliseconds > 0 ? [TimeSpan.FromMilliseconds(1)] : [], fixture.QueryTimeouts);
     }
 
     [Theory]
