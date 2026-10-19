@@ -1,3 +1,14 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
+using Parchwell.Kafka.Authentication;
+using Parchwell.Kafka.Configuration;
+using Parchwell.Scenarios;
+using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Scenario;
+using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.StartLine;
+using Parchwell.Verifier.VerifyRun;
+using Parchwell.Verifier.VerifyRun.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -45,10 +56,74 @@ internal static partial class Program
         builder.Services.AddSingleton(timeProvider ?? TimeProvider.System);
         builder.Services.AddSingleton<VerifierExecutionState>();
 
-        // PR 3 intentionally has no production mode handlers or client registrations.
+        RegisterSelectedMode(builder.Services, builder.Configuration);
         configureForTests?.Invoke(builder.Services);
         builder.Services.AddHostedService<VerifierWorker>();
         return builder.Build();
+    }
+
+    private static void RegisterSelectedMode(IServiceCollection services, ConfigurationManager configuration)
+    {
+        string? mode = configuration["Verifier:Mode"];
+        if (mode is not ("start-line" or "verify")) return;
+
+        services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
+        {
+            options.NamespaceName = configuration["Verifier:NamespaceName"]!;
+            options.ClientId = configuration["Verifier:VerifierClientId"]!;
+        });
+        services.AddParchwellKafkaAuthentication(options =>
+        {
+            options.TenantId = configuration["Verifier:TenantId"];
+            options.ClientId = configuration["Verifier:WorkloadIdentityClientId"];
+            options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"];
+        });
+        services.AddSingleton<VerifierKafkaSessionFactory>();
+        services.AddSingleton<IVerifierArtifactStore>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+            return new BlobVerifierArtifactStore(
+                CreateBlobContainer(options, options.VerifierContainer!),
+                options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value,
+                options.MaxOutputBytes!.Value);
+        });
+        if (mode == "start-line")
+        {
+            services.AddSingleton<IVerifierModeHandler, StartLineHandler>();
+            return;
+        }
+
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
+        {
+            options.NamespaceName = configuration["Verifier:NamespaceName"]!;
+            options.ClientId = configuration["Verifier:ClientId"]!;
+        });
+        services.AddParchwellScenarios(options =>
+            configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
+        services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
+            provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
+        services.AddSingleton<ILedgerArtifactSource>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+            return new BlobLedgerArtifactSource(
+                CreateBlobContainer(options, options.LedgerContainer!),
+                options.ArtifactPrefix!, options.MaxArtifactBytes!.Value);
+        });
+        services.AddSingleton<IVerifierModeHandler, VerifyRunHandler>();
+    }
+
+    private static BlobContainerClient CreateBlobContainer(VerifierHostOptions options, string container)
+    {
+        var runnerWorkloadIdentityCredential = new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
+        {
+            TenantId = options.TenantId,
+            ClientId = options.WorkloadIdentityClientId,
+            TokenFilePath = options.FederatedTokenFilePath
+        });
+        var clientOptions = new BlobClientOptions();
+        clientOptions.Retry.MaxRetries = 0;
+        var containerUri = new Uri(new Uri(options.BlobServiceUri!), container);
+        return new BlobContainerClient(containerUri, runnerWorkloadIdentityCredential, clientOptions);
     }
 
     internal static async Task<int> RunAsync(
@@ -152,8 +227,14 @@ internal static partial class Program
             }
         }
 
-        watchdog?.Dispose();
-        return state?.ExitCode ?? 1;
+        try
+        {
+            return state?.ExitCode ?? 1;
+        }
+        finally
+        {
+            watchdog?.Dispose();
+        }
     }
 
     private static async Task WaitForApplicationStopAsync(IHostApplicationLifetime lifetime)
@@ -237,7 +318,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         var values = _configuration
             .AsEnumerable()
             .Where(item => item.Key?.StartsWith("Verifier:", StringComparison.OrdinalIgnoreCase) == true
-                && KeepValue(item.Key, usedBudgets))
+                && KeepValue(item.Key, usedBudgets, mode))
             .Select(item => new KeyValuePair<string, string?>(
                 item.Key!["Verifier:".Length..],
                 item.Value));
@@ -247,9 +328,15 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         filtered.Bind(options);
     }
 
-    private static bool KeepValue(string key, HashSet<string> usedBudgets)
+    private static bool KeepValue(string key, HashSet<string> usedBudgets, string? mode)
     {
         string property = key["Verifier:".Length..];
+        if (property.Equals(nameof(VerifierHostOptions.MaxConsumedRecords), StringComparison.OrdinalIgnoreCase)
+            || property.Equals(nameof(VerifierHostOptions.MaxConsumedBytes), StringComparison.OrdinalIgnoreCase))
+        {
+            return mode == "verify";
+        }
+
         return !IsBudget(property) || usedBudgets.Contains(property);
     }
 

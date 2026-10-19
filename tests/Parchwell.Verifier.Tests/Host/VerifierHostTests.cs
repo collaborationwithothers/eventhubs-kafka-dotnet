@@ -1,10 +1,20 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Verifier;
+using Parchwell.Kafka.Authentication;
+using Parchwell.Kafka.Configuration;
+using Parchwell.Scenarios;
+using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Results;
+using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Window;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
@@ -60,7 +70,7 @@ public sealed class VerifierHostTests
             "StartLineInputName", "ResultOutputName", "ScenarioRoot", "ExpectedBrokerNames", "SafetyStop",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxRowBytes", "MaxRowsPerArtifact",
             "MaxInventoryEntries", "MaxPartitions", "MaxInputDepth", "MaxNativeReportBytes",
-            "MaxBrokerEntries", "ScenarioLoadOptions"))
+            "MaxBrokerEntries", "MaxConsumedRecords", "MaxConsumedBytes", "ScenarioLoadOptions"))
         .Concat(RequiredOptionsFor("verify",
             "ScenarioLoadOptions.MaxDocumentCharacters", "ScenarioLoadOptions.MaxNestingDepth",
             "ScenarioLoadOptions.MaxScalarCharacters", "ScenarioLoadOptions.MaxParserEvents"))
@@ -209,7 +219,7 @@ public sealed class VerifierHostTests
             ("verify", "MaxTotalInputBytes"), ("verify", "MaxRowBytes"),
             ("verify", "MaxRowsPerArtifact"), ("verify", "MaxInventoryEntries"),
             ("verify", "MaxPartitions"), ("verify", "MaxInputDepth"), ("verify", "MaxNativeReportBytes"),
-            ("verify", "MaxBrokerEntries"),
+            ("verify", "MaxBrokerEntries"), ("verify", "MaxConsumedRecords"), ("verify", "MaxConsumedBytes"),
             ("verify", "ScenarioLoadOptions.MaxDocumentCharacters"),
             ("verify", "ScenarioLoadOptions.MaxNestingDepth"),
             ("verify", "ScenarioLoadOptions.MaxScalarCharacters"),
@@ -308,10 +318,136 @@ public sealed class VerifierHostTests
             .ToArray();
         var handler = new SuccessHandler(mode == "start-line" ? VerifierMode.StartLine : VerifierMode.ProbeGate);
 
-        int exitCode = await Program.RunAsync(args, services => services.AddSingleton<IVerifierModeHandler>(handler));
+        int exitCode = await Program.RunAsync(args, services =>
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(handler);
+        });
 
         Assert.Equal(0, exitCode);
         Assert.False(File.Exists(outputPath));
+    }
+
+    [Theory]
+    [InlineData("start-line", false)]
+    [InlineData("start-line", true)]
+    [InlineData("probe-gate", false)]
+    [InlineData("probe-gate", true)]
+    public async Task Given_InactiveConsumedLimits_When_Bound_Then_OmissionAndMalformedValuesAreIgnored(string mode, bool malformed)
+    {
+        string[] args = ArgumentsFor(mode, TempPath());
+        if (malformed)
+        {
+            args = args.Concat(["--Verifier:MaxConsumedRecords=not-a-number", "--Verifier:MaxConsumedBytes=not-a-number"]).ToArray();
+        }
+        int exitCode = await Program.RunAsync(args, services =>
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(new SuccessHandler(
+                mode == "start-line" ? VerifierMode.StartLine : VerifierMode.ProbeGate));
+        });
+        Assert.Equal(0, exitCode);
+    }
+
+    [Theory]
+    [InlineData("MaxConsumedRecords", null)]
+    [InlineData("MaxConsumedRecords", "0")]
+    [InlineData("MaxConsumedRecords", "-1")]
+    [InlineData("MaxConsumedBytes", null)]
+    [InlineData("MaxConsumedBytes", "0")]
+    [InlineData("MaxConsumedBytes", "-1")]
+    public async Task Given_MissingOrNonpositiveConsumedLimit_When_VerifyStarts_Then_FailsBeforeWork(string property, string? value)
+    {
+        int calls = 0;
+        string[] args = ArgumentsFor("verify", TempPath())
+            .Where(argument => !argument.StartsWith($"--Verifier:{property}=", StringComparison.Ordinal)).ToArray();
+        if (value is not null) args = args.Append($"--Verifier:{property}={value}").ToArray();
+        int exitCode = await Program.RunAsync(args, services =>
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.Verify, () =>
+            {
+                calls++;
+                return 0;
+            }));
+        });
+        Assert.Equal(1, exitCode);
+        Assert.Equal(0, calls);
+    }
+
+    [Fact]
+    public async Task Given_ConsumedLimitsOfOne_When_VerifyStarts_Then_AcceptsWithoutChangingDurationBudgets()
+    {
+        string[] args = ArgumentsFor("verify", TempPath())
+            .Concat(["--Verifier:MaxConsumedRecords=1", "--Verifier:MaxConsumedBytes=1"]).ToArray();
+        int exitCode = await Program.RunAsync(args, services =>
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(new SuccessHandler(VerifierMode.Verify));
+        });
+        Assert.Equal(0, exitCode);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Given_HandlerReturnCode_When_WorkerCompletes_Then_OnlyZeroSucceeds(int handlerCode)
+    {
+        int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", TempPath()), services =>
+            services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () => handlerCode)));
+        Assert.Equal(handlerCode == 0 ? 0 : 1, exitCode);
+    }
+
+    [Theory]
+    [InlineData("stop")]
+    [InlineData("dispose")]
+    public async Task Given_PublicationThenHostCleanupFailure_When_RunEnds_Then_ExitsOneAndPreservesOutput(string failure)
+    {
+        string outputPath = TempPath();
+        try
+        {
+            int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
+            {
+                services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
+                {
+                    File.WriteAllText(outputPath, "committed");
+                    return 0;
+                }));
+                services.AddSingleton<IHostedService>(_ => new FailingCleanupService(failure));
+            });
+            Assert.Equal(1, exitCode);
+            Assert.Equal("committed", await File.ReadAllTextAsync(outputPath, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            File.Delete(outputPath);
+        }
+    }
+
+    [Fact]
+    public async Task Given_CreateCommitsThenThrows_When_WorkerEnds_Then_ExitsOneWithoutAnotherCreate()
+    {
+        int creates = 0;
+        string outputPath = TempPath();
+        try
+        {
+            int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
+                services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
+                {
+                    creates++;
+                    File.WriteAllText(outputPath, "committed");
+                    throw new IOException("synthetic uncertain commit");
+                })));
+            Assert.Equal(1, exitCode);
+            Assert.Equal(1, creates);
+            Assert.Equal("committed", await File.ReadAllTextAsync(outputPath, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            File.Delete(outputPath);
+        }
     }
 
     [Fact]
@@ -334,13 +470,46 @@ public sealed class VerifierHostTests
     }
 
     [Theory]
+    [InlineData("start-line", false)]
+    [InlineData("verify", true)]
+    public void Given_KafkaMode_When_Composed_Then_RegistersSelectedDependenciesBeforeTestOverrides(string mode, bool hasProducer)
+    {
+        var registrations = new List<ServiceDescriptor>();
+        using IHost host = Program.BuildHost(ArgumentsFor(mode, TempPath())
+            .Append($"--Verifier:ScenarioRoot={Path.GetTempPath()}").ToArray(), services =>
+            {
+                registrations.AddRange(services);
+                services.RemoveAll<IVerifierModeHandler>();
+            });
+        Assert.Contains(registrations, service => service.ServiceType == typeof(VerifierKafkaSessionFactory));
+        Assert.Contains(registrations, service => service.ServiceType == typeof(KafkaAuthenticationFactory));
+        Assert.Single(registrations, service => service.ServiceType == typeof(IVerifierModeHandler));
+        var factory = host.Services.GetRequiredService<KafkaConfigurationFactory>();
+        Assert.Equal("verifier-client", factory.CreateVerifierConsumer().Configuration.ClientId);
+        if (hasProducer)
+        {
+            Assert.Equal("loadgen-producer", factory.CreateLoadGenProducer().Configuration.ClientId);
+            Assert.NotNull(host.Services.GetRequiredService<ScenarioLoader>());
+            Assert.NotNull(host.Services.GetRequiredService<ScenarioResolver>());
+        }
+        else
+        {
+            Assert.Throws<InvalidOperationException>(() => factory.CreateLoadGenProducer());
+            Assert.Null(host.Services.GetService<ScenarioLoader>());
+        }
+        Assert.DoesNotContain(registrations, service =>
+            service.ServiceType.Namespace?.StartsWith("Confluent", StringComparison.Ordinal) == true);
+    }
+
+    [Theory]
     [InlineData("start-line")]
     [InlineData("verify")]
     [InlineData("probe-gate")]
     public async Task Given_AnyConfiguredModeWithoutHandler_When_WorkerRuns_Then_ExitsNonzeroWithoutOutput(string mode)
     {
         string outputPath = TempPath();
-        int exitCode = await Program.RunAsync(ArgumentsFor(mode, outputPath));
+        int exitCode = await Program.RunAsync(ArgumentsFor(mode, outputPath),
+            services => services.RemoveAll<IVerifierModeHandler>());
 
         Assert.Equal(1, exitCode);
         Assert.False(File.Exists(outputPath));
@@ -350,6 +519,7 @@ public sealed class VerifierHostTests
     [InlineData("exception")]
     [InlineData("cancellation")]
     [InlineData("host-stop")]
+    [InlineData("host-stop-return")]
     public async Task Given_WorkerExceptionCancellationOrHostStop_When_ExecutionEnds_Then_DoesNotReportSuccess(string failure)
     {
         string outputPath = TempPath();
@@ -365,6 +535,71 @@ public sealed class VerifierHostTests
 
         Assert.Equal(1, exitCode);
         Assert.False(File.Exists(outputPath));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Given_HostStopCompetesWithCompletion_When_OutcomeTransitions_Then_OnlyCompletionBeforeStopSucceeds(bool stopFirst)
+    {
+        var state = new VerifierExecutionState();
+        Assert.Equal(1, state.ExitCode);
+
+        if (stopFirst) state.MarkStopped();
+        state.MarkSucceeded(CancellationToken.None, CancellationToken.None);
+        if (!stopFirst) state.MarkStopped();
+
+        Assert.Equal(stopFirst ? 1 : 0, state.ExitCode);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Given_HostFailureCompetesWithCompletion_When_OutcomeTransitions_Then_FailureCannotBeOverwritten(bool failureFirst)
+    {
+        var state = new VerifierExecutionState();
+
+        if (failureFirst) state.MarkFailed();
+        state.MarkSucceeded(CancellationToken.None, CancellationToken.None);
+        if (!failureFirst) state.MarkFailed();
+
+        Assert.Equal(1, state.ExitCode);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_StopCallbackDelayedAfterCancellation_When_HandlerCompletes_Then_RequestedStopStillPreventsSuccess(bool hostStop)
+    {
+        var state = new VerifierExecutionState();
+        using var cancellation = new CancellationTokenSource();
+        using var resumeCallback = new ManualResetEventSlim();
+        var callbackEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken testCancellation = TestContext.Current.CancellationToken;
+        using CancellationTokenRegistration registration = cancellation.Token.Register(() =>
+        {
+            callbackEntered.SetResult();
+            resumeCallback.Wait(testCancellation);
+            state.MarkStopped();
+        });
+        Task requestStop = Task.Run(() => cancellation.Cancel(), testCancellation);
+        try
+        {
+            await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), testCancellation);
+
+            state.MarkSucceeded(
+                hostStop ? CancellationToken.None : cancellation.Token,
+                hostStop ? cancellation.Token : CancellationToken.None);
+
+            Assert.Equal(1, state.ExitCode);
+        }
+        finally
+        {
+            resumeCallback.Set();
+            await requestStop;
+        }
+
+        Assert.Equal(1, state.ExitCode);
     }
 
     [Theory]
@@ -455,6 +690,64 @@ public sealed class VerifierHostTests
         Assert.False(File.Exists(outputPath), $"Child wrote output. stdout={stdout} stderr={stderr}");
     }
 
+    [Theory]
+    [InlineData("successful-note", 0, true)]
+    [InlineData("valid-result", 0, true)]
+    [InlineData("invalid-result", 1, true)]
+    [InlineData("incomplete-result", 1, true)]
+    [InlineData("write-failure", 1, false)]
+    [InlineData("blocked-prepublication-cleanup", 124, false)]
+    [InlineData("blocked-disposal-after-publication", 124, true)]
+    public async Task Given_ChildFinalizationOutcome_When_ProcessEnds_Then_ReturnsRequiredCodeAndPreservesPublication(
+        string scenario, int expectedExit, bool published)
+    {
+        string outputPath = TempPath();
+        using Process child = Process.Start(CreateChildStartInfo(scenario, outputPath))!;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        Task<string> stdout = child.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> stderr = child.StandardError.ReadToEndAsync(cancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+        try
+        {
+            await child.WaitForExitAsync(timeout.Token);
+            string output = await stdout;
+            string errors = await stderr;
+            Assert.Equal(expectedExit, child.ExitCode);
+            Assert.Equal(published, File.Exists(outputPath));
+            if (published)
+            {
+                using JsonDocument json = JsonDocument.Parse(await File.ReadAllBytesAsync(outputPath, cancellationToken));
+                if (scenario == "successful-note")
+                {
+                    Assert.Equal("document-events", json.RootElement.GetProperty("topic").GetString());
+                    Assert.Single(json.RootElement.GetProperty("partition_highs").EnumerateArray());
+                }
+                else
+                {
+                    string status = scenario switch
+                    {
+                        "invalid-result" => "invalid",
+                        "incomplete-result" => "incomplete",
+                        _ => "complete_valid"
+                    };
+                    Assert.Equal(status, json.RootElement.GetProperty("status").GetString());
+                    Assert.Equal(status == "complete_valid", json.RootElement.TryGetProperty("ok", out _));
+                }
+            }
+            TestContext.Current.SendDiagnosticMessage("Child {0}: stdout={1} stderr={2}", scenario, output, errors);
+        }
+        finally
+        {
+            if (!child.HasExited)
+            {
+                child.Kill(entireProcessTree: true);
+                child.WaitForExit();
+            }
+            File.Delete(outputPath);
+        }
+    }
+
     internal static VerifierHostOptions ValidOptions(string mode) => new()
     {
         Mode = mode,
@@ -472,7 +765,7 @@ public sealed class VerifierHostTests
         ExpectedInstanceId = "instance-1",
         ClientId = "loadgen-producer",
         VerifierClientId = "verifier-client",
-        NamespaceName = "namespace.example",
+        NamespaceName = "namespace-example",
         BlobServiceUri = "https://storage.example/",
         VerifierContainer = "verifier-output",
         TokenTimeout = TimeSpan.FromSeconds(1),
@@ -500,6 +793,8 @@ public sealed class VerifierHostTests
         MaxInventoryEntries = 1_000,
         MaxNativeReportBytes = 65_536,
         MaxBrokerEntries = 16,
+        MaxConsumedRecords = 1000,
+        MaxConsumedBytes = 1048576,
         ScenarioLoadOptions = new VerifierScenarioLoadOptions
         {
             MaxDocumentCharacters = 16_384,
@@ -607,7 +902,7 @@ public sealed class VerifierHostTests
                 "--Verifier:ExpectedInstanceId=instance-1",
                 "--Verifier:ClientId=loadgen-producer",
                 "--Verifier:VerifierClientId=verifier-client",
-                "--Verifier:NamespaceName=namespace.example",
+                "--Verifier:NamespaceName=namespace-example",
                 "--Verifier:BlobServiceUri=https://storage.example/",
                 "--Verifier:VerifierContainer=verifier-output",
                 "--Verifier:TokenTimeout=00:00:01",
@@ -646,7 +941,9 @@ public sealed class VerifierHostTests
                 "--Verifier:MaxPartitions=8",
                 "--Verifier:MaxInputDepth=16",
                 "--Verifier:MaxNativeReportBytes=65536",
-                "--Verifier:MaxBrokerEntries=16"
+                "--Verifier:MaxBrokerEntries=16",
+                "--Verifier:MaxConsumedRecords=1000",
+                "--Verifier:MaxConsumedBytes=1048576"
             ]);
             AddScenarioLoadOptions(args);
         }
@@ -707,6 +1004,23 @@ public sealed class VerifierHostTests
         return startInfo;
     }
 
+    private sealed class ReturningHandler(VerifierMode mode, Func<int> execute) : IVerifierModeHandler
+    {
+        public VerifierMode Mode => mode;
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken) => Task.FromResult(execute());
+    }
+
+    private sealed class FailingCleanupService(string failure) : IHostedService, IDisposable
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StopAsync(CancellationToken cancellationToken) => failure == "stop"
+            ? Task.FromException(new IOException("synthetic stop failure")) : Task.CompletedTask;
+        public void Dispose()
+        {
+            if (failure == "dispose") throw new IOException("synthetic disposal failure");
+        }
+    }
+
     internal sealed class ControlledHandler : IVerifierModeHandler
     {
         private readonly string _failure;
@@ -721,18 +1035,26 @@ public sealed class VerifierHostTests
 
         public VerifierMode Mode { get; }
 
-        public Task ExecuteAsync(CancellationToken cancellationToken) => _failure switch
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken) => _failure switch
         {
-            "exception" => Task.FromException(new InvalidOperationException("synthetic")),
-            "cancellation" => Task.FromCanceled(new CancellationToken(canceled: true)),
+            "exception" => Task.FromException<int>(new InvalidOperationException("synthetic")),
+            "cancellation" => Task.FromCanceled<int>(new CancellationToken(canceled: true)),
             "host-stop" => StopHostAndWaitAsync(cancellationToken),
-            _ => Task.CompletedTask
+            "host-stop-return" => StopHostAndReturnSuccess(),
+            _ => Task.FromResult(0)
         };
 
-        private async Task StopHostAndWaitAsync(CancellationToken cancellationToken)
+        private Task<int> StopHostAndReturnSuccess()
+        {
+            _lifetime.StopApplication();
+            return Task.FromResult(0);
+        }
+
+        private async Task<int> StopHostAndWaitAsync(CancellationToken cancellationToken)
         {
             _lifetime.StopApplication();
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            return 1;
         }
     }
 
@@ -742,17 +1064,17 @@ public sealed class VerifierHostTests
 
         public VerifierMode Mode { get; }
 
-        public Task ExecuteAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken) => Task.FromResult(0);
     }
 
     private sealed class CountingHandler(Action onExecute) : IVerifierModeHandler
     {
         public VerifierMode Mode => VerifierMode.ProbeGate;
 
-        public Task ExecuteAsync(CancellationToken cancellationToken)
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken)
         {
             onExecute();
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
     }
 
@@ -774,38 +1096,87 @@ public sealed class VerifierWatchdogChildProcessTests
         var clock = new ManualTimeProvider();
         Action<IServiceCollection> configure = services =>
         {
-            services.AddSingleton<IVerifierModeHandler>(new ChildBlockingHandler(clock, scenario));
+            services.AddSingleton<IVerifierModeHandler>(new ChildBlockingHandler(clock, scenario, outputPath));
+            if (scenario == "blocked-disposal-after-publication")
+            {
+                services.AddSingleton<IHostedService>(_ => new ChildBlockingDisposal(clock));
+            }
             if (scenario == "blocked-cleanup")
             {
                 services.AddSingleton<IHostedService>(new ChildBlockingCleanup(clock));
             }
         };
 
-        _ = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", outputPath), configure, clock);
+        int exitCode = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", outputPath), configure, clock);
+        Environment.Exit(exitCode);
     }
 
     private sealed class ChildBlockingHandler : IVerifierModeHandler
     {
         private readonly ManualTimeProvider _clock;
         private readonly string _scenario;
+        private readonly string _outputPath;
 
-        public ChildBlockingHandler(ManualTimeProvider clock, string scenario)
+        public ChildBlockingHandler(ManualTimeProvider clock, string scenario, string outputPath)
         {
             _clock = clock;
             _scenario = scenario;
+            _outputPath = outputPath;
         }
 
         public VerifierMode Mode => VerifierMode.ProbeGate;
 
-        public Task ExecuteAsync(CancellationToken cancellationToken)
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken)
         {
+            if (_scenario == "blocked-prepublication-cleanup")
+            {
+                _clock.Advance(TimeSpan.FromSeconds(10));
+                Thread.Sleep(Timeout.Infinite);
+            }
             if (_scenario == "blocked-work")
             {
                 _clock.Advance(TimeSpan.FromSeconds(10));
-                return new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+                return new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
             }
 
-            return Task.CompletedTask;
+            if (_scenario == "write-failure") throw new IOException("synthetic write failure");
+            if (_scenario is "successful-note" or "valid-result" or "invalid-result" or "incomplete-result" or "blocked-disposal-after-publication")
+            {
+                File.WriteAllBytes(_outputPath, PublicationBytes());
+            }
+            return Task.FromResult(_scenario is "invalid-result" or "incomplete-result" ? 1 : 0);
+        }
+
+        private byte[] PublicationBytes()
+        {
+            var identity = new RunIdentity("A01", "C0", "run-1", "instance-1", "instance-1", "loadgen-producer");
+            var limits = new OutputLimits(16_384, 4, 512);
+            if (_scenario == "successful-note")
+            {
+                return StartLineNoteCodec.Write(new StartLineNote(1, identity, "document-events",
+                    [new PartitionHigh(0, 0)], "1970-01-01T00:00:00Z", "synthetic", "synthetic", "synthetic"), limits);
+            }
+            VerifierResultStatus status = _scenario switch
+            {
+                "invalid-result" => VerifierResultStatus.Invalid,
+                "incomplete-result" => VerifierResultStatus.Incomplete,
+                _ => VerifierResultStatus.CompleteValid
+            };
+            return VerifierResultCodec.Write(new VerifierResult(1, identity, "synthetic", null,
+                "synthetic", "synthetic", "synthetic", status, [], null, null, null, null,
+                status == VerifierResultStatus.CompleteValid ? new OutcomeCounts(1, 0, 0, 0, 0, 0) : null,
+                null, null, null, null, [], []), limits);
+        }
+    }
+
+    private sealed class ChildBlockingDisposal(ManualTimeProvider clock) : IHostedService, IDisposable
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public void Dispose()
+        {
+            clock.Advance(TimeSpan.FromSeconds(10));
+            Thread.Sleep(Timeout.Infinite);
         }
     }
 

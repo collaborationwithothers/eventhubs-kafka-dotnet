@@ -17,6 +17,60 @@ public sealed class VerifierResultCodecTests
     private static readonly int[] FailedThreeAndEleven = [3, 11];
     private static readonly int[] FailedOneAndTwo = [1, 2];
     private static readonly int[] FailedTwelve = [12];
+    private static readonly int[] FailedTwo = [2];
+
+    [Fact]
+    public void Given_MissingManifestProvenance_When_RoundTripped_Then_SchemaOneOmitsBothFields()
+    {
+        VerifierResult result = Result(VerifierResultStatus.Invalid, failedChecks: [2]) with
+        {
+            GeneratorVersion = null,
+            RuntimeVersions = null
+        };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
+        Assert.False(json.RootElement.TryGetProperty("generator_version", out _));
+        Assert.False(json.RootElement.TryGetProperty("runtime_versions", out _));
+        VerifierResult parsed = Read(bytes);
+        Assert.Null(parsed.GeneratorVersion);
+        Assert.Null(parsed.RuntimeVersions);
+        Assert.Equal(FailedTwo, parsed.FailedChecks);
+    }
+
+    [Fact]
+    public void Given_ReadableEmptyProducerProvenance_When_RoundTripped_Then_PreservesPresentEmptyValues()
+    {
+        VerifierResult result = Result(VerifierResultStatus.Invalid) with
+        {
+            GeneratorVersion = "",
+            RuntimeVersions = new Dictionary<string, string>(StringComparer.Ordinal)
+        };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        Assert.Equal("", json.RootElement.GetProperty("generator_version").GetString());
+        Assert.Equal(JsonValueKind.Object, json.RootElement.GetProperty("runtime_versions").ValueKind);
+        VerifierResult parsed = Read(bytes);
+        Assert.Equal("", parsed.GeneratorVersion);
+        Assert.Empty(parsed.RuntimeVersions!);
+    }
+
+    [Theory]
+    [InlineData("generator_version", "null")]
+    [InlineData("generator_version", "123")]
+    [InlineData("runtime_versions", "null")]
+    [InlineData("runtime_versions", "[]")]
+    [InlineData("runtime_versions", "{\"runtime\":null}")]
+    public void Given_PresentMalformedProducerProvenance_When_Read_Then_RejectsWithoutNumberedCheck(string property, string literal)
+    {
+        byte[] original = VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits);
+        var node = System.Text.Json.Nodes.JsonNode.Parse(original)!;
+        node[property] = System.Text.Json.Nodes.JsonNode.Parse(literal);
+        var parsed = VerifierResultCodec.Read(Encoding.UTF8.GetBytes(node.ToJsonString()), "result.json",
+            RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+        Assert.False(parsed.IsSuccess);
+        Assert.All(parsed.Problems, problem => Assert.Null(problem.CheckNumber));
+    }
 
     [Theory]
     [InlineData("invalid")]

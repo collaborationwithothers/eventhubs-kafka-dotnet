@@ -1,0 +1,15 @@
+{
+  "normal_count": 30,
+  "mutation_count": 23,
+  "removed": [
+    "Component/ComponentRunHarness.cs",
+    "Component/LocalKafkaFixture.cs",
+    "Component/OAuthKafkaFixture.cs",
+    "Component/VerifierOAuthComponentTests.cs",
+    "Component/VerifierOutcomeComponentTests.cs",
+    "Component/VerifierWindowComponentTests.cs",
+    "Support/ComponentEvidenceBuilder.cs"
+  ],
+  "unexpected_additions": [],
+  "only_approved_groups_removed": true
+}

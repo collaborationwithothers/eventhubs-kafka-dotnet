@@ -12,7 +12,7 @@ internal static class VerifierResultCodec
 
     private static readonly IReadOnlySet<string> RequiredRootFields = new HashSet<string>(StringComparer.Ordinal)
     {
-        "schema_version", "identity", "generator_version", "runtime_versions", "verifier_commit",
+        "schema_version", "identity", "verifier_commit",
         "verifier_confluent_kafka_version", "verifier_librdkafka_version", "status", "failed_checks",
         "judged_file_hashes", "diagnostics"
     };
@@ -44,8 +44,8 @@ internal static class VerifierResultCodec
             writer.WriteStartObject();
             writer.WriteNumber("schema_version", result.SchemaVersion);
             WriteIdentity(writer, result.Identity);
-            writer.WriteString("generator_version", result.GeneratorVersion);
-            WriteStringMap(writer, "runtime_versions", result.RuntimeVersions);
+            if (result.GeneratorVersion is not null) writer.WriteString("generator_version", result.GeneratorVersion);
+            if (result.RuntimeVersions is not null) WriteStringMap(writer, "runtime_versions", result.RuntimeVersions);
             writer.WriteString("verifier_commit", result.VerifierCommit);
             writer.WriteString("verifier_confluent_kafka_version", result.VerifierConfluentKafkaVersion);
             writer.WriteString("verifier_librdkafka_version", result.VerifierLibrdkafkaVersion);
@@ -107,8 +107,11 @@ internal static class VerifierResultCodec
         if (schemaVersion != 1) return Failure(artifact, "schema_version", "unsupported_schema_version");
         if (!TryIdentity(root, artifact, out RunIdentity? identity, out StructuralProblem? identityProblem))
             return ParseResult<VerifierResult>.Failure(identityProblem!);
-        if (!TryString(root, "generator_version", out string? generatorVersion)) return Failure(artifact, "generator_version", "wrong_json_kind");
-        if (!TryStringMap(root, "runtime_versions", artifact, out IReadOnlyDictionary<string, string>? runtimeVersions, out StructuralProblem? mapProblem))
+        string? generatorVersion = null;
+        if (root.TryGetProperty("generator_version", out _) && !TryString(root, "generator_version", out generatorVersion))
+            return Failure(artifact, "generator_version", "wrong_json_kind");
+        IReadOnlyDictionary<string, string>? runtimeVersions = null;
+        if (root.TryGetProperty("runtime_versions", out _) && !TryStringMap(root, "runtime_versions", artifact, out runtimeVersions, out StructuralProblem? mapProblem))
             return ParseResult<VerifierResult>.Failure(mapProblem!);
         if (!TryString(root, "verifier_commit", out string? verifierCommit)) return Failure(artifact, "verifier_commit", "wrong_json_kind");
         if (!TryString(root, "verifier_confluent_kafka_version", out string? verifierKafkaVersion)) return Failure(artifact, "verifier_confluent_kafka_version", "wrong_json_kind");
@@ -181,7 +184,6 @@ internal static class VerifierResultCodec
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
     {
         ArgumentNullException.ThrowIfNull(result.Identity);
-        ArgumentNullException.ThrowIfNull(result.RuntimeVersions);
         ArgumentNullException.ThrowIfNull(result.FailedChecks);
         ArgumentNullException.ThrowIfNull(result.JudgedFileHashes);
         ArgumentNullException.ThrowIfNull(result.Diagnostics);
@@ -824,7 +826,7 @@ internal static class VerifierResultCodec
     {
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
-            "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
+            "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
             "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence"
         };
         fields.UnionWith(CountFields);

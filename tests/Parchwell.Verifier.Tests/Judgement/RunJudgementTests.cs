@@ -1,9 +1,11 @@
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Judgement;
+using Parchwell.Verifier.VerifyRun.Window;
 
 using Xunit;
 
@@ -129,6 +131,61 @@ public sealed class RunJudgementTests
         Assert.Equal(retained, result.Diagnostics.Count);
         Assert.All(result.Diagnostics, d => Assert.Equal("abcd", d.Snippet));
         Assert.Equal(Enumerable.Range(0, retained).Select(n => $"problem_{n}"), result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Theory]
+    [InlineData(7, 1)] [InlineData(7, 2)] [InlineData(7, 3)]
+    [InlineData(8, 1)] [InlineData(8, 2)] [InlineData(8, 3)]
+    [InlineData(9, 1)] [InlineData(9, 2)] [InlineData(9, 3)]
+    public void Given_MultipleObservedWindowFailures_When_Judging_Then_RetainsDiagnosticsUpToPerCheckCap(int check, int cap)
+    {
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        var note = new StartLineNote(1, request.Identity, RunWindow.Topic,
+            check == 7 ? [new(0, 1), new(0, -1)] : [new(0, 2), new(1, 2)],
+            "synthetic", "synthetic", "synthetic", "synthetic");
+        RunWindow window = RunWindow.Create(ParseResult<StartLineNote>.Success(note), request.Identity,
+            check == 8 ? new Dictionary<int, long> { [2] = 2 } : new Dictionary<int, long> { [0] = 1, [1] = 1 });
+        string[] expectedCodes = check switch
+        {
+            7 => ["duplicate_start_partition", "negative_start_offset"],
+            8 => ["missing_end_partition", "missing_end_partition"],
+            _ => ["end_before_start", "end_before_start"]
+        };
+        RunJudgementResult result = RunJudgement.Evaluate(request with
+        {
+            WindowAssessments = window.Assessments,
+            Limits = request.Limits with { MaxDiagnosticsPerCheck = cap }
+        });
+
+        Assert.Equal(VerifierResultStatus.Invalid, result.Status);
+        Assert.Equal([check], result.FailedChecks);
+        Assert.Null(result.Counts);
+        Assert.Equal(expectedCodes.Take(cap), result.Diagnostics.Where(d => d.Check == check).Select(d => d.Code));
+        Assert.Equal(AssessmentDisposition.Fail, result.Assessments.Single(a => a.CheckNumber == check).Disposition);
+    }
+
+    [Fact]
+    public void Given_WindowPassBeforeObservedFailures_When_Judging_Then_FailureAndAllDiagnosticFieldsSurvive()
+    {
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        CheckAssessment firstFailure = RecordedEvidence.WindowFail(7, AssessmentClassification.Invalid) with
+        { Artifact = "first-note", Row = 1, Field = "first-field", Code = "first_failure", Snippet = "abcde" };
+        CheckAssessment secondFailure = firstFailure with
+        { Artifact = "second-note", Row = 2, Field = "second-field", Code = null, Snippet = "\u00e9\u00e9a" };
+        RunJudgementResult result = RunJudgement.Evaluate(request with
+        {
+            WindowAssessments = [RecordedEvidence.WindowPass(7), firstFailure, secondFailure],
+            Limits = request.Limits with { MaxDiagnosticsPerCheck = 2, MaxDiagnosticBytes = 4 }
+        });
+
+        Assert.Equal(VerifierResultStatus.Invalid, result.Status);
+        Assert.Equal([7], result.FailedChecks);
+        Assert.Null(result.Counts);
+        Assert.Equal(firstFailure, result.Assessments.Single(a => a.CheckNumber == 7));
+        Assert.Equal([
+            new ResultDiagnostic(7, "first_failure", "first-note", 1, "first-field", "abcd"),
+            new ResultDiagnostic(7, "check_7_failed", "second-note", 2, "second-field", "\u00e9\u00e9")
+        ], result.Diagnostics);
     }
 
     [Theory]

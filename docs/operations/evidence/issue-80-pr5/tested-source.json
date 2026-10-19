@@ -1,0 +1,23 @@
+{
+  "tested_commit": "d85c6bf08c340eefc7fd32c97b6240c19827c5a5",
+  "tested_tree": "afd8d6cef0576702af4d5f880121b88e88c357cb",
+  "selected_globs": [
+    "VerifyRun/Judgement/*.cs",
+    "VerifyRun/Window/*.cs"
+  ],
+  "source_sha256": {
+    "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs": "584e3bb78d221427313e13fa2b76375ca791c5da8fcae10d95f89ba8e2d3b701",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs": "abcecba0479f7d441faea6c0660b28b89c1059023557b93ea48cc15fa8ba777c",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs": "6eb32433d785940f434035c2922c7d81616c861888bc86f42fc102cf6b5064f0",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs": "4bf73de3ed80692a1128150c023542f351fcd771913339a5f88490262bd4d723",
+    "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs": "cc8e90c0bb577fef8490ab1fb8c0751d6ef27516cce89084a57c82182fe8c708",
+    "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+    "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "77ea7833225fafcf37727978e763ded94fc8756515a41219f41e61a072d35b45",
+    "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "576aa2c2f05c0221cb9d30113545d85961a6c021575a96a307e1824c7c42257f",
+    "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "2699f6ceb7ad9a647063e7b3827a31575053001c2ae47622b97bbcf15ef2009e"
+  },
+  "full_component_suites_used": 2,
+  "manual_survivor_replays": 0
+}
