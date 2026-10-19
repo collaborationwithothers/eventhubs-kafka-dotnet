@@ -1,6 +1,6 @@
 # .NET engineering standards
 
-Binding for all .NET code in this repository. Status: approved by Hari on 2026-10-12.
+Binding for all .NET code in this repository. Status: approved by Hari on 2026-10-12. Amended in the pull request for issue #85 (2026-10-18): the mutation row of "Testing" and the boundary-test rule under it.
 
 These rules exist because the earlier portfolio repo's code was hard to test and repeated itself: two interfaces in the whole source tree, concrete stores injected directly, and `new SqlConnection(connectionString)` in ten places. Rules here are enforced by the build wherever a tool can enforce them.
 
@@ -50,12 +50,13 @@ scenarios/profiles/           workload profiles shared by several items (ADR-014
 | Unit | Slice handlers, configuration mapping, verifier logic, scenario loading | xUnit, no I/O |
 | Component | A service against a local Kafka broker in a container | Testcontainers, with Toxiproxy for faults (ADR-016); tests harness logic only, never Event Hubs behaviour |
 | Architecture | Dependency direction and slice isolation | NetArchTest or ArchUnitNET, in `Parchwell.ArchitectureTests` |
-| Mutation | Verifier logic | Stryker.NET; minimum mutation score to be set with the reference slice |
+| Mutation | Verifier judgement logic: checks, join, window and probe gate (#85 decision 4) | Stryker.NET; minimum mutation score to be set with the reference slice |
 | Live | Event Hubs behaviour | Scenario workflow only; never in CI |
 
 Rules:
 - A behaviour change and the test that proves it land in the same pull request.
 - Never loosen, skip or delete an assertion in the same pull request as the code it tests. If an assertion is wrong, fix it in its own pull request with the reason.
+- Every comparison and boundary in verifier code has tests at the boundary, just below it and just above it, and every empty input has a test (#85 decision 4).
 - Test names state the behaviour: `Given_<state>_When_<action>_Then_<outcome>`.
 
 ## Architecture tests (examples, finalised with the reference slice)

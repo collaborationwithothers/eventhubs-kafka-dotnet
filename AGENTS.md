@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge.
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge. Hard safety rule 10 and "Handoffs" amended in the pull request for issue #85 (2026-10-18).
 
 ### What this repo is
 
@@ -32,7 +32,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 7. Never add secrets, keys, connection strings, tenant IDs or subscription IDs to the repository.
 8. Never change files under `.github/workflows/`. The factory's GitHub App has no Workflows permission, so GitHub rejects such pushes; do not try to work around it.
 9. No workflow that reaches Azure may trigger on `pull_request` or `pull_request_target`. The repository is public; fork pull requests must never run inside the network.
-10. On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, docs/blueprint.md S32 and S47); review fixes are made by the session that owns the branch, whichever tool it runs.
+10. Never write `@codex` in an issue comment; Codex's connector replied to each issue comment that contained it (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6235975803, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6245200871, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-6250013487). On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, docs/blueprint.md S32 and S47); review fixes are made by the session that owns the branch, whichever tool it runs.
 11. Never state a number that was not measured. Estimates say "estimate", their basis and the date. Workload data is synthetic and labelled synthetic.
 
 ### Verdict integrity
@@ -55,7 +55,7 @@ Anything else waits for Hari. Never ask for the gate to be relaxed.
 
 ### Handoffs
 
-A session that stops for any reason ends with exactly one comment on its issue or pull request, stating the decision it needs from Hari in one sentence, with the evidence linked. No silent stops.
+A session that stops for any reason ends with exactly one comment on its issue or pull request, stating the decision it needs from Hari in one sentence, with the evidence linked. A session that has merged its pull request and has no pending decision instead posts one completion comment on the originating issue, stating that no decision is needed and linking the evidence. No silent stops.
 
 ### Truth and verification
 
@@ -94,14 +94,19 @@ docs/engineering/dotnet.md and docs/engineering/terraform.md are binding. The no
 
 ## Skills
 
-Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, symlinks to the same folders). Except for `repo-review` (below), they are third-party, pinned in `skills-lock.json`, and not edited in place. Where a skill conflicts with this file or docs/agents/factory.md, this file wins:
+Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, symlinks to the same folders). Except for the repository-owned skills (below), they are third-party, pinned in `skills-lock.json`, and not edited in place. Where a skill conflicts with this file or docs/agents/factory.md, this file wins:
 
 - Decisions are recorded as ADRs in docs/blueprint.md section 4, numbered from ADR-012, in its format (context, options, decision, consequences). Never create `docs/adr/`.
 - The issue tracker is GitHub issues on this repository. Read issues as described under "GitHub issues and pull requests". This replaces `/setup-matt-pocock-skills`, which is not installed; ignore any skill step that points to it.
 - Never apply the `ready-for-agent` label. Only Hari applies it; it is his plan approval.
 - Skills that interview a human (`grilling`, `domain-modeling`) are for interactive sessions with Hari only. In an unattended run, write the open question as the handoff comment instead.
 
-One skill is owned by this repository rather than pinned from a third party: `repo-review`. It is the rubric for the cold review that "Before opening a pull request" rule 8 defines. `repo-review` is not in `skills-lock.json` and changes only through a pull request to Hari.
+Four skills are owned by this repository rather than pinned from a third party. They are not in `skills-lock.json` and change only through a pull request to Hari.
+
+- `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines.
+- `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle" (#85 decision 7). The prompt that starts a session names the skill and the issue number.
+
+A repository-owned skill, and any prompt that starts a session, cites a rule by file and section and never paraphrases a rule that stops, caps or gates work (#85 decision 3). An implementation prompt names `implement-plan` and the issue number.
 
 Adding or removing a skill is a governance change and goes to Hari.
 
@@ -152,9 +157,9 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 5. When a reviewer finds one error, check every instance of that class, not only the one flagged. For recurring findings, consider automated prevention with an existing tool first. A new check needs explicit supported inputs, failure conditions and regression examples. Add it to the same pull request only when it fits the approved scope; otherwise record the proposal on the issue. A finding does not automatically require a new checker capability. Documentation checks start as advisory; making them blocking requires Hari's approval based on observed usefulness and false positives. The local command and supported checks are in [Documentation checks](docs/engineering/documentation-checks.md).
 6. If two review rounds in a row raise new substantive findings, stop and split the pull request. A substantive finding is a P0 or P1. Moving a finding out of scope into a linked issue counts as a split. The threshold is a governance choice, not a measurement; its basis is PR #6, where design findings kept arriving until the pull request was split after round four.
 7. Keep the description short: what changed, why, what to read first, what you are least sure about. Evidence lives in the repository (ADRs, citations, commit messages); the description links to it. If the change cannot be described in a few lines, split it.
-8. Run a cold review before every push. Before the cold review, run `npm run check:docs`; fix each warning or explain in the pull request why it stands. A cold review is a fresh context that applies the `repo-review` skill and is given only the diff by the author. Fix every P0 and P1 it reports, or answer it `Not valid:` with evidence under rule 10, except as the next paragraph allows. Answer each P2 under rule 10. Cold-review rounds do not count toward rule 6. If three cold-review rounds in total on the same pull request report P0 or P1 findings that must be fixed, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
+8. Run a cold review before every push, except a backup push under rule 12. Before the cold review, run `npm run check:docs`; fix each warning or explain in the pull request why it stands. A cold review is a fresh context that applies the `repo-review` skill and is given only the diff by the author. Fix every P0 and P1 it reports, or answer it `Not valid:` with evidence under rule 10, except as the next paragraph allows. Answer each P2 under rule 10. Cold-review rounds do not count toward rule 6. If three cold-review rounds in total on the same pull request report P0 or P1 findings that must be fixed, stop and hand off under GOVERNANCE "Handoffs". Three is a governance choice, not a measurement; revisit it with the data recorded under issue #17.
 
-   Some Code Review Rules flag work that only Hari can approve: changes to expected outcomes, verdicts or `results/`, and new projects, assembly references or NuGet packages. Keep such work only if the approved plan or the verdict step requires it. In that case, push, list the finding in the pull request description, and leave the merge to Hari. Revert any other such change before the push. This exception does not relax GOVERNANCE "Verdict integrity".
+   Some Code Review Rules flag work that only Hari can approve: changes to expected outcomes, verdicts or `results/`, and new projects, assembly references or NuGet packages. Keep such work only if the approved plan or the verdict step requires it. In that case, push, list the finding in the pull request description, and leave the merge to Hari. A P1 kept this way, including one on a new project, reference, package or tool that the approved plan requires, never counts toward any review-round stop limit: not the three cold-review rounds in the first paragraph, not rule 6, and not rule 10's handoff after the third Codex round (#85 decision 3). Revert any other such change before the push. This exception does not relax GOVERNANCE "Verdict integrity".
 9. Fill in the pull request template, including its collapsed self-review record. Reply to every Codex finding. When a finding is wrong against its source, start the reply with `Not valid:` and give the evidence. Reply inside the finding's review thread, so the reply stays attached to the finding. Escapes are not counted by hand. A script will compute them (docs/agents/factory.md, "Measuring the gate", "Escapes").
 
 10. Answer review findings by severity. This applies to Codex code review and the cold review, in every round. Codex security review findings are answered under rule 9, and GOVERNANCE "Merge rule" decides whether they block a merge. Basis: the review rounds on #70 (#72).
@@ -164,7 +169,11 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 
     The pull request description links its approved plan. A pull request with no approved plan, such as a governance or documentation change, has no plan checks, so its P2 findings take the last case. The checks a plan lists are its "Enforced checks" field or, for a plan approved before that field existed, the checks its text names. Codex findings are answered in their review thread and cold-review findings in the self-review record. A cold-review P0 or P1 answered `Not valid:` is also listed in the pull request description, so Hari sees the dispute.
 
-    A pull request gets at most three completed Codex review rounds. A round is one completed Codex code review of a head commit, however it was triggered; a security review is not a round. When the third completes and a finding still needs a code change, push nothing further and hand off under GOVERNANCE "Handoffs". Only Hari's comment on the issue being implemented, naming the new cap and the pull requests it covers, raises the cap. Three is a governance choice, not a measurement.
+    A pull request gets at most three completed Codex review rounds. A round is one completed Codex code review of a head commit, however it was triggered; a security review is not a round. When the third completes and a finding still needs a code change, push nothing further and hand off under GOVERNANCE "Handoffs". Only Hari's decision on the issue being implemented, recognized under docs/agents/factory.md "Item lifecycle" step 3 and naming the new cap and the pull requests it covers, raises the cap. Three is a governance choice, not a measurement.
+
+11. Stop at the first measurement of work sized at runtime. If a step's workload depends on a count known only at runtime, such as mutants, survivors, findings, retries or files, and the approved plan gives no cap or sample size for it, stop after the first measurement. Hand off under GOVERNANCE "Handoffs" with the count and an estimate of the time to finish (hard safety rule 11), and continue only after Hari records the answer on the issue as a decision recognized under docs/agents/factory.md "Item lifecycle" step 3. Required authority reads for planning, plan checking or implementation are exempt: the issue body, its comments, the plan and later decisions. Reading the files and sources needed to write or independently check a plan under docs/agents/factory.md "Item lifecycle" steps 1 and 3 is also exempt. Execution work and finding dispositions identified by those reads remain subject to this rule. Basis: #85 decision 1; the [PR 3 replay decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6247408154) records 621 survivors and 267 reported replays when Hari changed the requirement to a sample.
+
+12. A backup push saves work in progress. A session may push its work to `<its branch>-wip`, its own branch name with `-wip` appended. It never opens a pull request from that branch, and deletes it once its own branch is pushed. A backup push is exempt from rule 8; every other rule applies. No workflow runs on it: on `main` at 0e9b78be2a3a175c6a27926479fe5cfe96ab1888, `dotnet-verification.yml` triggers on pull requests, pushes to `main` and manual dispatch, and `docs-advisory.yml` on pull requests. Basis: #85 decision 5; validated commits were lost when a Codex session resumed in a fresh workspace.
 
 ## Code Review Rules
 
