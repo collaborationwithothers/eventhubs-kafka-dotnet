@@ -16,8 +16,8 @@ namespace Parchwell.Verifier.Tests.Component;
 internal enum SpikeFault { None, Latency, Timeout, ResetPeer }
 
 /// <summary>
-/// The frozen timings every trial must use. Approved estimates dated 2026-10-14, not measurements
-/// (docs/operations/phantom-spike/README.md, Frozen experiment).
+/// Defaults from the local spike recipe (docs/operations/phantom-spike/README.md, Frozen experiment).
+/// The duplicate case overrides MessageTimeoutMs under issue #80 decision 6260447919.
 /// </summary>
 internal sealed record TimingSettings(int MessageTimeoutMs = 5000, int SocketTimeoutMs = 2000, int LatencyMs = 10000);
 

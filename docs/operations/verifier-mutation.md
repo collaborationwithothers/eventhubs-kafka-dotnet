@@ -1,5 +1,297 @@
 # Verifier mutation record
 
+## PR 5 window scope
+
+PR 5 measures the existing judgement code and the new Kafka window decisions. The selected globs are `VerifyRun/Judgement/*.cs` and `VerifyRun/Window/*.cs`; orchestration, Blob/auth lifetime, host code and passive codecs remain outside judgement scope under [the approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6259391036) and [Q6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6259492117). PR 6 retains final survivor dispositions and the measured break threshold; break remains zero.
+
+Toolchain: .NET SDK 10.0.402; x64 .NET runtime 10.0.13; xunit.v3.mtp-v2 4.0.2; Microsoft.Testing.Platform 2.5.1; dotnet-stryker 5.0.0. These versions come from `global.json`, the locked test dependencies, the tool manifest and the retained command logs.
+
+### PR 5 full report
+
+| Measure | Recorded value |
+| --- | --- |
+| Tested commit | `d85c6bf08c340eefc7fd32c97b6240c19827c5a5` |
+| Tested tree | `afd8d6cef0576702af4d5f880121b88e88c357cb` |
+| Elapsed seconds | 3409.997 |
+| Exit status | 0 |
+| Generated-mutant count in log | 5280 |
+| JSON-report mutant records | 1487 |
+| JSON-report SHA-256 | `f7f4dd647f305fa1997a8dfae00df2eae80fff86cc2e9444562108d217ef5aac` |
+| Report path | `.artifacts/issue-80-pr5/mutation-full/reports/mutation-report.json` |
+| Score numerator / denominator | 549 / 790 |
+| Score | 69.49% |
+
+The command ran from `tests/Parchwell.Verifier.Tests`, under the retained session controller:
+
+```bash
+ParchwellVerifierMutationOnly=true python3 /workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr5/controllers/run-bounded.py /workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr5/mutation-full 3600 10000 dotnet stryker --config-file stryker-config.json --output ../../.artifacts/issue-80-pr5/mutation-full
+```
+
+The controller, command, working directory, environment override, observed generated count, elapsed time and exit reason are retained in `.artifacts/issue-80-pr5/mutation-full/controller.json`. The tested source manifest is `tested-source.json` beside it. The generated log count and serialized JSON count are separate measurements.
+
+The mutation-only MSBuild property removes `Component/**/*.cs` and `Support/ComponentEvidenceBuilder.cs`. The retained evaluated Compile inventories contain 30 normal files and 23 mutation-only files; their difference is exactly the approved component/helper set. Stryker actually discovered 1810 tests, matching the deterministic preflight. The JSON discovery metadata contains 1810 tests, including 140 window tests and 382 judgement tests, with no component tests. Inventory reconciliation, discovered test metadata and extraction summary are retained under `.artifacts/issue-80-pr5/validation/compile-reconciliation.json`, `mutation-full/discovered-tests.json` and `mutation-full/extraction-summary.json`.
+
+The preview MTP runner warned that target-framework discovery failed and assumed the selected `net10.0`; the evaluated Release project manifests in `.artifacts/issue-80-pr5/validation/full-suite-3/repository-report/manifests/` independently retain that framework. The log contains 66 coverage-relay acknowledgement timeout warnings marking tests Dubious. Stryker also reported a definite-assignment compile fallback in the unselected `FileSystemScenarioSource.RejectSymlink` method. Its records remain CompileError, outside the score denominator. Runner diagnostics are retained in `mutation-full/command.log`; they are not mutant Timeout statuses. PR 6 retains the independent runner sample.
+
+The score is `(Killed + Timeout) / (Killed + Timeout + Survived + NoCoverage) * 100`, following the [pinned score implementation](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs#L31-L73). CompileError, RuntimeError and Ignored are outside that denominator. Every Killed, Timeout, Survived and NoCoverage record was checked against the two selected directories. Timeout is retained as its own status, not called an assertion kill.
+
+Tables below were generated in one extraction pass over the retained report. Every Survived and NoCoverage row remains `not reviewed`; PR 5 performed zero manual survivor replays and zero manual mutation finding dispositions.
+
+| Mutant status | Count |
+| --- | ---: |
+| Killed | 540 |
+| Timeout | 9 |
+| Survived | 241 |
+| NoCoverage | 0 |
+| CompileError | 123 |
+| Ignored | 574 |
+| RuntimeError | 0 |
+| Pending | 0 |
+
+| File | Mutant ID | Location | Status | Disposition |
+| --- | --- | --- | --- | --- |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4183 | 28:15-28:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4187 | 33:26-35:90 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4188 | 33:26-35:48 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4189 | 33:26-34:85 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4190 | 33:26-34:45 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4191 | 33:26-33:95 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4200 | 36:71-36:83 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4204 | 39:40-39:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4210 | 41:67-41:82 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4211 | 41:90-41:119 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4220 | 47:45-47:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4221 | 47:61-47:67 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4223 | 48:63-48:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4224 | 48:79-48:85 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4225 | 48:87-48:108 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4232 | 52:88-52:106 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4233 | 52:108-52:114 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4240 | 54:86-54:111 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4241 | 54:113-54:119 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4244 | 55:92-55:111 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4252 | 59:43-59:53 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4253 | 59:55-59:61 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4254 | 59:63-59:76 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4255 | 60:30-60:35 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4258 | 66:74-66:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4260 | 67:84-67:111 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4262 | 68:64-68:81 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4264 | 69:74-69:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4266 | 70:90-70:121 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4268 | 71:70-71:90 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4281 | 94:41-94:56 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4282 | 94:64-94:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4289 | 100:21-100:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4290 | 100:45-100:60 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4291 | 100:68-100:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4300 | 110:21-110:92 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4301 | 110:45-110:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4302 | 110:61-110:67 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4303 | 110:69-110:89 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4311 | 116:17-116:81 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4312 | 116:41-116:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4313 | 116:63-116:78 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4320 | 124:21-124:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4321 | 124:45-124:60 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4322 | 124:68-124:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4329 | 131:21-131:92 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4330 | 131:45-131:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4331 | 131:61-131:67 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4332 | 131:69-131:89 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4336 | 135:49-135:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4337 | 135:65-135:71 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4338 | 135:73-135:86 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4341 | 137:49-137:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4342 | 137:65-137:71 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4343 | 137:73-137:91 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4355 | 151:45-151:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4356 | 151:61-151:67 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4357 | 151:69-151:89 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4368 | 163:68-163:78 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4369 | 163:80-163:86 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4370 | 163:88-163:101 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4373 | 164:67-164:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4374 | 164:79-164:85 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4375 | 164:87-164:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4378 | 165:61-165:71 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4379 | 165:73-165:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4380 | 165:81-165:86 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4383 | 166:66-166:76 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4384 | 166:78-166:84 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4385 | 166:86-166:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4395 | 169:63-169:73 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4396 | 169:75-169:81 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4397 | 169:83-169:95 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4404 | 173:45-173:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4405 | 173:57-173:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4406 | 173:65-173:70 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4412 | 175:45-175:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4413 | 175:57-175:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4414 | 175:65-175:75 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs | 4416 | 182:20-182:43 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4443 | 18:32-18:56 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4448 | 29:28-29:68 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4458 | 34:26-34:34 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4466 | 43:30-43:41 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4467 | 45:26-45:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4473 | 50:34-50:57 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4477 | 55:34-55:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4481 | 61:13-61:33 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4489 | 69:71-69:90 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs | 4490 | 70:9-70:26 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4491 | 12:9-12:46 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4492 | 13:9-13:48 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4506 | 26:62-26:76 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4507 | 26:78-26:84 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4508 | 26:86-26:97 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4514 | 29:49-29:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4515 | 29:65-29:71 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4520 | 35:37-35:56 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4521 | 35:64-35:93 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4529 | 39:45-39:60 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4530 | 39:68-39:94 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4548 | 48:37-48:42 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4552 | 53:54-53:68 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4554 | 54:58-54:69 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4575 | 71:44-71:69 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4576 | 71:71-71:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4577 | 71:79-71:89 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4580 | 77:45-77:121 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs | 4584 | 84:20-84:43 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs | 4606 | 35:48-35:57 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs | 4617 | 38:42-38:66 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4634 | 67:13-67:32 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4647 | 75:17-77:78 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4649 | 76:35-76:75 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4650 | 76:52-76:75 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4654 | 82:41-82:82 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4666 | 87:36-88:72 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4685 | 106:27-106:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs | 4692 | 116:67-116:112 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4711 | 22:29-22:48 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4712 | 22:56-22:68 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4719 | 27:71-27:89 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4725 | 35:29-35:48 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4726 | 35:56-35:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4730 | 38:58-38:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4731 | 38:85-38:120 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4734 | 40:33-40:52 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4735 | 40:60-40:111 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4736 | 43:31-43:43 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4737 | 43:31-43:43 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4747 | 55:38-55:69 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4757 | 61:24-61:34 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4759 | 63:33-63:51 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4770 | 73:40-73:44 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4771 | 74:21-74:52 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4781 | 83:37-83:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4782 | 83:62-83:66 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4791 | 89:41-89:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4792 | 89:66-89:71 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4793 | 90:21-90:49 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4794 | 92:43-92:47 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4802 | 98:38-98:42 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4806 | 102:21-102:52 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4809 | 108:87-108:91 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4810 | 109:17-109:38 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4811 | 110:17-110:26 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4814 | 118:17-118:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4815 | 118:69-118:75 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4816 | 119:17-119:81 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4817 | 119:71-119:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4819 | 120:71-120:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4820 | 121:17-121:79 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4821 | 121:70-121:77 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4823 | 124:21-124:74 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4826 | 125:87-125:91 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4827 | 125:93-125:102 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4833 | 127:41-127:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4834 | 127:66-127:90 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4835 | 130:17-130:97 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4836 | 130:70-130:80 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4838 | 131:17-131:98 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4839 | 131:75-131:80 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4850 | 136:58-136:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4852 | 139:54-139:58 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4857 | 143:33-143:52 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4858 | 143:60-143:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4866 | 147:46-147:65 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4872 | 149:38-149:56 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4873 | 149:64-149:74 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4885 | 156:29-156:47 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4886 | 156:55-156:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4887 | 157:34-157:38 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4894 | 165:82-165:100 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4896 | 165:114-165:124 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4897 | 167:39-167:43 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4905 | 174:17-174:53 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4920 | 188:17-188:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4928 | 191:37-191:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4933 | 194:22-194:60 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4940 | 204:10-204:24 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4941 | 204:52-204:63 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4942 | 205:10-205:18 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4943 | 205:49-205:57 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4944 | 205:83-205:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4951 | 210:85-210:157 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4952 | 210:85-210:106 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4953 | 210:110-210:157 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4954 | 210:130-210:157 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4956 | 211:24-211:42 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4957 | 211:49-211:76 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4959 | 216:9-216:106 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4962 | 216:98-216:104 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4963 | 217:9-218:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4969 | 218:34-218:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4970 | 218:34-218:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4971 | 218:44-218:50 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4972 | 218:53-218:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4975 | 224:102-224:120 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4976 | 224:102-224:120 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4977 | 224:102-224:120 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs | 4978 | 233:58-233:82 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs | 5113 | 35:51-35:117 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs | 5120 | 45:51-45:97 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5121 | 11:59-11:64 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5122 | 11:66-11:70 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5134 | 26:51-26:74 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5142 | 36:40-36:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5143 | 36:40-36:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5144 | 36:40-36:59 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5145 | 36:62-36:78 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5146 | 36:81-36:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5151 | 46:41-46:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5155 | 52:41-52:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs | 5156 | 57:89-57:99 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5158 | 22:55-23:80 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5163 | 25:49-25:97 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5164 | 28:13-28:55 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5169 | 31:46-31:114 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5170 | 31:46-31:114 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5171 | 31:46-31:66 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5172 | 31:81-31:101 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5176 | 35:75-35:100 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5177 | 35:102-35:112 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5180 | 36:101-36:123 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5181 | 36:125-36:132 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5185 | 37:72-37:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5186 | 37:98-37:115 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5190 | 41:71-41:98 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5191 | 41:100-41:117 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5196 | 42:59-42:82 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5197 | 42:84-42:101 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5206 | 48:83-48:106 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5207 | 48:108-48:125 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5218 | 56:77-56:95 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5219 | 56:97-56:114 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs | 5226 | 67:9-67:21 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs | 5231 | 23:13-23:62 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs | 5236 | 28:17-28:66 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs | 5249 | 37:83-37:96 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs | 5255 | 42:47-42:68 | Survived | not reviewed |
+| /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs | 5277 | 61:55-61:82 | Survived | not reviewed |
+
 PR 4 measures the recorded-input judgement scope. Historical PR 3 foundation measurements and dispositions remain below under their own tested commits.
 
 ## PR 4 judgement scope
