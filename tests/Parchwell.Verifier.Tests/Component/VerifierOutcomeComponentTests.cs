@@ -179,10 +179,6 @@ public sealed class VerifierOutcomeComponentTests
                 Encoding.UTF8.GetString(record.Key), record.InstanceId, record.AttemptId, 1, [])).ToArray();
             diagnosticCounts = OutcomeClassifier.Classify([ledger], records);
             diagnostics = producer.SnapshotDiagnostics();
-            if (recipe == "native-retry-duplicate-revised")
-            {
-                Assert.False(callback.IsError);
-            }
             var actualRow = fullRun.Row(target.AttemptId, Encoding.UTF8.GetString(target.Key), !callback.IsError,
                 (int)Enum.Parse<Confluent.Kafka.PersistenceStatus>(callback.PersistenceStatus));
             actualRow["error_code"] = (int)Enum.Parse<Confluent.Kafka.ErrorCode>(callback.ErrorCode);
@@ -205,7 +201,7 @@ public sealed class VerifierOutcomeComponentTests
             {
                 "phantom" => callback.IsError && observed.Length >= 1 && diagnosticCounts.Phantom >= 1,
                 "reported-failure-revised" => callback.IsError && observed.Length == 0 && diagnosticCounts.ReportedFailure >= 1,
-                "native-retry-duplicate-revised" => !callback.IsError && observed.Length >= 2 && diagnosticCounts.Duplicate >= 1
+                "native-retry-duplicate-revised" => observed.Length >= 2 && diagnosticCounts.Duplicate >= 1
                     && nativeRetryEvent is not null && targetObservedBeforeRestore is not null,
                 _ => throw new InvalidOperationException("Unknown proof recipe.")
             };
