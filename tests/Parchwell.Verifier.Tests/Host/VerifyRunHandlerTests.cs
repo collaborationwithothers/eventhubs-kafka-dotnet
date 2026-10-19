@@ -31,6 +31,137 @@ public sealed class VerifyRunHandlerTests
         Assert.Equal("synthetic-native", result.GetProperty("runtime_versions").GetProperty("Confluent.Kafka").GetString());
         Assert.Equal(typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), result.GetProperty("verifier_confluent_kafka_version").GetString());
         Assert.Equal(Library.VersionString, result.GetProperty("verifier_librdkafka_version").GetString());
+        AssertUnusableProbe(result);
+        AssertRecordedWindows(result, null);
+    }
+
+    [Theory]
+    [InlineData(12)]
+    [InlineData(13)]
+    [InlineData(14)]
+    [InlineData(15)]
+    [InlineData(16)]
+    public async Task Given_EachIndependentLateWriteFailureAndQualifyingThrottle_When_Verifying_Then_PublishesUsableProbeWithoutAuthoritativeCounts(int check)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        SetNonemptyWindows(fixture, 20001);
+        if (check is 12 or 13)
+        {
+            JsonObject ledger = fixture.Json("ledger.jsonl");
+            if (check == 12) ledger["delivered"] = false;
+            else ledger["persistence_status"] = 1;
+            fixture.Inputs["ledger.jsonl"] = Encoding.UTF8.GetBytes(ledger.ToJsonString() + "\n");
+        }
+        if (check == 14)
+        {
+            JsonObject capabilities = fixture.Json("capabilities.json");
+            capabilities["guard_observations_complete"] = false;
+            fixture.Set("capabilities.json", capabilities);
+        }
+        if (check == 15) ChangeNativeReports(fixture, (native, _) => native["brokers"]!["broker-a/1"]!["req_timeouts"] = 1);
+        if (check == 16)
+        {
+            var error = new JsonObject
+            {
+                ["schema_version"] = 1, ["identity"] = fixture.Json("index.json")["identity"]!.DeepClone(),
+                ["session_id"] = "synthetic-session", ["receipt_sequence"] = 1, ["received_at"] = "synthetic",
+                ["event_type"] = "native_error", ["error_code"] = -184, ["error_name"] = "synthetic-error",
+                ["reason"] = "synthetic error", ["is_error"] = true, ["is_fatal"] = false, ["provenance"] = "synthetic"
+            };
+            fixture.Inputs["request-lifecycle.jsonl"] = Encoding.UTF8.GetBytes(error.ToJsonString() + "\n");
+        }
+
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = output.RootElement;
+        AssertFailure(result, "invalid", check);
+        Assert.Equal([check], FailedChecks(result));
+        AssertUsableProbe(result, 20001, true);
+        AssertRecordedWindows(result, 20001, check == 15 ? 1 : 0);
+        Assert.Equal(1, fixture.Creates);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(19999, false)]
+    [InlineData(20000, false)]
+    [InlineData(20001, true)]
+    public async Task Given_NonemptyThrottleAtZeroOrThresholdBoundary_When_Verifying_Then_PublishesExactUsabilityAndQualification(long maximum, bool qualifying)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        SetNonemptyWindows(fixture, maximum);
+        Assert.Equal(0, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = output.RootElement;
+        Assert.Equal("complete_valid", result.GetProperty("status").GetString());
+        Assert.Empty(FailedChecks(result));
+        Assert.Equal(1, result.GetProperty("ok").GetInt64());
+        foreach (string count in new[] { "loss", "phantom", "reported_failure", "duplicate", "reorder" }) Assert.Equal(0, result.GetProperty(count).GetInt64());
+        AssertUsableProbe(result, maximum, qualifying);
+        AssertRecordedWindows(result, maximum);
+        Assert.Equal(1, fixture.Creates);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_MissingOrMalformedLedgerAndCompleteStatistics_When_Verifying_Then_OmitsCodesAndKeepsRecordedWindows(bool malformed)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        SetNonemptyWindows(fixture, 20001);
+        fixture.Inputs["ledger.jsonl"] = malformed ? Encoding.UTF8.GetBytes("{}\n") : null;
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = output.RootElement;
+        AssertFailure(result, "invalid", 1);
+        AssertUnusableProbe(result);
+        AssertRecordedWindows(result, 20001, includeCodes: false);
+        Assert.Equal(1, fixture.Creates);
+    }
+
+    [Theory]
+    [InlineData(17)]
+    [InlineData(18)]
+    [InlineData(19)]
+    [InlineData(20)]
+    [InlineData(21)]
+    [InlineData(22)]
+    [InlineData(23)]
+    [InlineData(24)]
+    [InlineData(25)]
+    [InlineData(26)]
+    public async Task Given_EachStatisticsCompletenessFailure_When_Verifying_Then_PublishesCodesWithoutPartialWindowsOrProbeReferences(int check)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        SetNonemptyWindows(fixture, 20001);
+        if (check is 17 or 19 or 24)
+        {
+            JsonObject capabilities = fixture.Json("capabilities.json");
+            if (check == 17) capabilities["is_faulted"] = true;
+            if (check == 19) capabilities["statistics_completion"]!["is_complete"] = false;
+            if (check == 24) capabilities["statistics_completion"]!["missing_brokers"] = new JsonArray("broker-a/1");
+            fixture.Set("capabilities.json", capabilities);
+        }
+        if (check == 18) fixture.Inputs["statistics.jsonl"] = [];
+        if (check is >= 20 and <= 23 or 25 or 26) ChangeNativeReports(fixture, (native, index) =>
+        {
+            if (check == 20 && index == 1) native["ts"] = "malformed-native-time";
+            if (check == 21 && index == 1) native["brokers"]!["broker-a/1"]!.AsObject().Remove("nodeid");
+            if (check == 22 && index == 1) { native["ts"] = 90; native["age"] = 40; }
+            if (check == 23 && index == 0) native["brokers"]!["broker-a/1"]!["disconnects"] = 1;
+            if (check == 25 && index == 1) native["brokers"] = new JsonObject();
+            if (check == 26 && index == 0) native["brokers"]!["broker-a/1"]!["source"] = "internal";
+        });
+
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = output.RootElement;
+        AssertFailure(result, "invalid", check);
+        AssertUnusableProbe(result);
+        JsonElement evidence = result.GetProperty("a01_recorded_evidence");
+        Assert.Empty(evidence.GetProperty("delivery_error_codes").EnumerateArray());
+        AssertPropertyNames(evidence, "delivery_error_codes");
+        Assert.Equal(1, fixture.Creates);
     }
 
     [Theory]
@@ -418,6 +549,78 @@ public sealed class VerifyRunHandlerTests
         Assert.Equal(0, fixture.Creates);
         Assert.Null(fixture.Output);
     }
+
+    private static void SetNonemptyWindows(HostEvidenceBuilder fixture, long maximum) => ChangeNativeReports(fixture, (native, _) =>
+    {
+        JsonNode broker = native["brokers"]!["broker-a/1"]!;
+        broker["throttle"]!["cnt"] = 1;
+        broker["throttle"]!["max"] = maximum;
+        broker["rtt"]!["cnt"] = 1;
+        broker["rtt"]!["p99"] = 99327;
+    });
+
+    private static void ChangeNativeReports(HostEvidenceBuilder fixture, Action<JsonObject, int> change)
+    {
+        string[] rows = Encoding.UTF8.GetString(fixture.Inputs["statistics.jsonl"]!).TrimEnd('\n').Split('\n');
+        for (int index = 0; index < rows.Length; index++)
+        {
+            JsonObject envelope = JsonNode.Parse(rows[index])!.AsObject();
+            JsonObject native = JsonNode.Parse(envelope["raw_json"]!.GetValue<string>())!.AsObject();
+            change(native, index);
+            envelope["raw_json"] = native.ToJsonString();
+            rows[index] = envelope.ToJsonString();
+        }
+        fixture.Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(string.Join('\n', rows) + "\n");
+    }
+
+    private static void AssertUnusableProbe(JsonElement result)
+    {
+        JsonElement probe = result.GetProperty("probe_observation");
+        Assert.False(probe.GetProperty("usable").GetBoolean());
+        Assert.False(probe.GetProperty("qualifying").GetBoolean());
+        AssertPropertyNames(probe, "usable", "qualifying");
+    }
+
+    private static void AssertUsableProbe(JsonElement result, long maximum, bool qualifying)
+    {
+        JsonElement probe = result.GetProperty("probe_observation");
+        Assert.True(probe.GetProperty("usable").GetBoolean());
+        Assert.Equal(qualifying, probe.GetProperty("qualifying").GetBoolean());
+        Assert.Equal("broker-a/1", probe.GetProperty("broker").GetString());
+        Assert.Equal(0, probe.GetProperty("report_index").GetInt64());
+        Assert.Equal(1, probe.GetProperty("window_count").GetInt64());
+        Assert.Equal(maximum, probe.GetProperty("window_maximum").GetInt64());
+        AssertPropertyNames(probe, "usable", "qualifying", "broker", "report_index", "window_count", "window_maximum");
+    }
+
+    private static void AssertRecordedWindows(JsonElement result, long? maximum, long firstTimeoutIncrement = 0, bool includeCodes = true)
+    {
+        JsonElement evidence = result.GetProperty("a01_recorded_evidence");
+        if (includeCodes) Assert.Empty(evidence.GetProperty("delivery_error_codes").EnumerateArray());
+        AssertPropertyNames(evidence, includeCodes ? ["delivery_error_codes", "windows"] : ["windows"]);
+        JsonElement[] windows = evidence.GetProperty("windows").EnumerateArray().ToArray();
+        Assert.Equal(3, windows.Length);
+        for (int index = 0; index < windows.Length; index++)
+        {
+            JsonElement window = windows[index];
+            Assert.Equal("broker-a/1", window.GetProperty("broker").GetString());
+            Assert.Equal(index, window.GetProperty("report_index").GetInt64());
+            Assert.Equal(90 + index * 10, window.GetProperty("native_timestamp").GetInt64());
+            Assert.Equal(index == 0 ? firstTimeoutIncrement : 0, window.GetProperty("request_timeouts_increment").GetInt64());
+            Assert.Equal(0, window.GetProperty("disconnects_increment").GetInt64());
+            if (maximum is long value)
+            {
+                Assert.Equal(value, window.GetProperty("throttle_maximum_ms").GetInt64());
+                Assert.Equal(99327, window.GetProperty("round_trip_p99_us").GetInt64());
+            }
+            AssertPropertyNames(window, maximum is null
+                ? ["broker", "report_index", "native_timestamp", "request_timeouts_increment", "disconnects_increment"]
+                : ["broker", "report_index", "native_timestamp", "request_timeouts_increment", "disconnects_increment", "throttle_maximum_ms", "round_trip_p99_us"]);
+        }
+    }
+
+    private static void AssertPropertyNames(JsonElement value, params string[] names) =>
+        Assert.Equal(names.Order(StringComparer.Ordinal), value.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
 
     private static void ExpireQuery(HostEvidenceBuilder fixture, string phase, int elapsed)
     {

@@ -1,0 +1,50 @@
+{
+  "mode": "full",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/controller-invocations.json",
+  "command": [
+    "dotnet",
+    "stryker",
+    "--config-file",
+    "stryker-config.json",
+    "--output",
+    "../../.artifacts/issue-80-pr6a/mutation-full"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true",
+    "MSBUILDDISABLENODEREUSE": "1",
+    "DOTNET_CLI_USE_MSBUILD_SERVER": "0"
+  },
+  "tested_commit": "539d525251ecae74348621701cfcb294e83db94b",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "d330004adaa7e6f3f7ec7c74643fc059e6560773f4acac54a8daf8ee1ae72c1a",
+  "wall_time_cap_seconds": 3600,
+  "generated_mutant_cap": 10000,
+  "observed_generated_counts": [
+    5670
+  ],
+  "maximum_observed_generated_count": 5670,
+  "started_utc": "2026-10-19T11:57:38.689714+00:00",
+  "elapsed_seconds": 3600.0695566080003,
+  "exit_code": -9,
+  "exit_reason": "elapsed-cap",
+  "termination": {
+    "process_group": 24102,
+    "signal": "SIGKILL",
+    "utc": "2026-10-19T12:57:38.692596+00:00"
+  },
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "incomplete-or-missing",
+  "expected_report": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/mutation-full/reports/mutation-report.json",
+  "expected_xml": [],
+  "process_group": 24102,
+  "finished_utc": "2026-10-19T12:57:38.759512+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": false,
+  "xml_presence": {},
+  "command_log_sha256": "0365431c5abbea76f4fd422a9a29b4abe062c6e53c1c0fcd678135b566ba5088",
+  "execution_evidence_complete": false
+}

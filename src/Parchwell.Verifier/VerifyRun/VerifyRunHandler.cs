@@ -11,6 +11,7 @@ using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Judgement;
+using Parchwell.Verifier.VerifyRun.A01;
 using Parchwell.Verifier.VerifyRun.Storage;
 using Parchwell.Verifier.VerifyRun.Window;
 
@@ -76,7 +77,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             {
                 byte[]? raw = await artifacts.ReadStartLineAsync(options.StartLineInputName!, read.Token).ConfigureAwait(false);
                 CheckDeadline(noteOrigin, options.BlobIoTimeout.Value, read.Token);
-                noteBytes = raw is null ? null : new ReadOnlyMemory<byte>(raw);
+                noteBytes = raw is null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(raw);
             }
             if (noteBytes is not null) budget.ConsumeBytes(noteBytes.Value.Length);
             ParseResult<StartLineNote> start = noteBytes is null
@@ -99,8 +100,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             catch (VerifierKafkaOperationException)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                assessments.Add(new CheckAssessment(11, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
-                    AssessmentClassification.Incomplete, "document-events", null, null, "kafka_query_failed", null));
+                assessments.Add(RunWindow.Failure(11));
             }
             RunWindow window = RunWindow.Create(start, identity, ends);
             assessments.AddRange(window.Assessments);
@@ -112,9 +112,11 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                         options.MaxConsumedBytes!.Value), cancellationToken, kafkaWork.Token);
                 assessments.AddRange(drain.Assessments);
             }
-            RunJudgementResult judgement = RunJudgement.Evaluate(new RunJudgementRequest(identity, index, ledger,
+            var request = new RunJudgementRequest(identity, index, ledger,
                 manifest, statistics, lifecycle, capabilities, reports, options.ExpectedBrokerNames!, producer,
-                drain?.Records ?? [], assessments, outputLimits));
+                drain?.Records ?? [], assessments, outputLimits);
+            RunJudgementResult judgement = RunJudgement.Evaluate(request);
+            A01EvidenceRecording a01 = A01EvidenceRecorder.Record(request, judgement);
             status = judgement.Status ?? throw new InvalidOperationException("The available evidence does not establish a verifier result status.");
             var result = new VerifierResult(1, identity, manifest.Value?.GeneratorVersion, manifest.Value?.RuntimeVersions,
                 options.VerifierCommit!, typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString,
@@ -122,9 +124,9 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 start.Value?.PartitionHighs.Select(p => new WatermarkOffset(p.Partition, p.High)).ToArray(),
                 ends?.OrderBy(p => p.Key).Select(p => new WatermarkOffset(p.Key, p.Value)).ToArray(),
                 Milliseconds(drain?.DrainDuration), Milliseconds(drain?.StopDuration), judgement.Counts, judgement.BrokerCount,
-                judgement.ConfigurationFidelity, null, null,
+                judgement.ConfigurationFidelity, a01.ProbeObservation, a01.RecordedEvidence,
                 index.Value!.Artifacts.Where(a => JudgedPayloads.Contains(a.Name)).Select(a => new JudgedFileHash(a.Name, a.Sha256)).ToArray(),
-                judgement.Diagnostics);
+                judgement.Diagnostics.Concat(a01.Diagnostics).ToArray());
             bytes = VerifierResultCodec.Write(result, outputLimits);
 
             async Task<ReadOnlyMemory<byte>?> ReadAsync(string name)
@@ -134,7 +136,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 using var read = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
                 byte[]? raw = await ledgerSource.ReadAsync(name, read.Token).ConfigureAwait(false);
                 CheckDeadline(readOrigin, options.BlobIoTimeout.Value, read.Token);
-                return raw is null ? null : new ReadOnlyMemory<byte>(raw);
+                return raw is null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(raw);
             }
         }
         finally

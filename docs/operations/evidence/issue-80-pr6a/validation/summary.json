@@ -1,0 +1,81 @@
+{
+  "report_directory": "/tmp/parchwell-dotnet-verification.6cA9VgRI",
+  "script_exit_code": 0,
+  "assemblies": [
+    {
+      "assembly": "Parchwell.ArchitectureTests",
+      "total": "8",
+      "passed": "8",
+      "failed": "0",
+      "skipped": "0",
+      "errors": "0",
+      "not-run": "0",
+      "time": "4.116"
+    },
+    {
+      "assembly": "Parchwell.Kafka.Tests",
+      "total": "306",
+      "passed": "306",
+      "failed": "0",
+      "skipped": "0",
+      "errors": "0",
+      "not-run": "0",
+      "time": "250.641"
+    },
+    {
+      "assembly": "Parchwell.Scenarios.Tests",
+      "total": "94",
+      "passed": "94",
+      "failed": "0",
+      "skipped": "0",
+      "errors": "0",
+      "not-run": "0",
+      "time": "0.929"
+    },
+    {
+      "assembly": "Parchwell.LoadGen.Tests",
+      "total": "262",
+      "passed": "262",
+      "failed": "0",
+      "skipped": "0",
+      "errors": "0",
+      "not-run": "0",
+      "time": "97.061"
+    },
+    {
+      "assembly": "Parchwell.Verifier.Tests",
+      "total": "2091",
+      "passed": "2091",
+      "failed": "0",
+      "skipped": "0",
+      "errors": "0",
+      "not-run": "0",
+      "time": "256.449"
+    }
+  ],
+  "script_check_lines": [
+    "Locked restore: passed",
+    "Solution build: passed",
+    "Kafka XML inventory consistency: passed",
+    "Parchwell.ArchitectureTests tests: passed",
+    "Parchwell.ArchitectureTests report: passed",
+    "  Parchwell.ArchitectureTests: 8 passed; checked report.",
+    "Unit scaffold inventory: passed",
+    "Parchwell.Kafka.Tests tests: passed",
+    "Parchwell.Kafka.Tests report: passed",
+    "  Parchwell.Kafka.Tests: 306 passed; checked report.",
+    "Parchwell.LoadGen.Tests tests: passed",
+    "Parchwell.LoadGen.Tests report: passed",
+    "  Parchwell.LoadGen.Tests: 262 passed; checked report.",
+    "Parchwell.Scenarios.Tests tests: passed",
+    "Parchwell.Scenarios.Tests report: passed",
+    "  Parchwell.Scenarios.Tests: 94 passed; checked report.",
+    "Parchwell.Verifier.Tests tests: passed",
+    "Parchwell.Verifier.Tests report: passed",
+    "  Parchwell.Verifier.Tests: 2091 passed; checked report.",
+    "Warning control restore: passed",
+    "Warning control valid counterpart: passed",
+    "Warning-as-error control: valid counterpart built; intended CS1030 error rejected.",
+    "Verification passed. Per-project reports identify the tests executed."
+  ]
+}

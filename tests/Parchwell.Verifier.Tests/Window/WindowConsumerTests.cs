@@ -193,6 +193,7 @@ public sealed class WindowConsumerTests
         var result = Drain(consumer, fake);
         Assert.Equal(9, Assert.Single(result.Assessments).CheckNumber);
         Assert.Equal(AssessmentClassification.Invalid, result.Assessments[0].Classification);
+        RunWindowTests.AssertSemanticFailure(result.Assessments[0], 9);
         Assert.Null(result.DrainDuration);
         Assert.Null(result.StopDuration);
         Assert.Equal(1, fake.AssignCalls);
@@ -242,6 +243,7 @@ public sealed class WindowConsumerTests
         var result = WindowConsumer.Drain(consumer, Window(), fake.Clock, 0, TimeSpan.FromMilliseconds(1000),
             TimeSpan.FromMilliseconds(1000), new(10, 1000), TestContext.Current.CancellationToken, safety.Token);
         Assert.Equal(9, Assert.Single(result.Assessments).CheckNumber);
+        RunWindowTests.AssertSemanticFailure(result.Assessments[0], 9);
         Assert.Null(result.DrainDuration);
         Assert.Null(result.StopDuration);
     }
@@ -289,6 +291,7 @@ public sealed class WindowConsumerTests
     private static void AssertStopped(WindowDrainResult result)
     {
         Assert.Contains(result.Assessments, a => a.CheckNumber == 10 && a.Disposition == AssessmentDisposition.Fail && a.Classification == AssessmentClassification.Incomplete);
+        RunWindowTests.AssertSemanticFailure(Assert.Single(result.Assessments, a => a.CheckNumber == 10), 10);
         Assert.Null(result.DrainDuration);
         Assert.NotNull(result.StopDuration);
     }

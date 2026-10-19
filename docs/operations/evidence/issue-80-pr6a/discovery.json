@@ -1,0 +1,11 @@
+{
+  "source": "completed controller receipt and captured Stryker initialization log; no serialized report available",
+  "available": false,
+  "failure": "elapsed cap reached before JSON report publication",
+  "initial_discovered_test_count": 2079,
+  "test_count": null,
+  "test_file_count": null,
+  "component_tests": null,
+  "serialized_names_available": false,
+  "independent_preflight": "preflight-discovery.json"
+}

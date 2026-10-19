@@ -1,0 +1,53 @@
+{
+  "mode": "suite",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/controller-invocations.json",
+  "command": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "1",
+    "--results-directory",
+    ".artifacts/issue-80-pr6a/verifier",
+    "--",
+    "--report-xunit-xml",
+    "--report-xunit-xml-filename",
+    "results.xml"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "environment_overrides": {},
+  "tested_commit": "882f0fccdc18b2b8dbfeaecc21e41779cd055916",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "686e99e0ec2d319de6d9fb01fc2c2b5411b4e3ebf62d688516bbd2e5ac1fabad",
+  "wall_time_cap_seconds": 1800,
+  "generated_mutant_cap": 10000,
+  "observed_generated_counts": [],
+  "maximum_observed_generated_count": null,
+  "started_utc": "2026-10-19T11:40:09.317108+00:00",
+  "elapsed_seconds": 148.296951638,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "not-applicable-suite-mode",
+  "expected_report": null,
+  "expected_xml": [
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/verifier/results.xml"
+  ],
+  "process_group": 5511,
+  "finished_utc": "2026-10-19T11:42:37.614423+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": null,
+  "xml_presence": {
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/verifier/results.xml": true
+  },
+  "command_log_sha256": "16ff0a1cb516e48a77781fb930d9d77e3421c69ea594efc4fd61f3399f3aeb23",
+  "execution_evidence_complete": true
+}

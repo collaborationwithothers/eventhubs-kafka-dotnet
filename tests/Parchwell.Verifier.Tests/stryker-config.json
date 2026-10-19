@@ -16,7 +16,9 @@
     },
     "mutate": [
       "VerifyRun/Judgement/*.cs",
-      "VerifyRun/Window/*.cs"
+      "VerifyRun/Window/*.cs",
+      "VerifyRun/A01/A01EvidenceRecorder.cs",
+      "ProbeGate/ProbeGateEvaluator.cs"
     ]
   }
 }

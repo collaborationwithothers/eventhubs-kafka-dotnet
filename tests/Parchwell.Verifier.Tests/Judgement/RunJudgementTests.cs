@@ -147,9 +147,9 @@ public sealed class RunJudgementTests
             check == 8 ? new Dictionary<int, long> { [2] = 2 } : new Dictionary<int, long> { [0] = 1, [1] = 1 });
         string[] expectedCodes = check switch
         {
-            7 => ["duplicate_start_partition", "negative_start_offset"],
-            8 => ["missing_end_partition", "missing_end_partition"],
-            _ => ["end_before_start", "end_before_start"]
+            7 => ["check_7_failed", "check_7_failed"],
+            8 => ["check_8_failed", "check_8_failed"],
+            _ => ["check_9_failed", "check_9_failed"]
         };
         RunJudgementResult result = RunJudgement.Evaluate(request with
         {

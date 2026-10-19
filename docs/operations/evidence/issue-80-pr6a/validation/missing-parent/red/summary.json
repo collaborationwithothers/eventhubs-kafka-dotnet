@@ -1,0 +1,51 @@
+{
+  "phase": "red",
+  "test_command_exit_code": 2,
+  "executed": 1,
+  "passed": 0,
+  "failed": 1,
+  "skipped": 0,
+  "assembly_counts": [
+    {
+      "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+      "id": "ea5e7805-10e7-4994-a095-221cc58b2ba4",
+      "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll",
+      "run-date": "2026-10-19",
+      "run-time": "15:40:22",
+      "start-rtf": "2026-10-19T15:40:22.8149291+00:00",
+      "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+      "target-framework": ".NETCoreApp,Version=v10.0",
+      "errors": "0",
+      "failed": "1",
+      "finish-rtf": "2026-10-19T15:40:23.5244433+00:00",
+      "not-run": "0",
+      "passed": "0",
+      "skipped": "0",
+      "time": "0.709",
+      "time-rtf": "00:00:00.7090000",
+      "total": "1"
+    }
+  ],
+  "tests": [
+    {
+      "id": "b012aef5-2f32-40ee-936d-44afd3945049",
+      "name": "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.Given_RepeatResultParentIsMissing_When_ProductionProcessRuns_Then_RetainsAllRepeatsAndReportsMissingResult",
+      "result": "Fail",
+      "time": "0.472",
+      "time-rtf": "00:00:00.4720000",
+      "start-rtf": "2026-10-19T15:40:22.9807230+00:00",
+      "finish-rtf": "2026-10-19T15:40:23.4890876+00:00",
+      "type": "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests",
+      "method": "Given_RepeatResultParentIsMissing_When_ProductionProcessRuns_Then_RetainsAllRepeatsAndReportsMissingResult",
+      "source-file": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs",
+      "source-line": "28"
+    }
+  ],
+  "artifact_sha256": {
+    "command.json": "34124158e84893235f7b323f75b444ed238b00944491345fd584e0ae260db822",
+    "command.log": "e46f88c2c413f2cdfc825cdbe8ce86e3e2d7e581cf4707decf3ca0ab039c8a25",
+    "results.xml": "47157dc530ccfa8f6108046a9ba39eeccb6ee70b442ee0168e15c97d721b4321",
+    "ProbeGateHandler.cs": "5da42ae223684329ccd94892691eeb99be00afcaef24f03ff11f11dfe7c79958",
+    "ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087"
+  }
+}

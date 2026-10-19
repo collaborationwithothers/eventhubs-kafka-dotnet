@@ -1,0 +1,9 @@
+{
+  "source": "completed controller receipt and captured Stryker initialization log; serialized report unavailable",
+  "available": false,
+  "initial_discovered_test_count": 2079,
+  "test_count": null,
+  "test_file_count": null,
+  "component_tests": null,
+  "serialized_names_available": false
+}

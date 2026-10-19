@@ -336,7 +336,7 @@ internal static class VerifierResultCodec
         writer.WriteBoolean("usable", value.Usable);
         writer.WriteBoolean("qualifying", value.Qualifying);
         WriteOptionalString(writer, "broker", value.Broker);
-        if (value.ReportTimestamp is long timestamp) writer.WriteNumber("report_timestamp", timestamp);
+        if (value.ReportIndex is long index) writer.WriteNumber("report_index", index);
         if (value.WindowCount is long count) writer.WriteNumber("window_count", count);
         if (value.WindowMaximum is long maximum) writer.WriteNumber("window_maximum", maximum);
         writer.WriteEndObject();
@@ -346,22 +346,25 @@ internal static class VerifierResultCodec
     {
         writer.WritePropertyName("a01_recorded_evidence");
         writer.WriteStartObject();
-        WriteIntArray(writer, "delivery_error_codes", value.DeliveryErrorCodes);
-        writer.WritePropertyName("windows");
-        writer.WriteStartArray();
-        foreach (A01WindowEvidence window in value.Windows)
+        if (value.DeliveryErrorCodes is not null) WriteIntArray(writer, "delivery_error_codes", value.DeliveryErrorCodes);
+        if (value.Windows is not null)
         {
-            writer.WriteStartObject();
-            writer.WriteString("broker", window.Broker);
-            writer.WriteNumber("report_timestamp", window.ReportTimestamp);
-            writer.WriteNumber("native_timestamp", window.NativeTimestamp);
-            if (window.RequestTimeoutsIncrement is long timeouts) writer.WriteNumber("request_timeouts_increment", timeouts);
-            if (window.DisconnectsIncrement is long disconnects) writer.WriteNumber("disconnects_increment", disconnects);
-            if (window.ThrottleMaximumMilliseconds is long throttle) writer.WriteNumber("throttle_maximum_ms", throttle);
-            if (window.RoundTripP99Microseconds is long rtt) writer.WriteNumber("round_trip_p99_us", rtt);
-            writer.WriteEndObject();
+            writer.WritePropertyName("windows");
+            writer.WriteStartArray();
+            foreach (A01WindowEvidence window in value.Windows)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("broker", window.Broker);
+                writer.WriteNumber("report_index", window.ReportIndex);
+                writer.WriteNumber("native_timestamp", window.NativeTimestamp);
+                if (window.RequestTimeoutsIncrement is long timeouts) writer.WriteNumber("request_timeouts_increment", timeouts);
+                if (window.DisconnectsIncrement is long disconnects) writer.WriteNumber("disconnects_increment", disconnects);
+                if (window.ThrottleMaximumMilliseconds is long throttle) writer.WriteNumber("throttle_maximum_ms", throttle);
+                if (window.RoundTripP99Microseconds is long rtt) writer.WriteNumber("round_trip_p99_us", rtt);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
         }
-        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 
@@ -574,43 +577,50 @@ internal static class VerifierResultCodec
     private static bool ParseProbeObservation(JsonElement element, string path, string artifact, out ProbeRepeatObservation? value, out StructuralProblem? problem)
     {
         value = null;
-        if (!Validate(element, path, Set("usable", "qualifying"), Set("usable", "qualifying", "broker", "report_timestamp", "window_count", "window_maximum"), artifact, out problem)) return false;
+        if (!Validate(element, path, Set("usable", "qualifying"), Set("usable", "qualifying", "broker", "report_index", "window_count", "window_maximum"), artifact, out problem)) return false;
         if (!TryBool(element, "usable", out bool usable)) { problem = Problem(artifact, path + ".usable", "wrong_json_kind"); return false; }
         if (!TryBool(element, "qualifying", out bool qualifying)) { problem = Problem(artifact, path + ".qualifying", "wrong_json_kind"); return false; }
         if (!TryOptionalString(element, "broker", artifact, path, out string? broker, out problem)) return false;
-        if (!TryOptionalInt64(element, "report_timestamp", artifact, path, out long? timestamp, out problem)) return false;
+        if (!TryOptionalInt64(element, "report_index", artifact, path, out long? index, out problem)) return false;
         if (!TryOptionalInt64(element, "window_count", artifact, path, out long? count, out problem)) return false;
         if (!TryOptionalInt64(element, "window_maximum", artifact, path, out long? maximum, out problem)) return false;
-        value = new ProbeRepeatObservation(usable, qualifying, broker, timestamp, count, maximum);
+        value = new ProbeRepeatObservation(usable, qualifying, broker, index, count, maximum);
         return true;
     }
 
     private static bool ParseA01Evidence(JsonElement element, string path, string artifact, out A01RecordedEvidence? value, out StructuralProblem? problem)
     {
         value = null;
-        if (!Validate(element, path, Set("delivery_error_codes", "windows"), Set("delivery_error_codes", "windows"), artifact, out problem)) return false;
-        if (!TryIntArray(element, "delivery_error_codes", artifact, out IReadOnlyList<int>? codes, out problem)) return false;
-        JsonElement array = element.GetProperty("windows");
+        if (!Validate(element, path, Set(), Set("delivery_error_codes", "windows"), artifact, out problem)) return false;
+        IReadOnlyList<int>? codes = null;
+        if (element.TryGetProperty("delivery_error_codes", out _) &&
+            !TryIntArray(element, "delivery_error_codes", artifact, out codes, out problem)) return false;
+        if (!element.TryGetProperty("windows", out JsonElement array))
+        {
+            value = new A01RecordedEvidence(codes, null);
+            return true;
+        }
         if (array.ValueKind != JsonValueKind.Array) { problem = Problem(artifact, path + ".windows", "wrong_json_kind"); return false; }
         var windows = new List<A01WindowEvidence>(array.GetArrayLength());
         int index = 0;
         foreach (JsonElement item in array.EnumerateArray())
         {
             string itemPath = $"{path}.windows[{index}]";
-            IReadOnlySet<string> required = Set("broker", "report_timestamp", "native_timestamp");
-            IReadOnlySet<string> allowed = Set("broker", "report_timestamp", "native_timestamp", "request_timeouts_increment", "disconnects_increment", "throttle_maximum_ms", "round_trip_p99_us");
-            if (!Validate(item, itemPath, required, allowed, artifact, out problem)) return false;
+            IReadOnlySet<string> required = Set("broker", "report_index", "native_timestamp");
+            IReadOnlySet<string> allowed = Set("broker", "report_index", "native_timestamp", "request_timeouts_increment", "disconnects_increment", "throttle_maximum_ms", "round_trip_p99_us");
+            if (!Validate(item, itemPath, Set(), allowed, artifact, out problem) ||
+                !Validate(item, itemPath, required, allowed, artifact, out problem)) return false;
             if (!TryString(item, "broker", out string? broker)) { problem = Problem(artifact, $"{itemPath}.broker", "wrong_json_kind"); return false; }
-            if (!TryInt64(item, "report_timestamp", out long reportTimestamp)) { problem = Problem(artifact, $"{itemPath}.report_timestamp", "wrong_json_kind"); return false; }
+            if (!TryInt64(item, "report_index", out long reportIndex)) { problem = Problem(artifact, $"{itemPath}.report_index", "wrong_json_kind"); return false; }
             if (!TryInt64(item, "native_timestamp", out long nativeTimestamp)) { problem = Problem(artifact, $"{itemPath}.native_timestamp", "wrong_json_kind"); return false; }
             if (!TryOptionalInt64(item, "request_timeouts_increment", artifact, itemPath, out long? timeouts, out problem)) return false;
             if (!TryOptionalInt64(item, "disconnects_increment", artifact, itemPath, out long? disconnects, out problem)) return false;
             if (!TryOptionalInt64(item, "throttle_maximum_ms", artifact, itemPath, out long? throttle, out problem)) return false;
             if (!TryOptionalInt64(item, "round_trip_p99_us", artifact, itemPath, out long? rtt, out problem)) return false;
-            windows.Add(new A01WindowEvidence(broker!, reportTimestamp, nativeTimestamp, timeouts, disconnects, throttle, rtt));
+            windows.Add(new A01WindowEvidence(broker!, reportIndex, nativeTimestamp, timeouts, disconnects, throttle, rtt));
             index++;
         }
-        value = new A01RecordedEvidence(codes!, windows);
+        value = new A01RecordedEvidence(codes, windows);
         return true;
     }
 

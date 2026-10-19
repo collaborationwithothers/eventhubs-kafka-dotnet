@@ -1,0 +1,38 @@
+{
+  "mode": "suite",
+  "invocation_ordinal": 3,
+  "invocation_ledger": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/controller-invocations.json",
+  "command": [
+    "./scripts/verify-dotnet.sh"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "environment_overrides": {
+    "DOTNET_PROCESSOR_COUNT": "1",
+    "MSBUILDDISABLENODEREUSE": "1"
+  },
+  "tested_commit": "3d0b03d84681f94b5033adc528ddb91bb4f0c509",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "bcda6975a73dd78142cfc1ba824a1561a7a4ca961c5e47d60af532adcf419037",
+  "wall_time_cap_seconds": 1800,
+  "generated_mutant_cap": 10000,
+  "observed_generated_counts": [],
+  "maximum_observed_generated_count": null,
+  "started_utc": "2026-10-19T11:44:40.646281+00:00",
+  "elapsed_seconds": 642.436325708,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "not-applicable-suite-mode",
+  "expected_report": null,
+  "expected_xml": [],
+  "process_group": 12775,
+  "finished_utc": "2026-10-19T11:55:23.082942+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": null,
+  "xml_presence": {},
+  "command_log_sha256": "ef0c48a754139bb6e8849aca07adf230042ad6ce7f04304195b932fd6856f62f",
+  "execution_evidence_complete": true
+}

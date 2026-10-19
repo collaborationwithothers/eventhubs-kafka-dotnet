@@ -1,0 +1,38 @@
+{
+  "normal_count": 35,
+  "mutation_count": 28,
+  "removed": [
+    "Component/ComponentRunHarness.cs",
+    "Component/LocalKafkaFixture.cs",
+    "Component/OAuthKafkaFixture.cs",
+    "Component/VerifierOAuthComponentTests.cs",
+    "Component/VerifierOutcomeComponentTests.cs",
+    "Component/VerifierWindowComponentTests.cs",
+    "Support/ComponentEvidenceBuilder.cs"
+  ],
+  "unexpected_additions": [],
+  "expected_component_exclusions": [
+    "Component/ComponentRunHarness.cs",
+    "Component/LocalKafkaFixture.cs",
+    "Component/OAuthKafkaFixture.cs",
+    "Component/VerifierOAuthComponentTests.cs",
+    "Component/VerifierOutcomeComponentTests.cs",
+    "Component/VerifierWindowComponentTests.cs",
+    "Support/ComponentEvidenceBuilder.cs"
+  ],
+  "only_approved_groups_removed": true,
+  "component_sources_in_mutation": [],
+  "required_gate_sources_present": {
+    "A01/A01EvidenceRecorderTests.cs": true,
+    "Host/VerifyRunDiagnosticTests.cs": true,
+    "ProbeGate/ProbeGateEvaluatorTests.cs": true,
+    "ProbeGate/ProbeGateHostTests.cs": true,
+    "Support/ProbeGateEvidenceBuilder.cs": true
+  },
+  "recorder_diagnostic_source_candidates": [
+    "A01/A01EvidenceRecorderTests.cs",
+    "Host/VerifyRunDiagnosticTests.cs"
+  ],
+  "normal_inventory_sha256": "94e1e118f5219118f93e0ccbc1829fe696ad594f9767571e3109229dbd48409a",
+  "mutation_inventory_sha256": "645aee7c3765aa4d11a9bd9cca6120a513efdcbf3738bbf29d716b023d2bb512"
+}

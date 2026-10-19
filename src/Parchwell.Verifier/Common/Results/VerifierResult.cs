@@ -67,19 +67,19 @@ internal sealed record ProbeRepeatObservation(
     bool Usable,
     bool Qualifying,
     string? Broker,
-    long? ReportTimestamp,
+    long? ReportIndex,
     long? WindowCount,
     long? WindowMaximum);
 
 /// <summary>Contains bounded recorded evidence for the A01 scenario.</summary>
 internal sealed record A01RecordedEvidence(
-    IReadOnlyList<int> DeliveryErrorCodes,
-    IReadOnlyList<A01WindowEvidence> Windows);
+    IReadOnlyList<int>? DeliveryErrorCodes,
+    IReadOnlyList<A01WindowEvidence>? Windows);
 
 /// <summary>Records supplied increments and selected native values for one A01 window.</summary>
 internal sealed record A01WindowEvidence(
     string Broker,
-    long ReportTimestamp,
+    long ReportIndex,
     long NativeTimestamp,
     long? RequestTimeoutsIncrement,
     long? DisconnectsIncrement,
