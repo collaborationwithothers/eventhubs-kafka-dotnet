@@ -197,9 +197,6 @@ internal static class VerifierResultCodec
         {
             ArgumentNullException.ThrowIfNull(diagnostic);
             CountDiagnostic(diagnostic.Check, perCheck, limits);
-            CheckDiagnosticBytes(diagnostic.Code, limits);
-            CheckDiagnosticBytes(diagnostic.Artifact, limits);
-            CheckDiagnosticBytes(diagnostic.Field, limits);
             CheckDiagnosticBytes(diagnostic.Snippet, limits);
         }
 
@@ -207,10 +204,10 @@ internal static class VerifierResultCodec
         {
             CheckAssessment assessment = result.ConfigurationFidelity.Assessment;
             ArgumentNullException.ThrowIfNull(assessment);
+            if (assessment.Evaluation == AssessmentEvaluation.NotEvaluated &&
+                (assessment.Disposition is not null || assessment.Classification is not null))
+                throw new ArgumentException("An unevaluated assessment cannot have a disposition or classification.", nameof(result));
             CountDiagnostic(assessment.CheckNumber, perCheck, limits);
-            CheckDiagnosticBytes(assessment.Artifact, limits);
-            CheckDiagnosticBytes(assessment.Field, limits);
-            CheckDiagnosticBytes(assessment.Code, limits);
             CheckDiagnosticBytes(assessment.Snippet, limits);
         }
 
@@ -558,6 +555,11 @@ internal static class VerifierResultCodec
         else { problem = Problem(artifact, path + ".evaluation", "invalid_or_wrong_json_value"); return false; }
         if (!TryOptionalEnum(element, "disposition", "pass", "fail", out AssessmentDisposition? disposition)) { problem = Problem(artifact, path + ".disposition", "invalid_or_wrong_json_value"); return false; }
         if (!TryOptionalEnum(element, "classification", "invalid", "incomplete", out AssessmentClassification? classification)) { problem = Problem(artifact, path + ".classification", "invalid_or_wrong_json_value"); return false; }
+        if (evaluation == AssessmentEvaluation.NotEvaluated && (disposition is not null || classification is not null))
+        {
+            problem = Problem(artifact, path, "unevaluated_assessment_has_outcome");
+            return false;
+        }
         if (!TryOptionalString(element, "artifact", artifact, path, out string? artifactName, out problem)) return false;
         if (!TryOptionalInt64(element, "row", artifact, path, out long? row, out problem)) return false;
         if (!TryOptionalString(element, "field", artifact, path, out string? field, out problem)) return false;
@@ -650,9 +652,7 @@ internal static class VerifierResultCodec
             if (!TryNullableInt64(item, "row", artifact, path, out long? row, out problem)) return false;
             if (!TryNullableString(item, "field", artifact, path, out string? field, out problem)) return false;
             if (!TryNullableString(item, "snippet", artifact, path, out string? snippet, out problem)) return false;
-            if (Encoding.UTF8.GetByteCount(code!) > maxDiagnosticBytes || (artifactName is not null && Encoding.UTF8.GetByteCount(artifactName) > maxDiagnosticBytes) ||
-                (field is not null && Encoding.UTF8.GetByteCount(field) > maxDiagnosticBytes) ||
-                (snippet is not null && Encoding.UTF8.GetByteCount(snippet) > maxDiagnosticBytes))
+            if (snippet is not null && Encoding.UTF8.GetByteCount(snippet) > maxDiagnosticBytes)
                 throw new InputLimitExceededException($"{artifact} diagnostic {index} exceeds the configured diagnostic byte limit.");
             list.Add(new ResultDiagnostic(check, code!, artifactName!, row, field, snippet));
             index++;
@@ -663,12 +663,8 @@ internal static class VerifierResultCodec
 
     private static void CheckAssessmentInputLimits(CheckAssessment assessment, int maxDiagnosticBytes)
     {
-        string?[] values = [assessment.Artifact, assessment.Field, assessment.Code, assessment.Snippet];
-        foreach (string? value in values)
-        {
-            if (value is not null && Encoding.UTF8.GetByteCount(value) > maxDiagnosticBytes)
-                throw new InputLimitExceededException("A configuration fidelity assessment exceeds the configured diagnostic byte limit.");
-        }
+        if (assessment.Snippet is not null && Encoding.UTF8.GetByteCount(assessment.Snippet) > maxDiagnosticBytes)
+            throw new InputLimitExceededException("A configuration fidelity assessment exceeds the configured diagnostic byte limit.");
     }
 
     private static void ValidateInputDiagnostics(

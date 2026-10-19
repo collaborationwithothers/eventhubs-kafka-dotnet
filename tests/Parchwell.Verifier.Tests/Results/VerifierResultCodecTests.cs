@@ -661,6 +661,130 @@ public sealed class VerifierResultCodecTests
             bytes, "start-line-note", RecordedEvidence.SmallLimits, maxPartitions: 1));
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(null, "invalid")]
+    [InlineData(null, "incomplete")]
+    [InlineData("pass", null)]
+    [InlineData("pass", "invalid")]
+    [InlineData("pass", "incomplete")]
+    [InlineData("fail", null)]
+    [InlineData("fail", "invalid")]
+    [InlineData("fail", "incomplete")]
+    public void Given_UnevaluatedAssessmentOutcomeMatrix_When_ReadOrWritten_Then_OnlyAbsentOutcomesAreAccepted(
+        string? dispositionText, string? classificationText)
+    {
+        AssessmentDisposition? disposition = dispositionText is null ? null : dispositionText == "pass" ? AssessmentDisposition.Pass : AssessmentDisposition.Fail;
+        AssessmentClassification? classification = classificationText is null ? null : classificationText == "invalid" ? AssessmentClassification.Invalid : AssessmentClassification.Incomplete;
+        var assessment = new CheckAssessment(27, AssessmentEvaluation.NotEvaluated, disposition, classification,
+            null, null, null, null, null);
+        VerifierResult result = Result(VerifierResultStatus.Invalid, fidelity: new ConfigurationFidelityResult(assessment, []));
+        string outcomes = (disposition is null ? "" : "\"disposition\":\"" + (disposition == AssessmentDisposition.Pass ? "pass" : "fail") + "\",") +
+            (classification is null ? "" : "\"classification\":\"" + (classification == AssessmentClassification.Invalid ? "invalid" : "incomplete") + "\",");
+        string json = """
+            {"schema_version":1,"identity":{"scenario_id":"A01","configuration_id":"C0","run_id":"run-1",
+            "instance_id":"instance-1","expected_instance_id":"instance-1","client_id":"producer-1"},
+            "generator_version":"synthetic","runtime_versions":{},"verifier_commit":"synthetic",
+            "verifier_confluent_kafka_version":"synthetic","verifier_librdkafka_version":"synthetic",
+            "status":"invalid","failed_checks":[],"judged_file_hashes":[],"diagnostics":[],
+            "configuration_fidelity":{"assessment":{
+            """ + outcomes + """
+            "check_number":27,"evaluation":"not_evaluated"},"differences":[]}}
+            """;
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json),
+            "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+        if (disposition is null && classification is null)
+        {
+            Assert.Equal(assessment, RoundTrip(result).ConfigurationFidelity!.Assessment);
+            Assert.True(parsed.IsSuccess);
+            Assert.Equal(assessment, parsed.Value!.ConfigurationFidelity!.Assessment);
+            return;
+        }
+
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(result, OutputLimits));
+        Assert.False(parsed.IsSuccess);
+        StructuralProblem problem = Assert.Single(parsed.Problems);
+        Assert.Null(problem.CheckNumber);
+        Assert.Equal("unevaluated_assessment_has_outcome", problem.Code);
+        Assert.Equal("configuration_fidelity.assessment", problem.Field);
+    }
+
+    [Theory]
+    [InlineData("disposition")]
+    [InlineData("classification")]
+    public void Given_UnevaluatedAssessmentWithExplicitNullOutcome_When_Read_Then_StrictOptionalEnumRejectsNull(string field)
+    {
+        const string prefix = """
+            {"schema_version":1,"identity":{"scenario_id":"A01","configuration_id":"C0","run_id":"run-1",
+            "instance_id":"instance-1","expected_instance_id":"instance-1","client_id":"producer-1"},
+            "generator_version":"synthetic","runtime_versions":{},"verifier_commit":"synthetic",
+            "verifier_confluent_kafka_version":"synthetic","verifier_librdkafka_version":"synthetic",
+            "status":"invalid","failed_checks":[],"judged_file_hashes":[],"diagnostics":[],
+            "configuration_fidelity":{"assessment":{"check_number":27,"evaluation":"not_evaluated",
+            """;
+        string json = prefix + "\"" + field + "\":null},\"differences\":[]}}";
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json),
+            "result.json", RecordedEvidence.SmallLimits, maxDiagnosticsPerCheck: 8);
+        Assert.False(parsed.IsSuccess);
+        StructuralProblem problem = Assert.Single(parsed.Problems);
+        Assert.Null(problem.CheckNumber);
+        Assert.Equal("invalid_or_wrong_json_value", problem.Code);
+        Assert.Equal("configuration_fidelity.assessment." + field, problem.Field);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("abc", true)]
+    [InlineData("abcd", true)]
+    [InlineData("abcde", false)]
+    [InlineData("\u00e9\u00e9", true)]
+    [InlineData("\u00e9\u00e9a", false)]
+    public void Given_SnippetByteBoundaries_When_ReadOrWritten_Then_BothDiagnosticLocationsEnforceOnlySnippetBytes(
+        string? snippet, bool accepted)
+    {
+        foreach (bool nested in new[] { false, true })
+        {
+            var assessment = new CheckAssessment(27, AssessmentEvaluation.NotEvaluated, null, null,
+                "capabilities.json", null, "delivery_latency_ms", "bad_row", snippet);
+            VerifierResult result = nested
+                ? Result(VerifierResultStatus.Invalid, fidelity: new ConfigurationFidelityResult(assessment, []))
+                : Result(VerifierResultStatus.Invalid,
+                    diagnostics: [new ResultDiagnostic(1, "bad_row", "ledger.jsonl", null, "delivery_latency_ms", snippet)]);
+            var outputLimits = new OutputLimits(65_536, 8, 4);
+            InputLimits inputLimits = RecordedEvidence.SmallLimits with { MaxDiagnosticBytes = 4 };
+            byte[] generousBytes = VerifierResultCodec.Write(result, OutputLimits);
+            if (!accepted)
+            {
+                Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Write(result, outputLimits));
+                Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Read(generousBytes,
+                    "result.json", inputLimits, maxDiagnosticsPerCheck: 8));
+                continue;
+            }
+
+            byte[] bytes = VerifierResultCodec.Write(result, outputLimits);
+            VerifierResult roundTripped = Read(bytes, inputLimits);
+            Assert.Equal(snippet, nested ? roundTripped.ConfigurationFidelity!.Assessment.Snippet : roundTripped.Diagnostics[0].Snippet);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Given_OneByteSnippetBudget_When_ReadOrWritten_Then_MetadataIsRetainedExactly(bool nested)
+    {
+        var assessment = new CheckAssessment(27, AssessmentEvaluation.NotEvaluated, null, null,
+            "ledger.jsonl", null, "delivery_latency_ms", "bad_row", "x");
+        var diagnostic = new ResultDiagnostic(1, "bad_row", "ledger.jsonl", null, "delivery_latency_ms", "x");
+        VerifierResult result = nested
+            ? Result(VerifierResultStatus.Invalid, fidelity: new ConfigurationFidelityResult(assessment, []))
+            : Result(VerifierResultStatus.Invalid, diagnostics: [diagnostic]);
+        byte[] bytes = VerifierResultCodec.Write(result, new OutputLimits(65_536, 8, 1));
+        VerifierResult roundTripped = Read(bytes, RecordedEvidence.SmallLimits with { MaxDiagnosticBytes = 1 });
+        if (nested) Assert.Equal(assessment, roundTripped.ConfigurationFidelity!.Assessment);
+        else Assert.Equal(diagnostic, Assert.Single(roundTripped.Diagnostics));
+    }
+
     private static VerifierResult Result(
         VerifierResultStatus status,
         OutcomeCounts? counts = null,

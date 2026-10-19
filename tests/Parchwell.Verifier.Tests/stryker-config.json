@@ -15,14 +15,7 @@
       "break": 0
     },
     "mutate": [
-      "Program.cs",
-      "VerifierHostOptions*.cs",
-      "VerifierWorker.cs",
-      "Common/Contracts/*.cs",
-      "Common/Serialization/*.cs",
-      "Common/Window/*.cs",
-      "Common/Results/*.cs",
-      "VerifyRun/Input/*.cs"
+      "VerifyRun/Judgement/*.cs"
     ]
   }
 }
