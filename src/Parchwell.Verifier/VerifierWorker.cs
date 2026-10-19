@@ -39,6 +39,11 @@ internal sealed partial class VerifierWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        CancellationToken applicationStopping = _applicationLifetime.ApplicationStopping;
+        using CancellationTokenRegistration hostStoppingRegistration = applicationStopping.Register(
+            static state => ((VerifierExecutionState)state!).MarkStopped(), _executionState);
+        using CancellationTokenRegistration workerStoppingRegistration = stoppingToken.Register(
+            static state => ((VerifierExecutionState)state!).MarkStopped(), _executionState);
         try
         {
             var configuredMode = _options.Value.Mode;
@@ -48,11 +53,9 @@ internal sealed partial class VerifierWorker : BackgroundService
                 if (handler is not null)
                 {
                     int exitCode = await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
-                    stoppingToken.ThrowIfCancellationRequested();
-                    _applicationLifetime.ApplicationStopping.ThrowIfCancellationRequested();
                     if (exitCode == 0)
                     {
-                        _executionState.MarkSucceeded();
+                        _executionState.MarkSucceeded(stoppingToken, applicationStopping);
                     }
                     else
                     {
@@ -106,13 +109,28 @@ internal interface IVerifierModeHandler
 /// <summary>Tracks the explicit process outcome independently of Generic Host shutdown.</summary>
 internal sealed class VerifierExecutionState
 {
-    private int _exitCode = 1;
+    private const int Running = 0;
+    private const int Succeeded = 1;
+    private const int Failed = 2;
+    private int _state = Running;
 
-    public int ExitCode => Volatile.Read(ref _exitCode);
+    public int ExitCode => Volatile.Read(ref _state) == Succeeded ? 0 : 1;
 
-    public void MarkSucceeded() => Interlocked.Exchange(ref _exitCode, 0);
+    public void MarkSucceeded(CancellationToken stoppingToken, CancellationToken applicationStopping)
+    {
+        // Completion and a premature stop compete for the running state; failure is sticky.
+        Interlocked.CompareExchange(ref _state, Succeeded, Running);
+        // Cancellation can be requested while its callback is still waiting to run.
+        // Observe it after the transition so an earlier request cannot be overwritten.
+        if (stoppingToken.IsCancellationRequested || applicationStopping.IsCancellationRequested)
+        {
+            MarkFailed();
+        }
+    }
 
-    public void MarkFailed() => Interlocked.Exchange(ref _exitCode, 1);
+    public void MarkStopped() => Interlocked.CompareExchange(ref _state, Failed, Running);
+
+    public void MarkFailed() => Interlocked.Exchange(ref _state, Failed);
 }
 
 /// <summary>Terminates a verifier process whose lifetime budget expires.</summary>

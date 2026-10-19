@@ -1,0 +1,32 @@
+{
+  "report_path": ".artifacts/issue-80-pr5/mutation-full/reports/mutation-report.json",
+  "report_sha256": "f7f4dd647f305fa1997a8dfae00df2eae80fff86cc2e9444562108d217ef5aac",
+  "report_keys": [
+    "files",
+    "projectRoot",
+    "schemaVersion",
+    "testFiles",
+    "thresholds"
+  ],
+  "file_count": 39,
+  "mutant_records": 1487,
+  "statuses": {
+    "Ignored": 574,
+    "CompileError": 123,
+    "Killed": 540,
+    "Survived": 241,
+    "Timeout": 9
+  },
+  "score_numerator": 549,
+  "score_denominator": 790,
+  "score_percent": 69.49367088607595,
+  "outside_selected_scope": [],
+  "test_file_count": 23,
+  "test_count": 1810,
+  "component_tests": [],
+  "window_test_count": 140,
+  "judgement_test_count": 382,
+  "manual_survivor_replays": 0,
+  "manual_finding_dispositions": 0,
+  "coverage_relay_ack_warnings": 66
+}

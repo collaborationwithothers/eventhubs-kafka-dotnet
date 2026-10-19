@@ -40,7 +40,7 @@ internal sealed class FileSystemScenarioSource : IScenarioSource
 
         string candidate = Path.GetFullPath(Path.Combine(_root,
             normalized.Replace('/', Path.DirectorySeparatorChar)));
-        string rootPrefix = _root + Path.DirectorySeparatorChar;
+        string rootPrefix = Path.EndsInDirectorySeparator(_root) ? _root : _root + Path.DirectorySeparatorChar;
         if (!candidate.StartsWith(rootPrefix, _pathComparison))
             throw new InvalidDataException("scenario_path_escapes_source_root");
 

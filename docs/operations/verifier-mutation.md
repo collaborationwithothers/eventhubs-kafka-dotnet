@@ -8,6 +8,8 @@ Toolchain: .NET SDK 10.0.402; x64 .NET runtime 10.0.13; xunit.v3.mtp-v2 4.0.2; M
 
 ### PR 5 full report
 
+The [retained JSON report](evidence/issue-80-pr5/mutation-report.json.gz), [controller receipt](evidence/issue-80-pr5/controller.json), [command log](evidence/issue-80-pr5/command.log.gz), [single-pass extraction](evidence/issue-80-pr5/extraction-summary.json) and [tested source manifest](evidence/issue-80-pr5/tested-source.json) are committed review evidence. Decompress the report and log with `gzip -dc`; use the report to verify the uncompressed SHA-256 below. These measurements describe the recorded tested commit; subsequent review fixes have not been mutation-tested.
+
 | Measure | Recorded value |
 | --- | --- |
 | Tested commit | `d85c6bf08c340eefc7fd32c97b6240c19827c5a5` |

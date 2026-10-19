@@ -117,6 +117,19 @@ public sealed class FileSystemScenarioSourceTests
     }
 
     [Fact]
+    public async Task Given_FileSystemRoot_When_OpeningMissingLoaderPath_Then_ReportsMissingInput()
+    {
+        string root = Path.GetPathRoot(Path.GetTempPath())!;
+        string scenarioId = "Missing" + Guid.NewGuid().ToString("N");
+        var source = new FileSystemScenarioSource(root);
+
+        Exception? exception = await Record.ExceptionAsync(async () =>
+            await source.OpenReadAsync($"scenarios/{scenarioId}/scenario.yaml", TestContext.Current.CancellationToken));
+
+        Assert.True(exception is FileNotFoundException or DirectoryNotFoundException);
+    }
+
+    [Fact]
     public async Task Given_InvalidUtf8_When_Reading_Then_RejectsMalformedEncoding()
     {
         string root = CreateScenarioRoot();

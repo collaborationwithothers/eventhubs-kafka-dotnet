@@ -1,0 +1,24 @@
+{
+  "controller": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr5/controllers/run-bounded.py",
+  "command": [
+    "dotnet",
+    "stryker",
+    "--config-file",
+    "stryker-config.json",
+    "--output",
+    "../../.artifacts/issue-80-pr5/mutation-full"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true"
+  },
+  "wall_time_cap_seconds": 3600.0,
+  "generated_mutant_cap": 10000,
+  "observed_generated_counts": [
+    5280
+  ],
+  "started_utc": "2026-10-19T06:19:22.280796+00:00",
+  "elapsed_seconds": 3409.99709883,
+  "exit_code": 0,
+  "exit_reason": "command-exit"
+}

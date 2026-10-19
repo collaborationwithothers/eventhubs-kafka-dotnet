@@ -70,11 +70,12 @@ internal static class RunJudgement
         results.AddRange(BookkeepingChecks.Evaluate(request));
         for (int check = 7; check <= 11; check++)
         {
-            CheckAssessment? supplied = request.WindowAssessments.FirstOrDefault(a => a.CheckNumber == check);
-            results.Add(supplied is null ? CheckResult.NotEvaluated(check) : new(supplied,
-                supplied.Disposition == AssessmentDisposition.Fail
-                    ? [new(check, supplied.Code ?? $"check_{check}_failed", supplied.Artifact,
-                        supplied.Row, supplied.Field, supplied.Snippet)] : []));
+            CheckAssessment[] supplied = request.WindowAssessments.Where(a => a.CheckNumber == check).ToArray();
+            CheckAssessment[] failures = supplied.Where(a => a.Disposition == AssessmentDisposition.Fail).ToArray();
+            CheckAssessment? assessment = failures.FirstOrDefault() ?? supplied.FirstOrDefault();
+            results.Add(assessment is null ? CheckResult.NotEvaluated(check) : new(assessment,
+                failures.Select(failure => new ResultDiagnostic(check, failure.Code ?? $"check_{check}_failed",
+                    failure.Artifact, failure.Row, failure.Field, failure.Snippet)).ToArray()));
         }
         results.AddRange(LateWriteChecks.Evaluate(request));
         results.AddRange(StatisticsChecks.Evaluate(request));

@@ -538,6 +538,71 @@ public sealed class VerifierHostTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Given_HostStopCompetesWithCompletion_When_OutcomeTransitions_Then_OnlyCompletionBeforeStopSucceeds(bool stopFirst)
+    {
+        var state = new VerifierExecutionState();
+        Assert.Equal(1, state.ExitCode);
+
+        if (stopFirst) state.MarkStopped();
+        state.MarkSucceeded(CancellationToken.None, CancellationToken.None);
+        if (!stopFirst) state.MarkStopped();
+
+        Assert.Equal(stopFirst ? 1 : 0, state.ExitCode);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Given_HostFailureCompetesWithCompletion_When_OutcomeTransitions_Then_FailureCannotBeOverwritten(bool failureFirst)
+    {
+        var state = new VerifierExecutionState();
+
+        if (failureFirst) state.MarkFailed();
+        state.MarkSucceeded(CancellationToken.None, CancellationToken.None);
+        if (!failureFirst) state.MarkFailed();
+
+        Assert.Equal(1, state.ExitCode);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_StopCallbackDelayedAfterCancellation_When_HandlerCompletes_Then_RequestedStopStillPreventsSuccess(bool hostStop)
+    {
+        var state = new VerifierExecutionState();
+        using var cancellation = new CancellationTokenSource();
+        using var resumeCallback = new ManualResetEventSlim();
+        var callbackEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken testCancellation = TestContext.Current.CancellationToken;
+        using CancellationTokenRegistration registration = cancellation.Token.Register(() =>
+        {
+            callbackEntered.SetResult();
+            resumeCallback.Wait(testCancellation);
+            state.MarkStopped();
+        });
+        Task requestStop = Task.Run(() => cancellation.Cancel(), testCancellation);
+        try
+        {
+            await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), testCancellation);
+
+            state.MarkSucceeded(
+                hostStop ? CancellationToken.None : cancellation.Token,
+                hostStop ? cancellation.Token : CancellationToken.None);
+
+            Assert.Equal(1, state.ExitCode);
+        }
+        finally
+        {
+            resumeCallback.Set();
+            await requestStop;
+        }
+
+        Assert.Equal(1, state.ExitCode);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(4)]
     [InlineData(5)]

@@ -52,7 +52,10 @@ run_tests() {
             "-p:EvidenceDirectory=$PARCHWELL_SPIKE_EVIDENCE_DIRECTORY" -nologo || evidence_status=$?
         unset PARCHWELL_SPIKE_EVIDENCE_DIRECTORY
     fi
-    if [[ "$test_status" -ne 0 ]]; then return "$test_status"; fi
+    if [[ "$test_status" -ne 0 ]]; then
+        cat "$results/test.log" >&2
+        return "$test_status"
+    fi
     if [[ "$evidence_status" -ne 0 ]]; then return "$evidence_status"; fi
     run_logged "$name report" "$results/report.log" dotnet msbuild scripts/dotnet-verification.proj \
         -t:ValidateReport "-p:Report=$results/results.xml" "-p:ExpectedAssembly=$name" -nologo
