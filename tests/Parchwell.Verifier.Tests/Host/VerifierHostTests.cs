@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Verifier;
+using Parchwell.Verifier.ProbeGate;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
@@ -41,7 +42,11 @@ public sealed class VerifierHostTests
         var handlerCalls = 0;
         int exitCode = await Program.RunAsync(
             mode is null ? [] : [$"--Verifier:Mode={mode}"],
-            services => services.AddSingleton<IVerifierModeHandler>(new CountingHandler(() => handlerCalls++)));
+            services =>
+            {
+                services.RemoveAll<IVerifierModeHandler>();
+                services.AddSingleton<IVerifierModeHandler>(new CountingHandler(() => handlerCalls++));
+            });
 
         Assert.NotEqual(0, exitCode);
         Assert.Equal(0, handlerCalls);
@@ -396,7 +401,10 @@ public sealed class VerifierHostTests
     public async Task Given_HandlerReturnCode_When_WorkerCompletes_Then_OnlyZeroSucceeds(int handlerCode)
     {
         int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", TempPath()), services =>
-            services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () => handlerCode)));
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () => handlerCode));
+        });
         Assert.Equal(handlerCode == 0 ? 0 : 1, exitCode);
     }
 
@@ -410,6 +418,7 @@ public sealed class VerifierHostTests
         {
             int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
             {
+                services.RemoveAll<IVerifierModeHandler>();
                 services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
                 {
                     File.WriteAllText(outputPath, "committed");
@@ -434,12 +443,15 @@ public sealed class VerifierHostTests
         try
         {
             int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
+            {
+                services.RemoveAll<IVerifierModeHandler>();
                 services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
                 {
                     creates++;
                     File.WriteAllText(outputPath, "committed");
                     throw new IOException("synthetic uncertain commit");
-                })));
+                }));
+            });
             Assert.Equal(1, exitCode);
             Assert.Equal(1, creates);
             Assert.Equal("committed", await File.ReadAllTextAsync(outputPath, TestContext.Current.CancellationToken));
@@ -456,7 +468,11 @@ public sealed class VerifierHostTests
         var registeredServices = new List<ServiceDescriptor>();
         using IHost host = Program.BuildHost(
             ArgumentsFor("probe-gate", TempPath()),
-            services => registeredServices.AddRange(services));
+            services =>
+            {
+                registeredServices.AddRange(services);
+                services.RemoveAll<IVerifierModeHandler>();
+            });
         VerifierHostOptions boundOptions = host.Services.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
 
         ServiceDescriptor[] externalServices = registeredServices
@@ -467,6 +483,16 @@ public sealed class VerifierHostTests
         Assert.Empty(externalServices);
         Assert.Equal("probe-gate", boundOptions.Mode);
         Assert.DoesNotContain(host.Services.GetServices<IVerifierModeHandler>(), handler => handler.Mode == VerifierMode.ProbeGate);
+    }
+
+    [Fact]
+    public void Given_ProbeGateMode_When_Composed_Then_RegistersOneLocalHandler()
+    {
+        using IHost host = Program.BuildHost(ArgumentsFor("probe-gate", TempPath())
+            .Append($"--Verifier:ScenarioRoot={Path.GetTempPath()}").ToArray());
+        Assert.IsType<ProbeGateHandler>(Assert.Single(host.Services.GetServices<IVerifierModeHandler>()));
+        Assert.IsType<LocalProbeGateFileStore>(host.Services.GetRequiredService<IProbeGateFileStore>());
+        Assert.NotNull(host.Services.GetRequiredService<ScenarioLoader>());
     }
 
     [Theory]
@@ -525,6 +551,7 @@ public sealed class VerifierHostTests
         string outputPath = TempPath();
         Action<IServiceCollection> configure = services =>
         {
+            services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(provider => new ControlledHandler(
                 VerifierMode.ProbeGate,
                 failure,
@@ -1096,6 +1123,7 @@ public sealed class VerifierWatchdogChildProcessTests
         var clock = new ManualTimeProvider();
         Action<IServiceCollection> configure = services =>
         {
+            services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new ChildBlockingHandler(clock, scenario, outputPath));
             if (scenario == "blocked-disposal-after-publication")
             {

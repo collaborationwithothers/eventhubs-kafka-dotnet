@@ -34,7 +34,7 @@ internal static class WindowConsumer
                 if (complete && elapsed <= safetyStop)
                     return new(records, [RunWindow.Pass(9), RunWindow.Pass(10)], elapsed, null);
                 if (elapsed >= safetyStop)
-                    return new(records, [RunWindow.Pass(9), RunWindow.Failure(10, "safety_stop")], null, elapsed);
+                    return new(records, [RunWindow.Pass(9), RunWindow.Failure(10)], null, elapsed);
                 TimeSpan remaining = safetyStop - elapsed;
                 ConsumeResult<byte[], byte[]>? record = null;
                 try
@@ -58,7 +58,7 @@ internal static class WindowConsumer
         }
         catch (KafkaException exception) when (IsOffsetError(exception))
         {
-            return new(records, [RunWindow.Failure(9, "start_offset_out_of_range")], null, null);
+            return new(records, [RunWindow.Failure(9)], null, null);
         }
     }
 

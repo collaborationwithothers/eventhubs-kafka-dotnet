@@ -5,6 +5,9 @@ using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.Tests.Support;
+using Parchwell.Verifier.VerifyRun.A01;
+using Parchwell.Verifier.VerifyRun.Judgement;
+using Parchwell.Verifier.Tests.A01;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Results;
@@ -433,13 +436,13 @@ public sealed class VerifierResultCodecTests
         Assert.True(probe.GetProperty("usable").GetBoolean());
         Assert.False(probe.GetProperty("qualifying").GetBoolean());
         Assert.Equal("broker-1", probe.GetProperty("broker").GetString());
-        Assert.Equal(10, probe.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(10, probe.GetProperty("report_index").GetInt64());
         Assert.Equal(1, probe.GetProperty("window_count").GetInt64());
         Assert.Equal(0, probe.GetProperty("window_maximum").GetInt64());
         Assert.True(roundTripped.ProbeObservation!.Usable);
         Assert.False(roundTripped.ProbeObservation.Qualifying);
         Assert.Equal("broker-1", roundTripped.ProbeObservation.Broker);
-        Assert.Equal(10, roundTripped.ProbeObservation.ReportTimestamp);
+        Assert.Equal(10, roundTripped.ProbeObservation.ReportIndex);
         Assert.Equal(1, roundTripped.ProbeObservation.WindowCount);
         Assert.Equal(0, roundTripped.ProbeObservation.WindowMaximum);
         Assert.False(json.RootElement.TryGetProperty("ok", out _));
@@ -452,12 +455,12 @@ public sealed class VerifierResultCodecTests
         using JsonDocument absentJson = JsonDocument.Parse(absentBytes);
         JsonElement absentProbe = absentJson.RootElement.GetProperty("probe_observation");
         Assert.False(absentProbe.TryGetProperty("broker", out _));
-        Assert.False(absentProbe.TryGetProperty("report_timestamp", out _));
+        Assert.False(absentProbe.TryGetProperty("report_index", out _));
         Assert.False(absentProbe.TryGetProperty("window_count", out _));
         Assert.False(absentProbe.TryGetProperty("window_maximum", out _));
         ProbeRepeatObservation readAbsent = Read(absentBytes).ProbeObservation!;
         Assert.Null(readAbsent.Broker);
-        Assert.Null(readAbsent.ReportTimestamp);
+        Assert.Null(readAbsent.ReportIndex);
         Assert.Null(readAbsent.WindowCount);
         Assert.Null(readAbsent.WindowMaximum);
     }
@@ -571,33 +574,33 @@ public sealed class VerifierResultCodecTests
 
         Assert.Equal(-184, evidence.GetProperty("delivery_error_codes")[0].GetInt32());
         Assert.Equal("broker-1", window.GetProperty("broker").GetString());
-        Assert.Equal(10, window.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(10, window.GetProperty("report_index").GetInt64());
         Assert.Equal(9, window.GetProperty("native_timestamp").GetInt64());
         Assert.Equal(2, window.GetProperty("request_timeouts_increment").GetInt64());
         Assert.Equal(1, window.GetProperty("disconnects_increment").GetInt64());
         Assert.Equal(17, window.GetProperty("throttle_maximum_ms").GetInt64());
         Assert.Equal(99327, window.GetProperty("round_trip_p99_us").GetInt64());
         Assert.Equal("broker-2", absentWindow.GetProperty("broker").GetString());
-        Assert.Equal(11, absentWindow.GetProperty("report_timestamp").GetInt64());
+        Assert.Equal(11, absentWindow.GetProperty("report_index").GetInt64());
         Assert.Equal(10, absentWindow.GetProperty("native_timestamp").GetInt64());
         Assert.False(absentWindow.TryGetProperty("request_timeouts_increment", out _));
         Assert.False(absentWindow.TryGetProperty("disconnects_increment", out _));
         Assert.False(absentWindow.TryGetProperty("throttle_maximum_ms", out _));
         Assert.False(absentWindow.TryGetProperty("round_trip_p99_us", out _));
-        Assert.Equal(99327, Read(bytes).A01RecordedEvidence!.Windows[0].RoundTripP99Microseconds);
+        Assert.Equal(99327, Read(bytes).A01RecordedEvidence!.Windows![0].RoundTripP99Microseconds);
         A01RecordedEvidence readEvidence = Read(bytes).A01RecordedEvidence!;
-        Assert.Equal(-184, readEvidence.DeliveryErrorCodes[0]);
-        Assert.Equal("broker-1", readEvidence.Windows[0].Broker);
-        Assert.Equal(10, readEvidence.Windows[0].ReportTimestamp);
-        Assert.Equal(9, readEvidence.Windows[0].NativeTimestamp);
-        Assert.Equal(2, readEvidence.Windows[0].RequestTimeoutsIncrement);
-        Assert.Equal(1, readEvidence.Windows[0].DisconnectsIncrement);
-        Assert.Equal(17, readEvidence.Windows[0].ThrottleMaximumMilliseconds);
-        Assert.Equal(99327, readEvidence.Windows[0].RoundTripP99Microseconds);
-        Assert.Null(readEvidence.Windows[1].RequestTimeoutsIncrement);
-        Assert.Null(readEvidence.Windows[1].DisconnectsIncrement);
-        Assert.Null(readEvidence.Windows[1].ThrottleMaximumMilliseconds);
-        Assert.Null(readEvidence.Windows[1].RoundTripP99Microseconds);
+        Assert.Equal(-184, readEvidence.DeliveryErrorCodes![0]);
+        Assert.Equal("broker-1", readEvidence.Windows![0].Broker);
+        Assert.Equal(10, readEvidence.Windows![0].ReportIndex);
+        Assert.Equal(9, readEvidence.Windows![0].NativeTimestamp);
+        Assert.Equal(2, readEvidence.Windows![0].RequestTimeoutsIncrement);
+        Assert.Equal(1, readEvidence.Windows![0].DisconnectsIncrement);
+        Assert.Equal(17, readEvidence.Windows![0].ThrottleMaximumMilliseconds);
+        Assert.Equal(99327, readEvidence.Windows![0].RoundTripP99Microseconds);
+        Assert.Null(readEvidence.Windows![1].RequestTimeoutsIncrement);
+        Assert.Null(readEvidence.Windows![1].DisconnectsIncrement);
+        Assert.Null(readEvidence.Windows![1].ThrottleMaximumMilliseconds);
+        Assert.Null(readEvidence.Windows![1].RoundTripP99Microseconds);
     }
 
     [Fact]
@@ -837,6 +840,105 @@ public sealed class VerifierResultCodecTests
         VerifierResult roundTripped = Read(bytes, RecordedEvidence.SmallLimits with { MaxDiagnosticBytes = 1 });
         if (nested) Assert.Equal(assessment, roundTripped.ConfigurationFidelity!.Assessment);
         else Assert.Equal(diagnostic, Assert.Single(roundTripped.Diagnostics));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Given_OptionalA01Collections_When_RoundTripped_Then_AbsentAndEmptyStayIndependent(bool codesPresent, bool windowsPresent)
+    {
+        VerifierResult result = Result(VerifierResultStatus.Invalid) with
+        { A01RecordedEvidence = new(codesPresent ? [] : null, windowsPresent ? [] : null) };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        JsonElement evidence = json.RootElement.GetProperty("a01_recorded_evidence");
+        Assert.Equal(codesPresent, evidence.TryGetProperty("delivery_error_codes", out _));
+        Assert.Equal(windowsPresent, evidence.TryGetProperty("windows", out _));
+        A01RecordedEvidence read = Read(bytes).A01RecordedEvidence!;
+        if (codesPresent) Assert.Empty(read.DeliveryErrorCodes!); else Assert.Null(read.DeliveryErrorCodes);
+        if (windowsPresent) Assert.Empty(read.Windows!); else Assert.Null(read.Windows);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Given_LegacyReportTimestamp_When_Read_Then_UnknownPropertyIsRejected(bool window, bool alsoCurrent)
+    {
+        string reference = alsoCurrent ? "\"report_index\":10,\"report_timestamp\":10" : "\"report_timestamp\":10";
+        string projection = window ? "\"a01_recorded_evidence\":{\"windows\":[{\"broker\":\"broker-1\",\"native_timestamp\":9," + reference + "}]}" :
+            "\"probe_observation\":{\"usable\":true,\"qualifying\":false," + reference + "}";
+        ParseResult<VerifierResult> parsed = ReadProjection(projection);
+        Assert.False(parsed.IsSuccess);
+        StructuralProblem problem = Assert.Single(parsed.Problems);
+        Assert.Equal("unknown_property", problem.Code);
+        Assert.EndsWith(".report_timestamp", problem.Field, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false, "10", true)]
+    [InlineData(true, "10", true)]
+    [InlineData(false, "null", false)]
+    [InlineData(true, "null", false)]
+    [InlineData(false, "\"10\"", false)]
+    [InlineData(true, "\"10\"", false)]
+    [InlineData(false, "1.5", false)]
+    [InlineData(true, "1.5", false)]
+    public void Given_ReportIndexKinds_When_Read_Then_OnlyInt64IsAccepted(bool window, string value, bool accepted)
+    {
+        string projection = window ? "\"a01_recorded_evidence\":{\"windows\":[{\"broker\":\"broker-1\",\"native_timestamp\":9,\"report_index\":" + value + "}]}" :
+            "\"probe_observation\":{\"usable\":true,\"qualifying\":false,\"report_index\":" + value + "}";
+        ParseResult<VerifierResult> parsed = ReadProjection(projection);
+        Assert.Equal(accepted, parsed.IsSuccess);
+        if (accepted)
+            Assert.Equal(10, window ? parsed.Value!.A01RecordedEvidence!.Windows![0].ReportIndex : parsed.Value!.ProbeObservation!.ReportIndex);
+        else Assert.Equal("wrong_json_kind", Assert.Single(parsed.Problems).Code);
+    }
+
+    [Theory]
+    [InlineData("delivery_error_codes", "null")]
+    [InlineData("delivery_error_codes", "{}")]
+    [InlineData("delivery_error_codes", "[2147483648]")]
+    [InlineData("windows", "null")]
+    [InlineData("windows", "{}")]
+    public void Given_MalformedOptionalCollection_When_Read_Then_ItIsRejected(string name, string value)
+    {
+        Assert.False(ReadProjection("\"a01_recorded_evidence\":{\"" + name + "\":" + value + "}").IsSuccess);
+    }
+
+    [Fact]
+    public void Given_ProductionRecorderEvidence_When_RoundTripped_Then_InvalidUsableAndOverflowAbsenceArePreserved()
+    {
+        var request = A01EvidenceRecorderTests.Request([
+            A01EvidenceRecorderTests.Report(90, A01EvidenceRecorderTests.Broker(timeouts: long.MinValue, maximum: 20_001, rttCount: 0)),
+            A01EvidenceRecorderTests.Report(100, A01EvidenceRecorderTests.Broker(timeouts: long.MaxValue, maximum: 0, p99: 0))]);
+        var judgement = new RunJudgementResult(VerifierResultStatus.Invalid, [12],
+            Enumerable.Range(1, 27).Select(check => check == 12 ? RecordedEvidence.WindowFail(check, AssessmentClassification.Invalid) : RecordedEvidence.WindowPass(check)).ToArray(),
+            null, null, new(RecordedEvidence.WindowPass(27), []), []);
+        A01EvidenceRecording recording = A01EvidenceRecorder.Record(request, judgement);
+        VerifierResult result = Result(VerifierResultStatus.Invalid, failedChecks: [12]) with
+        { ProbeObservation = recording.ProbeObservation, A01RecordedEvidence = recording.RecordedEvidence, Diagnostics = recording.Diagnostics };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        JsonElement windows = json.RootElement.GetProperty("a01_recorded_evidence").GetProperty("windows");
+        Assert.False(windows[0].TryGetProperty("round_trip_p99_us", out _));
+        Assert.False(windows[1].TryGetProperty("request_timeouts_increment", out _));
+        Assert.Equal(0, windows[1].GetProperty("throttle_maximum_ms").GetInt64());
+        Assert.Equal(0, windows[1].GetProperty("round_trip_p99_us").GetInt64());
+        VerifierResult read = Read(bytes);
+        Assert.Equal(VerifierResultStatus.Invalid, read.Status); Assert.Equal(FailedTwelve, read.FailedChecks); Assert.Null(read.Counts);
+        Assert.Equal(new ProbeRepeatObservation(true, true, "broker-a", 0, 1, 20_001), read.ProbeObservation);
+        Assert.Null(read.A01RecordedEvidence!.Windows![1].RequestTimeoutsIncrement);
+        Assert.Equal(recording.Diagnostics.Single(), read.Diagnostics.Single());
+    }
+
+    private static ParseResult<VerifierResult> ReadProjection(string projection)
+    {
+        string root = Encoding.UTF8.GetString(VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits));
+        return VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root[..^1] + "," + projection + "}"), "result.json", RecordedEvidence.SmallLimits, 8);
     }
 
     private static VerifierResult Result(

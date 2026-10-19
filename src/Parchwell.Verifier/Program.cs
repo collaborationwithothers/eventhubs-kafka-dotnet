@@ -7,6 +7,7 @@ using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Scenario;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.StartLine;
+using Parchwell.Verifier.ProbeGate;
 using Parchwell.Verifier.VerifyRun;
 using Parchwell.Verifier.VerifyRun.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +66,16 @@ internal static partial class Program
     private static void RegisterSelectedMode(IServiceCollection services, ConfigurationManager configuration)
     {
         string? mode = configuration["Verifier:Mode"];
+        if (mode == "probe-gate")
+        {
+            services.AddParchwellScenarios(options =>
+                configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
+            services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
+                provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
+            services.AddSingleton<IProbeGateFileStore, LocalProbeGateFileStore>();
+            services.AddSingleton<IVerifierModeHandler, ProbeGateHandler>();
+            return;
+        }
         if (mode is not ("start-line" or "verify")) return;
 
         services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>

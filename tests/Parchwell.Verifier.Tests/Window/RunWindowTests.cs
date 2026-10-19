@@ -27,6 +27,18 @@ public sealed class RunWindowTests
         Identity, new Dictionary<int, long> { [0] = 6 }), 7);
 
     [Fact]
+    public void Given_ParserProblemWithEveryMetadataField_When_Creating_Then_PreservesProblemWithoutSemanticRename()
+    {
+        var problem = new StructuralProblem(7, "synthetic_parser_problem", "notes/custom.json", 3,
+            "partition_highs[0].high", "synthetic snippet");
+        RunWindow window = RunWindow.Create(ParseResult<StartLineNote>.Failure(problem), Identity);
+        AssertFailure(window, 7);
+        Assert.Equal(new CheckAssessment(7, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            AssessmentClassification.Invalid, "notes/custom.json", 3, "partition_highs[0].high",
+            "synthetic_parser_problem", "synthetic snippet"), Assert.Single(window.Assessments));
+    }
+
+    [Fact]
     public void Given_UnsupportedSchemaWithAllFields_When_Reading_Then_CheckSevenFails()
     {
         byte[] valid = StartLineNoteCodec.Write(Note(), new OutputLimits(4096, 4, 256));
@@ -54,8 +66,10 @@ public sealed class RunWindowTests
             4 => Identity with { ExpectedInstanceId = "foreign" },
             _ => Identity with { ClientId = "foreign" }
         };
-        AssertFailure(RunWindow.Create(ParseResult<StartLineNote>.Success(Note() with { Identity = identity }),
-            Identity, new Dictionary<int, long> { [0] = 6 }), 7);
+        RunWindow window = RunWindow.Create(ParseResult<StartLineNote>.Success(Note() with { Identity = identity }),
+            Identity, new Dictionary<int, long> { [0] = 6 });
+        AssertFailure(window, 7);
+        AssertSemanticFailure(Assert.Single(window.Assessments), 7, "identity");
     }
 
     [Theory]
@@ -72,8 +86,10 @@ public sealed class RunWindowTests
             "negative" => Note() with { PartitionHighs = [new(0, -1)] },
             _ => Note() with { Topic = "other-topic" }
         };
-        AssertFailure(RunWindow.Create(ParseResult<StartLineNote>.Success(note), Identity,
-            new Dictionary<int, long> { [0] = 6 }), 7);
+        RunWindow window = RunWindow.Create(ParseResult<StartLineNote>.Success(note), Identity,
+            new Dictionary<int, long> { [0] = 6 });
+        AssertFailure(window, 7);
+        AssertSemanticFailure(Assert.Single(window.Assessments), 7, kind == "topic" ? "topic" : "partition_highs");
     }
 
     [Theory]
@@ -87,8 +103,12 @@ public sealed class RunWindowTests
     }
 
     [Fact]
-    public void Given_LostStartPartition_When_Creating_Then_CheckEightFails() =>
-        AssertFailure(Create([new(0, 5), new(1, 8)], new Dictionary<int, long> { [0] = 6 }), 8);
+    public void Given_LostStartPartition_When_Creating_Then_CheckEightFails()
+    {
+        RunWindow window = Create([new(0, 5), new(1, 8)], new Dictionary<int, long> { [0] = 6 });
+        AssertFailure(window, 8);
+        AssertSemanticFailure(Assert.Single(window.Assessments, a => a.CheckNumber == 8), 8, "partition_highs");
+    }
 
     [Fact]
     public void Given_EmptyEndHighs_When_Creating_Then_AllLostStartPartitionsFailEight() =>
@@ -112,7 +132,11 @@ public sealed class RunWindowTests
     {
         RunWindow window = Create([new(0, 5)], new Dictionary<int, long> { [0] = end });
         Assert.Equal(canAssign, window.CanAssign);
-        if (!canAssign) AssertFailure(window, 9);
+        if (!canAssign)
+        {
+            AssertFailure(window, 9);
+            AssertSemanticFailure(Assert.Single(window.Assessments, a => a.CheckNumber == 9), 9, "partition_highs");
+        }
         else Assert.DoesNotContain(window.Assessments, a => a.CheckNumber == 9);
     }
 
@@ -139,6 +163,10 @@ public sealed class RunWindowTests
     }
 
     [Fact]
+    public void Given_QueryFailureAssessment_When_Creating_Then_CheckElevenIsIncompleteWithTopicAttribution() =>
+        AssertSemanticFailure(RunWindow.Failure(11), 11);
+
+    [Fact]
     public void Given_NegativePartitionId_When_Creating_Then_NoUnapprovedRangeCheckIsAdded() =>
         Assert.True(Create([new(-1, 0)], new Dictionary<int, long> { [-1] = 0 }).CanAssign);
 
@@ -146,6 +174,11 @@ public sealed class RunWindowTests
     internal static StartLineNote Note() => new(1, Identity, "document-events", [new(0, 5)], "synthetic", "commit", "version", "version");
     internal static RunWindow Create(IReadOnlyList<PartitionHigh> starts, IReadOnlyDictionary<int, long> ends) =>
         RunWindow.Create(ParseResult<StartLineNote>.Success(Note() with { PartitionHighs = starts }), Identity, ends);
+
+    internal static void AssertSemanticFailure(CheckAssessment assessment, int check, string? field = null) =>
+        Assert.Equal(new CheckAssessment(check, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            check is 10 or 11 ? AssessmentClassification.Incomplete : AssessmentClassification.Invalid,
+            check == 7 ? "start-line" : "document-events", null, field, $"check_{check}_failed", null), assessment);
 
     private static void AssertFailure(RunWindow window, int check)
     {
