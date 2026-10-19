@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "1",
+    "--results-directory",
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-80-pr6a/di-startup/red",
+    "--",
+    "--filter-method",
+    "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.Given_DevelopmentEnvironment_When_ProductionProcessRunsLocalGate_Then_WritesCompleteGateAndExitsZero",
+    "--report-xunit-xml",
+    "--report-xunit-xml-filename",
+    "results.xml"
+  ],
+  "exit_code": 2,
+  "elapsed_seconds": 1.8308815799991862,
+  "timeout_seconds": 300,
+  "source_sha256": {
+    "src/Parchwell.Verifier/Program.cs": "a730bc5f31387184d7010ae9a22005a54b3013dcd91d21c2df75605a5b657b80",
+    "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "3ff1da8145549e6fdc092baf05b038d7fb2f49521a05f6a4050b97a3b8ee6b1e"
+  },
+  "child_environment_override": {
+    "DOTNET_ENVIRONMENT": "Development"
+  }
+}

@@ -68,8 +68,14 @@ internal static partial class Program
         string? mode = configuration["Verifier:Mode"];
         if (mode == "probe-gate")
         {
-            services.AddParchwellScenarios(options =>
-                configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
+            services.AddOptions<ScenarioLoadOptions>()
+                .Configure(options => configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options))
+                .Validate(options => options.MaxDocumentCharacters > 0, "MaxDocumentCharacters must be positive.")
+                .Validate(options => options.MaxNestingDepth > 0, "MaxNestingDepth must be positive.")
+                .Validate(options => options.MaxScalarCharacters > 0, "MaxScalarCharacters must be positive.")
+                .Validate(options => options.MaxParserEvents > 0, "MaxParserEvents must be positive.")
+                .ValidateOnStart();
+            services.AddSingleton<ScenarioLoader>();
             services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
                 provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
             services.AddSingleton<IProbeGateFileStore, LocalProbeGateFileStore>();

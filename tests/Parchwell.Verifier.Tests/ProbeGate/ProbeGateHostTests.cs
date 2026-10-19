@@ -13,6 +13,18 @@ namespace Parchwell.Verifier.Tests.ProbeGate;
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class ProbeGateHostTests
 {
+    [Fact]
+    public async Task Given_DevelopmentEnvironment_When_ProductionProcessRunsLocalGate_Then_WritesCompleteGateAndExitsZero()
+    {
+        using var fixture = new ProbeGateEvidenceBuilder();
+        fixture.WriteLocalInputs();
+
+        (int exitCode, string log) = await RunProductionAsync(fixture.Arguments(), environment: "Development");
+
+        Assert.True(exitCode == 0, $"Production process exited {exitCode}: {log}");
+        Assert.Equal(ExpectedGateBytes(fixture), await File.ReadAllBytesAsync(fixture.Options.GateOutputPath!, TestContext.Current.CancellationToken));
+    }
+
     [Theory]
     [InlineData("pass", "pass")]
     [InlineData("untestable", "untestable_at_build_scale")]
@@ -412,9 +424,10 @@ public sealed class ProbeGateHostTests
             ["reasons"] = new JsonArray(), ["repeats"] = repeats, ["verifier_commit"] = "synthetic-gate-commit" });
     }
 
-    private static async Task<(int ExitCode, string Log)> RunProductionAsync(string[] arguments)
+    private static async Task<(int ExitCode, string Log)> RunProductionAsync(string[] arguments, string? environment = null)
     {
         var start = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        if (environment is not null) start.Environment["DOTNET_ENVIRONMENT"] = environment;
         start.ArgumentList.Add(typeof(Program).Assembly.Location);
         foreach (string argument in arguments) start.ArgumentList.Add(argument);
         using var child = Process.Start(start)!;

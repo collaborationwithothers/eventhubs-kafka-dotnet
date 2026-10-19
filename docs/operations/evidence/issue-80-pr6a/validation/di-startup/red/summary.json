@@ -1,0 +1,30 @@
+{
+  "phase": "red",
+  "test_command_exit_code": 2,
+  "executed": 1,
+  "counts": {
+    "Fail": 1
+  },
+  "tests": [
+    {
+      "id": "1b7a7d6d-a31c-47d7-9f2d-6fcafdeec6d3",
+      "name": "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.Given_DevelopmentEnvironment_When_ProductionProcessRunsLocalGate_Then_WritesCompleteGateAndExitsZero",
+      "result": "Fail",
+      "time": "0.203",
+      "time-rtf": "00:00:00.2030000",
+      "start-rtf": "2026-10-19T15:19:26.2796792+00:00",
+      "finish-rtf": "2026-10-19T15:19:26.5171010+00:00",
+      "type": "Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests",
+      "method": "Given_DevelopmentEnvironment_When_ProductionProcessRunsLocalGate_Then_WritesCompleteGateAndExitsZero",
+      "source-file": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs",
+      "source-line": "16"
+    }
+  ],
+  "artifact_sha256": {
+    "command.json": "34ee1b68e7477fc59f9d29df2afba68abcf10fbebc65179cb3fb28c9df0e3027",
+    "command.log": "2393a4393d6b0c8d957cb01b6471071aa7898714d07fd5ba670b32e3523af1a1",
+    "results.xml": "130c0f4ad3c9785404df82d0501fb62d40b9c7e636967539f05e673c98cce9b9",
+    "Program.cs": "a730bc5f31387184d7010ae9a22005a54b3013dcd91d21c2df75605a5b657b80",
+    "ProbeGateHostTests.cs": "3ff1da8145549e6fdc092baf05b038d7fb2f49521a05f6a4050b97a3b8ee6b1e"
+  }
+}

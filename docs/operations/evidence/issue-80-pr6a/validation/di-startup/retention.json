@@ -1,0 +1,69 @@
+{
+  "note": "Gzip files decompress to the original bytes; summary artifact_sha256 entries refer to uncompressed originals. No commands were rerun during retention.",
+  "artifacts": {
+    "green/ProbeGateHostTests.cs.gz": {
+      "original_sha256": "3ff1da8145549e6fdc092baf05b038d7fb2f49521a05f6a4050b97a3b8ee6b1e",
+      "retained_sha256": "0dc7663ebe11a3c5fb61d34f981a2f5d720ea8aaf5eb04701c465f2e653ae4b4"
+    },
+    "green/Program.cs.gz": {
+      "original_sha256": "8f2c2dc42ff352f5cd9c34aa66e7882ed10906c2ee80696a40b1a32ada805d51",
+      "retained_sha256": "f9e15d7092cde244c85accbd9c8dfb294779b77da7f086261d4a140857555692"
+    },
+    "green/command.json": {
+      "original_sha256": "c8b923616c6a2057e12a0c01457935207b68abb575e6fa2f9ba0c445d9952c56",
+      "retained_sha256": "c8b923616c6a2057e12a0c01457935207b68abb575e6fa2f9ba0c445d9952c56"
+    },
+    "green/command.log.gz": {
+      "original_sha256": "ef2388e6d299d572f4a58596ddde6eddd16210c48c059cff08eb50d57859b6da",
+      "retained_sha256": "803504febf18877b7ececb8d9c93e126b7e529c5132c1267cca754512a4c3779"
+    },
+    "green/results.xml.gz": {
+      "original_sha256": "920d621b48e6ed52ab93585950c19de37c6d5cf4384c38087564cfad05431356",
+      "retained_sha256": "d6df111338a948096a9dffeac66947b2f3eb418d646b32a0fc007530fcf2394f"
+    },
+    "green/summary.json": {
+      "original_sha256": "3368cd42b737cae03ffc06dc483393a20eee24c83ee8acc9d8dabad7c258428e",
+      "retained_sha256": "3368cd42b737cae03ffc06dc483393a20eee24c83ee8acc9d8dabad7c258428e"
+    },
+    "green-build.json": {
+      "original_sha256": "c030d52c49486513905d299c40000159e887dee4bc77a51104b809a472ff4e4b",
+      "retained_sha256": "c030d52c49486513905d299c40000159e887dee4bc77a51104b809a472ff4e4b"
+    },
+    "green-build.log.gz": {
+      "original_sha256": "b9cd7407b8bad6f04a2e522a0365bc40300b1bd515416db3da714ba6e8c353bf",
+      "retained_sha256": "4b1e4bf5397854b2bd3ee2b37505b983060457003d6957e6e0583e7e9902f2c6"
+    },
+    "red/ProbeGateHostTests.cs.gz": {
+      "original_sha256": "3ff1da8145549e6fdc092baf05b038d7fb2f49521a05f6a4050b97a3b8ee6b1e",
+      "retained_sha256": "0dc7663ebe11a3c5fb61d34f981a2f5d720ea8aaf5eb04701c465f2e653ae4b4"
+    },
+    "red/Program.cs.gz": {
+      "original_sha256": "a730bc5f31387184d7010ae9a22005a54b3013dcd91d21c2df75605a5b657b80",
+      "retained_sha256": "5b8a6e35380610f985984fbb9518f9ea455c2544db40020d461bd467bec6b44d"
+    },
+    "red/command.json": {
+      "original_sha256": "34ee1b68e7477fc59f9d29df2afba68abcf10fbebc65179cb3fb28c9df0e3027",
+      "retained_sha256": "34ee1b68e7477fc59f9d29df2afba68abcf10fbebc65179cb3fb28c9df0e3027"
+    },
+    "red/command.log.gz": {
+      "original_sha256": "2393a4393d6b0c8d957cb01b6471071aa7898714d07fd5ba670b32e3523af1a1",
+      "retained_sha256": "b53fa2092acd3386729f1eb775cc34c6d67275f6f6315d035c32a3800776c72e"
+    },
+    "red/results.xml.gz": {
+      "original_sha256": "130c0f4ad3c9785404df82d0501fb62d40b9c7e636967539f05e673c98cce9b9",
+      "retained_sha256": "6d069b4e993f97badf5c0b1360012cac5cc1097e51e4fe2643b913a9ea54e6a7"
+    },
+    "red/summary.json": {
+      "original_sha256": "4646bd958d23bb4a5aa51620c353ad2d966f623d2e454ce794163c71e0da63e4",
+      "retained_sha256": "4646bd958d23bb4a5aa51620c353ad2d966f623d2e454ce794163c71e0da63e4"
+    },
+    "red-build.json": {
+      "original_sha256": "983c348ff6e4df16754ecb64a7a0658bc72741ac195558fd57f25fe049c61d5e",
+      "retained_sha256": "983c348ff6e4df16754ecb64a7a0658bc72741ac195558fd57f25fe049c61d5e"
+    },
+    "red-build.log.gz": {
+      "original_sha256": "da115711856a5bc9f5b0de71342091cba9ea1f1ad6546112f6e705a9d0ba22b3",
+      "retained_sha256": "3c5bfbf14745c126cf91dd182a9f6ed8ad462d4048518b6ea3eeedbbdeae66c7"
+    }
+  }
+}
