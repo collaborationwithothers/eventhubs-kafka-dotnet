@@ -52,6 +52,8 @@ internal sealed class VerifierHostOptions
     public string? ScenarioRoot { get; set; }
     public List<string>? ExpectedBrokerNames { get; set; }
     public TimeSpan? SafetyStop { get; set; }
+    public long? MaxConsumedRecords { get; set; }
+    public long? MaxConsumedBytes { get; set; }
     public long? MaxArtifactBytes { get; set; }
     public long? MaxTotalInputBytes { get; set; }
     public int? MaxRowBytes { get; set; }

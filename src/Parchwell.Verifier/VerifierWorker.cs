@@ -47,9 +47,17 @@ internal sealed partial class VerifierWorker : BackgroundService
                 var handler = _handlers.SingleOrDefault(candidate => candidate.Mode == mode);
                 if (handler is not null)
                 {
-                    await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
+                    int exitCode = await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
                     stoppingToken.ThrowIfCancellationRequested();
-                    _executionState.MarkSucceeded();
+                    _applicationLifetime.ApplicationStopping.ThrowIfCancellationRequested();
+                    if (exitCode == 0)
+                    {
+                        _executionState.MarkSucceeded();
+                    }
+                    else
+                    {
+                        _executionState.MarkFailed();
+                    }
                 }
                 else
                 {
@@ -92,7 +100,7 @@ internal interface IVerifierModeHandler
 {
     VerifierMode Mode { get; }
 
-    Task ExecuteAsync(CancellationToken cancellationToken);
+    Task<int> ExecuteAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>Tracks the explicit process outcome independently of Generic Host shutdown.</summary>

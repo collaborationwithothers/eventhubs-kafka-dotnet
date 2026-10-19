@@ -48,6 +48,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
                 RequireCollection(options.ExpectedBrokerNames, "Verifier:ExpectedBrokerNames", errors);
                 AddPositive(options.SafetyStop, "Verifier:SafetyStop", errors, requiredBudgets);
+                RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);
+                RequirePositive(options.MaxConsumedBytes, "Verifier:MaxConsumedBytes", errors);
                 RequirePositive(options.MaxArtifactBytes, "Verifier:MaxArtifactBytes", errors);
                 RequirePositive(options.MaxTotalInputBytes, "Verifier:MaxTotalInputBytes", errors);
                 RequirePositive(options.MaxRowBytes, "Verifier:MaxRowBytes", errors);

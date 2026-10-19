@@ -15,7 +15,8 @@
       "break": 0
     },
     "mutate": [
-      "VerifyRun/Judgement/*.cs"
+      "VerifyRun/Judgement/*.cs",
+      "VerifyRun/Window/*.cs"
     ]
   }
 }

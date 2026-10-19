@@ -15,8 +15,8 @@ internal enum VerifierResultStatus
 internal sealed record VerifierResult(
     int SchemaVersion,
     RunIdentity Identity,
-    string GeneratorVersion,
-    IReadOnlyDictionary<string, string> RuntimeVersions,
+    string? GeneratorVersion,
+    IReadOnlyDictionary<string, string>? RuntimeVersions,
     string VerifierCommit,
     string VerifierConfluentKafkaVersion,
     string VerifierLibrdkafkaVersion,
