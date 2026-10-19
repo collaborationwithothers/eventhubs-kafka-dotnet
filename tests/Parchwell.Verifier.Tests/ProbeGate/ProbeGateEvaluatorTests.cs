@@ -234,6 +234,18 @@ public sealed class ProbeGateEvaluatorTests
         Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
     }
 
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void Given_GateRepeatCountAroundSupportedValue_When_CheckingSupport_Then_RequiresExactlyFive(int repeats)
+    {
+        Parchwell.Scenarios.ProbeGate gate = Gate() with { Repeats = repeats };
+        Assert.Equal(repeats == 5, ProbeGateEvaluator.IsSupportedGate("A01", gate));
+        if (repeats != 5)
+            Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
+    }
+
     [Fact]
     public void Given_NoGateOrDifferentScenario_When_CheckingSupport_Then_Rejects()
     {
