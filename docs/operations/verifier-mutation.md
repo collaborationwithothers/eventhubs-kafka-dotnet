@@ -2286,7 +2286,7 @@ Only `thresholds.break` changes from 0 to 60 after measurement. The [semantic co
 
 The threshold is a record, not a CI gate. Under [decision item 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847), enforcement waits on [#89](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/89). This pull request changes no workflow.
 
-The 109 missing-test lines (187 mutants) and 27 unresolved lines (41 mutants) belong to [#93](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93), before any live A01 run. This pull request adds no tests and does not settle those gaps by changing their categories.
+The 109 missing-test lines (187 mutants) and 27 unresolved lines (41 mutants) belong to [#93](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93), before any live A01 run. This pull request adds no verifier tests and does not settle those gaps by changing their categories.
 
 The historical records report PR 5 at 69.49%, PR 4 at 63.91%, and the PR 3 foundation at 80.71%. See [PR 5 window scope](#pr-5-window-scope), [PR 4 judgement scope](#pr-4-judgement-scope), and [PR 3 measurement evidence](#historical-pr-3-measurement-evidence). PR 5 measures its window scope; PR 4 measures its earlier judgement scope; PR 3 records its foundation scope. Each score retains its own tested input and scope, and none substitutes for PR 6b. The PR 6a record remains under [PR 6a judgement measurement](#pr-6a-judgement-measurement) and is not restated here.
 The PR 6a capped runs produced no completed report or score. PR 6b also uses the newly approved reduced test set, so no historical score is a like-for-like comparison.
@@ -2297,6 +2297,10 @@ The [publication source manifest](evidence/issue-92-pr6b/publication-source.json
 That source anchor is distinct from the measured commit and from the later evidence-only publication head.
 The final reviewed head is recorded in the pull request and handoff, not embedded in its own committed evidence.
 The [acceptance result](evidence/issue-92-pr6b/acceptance.json) checks the measured report, source hashes, reviewed line links, bounded replay evidence and Hari's accepted threshold/risk decision.
+Under Hari's [cold-review remediation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282683152), acceptance also requires every retained validation source-input map to equal the measured source-input map.
+The original receipt commit labels remain unchanged; matching input bytes, not equal commit labels, establish this link.
+The [support regression tests](evidence/issue-92-pr6b/test_accept.py) cover a matching set and a set with one mismatched input hash.
+This support-only correction does not change the measured verifier or its tests and does not rerun the suite, mutation, baseline, discovery or replay commands.
 The [retention manifest](evidence/issue-92-pr6b/retention.json) retains original and compressed hashes, including acceptance output added after the check.
 
 ## PR 6a judgement measurement

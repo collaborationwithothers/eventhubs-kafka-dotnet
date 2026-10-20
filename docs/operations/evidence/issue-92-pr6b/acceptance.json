@@ -86,13 +86,18 @@
       "passed": true
     },
     {
-      "detail": "Manifest hashes must cover source identity, original and compressed report bytes, inventories, review, replay, validation, threshold decision, and measured config.",
+      "detail": "missing retained artifact: test_accept.py",
       "name": "retained-artifact-hashes",
-      "passed": true
+      "passed": false
     },
     {
       "detail": "Required build, test, and normal-suite controller receipts must show completed successful commands with unchanged inputs.",
       "name": "validation-receipts",
+      "passed": true
+    },
+    {
+      "detail": "Every retained validation source-input map must match the measured mutation source map, and each present controller receipt must hash its adjacent manifest.",
+      "name": "validation-source-input-maps",
       "passed": true
     },
     {
@@ -106,7 +111,7 @@
       "passed": true
     }
   ],
-  "complete": true,
+  "complete": false,
   "configuration": {
     "current_break": 60,
     "current_sha256": "d6b0b494cecd06fccc04af990e43f02c9aafe36e23759804d6628a9156c6361b",
@@ -150,7 +155,9 @@
     ]
   },
   "issue13_record_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/13#issuecomment-6282496088",
-  "outstanding": [],
+  "outstanding": [
+    "retained-artifact-hashes"
+  ],
   "report": {
     "path": "mutation-full/mutation-report.json.gz",
     "sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",

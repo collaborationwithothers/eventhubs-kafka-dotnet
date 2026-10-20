@@ -1,0 +1,19 @@
+{
+  "review_kind": "cold review of committed publication candidate",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": "75e83d445fb9d0d11aa81af8de9e24ba0b5d842d",
+  "diff_sha256": "a8d77f9ab6792aabc547e59db6b872fe16cd91b396a0400678b620050ae5a5bc",
+  "source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282587076",
+  "decision": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282683152",
+  "findings": [
+    {
+      "severity": "P1",
+      "path": "docs/operations/evidence/issue-92-pr6b/accept.py",
+      "line": 837,
+      "finding": "The acceptance check accepts successful validation receipts without comparing their tested-source manifests to the measured source manifest, so it can mark evidence complete when the suite ran against different inputs.",
+      "disposition": "Hari authorized a source-map binding, matching/mismatched regression test, one more acceptance pass and one more cold review. The source-map correction and support tests are included. The original validation and mutation inputs are unchanged; the next cold review remains required before publication."
+    }
+  ],
+  "result_line": "Findings: 1 at P0 or P1"
+}

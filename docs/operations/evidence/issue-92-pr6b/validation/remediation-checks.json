@@ -1,0 +1,75 @@
+{
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282683152",
+  "phase": "cold-review remediation before authorized acceptance pass",
+  "checks": [
+    {
+      "command": [
+        "/usr/local/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/docs/operations/evidence/issue-92-pr6b",
+        "-p",
+        "test_accept.py",
+        "-v"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T03:34:25.665824+00:00",
+      "finished_utc": "2026-10-20T03:34:25.733772+00:00",
+      "elapsed_seconds": 0.06784912501461804,
+      "exit_code": 0,
+      "log": "validation/remediation-regression.log",
+      "sha256": "ea8118c064ce0230c935fe67e1f04cdaed635a0873ee8a9b044dec2c5dbc7998"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:docs"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T03:34:25.733970+00:00",
+      "finished_utc": "2026-10-20T03:34:40.276787+00:00",
+      "elapsed_seconds": 14.542868874967098,
+      "exit_code": 0,
+      "log": "validation/remediation-docs-tests.log",
+      "sha256": "d18bf5eeede867b8d932902bab2b9bb46972493108805d14bf282fad3af17675"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check:docs"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T03:34:40.277091+00:00",
+      "finished_utc": "2026-10-20T03:34:45.386846+00:00",
+      "elapsed_seconds": 5.109777250094339,
+      "exit_code": 0,
+      "log": "validation/remediation-docs-scan.log",
+      "sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T03:34:45.387033+00:00",
+      "finished_utc": "2026-10-20T03:34:45.423129+00:00",
+      "elapsed_seconds": 0.03612195793539286,
+      "exit_code": 0,
+      "log": "validation/remediation-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "support_inputs_sha256": {
+    "accept.py": "b7076a2d63d35f69a902177a23e28f4c9433bfc12c2c835921352dac7e568b98",
+    "test_accept.py": "807f4235786cf79ea6178e9ab11072820de7fdeb7dc3a68b1a84e509d27f7a4c"
+  },
+  "prohibited_runs_invoked": [],
+  "initial_wrapper_failure": "The first wrapper exited 1 after both documentation commands exited 0 because its warning search matched the scan's advisory banner. All initial logs are retained; the corrected wrapper reruns support/documentation checks only."
+}

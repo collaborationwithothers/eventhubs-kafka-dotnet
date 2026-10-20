@@ -33,6 +33,12 @@ MAX_LINES = 512
 MAX_REVIEW_SECONDS = 14400
 MAX_REPLAY_IDS = 32
 MAX_KILLED_REPLAYS = 4
+VALIDATION_SOURCE_DIRS = (
+    "baseline-build",
+    "baseline-test",
+    "discovery",
+    "verify-dotnet",
+)
 ALLOWED_CATEGORIES = {
     "missing test", "equivalent with proof", "preview-runner discrepancy", "unresolved"
 }
@@ -205,6 +211,29 @@ def controller_success(path: Path) -> bool:
     return (record.get("exit_code") == 0 and record.get("termination") is None
             and record.get("source_inputs_unchanged") is True
             and record.get("execution_evidence_complete") is True)
+
+
+def validation_source_inputs_match(measured_source: Any,
+                                   validation_sources: list[Any]) -> bool:
+    if not isinstance(measured_source, dict):
+        return False
+    measured_inputs = measured_source.get("source_input_sha256")
+    if not valid_source_input_map(measured_inputs):
+        return False
+    return bool(validation_sources) and all(
+        isinstance(validation_source, dict)
+        and valid_source_input_map(validation_source.get("source_input_sha256"))
+        and validation_source["source_input_sha256"] == measured_inputs
+        for validation_source in validation_sources
+    )
+
+
+def valid_source_input_map(value: Any) -> bool:
+    return (isinstance(value, dict) and bool(value)
+            and all(isinstance(path, str) and path
+                    and isinstance(digest, str) and len(digest) == 64
+                    and all(character in "0123456789abcdef" for character in digest)
+                    for path, digest in value.items()))
 
 
 def valid_xunit_report(base: Path) -> bool:
@@ -839,6 +868,30 @@ def main() -> int:
                 validation_ok = False
         add_check(checks, outstanding, validation_ok,
                   "validation-receipts", "Required build, test, and normal-suite controller receipts must show completed successful commands with unchanged inputs.")
+        validation_sources: list[Any] = []
+        validation_source_links_ok = True
+        for name in VALIDATION_SOURCE_DIRS:
+            source_path = validation / name / "tested-source.json"
+            controller_path = validation / name / "controller.json"
+            try:
+                validation_source = require_mapping(
+                    read_required(source_path), f"{name} tested-source manifest")
+                validation_sources.append(validation_source)
+                if controller_path.is_file():
+                    receipt = require_mapping(
+                        read_required(controller_path), f"{name} controller receipt")
+                    if receipt.get("source_manifest_sha256") != sha256_bytes(source_path.read_bytes()):
+                        validation_source_links_ok = False
+            except (EvidenceError, OSError):
+                validation_source_links_ok = False
+        validation_source_maps_ok = (
+            validation_source_links_ok
+            and len(validation_sources) == len(VALIDATION_SOURCE_DIRS)
+            and validation_source_inputs_match(source, validation_sources)
+        )
+        add_check(checks, outstanding, validation_source_maps_ok,
+                  "validation-source-input-maps",
+                  "Every retained validation source-input map must match the measured mutation source map, and each present controller receipt must hash its adjacent manifest.")
         validation_files_ok = all((validation / relative).is_file() for relative in (
             "compile-normal.json", "compile-mutation.json", "discovery/command.log.gz"))
         validation_files_ok = validation_files_ok and retained_bytes(validation / "mutation-only" / "results.xml") is not None
