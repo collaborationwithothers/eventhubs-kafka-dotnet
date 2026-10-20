@@ -22,8 +22,8 @@
     },
     {
       "path": "extract.py",
-      "sha256": "bd732171ba5eaa54947922831bcc1afdc3ff939f327b15ea83ade88e59515158",
-      "bytes": 31425
+      "sha256": "cea57581f46691749afec05065efd2de96002c17eb7075cd636bb316139612fc",
+      "bytes": 32391
     },
     {
       "path": "mutation-full/command.log",
@@ -1192,6 +1192,11 @@
       "bytes": 1356
     },
     {
+      "path": "test_extract.py",
+      "sha256": "620981676f5f6904a1a30562242afed481a3ccc6d2d3965c5bba5cb4fa6ff30d",
+      "bytes": 2429
+    },
+    {
       "path": "threshold-decision.json",
       "sha256": "78858bd70b3e778cf4a72b161aad33136fa5b5eef11ba43cd78220cdf2a1d55a",
       "bytes": 6631
@@ -1268,6 +1273,11 @@
       "bytes": 1138
     },
     {
+      "path": "validation/cold-review-5.json",
+      "sha256": "1ba0c6ed05caa31392c1eb971eb844f61fec640823a337510f2a459d2fccaadc",
+      "bytes": 1221
+    },
+    {
       "path": "validation/cold4-evidence-correction.json",
       "sha256": "e9059d5e1bdf96ba93ac0415426bb52086f052f0c2de10473bcbadc405168966",
       "bytes": 733
@@ -1321,6 +1331,56 @@
       "compressed_path": "validation/cold4-fixes-support-tests.log.gz",
       "compressed_sha256": "abf837ea5acbbfdd354c2459841fdad4a9f99614440b91ec99b530ce7983d271",
       "compressed_bytes": 163
+    },
+    {
+      "path": "validation/cold5-fixes-acceptance.log",
+      "sha256": "18775d48c5a4420f07f44783a066cd90e4db971be4155b043680f01ecefd38b7",
+      "bytes": 160,
+      "compressed_path": "validation/cold5-fixes-acceptance.log.gz",
+      "compressed_sha256": "b594d9550e3a712ffe07b13bdba4f8c732561fdf847667489bab8d76af7ea1f4",
+      "compressed_bytes": 145
+    },
+    {
+      "path": "validation/cold5-fixes-checks.json",
+      "sha256": "961236aabeeeedd42d20bdac1f8a98389bfc308a84271ef6d44a50b617e5a32b",
+      "bytes": 3645
+    },
+    {
+      "path": "validation/cold5-fixes-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressed_path": "validation/cold5-fixes-diff-check.log.gz",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "compressed_bytes": 20
+    },
+    {
+      "path": "validation/cold5-fixes-docs-scan.log",
+      "sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b",
+      "bytes": 1542,
+      "compressed_path": "validation/cold5-fixes-docs-scan.log.gz",
+      "compressed_sha256": "9e6453fca05dc9f64e5ff7f4b58333234fa9037258764efc322c66f34e6b9d58",
+      "compressed_bytes": 475
+    },
+    {
+      "path": "validation/cold5-fixes-docs-tests.log",
+      "sha256": "910eed427c5c18e5dc0dbe484e09caf147759b747573b2f792b9833aa44906c2",
+      "bytes": 2490,
+      "compressed_path": "validation/cold5-fixes-docs-tests.log.gz",
+      "compressed_sha256": "f501d2480c8643f9ee39837c30e2502f0f734c65cbd7b00f19aef9bd13ba6212",
+      "compressed_bytes": 1062
+    },
+    {
+      "path": "validation/cold5-fixes-prior-acceptance.json",
+      "sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a",
+      "bytes": 14099
+    },
+    {
+      "path": "validation/cold5-fixes-support-tests.log",
+      "sha256": "029b067b17405ee4880a8ae107df5a4ebb370c897ce3d2618ed15fa311ab6f18",
+      "bytes": 688,
+      "compressed_path": "validation/cold5-fixes-support-tests.log.gz",
+      "compressed_sha256": "af2b872e79770ccc932b8263791a3d1e27d8b24134ac4bb74351b8d4993bba9d",
+      "compressed_bytes": 237
     },
     {
       "path": "validation/compile-mutation.json",

@@ -1,0 +1,17 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": "1c4688424a15dd94fea58820df9f0f81a9c715f4",
+  "diff_sha256": "6831c9eaaf46677e8534b64eda1257eed5738337394b9dfc2011262d265166c9",
+  "coverage_complete": true,
+  "unique_paths": 318,
+  "coverage_ledger": "/tmp/issue-92-complete-cold.wXVcD2/coverage-ledger.md",
+  "result_line": "Findings: none at P0 or P1",
+  "findings": [
+    {"severity": "P2", "path": "docs/operations/evidence/issue-92-pr6b/extract.py", "line": 435, "finding": "Extraction reruns overwrite human-reviewed disposition files."},
+    {"severity": "P2", "path": "docs/operations/verifier-mutation.md", "line": 1181, "finding": "82 mutant-evidence links contain an ID annotation in the URL and omit the retained gzip suffix."}
+  ],
+  "warning_control_project_assessment": "The retained warning-control files byte-match the existing fixture sources copied by unchanged scripts/verify-dotnet.sh:98-106. This is generated evidence, not a new repository build dependency or project.",
+  "remediation_authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283170496",
+  "next_review": "Required on the corrected candidate before push."
+}

@@ -36,6 +36,15 @@ review-dir/dispositions.json links each Survived/NoCoverage mutant to exactly
 All JSON is UTF-8, indented, sorted by object key, and terminated by a newline.
 The script uses only the Python standard library and refuses unsupported or
 oversized report populations instead of silently truncating them.
+
+Fresh-review input and failure behavior
+---------------------------------------
+The review output directory must not already contain lines.json or
+dispositions.json. Their .json.gz retained equivalents also count as existing
+review outputs. The script checks all four paths before reading the report or
+writing any extraction output. If one exists, extraction stops with an explicit
+error and exit status 1; review output bytes are left unchanged. Other existing
+extraction outputs are not used as a freshness signal.
 """
 
 from __future__ import annotations
@@ -75,6 +84,15 @@ def json_bytes(value: Any) -> bytes:
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(json_bytes(value))
+
+
+def require_fresh_review_outputs(review_dir: Path) -> None:
+    existing = [review_dir / name for name in (
+        "lines.json", "lines.json.gz", "dispositions.json", "dispositions.json.gz")
+        if (review_dir / name).exists()]
+    if existing:
+        paths = ", ".join(str(path) for path in existing)
+        raise ExtractionError(f"refusing to overwrite existing review output: {paths}")
 
 
 def read_json(path: Path) -> Any:
@@ -303,6 +321,7 @@ def main() -> int:
     validation_dir = (args.validation_dir or run_dir.parent / "validation").resolve()
     review_dir = (args.review_dir or run_dir / "review").resolve()
     try:
+        require_fresh_review_outputs(review_dir)
         report_path = find_one(run_dir, ("mutation-report.json", "mutation-report.json.gz"))
         report, report_sha256, report_file_sha256, report_bytes, report_payload_bytes = load_report(report_path)
         project_root = report.get("projectRoot")
