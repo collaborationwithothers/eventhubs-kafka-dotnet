@@ -7,8 +7,8 @@
     },
     {
       "path": "acceptance.json",
-      "sha256": "d57f0ab3d4b7b381b2c444ecef9064f75fc086b0a6a9bb5acc6db52312640ce0",
-      "bytes": 14013
+      "sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a",
+      "bytes": 14099
     },
     {
       "path": "controller-invocations.json",
@@ -1202,6 +1202,11 @@
       "bytes": 13843
     },
     {
+      "path": "validation/acceptance-mirror-failure.json",
+      "sha256": "d57f0ab3d4b7b381b2c444ecef9064f75fc086b0a6a9bb5acc6db52312640ce0",
+      "bytes": 14013
+    },
+    {
       "path": "validation/baseline-build/command.log",
       "sha256": "0e5ea1ecdd1ce6f2cde5617bfa67091509957e8852d81135552fd2effc87f7e1",
       "bytes": 706,
@@ -1344,6 +1349,19 @@
       "compressed_bytes": 74
     },
     {
+      "path": "validation/final-candidate-docs-scan.json",
+      "sha256": "c9f38d1b9ca7df477a6b8e8a9dfaab4d367baf8fe0de5428782ff08d6ecdac8c",
+      "bytes": 405
+    },
+    {
+      "path": "validation/final-candidate-docs-scan.log",
+      "sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b",
+      "bytes": 1542,
+      "compressed_path": "validation/final-candidate-docs-scan.log.gz",
+      "compressed_sha256": "9e6453fca05dc9f64e5ff7f4b58333234fa9037258764efc322c66f34e6b9d58",
+      "compressed_bytes": 475
+    },
+    {
       "path": "validation/git-source-binding.json",
       "sha256": "f2178c8938652c8db19c949f94f154c9292373ff68de1aa441a17c75c8684e79",
       "bytes": 578
@@ -1384,6 +1402,19 @@
       "path": "validation/input-freeze.json",
       "sha256": "69625084ae3ca4b7db3ce44676d535766ccb9bb78047d36910c01a8dc98572be",
       "bytes": 41292
+    },
+    {
+      "path": "validation/mirror-recovery-acceptance.json",
+      "sha256": "73902fa494ce3577e81cef07d6aabf62cecd9f940a5a08a4e33322174d8ec0fe",
+      "bytes": 1289
+    },
+    {
+      "path": "validation/mirror-recovery-acceptance.log",
+      "sha256": "18775d48c5a4420f07f44783a066cd90e4db971be4155b043680f01ecefd38b7",
+      "bytes": 160,
+      "compressed_path": "validation/mirror-recovery-acceptance.log.gz",
+      "compressed_sha256": "b594d9550e3a712ffe07b13bdba4f8c732561fdf847667489bab8d76af7ea1f4",
+      "compressed_bytes": 145
     },
     {
       "path": "validation/mutation-only/results.xml",

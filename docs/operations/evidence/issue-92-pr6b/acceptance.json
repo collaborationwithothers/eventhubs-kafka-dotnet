@@ -86,9 +86,9 @@
       "passed": true
     },
     {
-      "detail": "missing retained artifact: test_accept.py",
+      "detail": "Manifest hashes must cover source identity, original and compressed report bytes, inventories, review, replay, validation, threshold decision, and measured config.",
       "name": "retained-artifact-hashes",
-      "passed": false
+      "passed": true
     },
     {
       "detail": "Required build, test, and normal-suite controller receipts must show completed successful commands with unchanged inputs.",
@@ -111,7 +111,7 @@
       "passed": true
     }
   ],
-  "complete": false,
+  "complete": true,
   "configuration": {
     "current_break": 60,
     "current_sha256": "d6b0b494cecd06fccc04af990e43f02c9aafe36e23759804d6628a9156c6361b",
@@ -155,9 +155,7 @@
     ]
   },
   "issue13_record_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/13#issuecomment-6282496088",
-  "outstanding": [
-    "retained-artifact-hashes"
-  ],
+  "outstanding": [],
   "report": {
     "path": "mutation-full/mutation-report.json.gz",
     "sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",

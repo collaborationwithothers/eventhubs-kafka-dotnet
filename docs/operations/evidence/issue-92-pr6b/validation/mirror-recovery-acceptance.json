@@ -1,0 +1,27 @@
+{
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282771283",
+  "command": [
+    "/usr/local/bin/python3",
+    "-B",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/docs/operations/evidence/issue-92-pr6b/accept.py",
+    "--evidence",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b",
+    "--config",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests/stryker-config.json",
+    "--threshold-decision",
+    "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847"
+  ],
+  "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+  "started_utc": "2026-10-20T03:39:05.850995+00:00",
+  "accept_script_sha256": "b7076a2d63d35f69a902177a23e28f4c9433bfc12c2c835921352dac7e568b98",
+  "allowance_consumed": true,
+  "mirror_audit": {
+    "entries": 301,
+    "errors": []
+  },
+  "finished_utc": "2026-10-20T03:39:06.410880+00:00",
+  "elapsed_seconds": 0.559451709035784,
+  "exit_code": 0,
+  "log_sha256": "18775d48c5a4420f07f44783a066cd90e4db971be4155b043680f01ecefd38b7",
+  "acceptance_sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a"
+}
