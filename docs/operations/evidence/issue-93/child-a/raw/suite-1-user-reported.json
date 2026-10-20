@@ -1,0 +1,24 @@
+{
+  "record_type": "user_reported_attempt_not_original_controller_receipt",
+  "mode": "suite",
+  "invocation_ordinal": 1,
+  "execution_platform_reported": "Darwin",
+  "sdk_version_reported": "10.0.402",
+  "tested_commit_requested": "cd13c844b1ed302731a21af5062e811a63a721bf",
+  "reported_exit_reason": "command-exit",
+  "reported_exit_code": 1,
+  "reported_elapsed_seconds": 11.548770749941468,
+  "reported_stage": "locked restore failed before compilation",
+  "reported_error_codes": [
+    "NU1507",
+    "NU1900"
+  ],
+  "reported_effective_sources": [
+    "nuget.org",
+    "BH"
+  ],
+  "raw_mac_files_imported": false,
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296951009",
+  "diagnosis_source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296894464",
+  "original_controller_json_verified": false
+}

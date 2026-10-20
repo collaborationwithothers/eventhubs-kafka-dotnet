@@ -1,0 +1,16 @@
+[
+  {
+    "mode": "suite",
+    "ordinal": 1,
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-1-user-reported.json",
+    "entry_type": "decision_recorded_user_reported_attempt",
+    "raw_files_imported": false,
+    "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296951009"
+  },
+  {
+    "mode": "suite",
+    "ordinal": 2,
+    "reserved_utc": "2026-10-20T17:28:37.152813+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json"
+  }
+]
