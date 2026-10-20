@@ -331,12 +331,12 @@ public sealed class BookkeepingChecksTests
         AssertState(BookkeepingChecks.Evaluate(request), 3, false);
         (string diagnosticArtifact, long? row) = artifact switch
         {
-            "index" => ("index.json", null),
-            "manifest" => ("manifest.json", null),
-            "ledger" => ("ledger.jsonl", 1),
-            "statistics" => ("statistics.jsonl", 1),
-            "lifecycle" => ("request-lifecycle.jsonl", 1),
-            "capabilities" => ("capabilities.json", null),
+            "index" => ("index.json", (long?)null),
+            "manifest" => ("manifest.json", (long?)null),
+            "ledger" => ("ledger.jsonl", (long?)1),
+            "statistics" => ("statistics.jsonl", (long?)1),
+            "lifecycle" => ("request-lifecycle.jsonl", (long?)1),
+            "capabilities" => ("capabilities.json", (long?)null),
             _ => throw new ArgumentOutOfRangeException(nameof(artifact))
         };
         string diagnosticField = field switch
