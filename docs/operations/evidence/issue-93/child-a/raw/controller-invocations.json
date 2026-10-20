@@ -1,0 +1,40 @@
+[
+  {
+    "mode": "suite",
+    "ordinal": 1,
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-1-user-reported.json",
+    "entry_type": "decision_recorded_user_reported_attempt",
+    "raw_files_imported": false,
+    "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296951009"
+  },
+  {
+    "mode": "suite",
+    "ordinal": 2,
+    "reserved_utc": "2026-10-20T17:28:37.152813+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json"
+  },
+  {
+    "mode": "suite",
+    "ordinal": 3,
+    "reserved_utc": "2026-10-20T19:32:18.393122+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/controller.json"
+  },
+  {
+    "mode": "suite",
+    "ordinal": 4,
+    "reserved_utc": "2026-10-20T19:42:21.060745+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/controller.json"
+  },
+  {
+    "mode": "discovery",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T19:50:11.902235+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json"
+  },
+  {
+    "mode": "baseline",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T19:50:24.691293+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json"
+  }
+]

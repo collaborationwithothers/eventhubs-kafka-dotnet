@@ -1,0 +1,12 @@
+{
+  "tested_commit": "cd13c844b1ed302731a21af5062e811a63a721bf",
+  "command": [
+    "bash",
+    "./scripts/verify-dotnet.sh"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "original_verification_directory": "/tmp/parchwell-dotnet-verification.678QYy7S",
+  "retained_copy": "docs/operations/evidence/issue-93/child-a/raw/suite-2/verification",
+  "copy_relationship": "Complete copy of actual verify-dotnet.sh output directory parsed from final command.log.gz; metadata preserved with shutil.copytree/copy2",
+  "xml_reports_present": []
+}

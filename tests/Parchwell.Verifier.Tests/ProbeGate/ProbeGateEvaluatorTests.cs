@@ -231,7 +231,8 @@ public sealed class ProbeGateEvaluatorTests
             _ => gate with { Configurations = ["C0", "C2"] }
         };
         Assert.False(ProbeGateEvaluator.IsSupportedGate("A01", gate));
-        Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
+        Assert.Equal("The selected scenario has no supported probe gate.", exception.Message);
     }
 
     [Theory]

@@ -1,0 +1,24 @@
+{
+  "pass": 1,
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "300s",
+    "bash"
+  ],
+  "stdin_commands": [
+    "set -euo pipefail",
+    "npm ci --ignore-scripts",
+    "npm run test:docs",
+    "npm run check:docs",
+    "git diff --check",
+    "git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "source_commit": "f866ab8bcb3bd1b164552172ba9b790d096f331c",
+  "wall_time_cap_seconds": 300,
+  "exit_code": 0,
+  "elapsed_seconds": 22.26235008239746,
+  "output_log": "docs-1.log",
+  "output_sha256": "37d125e73991a83f0d99cae7caa94f6ae380370a9d95d359d1608f9605861424"
+}

@@ -52,6 +52,8 @@ public sealed class StatisticsChecksTests
         RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
         request = WithCapabilities(request, request.Capabilities.Value! with { IsFaulted = faulted });
         AssertCheck(request, 17, pass);
+        if (faulted) Assert.Equal<ResultDiagnostic>([new(17, "check_17_failed", "capabilities.json", null, "is_faulted", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 17).Diagnostics);
+        else Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 17).Diagnostics);
     }
 
     [Fact]
@@ -61,6 +63,7 @@ public sealed class StatisticsChecksTests
         request = request with { Lifecycle = ParseResult<IReadOnlyList<LifecycleEvent>>.Success([]) };
         AssertCheck(request, 17, true);
         AssertCheck(request, 18, false);
+        Assert.Equal<ResultDiagnostic>([new(18, "check_18_failed", "statistics.jsonl", null, null, null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 18).Diagnostics);
     }
 
     [Theory]
@@ -113,6 +116,18 @@ public sealed class StatisticsChecksTests
         request = WithCapabilities(request, request.Capabilities.Value with { StatisticsCompletion = value });
         AssertCheck(request, 19, false);
         if (variation != "false") AssertNotEvaluated(request, 25);
+        string field = variation switch
+        {
+            "missing" or "null" => "statistics_completion",
+            "false" => "statistics_completion.is_complete",
+            _ => "statistics_completion.drain_boundary_microseconds"
+        };
+        Assert.Equal<ResultDiagnostic>([new(19, "check_19_failed", "capabilities.json", null, field, null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 19).Diagnostics);
+        if (variation is "missing" or "null")
+        {
+            AssertNotEvaluated(request, 24);
+            Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 24).Diagnostics);
+        }
     }
 
     [Fact]
@@ -244,10 +259,27 @@ public sealed class StatisticsChecksTests
     [InlineData("txerrs", 4, false)] [InlineData("txerrs", 5, true)] [InlineData("txerrs", 6, true)]
     [InlineData("rxerrs", 4, false)] [InlineData("rxerrs", 5, true)] [InlineData("rxerrs", 6, true)]
     [InlineData("disconnects", 4, false)] [InlineData("disconnects", 5, true)] [InlineData("disconnects", 6, true)]
-    public void Given_EachCounterBoundary_When_Evaluated_Then_Check23RejectsOnlyDecrease(string field, long next, bool pass) =>
+    public void Given_EachCounterBoundary_When_Evaluated_Then_Check23RejectsOnlyDecrease(string field, long next, bool pass)
+    {
         AssertCheck(WithReports(RecordedEvidence.SyntheticRequest(), [
             RecordedEvidence.Report(90, 40, [Counter(RecordedEvidence.Broker(), field, 5)]),
             RecordedEvidence.Report(100, 50, [Counter(RecordedEvidence.Broker(), field, next)])]), 23, pass);
+        if (!pass)
+        {
+            RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+                RecordedEvidence.Report(90, 40, [Counter(RecordedEvidence.Broker(), field, 5)]),
+                RecordedEvidence.Report(100, 50, [Counter(RecordedEvidence.Broker(), field, next)])]);
+            string diagnosticField = field switch
+            {
+                "req_timeouts" => "brokers.broker-a.req_timeouts",
+                "txretries" => "brokers.broker-a.txretries",
+                "txerrs" => "brokers.broker-a.txerrs",
+                "rxerrs" => "brokers.broker-a.rxerrs",
+                _ => "brokers.broker-a.disconnects"
+            };
+            Assert.Equal<ResultDiagnostic>([new(23, "check_23_failed", "statistics.jsonl", 2, diagnosticField, null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 23).Diagnostics);
+        }
+    }
 
     [Theory]
     [InlineData(4, false)] [InlineData(5, true)] [InlineData(6, true)]
@@ -285,6 +317,8 @@ public sealed class StatisticsChecksTests
         if (extraMissing.Length != 0) missing.Add(extraMissing);
         request = WithCompletion(request, request.Capabilities.Value!.StatisticsCompletion.Value! with { MissingBrokers = missing });
         AssertCheck(request, 24, pass);
+        if (expected == "broker-a" && missingExpected && extraMissing.Length == 0)
+            Assert.Equal<ResultDiagnostic>([new(24, "check_24_failed", "capabilities.json", null, "statistics_completion.missing_brokers", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 24).Diagnostics);
     }
 
     [Fact]
@@ -292,6 +326,7 @@ public sealed class StatisticsChecksTests
     {
         RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(100, 50, [])]);
         AssertCheck(request, 24, false);
+        Assert.Equal<ResultDiagnostic>([new(24, "check_24_failed", "statistics.jsonl", null, "brokers.broker-a", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 24).Diagnostics);
     }
 
     [Fact]
@@ -350,6 +385,7 @@ public sealed class StatisticsChecksTests
         AssertCheck(request, 25, false);
         Assert.Equal(2, StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics[0].Row);
         AssertCheck(request, 26, true);
+        Assert.Equal<ResultDiagnostic>([new(25, "check_25_failed", "statistics.jsonl", 2, "brokers.broker-b", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics);
     }
 
     [Fact]
@@ -475,6 +511,294 @@ public sealed class StatisticsChecksTests
             RecordedEvidence.Report(110, 60, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
         AssertCheck(request, 26, false);
         AssertNotEvaluated(request, 25);
+    }
+
+    // S01-S15 and S17-S21 use synthetic inputs, including deliberately partial direct-call DTOs.
+    [Fact]
+    public void Given_UnavailableStatisticsWithReadableCompletion_When_Evaluated_Then_AllStatisticsPredicatesAreUnevaluated()
+    {
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest() with
+        {
+            Statistics = ParseResult<IReadOnlyList<StatisticsEnvelope>>.Failure(new StructuralProblem(17, "missing_input", "statistics.jsonl", null, null, null)),
+            Reports = []
+        };
+        AssertCheck(request, 17, false);
+        Assert.Equal<ResultDiagnostic>([new(17, "missing_input", "statistics.jsonl", null, null, null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 17).Diagnostics);
+        AssertCheck(request, 19, true);
+        AssertNotEvaluated(request, 18);
+        Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 18).Diagnostics);
+        foreach (int check in Enumerable.Range(20, 7))
+        {
+            AssertNotEvaluated(request, check);
+            Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == check).Diagnostics);
+        }
+    }
+
+    [Fact]
+    public void Given_MismatchedAssociationCountAndLaterChurn_When_Evaluated_Then_UnknownPrefixStartsAtFirstPosition()
+    {
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest() with
+        {
+            Reports = [RecordedEvidence.Report(90, 40), RecordedEvidence.Report(100, 50, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]
+        };
+        AssertNotEvaluated(request, 26);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_EnvelopeDiagnosticOnSecondReport_When_Evaluated_Then_Check20UsesOneBasedCapturedRow()
+    {
+        ReportAssociation second = RecordedEvidence.Report(100, 50);
+        second = second with
+        {
+            Envelope = second.Envelope with
+            {
+                Diagnostics = [new CapturedDiagnostic("capture_problem", ParsedField<string>.Missing(), ParsedField<string>.FromValue("raw_json"))]
+            }
+        };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(90, 40), second]);
+        AssertCheck(request, 20, false);
+        Assert.Equal<ResultDiagnostic>([new(20, "check_20_failed", "statistics.jsonl", 2, "raw_json", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 20).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_UnreadablePrefixBeforeIncompleteBoundaryCoverage_When_Evaluated_Then_CoverageRemainsUnknown()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40) with { Native = ReadNative("{") }, RecordedEvidence.Report(100, 50),
+            RecordedEvidence.Report(110, 60, [RecordedEvidence.Broker(), RecordedEvidence.Broker("broker-b")])]);
+        AssertNotEvaluated(request, 25);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics);
+        AssertNotEvaluated(request, 26);
+        Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_TwoUnreadableReportsWithChurnBetween_When_Evaluated_Then_FirstUnknownPositionBoundsPrefix()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, [a]), RecordedEvidence.Report(91, 41) with { Native = ReadNative("{") },
+            RecordedEvidence.Report(95, 45, [a, b]), RecordedEvidence.Report(96, 46) with { Native = ReadNative("{") },
+            RecordedEvidence.Report(100, 50, [a, b])]);
+        AssertNotEvaluated(request, 26);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_DecreasingTimestampWithStableCreation_When_Evaluated_Then_DiagnosticNamesSecondTimestamp()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(100, 50), RecordedEvidence.Report(99, 49)]);
+        AssertCheck(request, 22, false);
+        Assert.Equal<ResultDiagnostic>([new(22, "check_22_failed", "statistics.jsonl", 2, "ts", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 22).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_ThreeReportsSharingChangedCreationAfterMismatch_When_Evaluated_Then_FirstCreationRemainsReference()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(100, 50), RecordedEvidence.Report(110, 59), RecordedEvidence.Report(120, 69)]);
+        AssertCheck(request, 22, false);
+        Assert.Equal<ResultDiagnostic>([new(22, "check_22_failed", "statistics.jsonl", 2, "age", null),
+            new(22, "check_22_failed", "statistics.jsonl", 3, "age", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 22).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("age")]
+    [InlineData("ts")]
+    public void Given_ReadableSyntheticReportWithMissingClockField_When_Evaluated_Then_Check22IsUnevaluated(string field)
+    {
+        ReportAssociation report = RecordedEvidence.Report(100, 50);
+        NativeClientReport native = field == "age"
+            ? report.Native.Value! with { AgeMicroseconds = ParsedField<long>.Missing() }
+            : report.Native.Value! with { TimestampMicroseconds = ParsedField<long>.Missing() };
+        report = report with { Native = ParseResult<NativeClientReport>.Success(native) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [report]);
+        AssertNotEvaluated(request, 22);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 22).Diagnostics);
+        if (field == "ts")
+        {
+            AssertNotEvaluated(request, 25);
+            Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics);
+            AssertNotEvaluated(request, 26);
+            Assert.Empty(StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+        }
+    }
+
+    [Fact]
+    public void Given_TwoMissingTimestampsWithChurnBetween_When_Evaluated_Then_FirstUnknownTimestampBoundsPrefix()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        ReportAssociation firstUnknown = RecordedEvidence.Report(91, 41, [a]);
+        firstUnknown = firstUnknown with { Native = ParseResult<NativeClientReport>.Success(firstUnknown.Native.Value! with
+        {
+            TimestampMicroseconds = ParsedField<long>.Missing()
+        }) };
+        ReportAssociation secondUnknown = RecordedEvidence.Report(96, 46, [a, b]);
+        secondUnknown = secondUnknown with { Native = ParseResult<NativeClientReport>.Success(secondUnknown.Native.Value! with
+        {
+            TimestampMicroseconds = ParsedField<long>.Missing()
+        }) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, [a]), firstUnknown, RecordedEvidence.Report(95, 45, [a, b]), secondUnknown,
+            RecordedEvidence.Report(100, 50, [a, b])]);
+        AssertNotEvaluated(request, 26);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("null")]
+    public void Given_SelectedSyntheticReportWithUnavailableBrokerMap_When_Evaluated_Then_BrokerPredicatesRemainUnevaluated(string presence)
+    {
+        ReportAssociation report = RecordedEvidence.Report(100, 50);
+        report = report with { Native = ParseResult<NativeClientReport>.Success(report.Native.Value! with
+        {
+            Brokers = presence == "missing"
+                ? ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.Missing()
+                : ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.Null()
+        }) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [report]);
+        foreach (int check in new[] { 21, 23, 24, 25, 26 })
+        {
+            AssertNotEvaluated(request, check);
+            Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == check).Diagnostics);
+        }
+        AssertCheck(request, 22, true);
+    }
+
+    [Fact]
+    public void Given_UnavailableBrokerMapBeforeLaterChurn_When_Evaluated_Then_ReportSetRowsRemainAligned()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        ReportAssociation missingMap = RecordedEvidence.Report(85, 35);
+        missingMap = missingMap with { Native = ParseResult<NativeClientReport>.Success(missingMap.Native.Value! with
+        {
+            Brokers = ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.Missing()
+        }) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(80, 30, [a]), missingMap, RecordedEvidence.Report(90, 40, [a]), RecordedEvidence.Report(100, 50, [a, b])]);
+        AssertCheck(request, 26, false);
+        Assert.Equal<ResultDiagnostic>([new(26, "check_26_failed", "statistics.jsonl", 4, "brokers", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("req_timeouts")]
+    [InlineData("txretries")]
+    [InlineData("txerrs")]
+    [InlineData("rxerrs")]
+    [InlineData("disconnects")]
+    public void Given_PreviouslyPositiveCounterThenMissingCounter_When_Evaluated_Then_Check23IsUnevaluated(string field)
+    {
+        JsonNode node = JsonNode.Parse(NativeJson)!;
+        RemoveField(node["brokers"]!["broker-a"]!, field);
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, [Counter(RecordedEvidence.Broker(), field, 5)]),
+            RecordedEvidence.Report(100, 50) with { Native = ReadNative(node.ToJsonString()) }]);
+        AssertCheck(request, 21, false);
+        AssertNotEvaluated(request, 23);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 23).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_SelectedBrokerWithMissingSource_When_Evaluated_Then_CoverageIsUnevaluated()
+    {
+        NativeBrokerReport broker = RecordedEvidence.Broker() with { Source = ParsedField<string>.Missing() };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(100, 50, [broker])]);
+        AssertCheck(request, 21, false);
+        AssertNotEvaluated(request, 25);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_UnobservedExpectedBrokerAndMixedReadableReports_When_Evaluated_Then_CoverageRemainsUnevaluated()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40), RecordedEvidence.Report(100, 50) with { Native = ReadNative("{") }]);
+        request = request with { ExpectedBrokerNames = ["broker-z"] };
+        AssertNotEvaluated(request, 24);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 24).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_NoBoundarySelectedReportWithStableBrokers_When_Evaluated_Then_TimestampFailsAndChurnIsUnevaluated()
+    {
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(99, 49)]);
+        AssertCheck(request, 25, false);
+        Assert.Equal<ResultDiagnostic>([new(25, "check_25_failed", "statistics.jsonl", null, "ts", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 25).Diagnostics);
+        AssertNotEvaluated(request, 26);
+        Assert.Equal<ResultDiagnostic>([], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_KnownKeyBecomesUnknownBeforeIndependentAddition_When_Evaluated_Then_OnlyDefiniteChurnIsDiagnosed()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        NativeBrokerReport unknown = a with { Source = ParsedField<string>.Missing() };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, [a]), RecordedEvidence.Report(95, 45, [unknown]), RecordedEvidence.Report(100, 50, [unknown, b])]);
+        AssertCheck(request, 26, false);
+        Assert.Equal<ResultDiagnostic>([new(26, "check_26_failed", "statistics.jsonl", 3, "brokers", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_AllowedBrokerSetNarrowsThenKeyReappears_When_Evaluated_Then_ReappearanceWitnessesChurn()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        NativeBrokerReport unknown = b with { Source = ParsedField<string>.Missing() };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [
+            RecordedEvidence.Report(90, 40, [a, unknown]), RecordedEvidence.Report(95, 45, [a]), RecordedEvidence.Report(100, 50, [a, b])]);
+        AssertCheck(request, 26, false);
+        Assert.Equal<ResultDiagnostic>([new(26, "check_26_failed", "statistics.jsonl", 3, "brokers", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_MissingBrokerNameAlreadyDiagnosed_When_Evaluated_Then_DiagnosticIsNotDuplicated()
+    {
+        JsonNode node = JsonNode.Parse(NativeJson)!;
+        RemoveField(node["brokers"]!["broker-a"]!, "name");
+        ParseResult<NativeClientReport> native = ReadNative(node.ToJsonString());
+        Assert.NotNull(native.Value);
+        RunJudgementRequest request = WithNative(native);
+        AssertCheck(request, 21, false);
+        Assert.Equal<ResultDiagnostic>([new(21, "missing_required_field", "statistics.jsonl", 1, "brokers.broker-a.name", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 21).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_MissingDifferentBrokerFieldsOnSameRow_When_Evaluated_Then_BothDiagnosticsRemain()
+    {
+        JsonNode node = JsonNode.Parse(NativeJson)!;
+        RemoveField(node["brokers"]!["broker-a"]!, "name");
+        ParseResult<NativeClientReport> native = ReadNative(node.ToJsonString());
+        Assert.NotNull(native.Value);
+        NativeBrokerReport broker = native.Value.Brokers.Value!["broker-a"] with { NodeId = ParsedField<long>.Missing() };
+        native = native with { Value = native.Value with
+        {
+            Brokers = ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.FromValue(
+                new Dictionary<string, NativeBrokerReport>(StringComparer.Ordinal) { ["broker-a"] = broker })
+        } };
+        RunJudgementRequest request = WithNative(native);
+        AssertCheck(request, 21, false);
+        Assert.Equal<ResultDiagnostic>([new(21, "missing_required_field", "statistics.jsonl", 1, "brokers.broker-a.name", null),
+            new(21, "check_21_failed", "statistics.jsonl", 1, "brokers.broker-a.nodeid", null)], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 21).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData(null, 2L)]
+    [InlineData(7L, 7L)]
+    public void Given_NativeProblemWithOrWithoutExplicitRow_When_Evaluated_Then_ExplicitRowPrecedesCaptureFallback(long? problemRow, long expectedRow)
+    {
+        ReportAssociation second = RecordedEvidence.Report(100, 50);
+        second = second with { Native = new ParseResult<NativeClientReport>(second.Native.Value,
+            [new StructuralProblem(20, "synthetic_problem", "synthetic-native", problemRow, "synthetic-field", "synthetic snippet")]) };
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [RecordedEvidence.Report(90, 40), second]);
+        AssertCheck(request, 20, false);
+        Assert.Equal<ResultDiagnostic>([new(20, "synthetic_problem", "synthetic-native", expectedRow, "synthetic-field", "synthetic snippet")], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 20).Diagnostics);
     }
 
     private static readonly string NativeJson = """

@@ -1,0 +1,1350 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+failed Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.Given_NativeProblemWithOrWithoutExplicitRow_When_Evaluated_Then_ExplicitRowPrecedesCaptureFallback(problemRow: 7, expectedRow: 7) (0ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.ArgumentException : Object of type 'System.Int32' cannot be converted to type 'System.Nullable`1[System.Int64]'.
+    at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+    at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    --- End of stack trace from previous location ---
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64) failed with 1 error(s) (2m 07s 341ms)
+Exit code: 2
+  Standard output: [testcontainers.org 00:00:00.26] Connected to Docker:
+    Host: unix:///var/run/docker.sock
+    Server Version: 28.4.0
+    Kernel Version: 6.18.55
+    API Version: 1.51
+    Operating System: Debian GNU/Linux 13 (trixie) (containerized)
+    Total Memory: 17.59 GB
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.IO.IOException: synthetic uncertain commit
+           at Parchwell.Verifier.Tests.Host.VerifierHostTests.<>c__DisplayClass32_0.<Given_CreateCommitsThenThrows_When_WorkerEnds_Then_ExitsOneWithoutAnotherCreate>b__1() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs:line 452
+           at Parchwell.Verifier.Tests.Host.VerifierHostTests.ReturningHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs:line 1037
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedBytes must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario A01 run run-1.
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:MaxConsumedRecords must be a positive integer.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:00.49] Docker container 3a64aa7d04f4 created
+  [testcontainers.org 00:00:00.56] Start Docker container 3a64aa7d04f4
+  [testcontainers.org 00:00:00.77] Wait for Docker container 3a64aa7d04f4 to complete readiness checks
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.IO.IOException: synthetic partial publication
+           at Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.PartialWriteStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs:line 253
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 172
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 57
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 65
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.InvalidOperationException: The gate output exceeds its configured byte limit.
+           at Parchwell.Verifier.ProbeGate.ProbeGateResultCodec.BoundedMemoryStream.Check(Int32 count) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs:line 90
+           at Parchwell.Verifier.ProbeGate.ProbeGateResultCodec.BoundedMemoryStream.Write(ReadOnlySpan`1 buffer) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs:line 80
+           at System.Text.Json.Utf8JsonWriter.Flush()
+           at System.Text.Json.Utf8JsonWriter.Dispose()
+           at Parchwell.Verifier.ProbeGate.ProbeGateResultCodec.Write(ProbeGateResult result, Int64 maxOutputBytes) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs:line 67
+           at Parchwell.Verifier.ProbeGate.ProbeGateResultCodec.Write(ProbeGateResult result, Int64 maxOutputBytes) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs:line 20
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 48
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: The combined verifier inputs exceed the configured byte limit.
+           at Parchwell.Verifier.Common.Serialization.InputBudget.ConsumeBytes(Int64 count) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:line 434
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 86
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:01.37] Docker network 894aa349dade created
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[1]
+        Verifier mode verify is unavailable for scenario A01 run run-1.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[1]
+        Verifier mode start-line is unavailable for scenario A01 run run-1.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[1]
+        Verifier mode probe-gate is unavailable for scenario A01 run (null).
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Program[3]
+        Verifier cleanup failed for scenario A01 run (null).
+        System.IO.IOException: synthetic stop failure
+           at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+           at Microsoft.Extensions.Hosting.Internal.Host.StopAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 205
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:01.81] Docker container 3a64aa7d04f4 ready
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Program[4]
+        Verifier disposal failed for scenario A01 run (null).
+        System.IO.IOException: synthetic disposal failure
+           at Parchwell.Verifier.Tests.Host.VerifierHostTests.FailingCleanupService.Dispose() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs:line 1047
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.DisposeAsync()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Hosting.Internal.Host.DisposeAsync()
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 225
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario (null) run (null).
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario (null) run (null).
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario (null) run (null).
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario (null) run (null).
+        Microsoft.Extensions.Options.OptionsValidationException: Verifier:Mode must be exactly start-line, verify, or probe-gate.
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.<>c.<Get>b__10_0(String name, IOptionsFactory`1 factory)
+           at Microsoft.Extensions.Options.OptionsCache`1.<>c__DisplayClass3_1`1.<GetOrAdd>b__2()
+           at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+           at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+           at System.Lazy`1.CreateValue()
+           at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)
+           at Microsoft.Extensions.Options.OptionsMonitor`1.Get(String name)
+           at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+        --- End of stack trace from previous location ---
+           at Microsoft.Extensions.Options.StartupValidator.Validate()
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:01.90] Docker container 98be3bcce55c created
+  [testcontainers.org 00:00:01.90] Start Docker container 98be3bcce55c
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+        Hosting failed to start
+        System.InvalidOperationException: Failed to convert configuration value 'not-a-duration' at 'IoTimeout' to type 'System.TimeSpan'.
+         ---> System.FormatException: not-a-duration is not a valid value for TimeSpan.
+         ---> System.FormatException: String 'not-a-duration' was not recognized as a valid TimeSpan.
+           at System.Globalization.TimeSpanParse.TimeSpanResult.SetBadTimeSpanFailure()
+           at System.Globalization.TimeSpanParse.ProcessTerminalState(TimeSpanRawInfo& raw, TimeSpanStandardStyles style, TimeSpanResult& result)
+           at System.Globalization.TimeSpanParse.TryParseTimeSpan(ReadOnlySpan`1 input, TimeSpanStandardStyles style, IFormatProvider formatProvider, TimeSpanResult& result)
+           at System.TimeSpan.Parse(String input, IFormatProvider formatProvider)
+           at System.ComponentModel.TimeSpanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+           --- End of inner exception stack trace ---
+           at System.ComponentModel.TimeSpanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.TryConvertValue(Type type, String value, String path, Object& result, Exception& error)
+           --- End of inner exception stack trace ---
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindInstance(Type type, BindingPoint bindingPoint, IConfiguration config, BinderOptions options, Boolean isParentCollection)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindProperty(PropertyInfo property, Object instance, IConfiguration config, BinderOptions options)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindProperties(Object instance, IConfiguration configuration, BinderOptions options, ParameterInfo[] constructorParameters)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindInstance(Type type, BindingPoint bindingPoint, IConfiguration config, BinderOptions options, Boolean isParentCollection)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.Bind(IConfiguration configuration, Object instance, Action`1 configureOptions)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.Bind(IConfiguration configuration, Object instance)
+           at Parchwell.Verifier.VerifierHostOptionsSetup.Configure(VerifierHostOptions options) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 342
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+           at Parchwell.Verifier.Program.<>c.<RegisterSelectedMode>b__7_5(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 79
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+           at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+  fail: Program[1]
+        Verifier host failed for scenario (null) run (null).
+        System.InvalidOperationException: Failed to convert configuration value 'not-a-duration' at 'IoTimeout' to type 'System.TimeSpan'.
+         ---> System.FormatException: not-a-duration is not a valid value for TimeSpan.
+         ---> System.FormatException: String 'not-a-duration' was not recognized as a valid TimeSpan.
+           at System.Globalization.TimeSpanParse.TimeSpanResult.SetBadTimeSpanFailure()
+           at System.Globalization.TimeSpanParse.ProcessTerminalState(TimeSpanRawInfo& raw, TimeSpanStandardStyles style, TimeSpanResult& result)
+           at System.Globalization.TimeSpanParse.TryParseTimeSpan(ReadOnlySpan`1 input, TimeSpanStandardStyles style, IFormatProvider formatProvider, TimeSpanResult& result)
+           at System.TimeSpan.Parse(String input, IFormatProvider formatProvider)
+           at System.ComponentModel.TimeSpanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+           --- End of inner exception stack trace ---
+           at System.ComponentModel.TimeSpanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.TryConvertValue(Type type, String value, String path, Object& result, Exception& error)
+           --- End of inner exception stack trace ---
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindInstance(Type type, BindingPoint bindingPoint, IConfiguration config, BinderOptions options, Boolean isParentCollection)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindProperty(PropertyInfo property, Object instance, IConfiguration config, BinderOptions options)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindProperties(Object instance, IConfiguration configuration, BinderOptions options, ParameterInfo[] constructorParameters)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.BindInstance(Type type, BindingPoint bindingPoint, IConfiguration config, BinderOptions options, Boolean isParentCollection)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.Bind(IConfiguration configuration, Object instance, Action`1 configureOptions)
+           at Microsoft.Extensions.Configuration.ConfigurationBinder.Bind(IConfiguration configuration, Object instance)
+           at Parchwell.Verifier.VerifierHostOptionsSetup.Configure(VerifierHostOptions options) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 342
+           at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+           at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+           at Parchwell.Verifier.Program.<>c.<RegisterSelectedMode>b__7_5(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 79
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+           at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>g__LogAndRethrow|14_3(<>c__DisplayClass14_0&)
+           at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 167
+  fail: Program[3]
+        Verifier cleanup failed for scenario (null) run (null).
+        System.ArgumentNullException: Value cannot be null. (Parameter 'source')
+           at System.Linq.ThrowHelper.ThrowArgumentNullException(ExceptionArgument argument)
+           at System.Linq.Enumerable.Reverse[TSource](IEnumerable`1 source)
+           at Microsoft.Extensions.Hosting.Internal.Host.StopAsync(CancellationToken cancellationToken)
+           at Parchwell.Verifier.Program.RunAsync(String[] args, Action`1 configureForTests, TimeProvider timeProvider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Program.cs:line 205
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  [testcontainers.org 00:00:02.21] Wait for Docker container 98be3bcce55c to complete readiness checks
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:02.25] Docker container 98be3bcce55c ready
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: A gate input exceeds its configured byte limit.
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 88
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: /tmp/probe-gate-b940944e5e4041ebb40411c94d53e55e/probe-1.json exceeds the configured nesting depth.
+           at Parchwell.Verifier.Common.Serialization.StrictJson.Preflight(ReadOnlySpan`1 utf8, String artifact, InputLimits limits) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:line 268
+           at Parchwell.Verifier.Common.Serialization.StrictJson.ParseDocument(ReadOnlyMemory`1 utf8, String artifact, InputLimits limits, Nullable`1 checkNumber, Nullable`1 row, Boolean requireObject) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:line 31
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.Read(ReadOnlyMemory`1 utf8, String artifact, InputLimits limits, Int32 maxDiagnosticsPerCheck) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 94
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 93
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.InvalidOperationException: synthetic
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.Threading.Tasks.TaskCanceledException: A task was canceled.
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Parchwell.Verifier.VerifierWorker[2]
+        Verifier mode probe-gate stopped before completion for scenario A01 run (null).
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: The verifier result exceeds the configured diagnostics per check limit.
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.CountInputDiagnostic(Int32 check, Dictionary`2 perCheck, Int32 maxDiagnosticsPerCheck) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 704
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.ValidateInputDiagnostics(IReadOnlyList`1 diagnostics, CheckAssessment assessment, Int32 maxDiagnosticsPerCheck) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 688
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.Read(ReadOnlyMemory`1 utf8, String artifact, InputLimits limits, Int32 maxDiagnosticsPerCheck) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 177
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 93
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: /tmp/probe-gate-a3a0919f068845af910a5235599a94a7/probe-1.json diagnostic 0 exceeds the configured diagnostic byte limit.
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.TryDiagnostics(JsonElement root, String artifact, Int32 maxDiagnosticBytes, IReadOnlyList`1& values, StructuralProblem& problem) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 668
+           at Parchwell.Verifier.Common.Results.VerifierResultCodec.Read(ReadOnlyMemory`1 utf8, String artifact, InputLimits limits, Int32 maxDiagnosticsPerCheck) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs:line 175
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 93
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:09.08] Docker network 2d321b53133e created
+  [testcontainers.org 00:00:09.19] Docker container 45561660d120 created
+  [testcontainers.org 00:00:09.20] Start Docker container 45561660d120
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        Parchwell.Verifier.Common.Serialization.InputLimitExceededException: The combined verifier inputs exceed the configured byte limit.
+           at Parchwell.Verifier.Common.Serialization.InputBudget.ConsumeBytes(Int64 count) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:line 434
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 86
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.TimeoutException: The gate operation budget expired.
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.CheckDeadline(Int64 origin, TimeSpan budget, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 124
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 116
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.IO.IOException: synthetic cleanup
+           at Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.<>c.<Given_ExecutionOrPublicationFailure_When_HostRuns_Then_ExitsOneWithoutRetryOrDeletion>b__10_4() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs:line 221
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.FaultStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 227
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 182
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 183
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 115
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.IO.IOException: synthetic output cleanup
+           at Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.<>c.<Given_ExecutionOrPublicationFailure_When_HostRuns_Then_ExitsOneWithoutRetryOrDeletion>b__10_8() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs:line 225
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.FaultStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 227
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 182
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.DisposeAsync() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 183
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 64
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.TimeoutException: The gate operation budget expired.
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.CheckDeadline(Int64 origin, TimeSpan budget, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 124
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 65
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.IO.IOException: synthetic write
+           at Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.<>c.<Given_ExecutionOrPublicationFailure_When_HostRuns_Then_ExitsOneWithoutRetryOrDeletion>b__10_6() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs:line 223
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.FaultStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 222
+           at Parchwell.Verifier.Tests.Support.ProbeGateEvidenceBuilder.ObservedStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs:line 172
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 57
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 65
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0
+  fail: Parchwell.Verifier.VerifierWorker[3]
+        Verifier mode probe-gate failed for scenario A01 run (null).
+        System.TimeoutException: The gate operation budget expired.
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.CheckDeadline(Int64 origin, TimeSpan budget, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 124
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 89
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ReadInputAsync(String path, InputLimits limits, InputBudget budget, VerifierHostOptions options, Int64 origin, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 117
+           at Parchwell.Verifier.ProbeGate.ProbeGateHandler.ExecuteAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs:line 39
+           at Parchwell.Verifier.VerifierWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/VerifierWorker.cs:line 55
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:09.47] Wait for Docker container 45561660d120 to complete readiness checks
+  [testcontainers.org 00:00:09.48] Docker container 45561660d120 ready
+  [testcontainers.org 00:00:09.70] Docker container 873cc9c3bdba created
+  [testcontainers.org 00:00:09.71] Start Docker container 873cc9c3bdba
+  [testcontainers.org 00:00:09.90] Docker container e24662f1fdb7 created
+  [testcontainers.org 00:00:09.90] Start Docker container e24662f1fdb7
+  [testcontainers.org 00:00:09.93] Add file to tar archive: Content length: 3952 byte(s), Target file: "/tmp/verifier.properties", UID: 0, GID: 0, Mode: 0644
+  [testcontainers.org 00:00:09.94] Copy tar archive to container: Content length: 3952 byte(s), Docker container: 873cc9c3bdba
+  [testcontainers.org 00:00:09.95] Add file to tar archive: Content length: 162 byte(s), Target file: "/tmp/verifier-start.sh", UID: 0, GID: 0, Mode: 0644
+  [testcontainers.org 00:00:09.95] Copy tar archive to container: Content length: 162 byte(s), Docker container: 873cc9c3bdba
+  [testcontainers.org 00:00:09.96] Wait for Docker container 873cc9c3bdba to complete readiness checks
+  [testcontainers.org 00:00:10.17] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:10.17] Copy tar archive to container: Content length: 163 byte(s), Docker container: e24662f1fdb7
+  [testcontainers.org 00:00:10.17] Wait for Docker container e24662f1fdb7 to complete readiness checks
+  [testcontainers.org 00:00:12.64] Docker container 40e3a0b971e0 created
+  [testcontainers.org 00:00:12.64] Start Docker container 40e3a0b971e0
+  [testcontainers.org 00:00:12.94] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:12.94] Copy tar archive to container: Content length: 163 byte(s), Docker container: 40e3a0b971e0
+  [testcontainers.org 00:00:12.94] Wait for Docker container 40e3a0b971e0 to complete readiness checks
+  [testcontainers.org 00:00:16.10] Docker container 873cc9c3bdba ready
+  [testcontainers.org 00:00:16.98] Delete Docker container 873cc9c3bdba
+  [testcontainers.org 00:00:19.29] Docker container e24662f1fdb7 ready
+  [testcontainers.org 00:00:20.07] Delete Docker container e24662f1fdb7
+  [testcontainers.org 00:00:20.76] Delete Docker container 98be3bcce55c
+  [testcontainers.org 00:00:20.91] Delete Docker network 894aa349dade
+  [testcontainers.org 00:00:21.02] Docker network faef8a1aa653 created
+  [testcontainers.org 00:00:21.03] Docker container a31f741e99f1 created
+  [testcontainers.org 00:00:21.03] Start Docker container a31f741e99f1
+  [testcontainers.org 00:00:21.09] Docker container 40e3a0b971e0 ready
+  [testcontainers.org 00:00:21.46] Wait for Docker container a31f741e99f1 to complete readiness checks
+  [testcontainers.org 00:00:21.47] Docker container a31f741e99f1 ready
+  [testcontainers.org 00:00:26.33] Docker container bd79b4a54ea6 created
+  [testcontainers.org 00:00:26.33] Start Docker container bd79b4a54ea6
+  [testcontainers.org 00:00:26.50] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:26.50] Copy tar archive to container: Content length: 163 byte(s), Docker container: bd79b4a54ea6
+  [testcontainers.org 00:00:26.50] Wait for Docker container bd79b4a54ea6 to complete readiness checks
+  [testcontainers.org 00:00:26.51] Delete Docker container 40e3a0b971e0
+  [testcontainers.org 00:00:27.04] Delete Docker container 45561660d120
+  [testcontainers.org 00:00:27.20] Delete Docker network 2d321b53133e
+  [testcontainers.org 00:00:27.36] Docker network 4be19c7449a6 created
+  [testcontainers.org 00:00:27.37] Docker container ccc69e373989 created
+  [testcontainers.org 00:00:27.38] Start Docker container ccc69e373989
+  [testcontainers.org 00:00:27.57] Wait for Docker container ccc69e373989 to complete readiness checks
+  [testcontainers.org 00:00:28.58] Docker container ccc69e373989 ready
+  [testcontainers.org 00:00:32.54] Docker container bd79b4a54ea6 ready
+  [testcontainers.org 00:00:33.55] Delete Docker container bd79b4a54ea6
+  [testcontainers.org 00:00:34.20] Delete Docker container a31f741e99f1
+  [testcontainers.org 00:00:34.35] Delete Docker network faef8a1aa653
+  [testcontainers.org 00:00:34.46] Docker network ef7f18f9c46c created
+  [testcontainers.org 00:00:34.49] Docker container ffd60f217903 created
+  [testcontainers.org 00:00:34.49] Start Docker container ffd60f217903
+  [testcontainers.org 00:00:34.70] Wait for Docker container ffd60f217903 to complete readiness checks
+  [testcontainers.org 00:00:34.71] Docker container ffd60f217903 ready
+  [testcontainers.org 00:00:35.56] Docker container 8d93779ba76f created
+  [testcontainers.org 00:00:35.56] Start Docker container 8d93779ba76f
+  [testcontainers.org 00:00:35.72] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:35.72] Copy tar archive to container: Content length: 163 byte(s), Docker container: 8d93779ba76f
+  [testcontainers.org 00:00:35.72] Wait for Docker container 8d93779ba76f to complete readiness checks
+  [testcontainers.org 00:00:41.76] Docker container 8d93779ba76f ready
+  [testcontainers.org 00:00:43.26] Docker container ff0d761754ab created
+  [testcontainers.org 00:00:43.26] Start Docker container ff0d761754ab
+  [testcontainers.org 00:00:43.42] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:43.42] Copy tar archive to container: Content length: 163 byte(s), Docker container: ff0d761754ab
+  [testcontainers.org 00:00:43.42] Wait for Docker container ff0d761754ab to complete readiness checks
+  [testcontainers.org 00:00:46.35] Delete Docker container 8d93779ba76f
+  [testcontainers.org 00:00:46.97] Delete Docker container ccc69e373989
+  [testcontainers.org 00:00:47.15] Delete Docker network 4be19c7449a6
+  [testcontainers.org 00:00:47.30] Docker network f072a4c3b4b0 created
+  [testcontainers.org 00:00:47.34] Docker container 93a2183d07fe created
+  [testcontainers.org 00:00:47.34] Start Docker container 93a2183d07fe
+  [testcontainers.org 00:00:47.57] Wait for Docker container 93a2183d07fe to complete readiness checks
+  [testcontainers.org 00:00:47.58] Docker container 93a2183d07fe ready
+  [testcontainers.org 00:00:49.45] Docker container ff0d761754ab ready
+  [testcontainers.org 00:00:49.76] Docker container 13ce9c160a49 created
+  [testcontainers.org 00:00:49.76] Start Docker container 13ce9c160a49
+  [testcontainers.org 00:00:49.94] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:49.94] Copy tar archive to container: Content length: 163 byte(s), Docker container: 13ce9c160a49
+  [testcontainers.org 00:00:49.94] Wait for Docker container 13ce9c160a49 to complete readiness checks
+  [testcontainers.org 00:00:49.96] Delete Docker container ff0d761754ab
+  [testcontainers.org 00:00:50.72] Delete Docker container ffd60f217903
+  [testcontainers.org 00:00:50.87] Delete Docker network ef7f18f9c46c
+  [testcontainers.org 00:00:51.00] Docker network cd0bbb4ef04a created
+  [testcontainers.org 00:00:51.02] Docker container e7d133547ac3 created
+  [testcontainers.org 00:00:51.02] Start Docker container e7d133547ac3
+  [testcontainers.org 00:00:51.19] Wait for Docker container e7d133547ac3 to complete readiness checks
+  [testcontainers.org 00:00:51.20] Docker container e7d133547ac3 ready
+  [testcontainers.org 00:00:55.98] Docker container 13ce9c160a49 ready
+  [testcontainers.org 00:00:56.94] Docker container 6935888ce0ea created
+  [testcontainers.org 00:00:56.94] Start Docker container 6935888ce0ea
+  [testcontainers.org 00:00:57.08] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:00:57.08] Copy tar archive to container: Content length: 163 byte(s), Docker container: 6935888ce0ea
+  [testcontainers.org 00:00:57.08] Wait for Docker container 6935888ce0ea to complete readiness checks
+  [testcontainers.org 00:01:02.20] Delete Docker container 13ce9c160a49
+  [testcontainers.org 00:01:02.87] Delete Docker container 93a2183d07fe
+  [testcontainers.org 00:01:03.00] Delete Docker network f072a4c3b4b0
+  [testcontainers.org 00:01:03.10] Docker container 6935888ce0ea ready
+  [testcontainers.org 00:01:04.15] Delete Docker container 6935888ce0ea
+  [testcontainers.org 00:01:04.69] Delete Docker container e7d133547ac3
+  [testcontainers.org 00:01:04.83] Delete Docker network cd0bbb4ef04a
+  [testcontainers.org 00:01:04.93] Docker network 86d1b14ad5ef created
+  [testcontainers.org 00:01:04.95] Docker container 445360d38697 created
+  [testcontainers.org 00:01:04.95] Start Docker container 445360d38697
+  [testcontainers.org 00:01:05.11] Wait for Docker container 445360d38697 to complete readiness checks
+  [testcontainers.org 00:01:05.11] Docker container 445360d38697 ready
+  [testcontainers.org 00:01:12.50] Docker container 51f064e5e921 created
+  [testcontainers.org 00:01:12.50] Start Docker container 51f064e5e921
+  [testcontainers.org 00:01:12.80] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:01:12.80] Copy tar archive to container: Content length: 163 byte(s), Docker container: 51f064e5e921
+  [testcontainers.org 00:01:12.80] Wait for Docker container 51f064e5e921 to complete readiness checks
+  [testcontainers.org 00:01:18.83] Docker container 51f064e5e921 ready
+  [testcontainers.org 00:01:19.37] Delete Docker container 51f064e5e921
+  [testcontainers.org 00:01:19.89] Delete Docker container 445360d38697
+  [testcontainers.org 00:01:20.01] Delete Docker network 86d1b14ad5ef
+  [testcontainers.org 00:01:20.12] Docker network 7bb233f11730 created
+  [testcontainers.org 00:01:20.13] Docker container c3fe9f02d1cc created
+  [testcontainers.org 00:01:20.13] Start Docker container c3fe9f02d1cc
+  [testcontainers.org 00:01:20.29] Wait for Docker container c3fe9f02d1cc to complete readiness checks
+  [testcontainers.org 00:01:20.29] Docker container c3fe9f02d1cc ready
+  [testcontainers.org 00:01:28.14] Docker container a362a70619e9 created
+  [testcontainers.org 00:01:28.14] Start Docker container a362a70619e9
+  [testcontainers.org 00:01:28.27] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:01:28.27] Copy tar archive to container: Content length: 163 byte(s), Docker container: a362a70619e9
+  [testcontainers.org 00:01:28.28] Wait for Docker container a362a70619e9 to complete readiness checks
+  [testcontainers.org 00:01:34.30] Docker container a362a70619e9 ready
+  [testcontainers.org 00:01:35.85] Delete Docker container a362a70619e9
+  [testcontainers.org 00:01:36.39] Delete Docker container c3fe9f02d1cc
+  [testcontainers.org 00:01:36.52] Delete Docker network 7bb233f11730
+  [testcontainers.org 00:01:36.63] Docker network 5ce0ab2db50f created
+  [testcontainers.org 00:01:36.65] Docker container 4182e95974a4 created
+  [testcontainers.org 00:01:36.65] Start Docker container 4182e95974a4
+  [testcontainers.org 00:01:36.80] Wait for Docker container 4182e95974a4 to complete readiness checks
+  [testcontainers.org 00:01:36.81] Docker container 4182e95974a4 ready
+  [testcontainers.org 00:01:44.19] Docker container 7836c3d1dc43 created
+  [testcontainers.org 00:01:44.20] Start Docker container 7836c3d1dc43
+  [testcontainers.org 00:01:44.35] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:01:44.35] Copy tar archive to container: Content length: 163 byte(s), Docker container: 7836c3d1dc43
+  [testcontainers.org 00:01:44.35] Wait for Docker container 7836c3d1dc43 to complete readiness checks
+  [testcontainers.org 00:01:50.38] Docker container 7836c3d1dc43 ready
+  [testcontainers.org 00:01:50.91] Delete Docker container 7836c3d1dc43
+  [testcontainers.org 00:01:51.43] Delete Docker container 4182e95974a4
+  [testcontainers.org 00:01:51.57] Delete Docker network 5ce0ab2db50f
+  [testcontainers.org 00:01:51.68] Docker network 58894310502a created
+  [testcontainers.org 00:01:51.70] Docker container 76b89a2bd76e created
+  [testcontainers.org 00:01:51.70] Start Docker container 76b89a2bd76e
+  [testcontainers.org 00:01:51.85] Wait for Docker container 76b89a2bd76e to complete readiness checks
+  [testcontainers.org 00:01:51.86] Docker container 76b89a2bd76e ready
+  [testcontainers.org 00:01:58.97] Docker container 1fa865fafc95 created
+  [testcontainers.org 00:01:58.97] Start Docker container 1fa865fafc95
+  [testcontainers.org 00:01:59.11] Add file to tar archive: Content length: 163 byte(s), Target file: "/testcontainers.sh", UID: 0, GID: 0, Mode: 0755
+  [testcontainers.org 00:01:59.11] Copy tar archive to container: Content length: 163 byte(s), Docker container: 1fa865fafc95
+  [testcontainers.org 00:01:59.12] Wait for Docker container 1fa865fafc95 to complete readiness checks
+  [testcontainers.org 00:02:05.15] Docker container 1fa865fafc95 ready
+  [testcontainers.org 00:02:05.81] Delete Docker container 1fa865fafc95
+  [testcontainers.org 00:02:06.30] Delete Docker container 76b89a2bd76e
+  [testcontainers.org 00:02:06.43] Delete Docker network 58894310502a
+  Error output: %5|1792525168.277|REQTMOUT|rdkafka#consumer-25| [thrd:127.0.0.1:32792/1]: 127.0.0.1:32792/1: Timed out ListOffsetsRequest in flight (after 499ms, timeout #0)
+  %5|1792525168.277|REQTMOUT|rdkafka#consumer-25| [thrd:127.0.0.1:32792/1]: 127.0.0.1:32792/1: Timed out ListOffsetsRequest in flight (after 499ms, timeout #1)
+  %4|1792525168.277|REQTMOUT|rdkafka#consumer-25| [thrd:127.0.0.1:32792/1]: 127.0.0.1:32792/1: Timed out 2 in-flight, 0 retry-queued, 0 out-queue, 0 partially-sent requests
+
+  In process file artifacts produced:
+    - /tmp/parchwell-dotnet-verification.l4okHDSr/Parchwell.Verifier.Tests/results.xml
+
+Test run summary: Failed!
+  total: 2143
+  failed: 1
+  succeeded: 2142
+  skipped: 0
+  duration: 2m 07s 579ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

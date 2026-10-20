@@ -1,0 +1,18 @@
+{
+  "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296951009",
+  "invocation_ordinal": 1,
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "600s",
+    "bash"
+  ],
+  "stdin_description": "Official 10.0 release metadata selection, SDK 10.0.402 linux-x64 archive download and SHA-512 verification, extraction outside repository, SDK/source/tool/local-Docker diagnostics; no acceptance build/test/restore",
+  "source_commit": "cd13c844b1ed302731a21af5062e811a63a721bf",
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "wall_time_cap_seconds": 600,
+  "exit_code": 0,
+  "elapsed_seconds": 11.24113130569458,
+  "command_log": "command.log",
+  "command_log_sha256": "38b8e5ce2365fe00411df216c7396ce0e763905686297a49ccd5e1783c35cbe3"
+}

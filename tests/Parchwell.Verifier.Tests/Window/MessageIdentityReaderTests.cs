@@ -4,6 +4,7 @@ using Parchwell.Verifier.VerifyRun.Window;
 using Parchwell.Verifier.VerifyRun.Judgement;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Serialization;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Window;
@@ -61,6 +62,7 @@ public sealed class MessageIdentityReaderTests
         var result = MessageIdentityReader.Read(Record(text));
         Assert.Null(result.Sequence);
         Assert.Contains(result.Problems, p => p.CheckNumber == 6 && p.Field == "sequence");
+        Assert.Equal([new StructuralProblem(6, "noncanonical_sequence", "consumed", null, "sequence", null)], result.Problems);
     }
 
     [Theory]
@@ -84,6 +86,14 @@ public sealed class MessageIdentityReaderTests
         if (mode == "null") record.Message.Headers.Add(field, null);
         if (mode == "utf8") record.Message.Headers.Add(field, [0xff]);
         Assert.Contains(MessageIdentityReader.Read(record).Problems, p => p.CheckNumber == 6 && p.Field == field);
+        string code = mode switch
+        {
+            "missing" => "missing_header",
+            "duplicate" => "duplicate_header",
+            "null" => "null_identity_bytes",
+            _ => "invalid_utf8"
+        };
+        Assert.Equal([new StructuralProblem(6, code, "consumed", null, field, null)], MessageIdentityReader.Read(record).Problems);
     }
 
     [Theory]
@@ -94,6 +104,8 @@ public sealed class MessageIdentityReaderTests
         var record = Record();
         record.Message.Key = invalid ? [0xff] : null!;
         Assert.Contains(MessageIdentityReader.Read(record).Problems, p => p.CheckNumber == 6 && p.Field == "key");
+        Assert.Equal([new StructuralProblem(6, invalid ? "invalid_utf8" : "null_identity_bytes", "consumed", null, "key", null)],
+            MessageIdentityReader.Read(record).Problems);
     }
 
     [Fact]

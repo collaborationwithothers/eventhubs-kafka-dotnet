@@ -60,6 +60,7 @@ public sealed class RunJudgementTests
         Assert.Empty(result.FailedChecks);
         Assert.Equal(new BrokerConnectionCount("LoadGenProducer", "producer-1", 1, 1, true), result.BrokerCount);
         Assert.Equal(27, result.Assessments.Count);
+        Assert.Equal(Enumerable.Range(1, 27), result.Assessments.Select(a => a.CheckNumber));
     }
 
     [Theory]
@@ -221,7 +222,46 @@ public sealed class RunJudgementTests
     public void Given_IndexExecutionFailure_When_Judging_Then_NoNumberedCheckInvented()
     {
         RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
-        Assert.Throws<InvalidOperationException>(() => RunJudgement.Evaluate(request with
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunJudgement.Evaluate(request with
         { Index = ParseResult<ArtifactIndex>.ExecutionFailure(new StructuralProblem(null, "missing", "index.json", null, null, null)) }));
+        Assert.Equal("Recorded evidence has an execution failure.", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("first")]
+    [InlineData("second")]
+    [InlineData("both")]
+    [InlineData("empty")]
+    public void Given_NativeExecutionFailureCombination_When_Judging_Then_AnyFailureStopsJudgement(string variation)
+    {
+        // Synthetic parse failures exercise both native report positions and an empty collection.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        ReportAssociation[] reports = variation == "empty" ? [] : request.Reports.Take(2).ToArray();
+        if (variation is "first" or "both") reports[0] = reports[0] with
+        {
+            Native = ParseResult<NativeClientReport>.ExecutionFailure(
+                new StructuralProblem(null, "synthetic_io", "statistics.jsonl", null, null, null))
+        };
+        if (variation is "second" or "both") reports[1] = reports[1] with
+        {
+            Native = ParseResult<NativeClientReport>.ExecutionFailure(
+                new StructuralProblem(null, "synthetic_io", "statistics.jsonl", null, null, null))
+        };
+        request = request with
+        {
+            Reports = reports,
+            Statistics = ParseResult<IReadOnlyList<StatisticsEnvelope>>.Success(reports.Select(r => r.Envelope).ToArray())
+        };
+        if (variation is "first" or "second" or "both")
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunJudgement.Evaluate(request));
+            Assert.Equal("Recorded evidence has an execution failure.", exception.Message);
+        }
+        else
+        {
+            RunJudgementResult result = RunJudgement.Evaluate(request);
+            Assert.Equal(variation == "none" ? VerifierResultStatus.CompleteValid : VerifierResultStatus.Invalid, result.Status);
+        }
     }
 }

@@ -1,0 +1,928 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/case-reconciliation.json",
+      "producer": "python3 - (single finite receipt reconciliation of parsed XML, fresh discovery and independent 477+50 planned identities); exact normalization and identities recorded in receipt.md and case-reconciliation.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 141530,
+      "sha256": "91f726849e9f90eef25c5770f210a3bc09ddf43d32f2d33cba06282b8e7790f5"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/controller-invocations.json",
+      "producer": "python3 -; shutil.copy2(.artifacts/issue-97/controller-invocations.json, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/controller-invocations.json) after final focused execution; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1527,
+      "sha256": "3b270a42f37f1163a42f4e62ffc50d025cd287d55cb13e2c15a5471670c098dd"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/diff-accounting.json",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; python3 - (scripted numstat snapshot totals); source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 435,
+      "sha256": "1e800b7cdf16ed17e1dd720734b6176b2b0ab14232908b0aca01a8e5b7a3ff01"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/discovery-1/command.log.gz",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 28056,
+      "sha256": "4081507ff4493b517901a549b7e7b7ad0016df4c14ec7f6ea233cb248443bb77"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1650,
+      "sha256": "d120afe36b68203994b05cfafc6ffb2be40b6f5e02d532ee30df9262fcd949f5"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/discovery-1/selected-cases.json",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json; selection and independent expected-set reconciliation: python3 - (finite receipt pass); source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 89698,
+      "sha256": "1a968477949f4fb6694fbc573a505a884bcbc609b05f4c8db1e392165f17b3b9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/discovery-1/tested-source.json",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 40936,
+      "sha256": "4b2b162102392f3c7585e894c75511eee5c42e93925a62aef1096f79fead3915"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-1.json",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit f866ab8bcb3bd1b164552172ba9b790d096f331c",
+      "size_bytes": 667,
+      "sha256": "86b1ed1726379140924dd4f177256f11e706e28c7df57938ba08cd4a8699ee71"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-1.log",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit f866ab8bcb3bd1b164552172ba9b790d096f331c",
+      "size_bytes": 64604,
+      "sha256": "37d125e73991a83f0d99cae7caa94f6ae380370a9d95d359d1608f9605861424"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-2.json",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 740,
+      "sha256": "bcc40917e998884b47d7f09c5292a8ee8bc515ce9e3da15fe7cb252c91af6f4b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-2.log",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 5366,
+      "sha256": "183406963978666d1043b7099e5cdbc128b52ccd92423b33ccf48196bb8946e1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/command.log.gz",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 527 --results-directory /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1 -- --filter-method 'Parchwell.Verifier.Tests.Judgement.BookkeepingChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.ConfigurationFidelityTests.*' 'Parchwell.Verifier.Tests.Judgement.LateWriteChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.OutcomeClassifierTests.*' 'Parchwell.Verifier.Tests.Judgement.RunJudgementTests.*' 'Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.*' 'Parchwell.Verifier.Tests.ProbeGate.ProbeGateEvaluatorTests.*' 'Parchwell.Verifier.Tests.Window.ConsumedRecordBudgetTests.*' 'Parchwell.Verifier.Tests.Window.MessageIdentityReaderTests.*' 'Parchwell.Verifier.Tests.Window.RunWindowTests.*' --report-xunit-xml --report-xunit-xml-filename results.xml; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 294,
+      "sha256": "b21fed3a8ca58cb1fcf5412065dd01dc96db566bbec193ef8037bab713d1fb7f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 527 --results-directory /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1 -- --filter-method 'Parchwell.Verifier.Tests.Judgement.BookkeepingChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.ConfigurationFidelityTests.*' 'Parchwell.Verifier.Tests.Judgement.LateWriteChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.OutcomeClassifierTests.*' 'Parchwell.Verifier.Tests.Judgement.RunJudgementTests.*' 'Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.*' 'Parchwell.Verifier.Tests.ProbeGate.ProbeGateEvaluatorTests.*' 'Parchwell.Verifier.Tests.Window.ConsumedRecordBudgetTests.*' 'Parchwell.Verifier.Tests.Window.MessageIdentityReaderTests.*' 'Parchwell.Verifier.Tests.Window.RunWindowTests.*' --report-xunit-xml --report-xunit-xml-filename results.xml; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 2794,
+      "sha256": "bad48eb6b6ee589d9dd09c0255706ba27503955ac70c78c116f0597d4836038d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/results.xml",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 527 --results-directory /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1 -- --filter-method 'Parchwell.Verifier.Tests.Judgement.BookkeepingChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.ConfigurationFidelityTests.*' 'Parchwell.Verifier.Tests.Judgement.LateWriteChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.OutcomeClassifierTests.*' 'Parchwell.Verifier.Tests.Judgement.RunJudgementTests.*' 'Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.*' 'Parchwell.Verifier.Tests.ProbeGate.ProbeGateEvaluatorTests.*' 'Parchwell.Verifier.Tests.Window.ConsumedRecordBudgetTests.*' 'Parchwell.Verifier.Tests.Window.MessageIdentityReaderTests.*' 'Parchwell.Verifier.Tests.Window.RunWindowTests.*' --report-xunit-xml --report-xunit-xml-filename results.xml; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 348663,
+      "sha256": "5abf8c5f8c1ed3af4ac1bb055788219fd4df3ff4a2a3ff90e3c88adcbc5fa79d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/tested-source.json",
+      "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 527 --results-directory /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1 -- --filter-method 'Parchwell.Verifier.Tests.Judgement.BookkeepingChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.ConfigurationFidelityTests.*' 'Parchwell.Verifier.Tests.Judgement.LateWriteChecksTests.*' 'Parchwell.Verifier.Tests.Judgement.OutcomeClassifierTests.*' 'Parchwell.Verifier.Tests.Judgement.RunJudgementTests.*' 'Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.*' 'Parchwell.Verifier.Tests.ProbeGate.ProbeGateEvaluatorTests.*' 'Parchwell.Verifier.Tests.Window.ConsumedRecordBudgetTests.*' 'Parchwell.Verifier.Tests.Window.MessageIdentityReaderTests.*' 'Parchwell.Verifier.Tests.Window.RunWindowTests.*' --report-xunit-xml --report-xunit-xml-filename results.xml; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/focused-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 40936,
+      "sha256": "4b2b162102392f3c7585e894c75511eee5c42e93925a62aef1096f79fead3915"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/validation.json",
+      "producer": "timeout --kill-after=5s 120s dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport -p:Report=/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1/results.xml -p:ExpectedAssembly=Parchwell.Verifier.Tests -nologo; receipt generation: python3 - \"$validator_status\" \"$validator_started\"; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 673,
+      "sha256": "52beb232876e3cbabf4d3c2fb24662cd6b219d9b31cfe56782cc02cc56e112a6"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/validation.log",
+      "producer": "timeout --kill-after=5s 120s dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport -p:Report=/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1/results.xml -p:ExpectedAssembly=Parchwell.Verifier.Tests -nologo; receipt generation: python3 - \"$validator_status\" \"$validator_started\"; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 56,
+      "sha256": "49f9185fa3ed3d3f966e599b75b961385f4bbe88ac26afe318f13b1576265daf"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/setup-1/command.log",
+      "producer": "timeout --kill-after=5s 600s bash; stdin: official SDK metadata selection, archive download/SHA-512 verification and extraction, SDK/NuGet/tool/local-Docker diagnostics; setup receipt: python3 - \"$setup_status\" \"$setup_started\"; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 1436,
+      "sha256": "38b8e5ce2365fe00411df216c7396ce0e763905686297a49ccd5e1783c35cbe3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/setup-1/release-metadata.json",
+      "producer": "curl --fail --silent --show-error --location --max-time 60 https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json -o /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/setup-1/release-metadata.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 1100901,
+      "sha256": "8ba714cf0020d35ff4a3cb163376df2f4ccaf8e6e1d7021fcb1bd7dd628299d2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/setup-1/sdk-selection.json",
+      "producer": "timeout --kill-after=5s 600s bash; stdin: official SDK metadata selection, archive download/SHA-512 verification and extraction, SDK/NuGet/tool/local-Docker diagnostics; setup receipt: python3 - \"$setup_status\" \"$setup_started\"; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 646,
+      "sha256": "fa98eb84951642549fc40b86e98fbdba4159669f6bc21f27f982f262703d27a6"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/setup-1/setup.json",
+      "producer": "timeout --kill-after=5s 600s bash; stdin: official SDK metadata selection, archive download/SHA-512 verification and extraction, SDK/NuGet/tool/local-Docker diagnostics; setup receipt: python3 - \"$setup_status\" \"$setup_started\"; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 795,
+      "sha256": "635fef92cfacd07e75930043ba27ff9d91bbec6a3d40d04687ebb92d48e0ce52"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-1-user-reported.json",
+      "producer": "python3 - (decision-authorized reported-attempt/ledger recorder); Decision 6296951009; raw Mac files not imported; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 909,
+      "sha256": "2b1f6b3413aa235096d1101417c5f0e11bde4539e964138d174084e266e21aa3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2-copy.json",
+      "producer": "python3 - (complete suite output-directory copier and XML/count summary); shutil.copytree(/tmp/parchwell-dotnet-verification.678QYy7S, docs/operations/evidence/issue-93/child-a/raw/suite-2/verification); source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 543,
+      "sha256": "1376a8a7efe6ec3005c7f37eba440e0d5c0b779f1feb469e0c4c2458544def28"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2/command.log.gz",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 594,
+      "sha256": "5c0a2b8440de15c641486ab5d1fa3464081072b1924ab5aadc47acb0da9c40ef"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 1503,
+      "sha256": "42d9c99a85191acb26b75748fab08028b909af0a0f925b593a3334a6c47e1576"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2/tested-source.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 40933,
+      "sha256": "209863356b8ce17c20037485c16ea9f4b5b493c5a0ba8b5f3f883618715ec419"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2/verification/build.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.678QYy7S, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-2/verification); enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 2573,
+      "sha256": "bf9f21a673f541045056c04355ff09b2e7e7ecb4228d4e47cb7abf5a70f4e7f9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-2/verification/restore.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.678QYy7S, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-2/verification); enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json; source commit cd13c844b1ed302731a21af5062e811a63a721bf",
+      "size_bytes": 1306,
+      "sha256": "bca1f621cb1d2f322ac92e68d7ec6f2ae8cd2e74b93399c53d3dbd7585730892"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3-copy.json",
+      "producer": "python3 - (complete suite output-directory copier and XML/count summary); shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1390,
+      "sha256": "f88206d5b2146fcdd345d385494108e58233157dbb69fb5d44fe873e040cdc63"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json",
+      "producer": "python3 - (launch-record writer); recorded exact execution argv: python3 -c 'import runpy; controller = runpy.run_path(\"/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-92-pr6b/controller.py\", run_name=\"issue97_approved_controller\"); controller[\"CAPS\"][\"suite\"] = (3, 1800); controller[\"main\"]()' --mode suite --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3 --ledger-path /workspace/eventhubs-kafka-dotnet/.artifacts/issue-97/controller-invocations.json --tested-commit 8eac78836921f1327bfc42cac78027d8761ab51e --seconds 1800 -- bash ./scripts/verify-dotnet.sh; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 2152,
+      "sha256": "d09e66aea2a59ad82eea1d5c28609c481a64da0152d7ec5dcdc234c66b6088f4"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/command.log.gz",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 75849,
+      "sha256": "45db54443e9b37f9bf6da0959006e253481936d47404251d89ee9c028103ddcc"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/controller.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1504,
+      "sha256": "f122c5d53213e6491ae553b868a99dd28cf3f580ac1c435c266c8ac5810a3f36"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/tested-source.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 40933,
+      "sha256": "c6a4991e1bef3e5e1fa94cd5a14b0baabe2711411bcba7ef89743c4e5dfa63bc"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.ArchitectureTests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 57,
+      "sha256": "e6e4a75e26601d8e18e16c9032d846a0109cab51b1570fb6bafd19ed23b52daf"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.ArchitectureTests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 6575,
+      "sha256": "907aea953b6d724ab12fc866795f9689e47f1c0ffa7a0991ba1f625b51144ca8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.ArchitectureTests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 533,
+      "sha256": "53479081b4126d481ceba549a4d16a9ea7fdd965e2bcba6acdc05a988efb6bf4"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 53,
+      "sha256": "ead1dac19d61843d6b5ce939f756591bbf24618c7c2136b35c35f8370121f812"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 231045,
+      "sha256": "736ccb0b0287f417403ae730fdfe8b21a2f5f88fe4cac150501759283a4ee729"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/spike/phantom-spike-f9357e7d340c4fddb347e35452c6c76f/decision.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1892,
+      "sha256": "850ce0ae5dc94f892ba05b3dbdff6cc2a41ecd4593b4d05644793919152e7c72"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/spike/phantom-spike-f9357e7d340c4fddb347e35452c6c76f/experiment.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 25335723,
+      "sha256": "9b111b07178c6dc507a502975318b797458e54c25766a9514cb241670d969a4b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/spike/phantom-spike-f9357e7d340c4fddb347e35452c6c76f/trial-records.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1648791,
+      "sha256": "f1a7971652bec6306b728461799f3497ba01766d4034404afb6f699c784a5ae0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Kafka.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 515,
+      "sha256": "31e3a35f2fc98ac7a149bfa27eb42222162943fdaeae7e31726572bf6ec0f295"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.LoadGen.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 55,
+      "sha256": "f47774f5228c92800975598ff5fb4e256656705a72feeb1fc8b51821e501ddef"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.LoadGen.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 182588,
+      "sha256": "f2630d81642c1c11d0534f7cf0e9208ecf040910e811d24b25656254ff18233d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.LoadGen.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 519,
+      "sha256": "066109406141eb2f5d10aa4f330ed9d5e0333a6e3bfd0040f9e3f9e77898c1aa"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Scenarios.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 56,
+      "sha256": "250c000564a59f34db40fe2b140438758c0e839aa5e781d1d565d94d7db9af99"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Scenarios.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 70514,
+      "sha256": "83d2cb08693e09ec7f80cedf76272ae4274930b96b59158dc9e1e2cab3eed267"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Scenarios.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 519,
+      "sha256": "aa1d5354036fd2918722bac30a55b95857048ba7a6e41cc87c972f76ac7356e9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Verifier.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1480715,
+      "sha256": "50d068c4569b79a195b36af20eaf4ae34a60e8dfa89cd0a9a2f993ff3bf37456"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/Parchwell.Verifier.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 116007,
+      "sha256": "27138ffb1fd04a7df91c846784ea486d28a5f1f4f98d3fc292833c20fbcf6a6e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/build.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 1563,
+      "sha256": "c1d83061bfb1c79e22c73b917e9e0091044ef8b513c6d3beec1e48d827d3b0f9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/kafka-documentation.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 95,
+      "sha256": "ae046bbb6a902c6f1df66489e48811ba8a1e2375ff3136d23b305d7aed4afdf9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.ArchitectureTests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 25859,
+      "sha256": "6b6049ea1000bd719a29f87ede78ef2bd4ca128545a01776f4e3a57ef7ecaf5d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.ArchitectureTests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Enrichment.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 17319,
+      "sha256": "ba3dd154b50ce77c9afb32cd1fe672878efc1a666d38cd296ab653078c8d794e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Enrichment.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Enrichment.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 14335,
+      "sha256": "c2fd097a179cd126bcb03788018849105a45afaa35cac7c26549a57b8f6df5ef"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Enrichment.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Kafka.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 50040,
+      "sha256": "80199e76b5fb0b804b75b65181575fcb76d74a7878590217f043da43de136aed"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Kafka.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Kafka.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 53490,
+      "sha256": "4d1189df0979ff33bfa59a94cede24c19021f78d78cf53444a006ef9c236c418"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Kafka.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.LoadGen.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 38743,
+      "sha256": "c74b11d1d353162c71b44c88193276272f52b9442e46dfe37fde4e0ef6fcf89f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.LoadGen.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.LoadGen.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 44453,
+      "sha256": "5d3f4047169d4e68a31198ca182ab61955e5438de068098feb026939172bf62d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.LoadGen.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Scenarios.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 24518,
+      "sha256": "85ce99e0b15448c8e31313a3b4a8352e020cd8aee0b23e85850cd9f20b50c561"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Scenarios.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Scenarios.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 27868,
+      "sha256": "fe93c14b3b6107f1a24986744ccee3efc06fba48599066816ecb4b6fff99acd3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Scenarios.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Verifier.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 49603,
+      "sha256": "29f314bbcf3f2f9eba297c3d5f67a27e225f00d0715581516722d87c47f1624f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Verifier.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Verifier.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 58751,
+      "sha256": "de19c1f88cf0361320bc7937592919feea2dd85926e013cb26fc5f8be68e7a05"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/manifests/Parchwell.Verifier.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/restore.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 80,
+      "sha256": "40d104602671164ab3958225da3e1c8cabd55f0251d6df6bc911d9d5a24f44ce"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/scaffolds.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 77,
+      "sha256": "9924d6cb21ed59916c80739c5620901ec0ca32ebecb1d478eed34985fe127064"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification/unit-projects.txt",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.l4okHDSr, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-3-launch.json; source commit 8eac78836921f1327bfc42cac78027d8761ab51e",
+      "size_bytes": 382,
+      "sha256": "5fdb09166e6532a44e9c1162a573c64499a5fea2050ae831da4d63aaba827ef5"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4-copy.json",
+      "producer": "python3 - (complete suite output-directory copier and XML/count summary); shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 6228,
+      "sha256": "48ec9d61ec24c0b4150285603afe6195981866a8e41a814e47afcb3b8951e6d9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json",
+      "producer": "python3 - (launch-record writer); recorded exact execution argv: python3 -c 'import runpy; controller = runpy.run_path(\"/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-92-pr6b/controller.py\", run_name=\"issue97_approved_controller\"); controller[\"CAPS\"][\"suite\"] = (4, 1800); controller[\"main\"]()' --mode suite --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4 --ledger-path /workspace/eventhubs-kafka-dotnet/.artifacts/issue-97/controller-invocations.json --tested-commit c4a663bd148991440224efbce05fe34536d1dc5a --seconds 1800 -- bash ./scripts/verify-dotnet.sh; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 2389,
+      "sha256": "8a131f1fde148f40b8d85765e3d26048f92e4f0bb8292162afd66952d4f6d9e8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/command.log.gz",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 67548,
+      "sha256": "a6df5ca3e38b5df8f59344a9e30933588114e83ea780ed0f9ddbfac0b4d58bc2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/controller.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1504,
+      "sha256": "0113bc21612bbd58ad3327cbb74450e9b20173bcb057c629a99ab74450469fbd"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/tested-source.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 40935,
+      "sha256": "ef8c2260a044d35f00a6a7125aa57e6fca9a3812a637b28e881742f0c30e32b3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.ArchitectureTests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 57,
+      "sha256": "e6e4a75e26601d8e18e16c9032d846a0109cab51b1570fb6bafd19ed23b52daf"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.ArchitectureTests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 6573,
+      "sha256": "313fe985b525163cefd6aee2436b8ef8afcb9328c43ed7934a235baea98cf7c8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.ArchitectureTests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 533,
+      "sha256": "f1ee7bad6fddfd7270d1c05be21ee582b2290f5d49b312d02b14b6df7dbf5230"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 53,
+      "sha256": "ead1dac19d61843d6b5ce939f756591bbf24618c7c2136b35c35f8370121f812"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 231069,
+      "sha256": "bb701afa6d6279754f3e704dc8aafb00dbd7738ea673b0b41e70123a06db250b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/spike/phantom-spike-bc1b10036da7408cbd1a21f55b8b5c83/decision.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1892,
+      "sha256": "850ce0ae5dc94f892ba05b3dbdff6cc2a41ecd4593b4d05644793919152e7c72"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/spike/phantom-spike-bc1b10036da7408cbd1a21f55b8b5c83/experiment.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 25543951,
+      "sha256": "45340d5942e0891868e525537e42c5b183f4fac418bfe4fe11babf1e09b7b6a0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/spike/phantom-spike-bc1b10036da7408cbd1a21f55b8b5c83/trial-records.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1648807,
+      "sha256": "86b80cf143fa8cf41bbf2065421f4f180714e82227bfc61d0eed6c24b27c6e1f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 515,
+      "sha256": "5ee4bb5f2c2aa047273143a9b95301a573c37f10a70c37b3bfbe4c88528e4894"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.LoadGen.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 55,
+      "sha256": "f47774f5228c92800975598ff5fb4e256656705a72feeb1fc8b51821e501ddef"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.LoadGen.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 182599,
+      "sha256": "da2cfd7c976273b52fa4743cdb1aad2637f5d511ae82ab5699a0cebc397d1208"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.LoadGen.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 519,
+      "sha256": "603d63c97dabc3a5dd66edd1255f2ff65b641094b68ba8435f4f4565a2a0a761"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Scenarios.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 56,
+      "sha256": "250c000564a59f34db40fe2b140438758c0e839aa5e781d1d565d94d7db9af99"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Scenarios.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 70538,
+      "sha256": "0bb398b3392817f2c586987b5fa52af6cef5a59abb3b5a9d9b22125d3f8e1f1a"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Scenarios.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 519,
+      "sha256": "47beca1d0fd994ce1e424039a4e66170f35ccc5af6e92406748cc1b767ee42ad"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Verifier.Tests/report.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 57,
+      "sha256": "5b95741ea7764bffc968fd4d35d5a95409ae3dc0b8398496c5b76f752363a728"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Verifier.Tests/results.xml",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1479927,
+      "sha256": "0bcaab17818e30c347bc835a0aa7cde1f920ecabd630cee5fa61e1c59b241e8b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Verifier.Tests/test.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 532,
+      "sha256": "29584d5e12bcdd96160a7c02a2b9a8eab4d93055deafcb48465a8d17a0705791"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/build.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1563,
+      "sha256": "3a43c16acf0c729fc1718bf6f03263e462ed6ded52d1e84b5ba1f8ec69d759ee"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/kafka-documentation.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 95,
+      "sha256": "ae046bbb6a902c6f1df66489e48811ba8a1e2375ff3136d23b305d7aed4afdf9"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.ArchitectureTests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 25859,
+      "sha256": "6b6049ea1000bd719a29f87ede78ef2bd4ca128545a01776f4e3a57ef7ecaf5d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.ArchitectureTests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Enrichment.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 17319,
+      "sha256": "ba3dd154b50ce77c9afb32cd1fe672878efc1a666d38cd296ab653078c8d794e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Enrichment.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Enrichment.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 14335,
+      "sha256": "c2fd097a179cd126bcb03788018849105a45afaa35cac7c26549a57b8f6df5ef"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Enrichment.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Kafka.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 50040,
+      "sha256": "80199e76b5fb0b804b75b65181575fcb76d74a7878590217f043da43de136aed"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Kafka.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Kafka.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 53490,
+      "sha256": "4d1189df0979ff33bfa59a94cede24c19021f78d78cf53444a006ef9c236c418"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Kafka.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.LoadGen.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 38743,
+      "sha256": "c74b11d1d353162c71b44c88193276272f52b9442e46dfe37fde4e0ef6fcf89f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.LoadGen.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.LoadGen.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 44453,
+      "sha256": "5d3f4047169d4e68a31198ca182ab61955e5438de068098feb026939172bf62d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.LoadGen.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Scenarios.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 24518,
+      "sha256": "85ce99e0b15448c8e31313a3b4a8352e020cd8aee0b23e85850cd9f20b50c561"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Scenarios.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Scenarios.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 27868,
+      "sha256": "fe93c14b3b6107f1a24986744ccee3efc06fba48599066816ecb4b6fff99acd3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Scenarios.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Verifier.Tests.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 49603,
+      "sha256": "29f314bbcf3f2f9eba297c3d5f67a27e225f00d0715581516722d87c47f1624f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Verifier.Tests.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Verifier.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 58751,
+      "sha256": "de19c1f88cf0361320bc7937592919feea2dd85926e013cb26fc5f8be68e7a05"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/manifests/Parchwell.Verifier.json.stderr",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/restore.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 80,
+      "sha256": "40d104602671164ab3958225da3e1c8cabd55f0251d6df6bc911d9d5a24f44ce"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/scaffolds.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 77,
+      "sha256": "9924d6cb21ed59916c80739c5620901ec0ca32ebecb1d478eed34985fe127064"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/unit-projects.txt",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 382,
+      "sha256": "5fdb09166e6532a44e9c1162a573c64499a5fea2050ae831da4d63aaba827ef5"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/Allowed.cs",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 70,
+      "sha256": "5e7470a9aff7c0d4713de0d12c5098fc36c0f5b79da09e2ea37b313b2f4c8ad2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/Forbidden.cs",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 106,
+      "sha256": "dea374148d9722511fe1951447f7e97a02f5cadfbfcb03e4bb248d221da44db2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/WarningControl.csproj",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 291,
+      "sha256": "45a4b9db70a31799ef83282436dcf03084be6388483591396e24deb733027469"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/allowed.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 195,
+      "sha256": "e5792028f41ce6505f49cf860766e168aa719085c2ab0c4549ae75dfcee453e2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/bin/Release/net10.0/WarningControl.deps.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 414,
+      "sha256": "3490246bc7a1b61cd25a10831c2d99494ceb507418673d0408acabcf2e3040fa"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/bin/Release/net10.0/WarningControl.dll",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 4096,
+      "sha256": "36e8c5d79224ff6e83930accf40f2a986e3035c623717399d6b41cb56e678add"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/bin/Release/net10.0/WarningControl.pdb",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 10684,
+      "sha256": "0ca52ea5a0449f6b5f8037091898e7d6933c1bf5f96cc61fac8e9dd7233c7e28"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/forbidden.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 506,
+      "sha256": "7123de76f49dcf41b2af97fdd5992f8d4b3fc48dda5c63c69bce7c71b155f5c7"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 196,
+      "sha256": "f79c1ad9a9fc76110b3655f5bfb5ff4e3168e9addceff05b937c0796f0ec34eb"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.AssemblyInfo.cs",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 955,
+      "sha256": "94afa15204bd96ddfc3d03cdc017afbb9ffb2869a261fe7a29b8abf9808ac112"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.AssemblyInfoInputs.cache",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 65,
+      "sha256": "693d55363bbd5e9f47726df4d4fc6b2dd2799bd03bca97590ab11d065098a1f4"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 830,
+      "sha256": "89a651d0dd30998b6ffc2da54ee8d9aac48921303d46581aa737bb42b7028bf0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GlobalUsings.g.cs",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 231,
+      "sha256": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.assets.cache",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 149,
+      "sha256": "c1a2eddc904b268d58ce09bdebfe680e96155176adb8fe3133b7c52ac4de68a1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.csproj.CoreCompileInputs.cache",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 65,
+      "sha256": "fae2a0661386a95c5bab5762f3e8585dc082cbcd896029ad9ffee619f568396e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.csproj.FileListAbsolute.txt",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1204,
+      "sha256": "d16e4100efd0a4cd0e5177b05f87dca56234289c7a1ac178ce7b13c06bdb83c2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.dll",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 4096,
+      "sha256": "36e8c5d79224ff6e83930accf40f2a986e3035c623717399d6b41cb56e678add"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.pdb",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 10684,
+      "sha256": "0ca52ea5a0449f6b5f8037091898e7d6933c1bf5f96cc61fac8e9dd7233c7e28"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/ref/WarningControl.dll",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 4608,
+      "sha256": "2a624a32dda11bed7ee72e57a2228336cd54c49329bdf9b3dd4d64ef4249acca"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/refint/WarningControl.dll",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 4608,
+      "sha256": "2a624a32dda11bed7ee72e57a2228336cd54c49329bdf9b3dd4d64ef4249acca"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/WarningControl.csproj.nuget.dgspec.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 21304,
+      "sha256": "de4c6f5da253c2dafae0722c4c6b3d273e9b9e416dc30f4a14b2ee41aefea333"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/WarningControl.csproj.nuget.g.props",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 1112,
+      "sha256": "df7153afa1b5c180cda58157750664f514493912442f86f489f353daf3edef03"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/WarningControl.csproj.nuget.g.targets",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 149,
+      "sha256": "b14461e0cb1be3f77fcf9fe2fdd62889325ca92523d0f606980ed59eb5c4aa1c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/project.assets.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 20602,
+      "sha256": "63bf6b917a5cb0deb6b8ee007b3440fe4e54679b20f9a7735958eb8581300fd8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/project.nuget.cache",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 219,
+      "sha256": "8f1289f6ee7d83608a4e1d006683e206321c71b5a6ee9134d23eb79d6d66c728"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 61,
+      "sha256": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/restore.log",
+      "producer": "bash ./scripts/verify-dotnet.sh; complete copy via shutil.copytree(/tmp/parchwell-dotnet-verification.wR6RgIRK, /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4/verification); enclosing controller/override argv: docs/operations/evidence/issue-93/child-a/raw/suite-4-launch.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
+      "size_bytes": 142,
+      "sha256": "87729783c42e745883658fc750acd87453a5a766af08a0568cab248bd2c80a52"
+    }
+  ]
+}

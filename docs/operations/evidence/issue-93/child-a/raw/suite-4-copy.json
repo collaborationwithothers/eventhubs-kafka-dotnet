@@ -1,0 +1,133 @@
+{
+  "tested_commit": "c4a663bd148991440224efbce05fe34536d1dc5a",
+  "suite_exit_code": 0,
+  "source_inputs_unchanged": true,
+  "elapsed_seconds": 446.30314094000096,
+  "original_verification_directory": "/tmp/parchwell-dotnet-verification.wR6RgIRK",
+  "retained_copy": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification",
+  "copy_relationship": "Complete copy of actual printed suite output directory; metadata retained with shutil.copytree/copy2",
+  "project_reports": [
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.ArchitectureTests/results.xml",
+      "assembly": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll",
+      "passed_cases": 8,
+      "assembly_totals": {
+        "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+        "id": "e38cd4fe-4b5f-4a34-a064-7adbd9bb19c9",
+        "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll",
+        "run-date": "2026-10-20",
+        "run-time": "19:42:45",
+        "start-rtf": "2026-10-20T19:42:45.5483996+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-20T19:42:48.1679898+00:00",
+        "not-run": "0",
+        "passed": "8",
+        "skipped": "0",
+        "time": "2.622",
+        "time-rtf": "00:00:02.6220000",
+        "total": "8"
+      }
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Kafka.Tests/results.xml",
+      "assembly": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll",
+      "passed_cases": 306,
+      "assembly_totals": {
+        "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+        "id": "5360aeb5-85aa-4051-a0ca-3ad1f44c37aa",
+        "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll",
+        "run-date": "2026-10-20",
+        "run-time": "19:42:51",
+        "start-rtf": "2026-10-20T19:42:51.5229248+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-20T19:46:55.0363668+00:00",
+        "not-run": "0",
+        "passed": "306",
+        "skipped": "0",
+        "time": "243.514",
+        "time-rtf": "00:04:03.5140000",
+        "total": "306"
+      }
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.LoadGen.Tests/results.xml",
+      "assembly": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll",
+      "passed_cases": 262,
+      "assembly_totals": {
+        "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+        "id": "ec5fc279-f89a-4fc9-83f5-51dc33fa855b",
+        "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll",
+        "run-date": "2026-10-20",
+        "run-time": "19:46:58",
+        "start-rtf": "2026-10-20T19:46:58.7132962+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-20T19:47:31.1664337+00:00",
+        "not-run": "0",
+        "passed": "262",
+        "skipped": "0",
+        "time": "32.454",
+        "time-rtf": "00:00:32.4540000",
+        "total": "262"
+      }
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Scenarios.Tests/results.xml",
+      "assembly": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll",
+      "passed_cases": 94,
+      "assembly_totals": {
+        "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+        "id": "7dbd5fe7-6679-427d-a37f-9c0559370314",
+        "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll",
+        "run-date": "2026-10-20",
+        "run-time": "19:47:33",
+        "start-rtf": "2026-10-20T19:47:33.2909571+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-20T19:47:33.6721465+00:00",
+        "not-run": "0",
+        "passed": "94",
+        "skipped": "0",
+        "time": "0.381",
+        "time-rtf": "00:00:00.3810000",
+        "total": "94"
+      }
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/Parchwell.Verifier.Tests/results.xml",
+      "assembly": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll",
+      "passed_cases": 2143,
+      "assembly_totals": {
+        "environment": "64-bit (x64) .NET 10.0.13 [collection-per-class, parallel (collections, 4 threads)]",
+        "id": "9065240d-ede0-443f-b700-f721a232e416",
+        "name": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll",
+        "run-date": "2026-10-20",
+        "run-time": "19:47:35",
+        "start-rtf": "2026-10-20T19:47:35.8607423+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-20T19:49:43.5572993+00:00",
+        "not-run": "0",
+        "passed": "2143",
+        "skipped": "0",
+        "time": "127.697",
+        "time-rtf": "00:02:07.6970000",
+        "total": "2143"
+      }
+    }
+  ],
+  "total_passed_cases": 2813,
+  "warning_control_complete": true
+}

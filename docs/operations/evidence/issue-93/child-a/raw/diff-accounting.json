@@ -1,0 +1,9 @@
+{
+  "base": "cc9ecf3e7b2fb34984205818d03a59bb4ae9be56",
+  "recorded_head": "2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+  "files": 13,
+  "added": 2403,
+  "removed": 8,
+  "scope": "git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'",
+  "note": "Snapshot at documentation pass 2; later review-record/manifest-only edits are reviewed in the final cold diff, not included in this earlier snapshot."
+}

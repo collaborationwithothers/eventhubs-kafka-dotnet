@@ -25,7 +25,8 @@ public sealed class ConsumedRecordBudgetTests
         Assert.Equal(1, budget.Records);
         budget.Account(Record());
         Assert.Equal(2, budget.Records);
-        Assert.Throws<InputLimitExceededException>(() => budget.Account(Record()));
+        InputLimitExceededException exception = Assert.Throws<InputLimitExceededException>(() => budget.Account(Record()));
+        Assert.Equal("The consumed window exceeds its configured record or byte limit.", exception.Message);
         Assert.Equal(2, budget.Records);
     }
 
@@ -38,7 +39,11 @@ public sealed class ConsumedRecordBudgetTests
         var budget = new ConsumedRecordBudget(2, 8);
         var record = Record();
         record.Message.Value = new byte[bytes];
-        if (rejects) Assert.Throws<InputLimitExceededException>(() => budget.Account(record));
+        if (rejects)
+        {
+            InputLimitExceededException exception = Assert.Throws<InputLimitExceededException>(() => budget.Account(record));
+            Assert.Equal("The consumed window exceeds its configured record or byte limit.", exception.Message);
+        }
         else { budget.Account(record); Assert.Equal(bytes, budget.Bytes); }
     }
 
@@ -99,7 +104,11 @@ public sealed class ConsumedRecordBudgetTests
     [InlineData(2, true)]
     public void Given_NearInt64Maximum_When_Adding_Then_OverflowIsExecutionFailure(long amount, bool overflow)
     {
-        if (overflow) Assert.Throws<InputLimitExceededException>(() => ConsumedRecordBudget.Add(long.MaxValue - 1, amount));
+        if (overflow)
+        {
+            InputLimitExceededException exception = Assert.Throws<InputLimitExceededException>(() => ConsumedRecordBudget.Add(long.MaxValue - 1, amount));
+            Assert.Equal("Consumed-window accounting overflowed Int64.", exception.Message);
+        }
         else Assert.Equal(long.MaxValue - 1 + amount, ConsumedRecordBudget.Add(long.MaxValue - 1, amount));
     }
 
