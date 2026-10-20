@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-99/raw/retention-check.json",
+      "producer": "bash /tmp/issue99-retain-command.sh; full exact script reproduced in docs/operations/evidence/issue-99/retention.md, Exact retention command; source commit 09a70930e471353b97ad07f9560e9734e562294e",
+      "size_bytes": 3264,
+      "sha256": "86ce40c1e9a35ebdcf0a4e8c47e79dd63ad5603c489b64221485f46f7eaaf2ea"
+    }
+  ]
+}

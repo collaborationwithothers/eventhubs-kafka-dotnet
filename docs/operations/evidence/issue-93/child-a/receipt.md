@@ -787,6 +787,8 @@ Ordinary acceptance is complete on the tested inputs above. Documentation checks
 
 The raw manifest lists every retained raw file, exact producer command/provenance, source commit, byte size and stored SHA-256. Complete copies were made from each actual temporary directory printed by the suite script; copy records identify the original and retained locations. Compression hashes below distinguish the uncompressed bytes from stored gzip bytes.
 
+Publication correction: [PR #98 finding r4329743053](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/98#discussion_r4329743053) identified 20 ignored, untracked warning-control `bin/` and `obj/` files that were present in the review workspace and listed in the 154-entry raw manifest but absent from published commit `5a26e459ad2809b0fdd4e1855f6bfcf8d19299e9`. The original cold review checked workspace bytes and did not verify that every listed file was tracked in that commit. [Issue #99's retention record](../../issue-99/retention.md) documents retaining those original bytes under the approved plan's requirement to copy the complete suite output directory. The original manifest and recorded execution results remain unchanged; the cold-review result below is preserved as history.
+
 | Compressed raw file | Uncompressed SHA-256 | Stored SHA-256 |
 | --- | --- | --- |
 | `raw/discovery-1/command.log.gz` | `78b9a98b802042a63497e17c96aef067d44edc4702d8c9412d46991fece2ba06` | `4081507ff4493b517901a549b7e7b7ad0016df4c14ec7f6ea233cb248443bb77` |

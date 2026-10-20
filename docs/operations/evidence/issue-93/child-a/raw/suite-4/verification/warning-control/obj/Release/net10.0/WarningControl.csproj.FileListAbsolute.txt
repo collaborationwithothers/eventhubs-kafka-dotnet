@@ -1,0 +1,11 @@
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/bin/Release/net10.0/WarningControl.deps.json
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/bin/Release/net10.0/WarningControl.dll
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/bin/Release/net10.0/WarningControl.pdb
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.AssemblyInfoInputs.cache
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.AssemblyInfo.cs
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.csproj.CoreCompileInputs.cache
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.dll
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/refint/WarningControl.dll
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/WarningControl.pdb
+/tmp/parchwell-dotnet-verification.wR6RgIRK/warning-control/obj/Release/net10.0/ref/WarningControl.dll
