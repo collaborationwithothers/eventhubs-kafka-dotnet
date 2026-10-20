@@ -1,5 +1,2304 @@
 # Verifier mutation record
 
+## PR 6b final judgement record
+
+This record implements [issue #92 plan revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6272507776) under the [approval amendments](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6273196651).
+Hari's [threshold decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847) accepts `B = 60` and the recorded limitations.
+
+PR 6b is the final-code mutation measurement for the frozen tested input below. The report contains a complete serialized result, while generated and serialized counts use different populations and are not interchangeable. Survivor dispositions and replays are manual review evidence; unresolved or incomplete cases remain explicit.
+
+### Input, execution and score
+
+| Measure | Recorded value | Evidence |
+| --- | --- | --- |
+| Tested commit / tree | `a2001534d94cd1135b9af53dc0e9d9816b00ce3d` / `b6c486ef9de96214255028eb5fc48f0acf4708a2` | [evidence/issue-92-pr6b/validation/input-freeze.json](evidence/issue-92-pr6b/validation/input-freeze.json) |
+| Source-input manifest SHA-256 | `12e51fd1ece16a9d39ca34e7fab40c9810c8dc9dfa55811fe123bec41d2f3b44` | [evidence/issue-92-pr6b/validation/input-freeze.json](evidence/issue-92-pr6b/validation/input-freeze.json) |
+| Suite result | 2763 passed; 0 failed; 0 skipped; 0 errors; 0 not run | [evidence/issue-92-pr6b/validation/verify-dotnet/suite-evidence.json](evidence/issue-92-pr6b/validation/verify-dotnet/suite-evidence.json) |
+| Mutation-only baseline | 1634 passed; 0 failed; 0 skipped; 0 errors; 0 not run; exit 0 | [evidence/issue-92-pr6b/validation/mutation-only/results.xml.gz](evidence/issue-92-pr6b/validation/mutation-only/results.xml.gz) |
+| Mutation run receipt | exit 0 (command-exit); 1510.1793619578239 seconds | [evidence/issue-92-pr6b/mutation-full/controller.json](evidence/issue-92-pr6b/mutation-full/controller.json) |
+| Tested source identity | commit `a2001534d94cd1135b9af53dc0e9d9816b00ce3d`; inputs unchanged: True | [evidence/issue-92-pr6b/mutation-full/tested-source.json](evidence/issue-92-pr6b/mutation-full/tested-source.json) |
+| Report SHA-256 | f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492 | [evidence/issue-92-pr6b/mutation-full/mutation-report.json.gz](evidence/issue-92-pr6b/mutation-full/mutation-report.json.gz) |
+| Tested-source file SHA-256 | 5e94fdde24ce7ed05f67b169a7d3f1ea1d537ba26adfdbd6a4b5efbd89d8f856 | [evidence/issue-92-pr6b/mutation-full/tested-source.json](evidence/issue-92-pr6b/mutation-full/tested-source.json) |
+| Measured config SHA-256 | ab8155d8269027faebbe082a319bd76bf2c86b3cbc9e993ddc65a6e853d6c68b | [evidence/issue-92-pr6b/mutation-full/stryker-config.json](evidence/issue-92-pr6b/mutation-full/stryker-config.json) |
+| Measured controller SHA-256 | dd596cbc108bea213c33ae170b5eb75fc30a6d0aa838684cef2f5703052b2fe5 | [evidence/issue-92-pr6b/controller.py](evidence/issue-92-pr6b/controller.py) |
+| Generated count | 5685 | [evidence/issue-92-pr6b/mutation-full/extraction-summary.json](evidence/issue-92-pr6b/mutation-full/extraction-summary.json) |
+| Serialized records | 1700 | [evidence/issue-92-pr6b/mutation-full/extraction-summary.json](evidence/issue-92-pr6b/mutation-full/extraction-summary.json) |
+| Generated minus serialized | 3985 | Arithmetic difference only; not a reconciliation or population estimate |
+| Stryker score | 705 / 934 = 75.48% (display only) | [evidence/issue-92-pr6b/mutation-full/extraction-summary.json](evidence/issue-92-pr6b/mutation-full/extraction-summary.json) |
+
+The normal-suite project rows are retained from their XML reports:
+
+| Assembly | Passed | Failed | Skipped | Errors | Not run | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| Parchwell.ArchitectureTests | 8 | 0 | 0 | 0 | 0 | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.ArchitectureTests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.ArchitectureTests/results.xml.gz) |
+| Parchwell.Kafka.Tests | 306 | 0 | 0 | 0 | 0 | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Kafka.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Kafka.Tests/results.xml.gz) |
+| Parchwell.LoadGen.Tests | 262 | 0 | 0 | 0 | 0 | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.LoadGen.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.LoadGen.Tests/results.xml.gz) |
+| Parchwell.Scenarios.Tests | 94 | 0 | 0 | 0 | 0 | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Scenarios.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Scenarios.Tests/results.xml.gz) |
+| Parchwell.Verifier.Tests | 2093 | 0 | 0 | 0 | 0 | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz) |
+
+Mutation-only baseline test receipt: exit 0 in 12.129609249997884 seconds; see [controller receipt](evidence/issue-92-pr6b/validation/baseline-test/controller.json), [tested-source identity](evidence/issue-92-pr6b/validation/baseline-test/tested-source.json), and [XML](evidence/issue-92-pr6b/validation/mutation-only/results.xml.gz).
+
+Recorded tool and host version outputs:
+
+| Probe | Recorded output | Evidence |
+| --- | --- | --- |
+| .NET SDK | 10.0.402 | [evidence/issue-92-pr6b/validation/preflight-02.log.gz](evidence/issue-92-pr6b/validation/preflight-02.log.gz) |
+| Codex CLI | codex-cli 0.163.0 | [evidence/issue-92-pr6b/validation/preflight-04.log.gz](evidence/issue-92-pr6b/validation/preflight-04.log.gz) |
+| Preflight shell uname -m | x86_64 | [evidence/issue-92-pr6b/validation/preflight-01.log.gz](evidence/issue-92-pr6b/validation/preflight-01.log.gz) |
+| macOS | ProductName:		macOS ProductVersion:		26.6.2 BuildVersion:		25G83 | [evidence/issue-92-pr6b/validation/preflight-00.log.gz](evidence/issue-92-pr6b/validation/preflight-00.log.gz) |
+| Stryker banner | 5.0.0 | [evidence/issue-92-pr6b/mutation-full/command.log.gz](evidence/issue-92-pr6b/mutation-full/command.log.gz) |
+| Suite runtime / architecture | 64-bit (ARM) .NET 10.0.13 [collection-per-class, parallel (collections, 1 thread)] | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz) |
+| Suite test framework | xUnit.net v3 4.0.2+0c7aa4991f | [evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz](evidence/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml.gz) |
+
+The [suite receipt](evidence/issue-92-pr6b/validation/verify-dotnet/controller.json) retains the exact child command, actual child argv, cwd, environment overrides, caps, hashes, start and finish timestamps, elapsed time and exit status. The full mutation [controller receipt](evidence/issue-92-pr6b/mutation-full/controller.json) retains the same fields for Stryker. Its actual invocation is:
+
+```text
+dotnet stryker --config-file stryker-config.json --output /Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/mutation-full
+```
+
+Child cwd: `/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests`. Environment overrides: `{"ParchwellVerifierMutationOnly":"true","RestoreSources":"https://api.nuget.org/v3/index.json"}`. Caps: 7200.0 seconds and 10000 generated mutants. Start / finish UTC: `2026-10-20T01:57:44.128520+00:00` / `2026-10-20T02:22:54.309951+00:00`. Controller-observed generated count: `[5685]`. Exit: `0` (`command-exit`). Preflight host architecture is `x86_64`; suite XML records ARM runtime. These are observations from different execution contexts.
+
+The generated count is observed from Stryker's log; serialized records come from the JSON report. These counts are recorded separately. No mapping for generated records omitted from the serialized report is inferred.
+Selected mutation patterns: `VerifyRun/Judgement/*.cs`, `VerifyRun/Window/*.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs`, `ProbeGate/ProbeGateEvaluator.cs`.
+
+Status counts from the report:
+
+| Status | Count |
+| --- | --- |
+| CompileError | 153 |
+| Ignored | 613 |
+| Killed | 701 |
+| Survived | 229 |
+| Timeout | 4 |
+
+### Baseline discovery and case multiplicity
+
+The mutation-only project excludes `Host/VerifyRunHandlerTests.cs` and `Host/VerifierHostTests.cs` in addition to the existing component/helper exclusions. Normal verification retains both host classes and all component tests. The [evaluated Compile comparison](evidence/issue-92-pr6b/validation/compile-reconciliation.json) records the exact approved difference. The passing normal suite and mutation-only baseline are distinct test populations.
+
+Independent ordinary discovery recorded 1634 cases across 336 source/type/method groups. The mutation-only baseline XML records 1634 passed cases; the reconciliation compares discovery with execution by source file, type and method. The approved three-case example `Given_CleanupNearDeadline_When_Capturing_Then_PublicationRequiresCompletedCleanupWithinBudget` was present as 3 ordinary cases, 3 report cases and 3 XML cases. This example demonstrates case multiplicity; it is not a three-test-to-one-test equivalence.
+
+Reconciliation complete: `True`; groups: `336`; unmapped names: `0`; unsupported nonempty lines: `0`. See the [discovery and execution reconciliation](evidence/issue-92-pr6b/validation/baseline-reconciliation.json), [ordinary discovery receipt](evidence/issue-92-pr6b/validation/discovery/controller.json), and [baseline test receipt](evidence/issue-92-pr6b/validation/baseline-test/controller.json).
+
+### Survivor line dispositions
+
+The report contains 229 Survived mutants on 137 source lines. 0 line records remain unreviewed at render time. Reviewed `unresolved` dispositions remain explicitly unresolved and are not changed to an equivalent or repaired finding.
+The missing-test category identifies the recorded unasserted behavior or input. It does not approve a new verifier check or automatically require a production fix. No production or test semantics were changed in this review.
+The [shared review ledger](evidence/issue-92-pr6b/review/review-ledger.json) records 443.901895 elapsed wall seconds and 513.7951290000001 allocated worker/correction seconds, both below its accepted 14400-second cap. Worker intervals overlap; those two durations must not be added. Per-line allocations are labelled allocations, not individual timing measurements.
+Variant-specific explanations and evidence remain in [the line review JSON](evidence/issue-92-pr6b/review/lines.json).
+
+Report and survivor inventory:
+
+| Measure | Count |
+| --- | --- |
+| Report source files | 46 |
+| Survivor source files | 12 |
+| Survivor lines | 137 |
+| Survived mutants | 229 |
+
+Survivors by file:
+
+| Source file | Lines | Mutants |
+| --- | --- | --- |
+| `ProbeGate/ProbeGateEvaluator.cs` | 1 | 1 |
+| `VerifyRun/A01/A01EvidenceRecorder.cs` | 1 | 1 |
+| `VerifyRun/Judgement/BookkeepingChecks.cs` | 35 | 80 |
+| `VerifyRun/Judgement/ConfigurationFidelityCheck.cs` | 10 | 10 |
+| `VerifyRun/Judgement/LateWriteChecks.cs` | 17 | 28 |
+| `VerifyRun/Judgement/OutcomeClassifier.cs` | 2 | 2 |
+| `VerifyRun/Judgement/RunJudgement.cs` | 5 | 5 |
+| `VerifyRun/Judgement/StatisticsChecks.cs` | 51 | 82 |
+| `VerifyRun/Window/ConsumedRecordBudget.cs` | 2 | 2 |
+| `VerifyRun/Window/MessageIdentityReader.cs` | 6 | 11 |
+| `VerifyRun/Window/RunWindow.cs` | 4 | 4 |
+| `VerifyRun/Window/WindowConsumer.cs` | 3 | 3 |
+
+Disposition category counts:
+
+| Category | Lines | Mutants |
+| --- | --- | --- |
+| equivalent with proof | 1 | 1 |
+| missing test | 109 | 187 |
+| unresolved | 27 | 41 |
+
+| Line | Line key | Mutants | Category | Explanation | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| [ProbeGate/ProbeGateEvaluator.cs:39](#disposition-probegate-probegateevaluator-cs-line-39) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:ProbeGate/ProbeGateEvaluator.cs:39` | 1883 | missing test | [Detailed review](#disposition-probegate-probegateevaluator-cs-line-39) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/A01/A01EvidenceRecorder.cs:22](#disposition-verifyrun-a01-a01evidencerecorder-cs-line-22) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/A01/A01EvidenceRecorder.cs:22` | 2657 | unresolved | [Detailed review](#disposition-verifyrun-a01-a01evidencerecorder-cs-line-22) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:28](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-28) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:28` | 4591 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-28) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:33](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33` | 4595, 4596, 4597, 4598, 4599 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:36](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-36) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:36` | 4608 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-36) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:39](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-39) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:39` | 4612 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-39) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:41](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-41) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:41` | 4618, 4619 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-41) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:47](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-47) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:47` | 4628, 4629 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-47) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:48](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-48) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:48` | 4631, 4632, 4633 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-48) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:52](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-52) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:52` | 4640, 4641 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-52) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:54](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-54) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:54` | 4648, 4649 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-54) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:55](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-55) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:55` | 4652 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-55) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:59](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-59) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:59` | 4660, 4661, 4662 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-59) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:60](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-60) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:60` | 4663 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-60) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:66](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-66) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:66` | 4666 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-66) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:67](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-67) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:67` | 4668 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-67) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:68](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-68) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:68` | 4670 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-68) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:69](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-69) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:69` | 4672 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-69) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:70](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-70) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:70` | 4674 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-70) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:71](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-71) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:71` | 4676 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-71) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:94](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-94) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:94` | 4689, 4690 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-94) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:100](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-100) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:100` | 4697, 4698, 4699 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-100) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:110](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:110` | 4708, 4709, 4710, 4711 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:116](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-116) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:116` | 4719, 4720, 4721 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-116) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:124](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-124) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:124` | 4728, 4729, 4730 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-124) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:131](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:131` | 4737, 4738, 4739, 4740 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:135](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-135) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:135` | 4744, 4745, 4746 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-135) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:137](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-137) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:137` | 4749, 4750, 4751 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-137) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:151](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-151) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:151` | 4763, 4764, 4765 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-151) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:163](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-163) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:163` | 4776, 4777, 4778 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-163) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:164](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-164) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:164` | 4781, 4782, 4783 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-164) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:165](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-165) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:165` | 4786, 4787, 4788 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-165) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:166](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-166) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:166` | 4791, 4792, 4793 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-166) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:169](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-169) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:169` | 4803, 4804, 4805 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-169) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:173](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-173) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:173` | 4812, 4813, 4814 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-173) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:175](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-175) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:175` | 4820, 4821, 4822 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-175) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/BookkeepingChecks.cs:182](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-182) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:182` | 4824 | missing test | [Detailed review](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-182) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:18](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-18) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:18` | 4851 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-18) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:29](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-29) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:29` | 4856 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-29) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:34](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-34) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:34` | 4866 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-34) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:43](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-43) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:43` | 4874 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-43) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-45) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45` | 4875 | unresolved | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-45) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:50](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-50) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:50` | 4881 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-50) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:55](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-55) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:55` | 4885 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-55) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:61](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-61) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:61` | 4889 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-61) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:69](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-69) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:69` | 4897 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-69) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:70](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-70) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:70` | 4898 | missing test | [Detailed review](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-70) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:12](#disposition-verifyrun-judgement-latewritechecks-cs-line-12) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:12` | 4899 | unresolved | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-12) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:13](#disposition-verifyrun-judgement-latewritechecks-cs-line-13) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:13` | 4900 | unresolved | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-13) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:26](#disposition-verifyrun-judgement-latewritechecks-cs-line-26) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:26` | 4914, 4915, 4916 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-26) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:29](#disposition-verifyrun-judgement-latewritechecks-cs-line-29) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:29` | 4922, 4923, 4924 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-29) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:35](#disposition-verifyrun-judgement-latewritechecks-cs-line-35) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:35` | 4928, 4929 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-35) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:39](#disposition-verifyrun-judgement-latewritechecks-cs-line-39) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:39` | 4937, 4938 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-39) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:46](#disposition-verifyrun-judgement-latewritechecks-cs-line-46) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:46` | 4949, 4951 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-46) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:48](#disposition-verifyrun-judgement-latewritechecks-cs-line-48) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:48` | 4956 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-48) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:49](#disposition-verifyrun-judgement-latewritechecks-cs-line-49) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:49` | 4957 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-49) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:53](#disposition-verifyrun-judgement-latewritechecks-cs-line-53) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:53` | 4960 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-53) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:54](#disposition-verifyrun-judgement-latewritechecks-cs-line-54) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:54` | 4962 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-54) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:55](#disposition-verifyrun-judgement-latewritechecks-cs-line-55) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:55` | 4964 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-55) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:56](#disposition-verifyrun-judgement-latewritechecks-cs-line-56) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:56` | 4966 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-56) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:62](#disposition-verifyrun-judgement-latewritechecks-cs-line-62) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:62` | 4972, 4973, 4974 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-62) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:71](#disposition-verifyrun-judgement-latewritechecks-cs-line-71) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:71` | 4983, 4984, 4985 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-71) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:77](#disposition-verifyrun-judgement-latewritechecks-cs-line-77) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:77` | 4988 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-77) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/LateWriteChecks.cs:84](#disposition-verifyrun-judgement-latewritechecks-cs-line-84) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:84` | 4992 | missing test | [Detailed review](#disposition-verifyrun-judgement-latewritechecks-cs-line-84) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/OutcomeClassifier.cs:35](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-35) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/OutcomeClassifier.cs:35` | 5014 | missing test | [Detailed review](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-35) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/OutcomeClassifier.cs:38](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-38) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/OutcomeClassifier.cs:38` | 5025 | equivalent with proof | [Detailed review](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-38) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/RunJudgement.cs:67](#disposition-verifyrun-judgement-runjudgement-cs-line-67) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:67` | 5042 | missing test | [Detailed review](#disposition-verifyrun-judgement-runjudgement-cs-line-67) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/RunJudgement.cs:83](#disposition-verifyrun-judgement-runjudgement-cs-line-83) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:83` | 5064 | missing test | [Detailed review](#disposition-verifyrun-judgement-runjudgement-cs-line-83) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/RunJudgement.cs:88](#disposition-verifyrun-judgement-runjudgement-cs-line-88) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:88` | 5076 | unresolved | [Detailed review](#disposition-verifyrun-judgement-runjudgement-cs-line-88) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/RunJudgement.cs:107](#disposition-verifyrun-judgement-runjudgement-cs-line-107) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:107` | 5095 | unresolved | [Detailed review](#disposition-verifyrun-judgement-runjudgement-cs-line-107) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/RunJudgement.cs:117](#disposition-verifyrun-judgement-runjudgement-cs-line-117) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:117` | 5102 | missing test | [Detailed review](#disposition-verifyrun-judgement-runjudgement-cs-line-117) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:22](#disposition-verifyrun-judgement-statisticschecks-cs-line-22) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:22` | 5121, 5122 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-22) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:27](#disposition-verifyrun-judgement-statisticschecks-cs-line-27) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:27` | 5129 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-27) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:35](#disposition-verifyrun-judgement-statisticschecks-cs-line-35) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:35` | 5135, 5136 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-35) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:38](#disposition-verifyrun-judgement-statisticschecks-cs-line-38) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:38` | 5140, 5141 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-38) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:40](#disposition-verifyrun-judgement-statisticschecks-cs-line-40) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:40` | 5144, 5145 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-40) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:43](#disposition-verifyrun-judgement-statisticschecks-cs-line-43) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:43` | 5146, 5147 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-43) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:55](#disposition-verifyrun-judgement-statisticschecks-cs-line-55) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:55` | 5157 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-55) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:61](#disposition-verifyrun-judgement-statisticschecks-cs-line-61) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:61` | 5167 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-61) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:63](#disposition-verifyrun-judgement-statisticschecks-cs-line-63) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:63` | 5169 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-63) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:73](#disposition-verifyrun-judgement-statisticschecks-cs-line-73) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:73` | 5180 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-73) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:74](#disposition-verifyrun-judgement-statisticschecks-cs-line-74) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:74` | 5181 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-74) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:83](#disposition-verifyrun-judgement-statisticschecks-cs-line-83) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:83` | 5191, 5192 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-83) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:89](#disposition-verifyrun-judgement-statisticschecks-cs-line-89) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:89` | 5201, 5202 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-89) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:90](#disposition-verifyrun-judgement-statisticschecks-cs-line-90) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:90` | 5203 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-90) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:92](#disposition-verifyrun-judgement-statisticschecks-cs-line-92) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:92` | 5204 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-92) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:98](#disposition-verifyrun-judgement-statisticschecks-cs-line-98) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:98` | 5212 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-98) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:102](#disposition-verifyrun-judgement-statisticschecks-cs-line-102) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:102` | 5216 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-102) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:108](#disposition-verifyrun-judgement-statisticschecks-cs-line-108) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:108` | 5219 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-108) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:109](#disposition-verifyrun-judgement-statisticschecks-cs-line-109) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:109` | 5220 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-109) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:110](#disposition-verifyrun-judgement-statisticschecks-cs-line-110) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:110` | 5221 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-110) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:118](#disposition-verifyrun-judgement-statisticschecks-cs-line-118) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:118` | 5224, 5225 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-118) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:119](#disposition-verifyrun-judgement-statisticschecks-cs-line-119) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:119` | 5226, 5227 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-119) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:120](#disposition-verifyrun-judgement-statisticschecks-cs-line-120) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:120` | 5229 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-120) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:121](#disposition-verifyrun-judgement-statisticschecks-cs-line-121) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:121` | 5230, 5231 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-121) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:124](#disposition-verifyrun-judgement-statisticschecks-cs-line-124) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:124` | 5233 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-124) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:125](#disposition-verifyrun-judgement-statisticschecks-cs-line-125) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:125` | 5236, 5237 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-125) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:127](#disposition-verifyrun-judgement-statisticschecks-cs-line-127) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:127` | 5243, 5244 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-127) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:130](#disposition-verifyrun-judgement-statisticschecks-cs-line-130) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:130` | 5245, 5246 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-130) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:131](#disposition-verifyrun-judgement-statisticschecks-cs-line-131) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:131` | 5248, 5249 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-131) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:136](#disposition-verifyrun-judgement-statisticschecks-cs-line-136) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:136` | 5260 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-136) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:139](#disposition-verifyrun-judgement-statisticschecks-cs-line-139) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:139` | 5262 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-139) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:143](#disposition-verifyrun-judgement-statisticschecks-cs-line-143) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:143` | 5267, 5268 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-143) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:147](#disposition-verifyrun-judgement-statisticschecks-cs-line-147) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:147` | 5276 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-147) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:149](#disposition-verifyrun-judgement-statisticschecks-cs-line-149) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:149` | 5282, 5283 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-149) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:156](#disposition-verifyrun-judgement-statisticschecks-cs-line-156) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:156` | 5295, 5296 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-156) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:157](#disposition-verifyrun-judgement-statisticschecks-cs-line-157) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:157` | 5297 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-157) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:165](#disposition-verifyrun-judgement-statisticschecks-cs-line-165) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:165` | 5304, 5306 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-165) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:167](#disposition-verifyrun-judgement-statisticschecks-cs-line-167) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:167` | 5307 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-167) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:174](#disposition-verifyrun-judgement-statisticschecks-cs-line-174) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:174` | 5315 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-174) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:188](#disposition-verifyrun-judgement-statisticschecks-cs-line-188) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:188` | 5330 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-188) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:191](#disposition-verifyrun-judgement-statisticschecks-cs-line-191) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:191` | 5338 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-191) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:194](#disposition-verifyrun-judgement-statisticschecks-cs-line-194) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:194` | 5343 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-194) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:204](#disposition-verifyrun-judgement-statisticschecks-cs-line-204) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:204` | 5350, 5351 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-204) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:205](#disposition-verifyrun-judgement-statisticschecks-cs-line-205) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205` | 5352, 5353, 5354 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-205) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:210](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:210` | 5361, 5362, 5363, 5364 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:211](#disposition-verifyrun-judgement-statisticschecks-cs-line-211) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:211` | 5366, 5367 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-211) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:216](#disposition-verifyrun-judgement-statisticschecks-cs-line-216) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:216` | 5369, 5372 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-216) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:217](#disposition-verifyrun-judgement-statisticschecks-cs-line-217) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:217` | 5373 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-217) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:218](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218` | 5379, 5380, 5381, 5382 | unresolved | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:224](#disposition-verifyrun-judgement-statisticschecks-cs-line-224) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:224` | 5385, 5386, 5387 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-224) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Judgement/StatisticsChecks.cs:233](#disposition-verifyrun-judgement-statisticschecks-cs-line-233) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:233` | 5388 | missing test | [Detailed review](#disposition-verifyrun-judgement-statisticschecks-cs-line-233) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/ConsumedRecordBudget.cs:35](#disposition-verifyrun-window-consumedrecordbudget-cs-line-35) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/ConsumedRecordBudget.cs:35` | 5523 | missing test | [Detailed review](#disposition-verifyrun-window-consumedrecordbudget-cs-line-35) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/ConsumedRecordBudget.cs:45](#disposition-verifyrun-window-consumedrecordbudget-cs-line-45) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/ConsumedRecordBudget.cs:45` | 5530 | missing test | [Detailed review](#disposition-verifyrun-window-consumedrecordbudget-cs-line-45) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:11](#disposition-verifyrun-window-messageidentityreader-cs-line-11) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:11` | 5531, 5532 | unresolved | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-11) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:26](#disposition-verifyrun-window-messageidentityreader-cs-line-26) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:26` | 5544 | missing test | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-26) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:36](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36` | 5552, 5553, 5554, 5555, 5556 | missing test | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:46](#disposition-verifyrun-window-messageidentityreader-cs-line-46) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:46` | 5561 | missing test | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-46) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:52](#disposition-verifyrun-window-messageidentityreader-cs-line-52) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:52` | 5565 | missing test | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-52) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/MessageIdentityReader.cs:57](#disposition-verifyrun-window-messageidentityreader-cs-line-57) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:57` | 5566 | missing test | [Detailed review](#disposition-verifyrun-window-messageidentityreader-cs-line-57) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/RunWindow.cs:22](#disposition-verifyrun-window-runwindow-cs-line-22) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:22` | 5568 | unresolved | [Detailed review](#disposition-verifyrun-window-runwindow-cs-line-22) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/RunWindow.cs:25](#disposition-verifyrun-window-runwindow-cs-line-25) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:25` | 5573 | missing test | [Detailed review](#disposition-verifyrun-window-runwindow-cs-line-25) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/RunWindow.cs:28](#disposition-verifyrun-window-runwindow-cs-line-28) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:28` | 5574 | unresolved | [Detailed review](#disposition-verifyrun-window-runwindow-cs-line-28) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/RunWindow.cs:33](#disposition-verifyrun-window-runwindow-cs-line-33) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:33` | 5580 | unresolved | [Detailed review](#disposition-verifyrun-window-runwindow-cs-line-33) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/WindowConsumer.cs:23](#disposition-verifyrun-window-windowconsumer-cs-line-23) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:23` | 5638 | unresolved | [Detailed review](#disposition-verifyrun-window-windowconsumer-cs-line-23) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/WindowConsumer.cs:28](#disposition-verifyrun-window-windowconsumer-cs-line-28) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:28` | 5643 | unresolved | [Detailed review](#disposition-verifyrun-window-windowconsumer-cs-line-28) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+| [VerifyRun/Window/WindowConsumer.cs:42](#disposition-verifyrun-window-windowconsumer-cs-line-42) | `f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:42` | 5661 | unresolved | [Detailed review](#disposition-verifyrun-window-windowconsumer-cs-line-42) | [Source and variant evidence](evidence/issue-92-pr6b/review/lines.json) |
+
+#### Disposition probegate-probegateevaluator-cs line 39
+
+Category: missing test. Mutant IDs: 1883.
+
+Manual source/test review; The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). This is a missing assertion; no replay evidence was available. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs:39](../../src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs), [tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235](../../tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs), [review/replay/mutant-1883/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-1883/before-after.diff.gz), [review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 1883 | The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). This is a missing assertion; no replay evidence was available. Ordinary replay 1883: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs:39](../../src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs), [tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235](../../tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs), [review/replay/mutant-1883/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-1883/before-after.diff.gz), [review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json) |
+
+#### Disposition verifyrun-a01-a01evidencerecorder-cs line 22
+
+Category: unresolved. Mutant IDs: 2657.
+
+Manual source/test review; The logical mutation changes the success/value guard. The tests cover successful non-null and failed ledger parses, but do not construct a successful parse with a null Value (tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs:116-135). A direct semantic claim depends on ParseResult invariants; classify unresolved pending that proof. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation. Variant 2657 failed ordinary compilation before tests; this does not establish ordinary-runner survival or killing.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs:22](../../src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs), [tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs:116-135](../../tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs), [review/replay/mutant-2657/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-2657/before-after.diff.gz), [review/replay/mutant-2657/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-2657/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 2657 | The logical mutation changes the success/value guard. The tests cover successful non-null and failed ledger parses, but do not construct a successful parse with a null Value (tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs:116-135). A direct semantic claim depends on ParseResult invariants; classify unresolved pending that proof. Ordinary replay 2657: compile-failure; runner comparison complete=False; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs:22](../../src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs), [tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs:116-135](../../tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs), [review/replay/mutant-2657/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-2657/before-after.diff.gz), [review/replay/mutant-2657/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-2657/attempt.json) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 28
+
+Category: missing test. Mutant IDs: 4591.
+
+The survivor makes Structural return Pass even when parsed.Value is null and Problems is empty. The production LedgerReader and ManifestReader success branches currently produce non-null values, but that is not a universal constructor invariant: ParseResult<T> is an internal record struct with a primary constructor accepting T? and an empty Problems list, and RunJudgementRequest can carry it to BookkeepingChecks. The current direct unit tests construct requests but never construct this null-value/no-problems state. The changed NotEvaluated-versus-Pass result is therefore an uncovered, constructible input case. No replay was run.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:11-28](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:365-377](../../src/Parchwell.Verifier/Common/Serialization/StrictJson.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:11-23,70-71](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs:115-118](../../src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs), [src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs:23-64](../../src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs), [src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs:23-37](../../src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4591 | Mutant 4591 replaces the parsed.Value null check with an unconditional Pass. The production readers currently return non-null values on their no-problem success branches, but ParseResult<T> also has a primary constructor with nullable Value and does not enforce Value non-null when Problems is empty. Because BookkeepingChecks is directly callable in the verifier assembly and the tests construct RunJudgementRequest values, that state is constructible; no current test pins its required NotEvaluated result. This is a missing test, not proven equivalence. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:11-28](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [src/Parchwell.Verifier/Common/Serialization/StrictJson.cs:365-377](../../src/Parchwell.Verifier/Common/Serialization/StrictJson.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:11-23,70-71](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs:115-118](../../src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs), [src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs:23-64](../../src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs), [src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs:23-37](../../src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 33
+
+Category: missing test. Mutant IDs: 4595, 4596, 4597, 4598, 4599.
+
+Check 3 requires all six parsed artifacts to make an identity judgement. Each linked logical mutation weakens the conjunction with an OR; inputs where the omitted prerequisite is absent can become evaluated when the result must be NotEvaluated. The suite has an all-present pass case and missing ledger/manifest cases, but those missing-input cases assert only checks 1, 4, and sometimes 5, not check 3. No case independently removes each required artifact and asserts check 3 is NotEvaluated.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4595 | Mutant 4595 (Logical mutation) replaces the all-required artifact-availability expression with `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null && request.Statistics.Value is not null &&             request.Lifecycle.Value is not null \|\| request.Capabilities.Value is not null`. The OR weakens the requirement for at least one artifact combination, so a missing prerequisite can yield an evaluated Check 3. Existing missing-input tests at the cited lines do not assert Check 3 evaluation. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4596 | Mutant 4596 (Logical mutation) replaces the all-required artifact-availability expression with `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null && request.Statistics.Value is not null \|\|             request.Lifecycle.Value is not null`. The OR weakens the requirement for at least one artifact combination, so a missing prerequisite can yield an evaluated Check 3. Existing missing-input tests at the cited lines do not assert Check 3 evaluation. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4597 | Mutant 4597 (Logical mutation) replaces the all-required artifact-availability expression with `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null \|\| request.Statistics.Value is not null`. The OR weakens the requirement for at least one artifact combination, so a missing prerequisite can yield an evaluated Check 3. Existing missing-input tests at the cited lines do not assert Check 3 evaluation. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4598 | Mutant 4598 (Logical mutation) replaces the all-required artifact-availability expression with `request.Index.Value is not null && request.Manifest.Value is not null \|\|             request.Ledger.Value is not null`. The OR weakens the requirement for at least one artifact combination, so a missing prerequisite can yield an evaluated Check 3. Existing missing-input tests at the cited lines do not assert Check 3 evaluation. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4599 | Mutant 4599 (Logical mutation) replaces the all-required artifact-availability expression with `request.Index.Value is not null \|\| request.Manifest.Value is not null`. The OR weakens the requirement for at least one artifact combination, so a missing prerequisite can yield an evaluated Check 3. Existing missing-input tests at the cited lines do not assert Check 3 evaluation. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:33-35,62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:17-21,24-46,300-314](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 36
+
+Category: missing test. Mutant IDs: 4608.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:36,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4608 | Mutant 4608 (String mutation) changes `"index.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:36,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 39
+
+Category: missing test. Mutant IDs: 4612.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:39,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4612 | Mutant 4612 (String mutation) changes `"manifest.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:39,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 41
+
+Category: missing test. Mutant IDs: 4618, 4619.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:40-41,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4618 | Mutant 4618 (String mutation) changes `"manifest.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:40-41,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4619 | Mutant 4619 (String mutation) changes `$"inventory[{i}].instance_id"` to `$""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:40-41,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 47
+
+Category: missing test. Mutant IDs: 4628, 4629.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-48,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs), [review/replay/mutant-4629/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4629/before-after.diff.gz), [review/replay/mutant-4629/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4629/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4628 | Mutant 4628 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-48,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4629 | Mutant 4629 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. Ordinary replay 4629: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-48,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs), [review/replay/mutant-4629/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4629/before-after.diff.gz), [review/replay/mutant-4629/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4629/attempt.json) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 48
+
+Category: missing test. Mutant IDs: 4631, 4632, 4633.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-49,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4631 | Mutant 4631 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-49,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4632 | Mutant 4632 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-49,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4633 | Mutant 4633 (String mutation) changes `"attempt.instance_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:43-49,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 52
+
+Category: missing test. Mutant IDs: 4640, 4641.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:51-52,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4640 | Mutant 4640 (String mutation) changes `"statistics.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:51-52,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4641 | Mutant 4641 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:51-52,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 54
+
+Category: missing test. Mutant IDs: 4648, 4649.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:53-54,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4648 | Mutant 4648 (String mutation) changes `"request-lifecycle.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:53-54,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4649 | Mutant 4649 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:53-54,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 55
+
+Category: missing test. Mutant IDs: 4652.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:55,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4652 | Mutant 4652 (String mutation) changes `"capabilities.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:55,64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 59
+
+Category: missing test. Mutant IDs: 4660, 4661, 4662.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4660 | Mutant 4660 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4661 | Mutant 4661 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4662 | Mutant 4662 (String mutation) changes `"instance_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62,79-83](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 60
+
+Category: missing test. Mutant IDs: 4663.
+
+When a consumed record has no instance ID, Check 3 must become NotEvaluated because the shared identity comparison cannot be made. The linked Boolean mutation sets availability to true instead. Current instance-mismatch coverage uses a non-null foreign ID, while the null-instance case exercises only Check 6; no assertion checks Check 3 evaluation for this input.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4663 | Mutant 4663 (Boolean mutation) replaces `available = false` with `true` after a consumed record lacks InstanceId. That can classify Check 3 as evaluated instead of NotEvaluated; current tests do not assert Check 3 for a null consumed InstanceId. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:56-62](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:230-246,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 66
+
+Category: missing test. Mutant IDs: 4666.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4666 | Mutant 4666 (String mutation) changes `"identity.scenario_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 67
+
+Category: missing test. Mutant IDs: 4668.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4668 | Mutant 4668 (String mutation) changes `"identity.configuration_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 68
+
+Category: missing test. Mutant IDs: 4670.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4670 | Mutant 4670 (String mutation) changes `"identity.run_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 69
+
+Category: missing test. Mutant IDs: 4672.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4672 | Mutant 4672 (String mutation) changes `"identity.instance_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 70
+
+Category: missing test. Mutant IDs: 4674.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4674 | Mutant 4674 (String mutation) changes `"identity.expected_instance_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 71
+
+Category: missing test. Mutant IDs: 4676.
+
+This line compares run identity or an instance ID and constructs the diagnostic artifact, row, or field when it differs. The related tests create mismatches and assert Check 3 fails, but AssertState does not inspect the diagnostic artifact, row, field, or code. String and row mutations therefore change reported evidence without a test asserting the changed value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4676 | Mutant 4676 (String mutation) changes `"identity.client_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:64-76](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:211-228,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 94
+
+Category: missing test. Mutant IDs: 4689, 4690.
+
+This line emits a Check 4 diagnostic for a manifest count or duplicate/missing/ambiguous inventory-to-ledger relationship. The related cases assert that Check 4 fails, but AssertState does not inspect diagnostic code, artifact, row, or field. The linked variants alter or remove those diagnostic details, which remains observable result evidence.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:93-94](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:63-72,84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4689 | Mutant 4689 (String mutation) changes `"manifest.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:93-94](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:63-72,84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4690 | Mutant 4690 (String mutation) changes `"attempt_count"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:93-94](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:63-72,84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 100
+
+Category: missing test. Mutant IDs: 4697, 4698, 4699.
+
+This line emits a Check 4 diagnostic for a manifest count or duplicate/missing/ambiguous inventory-to-ledger relationship. The related cases assert that Check 4 fails, but AssertState does not inspect diagnostic code, artifact, row, or field. The linked variants alter or remove those diagnostic details, which remains observable result evidence.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:95-101](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4697 | Mutant 4697 removes the diagnostic addition guarded by this line (replacement `;`). The other mismatch paths can keep the owning check failed. The tests cited at line level assert only the verdict, not whether this specific diagnostic remains in the result. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:95-101](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4698 | Mutant 4698 (String mutation) changes `"manifest.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:95-101](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4699 | Mutant 4699 (String mutation) changes `$"inventory[{i}].attempt_id"` to `$""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:95-101](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 110
+
+Category: missing test. Mutant IDs: 4708, 4709, 4710, 4711.
+
+This line emits a Check 4 diagnostic for a manifest count or duplicate/missing/ambiguous inventory-to-ledger relationship. The related cases assert that Check 4 fails, but AssertState does not inspect diagnostic code, artifact, row, or field. The linked variants alter or remove those diagnostic details, which remains observable result evidence.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:103-111](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,264-274,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4708 | Mutant 4708 removes the diagnostic addition guarded by this line (replacement `;`). The other mismatch paths can keep the owning check failed. The tests cited at line level assert only the verdict, not whether this specific diagnostic remains in the result. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:103-111](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,264-274,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4709 | Mutant 4709 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:103-111](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,264-274,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4710 | Mutant 4710 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:103-111](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,264-274,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4711 | Mutant 4711 (String mutation) changes `"attempt.attempt_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:103-111](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,264-274,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 116
+
+Category: missing test. Mutant IDs: 4719, 4720, 4721.
+
+The linked statement-removal variant drops the attempt_count diagnostic for a manifest/ledger count mismatch; the string variants erase the artifact or field label. Existing mismatch tests assert only that Check 4 fails. They do not assert that the count diagnostic is present with artifact ledger.jsonl, null row, and field attempt_count. Other membership diagnostics can keep the overall check failed, so verdict-only assertions do not detect the missing diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:113-116,141](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4719 | Mutant 4719 removes the `Failure(4, "ledger.jsonl", null, "attempt_count")` addition. A membership mismatch can still make Check 4 fail, so tests that assert only the verdict miss this omitted diagnostic. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:113-116,141](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4720 | Mutant 4720 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:113-116,141](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4721 | Mutant 4721 (String mutation) changes `"attempt_count"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:113-116,141](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 124
+
+Category: missing test. Mutant IDs: 4728, 4729, 4730.
+
+This line emits a Check 4 diagnostic for a manifest count or duplicate/missing/ambiguous inventory-to-ledger relationship. The related cases assert that Check 4 fails, but AssertState does not inspect diagnostic code, artifact, row, or field. The linked variants alter or remove those diagnostic details, which remains observable result evidence.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:119-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4728 | Mutant 4728 removes the diagnostic addition guarded by this line (replacement `;`). The other mismatch paths can keep the owning check failed. The tests cited at line level assert only the verdict, not whether this specific diagnostic remains in the result. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:119-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4729 | Mutant 4729 (String mutation) changes `"manifest.json"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:119-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4730 | Mutant 4730 (String mutation) changes `$"inventory[{i}].attempt_id"` to `$""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:119-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 131
+
+Category: missing test. Mutant IDs: 4737, 4738, 4739, 4740.
+
+This line emits a Check 4 diagnostic for a manifest count or duplicate/missing/ambiguous inventory-to-ledger relationship. The related cases assert that Check 4 fails, but AssertState does not inspect diagnostic code, artifact, row, or field. The linked variants alter or remove those diagnostic details, which remains observable result evidence.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:126-139](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4737 | Mutant 4737 removes the diagnostic addition guarded by this line (replacement `;`). The other mismatch paths can keep the owning check failed. The tests cited at line level assert only the verdict, not whether this specific diagnostic remains in the result. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:126-139](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4738 | Mutant 4738 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:126-139](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4739 | Mutant 4739 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:126-139](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4740 | Mutant 4740 (String mutation) changes `"attempt.attempt_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:126-139](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:84-106,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 135
+
+Category: missing test. Mutant IDs: 4744, 4745, 4746.
+
+This line reports a ledger-to-inventory key mismatch. The related variation tests assert only the Check 4 verdict. The linked statement/string/row variants remove or alter the diagnostic key metadata, and no assertion checks that diagnostic payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-130,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4744 | Mutant 4744 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-130,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4745 | Mutant 4745 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-130,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4746 | Mutant 4746 (String mutation) changes `"attempt.key"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-130,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 137
+
+Category: missing test. Mutant IDs: 4749, 4750, 4751.
+
+This line reports a ledger-to-inventory sequence mismatch. The related variation tests assert only the Check 4 verdict. The linked statement/string/row variants remove or alter the diagnostic sequence metadata, and no assertion checks that diagnostic payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-119,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4749 | Mutant 4749 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-119,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4750 | Mutant 4750 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-119,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4751 | Mutant 4751 (String mutation) changes `"attempt.sequence"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:133-138](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:109-119,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 151
+
+Category: missing test. Mutant IDs: 4763, 4764, 4765.
+
+This line emits the Check 5 diagnostic for a duplicate bare attempt ID. Tests cover equal IDs across instances and case-distinct IDs, but assert only Check 3/5 verdicts. They do not assert the diagnostic artifact, 1-based row, field, or code changed by the linked variants.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:144-152](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:264-283,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4763 | Mutant 4763 (String mutation) changes `"ledger.jsonl"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:144-152](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:264-283,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4764 | Mutant 4764 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:144-152](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:264-283,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4765 | Mutant 4765 (String mutation) changes `"attempt.attempt_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:144-152](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:264-283,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 163
+
+Category: missing test. Mutant IDs: 4776, 4777, 4778.
+
+This line reports a missing consumed-record instance_id. The theory creates each missing-field input and asserts Check 6 fails, but AssertState does not inspect the emitted diagnostic. The linked string/row variants alter which field or row is reported; the test does not assert that payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-163](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4776 | Mutant 4776 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-163](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4777 | Mutant 4777 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-163](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4778 | Mutant 4778 (String mutation) changes `"instance_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-163](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 164
+
+Category: missing test. Mutant IDs: 4781, 4782, 4783.
+
+This line reports a missing consumed-record attempt_id. The theory creates each missing-field input and asserts Check 6 fails, but AssertState does not inspect the emitted diagnostic. The linked string/row variants alter which field or row is reported; the test does not assert that payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-164](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4781 | Mutant 4781 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-164](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4782 | Mutant 4782 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-164](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4783 | Mutant 4783 (String mutation) changes `"attempt_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-164](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 165
+
+Category: missing test. Mutant IDs: 4786, 4787, 4788.
+
+This line reports a missing consumed-record key. The theory creates each missing-field input and asserts Check 6 fails, but AssertState does not inspect the emitted diagnostic. The linked string/row variants alter which field or row is reported; the test does not assert that payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-165](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4786 | Mutant 4786 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-165](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4787 | Mutant 4787 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-165](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4788 | Mutant 4788 (String mutation) changes `"key"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-165](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 166
+
+Category: missing test. Mutant IDs: 4791, 4792, 4793.
+
+This line reports a missing consumed-record sequence. The theory creates each missing-field input and asserts Check 6 fails, but AssertState does not inspect the emitted diagnostic. The linked string/row variants alter which field or row is reported; the test does not assert that payload.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-166](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,195-204,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4791 | Mutant 4791 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-166](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,195-204,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4792 | Mutant 4792 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-166](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,195-204,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4793 | Mutant 4793 (String mutation) changes `"sequence"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:159-166](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,195-204,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 169
+
+Category: missing test. Mutant IDs: 4803, 4804, 4805.
+
+This line reports a consumed record whose attempt lookup has zero or multiple matches. The unknown-attempt and ambiguous-ledger cases assert Check 6 fails, but not the diagnostic code, artifact, 1-based row, or attempt_id field affected by the linked variants.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:167-169](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4803 | Mutant 4803 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:167-169](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4804 | Mutant 4804 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:167-169](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4805 | Mutant 4805 (String mutation) changes `"attempt_id"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:167-169](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 173
+
+Category: missing test. Mutant IDs: 4812, 4813, 4814.
+
+This line reports a consumed key that differs from its unique ledger match. The wrong-key theory case asserts Check 6 fails but does not inspect the diagnostic field, code, or 1-based row changed by the linked variants.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:171-173](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4812 | Mutant 4812 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:171-173](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4813 | Mutant 4813 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:171-173](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4814 | Mutant 4814 (String mutation) changes `"key"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:171-173](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 175
+
+Category: missing test. Mutant IDs: 4820, 4821, 4822.
+
+This line reports a consumed sequence that differs from its unique ledger match. The wrong-sequence theory case asserts Check 6 fails but does not inspect the diagnostic field, code, or 1-based row changed by the linked variants.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:174-175](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4820 | Mutant 4820 (String mutation) changes `"consumed"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:174-175](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4821 | Mutant 4821 changes the 1-based diagnostic row expression from `i + 1L` to `i - 1L`, shifting the reported row by two. The related tests assert the failure state but not the diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:174-175](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+| 4822 | Mutant 4822 (String mutation) changes `"sequence"` to `""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:174-175](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:150-185,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-bookkeepingchecks-cs line 182
+
+Category: missing test. Mutant IDs: 4824.
+
+Failure constructs the serialized check_N_failed diagnostic code used by CheckResult.Fail. The linked string variant replaces that code with an empty string. The tests exercise failure verdicts but AssertState checks only check number, evaluation, disposition, and classification; it never asserts the diagnostic code. The change alters observable result evidence and needs an assertion.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:181-182](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:32-46](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:29-46,63-204,211-314,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4824 | Mutant 4824 (String mutation) changes `$"check_{check}_failed"` to `$""`. This changes diagnostic text/metadata for the owning check. The linked tests assert the check outcome but do not assert this diagnostic value; no replay was run, so this is recorded as a missing diagnostic assertion, not a preview-runner discrepancy or equivalence claim. | [src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs:181-182](../../src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:32-46](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs:29-46,63-204,211-314,344-351](../../tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 18
+
+Category: missing test. Mutant IDs: 4851.
+
+The missing resolved-configuration branch correctly fails check 27. Existing tests verify the disposition and check ownership, but do not assert the produced artifact/field diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:14-18](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4851 | Empties the resolved_configuration field on a missing captured-configuration failure; tests do not assert this produced diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:14-18](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 29
+
+Category: missing test. Mutant IDs: 4856.
+
+Check 13 tests cover null, missing, PossiblyPersisted and other persistence values. They do not assert the artifact, one-based row number, or persistence_status diagnostic field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4856 | Empties the interpolated settings key field path; tests assert outcome and difference count, not assessment field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 34
+
+Category: missing test. Mutant IDs: 4866.
+
+The value-mismatch branch is exercised, but tests do not assert that the reported field ends in .value.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:31-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:43-59](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4866 | Removes the .value diagnostic suffix for effective-value mismatch; tests do not assert the suffix. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:31-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:43-59](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 43
+
+Category: missing test. Mutant IDs: 4874.
+
+Override-presence mismatches are exercised, but tests do not assert the resulting .override diagnostic field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:38-44](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4874 | Removes the .override diagnostic suffix for override-presence mismatch; tests do not assert the suffix. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:38-44](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 45
+
+Category: unresolved. Mutant IDs: 4875.
+
+The mutation makes any selected or observed override count as a mismatch. The explicit match/match test expects a pass, so the report status conflicts with current source-level test expectations. Replay evidence was not reviewed, so this is not labelled a runner discrepancy.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:38-47](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4875](evidence/issue-92-pr6b/mutation-full/mutants.json.gz)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4875 | Changes override-presence comparison from inequality to OR. Match/match is explicitly expected to pass, conflicting with Survived; replay is needed before runner attribution. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:38-47](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4875](evidence/issue-92-pr6b/mutation-full/mutants.json.gz) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 50
+
+Category: missing test. Mutant IDs: 4881.
+
+Scenario attribution mismatches are tested, but tests do not assert the .override.scenario_id diagnostic field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45-51](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:70-92](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4881 | Removes the .override.scenario_id diagnostic suffix; tests do not assert this field. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45-51](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:70-92](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 55
+
+Category: missing test. Mutant IDs: 4885.
+
+Nonzero txerrs is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4885 | Removes the .override.configuration_id diagnostic suffix; tests do not assert this field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 61
+
+Category: missing test. Mutant IDs: 4889.
+
+The first differing field is intended to remain the assessment summary while detailed differences are retained under the cap. Tests assert the ordered difference list, not that the assessment field remains the first sorted difference when several keys differ.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:24-26](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:59-65](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:203-217](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [review/replay/mutant-4889/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4889/before-after.diff.gz), [review/replay/mutant-4889/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4889/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4889 | Changes firstField from first-difference-only to overwrite-on-every-difference; no test asserts the summarized assessment field under multiple differences. Ordinary replay 4889: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:24-26](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:59-65](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:203-217](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [review/replay/mutant-4889/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4889/before-after.diff.gz), [review/replay/mutant-4889/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4889/attempt.json) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 69
+
+Category: missing test. Mutant IDs: 4897.
+
+Check 27 failure behavior is tested, but the produced failure assessment artifact is not asserted. The codec round-trip test constructs its own assessment and does not exercise this Failure factory.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:68-70](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs:521-550](../../tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4897 | Empties the capabilities.json artifact on check 27 failures; the generic codec test hand-constructs the assessment. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:68-70](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs:521-550](../../tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs) |
+
+#### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 70
+
+Category: missing test. Mutant IDs: 4898.
+
+Check 27 failure behavior is tested, but its emitted code is not asserted. The codec round-trip test uses a hand-constructed assessment, not this Failure factory.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:68-70](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs:521-550](../../tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4898 | Empties the check_27_failed code; tests do not assert the code produced by this Failure factory. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:68-70](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:143-188](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs:521-550](../../tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 12
+
+Category: unresolved. Mutant IDs: 4899.
+
+The mutation removes an allowed standing marker. MarkerCases explicitly includes this exact marker and expects it to pass; the report says Survived. Without replay evidence the apparent source/test disagreement cannot be called a runner discrepancy.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:10-14](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4899](evidence/issue-92-pr6b/mutation-full/mutants.json.gz)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4899 | Removes broker_lifecycle_inventory_unproven from allowed markers; MarkerCases expects this exact marker to pass, so replay is needed to resolve Survived. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:10-14](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4899](evidence/issue-92-pr6b/mutation-full/mutants.json.gz) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 13
+
+Category: unresolved. Mutant IDs: 4900.
+
+The mutation removes an allowed standing marker. MarkerCases explicitly includes this exact marker and expects it to pass; the report says Survived. Without replay evidence the apparent source/test disagreement cannot be called a runner discrepancy.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:10-14](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4900](evidence/issue-92-pr6b/mutation-full/mutants.json.gz)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4900 | Removes request_lifecycle_capture_unsupported from allowed markers; MarkerCases expects this exact marker to pass, so replay is needed to resolve Survived. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:10-14](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#4900](evidence/issue-92-pr6b/mutation-full/mutants.json.gz) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 26
+
+Category: missing test. Mutant IDs: 4914, 4915, 4916.
+
+Check 12 tests cover delivered and undelivered callback outcomes. They do not assert the emitted artifact, one-based row number, or delivered field on its failure diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:20-27](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:16-29](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4914 | Empties the ledger.jsonl artifact on undelivered-callback failure; tests assert only check state. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:20-27](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:16-29](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4915 | Changes the one-based callback row from i + 1 to i - 1; tests do not assert diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:20-27](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:16-29](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4916 | Empties the delivered diagnostic field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:20-27](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:16-29](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 29
+
+Category: missing test. Mutant IDs: 4922, 4923, 4924.
+
+Check 13 tests cover null, missing, PossiblyPersisted and other persistence values. They do not assert the artifact, one-based row number, or persistence_status diagnostic field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4922 | Empties the ledger.jsonl artifact on persistence failure; tests assert only check state. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4923 | Changes the one-based persistence row from i + 1 to i - 1; tests do not assert diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4924 | Empties the persistence_status diagnostic field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 35
+
+Category: missing test. Mutant IDs: 4928, 4929.
+
+The incomplete guard-observation input correctly adds a check 14 failure. Tests assert check state but not its artifact or guard_observations_complete field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:33-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:89-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4928 | Empties the capabilities.json artifact on incomplete guard observations; tests assert only check state. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:33-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:89-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4929 | Empties guard_observations_complete diagnostic field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:33-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:89-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 39
+
+Category: missing test. Mutant IDs: 4937, 4938.
+
+Unknown manifest markers correctly fail check 14. Tests assert pass/fail behavior but not the manifest artifact or indexed guard_observations field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:36-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4937 | Empties the manifest.json artifact for an unknown guard marker; tests assert only check state. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:36-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4938 | Empties the indexed guard_observations field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:36-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:79-106](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 46
+
+Category: missing test. Mutant IDs: 4949, 4951.
+
+The null Native report and absent/null Brokers field make counter evidence unavailable. Tests exercise missing individual counters, but do not supply a successful report with missing Native/Brokers values to verify safe not-evaluated behavior.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:41-49](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:218-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:260-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4949 | Rewrites the missing Native/Brokers condition, no longer preserving the original any-missing-data gate; no current test supplies this missing-value case. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:41-49](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:218-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:260-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4951 | Replaces OR with AND in the missing Native/Brokers condition; a present Native with absent Brokers can fall through to dereference; no current test covers it. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:41-49](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:218-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:260-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 48
+
+Category: missing test. Mutant IDs: 4956.
+
+This availability flag should remain false when Native/Brokers evidence is unavailable. Existing missing-input tests omit the whole input set; missing-counter tests exercise a different branch and do not assert missing Native/Brokers behavior.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:41-50](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:219-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:273-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [review/replay/mutant-4956/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4956/before-after.diff.gz), [review/replay/mutant-4956/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4956/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4956 | Changes unavailable counters from unavailable to available; missing Native/Brokers is not covered by current check 15 tests. Ordinary replay 4956: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:41-50](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:219-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:273-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [review/replay/mutant-4956/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-4956/before-after.diff.gz), [review/replay/mutant-4956/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4956/attempt.json) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 49
+
+Category: missing test. Mutant IDs: 4957.
+
+The continue prevents dereferencing Native/Brokers after their value is absent. No test covers a readable successful report whose Native or Brokers value is null/missing at this branch.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:43-50](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:219-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:273-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4957 | Removes continue after missing Native/Brokers, allowing a missing value to be dereferenced; the input case is not tested. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:43-50](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:219-231](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:273-277](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 53
+
+Category: missing test. Mutant IDs: 4960.
+
+Nonzero req_timeouts is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4960 | Empties the req_timeouts field name in the failure diagnostic; tests assert failure state only. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 54
+
+Category: missing test. Mutant IDs: 4962.
+
+Nonzero txretries is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4962 | Empties the txretries field name in the failure diagnostic; tests assert failure state only. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 55
+
+Category: missing test. Mutant IDs: 4964.
+
+Nonzero txerrs is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4964 | Empties the txerrs field name in the failure diagnostic; tests assert failure state only. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 56
+
+Category: missing test. Mutant IDs: 4966.
+
+Nonzero rxerrs is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4966 | Empties the rxerrs field name in the failure diagnostic; tests assert failure state only. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 62
+
+Category: missing test. Mutant IDs: 4972, 4973, 4974.
+
+Counter failures are exercised, but tests do not assert the statistics artifact, one-based report row, or fully qualified broker counter field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:58-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:114-169](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4972 | Empties statistics.jsonl artifact on a nonzero counter; tests do not assert artifact. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:58-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:114-169](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4973 | Changes the one-based statistics report row from i + 1 to i - 1; tests do not assert row. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:58-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:114-169](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4974 | Empties the interpolated broker counter field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:58-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:114-169](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 71
+
+Category: missing test. Mutant IDs: 4983, 4984, 4985.
+
+Native errors with IsError true fail check 16. Tests assert state, not request-lifecycle artifact, one-based row or is_error field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:67-72](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4983 | Empties request-lifecycle.jsonl artifact on a native error; tests do not assert artifact. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:67-72](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4984 | Changes the one-based lifecycle row from i + 1 to i - 1; tests do not assert row. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:67-72](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4985 | Empties the is_error field; tests do not assert diagnostic field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:67-72](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 77
+
+Category: missing test. Mutant IDs: 4988.
+
+Check 14 is evaluated only when both manifest and capabilities are available. Existing all-missing coverage omits both; the partial-missing test has an independent unknown-marker failure. There is no availability-only test for either one-missing direction.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:73-79](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:218-256](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4988 | Changes AND prerequisite availability to OR. Tests do not isolate either partial-missing input without another failing marker. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:73-79](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:218-256](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-latewritechecks-cs line 84
+
+Category: missing test. Mutant IDs: 4992.
+
+Check 16 failure behavior is tested, but the emitted check code is not asserted.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:83-84](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 4992 | Empties check_16_failed code; tests assert only failure state. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:83-84](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:194-215](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-outcomeclassifier-cs line 35
+
+Category: missing test. Mutant IDs: 5014.
+
+A consumed record without Sequence should be skipped. Tests cover negative, equal and ordered sequence values, but no null Sequence input; deleting continue would dereference Value. Variant 5014 failed ordinary compilation before tests; this does not establish ordinary-runner survival or killing.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs:30-38](../../src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs), [tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs:42-94](../../tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs), [review/replay/mutant-5014/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5014/before-after.diff.gz), [review/replay/mutant-5014/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5014/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5014 | Removes the continue for records whose Sequence is absent, making Sequence.Value access possible; no null-sequence input is tested. Ordinary replay 5014: compile-failure; runner comparison complete=False; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs:30-38](../../src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs), [tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs:42-94](../../tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs), [review/replay/mutant-5014/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5014/before-after.diff.gz), [review/replay/mutant-5014/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5014/attempt.json) |
+
+#### Disposition verifyrun-judgement-outcomeclassifier-cs line 38
+
+Category: equivalent with proof. Mutant IDs: 5025.
+
+Changing > to >= only assigns maximum the same sequence value when sequence equals the existing maximum. The reorder count is based on strict < immediately above; equal values therefore leave all outputs unchanged. Existing equal-sequence coverage confirms duplicates are not reorders.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs:28-39](../../src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs), [tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs:55-60](../../tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5025 | Changes maximum update from > to >=. Equal values reassign the same maximum and do not alter the strict-less-than reorder test. | [src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs:28-39](../../src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs), [tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs:55-60](../../tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs) |
+
+#### Disposition verifyrun-judgement-runjudgement-cs line 67
+
+Category: missing test. Mutant IDs: 5042.
+
+The Any predicate must throw when any native report has an execution failure, even if another report succeeds, and must not throw for an empty list. Current RunJudgement execution-failure coverage checks only Index, not mixed/empty Reports.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:62-67](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:221-226](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs), [tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs:74-85](../../tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5042 | Changes Any to All for native execution failures; current tests do not cover any native report execution-failure combination. | [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:62-67](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:221-226](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs), [tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs:74-85](../../tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs) |
+
+#### Disposition verifyrun-judgement-runjudgement-cs line 83
+
+Category: missing test. Mutant IDs: 5064.
+
+Assessment ordering is normalized ascending by check number before return. Tests verify count and select assessments by check number, but do not assert the returned order.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:82-84](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:55-75](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs), [review/replay/mutant-5064/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5064/before-after.diff.gz), [review/replay/mutant-5064/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5064/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5064 | Reverses returned assessment ordering; current tests verify assessment count/lookup but do not assert order. Ordinary replay 5064: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:82-84](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:55-75](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs), [review/replay/mutant-5064/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5064/before-after.diff.gz), [review/replay/mutant-5064/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5064/attempt.json) |
+
+#### Disposition verifyrun-judgement-runjudgement-cs line 88
+
+Category: unresolved. Mutant IDs: 5076.
+
+The equivalence argument holds for canonical production-created assessments: invalid failures are handled first, and incomplete failures satisfy both predicates. It is not proven for all requests consumed by this method. RunJudgementRequest.WindowAssessments is passed directly into checks 7-11 without validating assessment invariants, and CheckAssessment is internally constructible with nullable classification. A Fail with null classification can be missed by the original AND predicate but selected by the mutant OR predicate; a Pass with Incomplete classification can also change the status. No enforced input contract excludes these cases. The existing tests cover canonical failure precedence and incomplete outcome, not these supplied inputs, so this remains unresolved pending a contract invariant or tests.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:29-46](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:71-92](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:63-69](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs:103-118](../../src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs), [src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs:5-14](../../src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:78-99](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5076 | The mutation changes the incomplete-failure predicate to OR. Canonical production constructors establish equivalence for their outputs, but RunJudgement accepts supplied window assessments without enforcing those constructor invariants. Since CheckAssessment permits nullable classification, Fail+null and Pass+Incomplete inputs are constructible and behave differently under the mutant. Current tests do not establish whether those request values are forbidden or what behavior they require. | [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:29-46](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:71-92](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:63-69](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs:103-118](../../src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs), [src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs:5-14](../../src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:78-99](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs) |
+
+#### Disposition verifyrun-judgement-runjudgement-cs line 107
+
+Category: unresolved. Mutant IDs: 5095.
+
+The mutation reverses the final difference ordering. The current diagnostic-cap test supplies z, a and m and asserts the first two retained settings are ordinal a then m, so the report status conflicts with current source-level test expectations. Replay evidence was not reviewed; do not label runner discrepancy.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:104-109](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:203-217](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#5095](evidence/issue-92-pr6b/mutation-full/mutants.json.gz)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5095 | Reverses retained configuration-difference order. The capped test expects ordinal a,m from z,a,m, conflicting with Survived; replay is needed before runner attribution. | [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:104-109](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:203-217](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json#5095](evidence/issue-92-pr6b/mutation-full/mutants.json.gz) |
+
+#### Disposition verifyrun-judgement-runjudgement-cs line 117
+
+Category: missing test. Mutant IDs: 5102.
+
+Execution-failure tests assert only InvalidOperationException type. They do not assert this stable explanatory message.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:115-118](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:221-226](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5102 | Empties the execution-failure exception message; tests assert exception type but not message. | [src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs:115-118](../../src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs), [tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs:221-226](../../tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 22
+
+Category: missing test. Mutant IDs: 5121, 5122.
+
+The faulted-capabilities branch emits a failure diagnostic, but current fault tests assert only pass/fail, not artifact/field identity. Add an assertion for the diagnostic artifact and field if those are part of the contract.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:21-22](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:47-55](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5121 | Mutant 5121 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:22. The faulted-capabilities branch emits a failure diagnostic, but current fault tests assert only pass/fail, not artifact/field identity. Add an assertion for the diagnostic artifact and field if those are part of the contract. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:22](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5121](evidence/issue-92-pr6b/mutation-full/mutants.json id=5121), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:47-55](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5122 | Mutant 5122 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:22. The faulted-capabilities branch emits a failure diagnostic, but current fault tests assert only pass/fail, not artifact/field identity. Add an assertion for the diagnostic artifact and field if those are part of the contract. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:22](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5122](evidence/issue-92-pr6b/mutation-full/mutants.json id=5122), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:47-55](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 27
+
+Category: missing test. Mutant IDs: 5129.
+
+Empty present statistics are tested for failure, but not the diagnostic artifact/field values emitted here.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:24-29](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:57-64](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5129 | Mutant 5129 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:27. Empty present statistics are tested for failure, but not the diagnostic artifact/field values emitted here. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:27](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5129](evidence/issue-92-pr6b/mutation-full/mutants.json id=5129), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:57-64](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 35
+
+Category: missing test. Mutant IDs: 5135, 5136.
+
+Completion absence/null cases assert check 19 failure and downstream check 25 evaluation only; they do not assert the check 19 diagnostic artifact or field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:31-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:95-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5135 | Mutant 5135 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:35. Completion absence/null cases assert check 19 failure and downstream check 25 evaluation only; they do not assert the check 19 diagnostic artifact or field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:35](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5135](evidence/issue-92-pr6b/mutation-full/mutants.json id=5135), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:95-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5136 | Mutant 5136 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:35. Completion absence/null cases assert check 19 failure and downstream check 25 evaluation only; they do not assert the check 19 diagnostic artifact or field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:35](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5136](evidence/issue-92-pr6b/mutation-full/mutants.json id=5136), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:95-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 38
+
+Category: missing test. Mutant IDs: 5140, 5141.
+
+An incomplete completion test covers IsComplete=false only at disposition level; no assertion verifies the emitted failure diagnostic location.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:36-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5140 | Mutant 5140 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:38. An incomplete completion test covers IsComplete=false only at disposition level; no assertion verifies the emitted failure diagnostic location. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:38](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5140](evidence/issue-92-pr6b/mutation-full/mutants.json id=5140), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5141 | Mutant 5141 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:38. An incomplete completion test covers IsComplete=false only at disposition level; no assertion verifies the emitted failure diagnostic location. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:38](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5141](evidence/issue-92-pr6b/mutation-full/mutants.json id=5141), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 40
+
+Category: missing test. Mutant IDs: 5144, 5145.
+
+Missing/null drain-boundary cases assert failure but do not assert this failure diagnostic artifact/field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:39-40](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-124](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5144 | Mutant 5144 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:40. Missing/null drain-boundary cases assert failure but do not assert this failure diagnostic artifact/field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:40](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5144](evidence/issue-92-pr6b/mutation-full/mutants.json id=5144), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-124](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5145 | Mutant 5145 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:40. Missing/null drain-boundary cases assert failure but do not assert this failure diagnostic artifact/field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:40](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5145](evidence/issue-92-pr6b/mutation-full/mutants.json id=5145), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:101-124](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 43
+
+Category: missing test. Mutant IDs: 5146, 5147.
+
+The loop marks all checks 20-26 missing when no statistics are available. Existing no-association coverage has statistics present and associations mismatched, so it does not establish check 24 is NotEvaluated when statistics are unavailable but completion is present. The altered bounds could change that outcome. This is a missing input/assertion, not a runner finding.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:43-46](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-373](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5146 | Mutant 5146 is reported Survived with replacement 'number > 26' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:43. The loop marks all checks 20-26 missing when no statistics are available. Existing no-association coverage has statistics present and associations mismatched, so it does not establish check 24 is NotEvaluated when statistics are unavailable but completion is present. The altered bounds could change that outcome. This is a missing input/assertion, not a runner finding. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:43](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5146](evidence/issue-92-pr6b/mutation-full/mutants.json id=5146), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-373](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5147 | Mutant 5147 is reported Survived with replacement 'number < 26' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:43. The loop marks all checks 20-26 missing when no statistics are available. Existing no-association coverage has statistics present and associations mismatched, so it does not establish check 24 is NotEvaluated when statistics are unavailable but completion is present. The altered bounds could change that outcome. This is a missing input/assertion, not a runner finding. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:43](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5147](evidence/issue-92-pr6b/mutation-full/mutants.json id=5147), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-373](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 55
+
+Category: missing test. Mutant IDs: 5157.
+
+When associations are incomplete, the first unknown timestamp index bounds the prefix used by check 26. Tests cover unreadable timestamps and prefixes, but not multiple unknown positions where preserving the first index differs from replacing it with a later one.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:52-55](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5157 | Mutant 5157 is reported Survived with replacement '(true?null :0)' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:55. When associations are incomplete, the first unknown timestamp index bounds the prefix used by check 26. Tests cover unreadable timestamps and prefixes, but not multiple unknown positions where preserving the first index differs from replacing it with a later one. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:55](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5157](evidence/issue-92-pr6b/mutation-full/mutants.json id=5157), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 61
+
+Category: missing test. Mutant IDs: 5167.
+
+This is the shared 1-based report row used by failures. Existing exact row assertions cover check 25/check 26 paths that compute their own row, not this local row used by checks 20-23. Add an assertion that a second-row failure reports row 2.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:58-64](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:224-250](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5167 | Mutant 5167 is reported Survived with replacement 'index - 1L' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:61. This is the shared 1-based report row used by failures. Existing exact row assertions cover check 25/check 26 paths that compute their own row, not this local row used by checks 20-23. Add an assertion that a second-row failure reports row 2. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:61](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5167](evidence/issue-92-pr6b/mutation-full/mutants.json id=5167), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:224-250](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 63
+
+Category: missing test. Mutant IDs: 5169.
+
+Envelope diagnostics make check 20 fail, but tests assert failure/count/code rather than the artifact label carried by this Fail call.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:60-64](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5169 | Mutant 5169 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:63. Envelope diagnostics make check 20 fail, but tests assert failure/count/code rather than the artifact label carried by this Fail call. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:63](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5169](evidence/issue-92-pr6b/mutation-full/mutants.json id=5169), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 73
+
+Category: missing test. Mutant IDs: 5180.
+
+An unreadable report before boundary selection marks selection unknown and makes later boundary-based checks unavailable. Existing unreadable-report tests cover an unreadable report after the selected boundary or timestamp-specific cases, not this native-unreadable-before-selection input with check 25/26 dispositions asserted.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:66-75](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5180 | Mutant 5180 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:73. An unreadable report before boundary selection marks selection unknown and makes later boundary-based checks unavailable. Existing unreadable-report tests cover an unreadable report after the selected boundary or timestamp-specific cases, not this native-unreadable-before-selection input with check 25/26 dispositions asserted. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:73](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5180](evidence/issue-92-pr6b/mutation-full/mutants.json id=5180), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 74
+
+Category: missing test. Mutant IDs: 5181.
+
+Only the earliest unknown report index should bound the prefix. Existing tests cover one unknown timestamp/report, not two unknown reports where a plain assignment moves the bound later.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:71-75](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5181 | Mutant 5181 is reported Survived with replacement 'firstUnknownTimestamp = index' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:74. Only the earliest unknown report index should bound the prefix. Existing tests cover one unknown timestamp/report, not two unknown reports where a plain assignment moves the bound later. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:74](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5181](evidence/issue-92-pr6b/mutation-full/mutants.json id=5181), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 83
+
+Category: missing test. Mutant IDs: 5191, 5192.
+
+Timestamp order failures are asserted at check disposition level. Current timestamp tests do not assert the diagnostic artifact/field/row for this failure.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:79-84](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5191 | Mutant 5191 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:83. Timestamp order failures are asserted at check disposition level. Current timestamp tests do not assert the diagnostic artifact/field/row for this failure. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:83](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5191](evidence/issue-92-pr6b/mutation-full/mutants.json id=5191), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5192 | Mutant 5192 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:83. Timestamp order failures are asserted at check disposition level. Current timestamp tests do not assert the diagnostic artifact/field/row for this failure. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:83](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5192](evidence/issue-92-pr6b/mutation-full/mutants.json id=5192), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 89
+
+Category: missing test. Mutant IDs: 5201, 5202.
+
+Creation-time consistency failures are asserted at check disposition level, not diagnostic artifact/field/row.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:85-90](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5201 | Mutant 5201 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:89. Creation-time consistency failures are asserted at check disposition level, not diagnostic artifact/field/row. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:89](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5201](evidence/issue-92-pr6b/mutation-full/mutants.json id=5201), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5202 | Mutant 5202 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:89. Creation-time consistency failures are asserted at check disposition level, not diagnostic artifact/field/row. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:89](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5202](evidence/issue-92-pr6b/mutation-full/mutants.json id=5202), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 90
+
+Category: missing test. Mutant IDs: 5203.
+
+Creation time is intended to retain the first observed timestamp-age origin. Existing tests compare two reports but do not cover three reports where an intermediate report agrees with a new origin after a mismatch; reassignment can make a later mismatch disappear.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:85-90](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5203 | Mutant 5203 is reported Survived with replacement 'creation = currentCreation' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:90. Creation time is intended to retain the first observed timestamp-age origin. Existing tests compare two reports but do not cover three reports where an intermediate report agrees with a new origin after a mismatch; reassignment can make a later mismatch disappear. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:90](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5203](evidence/issue-92-pr6b/mutation-full/mutants.json id=5203), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 92
+
+Category: missing test. Mutant IDs: 5204.
+
+Missing age sets check 22 NotEvaluated. Existing timestamp tests supply values and test unreadable native JSON, but do not provide a readable report with a missing age and assert check 22 NotEvaluated.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:85-98](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5204 | Mutant 5204 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:92. Missing age sets check 22 NotEvaluated. Existing timestamp tests supply values and test unreadable native JSON, but do not provide a readable report with a missing age and assert check 22 NotEvaluated. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:92](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5204](evidence/issue-92-pr6b/mutation-full/mutants.json id=5204), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:218-239](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 98
+
+Category: missing test. Mutant IDs: 5212.
+
+A readable report with a missing timestamp makes check 22 NotEvaluated and selection unknown. Current tests exercise unreadable native input and an unknown timestamp for checks 25/26, but do not assert check 22 NotEvaluated for a readable parsed report missing ts.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:96-103](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:466-478](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5212 | Mutant 5212 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:98. A readable report with a missing timestamp makes check 22 NotEvaluated and selection unknown. Current tests exercise unreadable native input and an unknown timestamp for checks 25/26, but do not assert check 22 NotEvaluated for a readable parsed report missing ts. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:98](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5212](evidence/issue-92-pr6b/mutation-full/mutants.json id=5212), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:466-478](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 102
+
+Category: missing test. Mutant IDs: 5216.
+
+As at the earlier unknown-timestamp path, the earliest unknown index must be retained. Existing tests do not provide multiple timestamp-missing reports followed by a selected boundary and assert prefix behavior.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:98-103](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5216 | Mutant 5216 is reported Survived with replacement 'firstUnknownTimestamp = index' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:102. As at the earlier unknown-timestamp path, the earliest unknown index must be retained. Existing tests do not provide multiple timestamp-missing reports followed by a selected boundary and assert prefix behavior. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:102](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5216](evidence/issue-92-pr6b/mutation-full/mutants.json id=5216), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 108
+
+Category: missing test. Mutant IDs: 5219.
+
+Missing broker maps mark checks 21, 23 and 25 NotEvaluated. Existing no-association coverage does not exercise a readable native report whose brokers field is absent/null and assert each affected check.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:106-110](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5219 | Mutant 5219 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:108. Missing broker maps mark checks 21, 23 and 25 NotEvaluated. Existing no-association coverage does not exercise a readable native report whose brokers field is absent/null and assert each affected check. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:108](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5219](evidence/issue-92-pr6b/mutation-full/mutants.json id=5219), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 109
+
+Category: missing test. Mutant IDs: 5220.
+
+A report with an absent broker map must retain a null report-set slot so later row/index positions remain aligned for check 26. No current test covers broker-map absence followed by later reports and an exact check 26 result/diagnostic row.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:106-110](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:172-194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5220 | Mutant 5220 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:109. A report with an absent broker map must retain a null report-set slot so later row/index positions remain aligned for check 26. No current test covers broker-map absence followed by later reports and an exact check 26 result/diagnostic row. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:109](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5220](evidence/issue-92-pr6b/mutation-full/mutants.json id=5220), [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:172-194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 110
+
+Category: missing test. Mutant IDs: 5221.
+
+The early continue prevents enumeration of an absent broker map. Current fixtures use present broker dictionaries; no test asserts the missing-map path is safely treated as unknown rather than enumerated.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:106-114](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5221 | Mutant 5221 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:110. The early continue prevents enumeration of an absent broker map. Current fixtures use present broker dictionaries; no test asserts the missing-map path is safely treated as unknown rather than enumerated. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:110](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5221](evidence/issue-92-pr6b/mutation-full/mutants.json id=5221), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:367-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 118
+
+Category: unresolved. Mutant IDs: 5224, 5225.
+
+The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for name. Removing Require or changing its field label should contradict that assertion. Without the authorized replay, I cannot tell whether this is report/test execution disagreement or a mistaken assumption about mutation application; no runner discrepancy is claimed.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:114-121](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5224 | Mutant 5224 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:118. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for name. Removing Require or changing its field label should contradict that assertion. Without the authorized replay, I cannot tell whether this is report/test execution disagreement or a mistaken assumption about mutation application; no runner discrepancy is claimed. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:118](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5224](evidence/issue-92-pr6b/mutation-full/mutants.json id=5224), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5225 | Mutant 5225 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:118. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for name. Removing Require or changing its field label should contradict that assertion. Without the authorized replay, I cannot tell whether this is report/test execution disagreement or a mistaken assumption about mutation application; no runner discrepancy is claimed. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:118](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5225](evidence/issue-92-pr6b/mutation-full/mutants.json id=5225), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 119
+
+Category: unresolved. Mutant IDs: 5226, 5227.
+
+The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for nodeid. Removing Require or changing its field label should contradict that assertion. Replay is not authorized in this task, so classify unresolved rather than infer runner disagreement.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:114-121](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5226 | Mutant 5226 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:119. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for nodeid. Removing Require or changing its field label should contradict that assertion. Replay is not authorized in this task, so classify unresolved rather than infer runner disagreement. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:119](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5226](evidence/issue-92-pr6b/mutation-full/mutants.json id=5226), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5227 | Mutant 5227 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:119. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for nodeid. Removing Require or changing its field label should contradict that assertion. Replay is not authorized in this task, so classify unresolved rather than infer runner disagreement. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:119](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5227](evidence/issue-92-pr6b/mutation-full/mutants.json id=5227), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 120
+
+Category: unresolved. Mutant IDs: 5229.
+
+The report marks the empty source-field label variant Survived, while the omitted-field theory includes source and asserts the exact diagnostic field. No replay was performed, so the apparent mismatch remains unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:114-121](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5229 | Mutant 5229 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:120. The report marks the empty source-field label variant Survived, while the omitted-field theory includes source and asserts the exact diagnostic field. No replay was performed, so the apparent mismatch remains unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:120](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5229](evidence/issue-92-pr6b/mutation-full/mutants.json id=5229), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 121
+
+Category: unresolved. Mutant IDs: 5230, 5231.
+
+The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for state. Removing Require or changing its field label should contradict that assertion. Replay is not authorized, so no runner discrepancy is inferred.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:118-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5230 | Mutant 5230 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:121. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for state. Removing Require or changing its field label should contradict that assertion. Replay is not authorized, so no runner discrepancy is inferred. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:121](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5230](evidence/issue-92-pr6b/mutation-full/mutants.json id=5230), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5231 | Mutant 5231 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:121. The report marks these variants Survived, while current omitted-field tests assert the exact missing-field diagnostic for state. Removing Require or changing its field label should contradict that assertion. Replay is not authorized, so no runner discrepancy is inferred. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:121](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5231](evidence/issue-92-pr6b/mutation-full/mutants.json id=5231), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 124
+
+Category: unresolved. Mutant IDs: 5233.
+
+The report marks removal of this Require call Survived, while the required-field theory covers all five counters and asserts the exact diagnostic field. This direct contradiction needs replay or report-application evidence; neither is part of this manual review.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:122-125](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5233 | Mutant 5233 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:124. The report marks removal of this Require call Survived, while the required-field theory covers all five counters and asserts the exact diagnostic field. This direct contradiction needs replay or report-application evidence; neither is part of this manual review. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:124](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5233](evidence/issue-92-pr6b/mutation-full/mutants.json id=5233), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 125
+
+Category: missing test. Mutant IDs: 5236, 5237.
+
+When a counter is absent, check 23 becomes NotEvaluated and processing skips the monotonic comparison. The required-field tests assert check 21 only, and counter monotonicity tests use values; there is no check 23 NotEvaluated assertion for an omitted counter.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:122-128](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5236 | Mutant 5236 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:125. When a counter is absent, check 23 becomes NotEvaluated and processing skips the monotonic comparison. The required-field tests assert check 21 only, and counter monotonicity tests use values; there is no check 23 NotEvaluated assertion for an omitted counter. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:125](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5236](evidence/issue-92-pr6b/mutation-full/mutants.json id=5236), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5237 | Mutant 5237 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:125. When a counter is absent, check 23 becomes NotEvaluated and processing skips the monotonic comparison. The required-field tests assert check 21 only, and counter monotonicity tests use values; there is no check 23 NotEvaluated assertion for an omitted counter. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:125](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5237](evidence/issue-92-pr6b/mutation-full/mutants.json id=5237), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 127
+
+Category: missing test. Mutant IDs: 5243, 5244.
+
+Counter decreases are tested for all five counters at disposition level, but the failure diagnostic artifact and precise row/field are not asserted for this Fail call.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:122-128](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5243 | Mutant 5243 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:127. Counter decreases are tested for all five counters at disposition level, but the failure diagnostic artifact and precise row/field are not asserted for this Fail call. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:127](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5243](evidence/issue-92-pr6b/mutation-full/mutants.json id=5243), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5244 | Mutant 5244 is reported Survived with replacement '$""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:127. Counter decreases are tested for all five counters at disposition level, but the failure diagnostic artifact and precise row/field are not asserted for this Fail call. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:127](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5244](evidence/issue-92-pr6b/mutation-full/mutants.json id=5244), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:241-258](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 130
+
+Category: unresolved. Mutant IDs: 5245, 5246.
+
+The report marks these variants Survived, while required-field tests cover throttle.cnt and throttle.max and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130-131](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5245 | Mutant 5245 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130. The report marks these variants Survived, while required-field tests cover throttle.cnt and throttle.max and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5245](evidence/issue-92-pr6b/mutation-full/mutants.json id=5245), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5246 | Mutant 5246 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130. The report marks these variants Survived, while required-field tests cover throttle.cnt and throttle.max and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5246](evidence/issue-92-pr6b/mutation-full/mutants.json id=5246), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 131
+
+Category: unresolved. Mutant IDs: 5248, 5249.
+
+The report marks these variants Survived, while required-field tests cover rtt.cnt and rtt.p99 and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:130-131](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5248 | Mutant 5248 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:131. The report marks these variants Survived, while required-field tests cover rtt.cnt and rtt.p99 and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:131](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5248](evidence/issue-92-pr6b/mutation-full/mutants.json id=5248), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5249 | Mutant 5249 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:131. The report marks these variants Survived, while required-field tests cover rtt.cnt and rtt.p99 and assert exact diagnostic field names. Removing this requirement or changing the name should contradict those assertions. Without replay the apparent mismatch remains unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:131](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5249](evidence/issue-92-pr6b/mutation-full/mutants.json id=5249), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 136
+
+Category: missing test. Mutant IDs: 5260.
+
+Unknown broker source makes check 25 NotEvaluated. The ambiguous-source tests assert check 26 behavior, not check 25 disposition; there is no direct assertion that check 25 is NotEvaluated for an unknown source.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:132-136](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:413-440](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5260 | Mutant 5260 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:136. Unknown broker source makes check 25 NotEvaluated. The ambiguous-source tests assert check 26 behavior, not check 25 disposition; there is no direct assertion that check 25 is NotEvaluated for an unknown source. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:136](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5260](evidence/issue-92-pr6b/mutation-full/mutants.json id=5260), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:413-440](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 139
+
+Category: missing test. Mutant IDs: 5262.
+
+Check 24 is NotEvaluated when completion is absent. Current completion tests assert check 19 failure and check 25 status, not check 24 status when expected brokers exist and completion is absent.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:139-149](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:95-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5262 | Mutant 5262 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:139. Check 24 is NotEvaluated when completion is absent. Current completion tests assert check 19 failure and check 25 status, not check 24 status when expected brokers exist and completion is absent. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:139](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5262](evidence/issue-92-pr6b/mutation-full/mutants.json id=5262), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:95-116](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 143
+
+Category: missing test. Mutant IDs: 5267, 5268.
+
+Expected broker listed as missing produces check 24 failure. Existing tests assert failure but not the artifact/field diagnostic labels at this Fail call.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:140-150](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5267 | Mutant 5267 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:143. Expected broker listed as missing produces check 24 failure. Existing tests assert failure but not the artifact/field diagnostic labels at this Fail call. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:143](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5267](evidence/issue-92-pr6b/mutation-full/mutants.json id=5267), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5268 | Mutant 5268 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:143. Expected broker listed as missing produces check 24 failure. Existing tests assert failure but not the artifact/field diagnostic labels at this Fail call. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:143](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5268](evidence/issue-92-pr6b/mutation-full/mutants.json id=5268), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 147
+
+Category: missing test. Mutant IDs: 5276.
+
+With an unobserved expected key, one unreadable report is enough to leave check 24 NotEvaluated; the Any-to-All mutation changes that rule when readable and unreadable reports are mixed. Existing tests cover expected keys present/absent and completion missing lists but not that mixed-readability case.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:144-149](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5276/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5276/before-after.diff.gz), [review/replay/mutant-5276/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5276/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5276 | Mutant 5276 is reported Survived with replacement 'request.Reports.All' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:147. With an unobserved expected key, one unreadable report is enough to leave check 24 NotEvaluated; the Any-to-All mutation changes that rule when readable and unreadable reports are mixed. Existing tests cover expected keys present/absent and completion missing lists but not that mixed-readability case. Ordinary replay 5276: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:147](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5276](evidence/issue-92-pr6b/mutation-full/mutants.json id=5276), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:270-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:356-365](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5276/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5276/before-after.diff.gz), [review/replay/mutant-5276/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5276/attempt.json) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 149
+
+Category: missing test. Mutant IDs: 5282, 5283.
+
+Expected key absent from all readable broker maps fails check 24, but current tests assert only the disposition, not this exact diagnostic artifact and field.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:144-150](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:290-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5282 | Mutant 5282 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:149. Expected key absent from all readable broker maps fails check 24, but current tests assert only the disposition, not this exact diagnostic artifact and field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:149](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5282](evidence/issue-92-pr6b/mutation-full/mutants.json id=5282), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:290-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5283 | Mutant 5283 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:149. Expected key absent from all readable broker maps fails check 24, but current tests assert only the disposition, not this exact diagnostic artifact and field. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:149](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5283](evidence/issue-92-pr6b/mutation-full/mutants.json id=5283), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:290-304](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 156
+
+Category: missing test. Mutant IDs: 5295, 5296.
+
+No report reaching the drain boundary fails check 25. Existing boundary tests assert disposition only; they do not assert this failure diagnostic artifact/field/row.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:153-157](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:306-310](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5295 | Mutant 5295 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:156. No report reaching the drain boundary fails check 25. Existing boundary tests assert disposition only; they do not assert this failure diagnostic artifact/field/row. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:156](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5295](evidence/issue-92-pr6b/mutation-full/mutants.json id=5295), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:306-310](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5296 | Mutant 5296 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:156. No report reaching the drain boundary fails check 25. Existing boundary tests assert disposition only; they do not assert this failure diagnostic artifact/field/row. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:156](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5296](evidence/issue-92-pr6b/mutation-full/mutants.json id=5296), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:306-310](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 157
+
+Category: missing test. Mutant IDs: 5297.
+
+When no report qualifies at the boundary, check 26 is NotEvaluated. The current no-qualifying report case asserts check 25 failure and check 26 status in a different scenario; it does not assert this exact no-boundary-selection path with check 26.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:153-159](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:344-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5297 | Mutant 5297 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:157. When no report qualifies at the boundary, check 26 is NotEvaluated. The current no-qualifying report case asserts check 25 failure and check 26 status in a different scenario; it does not assert this exact no-boundary-selection path with check 26. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:157](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5297](evidence/issue-92-pr6b/mutation-full/mutants.json id=5297), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:344-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 165
+
+Category: missing test. Mutant IDs: 5304, 5306.
+
+A qualifying broker that is absent from the first boundary report fails coverage. Existing test asserts check 25 failure and row, but does not assert the diagnostic field or artifact generated here.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:159-167](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:344-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5304 | Mutant 5304 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:165. A qualifying broker that is absent from the first boundary report fails coverage. Existing test asserts check 25 failure and row, but does not assert the diagnostic field or artifact generated here. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:165](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5304](evidence/issue-92-pr6b/mutation-full/mutants.json id=5304), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:344-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5306 | Mutant 5306 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:165. A qualifying broker that is absent from the first boundary report fails coverage. Existing test asserts check 25 failure and row, but does not assert the diagnostic field or artifact generated here. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:165](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5306](evidence/issue-92-pr6b/mutation-full/mutants.json id=5306), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:344-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 167
+
+Category: missing test. Mutant IDs: 5307.
+
+If the selected report has no readable broker map, check 25 is NotEvaluated. Existing unreadable-after-boundary test covers an unreadable later report and check 25, not an unreadable selected report.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:159-168](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5307 | Mutant 5307 is reported Survived with replacement 'false' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:167. If the selected report has no readable broker map, check 25 is NotEvaluated. Existing unreadable-after-boundary test covers an unreadable later report and check 25, not an unreadable selected report. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:167](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5307](evidence/issue-92-pr6b/mutation-full/mutants.json id=5307), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-383](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 174
+
+Category: missing test. Mutant IDs: 5315.
+
+Check 26 is NotEvaluated when no boundary-selected report exists or selection is uncertain. Current tests cover missing boundary and unreadable prefixes separately, but not the combined selection-unknown condition after a qualifying boundary candidate.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:170-175](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:452-478](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5315 | Mutant 5315 is reported Survived with replacement 'selected is null && selectionUnknown' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:174. Check 26 is NotEvaluated when no boundary-selected report exists or selection is uncertain. Current tests cover missing boundary and unreadable prefixes separately, but not the combined selection-unknown condition after a qualifying boundary candidate. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:174](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5315](evidence/issue-92-pr6b/mutation-full/mutants.json id=5315), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:375-408](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:452-478](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 188
+
+Category: missing test. Mutant IDs: 5330.
+
+Unknown keys from a partially readable report are included in the allowed set so uncertainty does not invent removal. Existing ambiguity tests assert NotEvaluated for new/removed unknown keys, but do not combine a previously included known key becoming unknown with a definite independent key change and verify the diagnostic remains the definite one.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:175-194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:413-440](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5330 | Mutant 5330 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:188. Unknown keys from a partially readable report are included in the allowed set so uncertainty does not invent removal. Existing ambiguity tests assert NotEvaluated for new/removed unknown keys, but do not combine a previously included known key becoming unknown with a definite independent key change and verify the diagnostic remains the definite one. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:188](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5330](evidence/issue-92-pr6b/mutation-full/mutants.json id=5330), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:413-440](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 191
+
+Category: unresolved. Mutant IDs: 5338.
+
+The report marks this variant Survived, while the broker-churn test asserts exact check 26 diagnostic field "brokers" and row 2. The changed field literal should contradict it; artifact is not asserted. Without replay, the record is unresolved, not a runner discrepancy.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:185-194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:386-398](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5338 | Mutant 5338 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:191. The report marks this variant Survived, while the broker-churn test asserts exact check 26 diagnostic field "brokers" and row 2. The changed field literal should contradict it; artifact is not asserted. Without replay, the record is unresolved, not a runner discrepancy. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:191](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5338](evidence/issue-92-pr6b/mutation-full/mutants.json id=5338), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:386-398](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 194
+
+Category: missing test. Mutant IDs: 5343.
+
+Allowed-key intersection narrows the stable prefix across reports. Current churn tests cover a two-report replacement and selected boundary, but not a sequence where allowed membership narrows, later reappears, and the exact first-witness failure row is checked.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:185-194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:311-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5343 | Mutant 5343 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:194. Allowed-key intersection narrows the stable prefix across reports. Current churn tests cover a two-report replacement and selected boundary, but not a sequence where allowed membership narrows, later reappears, and the exact first-witness failure row is checked. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:194](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5343](evidence/issue-92-pr6b/mutation-full/mutants.json id=5343), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:311-353](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 204
+
+Category: unresolved. Mutant IDs: 5350, 5351.
+
+The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:202-205](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5350 | Mutant 5350 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:204. The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:204](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5350](evidence/issue-92-pr6b/mutation-full/mutants.json id=5350), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5351 | Mutant 5351 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:204. The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:204](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5351](evidence/issue-92-pr6b/mutation-full/mutants.json id=5351), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 205
+
+Category: unresolved. Mutant IDs: 5352, 5353, 5354.
+
+The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:202-205](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5352 | Mutant 5352 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205. The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5352](evidence/issue-92-pr6b/mutation-full/mutants.json id=5352), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5353 | Mutant 5353 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205. The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5353](evidence/issue-92-pr6b/mutation-full/mutants.json id=5353), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5354 | Mutant 5354 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205. The report marks the field-label variants Survived, while required-field tests assert exact diagnostic paths for all five counters; changing these labels should contradict those assertions. No replay was authorized, so unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:205](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5354](evidence/issue-92-pr6b/mutation-full/mutants.json id=5354), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 210
+
+Category: missing test. Mutant IDs: 5361, 5362, 5363, 5364.
+
+This guard suppresses duplicate missing-field diagnostics when the parser already emitted the same row/field. Current tests assert presence of the expected diagnostic but do not assert uniqueness/count for a parser diagnostic plus Require diagnostic, nor cover same-row/different-field combinations.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:208-212](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-140](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5361 | Mutant 5361 is reported Survived with replacement 'diagnostic.Row == row \|\| diagnostic.Field == $"brokers.{broker}.{field}"' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210. This guard suppresses duplicate missing-field diagnostics when the parser already emitted the same row/field. Current tests assert presence of the expected diagnostic but do not assert uniqueness/count for a parser diagnostic plus Require diagnostic, nor cover same-row/different-field combinations. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5361](evidence/issue-92-pr6b/mutation-full/mutants.json id=5361), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-140](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5362 | Mutant 5362 is reported Survived with replacement 'diagnostic.Row != row' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210. This guard suppresses duplicate missing-field diagnostics when the parser already emitted the same row/field. Current tests assert presence of the expected diagnostic but do not assert uniqueness/count for a parser diagnostic plus Require diagnostic, nor cover same-row/different-field combinations. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5362](evidence/issue-92-pr6b/mutation-full/mutants.json id=5362), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-140](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5363 | Mutant 5363 is reported Survived with replacement 'diagnostic.Field != $"brokers.{broker}.{field}"' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210. This guard suppresses duplicate missing-field diagnostics when the parser already emitted the same row/field. Current tests assert presence of the expected diagnostic but do not assert uniqueness/count for a parser diagnostic plus Require diagnostic, nor cover same-row/different-field combinations. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5363](evidence/issue-92-pr6b/mutation-full/mutants.json id=5363), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-140](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5364 | Mutant 5364 is reported Survived with replacement '$""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210. This guard suppresses duplicate missing-field diagnostics when the parser already emitted the same row/field. Current tests assert presence of the expected diagnostic but do not assert uniqueness/count for a parser diagnostic plus Require diagnostic, nor cover same-row/different-field combinations. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:210](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5364](evidence/issue-92-pr6b/mutation-full/mutants.json id=5364), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-140](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 211
+
+Category: unresolved. Mutant IDs: 5366, 5367.
+
+The report marks the field-template variant Survived, while omitted-field tests assert the exact diagnostic field path. The artifact label variant is not asserted. Because the variants share a line, the line disposition is unresolved; no replay was authorized.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:208-212](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5366 | Mutant 5366 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:211. The report marks the field-template variant Survived, while omitted-field tests assert the exact diagnostic field path. The artifact label variant is not asserted. Because the variants share a line, the line disposition is unresolved; no replay was authorized. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:211](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5366](evidence/issue-92-pr6b/mutation-full/mutants.json id=5366), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5367 | Mutant 5367 is reported Survived with replacement '$""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:211. The report marks the field-template variant Survived, while omitted-field tests assert the exact diagnostic field path. The artifact label variant is not asserted. Because the variants share a line, the line disposition is unresolved; no replay was authorized. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:211](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5367](evidence/issue-92-pr6b/mutation-full/mutants.json id=5367), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 216
+
+Category: unresolved. Mutant IDs: 5369, 5372.
+
+The report marks these variants Survived, while required-field tests assert exact paths for throttle.cnt and throttle.max. Removing this call or changing its field label should contradict the exact assertions. Without replay, unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:214-218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5369 | Mutant 5369 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:216. The report marks these variants Survived, while required-field tests assert exact paths for throttle.cnt and throttle.max. Removing this call or changing its field label should contradict the exact assertions. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:216](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5369](evidence/issue-92-pr6b/mutation-full/mutants.json id=5369), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5372 | Mutant 5372 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:216. The report marks these variants Survived, while required-field tests assert exact paths for throttle.cnt and throttle.max. Removing this call or changing its field label should contradict the exact assertions. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:216](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5372](evidence/issue-92-pr6b/mutation-full/mutants.json id=5372), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 217
+
+Category: unresolved. Mutant IDs: 5373.
+
+The report marks this variant Survived, while required-field tests assert the exact rtt.p99 path. Removing the call should contradict that assertion. Without replay, unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:214-218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5373 | Mutant 5373 is reported Survived with replacement ';' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:217. The report marks this variant Survived, while required-field tests assert the exact rtt.p99 path. Removing the call should contradict that assertion. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:217](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5373](evidence/issue-92-pr6b/mutation-full/mutants.json id=5373), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 218
+
+Category: unresolved. Mutant IDs: 5379, 5380, 5381, 5382.
+
+The report marks these variants Survived, while required-field tests assert exact throttle.max and rtt.p99 diagnostic fields. Both conditional branch substitutions and literal changes appear observable to those tests. Without replay, unresolved.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:214-218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5379 | Mutant 5379 is reported Survived with replacement '(true?".max" :".p99")' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218. The report marks these variants Survived, while required-field tests assert exact throttle.max and rtt.p99 diagnostic fields. Both conditional branch substitutions and literal changes appear observable to those tests. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5379](evidence/issue-92-pr6b/mutation-full/mutants.json id=5379), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5380 | Mutant 5380 is reported Survived with replacement '(false?".max" :".p99")' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218. The report marks these variants Survived, while required-field tests assert exact throttle.max and rtt.p99 diagnostic fields. Both conditional branch substitutions and literal changes appear observable to those tests. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5380](evidence/issue-92-pr6b/mutation-full/mutants.json id=5380), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5381 | Mutant 5381 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218. The report marks these variants Survived, while required-field tests assert exact throttle.max and rtt.p99 diagnostic fields. Both conditional branch substitutions and literal changes appear observable to those tests. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5381](evidence/issue-92-pr6b/mutation-full/mutants.json id=5381), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+| 5382 | Mutant 5382 is reported Survived with replacement '""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218. The report marks these variants Survived, while required-field tests assert exact throttle.max and rtt.p99 diagnostic fields. Both conditional branch substitutions and literal changes appear observable to those tests. Without replay, unresolved. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:218](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5382](evidence/issue-92-pr6b/mutation-full/mutants.json id=5382), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:156-179](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 224
+
+Category: missing test. Mutant IDs: 5385, 5386, 5387.
+
+AddProblems chooses the problem row when it exists, otherwise the supplied report row. Current check 20 tests inspect counts/codes but do not assert row fallback or precedence for diagnostics with null versus populated problem rows.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:221-225](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5385/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5385/before-after.diff.gz), [review/replay/mutant-5385/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5385/attempt.json), [review/replay/mutant-5386/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5386/before-after.diff.gz), [review/replay/mutant-5386/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5386/attempt.json), [review/replay/mutant-5387/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5387/before-after.diff.gz), [review/replay/mutant-5387/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5387/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5385 | Mutant 5385 is reported Survived with replacement 'row?? problem.Row' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224. AddProblems chooses the problem row when it exists, otherwise the supplied report row. Current check 20 tests inspect counts/codes but do not assert row fallback or precedence for diagnostics with null versus populated problem rows. Ordinary replay 5385: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5385](evidence/issue-92-pr6b/mutation-full/mutants.json id=5385), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5385/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5385/before-after.diff.gz), [review/replay/mutant-5385/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5385/attempt.json) |
+| 5386 | Mutant 5386 is reported Survived with replacement 'row' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224. AddProblems chooses the problem row when it exists, otherwise the supplied report row. Current check 20 tests inspect counts/codes but do not assert row fallback or precedence for diagnostics with null versus populated problem rows. Ordinary replay 5386: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5386](evidence/issue-92-pr6b/mutation-full/mutants.json id=5386), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5386/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5386/before-after.diff.gz), [review/replay/mutant-5386/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5386/attempt.json) |
+| 5387 | Mutant 5387 is reported Survived with replacement 'problem.Row' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224. AddProblems chooses the problem row when it exists, otherwise the supplied report row. Current check 20 tests inspect counts/codes but do not assert row fallback or precedence for diagnostics with null versus populated problem rows. Ordinary replay 5387: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:224](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5387](evidence/issue-92-pr6b/mutation-full/mutants.json id=5387), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:127-154](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs), [review/replay/mutant-5387/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5387/before-after.diff.gz), [review/replay/mutant-5387/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5387/attempt.json) |
+
+#### Disposition verifyrun-judgement-statisticschecks-cs line 233
+
+Category: missing test. Mutant IDs: 5388.
+
+Check 17 failure tests assert the disposition or propagated structural code. The fault-flag test exercises this Fail path but does not assert the generated check_17_failed diagnostic code.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:227-235](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:47-55](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5388 | Mutant 5388 is reported Survived with replacement '$""' at src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:233. Check 17 failure tests assert the disposition or propagated structural code. The fault-flag test exercises this Fail path but does not assert the generated check_17_failed diagnostic code. | [src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs:233](../../src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs), [.artifacts/issue-92-pr6b/mutation-full/mutants.json id=5388](evidence/issue-92-pr6b/mutation-full/mutants.json id=5388), [tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs:47-55](../../tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs) |
+
+#### Disposition verifyrun-window-consumedrecordbudget-cs line 35
+
+Category: missing test. Mutant IDs: 5523.
+
+Manual source/test review; The exception text changes only. Budget tests assert InputLimitExceededException and unchanged counters, not the exception message (tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-43). Literal missing message assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs:35](../../src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs), [tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-103](../../tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs), [review/replay/mutant-5523/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5523/before-after.diff.gz), [review/replay/mutant-5523/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5523/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5523 | The exception text changes only. Budget tests assert InputLimitExceededException and unchanged counters, not the exception message (tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-43). Literal missing message assertion. Ordinary replay 5523: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs:35](../../src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs), [tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-103](../../tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs), [review/replay/mutant-5523/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5523/before-after.diff.gz), [review/replay/mutant-5523/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5523/attempt.json) |
+
+#### Disposition verifyrun-window-consumedrecordbudget-cs line 45
+
+Category: missing test. Mutant IDs: 5530.
+
+Manual source/test review; The overflow exception text changes only. Tests assert exception type/result for overflow, not its message (tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:100-103). Literal missing message assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs:45](../../src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs), [tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-103](../../tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5530 | The overflow exception text changes only. Tests assert exception type/result for overflow, not its message (tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:100-103). Literal missing message assertion. | [src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs:45](../../src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs), [tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs:21-103](../../tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 11
+
+Category: unresolved. Mutant IDs: 5531, 5532.
+
+Manual source/test review; Both Boolean mutations alter UTF8Encoding throwOnInvalidBytes. Existing invalid UTF-8 cases assert a Check 6 problem field (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86), which appears behaviorally sensitive, but Stryker reports survival. No replay evidence is available, so this is unresolved and not labelled a runner discrepancy. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:11](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5531 | Both Boolean mutations alter UTF8Encoding throwOnInvalidBytes. Existing invalid UTF-8 cases assert a Check 6 problem field (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86), which appears behaviorally sensitive, but Stryker reports survival. No replay evidence is available, so this is unresolved and not labelled a runner discrepancy. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:11](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+| 5532 | Both Boolean mutations alter UTF8Encoding throwOnInvalidBytes. Existing invalid UTF-8 cases assert a Check 6 problem field (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86), which appears behaviorally sensitive, but Stryker reports survival. No replay evidence is available, so this is unresolved and not labelled a runner discrepancy. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:11](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 26
+
+Category: missing test. Mutant IDs: 5544.
+
+Manual source/test review; The diagnostic code string changes. Noncanonical sequence tests assert null sequence and field but not problem Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-64). Literal missing code assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:26](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5544 | The diagnostic code string changes. Noncanonical sequence tests assert null sequence and field but not problem Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-64). Literal missing code assertion. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:26](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 36
+
+Category: missing test. Mutant IDs: 5552, 5553, 5554, 5555, 5556.
+
+Manual source/test review; Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs), [review/replay/mutant-5552/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5552/before-after.diff.gz), [review/replay/mutant-5552/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5552/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5552 | Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. Ordinary replay 5552: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs), [review/replay/mutant-5552/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5552/before-after.diff.gz), [review/replay/mutant-5552/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5552/attempt.json) |
+| 5553 | Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+| 5554 | Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+| 5555 | Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+| 5556 | Variants change missing-versus-duplicate selection and diagnostic strings. Tests cover both conditions but assert only CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing assertions for diagnostic codes. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:36](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 46
+
+Category: missing test. Mutant IDs: 5561.
+
+Manual source/test review; The null-byte diagnostic code changes. Tests cover a null header and assert CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing code assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:46](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5561 | The null-byte diagnostic code changes. Tests cover a null header and assert CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing code assertion. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:46](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 52
+
+Category: missing test. Mutant IDs: 5565.
+
+Manual source/test review; The invalid UTF-8 diagnostic code changes. Tests cover invalid UTF-8 and assert CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing code assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:52](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5565 | The invalid UTF-8 diagnostic code changes. Tests cover invalid UTF-8 and assert CheckNumber and Field, not Code (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-86). Literal missing code assertion. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:52](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-messageidentityreader-cs line 57
+
+Category: missing test. Mutant IDs: 5566.
+
+Manual source/test review; The diagnostic artifact string changes. Reader tests assert CheckNumber and Field but do not assert Artifact (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-97). Literal missing artifact assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:57](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5566 | The diagnostic artifact string changes. Reader tests assert CheckNumber and Field but do not assert Artifact (tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:66-97). Literal missing artifact assertion. | [src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs:57](../../src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs), [tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs:48-97](../../tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs) |
+
+#### Disposition verifyrun-window-runwindow-cs line 22
+
+Category: unresolved. Mutant IDs: 5568.
+
+Manual source/test review; The null end-highs branch substitutes an empty dictionary for a copy of the supplied end highs. RunWindow tests cover unavailable end highs and end-only partitions (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:105-150); the listed mutation appears behaviorally distinguishable but survived. Without replay evidence this is unresolved, not a runner discrepancy. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:22](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5568 | The null end-highs branch substitutes an empty dictionary for a copy of the supplied end highs. RunWindow tests cover unavailable end highs and end-only partitions (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:105-150); the listed mutation appears behaviorally distinguishable but survived. Without replay evidence this is unresolved, not a runner discrepancy. | [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:22](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs) |
+
+#### Disposition verifyrun-window-runwindow-cs line 25
+
+Category: missing test. Mutant IDs: 5573.
+
+Manual source/test review; The start-line execution failure exception text changes. Existing tests assert exception behavior or Check 7 outcomes, not this exception message; no exact message assertion was found. Literal missing message assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:25](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5573 | The start-line execution failure exception text changes. Existing tests assert exception behavior or Check 7 outcomes, not this exception message; no exact message assertion was found. Literal missing message assertion. | [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:25](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs) |
+
+#### Disposition verifyrun-window-runwindow-cs line 28
+
+Category: unresolved. Mutant IDs: 5574.
+
+Manual source/test review; The mutated conjunction changes handling of parse failure/null value. Tests cover failed parses with problems and successful notes (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:18-38, 51-103), but not every ParseResult state combination. ParseResult invariants and runner behavior need proof; unresolved. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:28](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5574 | The mutated conjunction changes handling of parse failure/null value. Tests cover failed parses with problems and successful notes (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:18-38, 51-103), but not every ParseResult state combination. ParseResult invariants and runner behavior need proof; unresolved. | [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:28](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs) |
+
+#### Disposition verifyrun-window-runwindow-cs line 33
+
+Category: unresolved. Mutant IDs: 5580.
+
+Manual source/test review; The mutation suppresses the fallback Check 7 failure for a parse failure with no Problems. The existing unreadable-note tests include parser problems (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-38); they do not establish this empty-problem case. Literal missing input/assertion. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:33](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs), [review/replay/mutant-5580/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5580/before-after.diff.gz), [review/replay/mutant-5580/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5580/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5580 | The mutation suppresses the fallback Check 7 failure for a parse failure with no Problems. The existing unreadable-note tests include parser problems (tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-38); they do not establish this empty-problem case. Literal missing input/assertion. Ordinary replay 5580: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs:33](../../src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs), [tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs:15-150](../../tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs), [review/replay/mutant-5580/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5580/before-after.diff.gz), [review/replay/mutant-5580/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5580/attempt.json) |
+
+#### Disposition verifyrun-window-windowconsumer-cs line 23
+
+Category: unresolved. Mutant IDs: 5638.
+
+Manual source/test review; The statement mutation removes cancellation checking before assignment. Existing tests cover cancellation propagation (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275), but the listed survivor conflicts with that behavioral coverage. Replay is unavailable, so unresolved; do not call runner discrepancy. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:23](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5638 | The statement mutation removes cancellation checking before assignment. Existing tests cover cancellation propagation (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275), but the listed survivor conflicts with that behavioral coverage. Replay is unavailable, so unresolved; do not call runner discrepancy. | [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:23](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs) |
+
+#### Disposition verifyrun-window-windowconsumer-cs line 28
+
+Category: unresolved. Mutant IDs: 5643.
+
+Manual source/test review; The statement mutation removes cancellation checking in the drain loop. Existing tests cover cancellation propagation and deadline polling (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82, 271-275), but the survivor needs replay evidence to explain; unresolved. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:28](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5643 | The statement mutation removes cancellation checking in the drain loop. Existing tests cover cancellation propagation and deadline polling (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82, 271-275), but the survivor needs replay evidence to explain; unresolved. | [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:28](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs) |
+
+#### Disposition verifyrun-window-windowconsumer-cs line 42
+
+Category: unresolved. Mutant IDs: 5661.
+
+Manual source/test review; The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82), but no replay evidence is available to resolve this survived variant; unresolved. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+
+Evidence: [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:42](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [review/replay/mutant-5661/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5661/before-after.diff.gz), [review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json)
+
+| Variant | Review | Evidence |
+| --- | --- | --- |
+| 5661 | The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82), but no replay evidence is available to resolve this survived variant; unresolved. Ordinary replay 5661: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:42](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [review/replay/mutant-5661/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5661/before-after.diff.gz), [review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json) |
+
+### Per-mutant record
+
+Each mutant row links to its source-line disposition. The row preserves the file, span, mutator and replacement from the survivor disposition, and the report status from the extracted mutant inventory.
+
+| Mutant | Line disposition | Report status | File and span | Mutator | Replacement |
+| --- | --- | --- | --- | --- | --- |
+| `1883` | [ProbeGate/ProbeGateEvaluator.cs:39 (missing test)](#disposition-probegate-probegateevaluator-cs-line-39) | Survived | `ProbeGate/ProbeGateEvaluator.cs:39:49-39:101` | String mutation | `""` |
+| `2657` | [VerifyRun/A01/A01EvidenceRecorder.cs:22 (unresolved)](#disposition-verifyrun-a01-a01evidencerecorder-cs-line-22) | Survived | `VerifyRun/A01/A01EvidenceRecorder.cs:22:24-22:84` | Logical mutation | `request.Ledger.IsSuccess \|\| request.Ledger.Value is not null` |
+| `4591` | [VerifyRun/Judgement/BookkeepingChecks.cs:28 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-28) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:28:15-28:99` | Conditional (true) mutation | `(true?CheckResult.Pass(check) :CheckResult.NotEvaluated(check))` |
+| `4595` | [VerifyRun/Judgement/BookkeepingChecks.cs:33 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:33:26-35:90` | Logical mutation | `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null && request.Statistics.Value is not null &&             request.Lifecycle.Value is not null \|\| request.Capabilities.Value is not null` |
+| `4596` | [VerifyRun/Judgement/BookkeepingChecks.cs:33 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:33:26-35:48` | Logical mutation | `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null && request.Statistics.Value is not null \|\|             request.Lifecycle.Value is not null` |
+| `4597` | [VerifyRun/Judgement/BookkeepingChecks.cs:33 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:33:26-34:85` | Logical mutation | `request.Index.Value is not null && request.Manifest.Value is not null &&             request.Ledger.Value is not null \|\| request.Statistics.Value is not null` |
+| `4598` | [VerifyRun/Judgement/BookkeepingChecks.cs:33 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:33:26-34:45` | Logical mutation | `request.Index.Value is not null && request.Manifest.Value is not null \|\|             request.Ledger.Value is not null` |
+| `4599` | [VerifyRun/Judgement/BookkeepingChecks.cs:33 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-33) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:33:26-33:95` | Logical mutation | `request.Index.Value is not null \|\| request.Manifest.Value is not null` |
+| `4608` | [VerifyRun/Judgement/BookkeepingChecks.cs:36 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-36) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:36:71-36:83` | String mutation | `""` |
+| `4612` | [VerifyRun/Judgement/BookkeepingChecks.cs:39 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-39) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:39:40-39:55` | String mutation | `""` |
+| `4618` | [VerifyRun/Judgement/BookkeepingChecks.cs:41 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-41) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:41:67-41:82` | String mutation | `""` |
+| `4619` | [VerifyRun/Judgement/BookkeepingChecks.cs:41 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-41) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:41:90-41:119` | String mutation | `$""` |
+| `4628` | [VerifyRun/Judgement/BookkeepingChecks.cs:47 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-47) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:47:45-47:59` | String mutation | `""` |
+| `4629` | [VerifyRun/Judgement/BookkeepingChecks.cs:47 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-47) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:47:61-47:67` | Arithmetic mutation | `i - 1L` |
+| `4631` | [VerifyRun/Judgement/BookkeepingChecks.cs:48 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-48) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:48:63-48:77` | String mutation | `""` |
+| `4632` | [VerifyRun/Judgement/BookkeepingChecks.cs:48 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-48) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:48:79-48:85` | Arithmetic mutation | `i - 1L` |
+| `4633` | [VerifyRun/Judgement/BookkeepingChecks.cs:48 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-48) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:48:87-48:108` | String mutation | `""` |
+| `4640` | [VerifyRun/Judgement/BookkeepingChecks.cs:52 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-52) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:52:88-52:106` | String mutation | `""` |
+| `4641` | [VerifyRun/Judgement/BookkeepingChecks.cs:52 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-52) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:52:108-52:114` | Arithmetic mutation | `i - 1L` |
+| `4648` | [VerifyRun/Judgement/BookkeepingChecks.cs:54 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-54) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:54:86-54:111` | String mutation | `""` |
+| `4649` | [VerifyRun/Judgement/BookkeepingChecks.cs:54 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-54) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:54:113-54:119` | Arithmetic mutation | `i - 1L` |
+| `4652` | [VerifyRun/Judgement/BookkeepingChecks.cs:55 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-55) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:55:92-55:111` | String mutation | `""` |
+| `4660` | [VerifyRun/Judgement/BookkeepingChecks.cs:59 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-59) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:59:43-59:53` | String mutation | `""` |
+| `4661` | [VerifyRun/Judgement/BookkeepingChecks.cs:59 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-59) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:59:55-59:61` | Arithmetic mutation | `i - 1L` |
+| `4662` | [VerifyRun/Judgement/BookkeepingChecks.cs:59 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-59) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:59:63-59:76` | String mutation | `""` |
+| `4663` | [VerifyRun/Judgement/BookkeepingChecks.cs:60 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-60) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:60:30-60:35` | Boolean mutation | `true` |
+| `4666` | [VerifyRun/Judgement/BookkeepingChecks.cs:66 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-66) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:66:74-66:96` | String mutation | `""` |
+| `4668` | [VerifyRun/Judgement/BookkeepingChecks.cs:67 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-67) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:67:84-67:111` | String mutation | `""` |
+| `4670` | [VerifyRun/Judgement/BookkeepingChecks.cs:68 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-68) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:68:64-68:81` | String mutation | `""` |
+| `4672` | [VerifyRun/Judgement/BookkeepingChecks.cs:69 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-69) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:69:74-69:96` | String mutation | `""` |
+| `4674` | [VerifyRun/Judgement/BookkeepingChecks.cs:70 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-70) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:70:90-70:121` | String mutation | `""` |
+| `4676` | [VerifyRun/Judgement/BookkeepingChecks.cs:71 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-71) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:71:70-71:90` | String mutation | `""` |
+| `4689` | [VerifyRun/Judgement/BookkeepingChecks.cs:94 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-94) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:94:41-94:56` | String mutation | `""` |
+| `4690` | [VerifyRun/Judgement/BookkeepingChecks.cs:94 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-94) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:94:64-94:79` | String mutation | `""` |
+| `4697` | [VerifyRun/Judgement/BookkeepingChecks.cs:100 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-100) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:100:21-100:99` | Statement mutation | `;` |
+| `4698` | [VerifyRun/Judgement/BookkeepingChecks.cs:100 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-100) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:100:45-100:60` | String mutation | `""` |
+| `4699` | [VerifyRun/Judgement/BookkeepingChecks.cs:100 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-100) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:100:68-100:96` | String mutation | `$""` |
+| `4708` | [VerifyRun/Judgement/BookkeepingChecks.cs:110 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:110:21-110:92` | Statement mutation | `;` |
+| `4709` | [VerifyRun/Judgement/BookkeepingChecks.cs:110 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:110:45-110:59` | String mutation | `""` |
+| `4710` | [VerifyRun/Judgement/BookkeepingChecks.cs:110 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:110:61-110:67` | Arithmetic mutation | `i - 1L` |
+| `4711` | [VerifyRun/Judgement/BookkeepingChecks.cs:110 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-110) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:110:69-110:89` | String mutation | `""` |
+| `4719` | [VerifyRun/Judgement/BookkeepingChecks.cs:116 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-116) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:116:17-116:81` | Statement mutation | `;` |
+| `4720` | [VerifyRun/Judgement/BookkeepingChecks.cs:116 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-116) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:116:41-116:55` | String mutation | `""` |
+| `4721` | [VerifyRun/Judgement/BookkeepingChecks.cs:116 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-116) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:116:63-116:78` | String mutation | `""` |
+| `4728` | [VerifyRun/Judgement/BookkeepingChecks.cs:124 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-124) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:124:21-124:99` | Statement mutation | `;` |
+| `4729` | [VerifyRun/Judgement/BookkeepingChecks.cs:124 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-124) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:124:45-124:60` | String mutation | `""` |
+| `4730` | [VerifyRun/Judgement/BookkeepingChecks.cs:124 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-124) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:124:68-124:96` | String mutation | `$""` |
+| `4737` | [VerifyRun/Judgement/BookkeepingChecks.cs:131 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:131:21-131:92` | Statement mutation | `;` |
+| `4738` | [VerifyRun/Judgement/BookkeepingChecks.cs:131 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:131:45-131:59` | String mutation | `""` |
+| `4739` | [VerifyRun/Judgement/BookkeepingChecks.cs:131 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:131:61-131:67` | Arithmetic mutation | `i - 1L` |
+| `4740` | [VerifyRun/Judgement/BookkeepingChecks.cs:131 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-131) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:131:69-131:89` | String mutation | `""` |
+| `4744` | [VerifyRun/Judgement/BookkeepingChecks.cs:135 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-135) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:135:49-135:63` | String mutation | `""` |
+| `4745` | [VerifyRun/Judgement/BookkeepingChecks.cs:135 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-135) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:135:65-135:71` | Arithmetic mutation | `i - 1L` |
+| `4746` | [VerifyRun/Judgement/BookkeepingChecks.cs:135 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-135) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:135:73-135:86` | String mutation | `""` |
+| `4749` | [VerifyRun/Judgement/BookkeepingChecks.cs:137 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-137) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:137:49-137:63` | String mutation | `""` |
+| `4750` | [VerifyRun/Judgement/BookkeepingChecks.cs:137 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-137) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:137:65-137:71` | Arithmetic mutation | `i - 1L` |
+| `4751` | [VerifyRun/Judgement/BookkeepingChecks.cs:137 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-137) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:137:73-137:91` | String mutation | `""` |
+| `4763` | [VerifyRun/Judgement/BookkeepingChecks.cs:151 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-151) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:151:45-151:59` | String mutation | `""` |
+| `4764` | [VerifyRun/Judgement/BookkeepingChecks.cs:151 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-151) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:151:61-151:67` | Arithmetic mutation | `i - 1L` |
+| `4765` | [VerifyRun/Judgement/BookkeepingChecks.cs:151 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-151) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:151:69-151:89` | String mutation | `""` |
+| `4776` | [VerifyRun/Judgement/BookkeepingChecks.cs:163 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-163) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:163:68-163:78` | String mutation | `""` |
+| `4777` | [VerifyRun/Judgement/BookkeepingChecks.cs:163 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-163) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:163:80-163:86` | Arithmetic mutation | `i - 1L` |
+| `4778` | [VerifyRun/Judgement/BookkeepingChecks.cs:163 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-163) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:163:88-163:101` | String mutation | `""` |
+| `4781` | [VerifyRun/Judgement/BookkeepingChecks.cs:164 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-164) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:164:67-164:77` | String mutation | `""` |
+| `4782` | [VerifyRun/Judgement/BookkeepingChecks.cs:164 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-164) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:164:79-164:85` | Arithmetic mutation | `i - 1L` |
+| `4783` | [VerifyRun/Judgement/BookkeepingChecks.cs:164 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-164) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:164:87-164:99` | String mutation | `""` |
+| `4786` | [VerifyRun/Judgement/BookkeepingChecks.cs:165 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-165) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:165:61-165:71` | String mutation | `""` |
+| `4787` | [VerifyRun/Judgement/BookkeepingChecks.cs:165 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-165) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:165:73-165:79` | Arithmetic mutation | `i - 1L` |
+| `4788` | [VerifyRun/Judgement/BookkeepingChecks.cs:165 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-165) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:165:81-165:86` | String mutation | `""` |
+| `4791` | [VerifyRun/Judgement/BookkeepingChecks.cs:166 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-166) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:166:66-166:76` | String mutation | `""` |
+| `4792` | [VerifyRun/Judgement/BookkeepingChecks.cs:166 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-166) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:166:78-166:84` | Arithmetic mutation | `i - 1L` |
+| `4793` | [VerifyRun/Judgement/BookkeepingChecks.cs:166 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-166) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:166:86-166:96` | String mutation | `""` |
+| `4803` | [VerifyRun/Judgement/BookkeepingChecks.cs:169 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-169) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:169:63-169:73` | String mutation | `""` |
+| `4804` | [VerifyRun/Judgement/BookkeepingChecks.cs:169 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-169) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:169:75-169:81` | Arithmetic mutation | `i - 1L` |
+| `4805` | [VerifyRun/Judgement/BookkeepingChecks.cs:169 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-169) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:169:83-169:95` | String mutation | `""` |
+| `4812` | [VerifyRun/Judgement/BookkeepingChecks.cs:173 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-173) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:173:45-173:55` | String mutation | `""` |
+| `4813` | [VerifyRun/Judgement/BookkeepingChecks.cs:173 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-173) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:173:57-173:63` | Arithmetic mutation | `i - 1L` |
+| `4814` | [VerifyRun/Judgement/BookkeepingChecks.cs:173 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-173) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:173:65-173:70` | String mutation | `""` |
+| `4820` | [VerifyRun/Judgement/BookkeepingChecks.cs:175 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-175) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:175:45-175:55` | String mutation | `""` |
+| `4821` | [VerifyRun/Judgement/BookkeepingChecks.cs:175 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-175) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:175:57-175:63` | Arithmetic mutation | `i - 1L` |
+| `4822` | [VerifyRun/Judgement/BookkeepingChecks.cs:175 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-175) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:175:65-175:75` | String mutation | `""` |
+| `4824` | [VerifyRun/Judgement/BookkeepingChecks.cs:182 (missing test)](#disposition-verifyrun-judgement-bookkeepingchecks-cs-line-182) | Survived | `VerifyRun/Judgement/BookkeepingChecks.cs:182:20-182:43` | String mutation | `$""` |
+| `4851` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:18 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-18) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:18:32-18:56` | String mutation | `""` |
+| `4856` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:29 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-29) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:29:28-29:68` | String mutation | `$""` |
+| `4866` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:34 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-34) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:34:26-34:34` | String mutation | `""` |
+| `4874` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:43 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-43) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:43:30-43:41` | String mutation | `""` |
+| `4875` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45 (unresolved)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-45) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45:26-45:62` | Logical mutation | `selectedOverride \|\| observedOverride` |
+| `4881` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:50 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-50) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:50:34-50:57` | String mutation | `""` |
+| `4885` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:55 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-55) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:55:34-55:62` | String mutation | `""` |
+| `4889` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:61 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-61) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:61:13-61:33` | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | `firstField = field` |
+| `4897` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:69 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-69) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:69:71-69:90` | String mutation | `""` |
+| `4898` | [VerifyRun/Judgement/ConfigurationFidelityCheck.cs:70 (missing test)](#disposition-verifyrun-judgement-configurationfidelitycheck-cs-line-70) | Survived | `VerifyRun/Judgement/ConfigurationFidelityCheck.cs:70:9-70:26` | String mutation | `""` |
+| `4899` | [VerifyRun/Judgement/LateWriteChecks.cs:12 (unresolved)](#disposition-verifyrun-judgement-latewritechecks-cs-line-12) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:12:9-12:46` | String mutation | `""` |
+| `4900` | [VerifyRun/Judgement/LateWriteChecks.cs:13 (unresolved)](#disposition-verifyrun-judgement-latewritechecks-cs-line-13) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:13:9-13:48` | String mutation | `""` |
+| `4914` | [VerifyRun/Judgement/LateWriteChecks.cs:26 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-26) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:26:62-26:76` | String mutation | `""` |
+| `4915` | [VerifyRun/Judgement/LateWriteChecks.cs:26 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-26) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:26:78-26:84` | Arithmetic mutation | `i - 1L` |
+| `4916` | [VerifyRun/Judgement/LateWriteChecks.cs:26 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-26) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:26:86-26:97` | String mutation | `""` |
+| `4922` | [VerifyRun/Judgement/LateWriteChecks.cs:29 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-29) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:29:49-29:63` | String mutation | `""` |
+| `4923` | [VerifyRun/Judgement/LateWriteChecks.cs:29 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-29) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:29:65-29:71` | Arithmetic mutation | `i - 1L` |
+| `4924` | [VerifyRun/Judgement/LateWriteChecks.cs:29 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-29) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:29:73-29:93` | String mutation | `""` |
+| `4928` | [VerifyRun/Judgement/LateWriteChecks.cs:35 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-35) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:35:37-35:56` | String mutation | `""` |
+| `4929` | [VerifyRun/Judgement/LateWriteChecks.cs:35 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-35) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:35:64-35:93` | String mutation | `""` |
+| `4937` | [VerifyRun/Judgement/LateWriteChecks.cs:39 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-39) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:39:45-39:60` | String mutation | `""` |
+| `4938` | [VerifyRun/Judgement/LateWriteChecks.cs:39 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-39) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:39:68-39:94` | String mutation | `$""` |
+| `4949` | [VerifyRun/Judgement/LateWriteChecks.cs:46 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-46) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:46:17-46:113` | Logical mutation | `native is null \|\| native.Brokers.Presence != FieldPresence.Value && native.Brokers.Value is null` |
+| `4951` | [VerifyRun/Judgement/LateWriteChecks.cs:46 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-46) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:46:17-46:81` | Logical mutation | `native is null && native.Brokers.Presence != FieldPresence.Value` |
+| `4956` | [VerifyRun/Judgement/LateWriteChecks.cs:48 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-48) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:48:37-48:42` | Boolean mutation | `true` |
+| `4957` | [VerifyRun/Judgement/LateWriteChecks.cs:49 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-49) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:49:17-49:26` | Statement mutation | `;` |
+| `4960` | [VerifyRun/Judgement/LateWriteChecks.cs:53 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-53) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:53:54-53:68` | String mutation | `""` |
+| `4962` | [VerifyRun/Judgement/LateWriteChecks.cs:54 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-54) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:54:58-54:69` | String mutation | `""` |
+| `4964` | [VerifyRun/Judgement/LateWriteChecks.cs:55 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-55) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:55:57-55:65` | String mutation | `""` |
+| `4966` | [VerifyRun/Judgement/LateWriteChecks.cs:56 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-56) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:56:52-56:60` | String mutation | `""` |
+| `4972` | [VerifyRun/Judgement/LateWriteChecks.cs:62 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-62) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:62:50-62:68` | String mutation | `""` |
+| `4973` | [VerifyRun/Judgement/LateWriteChecks.cs:62 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-62) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:62:70-62:76` | Arithmetic mutation | `i - 1L` |
+| `4974` | [VerifyRun/Judgement/LateWriteChecks.cs:62 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-62) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:62:78-62:119` | String mutation | `$""` |
+| `4983` | [VerifyRun/Judgement/LateWriteChecks.cs:71 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-71) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:71:44-71:69` | String mutation | `""` |
+| `4984` | [VerifyRun/Judgement/LateWriteChecks.cs:71 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-71) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:71:71-71:77` | Arithmetic mutation | `i - 1L` |
+| `4985` | [VerifyRun/Judgement/LateWriteChecks.cs:71 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-71) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:71:79-71:89` | String mutation | `""` |
+| `4988` | [VerifyRun/Judgement/LateWriteChecks.cs:77 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-77) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:77:45-77:121` | Logical mutation | `request.Manifest.Value is not null \|\| request.Capabilities.Value is not null` |
+| `4992` | [VerifyRun/Judgement/LateWriteChecks.cs:84 (missing test)](#disposition-verifyrun-judgement-latewritechecks-cs-line-84) | Survived | `VerifyRun/Judgement/LateWriteChecks.cs:84:20-84:43` | String mutation | `$""` |
+| `5014` | [VerifyRun/Judgement/OutcomeClassifier.cs:35 (missing test)](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-35) | Survived | `VerifyRun/Judgement/OutcomeClassifier.cs:35:48-35:57` | Statement mutation | `;` |
+| `5025` | [VerifyRun/Judgement/OutcomeClassifier.cs:38 (equivalent with proof)](#disposition-verifyrun-judgement-outcomeclassifier-cs-line-38) | Survived | `VerifyRun/Judgement/OutcomeClassifier.cs:38:42-38:66` | Equality mutation | `sequence >= maximum.Value` |
+| `5042` | [VerifyRun/Judgement/RunJudgement.cs:67 (missing test)](#disposition-verifyrun-judgement-runjudgement-cs-line-67) | Survived | `VerifyRun/Judgement/RunJudgement.cs:67:13-67:32` | Linq method mutation (Any() to All()) | `request.Reports.All` |
+| `5064` | [VerifyRun/Judgement/RunJudgement.cs:83 (missing test)](#disposition-verifyrun-judgement-runjudgement-cs-line-83) | Survived | `VerifyRun/Judgement/RunJudgement.cs:83:41-83:82` | Linq method mutation (OrderBy() to OrderByDescending()) | `results.Select(r => r.Assessment).OrderByDescending` |
+| `5076` | [VerifyRun/Judgement/RunJudgement.cs:88 (unresolved)](#disposition-verifyrun-judgement-runjudgement-cs-line-88) | Survived | `VerifyRun/Judgement/RunJudgement.cs:88:36-89:72` | Logical mutation | `a.Disposition == AssessmentDisposition.Fail \|\|                 a.Classification == AssessmentClassification.Incomplete` |
+| `5095` | [VerifyRun/Judgement/RunJudgement.cs:107 (unresolved)](#disposition-verifyrun-judgement-runjudgement-cs-line-107) | Survived | `VerifyRun/Judgement/RunJudgement.cs:107:27-107:55` | Linq method mutation (OrderBy() to OrderByDescending()) | `fidelity.Differences.OrderByDescending` |
+| `5102` | [VerifyRun/Judgement/RunJudgement.cs:117 (missing test)](#disposition-verifyrun-judgement-runjudgement-cs-line-117) | Survived | `VerifyRun/Judgement/RunJudgement.cs:117:67-117:112` | String mutation | `""` |
+| `5121` | [VerifyRun/Judgement/StatisticsChecks.cs:22 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-22) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:22:29-22:48` | String mutation | `""` |
+| `5122` | [VerifyRun/Judgement/StatisticsChecks.cs:22 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-22) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:22:56-22:68` | String mutation | `""` |
+| `5129` | [VerifyRun/Judgement/StatisticsChecks.cs:27 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-27) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:27:71-27:89` | String mutation | `""` |
+| `5135` | [VerifyRun/Judgement/StatisticsChecks.cs:35 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-35) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:35:29-35:48` | String mutation | `""` |
+| `5136` | [VerifyRun/Judgement/StatisticsChecks.cs:35 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-35) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:35:56-35:79` | String mutation | `""` |
+| `5140` | [VerifyRun/Judgement/StatisticsChecks.cs:38 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-38) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:38:58-38:77` | String mutation | `""` |
+| `5141` | [VerifyRun/Judgement/StatisticsChecks.cs:38 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-38) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:38:85-38:120` | String mutation | `""` |
+| `5144` | [VerifyRun/Judgement/StatisticsChecks.cs:40 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-40) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:40:33-40:52` | String mutation | `""` |
+| `5145` | [VerifyRun/Judgement/StatisticsChecks.cs:40 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-40) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:40:60-40:111` | String mutation | `""` |
+| `5146` | [VerifyRun/Judgement/StatisticsChecks.cs:43 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-43) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:43:31-43:43` | Equality mutation | `number > 26` |
+| `5147` | [VerifyRun/Judgement/StatisticsChecks.cs:43 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-43) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:43:31-43:43` | Equality mutation | `number < 26` |
+| `5157` | [VerifyRun/Judgement/StatisticsChecks.cs:55 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-55) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:55:38-55:69` | Conditional (true) mutation | `(true?null :0)` |
+| `5167` | [VerifyRun/Judgement/StatisticsChecks.cs:61 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-61) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:61:24-61:34` | Arithmetic mutation | `index - 1L` |
+| `5169` | [VerifyRun/Judgement/StatisticsChecks.cs:63 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-63) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:63:33-63:51` | String mutation | `""` |
+| `5180` | [VerifyRun/Judgement/StatisticsChecks.cs:73 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-73) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:73:40-73:44` | Boolean mutation | `false` |
+| `5181` | [VerifyRun/Judgement/StatisticsChecks.cs:74 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-74) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:74:21-74:52` | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | `firstUnknownTimestamp = index` |
+| `5191` | [VerifyRun/Judgement/StatisticsChecks.cs:83 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-83) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:83:37-83:55` | String mutation | `""` |
+| `5192` | [VerifyRun/Judgement/StatisticsChecks.cs:83 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-83) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:83:62-83:66` | String mutation | `""` |
+| `5201` | [VerifyRun/Judgement/StatisticsChecks.cs:89 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-89) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:89:41-89:59` | String mutation | `""` |
+| `5202` | [VerifyRun/Judgement/StatisticsChecks.cs:89 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-89) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:89:66-89:71` | String mutation | `""` |
+| `5203` | [VerifyRun/Judgement/StatisticsChecks.cs:90 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-90) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:90:21-90:49` | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | `creation = currentCreation` |
+| `5204` | [VerifyRun/Judgement/StatisticsChecks.cs:92 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-92) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:92:43-92:47` | Boolean mutation | `false` |
+| `5212` | [VerifyRun/Judgement/StatisticsChecks.cs:98 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-98) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:98:38-98:42` | Boolean mutation | `false` |
+| `5216` | [VerifyRun/Judgement/StatisticsChecks.cs:102 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-102) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:102:21-102:52` | CoalesceAssignmentExpression to SimpleAssignmentExpression mutation | `firstUnknownTimestamp = index` |
+| `5219` | [VerifyRun/Judgement/StatisticsChecks.cs:108 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-108) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:108:87-108:91` | Boolean mutation | `false` |
+| `5220` | [VerifyRun/Judgement/StatisticsChecks.cs:109 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-109) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:109:17-109:38` | Statement mutation | `;` |
+| `5221` | [VerifyRun/Judgement/StatisticsChecks.cs:110 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-110) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:110:17-110:26` | Statement mutation | `;` |
+| `5224` | [VerifyRun/Judgement/StatisticsChecks.cs:118 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-118) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:118:17-118:77` | Statement mutation | `;` |
+| `5225` | [VerifyRun/Judgement/StatisticsChecks.cs:118 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-118) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:118:69-118:75` | String mutation | `""` |
+| `5226` | [VerifyRun/Judgement/StatisticsChecks.cs:119 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-119) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:119:17-119:81` | Statement mutation | `;` |
+| `5227` | [VerifyRun/Judgement/StatisticsChecks.cs:119 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-119) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:119:71-119:79` | String mutation | `""` |
+| `5229` | [VerifyRun/Judgement/StatisticsChecks.cs:120 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-120) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:120:71-120:79` | String mutation | `""` |
+| `5230` | [VerifyRun/Judgement/StatisticsChecks.cs:121 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-121) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:121:17-121:79` | Statement mutation | `;` |
+| `5231` | [VerifyRun/Judgement/StatisticsChecks.cs:121 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-121) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:121:70-121:77` | String mutation | `""` |
+| `5233` | [VerifyRun/Judgement/StatisticsChecks.cs:124 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-124) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:124:21-124:74` | Statement mutation | `;` |
+| `5236` | [VerifyRun/Judgement/StatisticsChecks.cs:125 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-125) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:125:87-125:91` | Boolean mutation | `false` |
+| `5237` | [VerifyRun/Judgement/StatisticsChecks.cs:125 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-125) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:125:93-125:102` | Statement mutation | `;` |
+| `5243` | [VerifyRun/Judgement/StatisticsChecks.cs:127 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-127) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:127:41-127:59` | String mutation | `""` |
+| `5244` | [VerifyRun/Judgement/StatisticsChecks.cs:127 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-127) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:127:66-127:90` | String mutation | `$""` |
+| `5245` | [VerifyRun/Judgement/StatisticsChecks.cs:130 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-130) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:130:17-130:97` | Statement mutation | `;` |
+| `5246` | [VerifyRun/Judgement/StatisticsChecks.cs:130 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-130) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:130:70-130:80` | String mutation | `""` |
+| `5248` | [VerifyRun/Judgement/StatisticsChecks.cs:131 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-131) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:131:17-131:98` | Statement mutation | `;` |
+| `5249` | [VerifyRun/Judgement/StatisticsChecks.cs:131 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-131) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:131:75-131:80` | String mutation | `""` |
+| `5260` | [VerifyRun/Judgement/StatisticsChecks.cs:136 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-136) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:136:58-136:62` | Boolean mutation | `false` |
+| `5262` | [VerifyRun/Judgement/StatisticsChecks.cs:139 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-139) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:139:54-139:58` | Boolean mutation | `false` |
+| `5267` | [VerifyRun/Judgement/StatisticsChecks.cs:143 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-143) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:143:33-143:52` | String mutation | `""` |
+| `5268` | [VerifyRun/Judgement/StatisticsChecks.cs:143 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-143) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:143:60-143:99` | String mutation | `""` |
+| `5276` | [VerifyRun/Judgement/StatisticsChecks.cs:147 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-147) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:147:46-147:65` | Linq method mutation (Any() to All()) | `request.Reports.All` |
+| `5282` | [VerifyRun/Judgement/StatisticsChecks.cs:149 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-149) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:149:38-149:56` | String mutation | `""` |
+| `5283` | [VerifyRun/Judgement/StatisticsChecks.cs:149 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-149) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:149:64-149:74` | String mutation | `""` |
+| `5295` | [VerifyRun/Judgement/StatisticsChecks.cs:156 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-156) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:156:29-156:47` | String mutation | `""` |
+| `5296` | [VerifyRun/Judgement/StatisticsChecks.cs:156 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-156) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:156:55-156:59` | String mutation | `""` |
+| `5297` | [VerifyRun/Judgement/StatisticsChecks.cs:157 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-157) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:157:34-157:38` | Boolean mutation | `false` |
+| `5304` | [VerifyRun/Judgement/StatisticsChecks.cs:165 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-165) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:165:82-165:100` | String mutation | `""` |
+| `5306` | [VerifyRun/Judgement/StatisticsChecks.cs:165 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-165) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:165:114-165:124` | String mutation | `""` |
+| `5307` | [VerifyRun/Judgement/StatisticsChecks.cs:167 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-167) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:167:39-167:43` | Boolean mutation | `false` |
+| `5315` | [VerifyRun/Judgement/StatisticsChecks.cs:174 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-174) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:174:17-174:53` | Logical mutation | `selected is null && selectionUnknown` |
+| `5330` | [VerifyRun/Judgement/StatisticsChecks.cs:188 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-188) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:188:17-188:59` | Statement mutation | `;` |
+| `5338` | [VerifyRun/Judgement/StatisticsChecks.cs:191 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-191) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:191:37-191:55` | String mutation | `""` |
+| `5343` | [VerifyRun/Judgement/StatisticsChecks.cs:194 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-194) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:194:22-194:60` | Statement mutation | `;` |
+| `5350` | [VerifyRun/Judgement/StatisticsChecks.cs:204 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-204) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:204:10-204:24` | String mutation | `""` |
+| `5351` | [VerifyRun/Judgement/StatisticsChecks.cs:204 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-204) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:204:52-204:63` | String mutation | `""` |
+| `5352` | [VerifyRun/Judgement/StatisticsChecks.cs:205 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-205) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:205:10-205:18` | String mutation | `""` |
+| `5353` | [VerifyRun/Judgement/StatisticsChecks.cs:205 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-205) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:205:49-205:57` | String mutation | `""` |
+| `5354` | [VerifyRun/Judgement/StatisticsChecks.cs:205 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-205) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:205:83-205:96` | String mutation | `""` |
+| `5361` | [VerifyRun/Judgement/StatisticsChecks.cs:210 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:210:85-210:157` | Logical mutation | `diagnostic.Row == row \|\| diagnostic.Field == $"brokers.{broker}.{field}"` |
+| `5362` | [VerifyRun/Judgement/StatisticsChecks.cs:210 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:210:85-210:106` | Equality mutation | `diagnostic.Row != row` |
+| `5363` | [VerifyRun/Judgement/StatisticsChecks.cs:210 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:210:110-210:157` | Equality mutation | `diagnostic.Field != $"brokers.{broker}.{field}"` |
+| `5364` | [VerifyRun/Judgement/StatisticsChecks.cs:210 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-210) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:210:130-210:157` | String mutation | `$""` |
+| `5366` | [VerifyRun/Judgement/StatisticsChecks.cs:211 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-211) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:211:24-211:42` | String mutation | `""` |
+| `5367` | [VerifyRun/Judgement/StatisticsChecks.cs:211 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-211) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:211:49-211:76` | String mutation | `$""` |
+| `5369` | [VerifyRun/Judgement/StatisticsChecks.cs:216 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-216) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:216:9-216:106` | Statement mutation | `;` |
+| `5372` | [VerifyRun/Judgement/StatisticsChecks.cs:216 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-216) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:216:98-216:104` | String mutation | `""` |
+| `5373` | [VerifyRun/Judgement/StatisticsChecks.cs:217 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-217) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:217:9-218:62` | Statement mutation | `;` |
+| `5379` | [VerifyRun/Judgement/StatisticsChecks.cs:218 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:218:34-218:59` | Conditional (true) mutation | `(true?".max" :".p99")` |
+| `5380` | [VerifyRun/Judgement/StatisticsChecks.cs:218 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:218:34-218:59` | Conditional (false) mutation | `(false?".max" :".p99")` |
+| `5381` | [VerifyRun/Judgement/StatisticsChecks.cs:218 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:218:44-218:50` | String mutation | `""` |
+| `5382` | [VerifyRun/Judgement/StatisticsChecks.cs:218 (unresolved)](#disposition-verifyrun-judgement-statisticschecks-cs-line-218) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:218:53-218:59` | String mutation | `""` |
+| `5385` | [VerifyRun/Judgement/StatisticsChecks.cs:224 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-224) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:224:102-224:120` | Null coalescing mutation (left to right) | `row?? problem.Row` |
+| `5386` | [VerifyRun/Judgement/StatisticsChecks.cs:224 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-224) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:224:102-224:120` | Null coalescing mutation (remove left) | `row` |
+| `5387` | [VerifyRun/Judgement/StatisticsChecks.cs:224 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-224) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:224:102-224:120` | Null coalescing mutation (remove right) | `problem.Row` |
+| `5388` | [VerifyRun/Judgement/StatisticsChecks.cs:233 (missing test)](#disposition-verifyrun-judgement-statisticschecks-cs-line-233) | Survived | `VerifyRun/Judgement/StatisticsChecks.cs:233:58-233:82` | String mutation | `$""` |
+| `5523` | [VerifyRun/Window/ConsumedRecordBudget.cs:35 (missing test)](#disposition-verifyrun-window-consumedrecordbudget-cs-line-35) | Survived | `VerifyRun/Window/ConsumedRecordBudget.cs:35:51-35:117` | String mutation | `""` |
+| `5530` | [VerifyRun/Window/ConsumedRecordBudget.cs:45 (missing test)](#disposition-verifyrun-window-consumedrecordbudget-cs-line-45) | Survived | `VerifyRun/Window/ConsumedRecordBudget.cs:45:51-45:97` | String mutation | `""` |
+| `5531` | [VerifyRun/Window/MessageIdentityReader.cs:11 (unresolved)](#disposition-verifyrun-window-messageidentityreader-cs-line-11) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:11:59-11:64` | Boolean mutation | `true` |
+| `5532` | [VerifyRun/Window/MessageIdentityReader.cs:11 (unresolved)](#disposition-verifyrun-window-messageidentityreader-cs-line-11) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:11:66-11:70` | Boolean mutation | `false` |
+| `5544` | [VerifyRun/Window/MessageIdentityReader.cs:26 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-26) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:26:51-26:74` | String mutation | `""` |
+| `5552` | [VerifyRun/Window/MessageIdentityReader.cs:36 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:36:40-36:99` | Conditional (true) mutation | `(true?"missing_header" :"duplicate_header")` |
+| `5553` | [VerifyRun/Window/MessageIdentityReader.cs:36 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:36:40-36:99` | Conditional (false) mutation | `(false?"missing_header" :"duplicate_header")` |
+| `5554` | [VerifyRun/Window/MessageIdentityReader.cs:36 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:36:40-36:59` | Equality mutation | `matches.Length != 0` |
+| `5555` | [VerifyRun/Window/MessageIdentityReader.cs:36 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:36:62-36:78` | String mutation | `""` |
+| `5556` | [VerifyRun/Window/MessageIdentityReader.cs:36 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-36) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:36:81-36:99` | String mutation | `""` |
+| `5561` | [VerifyRun/Window/MessageIdentityReader.cs:46 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-46) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:46:41-46:62` | String mutation | `""` |
+| `5565` | [VerifyRun/Window/MessageIdentityReader.cs:52 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-52) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:52:41-52:55` | String mutation | `""` |
+| `5566` | [VerifyRun/Window/MessageIdentityReader.cs:57 (missing test)](#disposition-verifyrun-window-messageidentityreader-cs-line-57) | Survived | `VerifyRun/Window/MessageIdentityReader.cs:57:89-57:99` | String mutation | `""` |
+| `5568` | [VerifyRun/Window/RunWindow.cs:22 (unresolved)](#disposition-verifyrun-window-runwindow-cs-line-22) | Survived | `VerifyRun/Window/RunWindow.cs:22:55-23:80` | Conditional (true) mutation | `(true?new Dictionary<int, long>() :new Dictionary<int, long>(endHighs))` |
+| `5573` | [VerifyRun/Window/RunWindow.cs:25 (missing test)](#disposition-verifyrun-window-runwindow-cs-line-25) | Survived | `VerifyRun/Window/RunWindow.cs:25:49-25:97` | String mutation | `""` |
+| `5574` | [VerifyRun/Window/RunWindow.cs:28 (unresolved)](#disposition-verifyrun-window-runwindow-cs-line-28) | Survived | `VerifyRun/Window/RunWindow.cs:28:13-28:55` | Logical mutation | `!parsedStartNote.IsSuccess && note is null` |
+| `5580` | [VerifyRun/Window/RunWindow.cs:33 (unresolved)](#disposition-verifyrun-window-runwindow-cs-line-33) | Survived | `VerifyRun/Window/RunWindow.cs:33:46-33:92` | Conditional (false) mutation | `(false?[Failure(7)] :failures)` |
+| `5638` | [VerifyRun/Window/WindowConsumer.cs:23 (unresolved)](#disposition-verifyrun-window-windowconsumer-cs-line-23) | Survived | `VerifyRun/Window/WindowConsumer.cs:23:13-23:62` | Statement mutation | `;` |
+| `5643` | [VerifyRun/Window/WindowConsumer.cs:28 (unresolved)](#disposition-verifyrun-window-windowconsumer-cs-line-28) | Survived | `VerifyRun/Window/WindowConsumer.cs:28:17-28:66` | Statement mutation | `;` |
+| `5661` | [VerifyRun/Window/WindowConsumer.cs:42 (unresolved)](#disposition-verifyrun-window-windowconsumer-cs-line-42) | Survived | `VerifyRun/Window/WindowConsumer.cs:42:47-42:68` | Equality mutation | `pollSlice <= remaining` |
+
+### Replay evidence
+
+Replay selection covers a graph with 229 survivors, 12 files, 14 mutators and 47 file-mutator edges. Selection limits and IDs are retained in [selection.json](evidence/issue-92-pr6b/review/replay/selection.json).
+
+| Mutant | Report status | Replay classification | Child commands and outcomes | Evidence |
+| --- | --- | --- | --- | --- |
+| `1839` | Killed | assertion-failure; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 2; controller exit 1 (assertion-failure) | [evidence/issue-92-pr6b/review/replay/mutant-1839/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1839/attempt.json) |
+| `1883` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json) |
+| `2651` | Killed | assertion-failure; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 2; controller exit 1 (assertion-failure) | [evidence/issue-92-pr6b/review/replay/mutant-2651/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-2651/attempt.json) |
+| `2657` | Survived | compile-failure; comparison incomplete; disagreement: not comparable | build: child exit 1; controller exit 1 (compile-failure) | [evidence/issue-92-pr6b/review/replay/mutant-2657/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-2657/attempt.json) |
+| `4585` | Killed | compile-failure; comparison incomplete; disagreement: not comparable | build: child exit 1; controller exit 1 (compile-failure) | [evidence/issue-92-pr6b/review/replay/mutant-4585/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4585/attempt.json) |
+| `4629` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-4629/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4629/attempt.json) |
+| `4826` | Killed | assertion-failure; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 2; controller exit 1 (assertion-failure) | [evidence/issue-92-pr6b/review/replay/mutant-4826/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4826/attempt.json) |
+| `4889` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-4889/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4889/attempt.json) |
+| `4956` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-4956/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-4956/attempt.json) |
+| `5014` | Survived | compile-failure; comparison incomplete; disagreement: not comparable | build: child exit 1; controller exit 1 (compile-failure) | [evidence/issue-92-pr6b/review/replay/mutant-5014/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5014/attempt.json) |
+| `5064` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5064/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5064/attempt.json) |
+| `5276` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5276/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5276/attempt.json) |
+| `5385` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5385/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5385/attempt.json) |
+| `5386` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5386/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5386/attempt.json) |
+| `5387` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5387/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5387/attempt.json) |
+| `5523` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5523/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5523/attempt.json) |
+| `5552` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5552/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5552/attempt.json) |
+| `5580` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5580/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5580/attempt.json) |
+| `5661` | Survived | tests-passed; comparison complete; disagreement: False | build: child exit 0; controller exit 0 (command-passed); test: child exit 0; controller exit 0 (tests-passed) | [evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json) |
+
+Baseline replay control:
+
+| Child | Child exit | Controller exit | Classification | Evidence |
+| --- | --- | --- | --- | --- |
+| restore-and-build | 0 | 0 | not recorded | [evidence/issue-92-pr6b/review/replay/baseline-control/restore-build/controller.json](evidence/issue-92-pr6b/review/replay/baseline-control/restore-build/controller.json) |
+| test | 0 | 0 | tests-passed | [evidence/issue-92-pr6b/review/replay/baseline-control/test/controller.json](evidence/issue-92-pr6b/review/replay/baseline-control/test/controller.json) |
+
+Replay comparison summary: 16 comparisons complete; 0 disagreements among those completed comparisons; 3 attempts incomplete. This is not an all-mutant comparison.
+
+The replay ledger preserves report status, observed classification, runner-comparison completeness and any disagreement as separate fields. Compile-failure and incomplete rows do not establish that the mutant is equivalent or repaired.
+The [orchestration receipt](evidence/issue-92-pr6b/review/replay/invocation.json) did not capture the outer process exit code. Completion is recorded by the replay result and the individual controller receipts; no observed outer exit code is claimed.
+
+### Warning and diagnostic record
+
+The retained full log has 23 warning lines: {"compilation":1,"coverage relay":19,"framework discovery":2,"preview runner":1}. Observed runner labels were `["MtpRunner-0","MtpRunner-1","MtpRunner-2","MtpRunner-3","MtpRunner-5"]`; they do not establish configured parallelism. The recorded concurrency limit says: Not explicitly recorded; observed runner labels are not a configured concurrency measurement.
+
+The warning set includes the preview-runner warning and one compile warning for out-of-scope `Common/Scenario/FileSystemScenarioSource.cs`. The compile warning is retained as a tool observation and is not silently attributed to the selected mutation scope. The [supplemental log summary](evidence/issue-92-pr6b/mutation-full/log-summary.json), [extraction summary](evidence/issue-92-pr6b/mutation-full/extraction-summary.json), and [full command log](evidence/issue-92-pr6b/mutation-full/command.log.gz) retain the source evidence.
+
+### Accepted threshold and follow-up
+
+The proposal policy is `min(60, (100 * n) // d)`, where n and d are the raw mutation score numerator and denominator from the extracted report: n = 705 (701 Killed + 4 Timeout), d = 934 (701 Killed + 4 Timeout + 229 Survived + 0 NoCoverage). It produced the integer proposal `60`. The displayed percentage (75.48%) is descriptive only. Hari accepted `B = 60` for this exact report in [decision 6282406847](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847), and the accepted number is [recorded on #13](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/13#issuecomment-6282496088).
+No mutant is removed from the raw score for its disposition or replay outcome. CompileError, RuntimeError and Ignored are outside the score denominator under the pinned score formula documented in the historical record.
+Hari accepted the 27 unresolved lines and the pre-test compile failures for IDs 2657, 4585, 5014. These remain incomplete runner comparisons, not agreements. The complete line keys and linked IDs are enumerated in [the historical proposal and risk inventory](evidence/issue-92-pr6b/review/proposal.json); the [accepted decision record](evidence/issue-92-pr6b/threshold-decision.json) retains the authoritative decision and exact accepted risk inventory. The 23 warning lines, missing outer replay exit code and unrecorded full-run concurrency remain visible limitations.
+
+Only `thresholds.break` changes from 0 to 60 after measurement. The [semantic comparison](evidence/issue-92-pr6b/validation/threshold-semantic-diff.json) verifies that every other configuration field and source/test input hash matches the measured inputs, and compares the accepted number against the unrounded raw score. The original measured configuration and its hash remain unchanged in the evidence. This policy edit was not part of the earlier mutation run.
+
+The threshold is a record, not a CI gate. Under [decision item 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847), enforcement waits on [#89](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/89). This pull request changes no workflow.
+
+The 109 missing-test lines (187 mutants) and 27 unresolved lines (41 mutants) belong to [#93](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93), before any live A01 run. This pull request adds no tests and does not settle those gaps by changing their categories.
+
+The historical records report PR 5 at 69.49%, PR 4 at 63.91%, and the PR 3 foundation at 80.71%. See [PR 5 window scope](#pr-5-window-scope), [PR 4 judgement scope](#pr-4-judgement-scope), and [PR 3 measurement evidence](#historical-pr-3-measurement-evidence). PR 5 measures its window scope; PR 4 measures its earlier judgement scope; PR 3 records its foundation scope. Each score retains its own tested input and scope, and none substitutes for PR 6b. The PR 6a record remains under [PR 6a judgement measurement](#pr-6a-judgement-measurement) and is not restated here.
+The PR 6a capped runs produced no completed report or score. PR 6b also uses the newly approved reduced test set, so no historical score is a like-for-like comparison.
+
+### Publication source identity and acceptance
+
+The [publication source manifest](evidence/issue-92-pr6b/publication-source.json) anchors the accepted source inputs to commit `8de8c46bb0541f856861581747cc3bf88da61d65`.
+That source anchor is distinct from the measured commit and from the later evidence-only publication head.
+The final reviewed head is recorded in the pull request and handoff, not embedded in its own committed evidence.
+The [acceptance result](evidence/issue-92-pr6b/acceptance.json) checks the measured report, source hashes, reviewed line links, bounded replay evidence and Hari's accepted threshold/risk decision.
+The [retention manifest](evidence/issue-92-pr6b/retention.json) retains original and compressed hashes, including acceptance output added after the check.
+
 ## PR 6a judgement measurement
 
 Both PR 6a mutation attempts reached their approved elapsed caps before Stryker published a JSON report. Hari's [continuation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6270654438) retains both measurements as incomplete, with no score, and requires no further mutation in PR 6a. PR 6b performs the final full mutation on the final code.

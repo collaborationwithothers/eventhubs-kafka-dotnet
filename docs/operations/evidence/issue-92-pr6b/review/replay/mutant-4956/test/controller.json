@@ -1,0 +1,57 @@
+{
+  "mode": "replay",
+  "invocation_ordinal": 18,
+  "invocation_ledger": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/controller-invocations.json",
+  "mutant_id": "4956",
+  "command": [
+    "dotnet",
+    "test",
+    "--project",
+    "/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/issue-92-replay-tl9n1401/checkout/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "1",
+    "--results-directory",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4956/test-results",
+    "--",
+    "--report-xunit-xml",
+    "--report-xunit-xml-filename",
+    "results.xml"
+  ],
+  "cwd": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/issue-92-replay-tl9n1401/checkout",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true"
+  },
+  "tested_commit": "a2001534d94cd1135b9af53dc0e9d9816b00ce3d",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "56d9b591be5a1977b92a2ae299d142d74d65acabaf0cb70ae3197a990be7672c",
+  "wall_time_cap_seconds": 180.0,
+  "generated_mutant_cap": 10000,
+  "generated_cap_observation_boundary": "Execution is terminated after the tool logs a created count above the cap. The tool may allocate mutants before that log is observed.",
+  "observed_generated_counts": [],
+  "maximum_observed_generated_count": null,
+  "started_utc": "2026-10-20T02:31:20.195960+00:00",
+  "elapsed_seconds": 11.16808091592975,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "not-applicable-non-mutation-mode",
+  "expected_report": null,
+  "expected_xml": [
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4956/test-results/results.xml"
+  ],
+  "process_group": 64078,
+  "finished_utc": "2026-10-20T02:31:31.364357+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": null,
+  "xml_presence": {
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4956/test-results/results.xml": true
+  },
+  "command_log_sha256": "e914d6a7924f0f18a11c4af3f5c274cb775c5596d7d32d184b791c100469a3b5",
+  "execution_evidence_complete": true
+}

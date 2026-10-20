@@ -1,0 +1,16 @@
+{
+  "review_kind": "cold review of the staged preparation diff",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": null,
+  "diff_path": "/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/issue-92-cold-review-h2iyzj79/change.diff",
+  "findings": [
+    {
+      "severity": "P1",
+      "path": "docs/operations/evidence/issue-92-pr6b/accept.py",
+      "line": 306,
+      "finding": "Publication source identity accepts syntactically valid commit and tree hashes without verifying that Git resolves the commit to that tree.",
+      "disposition": "Fixed. Both measured and publication commit identities are resolved as Git commits and their actual trees must match the retained tree hashes. Verified against the real repository with matching, missing-commit and wrong-tree cases."
+    }
+  ]
+}

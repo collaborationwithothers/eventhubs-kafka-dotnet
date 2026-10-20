@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "restore",
+        "Parchwell.slnx",
+        "--locked-mode"
+      ],
+      "returncode": 0,
+      "finished_utc": "2026-10-20T02:29:44.596293+00:00"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "--configuration",
+        "Release",
+        "--no-restore",
+        "-m:1"
+      ],
+      "returncode": 0,
+      "finished_utc": "2026-10-20T02:29:48.235924+00:00"
+    }
+  ],
+  "success": true
+}

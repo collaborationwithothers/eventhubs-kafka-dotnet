@@ -1,0 +1,39 @@
+{
+  "phase": "accepted threshold, before final cold review",
+  "documentation_tests": {
+    "command": [
+      "npm",
+      "run",
+      "test:docs"
+    ],
+    "counts": {
+      "tests": 27,
+      "pass": 27,
+      "fail": 0,
+      "skipped": 0
+    },
+    "exit_code": 0,
+    "log": "publication-docs-tests.log",
+    "sha256": "85bc1d86442ff426a32dce13d9cda5bf446eb1488900e82c49490177d791826a",
+    "basis": "Saved test log and successful child exit check in exec session 63666; that wrapper subsequently failed its scan-warning assertion"
+  },
+  "initial_documentation_scan": {
+    "log": "publication-docs-scan-initial.log",
+    "warning_count": 1,
+    "reason": "The acceptance output had not yet been copied to retained evidence; retained before the final scan"
+  },
+  "final_documentation_scan": {
+    "command": [
+      "npm",
+      "run",
+      "check:docs"
+    ],
+    "started_utc": "2026-10-20T03:18:56.880852+00:00",
+    "finished_utc": "2026-10-20T03:19:02.147923+00:00",
+    "elapsed_seconds": 5.266954875085503,
+    "exit_code": 0,
+    "warning_count": 0,
+    "log": "publication-docs-scan.log",
+    "sha256": "6c7713c963598ca571ee241dc382c4fba20d602f7acd67dca99a012eeadefd87"
+  }
+}

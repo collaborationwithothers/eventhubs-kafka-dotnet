@@ -1,0 +1,45 @@
+{
+  "mutant_id": "4585",
+  "status": "Killed",
+  "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+  "mutator": "Block removal mutation",
+  "span": {
+    "end": {
+      "column": 6,
+      "line": 24
+    },
+    "start": {
+      "column": 5,
+      "line": 12
+    }
+  },
+  "replacement": "{}",
+  "report_status": "Killed",
+  "started_utc": "2026-10-20T02:30:39.891625+00:00",
+  "commands": [
+    {
+      "child": "build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "--configuration",
+        "Release",
+        "--no-restore",
+        "-m:1"
+      ],
+      "started_utc": "2026-10-20T02:30:39.892311+00:00",
+      "finished_utc": "2026-10-20T02:30:41.158240+00:00",
+      "returncode": 1,
+      "controller_receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4585/build/controller.json",
+      "controller_receipt_relative": "review/replay/mutant-4585/build/controller.json",
+      "controller_exit_reason": "command-exit",
+      "classification": "compile-failure"
+    }
+  ],
+  "classification": "compile-failure",
+  "runner_comparison_complete": false,
+  "runner_disagreement": false,
+  "restored_source_sha256": "584e3bb78d221427313e13fa2b76375ca791c5da8fcae10d95f89ba8e2d3b701",
+  "finished_utc": "2026-10-20T02:30:41.159021+00:00"
+}

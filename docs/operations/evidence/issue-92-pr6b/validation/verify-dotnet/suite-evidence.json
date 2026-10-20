@@ -1,0 +1,386 @@
+{
+  "aggregate_test_counts": {
+    "errors": 0,
+    "failed": 0,
+    "not-run": 0,
+    "passed": 2763,
+    "skipped": 0,
+    "total": 2763
+  },
+  "all_test_outcomes_passed": true,
+  "manifests": [
+    {
+      "bytes": 27483,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.ArchitectureTests.json",
+      "sha256": "8982754ca1eaabecdf9dd551795408420dda200f27f030d2745646906dd5610b",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.ArchitectureTests.json"
+    },
+    {
+      "bytes": 18263,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Enrichment.Tests.json",
+      "sha256": "0f33e93c344cf0105089555ac5b0c9e8dfb1a1041f37878eb36281d9621c5e90",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Enrichment.Tests.json"
+    },
+    {
+      "bytes": 14995,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Enrichment.json",
+      "sha256": "9ae5f5f439006be7c5876905bf859263913f718a1e7d07942830f83bba444855",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Enrichment.json"
+    },
+    {
+      "bytes": 52344,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Kafka.Tests.json",
+      "sha256": "41f2d822b8c0a7eceb2668d20c826f0bab2241f63e5f8a59042c7c678a5ab128",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Kafka.Tests.json"
+    },
+    {
+      "bytes": 55830,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Kafka.json",
+      "sha256": "b34ea4ebd309c7f1d441ec45dc0773bb44cc994311211651aaf7ad1e28efb8f3",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Kafka.json"
+    },
+    {
+      "bytes": 40607,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.LoadGen.Tests.json",
+      "sha256": "c5d119a9a75cbdc66babc2e596eee87884898d4bb51747a4bc9204e8b2355b03",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.LoadGen.Tests.json"
+    },
+    {
+      "bytes": 46593,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.LoadGen.json",
+      "sha256": "4c7cd12eb0ab26b820d01cf4a087051d08b7e1c4ad22dac3946fb14ba2f9f919",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.LoadGen.json"
+    },
+    {
+      "bytes": 25782,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Scenarios.Tests.json",
+      "sha256": "477beb1ff491d55dff304c39e6c73eec1ed4c5462cf1d81734b3dcc6c377fdf1",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Scenarios.Tests.json"
+    },
+    {
+      "bytes": 29208,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Scenarios.json",
+      "sha256": "1cddfbab185118730ca1f4712198583ba0c501652c87bd351f4c4d3b5cd6fa96",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Scenarios.json"
+    },
+    {
+      "bytes": 51947,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Verifier.Tests.json",
+      "sha256": "7db1cb5b71b538fa59250a585719004a0c11859580ae8023fca112ba847d02f5",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Verifier.Tests.json"
+    },
+    {
+      "bytes": 61491,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/manifests/Parchwell.Verifier.json",
+      "sha256": "9292c9c3921f53520e81f8ba8e486f42d80bcf9771ae4fb76fafd9197aa60c18",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/manifests/Parchwell.Verifier.json"
+    }
+  ],
+  "projects": {
+    "Parchwell.ArchitectureTests": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 8,
+        "skipped": 0,
+        "total": 8
+      },
+      "files": {
+        "report.log": {
+          "bytes": 57,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.ArchitectureTests/report.log",
+          "sha256": "e6e4a75e26601d8e18e16c9032d846a0109cab51b1570fb6bafd19ed23b52daf",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.ArchitectureTests/report.log"
+        },
+        "results.xml": {
+          "bytes": 6849,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.ArchitectureTests/results.xml",
+          "sha256": "74f8c8fd6fd5b99da418604be65fc09c9f98c60824e4fbbd2ba2bb9e5fc1e882",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.ArchitectureTests/results.xml"
+        },
+        "test.log": {
+          "bytes": 641,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.ArchitectureTests/test.log",
+          "sha256": "b7e1ba72cbdbfed2d87e5f5194dafc7f8d7a8ced07e873d4a0b706c250b41fa3",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.ArchitectureTests/test.log"
+        }
+      },
+      "test_count": 8,
+      "test_results": {
+        "Pass": 8
+      }
+    },
+    "Parchwell.Kafka.Tests": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 306,
+        "skipped": 0,
+        "total": 306
+      },
+      "files": {
+        "report.log": {
+          "bytes": 53,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Kafka.Tests/report.log",
+          "sha256": "ead1dac19d61843d6b5ce939f756591bbf24618c7c2136b35c35f8370121f812",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Kafka.Tests/report.log"
+        },
+        "results.xml": {
+          "bytes": 240041,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Kafka.Tests/results.xml",
+          "sha256": "837c34a75e69c55025afda0679bab8f6d33dc89ddca01d2598607b8debd40b14",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Kafka.Tests/results.xml"
+        },
+        "test.log": {
+          "bytes": 623,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Kafka.Tests/test.log",
+          "sha256": "312dc41c9d9366a1737500d96c2b6b4a7efede4e48b030d3a124f283c18bd438",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Kafka.Tests/test.log"
+        }
+      },
+      "test_count": 306,
+      "test_results": {
+        "Pass": 306
+      }
+    },
+    "Parchwell.LoadGen.Tests": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 262,
+        "skipped": 0,
+        "total": 262
+      },
+      "files": {
+        "report.log": {
+          "bytes": 55,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.LoadGen.Tests/report.log",
+          "sha256": "f47774f5228c92800975598ff5fb4e256656705a72feeb1fc8b51821e501ddef",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.LoadGen.Tests/report.log"
+        },
+        "results.xml": {
+          "bytes": 190374,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.LoadGen.Tests/results.xml",
+          "sha256": "071d12ad5e28664b8a0d28ff65508c79a3f2d2a0001eed2fd5ccec519c177af0",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.LoadGen.Tests/results.xml"
+        },
+        "test.log": {
+          "bytes": 633,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.LoadGen.Tests/test.log",
+          "sha256": "fea7cf2ad3b2a25c29bd9d25120620d458879109110dadd5115a9a5194ba0cbc",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.LoadGen.Tests/test.log"
+        }
+      },
+      "test_count": 262,
+      "test_results": {
+        "Pass": 262
+      }
+    },
+    "Parchwell.Scenarios.Tests": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 94,
+        "skipped": 0,
+        "total": 94
+      },
+      "files": {
+        "report.log": {
+          "bytes": 56,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Scenarios.Tests/report.log",
+          "sha256": "250c000564a59f34db40fe2b140438758c0e839aa5e781d1d565d94d7db9af99",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Scenarios.Tests/report.log"
+        },
+        "results.xml": {
+          "bytes": 73183,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Scenarios.Tests/results.xml",
+          "sha256": "6a00ab4faf82d407b72f70d23a3eff5ede74d7640589305989a860816de704a6",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Scenarios.Tests/results.xml"
+        },
+        "test.log": {
+          "bytes": 633,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Scenarios.Tests/test.log",
+          "sha256": "820a31f2810a466cfa9e5570fb4b7d36fed11f4357e7ef079870f8170bfb7a4f",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Scenarios.Tests/test.log"
+        }
+      },
+      "test_count": 94,
+      "test_results": {
+        "Pass": 94
+      }
+    },
+    "Parchwell.Verifier.Tests": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 2093,
+        "skipped": 0,
+        "total": 2093
+      },
+      "files": {
+        "report.log": {
+          "bytes": 57,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/report.log",
+          "sha256": "1574726a664a6326a079735a38d3207f6c80b2d7710810c9319f011719bdc0da",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Verifier.Tests/report.log"
+        },
+        "results.xml": {
+          "bytes": 1508602,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/results.xml",
+          "sha256": "8860a2bc791b55610312fac7c8ac0445273e2ba5f8d3de2dad88aa6ff5abce88",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Verifier.Tests/results.xml"
+        },
+        "test.log": {
+          "bytes": 640,
+          "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/Parchwell.Verifier.Tests/test.log",
+          "sha256": "ed59e8f32ac63904ecb2fe556fffe8940f4a324b0e387984ee7155de75a6e9cb",
+          "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/Parchwell.Verifier.Tests/test.log"
+        }
+      },
+      "required_host_test_evidence": {
+        "Host.VerifierHostTests": {
+          "passed_cases": 362,
+          "sample_test_names": [
+            "Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_ProbeGateMode_When_Composed_Then_RegistersOneLocalHandler",
+            "Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_PublicationThenHostCleanupFailure_When_RunEnds_Then_ExitsOneAndPreservesOutput(failure: \\\"stop\\\")",
+            "Parchwell.Verifier.Tests.Host.VerifierHostTests.Given_PublicationThenHostCleanupFailure_When_RunEnds_Then_ExitsOneAndPreservesOutput(failure: \\\"dispose\\\")"
+          ],
+          "source_files": [
+            "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs"
+          ],
+          "source_suffix": "Host/VerifierHostTests.cs"
+        },
+        "Host.VerifyRunHandlerTests": {
+          "passed_cases": 84,
+          "sample_test_names": [
+            "Parchwell.Verifier.Tests.Host.VerifyRunHandlerTests.Given_WrongConsumedInstance_When_Verifying_Then_InvalidResultPreservesProducerProvenanceAndOmitsEveryCount",
+            "Parchwell.Verifier.Tests.Host.VerifyRunHandlerTests.Given_CoherentRawSingleDeliveredAttempt_When_Verifying_Then_PublishesSixExactCountsAfterAllCleanupAndReturnsZero",
+            "Parchwell.Verifier.Tests.Host.VerifyRunHandlerTests.Given_EachIndependentLateWriteFailureAndQualifyingThrottle_When_Verifying_Then_PublishesUsableProbeWithoutAuthoritativeCounts(check: 16)"
+          ],
+          "source_files": [
+            "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests/Host/VerifyRunHandlerTests.cs"
+          ],
+          "source_suffix": "Host/VerifyRunHandlerTests.cs"
+        }
+      },
+      "test_count": 2093,
+      "test_results": {
+        "Pass": 2093
+      }
+    }
+  },
+  "provenance": {
+    "command_log": {
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/command.log.gz",
+      "receipt_hash_matches": true,
+      "sha256": "3cfcbdf032222a7713f61976d823e78465d8a1840b7550c3fb4c5e0c1270813d",
+      "uncompressed_bytes": 1665888
+    },
+    "controller_receipt": {
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/controller.json",
+      "sha256": "0474edb8a0da0f3744ddf6e94199e07aeebf2b6917853280db1e456f53a1001d"
+    },
+    "tested_source": {
+      "current_source_inputs_mismatched": [],
+      "current_source_inputs_missing": [],
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/tested-source.json",
+      "recorded_source_input_count": 302,
+      "sha256": "29e0560582e1723c55d04da3de47f08e81ae238f12dfb8219a7940da09c36320",
+      "source_inputs_match_current_worktree": true
+    }
+  },
+  "retention_scope": "Per-project xUnit XML, per-project report/test logs, project manifests, verification logs, and warning-control source/logs only. No spike evidence copied.",
+  "schema_version": 1,
+  "suite": {
+    "command": [
+      "/usr/local/bin/bash",
+      "./scripts/verify-dotnet.sh"
+    ],
+    "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+    "elapsed_seconds": 476.9477926248219,
+    "execution_evidence_complete": true,
+    "exit_code": 0,
+    "exit_reason": "command-exit",
+    "invocation_ordinal": 1,
+    "mode": "suite",
+    "source_inputs_unchanged": true,
+    "termination": null,
+    "tested_commit": "ff29787a6638ab3969d49ead325a4bb477f5c43d",
+    "verification_results_source": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq"
+  },
+  "verification_logs": [
+    {
+      "bytes": 80,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/restore.log",
+      "sha256": "40d104602671164ab3958225da3e1c8cabd55f0251d6df6bc911d9d5a24f44ce",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/restore.log"
+    },
+    {
+      "bytes": 1893,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/build.log",
+      "sha256": "95b158f9a6efd162198e10dba00de49e38860dabd4ecaf28b93799c4f4aeb35d",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/build.log"
+    },
+    {
+      "bytes": 95,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/kafka-documentation.log",
+      "sha256": "ae046bbb6a902c6f1df66489e48811ba8a1e2375ff3136d23b305d7aed4afdf9",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/kafka-documentation.log"
+    },
+    {
+      "bytes": 77,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/scaffolds.log",
+      "sha256": "9924d6cb21ed59916c80739c5620901ec0ca32ebecb1d478eed34985fe127064",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/scaffolds.log"
+    },
+    {
+      "bytes": 502,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/unit-projects.txt",
+      "sha256": "f8c79a07de98a4243726f586ef6e71e5d60a14fc4d41f5d47cd4cef84d038073",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/unit-projects.txt"
+    }
+  ],
+  "warning_control_files": [
+    {
+      "bytes": 70,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/Allowed.cs",
+      "sha256": "5e7470a9aff7c0d4713de0d12c5098fc36c0f5b79da09e2ea37b313b2f4c8ad2",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/Allowed.cs"
+    },
+    {
+      "bytes": 106,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/Forbidden.cs",
+      "sha256": "dea374148d9722511fe1951447f7e97a02f5cadfbfcb03e4bb248d221da44db2",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/Forbidden.cs"
+    },
+    {
+      "bytes": 291,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/WarningControl.csproj",
+      "sha256": "45a4b9db70a31799ef83282436dcf03084be6388483591396e24deb733027469",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/WarningControl.csproj"
+    },
+    {
+      "bytes": 239,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/allowed.log",
+      "sha256": "73cc0fb0305cc6c2e38fc619ea20e781769061ab31c01cf9daa6e4038cc31a08",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/allowed.log"
+    },
+    {
+      "bytes": 682,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/forbidden.log",
+      "sha256": "f2c755ad1f8df9a89f62e9b7b4e6b5c0ece8e3dbf0263944621ef492137ac1b1",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/forbidden.log"
+    },
+    {
+      "bytes": 186,
+      "path": ".artifacts/issue-92-pr6b/validation/verify-dotnet/warning-control/restore.log",
+      "sha256": "239f19fd77dd5ee2476a956aff549c72d07ee742bb89c2813b77772f1dd96185",
+      "source_path": "/private/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/parchwell-dotnet-verification.xQNsjgNq/warning-control/restore.log"
+    }
+  ]
+}

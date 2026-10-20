@@ -1,0 +1,154 @@
+{
+  "phase": "preflight",
+  "telemetry": "outside PR scope under approval 6273196651",
+  "python_bin": "/usr/local/bin/python3",
+  "bash_bin": "/usr/local/bin/bash",
+  "commands": [
+    {
+      "argv": [
+        "sw_vers"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:33.880359+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.020427457988262177,
+      "log": "preflight-00.log"
+    },
+    {
+      "argv": [
+        "uname",
+        "-m"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:33.901227+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.010424750158563256,
+      "log": "preflight-01.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:33.912008+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.23992408299818635,
+      "log": "preflight-02.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "--info"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.152483+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.16991437505930662,
+      "log": "preflight-03.log"
+    },
+    {
+      "argv": [
+        "codex",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.322929+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.13469608407467604,
+      "log": "preflight-04.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.458089+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.00725400005467236,
+      "log": "preflight-05.log"
+    },
+    {
+      "argv": [
+        "docker",
+        "version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.465667+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.030654290923848748,
+      "log": "preflight-06.log"
+    },
+    {
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.496873+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.045471000019460917,
+      "log": "preflight-07.log"
+    },
+    {
+      "argv": [
+        "npm",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.542892+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.25343575002625585,
+      "log": "preflight-08.log"
+    },
+    {
+      "argv": [
+        "/usr/local/bin/bash",
+        "--version"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.796903+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.026307083200663328,
+      "log": "preflight-09.log"
+    },
+    {
+      "argv": [
+        "/usr/local/bin/bash",
+        "-c",
+        "shopt -s globstar nullglob"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.823728+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.018391584046185017,
+      "log": "preflight-10.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "restore",
+        "Parchwell.slnx",
+        "--locked-mode"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T17:56:34.842530+00:00",
+      "exit_code": 1,
+      "elapsed_seconds": 180.9854642918799,
+      "log": "preflight-11.log"
+    }
+  ]
+}

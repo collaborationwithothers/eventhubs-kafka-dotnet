@@ -1,0 +1,23 @@
+{
+  "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847",
+  "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+  "measured_break": 0,
+  "accepted_break": 60,
+  "semantic_change_only": "stryker-config.thresholds.break",
+  "all_other_config_fields_equal": true,
+  "changed_source_inputs": [
+    {
+      "path": "tests/Parchwell.Verifier.Tests/stryker-config.json",
+      "measured_sha256": "ab8155d8269027faebbe082a319bd76bf2c86b3cbc9e993ddc65a6e853d6c68b",
+      "current_sha256": "d6b0b494cecd06fccc04af990e43f02c9aafe36e23759804d6628a9156c6361b"
+    }
+  ],
+  "score_comparison": {
+    "numerator": 705,
+    "denominator": 934,
+    "break": 60,
+    "passes_unrounded_comparison": true
+  },
+  "policy_edit_not_measured_by_earlier_run": true,
+  "ci_enforcement": false
+}
