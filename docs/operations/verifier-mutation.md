@@ -2276,6 +2276,11 @@ The retained full log has 23 warning lines: {"compilation":1,"coverage relay":19
 
 The warning set includes the preview-runner warning and one compile warning for out-of-scope `Common/Scenario/FileSystemScenarioSource.cs`. The compile warning is retained as a tool observation and is not silently attributed to the selected mutation scope. The [supplemental log summary](evidence/issue-92-pr6b/mutation-full/log-summary.json), [extraction summary](evidence/issue-92-pr6b/mutation-full/extraction-summary.json), and [full command log](evidence/issue-92-pr6b/mutation-full/command.log.gz) retain the source evidence.
 
+The extraction summary's `runner_diagnostics.warning_count` is a keyword-filtered subset, not the complete count of lines marked `WRN`.
+Its publication annotation defines that scope and identifies the original unannotated summary.
+The supplemental scan includes the preview-runner and compilation lines that the keyword filter omits.
+Both recorded counts are unchanged; this clarification did not rerun extraction.
+
 ### Accepted threshold and follow-up
 
 The proposal policy is `min(60, (100 * n) // d)`, where n and d are the raw mutation score numerator and denominator from the extracted report: n = 705 (701 Killed + 4 Timeout), d = 934 (701 Killed + 4 Timeout + 229 Survived + 0 NoCoverage). It produced the integer proposal `60`. The displayed percentage (75.48%) is descriptive only. Hari accepted `B = 60` for this exact report in [decision 6282406847](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847), and the accepted number is [recorded on #13](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/13#issuecomment-6282496088).

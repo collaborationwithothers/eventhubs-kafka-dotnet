@@ -134,5 +134,5 @@
     "MtpRunner-5"
   ],
   "concurrency_limit": "Not explicitly recorded; observed runner labels are not a configured concurrency measurement",
-  "relationship_to_extraction": "Supplementary complete WRN-line scan; does not modify one-pass extraction or raw mutant statuses"
+  "relationship_to_extraction": "Complete WRN-tagged scan: 23 lines. The extractor runner_diagnostics.warning_count is a filtered 21-line subset matching 'warning' or 'dubious', or both 'assum' and 'framework' case-insensitively. Source lines 23 (preview-runner warning) and 25 (compile-error warning) are WRN-tagged but do not match that filter. This supplementary scan does not modify one-pass extraction or raw mutant statuses."
 }

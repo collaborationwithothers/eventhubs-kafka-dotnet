@@ -62,6 +62,11 @@ from typing import Any
 
 
 MAX_MUTANTS = 10000
+WARNING_COUNT_SCOPE = {
+    "definition": "Filtered count of lines containing 'warning' or 'dubious', or containing both 'assum' and 'framework'.",
+    "case_sensitive": False,
+    "counts_all_WRN_tagged_lines": False,
+}
 SELECTED_PATTERNS = (
     "VerifyRun/Judgement/*.cs",
     "VerifyRun/Window/*.cs",
@@ -261,7 +266,8 @@ def runner_diagnostics(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any] | 
     candidates = (run_dir / "command.log", run_dir / "command.log.gz")
     path = next((candidate for candidate in candidates if candidate.is_file()), None)
     if path is None:
-        return {"available": False, "warning_count": None, "warnings": []}, None
+        return {"available": False, "warning_count": None,
+                "warning_count_scope": WARNING_COUNT_SCOPE, "warnings": []}, None
     raw = path.read_bytes()
     content = gzip.decompress(raw) if path.name.endswith(".gz") else raw
     warnings = []
@@ -272,7 +278,8 @@ def runner_diagnostics(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any] | 
             warnings.append({"line": index, "category": category, "text": line})
     return {"available": True, "path": str(path), "warning_count": len(warnings),
             "coverage_relay_warning_count": sum(w["category"] == "coverage_relay" for w in warnings),
-            "warnings": warnings}, {"path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "byte_count": len(raw)}
+            "warning_count_scope": WARNING_COUNT_SCOPE, "warnings": warnings}, {
+                "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "byte_count": len(raw)}
 
 
 def reconciliation(report_groups: dict[tuple[str, str, str], int], ordinary_names: list[str],

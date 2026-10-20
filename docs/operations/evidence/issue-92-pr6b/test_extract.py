@@ -55,5 +55,31 @@ class FreshReviewOutputTests(unittest.TestCase):
                 self.assertEqual([], list(run_dir.iterdir()))
 
 
+class RunnerDiagnosticsScopeTests(unittest.TestCase):
+    def test_labels_filtered_warning_count_and_distinguishes_complete_wrn_scan(self) -> None:
+        lines = [
+            "[WRN] Warning term matched",
+            "[WRN] DUBIOUS relay result",
+            "[WRN] ASSUMING selected FRAMEWORK is present",
+            "[WRN] Preview runner is in preview",
+            "[WRN] Unidentified mutation resulted in a compile error",
+        ]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            run_dir = Path(temporary_directory)
+            (run_dir / "command.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+            diagnostics, _ = extract.runner_diagnostics(run_dir)
+
+        complete_wrn_count = sum("[WRN]" in line for line in lines)
+        self.assertEqual(3, diagnostics["warning_count"])
+        self.assertEqual(5, complete_wrn_count)
+        self.assertEqual([1, 2, 3], [warning["line"] for warning in diagnostics["warnings"]])
+        self.assertEqual({
+            "definition": "Filtered count of lines containing 'warning' or 'dubious', or containing both 'assum' and 'framework'.",
+            "case_sensitive": False,
+            "counts_all_WRN_tagged_lines": False,
+        }, diagnostics["warning_count_scope"])
+
+
 if __name__ == "__main__":
     unittest.main()
