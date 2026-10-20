@@ -1,0 +1,4 @@
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/Parchwell.Kafka.Tests.csproj
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/Parchwell.Scenarios.Tests.csproj
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj

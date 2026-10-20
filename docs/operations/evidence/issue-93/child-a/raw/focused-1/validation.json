@@ -1,0 +1,21 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "120s",
+    "dotnet",
+    "msbuild",
+    "scripts/dotnet-verification.proj",
+    "-t:ValidateReport",
+    "-p:Report=/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/focused-1/results.xml",
+    "-p:ExpectedAssembly=Parchwell.Verifier.Tests",
+    "-nologo"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "source_commit": "c4a663bd148991440224efbce05fe34536d1dc5a",
+  "wall_time_cap_seconds": 120,
+  "exit_code": 0,
+  "elapsed_seconds": 1.6481425762176514,
+  "output_log": "validation.log",
+  "output_sha256": "49f9185fa3ed3d3f966e599b75b961385f4bbe88ac26afe318f13b1576265daf"
+}

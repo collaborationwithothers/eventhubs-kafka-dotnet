@@ -1,0 +1,62 @@
+{
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6299789286",
+  "command": [
+    "python3",
+    "-c",
+    "import runpy; controller = runpy.run_path(\"/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-92-pr6b/controller.py\", run_name=\"issue97_approved_controller\"); controller[\"CAPS\"][\"suite\"] = (4, 1800); controller[\"main\"]()",
+    "--mode",
+    "suite",
+    "--repo-root",
+    "/workspace/eventhubs-kafka-dotnet",
+    "--cwd",
+    "/workspace/eventhubs-kafka-dotnet",
+    "--run-dir",
+    "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-4",
+    "--ledger-path",
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-97/controller-invocations.json",
+    "--tested-commit",
+    "c4a663bd148991440224efbce05fe34536d1dc5a",
+    "--seconds",
+    "1800",
+    "--",
+    "bash",
+    "./scripts/verify-dotnet.sh"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "source_commit": "c4a663bd148991440224efbce05fe34536d1dc5a",
+  "controller_source_sha256": "dd596cbc108bea213c33ae170b5eb75fc30a6d0aa838684cef2f5703052b2fe5",
+  "wrapper_sha256": "65440969d894597f45151cb41da7f158382ca1a33193b4221b86cc8952476fa8",
+  "only_runtime_override": {
+    "CAPS.suite": [
+      4,
+      1800
+    ]
+  },
+  "prior_ledger_entries": [
+    {
+      "mode": "suite",
+      "ordinal": 1,
+      "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-1-user-reported.json",
+      "entry_type": "decision_recorded_user_reported_attempt",
+      "raw_files_imported": false,
+      "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/97#issuecomment-6296951009"
+    },
+    {
+      "mode": "suite",
+      "ordinal": 2,
+      "reserved_utc": "2026-10-20T17:28:37.152813+00:00",
+      "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-2/controller.json"
+    },
+    {
+      "mode": "suite",
+      "ordinal": 3,
+      "reserved_utc": "2026-10-20T19:32:18.393122+00:00",
+      "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-a/raw/suite-3/controller.json"
+    }
+  ],
+  "inherited_environment_changes": {
+    "PATH_prepend": "/workspace/.tools/dotnet-10.0.402",
+    "DOTNET_NOLOGO": "1",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1"
+  }
+}

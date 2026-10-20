@@ -1,0 +1,18 @@
+{
+  "tested_commit": "8eac78836921f1327bfc42cac78027d8761ab51e",
+  "suite_exit_code": 2,
+  "source_inputs_unchanged": true,
+  "elapsed_seconds": 494.9295556160014,
+  "original_verification_directory": "/tmp/parchwell-dotnet-verification.l4okHDSr",
+  "retained_copy": "docs/operations/evidence/issue-93/child-a/raw/suite-3/verification",
+  "copy_relationship": "Complete copy of actual printed suite output directory; metadata retained with shutil.copytree/copy2",
+  "verifier_cases": 2143,
+  "verifier_passed": 2142,
+  "verifier_nonpassing": [
+    {
+      "name": "Parchwell.Verifier.Tests.Judgement.StatisticsChecksTests.Given_NativeProblemWithOrWithoutExplicitRow_When_Evaluated_Then_ExplicitRowPrecedesCaptureFallback(problemRow: 7, expectedRow: 7)",
+      "result": "Fail",
+      "failure": "System.ArgumentException : Object of type 'System.Int32' cannot be converted to type 'System.Nullable`1[System.Int64]'.   at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)\n   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)\n--- End of stack trace from previous location ---"
+    }
+  ]
+}

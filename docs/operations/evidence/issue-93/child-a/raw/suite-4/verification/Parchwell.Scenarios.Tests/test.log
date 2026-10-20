@@ -1,0 +1,12 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll (net10.0|x64)
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll (net10.0|x64) passed (700ms)
+
+  In process file artifacts produced:
+    - /tmp/parchwell-dotnet-verification.wR6RgIRK/Parchwell.Scenarios.Tests/results.xml
+
+Test run summary: Passed!
+  total: 94
+  failed: 0
+  succeeded: 94
+  skipped: 0
+  duration: 932ms

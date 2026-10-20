@@ -1,0 +1,83 @@
+{
+  "ExistenceFinding": "yes",
+  "MatrixComplete": true,
+  "IntegrityFailures": [],
+  "Recipes": [
+    {
+      "Retries": 0,
+      "Fault": 0,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 0,
+      "ObservedRate": 0,
+      "PositiveRegressionCandidate": false
+    },
+    {
+      "Retries": 0,
+      "Fault": 1,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    },
+    {
+      "Retries": 0,
+      "Fault": 2,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    },
+    {
+      "Retries": 0,
+      "Fault": 3,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    },
+    {
+      "Retries": 2147483647,
+      "Fault": 0,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 0,
+      "ObservedRate": 0,
+      "PositiveRegressionCandidate": false
+    },
+    {
+      "Retries": 2147483647,
+      "Fault": 1,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    },
+    {
+      "Retries": 2147483647,
+      "Fault": 2,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    },
+    {
+      "Retries": 2147483647,
+      "Fault": 3,
+      "ObservedTrials": 5,
+      "CompletedTrials": 5,
+      "WitnessedPairs": 5,
+      "ObservedRate": 1,
+      "PositiveRegressionCandidate": true
+    }
+  ],
+  "DiagnosticOnly": true,
+  "SyntheticWorkload": true,
+  "AsynchronousDeliveryFailuresInvalidateAuthoritativeRun": true,
+  "IntegritySucceeded": true
+}

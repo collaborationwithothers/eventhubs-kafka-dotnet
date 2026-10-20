@@ -1,0 +1,12 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll (net10.0|x64)
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll (net10.0|x64) passed (2s 869ms)
+
+  In process file artifacts produced:
+    - /tmp/parchwell-dotnet-verification.l4okHDSr/Parchwell.ArchitectureTests/results.xml
+
+Test run summary: Passed!
+  total: 8
+  failed: 0
+  succeeded: 8
+  skipped: 0
+  duration: 3s 196ms
