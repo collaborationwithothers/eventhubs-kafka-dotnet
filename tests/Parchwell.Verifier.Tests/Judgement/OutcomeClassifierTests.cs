@@ -113,4 +113,14 @@ public sealed class OutcomeClassifierTests
 
     private static ConsumedRecord Record(string attempt, string key, long sequence, long offset) =>
         new("synthetic-topic", 0, offset, key, "instance-1", attempt, sequence, []);
+
+    [Fact]
+    public void Given_NullSequenceBetweenKnownSequences_When_Classifying_Then_NullDoesNotChangeMaximum()
+    {
+        // Synthetic records isolate the maximum across a missing sequence.
+        Assert.Equal(new OutcomeCounts(0, 0, 0, 0, 0, 1), OutcomeClassifier.Classify([], [
+            Record("a1", "k", 3, 10),
+            Record("a2", "k", 0, 11) with { Sequence = null },
+            Record("a3", "k", 2, 12)]));
+    }
 }

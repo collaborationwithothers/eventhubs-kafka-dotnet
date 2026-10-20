@@ -1,5 +1,6 @@
 using System.Text;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun.Input;
@@ -26,6 +27,8 @@ public sealed class LateWriteChecksTests
         request = request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success(
             [RecordedEvidence.LedgerRow(delivered: delivered, source: source) with { ErrorCode = errorCode }]) };
         AssertState(LateWriteChecks.Evaluate(request), 12, pass);
+        Assert.Equal(pass ? [] : new[] { new ResultDiagnostic(12, "check_12_failed", "ledger.jsonl", 1, "delivered", null) },
+            LateWriteChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 12).Diagnostics);
     }
 
     [Theory]
@@ -47,6 +50,8 @@ public sealed class LateWriteChecksTests
         };
         request = request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success([row]) };
         AssertState(LateWriteChecks.Evaluate(request), 13, pass);
+        Assert.Equal(pass ? [] : new[] { new ResultDiagnostic(13, "check_13_failed", "ledger.jsonl", 1, "persistence_status", null) },
+            LateWriteChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 13).Diagnostics);
     }
 
     [Fact]
@@ -56,6 +61,8 @@ public sealed class LateWriteChecksTests
         request = request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success(
             [RecordedEvidence.LedgerRow() with { PersistenceStatus = ParsedField<int>.Missing() }]) };
         AssertState(LateWriteChecks.Evaluate(request), 13, false);
+        Assert.Equal([new ResultDiagnostic(13, "check_13_failed", "ledger.jsonl", 1, "persistence_status", null)],
+            LateWriteChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 13).Diagnostics);
     }
 
     [Theory]
@@ -111,6 +118,77 @@ public sealed class LateWriteChecksTests
         from value in new long[] { -1, 0, 1 }
         select new object[] { counter, value, value == 0 };
 
+    [Fact]
+    public void Given_IncompleteGuardCapture_When_Evaluated_Then_DiagnosticNamesCapabilitiesField()
+    {
+        // Synthetic evidence isolates the capabilities completeness guard.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = request with { Capabilities = ParseResult<CapturedCapabilities>.Success(
+            request.Capabilities.Value! with { GuardObservationsComplete = false }) };
+        IReadOnlyList<CheckResult> results = LateWriteChecks.Evaluate(request);
+        AssertState(results, 14, false);
+        Assert.Equal([new ResultDiagnostic(14, "check_14_failed", "capabilities.json", null, "guard_observations_complete", null)],
+            results.Single(r => r.Assessment.CheckNumber == 14).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_UnknownSecondManifestMarker_When_Evaluated_Then_DiagnosticNamesItsIndex()
+    {
+        // Synthetic evidence places an unknown marker after an accepted marker.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = request with { Manifest = ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with
+        {
+            GuardObservations = ["broker_lifecycle_inventory_unproven", "synthetic-unknown"]
+        }) };
+        IReadOnlyList<CheckResult> results = LateWriteChecks.Evaluate(request);
+        AssertState(results, 14, false);
+        Assert.Equal([new ResultDiagnostic(14, "check_14_failed", "manifest.json", null, "guard_observations[1]", null)],
+            results.Single(r => r.Assessment.CheckNumber == 14).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("native_null")]
+    [InlineData("brokers_missing")]
+    [InlineData("brokers_null")]
+    [InlineData("brokers_value_null")]
+    public void Given_UnavailableNativeBrokerEvidence_When_Evaluated_Then_CounterGuardIsNotEvaluated(string variation)
+    {
+        // Synthetic direct-call DTOs include a Value/null map unavailable from normal parsing.
+        ReportAssociation report = RecordedEvidence.Report(100, 50);
+        NativeClientReport native = report.Native.Value!;
+        report = report with { Native = variation == "native_null"
+            ? ParseResult<NativeClientReport>.Failure(new StructuralProblem(21, "missing_input", "native-statistics", null, null, null))
+            : ParseResult<NativeClientReport>.Success(native with
+            {
+                Brokers = variation switch
+                {
+                    "brokers_missing" => ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.Missing(),
+                    "brokers_null" => ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>.Null(),
+                    _ => new ParsedField<IReadOnlyDictionary<string, NativeBrokerReport>>(FieldPresence.Value, null)
+                }
+            }) };
+        IReadOnlyList<CheckResult> results = LateWriteChecks.Evaluate(WithReports(RecordedEvidence.SyntheticRequest(), [report]));
+        AssertState(results, 15, null);
+        Assert.Empty(results.Single(r => r.Assessment.CheckNumber == 15).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("manifest")]
+    [InlineData("capabilities")]
+    public void Given_OneMarkerPrerequisiteMissing_When_Evaluated_Then_FourteenIsNotEvaluated(string artifact)
+    {
+        // Synthetic evidence removes one prerequisite while keeping the other benign.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = artifact == "manifest"
+            ? request with { Manifest = ParseResult<SealedRunManifest>.Failure(
+                new StructuralProblem(2, "missing_input", "manifest.json", null, null, null)) }
+            : request with { Capabilities = ParseResult<CapturedCapabilities>.Failure(
+                new StructuralProblem(17, "missing_input", "capabilities.json", null, null, null)) };
+        IReadOnlyList<CheckResult> results = LateWriteChecks.Evaluate(request);
+        AssertState(results, 14, null);
+        Assert.Empty(results.Single(r => r.Assessment.CheckNumber == 14).Diagnostics);
+    }
+
     [Theory]
     [MemberData(nameof(CounterCases))]
     public void Given_GuardCounterBelowAtOrAboveZero_When_Evaluated_Then_OnlyZeroPasses(string counter, long value, bool pass)
@@ -118,6 +196,15 @@ public sealed class LateWriteChecksTests
         RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(),
             [RecordedEvidence.Report(100, 50, [WithCounter(RecordedEvidence.Broker(), counter, value)])]);
         AssertState(LateWriteChecks.Evaluate(request), 15, pass);
+        string field = counter switch
+        {
+            "req_timeouts" => "brokers.broker-a.req_timeouts",
+            "txretries" => "brokers.broker-a.txretries",
+            "txerrs" => "brokers.broker-a.txerrs",
+            _ => "brokers.broker-a.rxerrs"
+        };
+        Assert.Equal(pass ? [] : new[] { new ResultDiagnostic(15, "check_15_failed", "statistics.jsonl", 1, field, null) },
+            LateWriteChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 15).Diagnostics);
     }
 
     [Theory]
@@ -202,6 +289,8 @@ public sealed class LateWriteChecksTests
         request = request with { Lifecycle = ParseResult<IReadOnlyList<LifecycleEvent>>.Success(
             [new NativeError(1, request.Identity, "synthetic", 0, "synthetic", 99, "error", ParsedField<string>.Null(), error, fatal, "synthetic")]) };
         AssertState(LateWriteChecks.Evaluate(request), 16, pass);
+        Assert.Equal(pass ? [] : new[] { new ResultDiagnostic(16, "check_16_failed", "request-lifecycle.jsonl", 1, "is_error", null) },
+            LateWriteChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 16).Diagnostics);
     }
 
     [Fact]

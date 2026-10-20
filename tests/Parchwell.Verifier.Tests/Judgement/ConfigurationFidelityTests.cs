@@ -56,6 +56,27 @@ public sealed class ConfigurationFidelityTests
         ConfigurationFidelityResult result = Evaluate(selected, captured with { Settings = settings });
         AssertDisposition(result, AssessmentDisposition.Fail);
         Assert.Equal(change == "key_case" ? 2 : 1, result.Differences.Count);
+        string field = change switch
+        {
+            "missing" => "resolved_configuration.settings.request.timeout.ms",
+            "4999" => "resolved_configuration.settings.request.timeout.ms.value",
+            "5001" => "resolved_configuration.settings.request.timeout.ms.value",
+            "extra" => "resolved_configuration.settings.unexpected.setting",
+            "key_case" => "resolved_configuration.settings.REQUEST.TIMEOUT.MS",
+            _ => throw new ArgumentOutOfRangeException(nameof(change))
+        };
+        Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
+        SettingDifference[] expected = change switch
+        {
+            "missing" => [new("request.timeout.ms", "5000", null)],
+            "4999" => [new("request.timeout.ms", "5000", "4999")],
+            "5001" => [new("request.timeout.ms", "5000", "5001")],
+            "extra" => [new("unexpected.setting", null, "5000")],
+            "key_case" => [new("REQUEST.TIMEOUT.MS", null, "5000"), new("request.timeout.ms", "5000", null)],
+            _ => throw new ArgumentOutOfRangeException(nameof(change))
+        };
+        Assert.Equal(expected, result.Differences);
     }
 
     [Theory]
@@ -89,6 +110,24 @@ public sealed class ConfigurationFidelityTests
         };
         captured = Replace(captured, Timeout, setting with { Override = observed });
         AssertDisposition(Evaluate(selected, captured), passes ? AssessmentDisposition.Pass : AssessmentDisposition.Fail);
+        if (!passes)
+        {
+            ConfigurationFidelityResult result = Evaluate(selected, captured);
+            string field = capturedOverride switch
+            {
+                "none" => "resolved_configuration.settings.request.timeout.ms.override",
+                "match" => "resolved_configuration.settings.request.timeout.ms.override",
+                "scenario" => "resolved_configuration.settings.request.timeout.ms.override.scenario_id",
+                "scenario_case" => "resolved_configuration.settings.request.timeout.ms.override.scenario_id",
+                "configuration" => "resolved_configuration.settings.request.timeout.ms.override.configuration_id",
+                "configuration_case" => "resolved_configuration.settings.request.timeout.ms.override.configuration_id",
+                _ => throw new ArgumentOutOfRangeException(nameof(capturedOverride))
+            };
+            Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+                AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
+            SettingDifference[] expected = [new("request.timeout.ms", "5000", "5000")];
+            Assert.Equal(expected, result.Differences);
+        }
     }
 
     [Theory]
@@ -185,6 +224,10 @@ public sealed class ConfigurationFidelityTests
         request = request with { ResolvedProducerConfiguration = selected, Capabilities = ParseResult<CapturedCapabilities>.Success(
             request.Capabilities.Value! with { ResolvedConfiguration = ParsedField<CapturedConfiguration>.Missing() }) };
         AssertDisposition(ConfigurationFidelityCheck.Evaluate(request), AssessmentDisposition.Fail);
+        ConfigurationFidelityResult result = ConfigurationFidelityCheck.Evaluate(request);
+        Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            AssessmentClassification.Invalid, "capabilities.json", null, "resolved_configuration", "check_27_failed", null), result.Assessment);
+        Assert.Empty(result.Differences);
     }
 
     [Fact]
@@ -215,6 +258,19 @@ public sealed class ConfigurationFidelityTests
         AssertDisposition(result, AssessmentDisposition.Fail);
         Assert.Equal(retained, result.Differences.Count);
         Assert.Equal(keys.Take(differenceCount).Order(StringComparer.Ordinal).Take(2), result.Differences.Select(d => d.Setting));
+        string field = differenceCount == 1
+            ? "resolved_configuration.settings.z.unexpected"
+            : "resolved_configuration.settings.a.unexpected";
+        Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
+        SettingDifference[] expected = differenceCount switch
+        {
+            1 => [new("z.unexpected", null, "5000")],
+            2 => [new("a.unexpected", null, "5000"), new("z.unexpected", null, "5000")],
+            3 => [new("a.unexpected", null, "5000"), new("m.unexpected", null, "5000")],
+            _ => throw new ArgumentOutOfRangeException(nameof(differenceCount))
+        };
+        Assert.Equal(expected, result.Differences);
     }
 
     [Fact]

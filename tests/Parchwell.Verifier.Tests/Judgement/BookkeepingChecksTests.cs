@@ -1,5 +1,6 @@
 using System.Text;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun.Input;
@@ -104,6 +105,38 @@ public sealed class BookkeepingChecksTests
         IReadOnlyList<CheckResult> results = BookkeepingChecks.Evaluate(request);
         AssertState(results, 4, false);
         AssertState(results, 5, variation != "duplicate_row");
+        ResultDiagnostic[] expected = variation switch
+        {
+            "missing_failed" =>
+            [
+                new(4, "check_4_failed", "ledger.jsonl", null, "attempt_count", null),
+                new(4, "check_4_failed", "manifest.json", null, "inventory[1].attempt_id", null)
+            ],
+            "duplicate_row" =>
+            [
+                new(4, "check_4_failed", "ledger.jsonl", 2, "attempt.attempt_id", null),
+                new(4, "check_4_failed", "ledger.jsonl", null, "attempt_count", null),
+                new(4, "check_4_failed", "manifest.json", null, "inventory[0].attempt_id", null)
+            ],
+            "extra_row" =>
+            [
+                new(4, "check_4_failed", "ledger.jsonl", null, "attempt_count", null),
+                new(4, "check_4_failed", "ledger.jsonl", 3, "attempt.attempt_id", null)
+            ],
+            "missing_inventory" =>
+            [
+                new(4, "check_4_failed", "manifest.json", null, "attempt_count", null),
+                new(4, "check_4_failed", "ledger.jsonl", 2, "attempt.attempt_id", null)
+            ],
+            "duplicate_inventory" =>
+            [
+                new(4, "check_4_failed", "manifest.json", null, "inventory[1].attempt_id", null),
+                new(4, "check_4_failed", "ledger.jsonl", 1, "attempt.attempt_id", null),
+                new(4, "check_4_failed", "ledger.jsonl", 2, "attempt.attempt_id", null)
+            ],
+            _ => throw new ArgumentOutOfRangeException(nameof(variation))
+        };
+        Assert.Equal(expected, results.Single(r => r.Assessment.CheckNumber == 4).Diagnostics);
     }
 
     [Theory]
@@ -116,6 +149,8 @@ public sealed class BookkeepingChecksTests
         LedgerRow row = request.Ledger.Value![0];
         request = request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success([row with { Attempt = row.Attempt with { Sequence = sequence } }]) };
         AssertState(BookkeepingChecks.Evaluate(request), 4, pass);
+        ResultDiagnostic[] expected = pass ? [] : [new(4, "check_4_failed", "ledger.jsonl", 1, "attempt.sequence", null)];
+        Assert.Equal(expected, BookkeepingChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 4).Diagnostics);
     }
 
     [Theory]
@@ -128,6 +163,8 @@ public sealed class BookkeepingChecksTests
         LedgerRow row = request.Ledger.Value![0];
         request = request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success([row with { Attempt = row.Attempt with { Key = key } }]) };
         AssertState(BookkeepingChecks.Evaluate(request), 4, pass);
+        ResultDiagnostic[] expected = pass ? [] : [new(4, "check_4_failed", "ledger.jsonl", 1, "attempt.key", null)];
+        Assert.Equal(expected, BookkeepingChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 4).Diagnostics);
     }
 
     [Fact]
@@ -182,6 +219,21 @@ public sealed class BookkeepingChecksTests
             Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success([request.Ledger.Value![0], request.Ledger.Value[0]])
         };
         AssertState(BookkeepingChecks.Evaluate(request), 6, false);
+        ResultDiagnostic[] expected = variation switch
+        {
+            "instance" => [new(6, "check_6_failed", "consumed", 1, "instance_id", null)],
+            "attempt" => [new(6, "check_6_failed", "consumed", 1, "attempt_id", null)],
+            "duplicate_instance" => [new(6, "duplicate_header", "consumed", 1, "instance_id", null)],
+            "duplicate_attempt" => [new(6, "duplicate_header", "consumed", 1, "attempt_id", null)],
+            "key_missing" => [new(6, "check_6_failed", "consumed", 1, "key", null)],
+            "sequence_missing" => [new(6, "check_6_failed", "consumed", 1, "sequence", null)],
+            "unknown_attempt" => [new(6, "check_6_failed", "consumed", 1, "attempt_id", null)],
+            "wrong_key" => [new(6, "check_6_failed", "consumed", 1, "key", null)],
+            "wrong_sequence" => [new(6, "check_6_failed", "consumed", 1, "sequence", null)],
+            "ambiguous_ledger" => [new(6, "check_6_failed", "consumed", 1, "attempt_id", null)],
+            _ => throw new ArgumentOutOfRangeException(nameof(variation))
+        };
+        Assert.Equal(expected, BookkeepingChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 6).Diagnostics);
     }
 
     [Fact]
@@ -209,6 +261,58 @@ public sealed class BookkeepingChecksTests
         select new object[] { artifact, field };
 
     [Theory]
+    [InlineData("index")]
+    [InlineData("manifest")]
+    [InlineData("ledger")]
+    [InlineData("statistics")]
+    [InlineData("lifecycle")]
+    [InlineData("capabilities")]
+    public void Given_OneIdentityPrerequisiteMissing_When_Evaluated_Then_CheckThreeIsNotEvaluated(string artifact)
+    {
+        // These synthetic parse failures isolate one prerequisite at a time.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = artifact switch
+        {
+            "index" => request with { Index = ParseResult<ArtifactIndex>.Failure(new StructuralProblem(null, "missing_input", "index.json", null, null, null)) },
+            "manifest" => request with { Manifest = ParseResult<SealedRunManifest>.Failure(new StructuralProblem(2, "missing_input", "manifest.json", null, null, null)) },
+            "ledger" => request with { Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Failure(new StructuralProblem(1, "missing_input", "ledger.jsonl", null, null, null)) },
+            "statistics" => request with { Statistics = ParseResult<IReadOnlyList<StatisticsEnvelope>>.Failure(new StructuralProblem(17, "missing_input", "statistics.jsonl", null, null, null)) },
+            "lifecycle" => request with { Lifecycle = ParseResult<IReadOnlyList<LifecycleEvent>>.Failure(new StructuralProblem(17, "missing_input", "request-lifecycle.jsonl", null, null, null)) },
+            "capabilities" => request with { Capabilities = ParseResult<CapturedCapabilities>.Failure(new StructuralProblem(17, "missing_input", "capabilities.json", null, null, null)) },
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact))
+        };
+        IReadOnlyList<CheckResult> results = BookkeepingChecks.Evaluate(request);
+        AssertState(results, 3, null);
+        Assert.Empty(results.Single(r => r.Assessment.CheckNumber == 3).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_ConsumedInstanceMissing_When_Evaluated_Then_IdentityIsNotEvaluated()
+    {
+        // This synthetic consumed record has no instance identity.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = request with { Records = [request.Records[0] with { InstanceId = null }] };
+        IReadOnlyList<CheckResult> results = BookkeepingChecks.Evaluate(request);
+        AssertState(results, 3, null);
+        Assert.Empty(results.Single(r => r.Assessment.CheckNumber == 3).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Given_ProblemFreeNullBookkeepingValue_When_Evaluated_Then_StructuralCheckIsNotEvaluated(int check)
+    {
+        // These synthetic DTOs have neither a parsed value nor a structural problem.
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        request = check == 1
+            ? request with { Ledger = new ParseResult<IReadOnlyList<LedgerRow>>(null, []) }
+            : request with { Manifest = new ParseResult<SealedRunManifest>(null, []) };
+        IReadOnlyList<CheckResult> results = BookkeepingChecks.Evaluate(request);
+        AssertState(results, check, null);
+        Assert.Empty(results.Single(r => r.Assessment.CheckNumber == check).Diagnostics);
+    }
+
+    [Theory]
     [MemberData(nameof(IdentityCases))]
     public void Given_ArtifactRunIdentityFieldDiffers_When_Evaluated_Then_CheckThreeFails(string artifact, int field)
     {
@@ -225,6 +329,28 @@ public sealed class BookkeepingChecksTests
             _ => throw new ArgumentOutOfRangeException(nameof(artifact))
         };
         AssertState(BookkeepingChecks.Evaluate(request), 3, false);
+        (string diagnosticArtifact, long? row) = artifact switch
+        {
+            "index" => ("index.json", null),
+            "manifest" => ("manifest.json", null),
+            "ledger" => ("ledger.jsonl", 1),
+            "statistics" => ("statistics.jsonl", 1),
+            "lifecycle" => ("request-lifecycle.jsonl", 1),
+            "capabilities" => ("capabilities.json", null),
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact))
+        };
+        string diagnosticField = field switch
+        {
+            0 => "identity.scenario_id",
+            1 => "identity.configuration_id",
+            2 => "identity.run_id",
+            3 => "identity.instance_id",
+            4 => "identity.expected_instance_id",
+            5 => "identity.client_id",
+            _ => throw new ArgumentOutOfRangeException(nameof(field))
+        };
+        ResultDiagnostic[] expected = [new(3, "check_3_failed", diagnosticArtifact, row, diagnosticField, null)];
+        Assert.Equal(expected, BookkeepingChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 3).Diagnostics);
     }
 
     [Theory]
@@ -243,6 +369,14 @@ public sealed class BookkeepingChecksTests
             _ => throw new ArgumentOutOfRangeException(nameof(artifact))
         };
         AssertState(BookkeepingChecks.Evaluate(request), 3, false);
+        ResultDiagnostic[] expected = artifact switch
+        {
+            "inventory" => [new(3, "check_3_failed", "manifest.json", null, "inventory[0].instance_id", null)],
+            "ledger" => [new(3, "check_3_failed", "ledger.jsonl", 1, "attempt.instance_id", null)],
+            "consumed" => [new(3, "check_3_failed", "consumed", 1, "instance_id", null)],
+            _ => throw new ArgumentOutOfRangeException(nameof(artifact))
+        };
+        Assert.Equal(expected, BookkeepingChecks.Evaluate(request).Single(r => r.Assessment.CheckNumber == 3).Diagnostics);
     }
 
     [Theory]
@@ -271,6 +405,8 @@ public sealed class BookkeepingChecksTests
         IReadOnlyList<CheckResult> results = BookkeepingChecks.Evaluate(request);
         AssertState(results, 3, false);
         AssertState(results, 5, false);
+        ResultDiagnostic[] expected = [new(5, "check_5_failed", "ledger.jsonl", 2, "attempt.attempt_id", null)];
+        Assert.Equal(expected, results.Single(r => r.Assessment.CheckNumber == 5).Diagnostics);
     }
 
     [Fact]

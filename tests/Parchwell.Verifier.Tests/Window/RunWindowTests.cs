@@ -151,9 +151,12 @@ public sealed class RunWindowTests
     }
 
     [Fact]
-    public void Given_ExecutionParseFailure_When_Creating_Then_DoesNotConvertToNumberedFailure() =>
-        Assert.Throws<InvalidOperationException>(() => RunWindow.Create(ParseResult<StartLineNote>.ExecutionFailure(
+    public void Given_ExecutionParseFailure_When_Creating_Then_DoesNotConvertToNumberedFailure()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunWindow.Create(ParseResult<StartLineNote>.ExecutionFailure(
             new StructuralProblem(null, "io", "start-line", null, null, null)), Identity));
+        Assert.Equal("The start-line input has an execution failure.", exception.Message);
+    }
 
     [Fact]
     public void Given_ParserPartitionLimit_When_Reading_Then_RemainsExecutionFailure()
