@@ -108,13 +108,16 @@ def selected_report_coverage(
         if raw is None:
             records_match = False
             continue
-        status, file, _location, mutator, _replacement = raw
+        status, file, location, mutator, replacement, source = raw
         statuses[str(status)] += 1
         if (record.get("id", record.get("mutant_id")) is None
                 or str(record.get("id", record.get("mutant_id"))) != mutant_id
                 or record.get("status") != status
                 or record.get("file") != file
-                or record.get("mutatorName") != mutator):
+                or record.get("location") != location
+                or record.get("mutatorName") != mutator
+                or record.get("replacement") != replacement
+                or record.get("source") != source):
             records_match = False
         if status in {"Survived", "NoCoverage"}:
             survivor_files.add(str(file))
@@ -122,6 +125,40 @@ def selected_report_coverage(
         elif status == "Killed":
             killed_ids.add(mutant_id)
     return records_match, survivor_files, survivor_mutators, killed_ids, statuses
+
+
+def replay_attempts_match_report(
+    attempts: Any, report_rows: dict[str, tuple[Any, ...]]
+) -> bool:
+    if not isinstance(attempts, list):
+        return False
+    attempt_ids: list[str] = []
+    matches = True
+    for attempt in attempts:
+        if not isinstance(attempt, dict):
+            matches = False
+            continue
+        raw_id = attempt.get("mutant_id", attempt.get("id"))
+        if raw_id is None:
+            matches = False
+            continue
+        mutant_id = str(raw_id)
+        attempt_ids.append(mutant_id)
+        raw = report_rows.get(mutant_id)
+        if raw is None:
+            matches = False
+            continue
+        status, file, location, mutator, replacement = raw[:5]
+        if (("id" in attempt and str(attempt.get("id")) != mutant_id)
+                or ("mutant_id" in attempt and str(attempt.get("mutant_id")) != mutant_id)
+                or attempt.get("status") != status
+                or attempt.get("file") != file
+                or attempt.get("mutator") != mutator
+                or attempt.get("span") != location
+                or attempt.get("replacement") != replacement
+                or attempt.get("report_status") != status):
+            matches = False
+    return matches and len(attempt_ids) == len(set(attempt_ids))
 
 
 def read_json(path: Path) -> Any:
@@ -335,7 +372,8 @@ def main() -> int:
                         raise EvidenceError(f"duplicate mutant ID in raw report: {mutant_id}")
                     report_status_counts[str(record.get("status"))] += 1
                     report_mutant_rows[mutant_id] = (record.get("status"), normalized_file,
-                        record.get("location"), record.get("mutatorName"), record.get("replacement"))
+                        record.get("location"), record.get("mutatorName"),
+                        record.get("replacement"), metadata.get("source"))
         expected_report_hash = summary.get("report_sha256")
         add_check(checks, outstanding,
                   report_bytes_ok and report_hash == expected_report_hash == controller.get("report_sha256")
@@ -449,7 +487,8 @@ def main() -> int:
             and len(retained_mutant_rows) == len(mutants)
             and retained_status_counts == raw_status_counts
             and all(str(mid) in report_mutant_rows and
-                    (m.get("status"), m.get("file"), m.get("location"), m.get("mutatorName"), m.get("replacement"))
+                    (m.get("status"), m.get("file"), m.get("location"), m.get("mutatorName"),
+                     m.get("replacement"), m.get("source"))
                     == report_mutant_rows[str(mid)] and m.get("report_sha256") == report_hash
                     for mid, m in retained_mutant_rows.items()))
         add_check(checks, outstanding,
@@ -585,6 +624,8 @@ def main() -> int:
                     and command.get("controller_receipt_relative")
                     for command in attempt.get("commands", []))
             for attempt in replay_records)
+        replay_attempts_match = replay_attempts_match_report(
+            replay_records, report_mutant_rows)
         replay_receipt_paths: set[str] = set()
         replay_command_evidence_ok = attempts_well_formed and len(replay_records) == len(selected_ids)
         command_receipt_paths: set[str] = set()
@@ -706,6 +747,7 @@ def main() -> int:
                   len(selected_ids) <= MAX_REPLAY_IDS and selected_ids <= replayed_ids
                   and replayed_ids <= selected_ids and replay_execution_ok and baseline_ok and killed_ok
                   and graph_coverage_ok and attempts_well_formed and baseline_records_ok
+                  and replay_attempts_match
                   and replay_limits.get("max_mutants") == MAX_REPLAY_IDS
                   and replay_limits.get("killed_sample_max") == MAX_KILLED_REPLAYS
                   and replay_limits.get("command_seconds") == 180

@@ -2,8 +2,8 @@
   "artifacts": [
     {
       "path": "accept.py",
-      "sha256": "b7076a2d63d35f69a902177a23e28f4c9433bfc12c2c835921352dac7e568b98",
-      "bytes": 58284
+      "sha256": "a3667382715fdf95790c4b5d7086cd57731ce838f6e97fde40936877ccd477d1",
+      "bytes": 59992
     },
     {
       "path": "acceptance.json",
@@ -1188,8 +1188,8 @@
     },
     {
       "path": "test_accept.py",
-      "sha256": "807f4235786cf79ea6178e9ab11072820de7fdeb7dc3a68b1a84e509d27f7a4c",
-      "bytes": 1356
+      "sha256": "0a1c4c645c8c2e24687f9d58f5772e4706a4d3321767dfdaae5bb8889affcb8a",
+      "bytes": 5164
     },
     {
       "path": "test_extract.py",
@@ -1276,6 +1276,11 @@
       "path": "validation/cold-review-5.json",
       "sha256": "1ba0c6ed05caa31392c1eb971eb844f61fec640823a337510f2a459d2fccaadc",
       "bytes": 1221
+    },
+    {
+      "path": "validation/cold-review-6.json",
+      "sha256": "d8df18ad4113b02a9df06ec92db12cd67245e7f944ea3c46dbf300088746b052",
+      "bytes": 1036
     },
     {
       "path": "validation/cold4-evidence-correction.json",
@@ -1381,6 +1386,121 @@
       "compressed_path": "validation/cold5-fixes-support-tests.log.gz",
       "compressed_sha256": "af2b872e79770ccc932b8263791a3d1e27d8b24134ac4bb74351b8d4993bba9d",
       "compressed_bytes": 237
+    },
+    {
+      "path": "validation/cold6-binding-red-probe.py",
+      "sha256": "2360fa9eeb8d09dd0936aa83d25a2b0130fc7f601be33760525f9fe1097b1f17",
+      "bytes": 5103
+    },
+    {
+      "path": "validation/cold6-binding-red.log",
+      "sha256": "a48a40345a8cbecbedd9c2eea5a47a7986fd36a6d82f69c26d0e15ae0ea38ee7",
+      "bytes": 2827,
+      "compressed_path": "validation/cold6-binding-red.log.gz",
+      "compressed_sha256": "ad83e0ae6b0a3f399b3f5d96e65973752aa1716e0526fa6ed3a77ea2b1b0355f",
+      "compressed_bytes": 398
+    },
+    {
+      "path": "validation/cold6-binding-regression.json",
+      "sha256": "f957b8f5bc471ad0a3a114296ea79f44038bfb090e8ff071ed55323d6e7c0726",
+      "bytes": 1825
+    },
+    {
+      "path": "validation/cold6-binding-worker-green.log",
+      "sha256": "3e5e13e45c5679793abc28956a6df70007e21db734fe0b654ea32d652c337f49",
+      "bytes": 110,
+      "compressed_path": "validation/cold6-binding-worker-green.log.gz",
+      "compressed_sha256": "c0a244e0bb453b5ca27af0f0cc72109cad17132e213b3b9b21a14cc73d7cd4b9",
+      "compressed_bytes": 55
+    },
+    {
+      "path": "validation/cold6-closure-acceptance.log",
+      "sha256": "18775d48c5a4420f07f44783a066cd90e4db971be4155b043680f01ecefd38b7",
+      "bytes": 160,
+      "compressed_path": "validation/cold6-closure-acceptance.log.gz",
+      "compressed_sha256": "b594d9550e3a712ffe07b13bdba4f8c732561fdf847667489bab8d76af7ea1f4",
+      "compressed_bytes": 145
+    },
+    {
+      "path": "validation/cold6-closure-checks.json",
+      "sha256": "0c816252158112ffe2658fd346a2b459921181355aa461df872fbcf72a83b4f5",
+      "bytes": 3657
+    },
+    {
+      "path": "validation/cold6-closure-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressed_path": "validation/cold6-closure-diff-check.log.gz",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "compressed_bytes": 20
+    },
+    {
+      "path": "validation/cold6-closure-docs-scan.log",
+      "sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b",
+      "bytes": 1542,
+      "compressed_path": "validation/cold6-closure-docs-scan.log.gz",
+      "compressed_sha256": "9e6453fca05dc9f64e5ff7f4b58333234fa9037258764efc322c66f34e6b9d58",
+      "compressed_bytes": 475
+    },
+    {
+      "path": "validation/cold6-closure-docs-tests.log",
+      "sha256": "782586a5ef9a2e6c4f7bce9d730384670a8f731c3a6fecc3e5477c78b0cd9313",
+      "bytes": 2489,
+      "compressed_path": "validation/cold6-closure-docs-tests.log.gz",
+      "compressed_sha256": "9272cb05b4df586392384a735ca21ba4f44c0115e7c18164cc07837d9827db72",
+      "compressed_bytes": 1059
+    },
+    {
+      "path": "validation/cold6-closure-prior-acceptance.json",
+      "sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a",
+      "bytes": 14099
+    },
+    {
+      "path": "validation/cold6-closure-support-tests.log",
+      "sha256": "7df5320ac60ab977a72557f8d71b969fdd6f7327b98bb8bba4764cbdc7e4e428",
+      "bytes": 2069,
+      "compressed_path": "validation/cold6-closure-support-tests.log.gz",
+      "compressed_sha256": "d362325f8248f134f877e925ba4ffd41d51757fb04b8dc24c4e0183a9415467a",
+      "compressed_bytes": 399
+    },
+    {
+      "path": "validation/cold6-fixes-checks.json",
+      "sha256": "06b17c2903a2eb20728cba1e306f0849f46d4a5c8ad04f8c51f437972d6ea30c",
+      "bytes": 1987
+    },
+    {
+      "path": "validation/cold6-fixes-docs-scan.log",
+      "sha256": "d222c11957687b7ed284be0219625f743d163ce745f6ec26af07053a59b74b04",
+      "bytes": 1777,
+      "compressed_path": "validation/cold6-fixes-docs-scan.log.gz",
+      "compressed_sha256": "9ba66159d1d52c83a49a4cafdd4a6eac840bdfb36c74f4a5894ed0ab001d60a9",
+      "compressed_bytes": 615
+    },
+    {
+      "path": "validation/cold6-fixes-docs-tests.log",
+      "sha256": "daf53a79b4a2ed7c4dc95560a432fcc5b5939bf96defca331c4a0cfbbc9ab4de",
+      "bytes": 2484,
+      "compressed_path": "validation/cold6-fixes-docs-tests.log.gz",
+      "compressed_sha256": "4c60af7fbe20bdd65bb75a8ba13feba0ba2dca8c5bab006115203261d7e295a3",
+      "compressed_bytes": 1048
+    },
+    {
+      "path": "validation/cold6-fixes-prior-acceptance.json",
+      "sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a",
+      "bytes": 14099
+    },
+    {
+      "path": "validation/cold6-fixes-support-tests.log",
+      "sha256": "afb7984f75d3f2bf520b2de28eb06e5216291372a7c8f3a0ab21d8bdace5e596",
+      "bytes": 2069,
+      "compressed_path": "validation/cold6-fixes-support-tests.log.gz",
+      "compressed_sha256": "586c04f5a8ee0cd807251cddcbcece4f3f40e8bde0260fc1cc8df527b5610425",
+      "compressed_bytes": 399
+    },
+    {
+      "path": "validation/cold6-preparation-correction.json",
+      "sha256": "1cd595e08d9514769275fabe77a3af3e2f981bea112b17d01ec5ac87e61e4209",
+      "bytes": 691
     },
     {
       "path": "validation/compile-mutation.json",
@@ -1749,6 +1869,11 @@
       "compressed_path": "validation/remediation-regression.log.gz",
       "compressed_sha256": "abf837ea5acbbfdd354c2459841fdad4a9f99614440b91ec99b530ce7983d271",
       "compressed_bytes": 163
+    },
+    {
+      "path": "validation/replay-return-code-scopes.json",
+      "sha256": "89c6b1f31c659e153be399fbd79995afd1a6311f539cb361bb1178703e1a5151",
+      "bytes": 2123
     },
     {
       "path": "validation/setup-public-00.log",

@@ -1,0 +1,26 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": "a205b23d86beb824c0aa1e5f4c4f8d0876883633",
+  "diff_sha256": "88a0040af5fd7775660d01bb2124943b23e40fa4c57a58c8ec882009ed87962b",
+  "coverage_complete": true,
+  "unique_paths": 327,
+  "coverage_ledger": "/tmp/issue-92-cold6.9PHCZd/coverage-ledger.md",
+  "result_line": "Findings: 1 at P0 or P1",
+  "findings": [
+    {
+      "severity": "P1",
+      "path": "accept.py",
+      "line": 117,
+      "finding": "Selected replay data and attempt span/replacement are not bound to the raw report's exact mutation."
+    },
+    {
+      "severity": "P2",
+      "path": "review/replay/mutant-1839/attempt.json",
+      "line": 60,
+      "finding": "Returncode process scope is ambiguous; same class in mutants 2651 and 4826. Actual recorded statuses are consistent."
+    }
+  ],
+  "remediation_authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964",
+  "next_review": "Required on corrected candidate before push."
+}

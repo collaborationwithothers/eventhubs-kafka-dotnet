@@ -2313,6 +2313,13 @@ The extractor refuses to overwrite existing plain or compressed human-review out
 The [extraction guard regression tests](evidence/issue-92-pr6b/test_extract.py) use temporary synthetic paths and preserve existing bytes in all four supported cases.
 The measured report was not extracted again for this correction.
 
+The [replay return-code field annotation](evidence/issue-92-pr6b/validation/replay-return-code-scopes.json) distinguishes the two process statuses retained for each command.
+Replay `returncode` is the status of the controller command-line process, which runs and records the wrapped command.
+The linked controller receipt's `exit_code` is the wrapped process status, such as `dotnet test`.
+These can differ; the annotation identifies the differing records without rewriting their observed values.
+Acceptance also binds retained mutant and selected replay source, location and replacement to the raw report, and binds each attempt's mutation metadata to its report record.
+The [acceptance support regression tests](evidence/issue-92-pr6b/test_accept.py) cover matching records and altered replay-driving fields.
+
 ## PR 6a judgement measurement
 
 Both PR 6a mutation attempts reached their approved elapsed caps before Stryker published a JSON report. Hari's [continuation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6270654438) retains both measurements as incomplete, with no score, and requires no further mutation in PR 6a. PR 6b performs the final full mutation on the final code.
