@@ -60,4 +60,25 @@ RETENTION
 
 ## Validation and review
 
-Documentation validation and a fresh cold review are pending. Their results will be linked here. No suite, focused test, discovery, mutation or replay command is needed to retain these existing bytes.
+At source commit `06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e`, the [documentation scan](raw/docs-check.log) exited 0 with no document findings. The [authored diff check](raw/authored-diff-check.log) exited 0. The [complete diff check](raw/full-diff-check.log) exited 2 for generated whitespace in the original raw build outputs; those bytes are intentionally preserved to match the original manifest. [Exact commands and statuses](raw/validation.json) retain that distinction.
+
+Fresh cold review: round 1 completed with no P0, P1 or P2 findings; [record](cold-review.md). The [raw manifest](raw-manifest.json) identifies the retained producer outputs. No suite, focused test, discovery, mutation or replay command ran for this repair.
+
+### Validation command
+
+The following inline command ran from source commit `06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e`. Its Python stdin content is reproduced exactly; the here-document delimiter only supplies that content.
+
+```bash
+python3 - <<'PYVALIDATION'
+import json,subprocess,pathlib
+root=pathlib.Path('docs/operations/evidence/issue-99/raw')
+commands=[('docs-check.log',['timeout','--kill-after=5s','120s','npm','run','check:docs']),('full-diff-check.log',['git','diff','--check','origin/main...HEAD']),('authored-diff-check.log',['git','diff','--check','origin/main...HEAD','--','.',' :(exclude)docs/operations/evidence/**/raw/**'.strip()])]
+source=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+results=[]
+for filename,argv in commands:
+ with (root/filename).open('wb') as output:result=subprocess.run(argv,stdout=output,stderr=subprocess.STDOUT)
+ results.append({'argv':argv,'exit_code':result.returncode,'log':(root/filename).as_posix(),'source_commit':source});print(filename,result.returncode)
+(root/'validation.json').write_text(json.dumps({'commands':results},indent=2)+'\n')
+assert results[0]['exit_code']==0 and results[1]['exit_code']==2 and results[2]['exit_code']==0
+PYVALIDATION
+```

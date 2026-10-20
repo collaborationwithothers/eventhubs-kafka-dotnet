@@ -1,10 +1,34 @@
 {
   "files": [
     {
+      "path": "docs/operations/evidence/issue-99/raw/authored-diff-check.log",
+      "producer": "git diff --check origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit 06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-99/raw/docs-check.log",
+      "producer": "timeout --kill-after=5s 120s npm run check:docs; source commit 06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e",
+      "size_bytes": 1816,
+      "sha256": "6e97b1e5e2c1d2de5c37b96d09792169f16e62d0a7676bda1ff027656033ed31"
+    },
+    {
+      "path": "docs/operations/evidence/issue-99/raw/full-diff-check.log",
+      "producer": "git diff --check origin/main...HEAD; source commit 06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e",
+      "size_bytes": 2442,
+      "sha256": "04b4989601e66345a130192a119d2d1469ad43ce4786030eb085869a17f0ecda"
+    },
+    {
       "path": "docs/operations/evidence/issue-99/raw/retention-check.json",
       "producer": "bash /tmp/issue99-retain-command.sh; full exact script reproduced in docs/operations/evidence/issue-99/retention.md, Exact retention command; source commit 09a70930e471353b97ad07f9560e9734e562294e",
       "size_bytes": 3264,
       "sha256": "86ce40c1e9a35ebdcf0a4e8c47e79dd63ad5603c489b64221485f46f7eaaf2ea"
+    },
+    {
+      "path": "docs/operations/evidence/issue-99/raw/validation.json",
+      "producer": "python3 -; exact stdin script reproduced in docs/operations/evidence/issue-99/retention.md, Validation command; source commit 06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e",
+      "size_bytes": 976,
+      "sha256": "7d07ffe239cea1557f5a1d91968cf0cae057af663f7f187e194235fd15e61c43"
     }
   ]
 }

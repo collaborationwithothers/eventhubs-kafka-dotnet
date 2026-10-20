@@ -1,0 +1,42 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "timeout",
+        "--kill-after=5s",
+        "120s",
+        "npm",
+        "run",
+        "check:docs"
+      ],
+      "exit_code": 0,
+      "log": "docs/operations/evidence/issue-99/raw/docs-check.log",
+      "source_commit": "06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "exit_code": 2,
+      "log": "docs/operations/evidence/issue-99/raw/full-diff-check.log",
+      "source_commit": "06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD",
+        "--",
+        ".",
+        ":(exclude)docs/operations/evidence/**/raw/**"
+      ],
+      "exit_code": 0,
+      "log": "docs/operations/evidence/issue-99/raw/authored-diff-check.log",
+      "source_commit": "06ba3dc8d1cb255d7baebc8f2f327f589cbc3f6e"
+    }
+  ]
+}

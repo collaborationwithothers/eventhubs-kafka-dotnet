@@ -1,0 +1,21 @@
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.AssemblyInfo.cs:22: new blank line at EOF.
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:5: trailing whitespace.
++build_property.TargetPlatformMinVersion = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:6: trailing whitespace.
++build_property.UsingMicrosoftNETSdkWeb = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:7: trailing whitespace.
++build_property.ProjectTypeGuids = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:8: trailing whitespace.
++build_property.InvariantGlobalization = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:9: trailing whitespace.
++build_property.PlatformNeutralAssembly = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:10: trailing whitespace.
++build_property.EnforceExtendedAnalyzerRules = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:11: trailing whitespace.
++build_property.EntryPointFilePath = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:15: trailing whitespace.
++build_property.EnableComHosting = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:16: trailing whitespace.
++build_property.EnableGeneratedComInterfaceComImportInterop = 
+docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/obj/Release/net10.0/WarningControl.GeneratedMSBuildEditorConfig.editorconfig:18: trailing whitespace.
++build_property.EnableCodeStyleSeverity = 
