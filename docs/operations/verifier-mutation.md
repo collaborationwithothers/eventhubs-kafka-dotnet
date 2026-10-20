@@ -264,13 +264,13 @@ Disposition category counts:
 
 Category: missing test. Mutant IDs: 1883.
 
-Manual source/test review; The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). This is a missing assertion; no replay evidence was available. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+Manual source/test review; The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). Ordinary replay 1883 completed: build and tests passed; runner comparison complete=True; disagreement=False. This confirms the reported survival on the ordinary runner and leaves the missing message assertion as a gap. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
 
 Evidence: [src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs:39](../../src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs), [tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235](../../tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs), [review/replay/mutant-1883/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-1883/before-after.diff.gz), [review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json)
 
 | Variant | Review | Evidence |
 | --- | --- | --- |
-| 1883 | The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). This is a missing assertion; no replay evidence was available. Ordinary replay 1883: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs:39](../../src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs), [tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235](../../tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs), [review/replay/mutant-1883/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-1883/before-after.diff.gz), [review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json) |
+| 1883 | The exception text is replaced by an empty string. Existing test asserts InvalidOperationException type, not its message (tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235). This is a missing assertion. Ordinary replay 1883 completed: build and tests passed; runner comparison complete=True; disagreement=False. The replay confirms the reported survival on the ordinary runner. | [src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs:39](../../src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs), [tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs:219-235](../../tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs), [review/replay/mutant-1883/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-1883/before-after.diff.gz), [review/replay/mutant-1883/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-1883/attempt.json) |
 
 #### Disposition verifyrun-a01-a01evidencerecorder-cs line 22
 
@@ -765,13 +765,13 @@ Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck
 
 Category: missing test. Mutant IDs: 4856.
 
-Check 13 tests cover null, missing, PossiblyPersisted and other persistence values. They do not assert the artifact, one-based row number, or persistence_status diagnostic field.
+The setting-key mismatch path constructs the assessment field at ConfigurationFidelityCheck.cs:25-35. Existing effective-setting mismatch tests assert failure and difference count (ConfigurationFidelityTests.cs:43-59), but do not assert the assessment field. The missing assertion is specific to the reported key path.
 
-Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:25-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:43-59](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
 
 | Variant | Review | Evidence |
 | --- | --- | --- |
-| 4856 | Empties the interpolated settings key field path; tests assert outcome and difference count, not assessment field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:27-30](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:31-59](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4856 | Mutant 4856 empties the resolved_configuration.settings.{key} assessment field path. The existing effective-setting mismatch tests assert failure and difference count, but do not assert the assessment field. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:25-35](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:43-59](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
 
 #### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 34
 
@@ -825,13 +825,13 @@ Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck
 
 Category: missing test. Mutant IDs: 4885.
 
-Nonzero txerrs is tested as a check 15 failure, but the test does not assert the exact broker counter field in the diagnostic.
+The configuration_id override-attribution mismatch sets the assessment field at ConfigurationFidelityCheck.cs:52-55. Existing override-attribution cases include a differing configuration ID (ConfigurationFidelityTests.cs:61-91), but assert disposition only and do not assert the assessment field.
 
-Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs)
+Evidence: [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45-55](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs)
 
 | Variant | Review | Evidence |
 | --- | --- | --- |
-| 4885 | Removes the .override.configuration_id diagnostic suffix; tests do not assert this field. | [src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs:51-63](../../src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs), [tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs:109-120](../../tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs) |
+| 4885 | Mutant 4885 removes the .override.configuration_id assessment-field suffix. The existing differing-configuration-ID case asserts failure disposition, but does not assert the assessment field. | [src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45-55](../../src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs), [tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs:61-91](../../tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs) |
 
 #### Disposition verifyrun-judgement-configurationfidelitycheck-cs line 61
 
@@ -1988,13 +1988,13 @@ Evidence: [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:28](../../s
 
 Category: unresolved. Mutant IDs: 5661.
 
-Manual source/test review; The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82), but no replay evidence is available to resolve this survived variant; unresolved. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
+Manual source/test review; The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82). Ordinary replay 5661 completed: build and tests passed; runner comparison complete=True; disagreement=False, confirming the reported survival on the ordinary runner. The retained replay does not establish whether an assertion should distinguish the bound-selection behavior; unresolved. Timing: 71 seconds total from 2026-10-20T02:29:31Z to 2026-10-20T02:30:42Z; 4.18 seconds allocated equally per line, not individual timing. Correction pass: 8 seconds total from 2026-10-20T02:31:13Z to 2026-10-20T02:31:21Z; this is recorded separately from the original review allocation.
 
 Evidence: [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:42](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [review/replay/mutant-5661/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5661/before-after.diff.gz), [review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json)
 
 | Variant | Review | Evidence |
 | --- | --- | --- |
-| 5661 | The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82), but no replay evidence is available to resolve this survived variant; unresolved. Ordinary replay 5661: tests-passed; runner comparison complete=True; disagreement=False. | [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:42](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [review/replay/mutant-5661/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5661/before-after.diff.gz), [review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json) |
+| 5661 | The poll timeout equality mutation changes which bound is selected when pollSlice equals remaining. Deadline tests cover just below, at, and after the deadline (tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82). Ordinary replay 5661 completed: build and tests passed; runner comparison complete=True; disagreement=False, confirming the reported survival on the ordinary runner. The retained replay does not establish whether an assertion should distinguish the bound-selection behavior; unresolved. | [src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs:42](../../src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:70-82](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs:271-275](../../tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs), [review/replay/mutant-5661/before-after.diff](evidence/issue-92-pr6b/review/replay/mutant-5661/before-after.diff.gz), [review/replay/mutant-5661/attempt.json](evidence/issue-92-pr6b/review/replay/mutant-5661/attempt.json) |
 
 ### Per-mutant record
 
@@ -2302,6 +2302,11 @@ The original receipt commit labels remain unchanged; matching input bytes, not e
 The [support regression tests](evidence/issue-92-pr6b/test_accept.py) cover a matching set and a set with one mismatched input hash.
 This support-only correction does not change the measured verifier or its tests and does not rerun the suite, mutation, baseline, discovery or replay commands.
 The [retention manifest](evidence/issue-92-pr6b/retention.json) retains original and compressed hashes, including acceptance output added after the check.
+
+Under Hari's [continued-remediation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964), the ConfigurationFidelity citations and explanations for mutants 4856 and 4885 were corrected against their actual source and tests.
+The replay prose for mutants 1883 and 5661 now states their retained ordinary-runner results, without changing their dispositions.
+Original review timing fields describe the original review and correction pass, not this later evidence correction.
+The elapsed time for this later correction was not recorded.
 
 ## PR 6a judgement measurement
 

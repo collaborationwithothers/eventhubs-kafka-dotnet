@@ -99,8 +99,8 @@
     },
     {
       "path": "review/lines.json",
-      "sha256": "6d90ea1a531fec9450cf97e928f3481b4f0b9a45c762754e9594218b321a8400",
-      "bytes": 290812
+      "sha256": "ebddcc1555896e5ce8388acf5d5317bdb03e0a4d189fc5a669b0e2cb8533e1d5",
+      "bytes": 291910
     },
     {
       "path": "review/proposal.json",
@@ -1261,6 +1261,66 @@
       "path": "validation/cold-review-3.json",
       "sha256": "650f81d07f8fb63993da7f058412483a0b2b776f7b523887fd207515c6f79a26",
       "bytes": 1254
+    },
+    {
+      "path": "validation/cold-review-4.json",
+      "sha256": "79cbb2143906ac36ee77ca8b264e2ec2ff8119be81235d00e08381167836bc18",
+      "bytes": 1138
+    },
+    {
+      "path": "validation/cold4-evidence-correction.json",
+      "sha256": "e9059d5e1bdf96ba93ac0415426bb52086f052f0c2de10473bcbadc405168966",
+      "bytes": 733
+    },
+    {
+      "path": "validation/cold4-fixes-acceptance.log",
+      "sha256": "18775d48c5a4420f07f44783a066cd90e4db971be4155b043680f01ecefd38b7",
+      "bytes": 160,
+      "compressed_path": "validation/cold4-fixes-acceptance.log.gz",
+      "compressed_sha256": "b594d9550e3a712ffe07b13bdba4f8c732561fdf847667489bab8d76af7ea1f4",
+      "compressed_bytes": 145
+    },
+    {
+      "path": "validation/cold4-fixes-checks.json",
+      "sha256": "926f5113f7bbc1a68084f129850e958d39de77134418c5d302e08aa74b0ee642",
+      "bytes": 3651
+    },
+    {
+      "path": "validation/cold4-fixes-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressed_path": "validation/cold4-fixes-diff-check.log.gz",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "compressed_bytes": 20
+    },
+    {
+      "path": "validation/cold4-fixes-docs-scan.log",
+      "sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b",
+      "bytes": 1542,
+      "compressed_path": "validation/cold4-fixes-docs-scan.log.gz",
+      "compressed_sha256": "9e6453fca05dc9f64e5ff7f4b58333234fa9037258764efc322c66f34e6b9d58",
+      "compressed_bytes": 475
+    },
+    {
+      "path": "validation/cold4-fixes-docs-tests.log",
+      "sha256": "4234d058670c1bc0a2b9bf354319b843cd5a0e669130835822166e0d77199328",
+      "bytes": 2482,
+      "compressed_path": "validation/cold4-fixes-docs-tests.log.gz",
+      "compressed_sha256": "bc9514b1071a743623781fa1d35e69f4d513ca73244e50b3794dd5198295eb6a",
+      "compressed_bytes": 1055
+    },
+    {
+      "path": "validation/cold4-fixes-prior-acceptance.json",
+      "sha256": "b389189cd94a94dff3b04a278f95698feab35fb0d4fd7713f4bd43e5a836126a",
+      "bytes": 14099
+    },
+    {
+      "path": "validation/cold4-fixes-support-tests.log",
+      "sha256": "ea8118c064ce0230c935fe67e1f04cdaed635a0873ee8a9b044dec2c5dbc7998",
+      "bytes": 420,
+      "compressed_path": "validation/cold4-fixes-support-tests.log.gz",
+      "compressed_sha256": "abf837ea5acbbfdd354c2459841fdad4a9f99614440b91ec99b530ce7983d271",
+      "compressed_bytes": 163
     },
     {
       "path": "validation/compile-mutation.json",

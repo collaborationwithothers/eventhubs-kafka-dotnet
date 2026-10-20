@@ -1,0 +1,15 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": "d9bb2a74b7f576a07a52803a66459e33955ef70c",
+  "diff_sha256": "72864c0a02f92b954cc69cba23514726096687f7d6d02686399d24612aece2d1",
+  "coverage_complete": false,
+  "clean_result_withdrawn": true,
+  "source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282965995",
+  "continuation": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964",
+  "findings": [
+    {"severity": "P1", "path": "docs/operations/verifier-mutation.md", "lines": [774, 834], "mutant_ids": ["4856", "4885"], "finding": "ConfigurationFidelity line dispositions cite unrelated LateWrite source/tests and explanations."},
+    {"severity": "P1", "path": "docs/operations/verifier-mutation.md", "lines": [267, 273], "mutant_ids": ["1883"], "finding": "The no-replay-evidence prose contradicts the retained completed replay result."}
+  ],
+  "remaining_coverage": "Review was stopped on confirmed P1s. The full 309-path diff and all rubric documents were not covered; a complete review is still required."
+}
