@@ -165,7 +165,7 @@ Applies to every pull request, documentation included. Learned on PR #6, which t
 9. Fill in the pull request template, including its collapsed self-review record. Reply to every Codex finding. When a finding is wrong against its source, start the reply with `Not valid:` and give the evidence. Reply inside the finding's review thread, so the reply stays attached to the finding. Escapes are not counted by hand. A script will compute them (docs/agents/factory.md, "Measuring the gate", "Escapes").
 
 10. Answer review findings by severity. This applies to Codex code review and the cold review, in every round, subject to rule 8's disposition of P2s at the first clean cold-review round. Codex security review findings are answered under rule 9, and GOVERNANCE "Merge rule" decides whether they block a merge. Basis: the review rounds on #70 (#72).
-    - P0 or P1: fix it, or answer `Not valid:` with evidence (rule 9). Rule 8's second paragraph still applies.
+    - P0 or P1: fix it, or answer `Not valid:` with evidence (rule 9). Rule 8's third paragraph still applies.
     - P2 that asks for a check, guard or hardening the approved plan does not list: do not fix it. Reply `Out of contract:` and name the plan field or section. If its absence could make a published result wrong, also comment on the issue being implemented so Hari can decide whether the check joins the plan.
     - Any other P2: fix it, or give a one-line reason for leaving it.
 
