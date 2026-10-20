@@ -1,0 +1,63 @@
+{
+  "environment_overrides": {
+    "RestoreSources": "https://api.nuget.org/v3/index.json"
+  },
+  "reason": "Inherited BH package feed returned HTTP 401; use public source with unchanged dependency locks",
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "restore",
+        "Parchwell.slnx",
+        "--locked-mode"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T18:01:17.051196+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 2.220944207860157,
+      "log": "setup-public-00.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tool",
+        "restore",
+        "--configfile",
+        "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/nuget.config"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T18:01:19.272976+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 7.302595457993448,
+      "log": "setup-public-01.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tool",
+        "list"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T18:01:26.576458+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.12912958301603794,
+      "log": "setup-public-02.log"
+    },
+    {
+      "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "cap_seconds": 600,
+      "started_utc": "2026-10-19T18:01:26.706030+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 1.8505728340242058,
+      "log": "setup-public-03.log"
+    }
+  ]
+}

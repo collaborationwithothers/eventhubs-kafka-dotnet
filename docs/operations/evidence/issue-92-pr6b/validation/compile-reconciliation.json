@@ -1,0 +1,59 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "msbuild",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "-p:Configuration=Release",
+        "-getItem:Compile"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "exit_code": 0,
+      "elapsed_seconds": 0.42961866687983274,
+      "sha256": "1b46a54ed6bfb45664d1d45914b33a6dca9819c3c9d94f6294737db38c82d06d",
+      "path": "compile-normal.json"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "msbuild",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "-p:Configuration=Release",
+        "-getItem:Compile",
+        "-p:ParchwellVerifierMutationOnly=true"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "exit_code": 0,
+      "elapsed_seconds": 0.30799262481741607,
+      "sha256": "0e40b8d25631d8157e2d2304f4bdb1270a46029a1bfe94a4aa09dcd2934db1f1",
+      "path": "compile-mutation.json"
+    }
+  ],
+  "normal_count": 35,
+  "mutation_count": 26,
+  "removed": [
+    "Component/ComponentRunHarness.cs",
+    "Component/LocalKafkaFixture.cs",
+    "Component/OAuthKafkaFixture.cs",
+    "Component/VerifierOAuthComponentTests.cs",
+    "Component/VerifierOutcomeComponentTests.cs",
+    "Component/VerifierWindowComponentTests.cs",
+    "Host/VerifierHostTests.cs",
+    "Host/VerifyRunHandlerTests.cs",
+    "Support/ComponentEvidenceBuilder.cs"
+  ],
+  "added": [],
+  "expected_removed": [
+    "Component/ComponentRunHarness.cs",
+    "Component/LocalKafkaFixture.cs",
+    "Component/OAuthKafkaFixture.cs",
+    "Component/VerifierOAuthComponentTests.cs",
+    "Component/VerifierOutcomeComponentTests.cs",
+    "Component/VerifierWindowComponentTests.cs",
+    "Host/VerifierHostTests.cs",
+    "Host/VerifyRunHandlerTests.cs",
+    "Support/ComponentEvidenceBuilder.cs"
+  ],
+  "complete": true
+}

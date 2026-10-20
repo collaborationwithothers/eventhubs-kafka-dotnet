@@ -1,0 +1,39 @@
+{
+  "scope": "Synthetic support regression only; no measured suite, mutation, baseline, discovery, replay, or extraction run.",
+  "red": {
+    "old_accept_commit": "a205b23d86beb824c0aa1e5f4c4f8d0876883633",
+    "old_accept_path": "docs/operations/evidence/issue-92-pr6b/accept.py",
+    "old_accept_sha256": "b7076a2d63d35f69a902177a23e28f4c9433bfc12c2c835921352dac7e568b98",
+    "probe": "validation/cold6-binding-red-probe.py",
+    "cwd": "/tmp/issue-92-replay-binding/red",
+    "argv": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "test_accept.ReplayReportBindingTests.test_rejects_selected_record_with_changed_start_location",
+      "test_accept.ReplayReportBindingTests.test_rejects_selected_record_with_changed_end_location",
+      "test_accept.ReplayReportBindingTests.test_rejects_selected_record_with_changed_replacement",
+      "test_accept.ReplayReportBindingTests.test_rejects_selected_record_with_changed_embedded_source"
+    ],
+    "exit_code": 1,
+    "failures": 4,
+    "log": "validation/cold6-binding-red.log"
+  },
+  "green": {
+    "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/docs/operations/evidence/issue-92-pr6b",
+    "argv": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "test_accept"
+    ],
+    "exit_code": 0,
+    "tests": 11,
+    "log": "validation/cold6-binding-worker-green.log"
+  },
+  "fixture_difference": "The historical red probe adapts its internal raw-row tuple to the old five-field helper shape. The final test uses an explicit six-field row including embedded source. The four mismatch assertions exercise the same behavior, but test file bytes are not identical.",
+  "elapsed_time": "not captured",
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964"
+}

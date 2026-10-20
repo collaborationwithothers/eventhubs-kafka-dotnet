@@ -1,0 +1,272 @@
+{
+  "checks": [
+    {
+      "detail": "Uncompressed report SHA-256 must match controller/extraction identity; retained original and compressed hashes must also match.",
+      "name": "report-hash-and-source-identity",
+      "passed": true
+    },
+    {
+      "detail": "Test inventories, discovery, XML, controller, and source manifests must match the hashes captured during extraction.",
+      "name": "discovery-and-inventory-input-hashes",
+      "passed": true
+    },
+    {
+      "detail": "Controller and extraction must identify the retained source manifest.",
+      "name": "tested-source-identity",
+      "passed": true
+    },
+    {
+      "detail": "Measured source and configuration inputs must remain unchanged during the run.",
+      "name": "measured-input-integrity",
+      "passed": true
+    },
+    {
+      "detail": "Retained measured config bytes must match the tested-source SHA-256.",
+      "name": "measured-config-hash",
+      "passed": true
+    },
+    {
+      "detail": "Current Stryker configuration must differ from measured config only at thresholds.break.",
+      "name": "config-diff-only-break",
+      "passed": true
+    },
+    {
+      "detail": "Publication head must retain its source manifest and match measured inputs except for the accepted threshold-only config change.",
+      "name": "publication-source-identity",
+      "passed": true
+    },
+    {
+      "detail": "Mutant rows, statuses, numerator, and denominator must reconcile exactly to the raw report bytes.",
+      "name": "raw-report-population-reconciliation",
+      "passed": true
+    },
+    {
+      "detail": "Report must be complete, supported, in scope, and within 10,000 serialized mutants.",
+      "name": "complete-bounded-report",
+      "passed": true
+    },
+    {
+      "detail": "Report tests, ordinary discovery, and XML must reconcile by source/type/method and multiplicity.",
+      "name": "discovery-reconciliation",
+      "passed": true
+    },
+    {
+      "detail": "Normal and mutation Compile inventories must match the exact approved selection diff with no added or missing files.",
+      "name": "compile-selection",
+      "passed": true
+    },
+    {
+      "detail": "Every Survived and NoCoverage mutant must link once to its report-bound source-line disposition.",
+      "name": "survivor-disposition-links",
+      "passed": true
+    },
+    {
+      "detail": "Reviewed lines must be complete within 512 lines and 14400 seconds (recorded 470.795 seconds).",
+      "name": "source-line-review",
+      "passed": true
+    },
+    {
+      "detail": "Retained replay ledger must match every baseline and mutant command and remain within 32 IDs, two commands per ID, and 3,600 seconds.",
+      "name": "replay-invocation-ledger",
+      "passed": true
+    },
+    {
+      "detail": "Replay must complete for selected mutants (max 32), pass baseline, and include 1..4 Killed mutant when available.",
+      "name": "bounded-replay-coverage",
+      "passed": true
+    },
+    {
+      "detail": "Retained Hari decision must accept B for this report and explicitly dispose of every runner disagreement and unresolved line.",
+      "name": "hari-threshold-and-risk-decision",
+      "passed": true
+    },
+    {
+      "detail": "Accepted break must be the current config value and pass the unrounded integer score comparison.",
+      "name": "accepted-threshold-comparison",
+      "passed": true
+    },
+    {
+      "detail": "Manifest hashes must cover source identity, original and compressed report bytes, inventories, review, replay, validation, threshold decision, and measured config.",
+      "name": "retained-artifact-hashes",
+      "passed": true
+    },
+    {
+      "detail": "Required build, test, and normal-suite controller receipts must show completed successful commands with unchanged inputs.",
+      "name": "validation-receipts",
+      "passed": true
+    },
+    {
+      "detail": "Every retained validation source-input map must match the measured mutation source map, and each present controller receipt must hash its adjacent manifest.",
+      "name": "validation-source-input-maps",
+      "passed": true
+    },
+    {
+      "detail": "Evaluated Compile inventories, ordinary discovery, and mutation-only XML must be retained.",
+      "name": "validation-inventories-and-tests",
+      "passed": true
+    },
+    {
+      "detail": "All five normal verification XML reports must show positive passing counts and zero failures, skips, errors, or not-run cases.",
+      "name": "normal-suite-reports",
+      "passed": true
+    }
+  ],
+  "complete": true,
+  "configuration": {
+    "current_break": 60,
+    "current_sha256": "d6b0b494cecd06fccc04af990e43f02c9aafe36e23759804d6628a9156c6361b",
+    "measured_sha256": "ab8155d8269027faebbe082a319bd76bf2c86b3cbc9e993ddc65a6e853d6c68b"
+  },
+  "counts": {
+    "replay_completed": 19,
+    "replay_selected": 19,
+    "runner_disagreements": [],
+    "serialized_mutants": 1700,
+    "survivor_lines": 137,
+    "survivor_mutants": 229,
+    "unresolved_lines": [
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/A01/A01EvidenceRecorder.cs:22",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:12",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:13",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:107",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:88",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:118",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:119",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:120",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:121",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:124",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:130",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:131",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:191",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:204",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:211",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:216",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:217",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:11",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:22",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:28",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:33",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:23",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:28",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:42"
+    ]
+  },
+  "issue13_record_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/13#issuecomment-6282496088",
+  "outstanding": [],
+  "report": {
+    "path": "mutation-full/mutation-report.json.gz",
+    "sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "stored_file_sha256": "74077d9c58daf133d27140e39f8e08af95c3515d4bcd68e24793470f08d9db00"
+  },
+  "risk_disposition": {
+    "compile_failure_replay_ids": [
+      "2657",
+      "4585",
+      "5014"
+    ],
+    "incomplete_replay_ids": [
+      "2657",
+      "4585",
+      "5014"
+    ],
+    "outer_replay_exit": "Not captured; per-command controller receipts and replay completion retained",
+    "rationale": "Hari accepted the measured report's 27 unresolved lines (41 mutants), three compile-failed incomplete comparisons, all 23 retained warnings, the uncaptured outer replay exit code and unrecorded full-run concurrency. Missing-test and unresolved lines move to issue 93 before any live A01 run. No raw status or score population changes. The threshold remains a record, not CI enforcement; issue 89 owns enforcement.",
+    "replay_uncovered_files": [],
+    "replay_uncovered_mutators": [],
+    "runner_disagreement_ids": [],
+    "unresolved_line_keys": [
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/A01/A01EvidenceRecorder.cs:22",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:12",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:13",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:88",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:107",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:118",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:119",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:120",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:121",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:124",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:130",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:131",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:191",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:204",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:211",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:216",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:217",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:11",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:22",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:28",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:33",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:23",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:28",
+      "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:42"
+    ],
+    "unresolved_mutant_ids": [
+      "2657",
+      "4875",
+      "4899",
+      "4900",
+      "5076",
+      "5095",
+      "5224",
+      "5225",
+      "5226",
+      "5227",
+      "5229",
+      "5230",
+      "5231",
+      "5233",
+      "5245",
+      "5246",
+      "5248",
+      "5249",
+      "5338",
+      "5350",
+      "5351",
+      "5352",
+      "5353",
+      "5354",
+      "5366",
+      "5367",
+      "5369",
+      "5372",
+      "5373",
+      "5379",
+      "5380",
+      "5381",
+      "5382",
+      "5531",
+      "5532",
+      "5568",
+      "5574",
+      "5580",
+      "5638",
+      "5643",
+      "5661"
+    ],
+    "warning_evidence": "mutation-full/log-summary.json"
+  },
+  "schema_version": 1,
+  "score": {
+    "accepted_break": 60,
+    "comparison_passes": true,
+    "denominator": 934,
+    "numerator": 705,
+    "proposal": 60,
+    "proposal_formula": "min(60, (100 * numerator) // denominator)"
+  },
+  "source_identity": {
+    "publication_commit": "8de8c46bb0541f856861581747cc3bf88da61d65",
+    "publication_commit_tree": "2a25f1befa5a9d33fe09698fb06711929c9ab762",
+    "publication_source_input_manifest_sha256": "fcae2d3d8a95d5951dea015a3e05ecd5dae591173b275d760c1553a823ab0219",
+    "source_input_manifest_sha256": "12e51fd1ece16a9d39ca34e7fab40c9810c8dc9dfa55811fe123bec41d2f3b44",
+    "tested_commit": "a2001534d94cd1135b9af53dc0e9d9816b00ce3d",
+    "tested_commit_tree": "b6c486ef9de96214255028eb5fc48f0acf4708a2"
+  },
+  "threshold_decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6282406847"
+}

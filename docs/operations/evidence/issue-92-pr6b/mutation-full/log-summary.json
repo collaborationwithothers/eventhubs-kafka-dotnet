@@ -1,0 +1,138 @@
+{
+  "source": "command.log.gz",
+  "stored_sha256": "f947ada40328280a6599daf86cbb9ca1ba616e9ee68713b8796b3443f9721d12",
+  "uncompressed_sha256": "438b6528cea4392a781940052f3b424fa1aeacf222af3ea93b69d486c05679b0",
+  "warning_count": 23,
+  "category_counts": {
+    "framework discovery": 2,
+    "preview runner": 1,
+    "compilation": 1,
+    "coverage relay": 19
+  },
+  "warnings": [
+    {
+      "line": 17,
+      "category": "framework discovery",
+      "text": "[02:57:46 WRN] Failed to identify target frameworks for project /Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj. Assuming selected framework (net10.0) is present."
+    },
+    {
+      "line": 18,
+      "category": "framework discovery",
+      "text": "[02:57:47 WRN] Failed to identify target frameworks for project /Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/src/Parchwell.Verifier/Parchwell.Verifier.csproj. Assuming selected framework (net10.0) is present."
+    },
+    {
+      "line": 23,
+      "category": "preview runner",
+      "text": "[02:57:54 WRN] The Microsoft Test Platform testrunner is currently in preview. Results should be verified since this feature is still being tested."
+    },
+    {
+      "line": 25,
+      "category": "compilation",
+      "text": "[02:58:15 WRN] An unidentified mutation in /Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs resulted in a compile error (at 79:14) with id: CS0165, message: Use of unassigned local variable 'attributes' (Source code: attributes)"
+    },
+    {
+      "line": 31,
+      "category": "coverage relay",
+      "text": "[02:58:36 WRN] MtpRunner-2: Timed out waiting for coverage relay ack for test 7372516837bceb986de3eb94e2ad3bd923ad727e3e0ac350aff87232e06435ef; marking as Dubious"
+    },
+    {
+      "line": 32,
+      "category": "coverage relay",
+      "text": "[02:58:46 WRN] MtpRunner-2: Timed out waiting for coverage relay ack for test 782ea1ce180c783611cab6c05c20887a7f8b271727cc111dd40c2de5b429e185; marking as Dubious"
+    },
+    {
+      "line": 33,
+      "category": "coverage relay",
+      "text": "[02:58:47 WRN] MtpRunner-5: Timed out waiting for coverage relay ack for test 2f26e7c982e1eb571ca08a8ef6178cd32c47b5c781571c678f0b3ee1c90be1ae; marking as Dubious"
+    },
+    {
+      "line": 34,
+      "category": "coverage relay",
+      "text": "[02:58:51 WRN] MtpRunner-3: Timed out waiting for coverage relay ack for test 11821bd8907d43c6e8a0fa835c46f8c2763586cd7b0052f2b6cf621d107c21c9; marking as Dubious"
+    },
+    {
+      "line": 35,
+      "category": "coverage relay",
+      "text": "[02:58:57 WRN] MtpRunner-0: Timed out waiting for coverage relay ack for test eee0aebbc5c4d0261aa7ee430e399e463690360df84a59a9c99ce505c6f552c5; marking as Dubious"
+    },
+    {
+      "line": 36,
+      "category": "coverage relay",
+      "text": "[02:58:58 WRN] MtpRunner-5: Timed out waiting for coverage relay ack for test 15f0a60246aa3962bf9c9ffdbc75dc902b5255856a998c3847fe52468ad3c74c; marking as Dubious"
+    },
+    {
+      "line": 37,
+      "category": "coverage relay",
+      "text": "[02:59:07 WRN] MtpRunner-3: Timed out waiting for coverage relay ack for test 2a35fbdd953dd2c2a882b46a875af5456505da93738ad289ed6db8a0b9b3bdfd; marking as Dubious"
+    },
+    {
+      "line": 38,
+      "category": "coverage relay",
+      "text": "[02:59:08 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test 7d3c92aa314bf0fa1180cc1702ede3e263e0d1b0d8b4d3b39b37cd1cd8abda02; marking as Dubious"
+    },
+    {
+      "line": 39,
+      "category": "coverage relay",
+      "text": "[02:59:17 WRN] MtpRunner-3: Timed out waiting for coverage relay ack for test 3a1b3968ee72bc13ea7d63b84bc565500e5f5835d0822b88a8485b24cca59003; marking as Dubious"
+    },
+    {
+      "line": 40,
+      "category": "coverage relay",
+      "text": "[02:59:18 WRN] MtpRunner-2: Timed out waiting for coverage relay ack for test 8ef724330dbbb7fb67b0f3dc14802e2fcbb17d3bc5ca3bf59c03707656ef05f4; marking as Dubious"
+    },
+    {
+      "line": 41,
+      "category": "coverage relay",
+      "text": "[02:59:28 WRN] MtpRunner-3: Timed out waiting for coverage relay ack for test b079dc8cfa86393ca55ce4c27bb669a51a457b3e15dd8f291a8254d8bd2dcc5c; marking as Dubious"
+    },
+    {
+      "line": 42,
+      "category": "coverage relay",
+      "text": "[02:59:29 WRN] MtpRunner-0: Timed out waiting for coverage relay ack for test 9272fd0b4d97411a111c4803cf3d762cf0552263099dc743477ff9b74c299bf4; marking as Dubious"
+    },
+    {
+      "line": 43,
+      "category": "coverage relay",
+      "text": "[02:59:38 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test c7509a18689a70f3d22509d41fc946c1bf3f1ed413a7831ebc6a7f7f0474a62c; marking as Dubious"
+    },
+    {
+      "line": 44,
+      "category": "coverage relay",
+      "text": "[02:59:39 WRN] MtpRunner-5: Timed out waiting for coverage relay ack for test 9e32772e7681c13fa671dd824277f28790de0c9b95ebaba1a1495021140511f4; marking as Dubious"
+    },
+    {
+      "line": 45,
+      "category": "coverage relay",
+      "text": "[02:59:48 WRN] MtpRunner-1: Timed out waiting for coverage relay ack for test 240b0294e1fcb86529d4370d16f5a00891e9d804e64cc0687bfaa20ffda60605; marking as Dubious"
+    },
+    {
+      "line": 46,
+      "category": "coverage relay",
+      "text": "[02:59:49 WRN] MtpRunner-2: Timed out waiting for coverage relay ack for test c19789d94bb2e229cf13617e700d2de019b3073e3bf362b0ebafd82205d1daa1; marking as Dubious"
+    },
+    {
+      "line": 47,
+      "category": "coverage relay",
+      "text": "[02:59:59 WRN] MtpRunner-5: Timed out waiting for coverage relay ack for test 2de51d5e4c7e5724d7203352339fd04c87721a0e92ce25f800bc490ee69f365b; marking as Dubious"
+    },
+    {
+      "line": 48,
+      "category": "coverage relay",
+      "text": "[02:59:59 WRN] MtpRunner-2: Timed out waiting for coverage relay ack for test c114838d012ea59cd7ac5791648295df099b276d0c9b7db786efc4efafa05ead; marking as Dubious"
+    },
+    {
+      "line": 49,
+      "category": "coverage relay",
+      "text": "[03:00:09 WRN] MtpRunner-5: Timed out waiting for coverage relay ack for test 110023e10177f5feb623fadf747f55c5483f57a2236f364bc4b6b92f5466b07a; marking as Dubious"
+    }
+  ],
+  "observed_runner_labels": [
+    "MtpRunner-0",
+    "MtpRunner-1",
+    "MtpRunner-2",
+    "MtpRunner-3",
+    "MtpRunner-5"
+  ],
+  "concurrency_limit": "Not explicitly recorded; observed runner labels are not a configured concurrency measurement",
+  "relationship_to_extraction": "Complete WRN-tagged scan: 23 lines. The extractor runner_diagnostics.warning_count is a filtered 21-line subset matching 'warning' or 'dubious', or both 'assum' and 'framework' case-insensitively. Source lines 23 (preview-runner warning) and 25 (compile-error warning) are WRN-tagged but do not match that filter. This supplementary scan does not modify one-pass extraction or raw mutant statuses."
+}

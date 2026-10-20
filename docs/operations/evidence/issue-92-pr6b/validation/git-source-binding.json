@@ -1,0 +1,23 @@
+{
+  "command": [
+    "git",
+    "cat-file",
+    "--batch"
+  ],
+  "results": [
+    {
+      "manifest": "mutation-full/tested-source.json",
+      "commit": "a2001534d94cd1135b9af53dc0e9d9816b00ce3d",
+      "tree": "b6c486ef9de96214255028eb5fc48f0acf4708a2",
+      "verified_source_blobs": 302,
+      "all_hashes_match": true
+    },
+    {
+      "manifest": "publication-source.json",
+      "commit": "8de8c46bb0541f856861581747cc3bf88da61d65",
+      "tree": "2a25f1befa5a9d33fe09698fb06711929c9ab762",
+      "verified_source_blobs": 302,
+      "all_hashes_match": true
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "started_utc": "2026-10-20T02:29:00.995602+00:00",
+  "line_cap": 512,
+  "seconds_cap": 14400,
+  "line_count": 137,
+  "scope": "Manual source-line disposition review; parallel worker intervals recorded separately",
+  "status": "completed",
+  "finished_utc": "2026-10-20T02:36:24.897497+00:00",
+  "wall_elapsed_seconds": 443.901895,
+  "allocated_worker_review_seconds": 470.79512900000003,
+  "partitions": [
+    {
+      "partition": "statistics",
+      "line_count": 51,
+      "allocated_review_seconds": 120.0,
+      "separate_correction_seconds": 0.0
+    },
+    {
+      "partition": "bookkeeping",
+      "line_count": 35,
+      "allocated_review_seconds": 122.841263,
+      "separate_correction_seconds": 0.0
+    },
+    {
+      "partition": "judgement",
+      "line_count": 34,
+      "allocated_review_seconds": 156.893866,
+      "separate_correction_seconds": 35.0
+    },
+    {
+      "partition": "window",
+      "line_count": 17,
+      "allocated_review_seconds": 71.06,
+      "separate_correction_seconds": 8.0
+    }
+  ],
+  "reviewed_lines": 137,
+  "category_counts": {
+    "missing test": 109,
+    "unresolved": 27,
+    "equivalent with proof": 1
+  },
+  "separate_correction_seconds": 43.0,
+  "worker_review_and_correction_seconds": 513.7951290000001
+}

@@ -1,0 +1,42 @@
+{
+  "mode": "suite",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/controller-invocations.json",
+  "mutant_id": null,
+  "command": [
+    "/usr/local/bin/bash",
+    "./scripts/verify-dotnet.sh"
+  ],
+  "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+  "environment_overrides": {
+    "DOTNET_PROCESSOR_COUNT": "1",
+    "MSBUILDDISABLENODEREUSE": "1",
+    "RestoreSources": "https://api.nuget.org/v3/index.json"
+  },
+  "tested_commit": "ff29787a6638ab3969d49ead325a4bb477f5c43d",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "29e0560582e1723c55d04da3de47f08e81ae238f12dfb8219a7940da09c36320",
+  "wall_time_cap_seconds": 1800.0,
+  "generated_mutant_cap": 10000,
+  "generated_cap_observation_boundary": "Execution is terminated after the tool logs a created count above the cap. The tool may allocate mutants before that log is observed.",
+  "observed_generated_counts": [],
+  "maximum_observed_generated_count": null,
+  "started_utc": "2026-10-19T18:22:54.119822+00:00",
+  "elapsed_seconds": 476.9477926248219,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "not-applicable-non-mutation-mode",
+  "expected_report": null,
+  "expected_xml": [],
+  "process_group": 12749,
+  "finished_utc": "2026-10-19T18:30:51.067881+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": null,
+  "xml_presence": {},
+  "command_log_sha256": "3cfcbdf032222a7713f61976d823e78465d8a1840b7550c3fb4c5e0c1270813d",
+  "execution_evidence_complete": true
+}

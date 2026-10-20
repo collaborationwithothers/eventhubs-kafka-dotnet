@@ -1,0 +1,50 @@
+{
+  "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+  "replay_json_sha256": "3f9ef60ebe7453afcc39a7bd5958fea14b1fbd6128f365241c2351fc3c76b4fb",
+  "command_rows": 37,
+  "differing_rows": [
+    {
+      "mutant_id": "1839",
+      "replay_json_pointer": "/attempts/0/commands/1",
+      "command": "test",
+      "controller_cli_returncode": 1,
+      "wrapped_process_exit_code": 2,
+      "controller_receipt": "review/replay/mutant-1839/test/controller.json"
+    },
+    {
+      "mutant_id": "2651",
+      "replay_json_pointer": "/attempts/2/commands/1",
+      "command": "test",
+      "controller_cli_returncode": 1,
+      "wrapped_process_exit_code": 2,
+      "controller_receipt": "review/replay/mutant-2651/test/controller.json"
+    },
+    {
+      "mutant_id": "4826",
+      "replay_json_pointer": "/attempts/6/commands/1",
+      "command": "test",
+      "controller_cli_returncode": 1,
+      "wrapped_process_exit_code": 2,
+      "controller_receipt": "review/replay/mutant-4826/test/controller.json"
+    }
+  ],
+  "kind": "publication-time field-scope annotation",
+  "measurement_records_changed": false,
+  "field_scopes": {
+    "review/replay/replay.json baseline_control[*].returncode and attempts[*].commands[*].returncode": "Exit status of the controller CLI process invoked by replay.py, not the wrapped dotnet process. The same definition applies to commands[*].returncode in each per-mutant attempt.json.",
+    "controller.json exit_code": "Exit status of the wrapped child process, such as dotnet build or dotnet test."
+  },
+  "semantics_sources": [
+    {
+      "path": "replay.py",
+      "member": "controller_call",
+      "meaning": "subprocess.run executes the controller CLI; returncode copies that process status."
+    },
+    {
+      "path": "controller.py",
+      "member": "main",
+      "meaning": "The receipt stores the child's exit_code. The CLI can return 1 for incomplete execution evidence even when the child returned 2."
+    }
+  ],
+  "interpretation": "Different process statuses are not disagreements in runner results. Original observed fields are preserved."
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "RestoreSources=https://api.nuget.org/v3/index.json",
+    "/usr/local/bin/python3",
+    "-B",
+    ".artifacts/issue-92-pr6b/replay.py",
+    "--run-dir",
+    ".artifacts/issue-92-pr6b/mutation-full",
+    "--review-dir",
+    ".artifacts/issue-92-pr6b/review",
+    "--max-mutants",
+    "32",
+    "--killed-sample",
+    "4",
+    "--command-seconds",
+    "180",
+    "--total-seconds",
+    "3600",
+    "--ledger-path",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/controller-invocations.json"
+  ],
+  "working_directory": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+  "environment_overrides": {
+    "RestoreSources": "https://api.nuget.org/v3/index.json"
+  },
+  "process_session_id": 40752,
+  "launch_utc": null,
+  "launch_utc_basis": "not captured at launch; unavailable after command completion",
+  "script_started_utc": "2026-10-20T02:29:40.971217+00:00",
+  "script_started_utc_basis": "review/replay/replay.json started_utc",
+  "finished_utc": "2026-10-20T02:33:31.509321+00:00",
+  "finished_utc_basis": "review/replay/replay.json finished_utc",
+  "outer_exit_code": null,
+  "outer_exit_code_basis": "not captured; final child output was returned, then the exec session was unavailable",
+  "observed_result": {
+    "replay_status": "completed",
+    "baseline_status": "passed",
+    "selected_mutant_count": 19,
+    "attempted_mutant_count": 19
+  },
+  "derived_return_condition": {
+    "expected_code_from_script_branch": 0,
+    "basis": "replay.py returns 0 when baseline_status is passed and status is completed; this is a code-derived value, not the captured outer process exit code"
+  }
+}

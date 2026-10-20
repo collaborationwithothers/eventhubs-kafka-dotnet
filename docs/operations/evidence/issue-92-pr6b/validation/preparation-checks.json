@@ -1,0 +1,43 @@
+[
+  {
+    "command": "npm run check:docs",
+    "name": "docs-scan",
+    "result": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.036649042
+    }
+  },
+  {
+    "command": "npm run test:docs",
+    "name": "docs-tests",
+    "result": {
+      "elapsed_seconds_before_yield": 10.001747292,
+      "status_at_initial_return": "running",
+      "completion_receipt": "docs-tests-result.json"
+    }
+  },
+  {
+    "command": "git diff --check",
+    "name": "diff-check",
+    "result": {
+      "exit_code": 0,
+      "elapsed_seconds": 0.292702959
+    }
+  },
+  {
+    "command": "python3 -c 'import ast,pathlib; files=sorted(pathlib.Path(\"docs/operations/evidence/issue-92-pr6b\").glob(\"*.py\")); [ast.parse(p.read_text(), filename=str(p)) for p in files]; print(\"Syntax valid:\", \", \".join(p.name for p in files))'",
+    "name": "support-syntax",
+    "result": {
+      "exit_code": 0,
+      "elapsed_seconds": 0.309943833
+    }
+  },
+  {
+    "command": "sysctl -n hw.optional.arm64; sysctl -n sysctl.proc_translated",
+    "name": "hardware-architecture",
+    "result": {
+      "exit_code": 0,
+      "elapsed_seconds": 0.280466583
+    }
+  }
+]

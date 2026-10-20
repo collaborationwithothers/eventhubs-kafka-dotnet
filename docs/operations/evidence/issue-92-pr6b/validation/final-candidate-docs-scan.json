@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npm",
+    "run",
+    "check:docs"
+  ],
+  "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+  "started_utc": "2026-10-20T03:39:29.692475+00:00",
+  "finished_utc": "2026-10-20T03:39:34.877792+00:00",
+  "elapsed_seconds": 5.185543041210622,
+  "exit_code": 0,
+  "warnings": [],
+  "log_sha256": "c2f7141cd3757a670f86d2850ca22f000babcfdb84d74429a632e686720dd76b"
+}

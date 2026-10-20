@@ -1,0 +1,10 @@
+{
+  "prior_phase": "cold6-fixes",
+  "phase_wrapper_exit_code": 1,
+  "cause": "The documentation scan exited 0 with one advisory missing-file warning because the new replay-return-code-scopes.json companion existed only in ignored working outputs when scanned.",
+  "measured_commands_invoked": [],
+  "acceptance_invoked_in_prior_phase": false,
+  "correction": "Mirrored the new companion and phase evidence with retain.py before repeating support/documentation checks. The validation wrapper now prepares retained evidence before checks.",
+  "next_phase": "cold6-closure",
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964"
+}

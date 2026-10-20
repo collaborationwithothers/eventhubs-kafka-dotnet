@@ -1,0 +1,4124 @@
+[
+  {
+    "file": "ProbeGate/ProbeGateEvaluator.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:ProbeGate/ProbeGateEvaluator.cs:39",
+    "mutant_id": "1883",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 101,
+        "line": 39
+      },
+      "start": {
+        "column": 49,
+        "line": 39
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/A01/A01EvidenceRecorder.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/A01/A01EvidenceRecorder.cs:22",
+    "mutant_id": "2657",
+    "mutator": "Logical mutation",
+    "replacement": "request.Ledger.IsSuccess || request.Ledger.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 84,
+        "line": 22
+      },
+      "start": {
+        "column": 24,
+        "line": 22
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:28",
+    "mutant_id": "4591",
+    "mutator": "Conditional (true) mutation",
+    "replacement": "(true?CheckResult.Pass(check) :CheckResult.NotEvaluated(check))",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 28
+      },
+      "start": {
+        "column": 15,
+        "line": 28
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33",
+    "mutant_id": "4599",
+    "mutator": "Logical mutation",
+    "replacement": "request.Index.Value is not null || request.Manifest.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 95,
+        "line": 33
+      },
+      "start": {
+        "column": 26,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33",
+    "mutant_id": "4598",
+    "mutator": "Logical mutation",
+    "replacement": "request.Index.Value is not null && request.Manifest.Value is not null ||\n            request.Ledger.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 45,
+        "line": 34
+      },
+      "start": {
+        "column": 26,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33",
+    "mutant_id": "4597",
+    "mutator": "Logical mutation",
+    "replacement": "request.Index.Value is not null && request.Manifest.Value is not null &&\n            request.Ledger.Value is not null || request.Statistics.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 85,
+        "line": 34
+      },
+      "start": {
+        "column": 26,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33",
+    "mutant_id": "4596",
+    "mutator": "Logical mutation",
+    "replacement": "request.Index.Value is not null && request.Manifest.Value is not null &&\n            request.Ledger.Value is not null && request.Statistics.Value is not null ||\n            request.Lifecycle.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 48,
+        "line": 35
+      },
+      "start": {
+        "column": 26,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:33",
+    "mutant_id": "4595",
+    "mutator": "Logical mutation",
+    "replacement": "request.Index.Value is not null && request.Manifest.Value is not null &&\n            request.Ledger.Value is not null && request.Statistics.Value is not null &&\n            request.Lifecycle.Value is not null || request.Capabilities.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 90,
+        "line": 35
+      },
+      "start": {
+        "column": 26,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:36",
+    "mutant_id": "4608",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 83,
+        "line": 36
+      },
+      "start": {
+        "column": 71,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:39",
+    "mutant_id": "4612",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 39
+      },
+      "start": {
+        "column": 40,
+        "line": 39
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:41",
+    "mutant_id": "4618",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 82,
+        "line": 41
+      },
+      "start": {
+        "column": 67,
+        "line": 41
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:41",
+    "mutant_id": "4619",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 119,
+        "line": 41
+      },
+      "start": {
+        "column": 90,
+        "line": 41
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:47",
+    "mutant_id": "4628",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 47
+      },
+      "start": {
+        "column": 45,
+        "line": 47
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:47",
+    "mutant_id": "4629",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 47
+      },
+      "start": {
+        "column": 61,
+        "line": 47
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:48",
+    "mutant_id": "4631",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 48
+      },
+      "start": {
+        "column": 63,
+        "line": 48
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:48",
+    "mutant_id": "4632",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 85,
+        "line": 48
+      },
+      "start": {
+        "column": 79,
+        "line": 48
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:48",
+    "mutant_id": "4633",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 108,
+        "line": 48
+      },
+      "start": {
+        "column": 87,
+        "line": 48
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:52",
+    "mutant_id": "4640",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 106,
+        "line": 52
+      },
+      "start": {
+        "column": 88,
+        "line": 52
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:52",
+    "mutant_id": "4641",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 114,
+        "line": 52
+      },
+      "start": {
+        "column": 108,
+        "line": 52
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:54",
+    "mutant_id": "4648",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 111,
+        "line": 54
+      },
+      "start": {
+        "column": 86,
+        "line": 54
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:54",
+    "mutant_id": "4649",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 119,
+        "line": 54
+      },
+      "start": {
+        "column": 113,
+        "line": 54
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:55",
+    "mutant_id": "4652",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 111,
+        "line": 55
+      },
+      "start": {
+        "column": 92,
+        "line": 55
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:59",
+    "mutant_id": "4660",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 53,
+        "line": 59
+      },
+      "start": {
+        "column": 43,
+        "line": 59
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:59",
+    "mutant_id": "4661",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 61,
+        "line": 59
+      },
+      "start": {
+        "column": 55,
+        "line": 59
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:59",
+    "mutant_id": "4662",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 76,
+        "line": 59
+      },
+      "start": {
+        "column": 63,
+        "line": 59
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:60",
+    "mutant_id": "4663",
+    "mutator": "Boolean mutation",
+    "replacement": "true",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 35,
+        "line": 60
+      },
+      "start": {
+        "column": 30,
+        "line": 60
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:66",
+    "mutant_id": "4666",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 66
+      },
+      "start": {
+        "column": 74,
+        "line": 66
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:67",
+    "mutant_id": "4668",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 111,
+        "line": 67
+      },
+      "start": {
+        "column": 84,
+        "line": 67
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:68",
+    "mutant_id": "4670",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 68
+      },
+      "start": {
+        "column": 64,
+        "line": 68
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:69",
+    "mutant_id": "4672",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 69
+      },
+      "start": {
+        "column": 74,
+        "line": 69
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:70",
+    "mutant_id": "4674",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 121,
+        "line": 70
+      },
+      "start": {
+        "column": 90,
+        "line": 70
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:71",
+    "mutant_id": "4676",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 90,
+        "line": 71
+      },
+      "start": {
+        "column": 70,
+        "line": 71
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:94",
+    "mutant_id": "4689",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 56,
+        "line": 94
+      },
+      "start": {
+        "column": 41,
+        "line": 94
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:94",
+    "mutant_id": "4690",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 94
+      },
+      "start": {
+        "column": 64,
+        "line": 94
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:100",
+    "mutant_id": "4697",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 100
+      },
+      "start": {
+        "column": 21,
+        "line": 100
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:100",
+    "mutant_id": "4698",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 100
+      },
+      "start": {
+        "column": 45,
+        "line": 100
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:100",
+    "mutant_id": "4699",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 100
+      },
+      "start": {
+        "column": 68,
+        "line": 100
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:110",
+    "mutant_id": "4708",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 92,
+        "line": 110
+      },
+      "start": {
+        "column": 21,
+        "line": 110
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:110",
+    "mutant_id": "4709",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 110
+      },
+      "start": {
+        "column": 45,
+        "line": 110
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:110",
+    "mutant_id": "4710",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 110
+      },
+      "start": {
+        "column": 61,
+        "line": 110
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:110",
+    "mutant_id": "4711",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 89,
+        "line": 110
+      },
+      "start": {
+        "column": 69,
+        "line": 110
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:116",
+    "mutant_id": "4719",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 116
+      },
+      "start": {
+        "column": 17,
+        "line": 116
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:116",
+    "mutant_id": "4720",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 116
+      },
+      "start": {
+        "column": 41,
+        "line": 116
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:116",
+    "mutant_id": "4721",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 78,
+        "line": 116
+      },
+      "start": {
+        "column": 63,
+        "line": 116
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:124",
+    "mutant_id": "4728",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 124
+      },
+      "start": {
+        "column": 21,
+        "line": 124
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:124",
+    "mutant_id": "4729",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 124
+      },
+      "start": {
+        "column": 45,
+        "line": 124
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:124",
+    "mutant_id": "4730",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 124
+      },
+      "start": {
+        "column": 68,
+        "line": 124
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:131",
+    "mutant_id": "4737",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 92,
+        "line": 131
+      },
+      "start": {
+        "column": 21,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:131",
+    "mutant_id": "4738",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 131
+      },
+      "start": {
+        "column": 45,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:131",
+    "mutant_id": "4739",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 131
+      },
+      "start": {
+        "column": 61,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:131",
+    "mutant_id": "4740",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 89,
+        "line": 131
+      },
+      "start": {
+        "column": 69,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:135",
+    "mutant_id": "4744",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 135
+      },
+      "start": {
+        "column": 49,
+        "line": 135
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:135",
+    "mutant_id": "4745",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 71,
+        "line": 135
+      },
+      "start": {
+        "column": 65,
+        "line": 135
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:135",
+    "mutant_id": "4746",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 86,
+        "line": 135
+      },
+      "start": {
+        "column": 73,
+        "line": 135
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:137",
+    "mutant_id": "4749",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 137
+      },
+      "start": {
+        "column": 49,
+        "line": 137
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:137",
+    "mutant_id": "4750",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 71,
+        "line": 137
+      },
+      "start": {
+        "column": 65,
+        "line": 137
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:137",
+    "mutant_id": "4751",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 91,
+        "line": 137
+      },
+      "start": {
+        "column": 73,
+        "line": 137
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:151",
+    "mutant_id": "4763",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 151
+      },
+      "start": {
+        "column": 45,
+        "line": 151
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:151",
+    "mutant_id": "4764",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 151
+      },
+      "start": {
+        "column": 61,
+        "line": 151
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:151",
+    "mutant_id": "4765",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 89,
+        "line": 151
+      },
+      "start": {
+        "column": 69,
+        "line": 151
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:163",
+    "mutant_id": "4776",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 78,
+        "line": 163
+      },
+      "start": {
+        "column": 68,
+        "line": 163
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:163",
+    "mutant_id": "4777",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 86,
+        "line": 163
+      },
+      "start": {
+        "column": 80,
+        "line": 163
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:163",
+    "mutant_id": "4778",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 101,
+        "line": 163
+      },
+      "start": {
+        "column": 88,
+        "line": 163
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:164",
+    "mutant_id": "4781",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 164
+      },
+      "start": {
+        "column": 67,
+        "line": 164
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:164",
+    "mutant_id": "4782",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 85,
+        "line": 164
+      },
+      "start": {
+        "column": 79,
+        "line": 164
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:164",
+    "mutant_id": "4783",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 164
+      },
+      "start": {
+        "column": 87,
+        "line": 164
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:165",
+    "mutant_id": "4786",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 71,
+        "line": 165
+      },
+      "start": {
+        "column": 61,
+        "line": 165
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:165",
+    "mutant_id": "4787",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 165
+      },
+      "start": {
+        "column": 73,
+        "line": 165
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:165",
+    "mutant_id": "4788",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 86,
+        "line": 165
+      },
+      "start": {
+        "column": 81,
+        "line": 165
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:166",
+    "mutant_id": "4791",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 76,
+        "line": 166
+      },
+      "start": {
+        "column": 66,
+        "line": 166
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:166",
+    "mutant_id": "4792",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 84,
+        "line": 166
+      },
+      "start": {
+        "column": 78,
+        "line": 166
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:166",
+    "mutant_id": "4793",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 166
+      },
+      "start": {
+        "column": 86,
+        "line": 166
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:169",
+    "mutant_id": "4803",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 73,
+        "line": 169
+      },
+      "start": {
+        "column": 63,
+        "line": 169
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:169",
+    "mutant_id": "4804",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 169
+      },
+      "start": {
+        "column": 75,
+        "line": 169
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:169",
+    "mutant_id": "4805",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 95,
+        "line": 169
+      },
+      "start": {
+        "column": 83,
+        "line": 169
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:173",
+    "mutant_id": "4812",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 173
+      },
+      "start": {
+        "column": 45,
+        "line": 173
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:173",
+    "mutant_id": "4813",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 173
+      },
+      "start": {
+        "column": 57,
+        "line": 173
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:173",
+    "mutant_id": "4814",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 70,
+        "line": 173
+      },
+      "start": {
+        "column": 65,
+        "line": 173
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:175",
+    "mutant_id": "4820",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 175
+      },
+      "start": {
+        "column": 45,
+        "line": 175
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:175",
+    "mutant_id": "4821",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 175
+      },
+      "start": {
+        "column": 57,
+        "line": 175
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:175",
+    "mutant_id": "4822",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 75,
+        "line": 175
+      },
+      "start": {
+        "column": 65,
+        "line": 175
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/BookkeepingChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/BookkeepingChecks.cs:182",
+    "mutant_id": "4824",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 182
+      },
+      "start": {
+        "column": 20,
+        "line": 182
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:18",
+    "mutant_id": "4851",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 56,
+        "line": 18
+      },
+      "start": {
+        "column": 32,
+        "line": 18
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:29",
+    "mutant_id": "4856",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 29
+      },
+      "start": {
+        "column": 28,
+        "line": 29
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:34",
+    "mutant_id": "4866",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 34,
+        "line": 34
+      },
+      "start": {
+        "column": 26,
+        "line": 34
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:43",
+    "mutant_id": "4874",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 43
+      },
+      "start": {
+        "column": 30,
+        "line": 43
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:45",
+    "mutant_id": "4875",
+    "mutator": "Logical mutation",
+    "replacement": "selectedOverride || observedOverride",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 45
+      },
+      "start": {
+        "column": 26,
+        "line": 45
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:50",
+    "mutant_id": "4881",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 57,
+        "line": 50
+      },
+      "start": {
+        "column": 34,
+        "line": 50
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:55",
+    "mutant_id": "4885",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 55
+      },
+      "start": {
+        "column": 34,
+        "line": 55
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:61",
+    "mutant_id": "4889",
+    "mutator": "CoalesceAssignmentExpression to SimpleAssignmentExpression mutation",
+    "replacement": "firstField = field",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 33,
+        "line": 61
+      },
+      "start": {
+        "column": 13,
+        "line": 61
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:69",
+    "mutant_id": "4897",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 90,
+        "line": 69
+      },
+      "start": {
+        "column": 71,
+        "line": 69
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/ConfigurationFidelityCheck.cs:70",
+    "mutant_id": "4898",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 70
+      },
+      "start": {
+        "column": 9,
+        "line": 70
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:12",
+    "mutant_id": "4899",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 46,
+        "line": 12
+      },
+      "start": {
+        "column": 9,
+        "line": 12
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:13",
+    "mutant_id": "4900",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 48,
+        "line": 13
+      },
+      "start": {
+        "column": 9,
+        "line": 13
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:26",
+    "mutant_id": "4914",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 76,
+        "line": 26
+      },
+      "start": {
+        "column": 62,
+        "line": 26
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:26",
+    "mutant_id": "4915",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 84,
+        "line": 26
+      },
+      "start": {
+        "column": 78,
+        "line": 26
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:26",
+    "mutant_id": "4916",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 97,
+        "line": 26
+      },
+      "start": {
+        "column": 86,
+        "line": 26
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:29",
+    "mutant_id": "4922",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 29
+      },
+      "start": {
+        "column": 49,
+        "line": 29
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:29",
+    "mutant_id": "4923",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 71,
+        "line": 29
+      },
+      "start": {
+        "column": 65,
+        "line": 29
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:29",
+    "mutant_id": "4924",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 93,
+        "line": 29
+      },
+      "start": {
+        "column": 73,
+        "line": 29
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:35",
+    "mutant_id": "4928",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 56,
+        "line": 35
+      },
+      "start": {
+        "column": 37,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:35",
+    "mutant_id": "4929",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 93,
+        "line": 35
+      },
+      "start": {
+        "column": 64,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:39",
+    "mutant_id": "4937",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 39
+      },
+      "start": {
+        "column": 45,
+        "line": 39
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:39",
+    "mutant_id": "4938",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 94,
+        "line": 39
+      },
+      "start": {
+        "column": 68,
+        "line": 39
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:46",
+    "mutant_id": "4951",
+    "mutator": "Logical mutation",
+    "replacement": "native is null && native.Brokers.Presence != FieldPresence.Value",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 46
+      },
+      "start": {
+        "column": 17,
+        "line": 46
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:46",
+    "mutant_id": "4949",
+    "mutator": "Logical mutation",
+    "replacement": "native is null || native.Brokers.Presence != FieldPresence.Value && native.Brokers.Value is null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 113,
+        "line": 46
+      },
+      "start": {
+        "column": 17,
+        "line": 46
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:48",
+    "mutant_id": "4956",
+    "mutator": "Boolean mutation",
+    "replacement": "true",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 48
+      },
+      "start": {
+        "column": 37,
+        "line": 48
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:49",
+    "mutant_id": "4957",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 49
+      },
+      "start": {
+        "column": 17,
+        "line": 49
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:53",
+    "mutant_id": "4960",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 53
+      },
+      "start": {
+        "column": 54,
+        "line": 53
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:54",
+    "mutant_id": "4962",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 69,
+        "line": 54
+      },
+      "start": {
+        "column": 58,
+        "line": 54
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:55",
+    "mutant_id": "4964",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 65,
+        "line": 55
+      },
+      "start": {
+        "column": 57,
+        "line": 55
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:56",
+    "mutant_id": "4966",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 56
+      },
+      "start": {
+        "column": 52,
+        "line": 56
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:62",
+    "mutant_id": "4972",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 62
+      },
+      "start": {
+        "column": 50,
+        "line": 62
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:62",
+    "mutant_id": "4973",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 76,
+        "line": 62
+      },
+      "start": {
+        "column": 70,
+        "line": 62
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:62",
+    "mutant_id": "4974",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 119,
+        "line": 62
+      },
+      "start": {
+        "column": 78,
+        "line": 62
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:71",
+    "mutant_id": "4983",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 69,
+        "line": 71
+      },
+      "start": {
+        "column": 44,
+        "line": 71
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:71",
+    "mutant_id": "4984",
+    "mutator": "Arithmetic mutation",
+    "replacement": "i - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 71
+      },
+      "start": {
+        "column": 71,
+        "line": 71
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:71",
+    "mutant_id": "4985",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 89,
+        "line": 71
+      },
+      "start": {
+        "column": 79,
+        "line": 71
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:77",
+    "mutant_id": "4988",
+    "mutator": "Logical mutation",
+    "replacement": "request.Manifest.Value is not null || request.Capabilities.Value is not null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 121,
+        "line": 77
+      },
+      "start": {
+        "column": 45,
+        "line": 77
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/LateWriteChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/LateWriteChecks.cs:84",
+    "mutant_id": "4992",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 84
+      },
+      "start": {
+        "column": 20,
+        "line": 84
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/OutcomeClassifier.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/OutcomeClassifier.cs:35",
+    "mutant_id": "5014",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 57,
+        "line": 35
+      },
+      "start": {
+        "column": 48,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/OutcomeClassifier.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/OutcomeClassifier.cs:38",
+    "mutant_id": "5025",
+    "mutator": "Equality mutation",
+    "replacement": "sequence >= maximum.Value",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 66,
+        "line": 38
+      },
+      "start": {
+        "column": 42,
+        "line": 38
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/RunJudgement.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:67",
+    "mutant_id": "5042",
+    "mutator": "Linq method mutation (Any() to All())",
+    "replacement": "request.Reports.All",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 32,
+        "line": 67
+      },
+      "start": {
+        "column": 13,
+        "line": 67
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/RunJudgement.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:83",
+    "mutant_id": "5064",
+    "mutator": "Linq method mutation (OrderBy() to OrderByDescending())",
+    "replacement": "results.Select(r => r.Assessment).OrderByDescending",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 82,
+        "line": 83
+      },
+      "start": {
+        "column": 41,
+        "line": 83
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/RunJudgement.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:88",
+    "mutant_id": "5076",
+    "mutator": "Logical mutation",
+    "replacement": "a.Disposition == AssessmentDisposition.Fail ||\n                a.Classification == AssessmentClassification.Incomplete",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 72,
+        "line": 89
+      },
+      "start": {
+        "column": 36,
+        "line": 88
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/RunJudgement.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:107",
+    "mutant_id": "5095",
+    "mutator": "Linq method mutation (OrderBy() to OrderByDescending())",
+    "replacement": "fidelity.Differences.OrderByDescending",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 107
+      },
+      "start": {
+        "column": 27,
+        "line": 107
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/RunJudgement.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/RunJudgement.cs:117",
+    "mutant_id": "5102",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 112,
+        "line": 117
+      },
+      "start": {
+        "column": 67,
+        "line": 117
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:22",
+    "mutant_id": "5121",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 48,
+        "line": 22
+      },
+      "start": {
+        "column": 29,
+        "line": 22
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:22",
+    "mutant_id": "5122",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 22
+      },
+      "start": {
+        "column": 56,
+        "line": 22
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:27",
+    "mutant_id": "5129",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 89,
+        "line": 27
+      },
+      "start": {
+        "column": 71,
+        "line": 27
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:35",
+    "mutant_id": "5135",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 48,
+        "line": 35
+      },
+      "start": {
+        "column": 29,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:35",
+    "mutant_id": "5136",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 35
+      },
+      "start": {
+        "column": 56,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:38",
+    "mutant_id": "5140",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 38
+      },
+      "start": {
+        "column": 58,
+        "line": 38
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:38",
+    "mutant_id": "5141",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 120,
+        "line": 38
+      },
+      "start": {
+        "column": 85,
+        "line": 38
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:40",
+    "mutant_id": "5144",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 52,
+        "line": 40
+      },
+      "start": {
+        "column": 33,
+        "line": 40
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:40",
+    "mutant_id": "5145",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 111,
+        "line": 40
+      },
+      "start": {
+        "column": 60,
+        "line": 40
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:43",
+    "mutant_id": "5146",
+    "mutator": "Equality mutation",
+    "replacement": "number > 26",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 43
+      },
+      "start": {
+        "column": 31,
+        "line": 43
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:43",
+    "mutant_id": "5147",
+    "mutator": "Equality mutation",
+    "replacement": "number < 26",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 43
+      },
+      "start": {
+        "column": 31,
+        "line": 43
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:55",
+    "mutant_id": "5157",
+    "mutator": "Conditional (true) mutation",
+    "replacement": "(true?null :0)",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 69,
+        "line": 55
+      },
+      "start": {
+        "column": 38,
+        "line": 55
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:61",
+    "mutant_id": "5167",
+    "mutator": "Arithmetic mutation",
+    "replacement": "index - 1L",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 34,
+        "line": 61
+      },
+      "start": {
+        "column": 24,
+        "line": 61
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:63",
+    "mutant_id": "5169",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 51,
+        "line": 63
+      },
+      "start": {
+        "column": 33,
+        "line": 63
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:73",
+    "mutant_id": "5180",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 44,
+        "line": 73
+      },
+      "start": {
+        "column": 40,
+        "line": 73
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:74",
+    "mutant_id": "5181",
+    "mutator": "CoalesceAssignmentExpression to SimpleAssignmentExpression mutation",
+    "replacement": "firstUnknownTimestamp = index",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 52,
+        "line": 74
+      },
+      "start": {
+        "column": 21,
+        "line": 74
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:83",
+    "mutant_id": "5191",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 83
+      },
+      "start": {
+        "column": 37,
+        "line": 83
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:83",
+    "mutant_id": "5192",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 66,
+        "line": 83
+      },
+      "start": {
+        "column": 62,
+        "line": 83
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:89",
+    "mutant_id": "5201",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 89
+      },
+      "start": {
+        "column": 41,
+        "line": 89
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:89",
+    "mutant_id": "5202",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 71,
+        "line": 89
+      },
+      "start": {
+        "column": 66,
+        "line": 89
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:90",
+    "mutant_id": "5203",
+    "mutator": "CoalesceAssignmentExpression to SimpleAssignmentExpression mutation",
+    "replacement": "creation = currentCreation",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 90
+      },
+      "start": {
+        "column": 21,
+        "line": 90
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:92",
+    "mutant_id": "5204",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 47,
+        "line": 92
+      },
+      "start": {
+        "column": 43,
+        "line": 92
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:98",
+    "mutant_id": "5212",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 98
+      },
+      "start": {
+        "column": 38,
+        "line": 98
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:102",
+    "mutant_id": "5216",
+    "mutator": "CoalesceAssignmentExpression to SimpleAssignmentExpression mutation",
+    "replacement": "firstUnknownTimestamp = index",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 52,
+        "line": 102
+      },
+      "start": {
+        "column": 21,
+        "line": 102
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:108",
+    "mutant_id": "5219",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 91,
+        "line": 108
+      },
+      "start": {
+        "column": 87,
+        "line": 108
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:109",
+    "mutant_id": "5220",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 38,
+        "line": 109
+      },
+      "start": {
+        "column": 17,
+        "line": 109
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:110",
+    "mutant_id": "5221",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 110
+      },
+      "start": {
+        "column": 17,
+        "line": 110
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:118",
+    "mutant_id": "5224",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 118
+      },
+      "start": {
+        "column": 17,
+        "line": 118
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:118",
+    "mutant_id": "5225",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 75,
+        "line": 118
+      },
+      "start": {
+        "column": 69,
+        "line": 118
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:119",
+    "mutant_id": "5226",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 119
+      },
+      "start": {
+        "column": 17,
+        "line": 119
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:119",
+    "mutant_id": "5227",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 119
+      },
+      "start": {
+        "column": 71,
+        "line": 119
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:120",
+    "mutant_id": "5229",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 120
+      },
+      "start": {
+        "column": 71,
+        "line": 120
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:121",
+    "mutant_id": "5230",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 79,
+        "line": 121
+      },
+      "start": {
+        "column": 17,
+        "line": 121
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:121",
+    "mutant_id": "5231",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 77,
+        "line": 121
+      },
+      "start": {
+        "column": 70,
+        "line": 121
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:124",
+    "mutant_id": "5233",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 74,
+        "line": 124
+      },
+      "start": {
+        "column": 21,
+        "line": 124
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:125",
+    "mutant_id": "5236",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 91,
+        "line": 125
+      },
+      "start": {
+        "column": 87,
+        "line": 125
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:125",
+    "mutant_id": "5237",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 102,
+        "line": 125
+      },
+      "start": {
+        "column": 93,
+        "line": 125
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:127",
+    "mutant_id": "5243",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 127
+      },
+      "start": {
+        "column": 41,
+        "line": 127
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:127",
+    "mutant_id": "5244",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 90,
+        "line": 127
+      },
+      "start": {
+        "column": 66,
+        "line": 127
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:130",
+    "mutant_id": "5245",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 97,
+        "line": 130
+      },
+      "start": {
+        "column": 17,
+        "line": 130
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:130",
+    "mutant_id": "5246",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 80,
+        "line": 130
+      },
+      "start": {
+        "column": 70,
+        "line": 130
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:131",
+    "mutant_id": "5248",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 98,
+        "line": 131
+      },
+      "start": {
+        "column": 17,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:131",
+    "mutant_id": "5249",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 80,
+        "line": 131
+      },
+      "start": {
+        "column": 75,
+        "line": 131
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:136",
+    "mutant_id": "5260",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 136
+      },
+      "start": {
+        "column": 58,
+        "line": 136
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:139",
+    "mutant_id": "5262",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 58,
+        "line": 139
+      },
+      "start": {
+        "column": 54,
+        "line": 139
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:143",
+    "mutant_id": "5267",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 52,
+        "line": 143
+      },
+      "start": {
+        "column": 33,
+        "line": 143
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:143",
+    "mutant_id": "5268",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 143
+      },
+      "start": {
+        "column": 60,
+        "line": 143
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:147",
+    "mutant_id": "5276",
+    "mutator": "Linq method mutation (Any() to All())",
+    "replacement": "request.Reports.All",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 65,
+        "line": 147
+      },
+      "start": {
+        "column": 46,
+        "line": 147
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:149",
+    "mutant_id": "5282",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 56,
+        "line": 149
+      },
+      "start": {
+        "column": 38,
+        "line": 149
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:149",
+    "mutant_id": "5283",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 74,
+        "line": 149
+      },
+      "start": {
+        "column": 64,
+        "line": 149
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:156",
+    "mutant_id": "5295",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 47,
+        "line": 156
+      },
+      "start": {
+        "column": 29,
+        "line": 156
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:156",
+    "mutant_id": "5296",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 156
+      },
+      "start": {
+        "column": 55,
+        "line": 156
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:157",
+    "mutant_id": "5297",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 38,
+        "line": 157
+      },
+      "start": {
+        "column": 34,
+        "line": 157
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:165",
+    "mutant_id": "5304",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 100,
+        "line": 165
+      },
+      "start": {
+        "column": 82,
+        "line": 165
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:165",
+    "mutant_id": "5306",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 124,
+        "line": 165
+      },
+      "start": {
+        "column": 114,
+        "line": 165
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:167",
+    "mutant_id": "5307",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 167
+      },
+      "start": {
+        "column": 39,
+        "line": 167
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:174",
+    "mutant_id": "5315",
+    "mutator": "Logical mutation",
+    "replacement": "selected is null && selectionUnknown",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 53,
+        "line": 174
+      },
+      "start": {
+        "column": 17,
+        "line": 174
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:188",
+    "mutant_id": "5330",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 188
+      },
+      "start": {
+        "column": 17,
+        "line": 188
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:191",
+    "mutant_id": "5338",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 191
+      },
+      "start": {
+        "column": 37,
+        "line": 191
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:194",
+    "mutant_id": "5343",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 194
+      },
+      "start": {
+        "column": 22,
+        "line": 194
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:204",
+    "mutant_id": "5350",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 24,
+        "line": 204
+      },
+      "start": {
+        "column": 10,
+        "line": 204
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:204",
+    "mutant_id": "5351",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 63,
+        "line": 204
+      },
+      "start": {
+        "column": 52,
+        "line": 204
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205",
+    "mutant_id": "5352",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 18,
+        "line": 205
+      },
+      "start": {
+        "column": 10,
+        "line": 205
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205",
+    "mutant_id": "5353",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 57,
+        "line": 205
+      },
+      "start": {
+        "column": 49,
+        "line": 205
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:205",
+    "mutant_id": "5354",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 96,
+        "line": 205
+      },
+      "start": {
+        "column": 83,
+        "line": 205
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:210",
+    "mutant_id": "5362",
+    "mutator": "Equality mutation",
+    "replacement": "diagnostic.Row != row",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 106,
+        "line": 210
+      },
+      "start": {
+        "column": 85,
+        "line": 210
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:210",
+    "mutant_id": "5361",
+    "mutator": "Logical mutation",
+    "replacement": "diagnostic.Row == row || diagnostic.Field == $\"brokers.{broker}.{field}\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 157,
+        "line": 210
+      },
+      "start": {
+        "column": 85,
+        "line": 210
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:210",
+    "mutant_id": "5363",
+    "mutator": "Equality mutation",
+    "replacement": "diagnostic.Field != $\"brokers.{broker}.{field}\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 157,
+        "line": 210
+      },
+      "start": {
+        "column": 110,
+        "line": 210
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:210",
+    "mutant_id": "5364",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 157,
+        "line": 210
+      },
+      "start": {
+        "column": 130,
+        "line": 210
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:211",
+    "mutant_id": "5366",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 211
+      },
+      "start": {
+        "column": 24,
+        "line": 211
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:211",
+    "mutant_id": "5367",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 76,
+        "line": 211
+      },
+      "start": {
+        "column": 49,
+        "line": 211
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:216",
+    "mutant_id": "5369",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 106,
+        "line": 216
+      },
+      "start": {
+        "column": 9,
+        "line": 216
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:216",
+    "mutant_id": "5372",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 104,
+        "line": 216
+      },
+      "start": {
+        "column": 98,
+        "line": 216
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:217",
+    "mutant_id": "5373",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 218
+      },
+      "start": {
+        "column": 9,
+        "line": 217
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+    "mutant_id": "5380",
+    "mutator": "Conditional (false) mutation",
+    "replacement": "(false?\".max\" :\".p99\")",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 218
+      },
+      "start": {
+        "column": 34,
+        "line": 218
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+    "mutant_id": "5379",
+    "mutator": "Conditional (true) mutation",
+    "replacement": "(true?\".max\" :\".p99\")",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 218
+      },
+      "start": {
+        "column": 34,
+        "line": 218
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+    "mutant_id": "5381",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 50,
+        "line": 218
+      },
+      "start": {
+        "column": 44,
+        "line": 218
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:218",
+    "mutant_id": "5382",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 218
+      },
+      "start": {
+        "column": 53,
+        "line": 218
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:224",
+    "mutant_id": "5385",
+    "mutator": "Null coalescing mutation (left to right)",
+    "replacement": "row?? problem.Row",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 120,
+        "line": 224
+      },
+      "start": {
+        "column": 102,
+        "line": 224
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:224",
+    "mutant_id": "5386",
+    "mutator": "Null coalescing mutation (remove left)",
+    "replacement": "row",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 120,
+        "line": 224
+      },
+      "start": {
+        "column": 102,
+        "line": 224
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:224",
+    "mutant_id": "5387",
+    "mutator": "Null coalescing mutation (remove right)",
+    "replacement": "problem.Row",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 120,
+        "line": 224
+      },
+      "start": {
+        "column": 102,
+        "line": 224
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Judgement/StatisticsChecks.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Judgement/StatisticsChecks.cs:233",
+    "mutant_id": "5388",
+    "mutator": "String mutation",
+    "replacement": "$\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 82,
+        "line": 233
+      },
+      "start": {
+        "column": 58,
+        "line": 233
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/ConsumedRecordBudget.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/ConsumedRecordBudget.cs:35",
+    "mutant_id": "5523",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 117,
+        "line": 35
+      },
+      "start": {
+        "column": 51,
+        "line": 35
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/ConsumedRecordBudget.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/ConsumedRecordBudget.cs:45",
+    "mutant_id": "5530",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 97,
+        "line": 45
+      },
+      "start": {
+        "column": 51,
+        "line": 45
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:11",
+    "mutant_id": "5531",
+    "mutator": "Boolean mutation",
+    "replacement": "true",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 64,
+        "line": 11
+      },
+      "start": {
+        "column": 59,
+        "line": 11
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:11",
+    "mutant_id": "5532",
+    "mutator": "Boolean mutation",
+    "replacement": "false",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 70,
+        "line": 11
+      },
+      "start": {
+        "column": 66,
+        "line": 11
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:26",
+    "mutant_id": "5544",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 74,
+        "line": 26
+      },
+      "start": {
+        "column": 51,
+        "line": 26
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36",
+    "mutant_id": "5554",
+    "mutator": "Equality mutation",
+    "replacement": "matches.Length != 0",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 59,
+        "line": 36
+      },
+      "start": {
+        "column": 40,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36",
+    "mutant_id": "5553",
+    "mutator": "Conditional (false) mutation",
+    "replacement": "(false?\"missing_header\" :\"duplicate_header\")",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 36
+      },
+      "start": {
+        "column": 40,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36",
+    "mutant_id": "5552",
+    "mutator": "Conditional (true) mutation",
+    "replacement": "(true?\"missing_header\" :\"duplicate_header\")",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 36
+      },
+      "start": {
+        "column": 40,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36",
+    "mutant_id": "5555",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 78,
+        "line": 36
+      },
+      "start": {
+        "column": 62,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:36",
+    "mutant_id": "5556",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 36
+      },
+      "start": {
+        "column": 81,
+        "line": 36
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:46",
+    "mutant_id": "5561",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 46
+      },
+      "start": {
+        "column": 41,
+        "line": 46
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:52",
+    "mutant_id": "5565",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 52
+      },
+      "start": {
+        "column": 41,
+        "line": 52
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/MessageIdentityReader.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/MessageIdentityReader.cs:57",
+    "mutant_id": "5566",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 99,
+        "line": 57
+      },
+      "start": {
+        "column": 89,
+        "line": 57
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/RunWindow.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:22",
+    "mutant_id": "5568",
+    "mutator": "Conditional (true) mutation",
+    "replacement": "(true?new Dictionary<int, long>() :new Dictionary<int, long>(endHighs))",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 80,
+        "line": 23
+      },
+      "start": {
+        "column": 55,
+        "line": 22
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/RunWindow.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:25",
+    "mutant_id": "5573",
+    "mutator": "String mutation",
+    "replacement": "\"\"",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 97,
+        "line": 25
+      },
+      "start": {
+        "column": 49,
+        "line": 25
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/RunWindow.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:28",
+    "mutant_id": "5574",
+    "mutator": "Logical mutation",
+    "replacement": "!parsedStartNote.IsSuccess && note is null",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 55,
+        "line": 28
+      },
+      "start": {
+        "column": 13,
+        "line": 28
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/RunWindow.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/RunWindow.cs:33",
+    "mutant_id": "5580",
+    "mutator": "Conditional (false) mutation",
+    "replacement": "(false?[Failure(7)] :failures)",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 92,
+        "line": 33
+      },
+      "start": {
+        "column": 46,
+        "line": 33
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/WindowConsumer.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:23",
+    "mutant_id": "5638",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 23
+      },
+      "start": {
+        "column": 13,
+        "line": 23
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/WindowConsumer.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:28",
+    "mutant_id": "5643",
+    "mutator": "Statement mutation",
+    "replacement": ";",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 66,
+        "line": 28
+      },
+      "start": {
+        "column": 17,
+        "line": 28
+      }
+    }
+  },
+  {
+    "file": "VerifyRun/Window/WindowConsumer.cs",
+    "line_key": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492:VerifyRun/Window/WindowConsumer.cs:42",
+    "mutant_id": "5661",
+    "mutator": "Equality mutation",
+    "replacement": "pollSlice <= remaining",
+    "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 42
+      },
+      "start": {
+        "column": 47,
+        "line": 42
+      }
+    }
+  }
+]

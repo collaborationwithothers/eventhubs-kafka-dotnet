@@ -1,0 +1,12 @@
+{
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "audit_scope": {"line_records": 137, "variants": 229},
+  "corrected_source_and_test_citation_ids": ["4856", "4885"],
+  "corrected_stale_replay_prose_ids": ["1883", "5661"],
+  "preserved": ["categories", "line_keys", "mutant_ids", "raw_statuses", "original_review_timing", "measured_source_inputs", "historical_mutation_record"],
+  "correction_elapsed_seconds": null,
+  "timing_limitation": "The correction worker did not record its start time; original timing fields were not reused as a measurement of this correction.",
+  "prohibited_runs_invoked": []
+}

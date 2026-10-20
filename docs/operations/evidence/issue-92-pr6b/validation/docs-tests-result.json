@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "tests": 27,
+  "passed": 27,
+  "failed": 0,
+  "duration_ms": 13756.775583,
+  "source": "Captured completion of exec session 27656; initial invocation is in preparation-checks.json"
+}

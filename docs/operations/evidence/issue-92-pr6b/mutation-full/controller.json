@@ -1,0 +1,49 @@
+{
+  "mode": "full",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/controller-invocations.json",
+  "mutant_id": null,
+  "command": [
+    "dotnet",
+    "stryker",
+    "--config-file",
+    "stryker-config.json",
+    "--output",
+    "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/mutation-full"
+  ],
+  "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true",
+    "RestoreSources": "https://api.nuget.org/v3/index.json"
+  },
+  "tested_commit": "a2001534d94cd1135b9af53dc0e9d9816b00ce3d",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "5e94fdde24ce7ed05f67b169a7d3f1ea1d537ba26adfdbd6a4b5efbd89d8f856",
+  "wall_time_cap_seconds": 7200.0,
+  "generated_mutant_cap": 10000,
+  "generated_cap_observation_boundary": "Execution is terminated after the tool logs a created count above the cap. The tool may allocate mutants before that log is observed.",
+  "observed_generated_counts": [
+    5685
+  ],
+  "maximum_observed_generated_count": 5685,
+  "started_utc": "2026-10-20T01:57:44.128520+00:00",
+  "elapsed_seconds": 1510.1793619578239,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "pending-one-pass-extraction",
+  "expected_report": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/mutation-full/reports/mutation-report.json",
+  "expected_xml": [],
+  "process_group": 19488,
+  "finished_utc": "2026-10-20T02:22:54.309951+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": true,
+  "report_bytes": 10502481,
+  "report_sha256": "f7b3aa454bf530820e683cf1e478f866ef9e9e4f6d538fdcb66f02391929d492",
+  "xml_presence": {},
+  "command_log_sha256": "f947ada40328280a6599daf86cbb9ca1ba616e9ee68713b8796b3443f9721d12",
+  "execution_evidence_complete": true
+}

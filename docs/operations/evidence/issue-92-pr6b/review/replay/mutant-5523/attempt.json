@@ -1,0 +1,72 @@
+{
+  "mutant_id": "5523",
+  "status": "Survived",
+  "file": "VerifyRun/Window/ConsumedRecordBudget.cs",
+  "mutator": "String mutation",
+  "span": {
+    "end": {
+      "column": 117,
+      "line": 35
+    },
+    "start": {
+      "column": 51,
+      "line": 35
+    }
+  },
+  "replacement": "\"\"",
+  "report_status": "Survived",
+  "started_utc": "2026-10-20T02:32:40.280912+00:00",
+  "commands": [
+    {
+      "child": "build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "--configuration",
+        "Release",
+        "--no-restore",
+        "-m:1"
+      ],
+      "started_utc": "2026-10-20T02:32:40.281449+00:00",
+      "finished_utc": "2026-10-20T02:32:41.750474+00:00",
+      "returncode": 0,
+      "controller_receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5523/build/controller.json",
+      "controller_receipt_relative": "review/replay/mutant-5523/build/controller.json",
+      "controller_exit_reason": "command-exit",
+      "classification": "command-passed"
+    },
+    {
+      "child": "test",
+      "argv": [
+        "dotnet",
+        "test",
+        "--project",
+        "/var/folders/qf/q1qcpkpd04d6l_34t4n2ljh80000gp/T/issue-92-replay-tl9n1401/checkout/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+        "--configuration",
+        "Release",
+        "--no-build",
+        "--minimum-expected-tests",
+        "1",
+        "--results-directory",
+        "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5523/test-results",
+        "--",
+        "--report-xunit-xml",
+        "--report-xunit-xml-filename",
+        "results.xml"
+      ],
+      "started_utc": "2026-10-20T02:32:41.750871+00:00",
+      "finished_utc": "2026-10-20T02:32:53.800691+00:00",
+      "returncode": 0,
+      "controller_receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5523/test/controller.json",
+      "controller_receipt_relative": "review/replay/mutant-5523/test/controller.json",
+      "controller_exit_reason": "command-exit",
+      "classification": "tests-passed"
+    }
+  ],
+  "classification": "tests-passed",
+  "runner_comparison_complete": true,
+  "runner_disagreement": false,
+  "restored_source_sha256": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+  "finished_utc": "2026-10-20T02:32:53.811990+00:00"
+}

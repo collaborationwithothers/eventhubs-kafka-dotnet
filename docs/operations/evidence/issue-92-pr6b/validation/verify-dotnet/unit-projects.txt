@@ -1,0 +1,4 @@
+/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Kafka.Tests/Parchwell.Kafka.Tests.csproj
+/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj
+/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Scenarios.Tests/Parchwell.Scenarios.Tests.csproj
+/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj

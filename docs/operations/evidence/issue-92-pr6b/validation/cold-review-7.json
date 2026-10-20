@@ -1,0 +1,20 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "reviewed_head": "b2669424db7f09663da8b8dc8adb05db21de20dc",
+  "diff_sha256": "f71909a94be14aef24817e1bd60c3b431d5d47c0cf2a4495b08bb01120660b59",
+  "coverage_complete": true,
+  "unique_paths": 346,
+  "coverage_ledger": "/tmp/issue-92-cold7.iJgxn4/coverage-ledger.md",
+  "result_line": "Findings: none at P0 or P1",
+  "findings": [
+    {
+      "severity": "P2",
+      "path": "mutation-full/extraction-summary.json",
+      "line": 240,
+      "finding": "The 21 keyword-filtered diagnostic warnings are not explicitly distinguished from the complete 23 WRN-line scan."
+    }
+  ],
+  "remediation_authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964",
+  "next_review": "Required on clarified candidate before push."
+}

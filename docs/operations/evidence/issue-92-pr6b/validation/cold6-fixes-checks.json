@@ -1,0 +1,59 @@
+{
+  "authority": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6283040964",
+  "phase": "cold6-fixes",
+  "commands": [
+    {
+      "name": "support-tests",
+      "command": [
+        "/usr/local/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/docs/operations/evidence/issue-92-pr6b",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T04:21:35.867822+00:00",
+      "finished_utc": "2026-10-20T04:21:35.961255+00:00",
+      "elapsed_seconds": 0.09348104102537036,
+      "exit_code": 0,
+      "log": "validation/cold6-fixes-support-tests.log",
+      "sha256": "afb7984f75d3f2bf520b2de28eb06e5216291372a7c8f3a0ab21d8bdace5e596"
+    },
+    {
+      "name": "docs-tests",
+      "command": [
+        "npm",
+        "run",
+        "test:docs"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T04:21:35.961949+00:00",
+      "finished_utc": "2026-10-20T04:21:49.667132+00:00",
+      "elapsed_seconds": 13.705282707931474,
+      "exit_code": 0,
+      "log": "validation/cold6-fixes-docs-tests.log",
+      "sha256": "daf53a79b4a2ed7c4dc95560a432fcc5b5939bf96defca331c4a0cfbbc9ab4de"
+    },
+    {
+      "name": "docs-scan",
+      "command": [
+        "npm",
+        "run",
+        "check:docs"
+      ],
+      "cwd": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92",
+      "started_utc": "2026-10-20T04:21:49.667826+00:00",
+      "finished_utc": "2026-10-20T04:21:54.493521+00:00",
+      "elapsed_seconds": 4.825732582947239,
+      "exit_code": 0,
+      "log": "validation/cold6-fixes-docs-scan.log",
+      "sha256": "d222c11957687b7ed284be0219625f743d163ce745f6ec26af07053a59b74b04"
+    }
+  ],
+  "prohibited_runs_invoked": []
+}

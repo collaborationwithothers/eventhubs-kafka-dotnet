@@ -1,0 +1,402 @@
+[
+  {
+    "mode": "suite",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-19T18:22:54.118428+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/validation/verify-dotnet/controller.json"
+  },
+  {
+    "mode": "baseline",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T01:46:10.474285+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/validation/baseline-build/controller.json"
+  },
+  {
+    "mode": "discovery",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T01:46:30.062359+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/validation/discovery/controller.json"
+  },
+  {
+    "mode": "baseline",
+    "ordinal": 2,
+    "reserved_utc": "2026-10-20T01:46:55.187030+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/validation/baseline-test/controller.json"
+  },
+  {
+    "mode": "full",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T01:57:44.124043+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/mutation-full/controller.json"
+  },
+  {
+    "mode": "replay",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-20T02:29:41.360834+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/baseline-control/restore-build/controller.json",
+    "mutant_id": "baseline-control",
+    "elapsed_seconds": 6.882827084045857,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 2,
+    "reserved_utc": "2026-10-20T02:29:48.670397+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/baseline-control/test/controller.json",
+    "mutant_id": "baseline-control",
+    "elapsed_seconds": 12.33128754189238,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 3,
+    "reserved_utc": "2026-10-20T02:30:01.519181+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-1839/build/controller.json",
+    "mutant_id": "1839",
+    "elapsed_seconds": 1.6626410831231624,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 4,
+    "reserved_utc": "2026-10-20T02:30:03.554559+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-1839/test/controller.json",
+    "mutant_id": "1839",
+    "elapsed_seconds": 8.264304833021015,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 5,
+    "reserved_utc": "2026-10-20T02:30:12.216338+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-1883/build/controller.json",
+    "mutant_id": "1883",
+    "elapsed_seconds": 1.9768215829972178,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 6,
+    "reserved_utc": "2026-10-20T02:30:14.564087+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-1883/test/controller.json",
+    "mutant_id": "1883",
+    "elapsed_seconds": 10.776572375092655,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 7,
+    "reserved_utc": "2026-10-20T02:30:25.880828+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-2651/build/controller.json",
+    "mutant_id": "2651",
+    "elapsed_seconds": 1.1425952499266714,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 8,
+    "reserved_utc": "2026-10-20T02:30:27.268392+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-2651/test/controller.json",
+    "mutant_id": "2651",
+    "elapsed_seconds": 10.75665200012736,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 9,
+    "reserved_utc": "2026-10-20T02:30:38.322869+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-2657/build/controller.json",
+    "mutant_id": "2657",
+    "elapsed_seconds": 1.4470544578507543,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 10,
+    "reserved_utc": "2026-10-20T02:30:40.029298+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4585/build/controller.json",
+    "mutant_id": "4585",
+    "elapsed_seconds": 1.0115836660843343,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 11,
+    "reserved_utc": "2026-10-20T02:30:41.296623+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4629/build/controller.json",
+    "mutant_id": "4629",
+    "elapsed_seconds": 0.9986558328382671,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 12,
+    "reserved_utc": "2026-10-20T02:30:42.539847+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4629/test/controller.json",
+    "mutant_id": "4629",
+    "elapsed_seconds": 10.606533959042281,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 13,
+    "reserved_utc": "2026-10-20T02:30:53.449334+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4826/build/controller.json",
+    "mutant_id": "4826",
+    "elapsed_seconds": 1.0944383749738336,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 14,
+    "reserved_utc": "2026-10-20T02:30:54.796134+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4826/test/controller.json",
+    "mutant_id": "4826",
+    "elapsed_seconds": 10.68523050006479,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 15,
+    "reserved_utc": "2026-10-20T02:31:05.778107+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4889/build/controller.json",
+    "mutant_id": "4889",
+    "elapsed_seconds": 1.1204461669549346,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 16,
+    "reserved_utc": "2026-10-20T02:31:07.155312+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4889/test/controller.json",
+    "mutant_id": "4889",
+    "elapsed_seconds": 11.335642917081714,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 17,
+    "reserved_utc": "2026-10-20T02:31:18.787279+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4956/build/controller.json",
+    "mutant_id": "4956",
+    "elapsed_seconds": 1.1646167919971049,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 18,
+    "reserved_utc": "2026-10-20T02:31:20.195144+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-4956/test/controller.json",
+    "mutant_id": "4956",
+    "elapsed_seconds": 11.16808091592975,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 19,
+    "reserved_utc": "2026-10-20T02:31:31.678478+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5014/build/controller.json",
+    "mutant_id": "5014",
+    "elapsed_seconds": 0.9491069170180708,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 20,
+    "reserved_utc": "2026-10-20T02:31:32.880805+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5064/build/controller.json",
+    "mutant_id": "5064",
+    "elapsed_seconds": 0.9546642079949379,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 21,
+    "reserved_utc": "2026-10-20T02:31:34.081976+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5064/test/controller.json",
+    "mutant_id": "5064",
+    "elapsed_seconds": 11.042315458180383,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 22,
+    "reserved_utc": "2026-10-20T02:31:45.505832+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5276/build/controller.json",
+    "mutant_id": "5276",
+    "elapsed_seconds": 1.1362983342260122,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 23,
+    "reserved_utc": "2026-10-20T02:31:46.887769+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5276/test/controller.json",
+    "mutant_id": "5276",
+    "elapsed_seconds": 11.140397624811158,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 24,
+    "reserved_utc": "2026-10-20T02:31:58.337483+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5385/build/controller.json",
+    "mutant_id": "5385",
+    "elapsed_seconds": 1.8352743338327855,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 25,
+    "reserved_utc": "2026-10-20T02:32:00.432641+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5385/test/controller.json",
+    "mutant_id": "5385",
+    "elapsed_seconds": 11.088150249794126,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 26,
+    "reserved_utc": "2026-10-20T02:32:12.261828+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5386/build/controller.json",
+    "mutant_id": "5386",
+    "elapsed_seconds": 1.49215133395046,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 27,
+    "reserved_utc": "2026-10-20T02:32:14.021663+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5386/test/controller.json",
+    "mutant_id": "5386",
+    "elapsed_seconds": 12.268647459102795,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 28,
+    "reserved_utc": "2026-10-20T02:32:26.772510+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5387/build/controller.json",
+    "mutant_id": "5387",
+    "elapsed_seconds": 1.2590150409378111,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 29,
+    "reserved_utc": "2026-10-20T02:32:28.298001+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5387/test/controller.json",
+    "mutant_id": "5387",
+    "elapsed_seconds": 11.785220874939114,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 30,
+    "reserved_utc": "2026-10-20T02:32:40.441394+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5523/build/controller.json",
+    "mutant_id": "5523",
+    "elapsed_seconds": 1.1957459999248385,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 31,
+    "reserved_utc": "2026-10-20T02:32:41.893027+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5523/test/controller.json",
+    "mutant_id": "5523",
+    "elapsed_seconds": 11.73241849988699,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 32,
+    "reserved_utc": "2026-10-20T02:32:53.959537+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5552/build/controller.json",
+    "mutant_id": "5552",
+    "elapsed_seconds": 1.074481749907136,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 33,
+    "reserved_utc": "2026-10-20T02:32:55.270345+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5552/test/controller.json",
+    "mutant_id": "5552",
+    "elapsed_seconds": 10.932093000039458,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 34,
+    "reserved_utc": "2026-10-20T02:33:06.502191+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5580/build/controller.json",
+    "mutant_id": "5580",
+    "elapsed_seconds": 1.0566297920886427,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 35,
+    "reserved_utc": "2026-10-20T02:33:07.795907+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5580/test/controller.json",
+    "mutant_id": "5580",
+    "elapsed_seconds": 11.217259416822344,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 36,
+    "reserved_utc": "2026-10-20T02:33:19.316361+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5661/build/controller.json",
+    "mutant_id": "5661",
+    "elapsed_seconds": 1.1188807089347392,
+    "reserved_seconds": 180.0,
+    "completed": true
+  },
+  {
+    "mode": "replay",
+    "ordinal": 37,
+    "reserved_utc": "2026-10-20T02:33:20.748775+00:00",
+    "receipt": "/Users/harisubramaniam/learning/eventhubs-kafka-dotnet-issue-92/.artifacts/issue-92-pr6b/review/replay/mutant-5661/test/controller.json",
+    "mutant_id": "5661",
+    "elapsed_seconds": 10.522637875052169,
+    "reserved_seconds": 180.0,
+    "completed": true
+  }
+]
