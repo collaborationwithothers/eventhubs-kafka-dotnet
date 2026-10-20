@@ -789,8 +789,8 @@ public sealed class StatisticsChecksTests
     }
 
     [Theory]
-    [InlineData(null, 2)]
-    [InlineData(7, 7)]
+    [InlineData(null, 2L)]
+    [InlineData(7L, 7L)]
     public void Given_NativeProblemWithOrWithoutExplicitRow_When_Evaluated_Then_ExplicitRowPrecedesCaptureFallback(long? problemRow, long expectedRow)
     {
         ReportAssociation second = RecordedEvidence.Report(100, 50);
