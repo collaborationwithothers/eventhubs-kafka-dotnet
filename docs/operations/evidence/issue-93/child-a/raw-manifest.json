@@ -13,6 +13,12 @@
       "sha256": "3b270a42f37f1163a42f4e62ffc50d025cd287d55cb13e2c15a5471670c098dd"
     },
     {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/diff-accounting.json",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; python3 - (scripted numstat snapshot totals); source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 435,
+      "sha256": "1e800b7cdf16ed17e1dd720734b6176b2b0ab14232908b0aca01a8e5b7a3ff01"
+    },
+    {
       "path": "docs/operations/evidence/issue-93/child-a/raw/discovery-1/command.log.gz",
       "producer": "dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --list-tests; enclosing original controller argv: docs/operations/evidence/issue-93/child-a/raw/discovery-1/controller.json; source commit c4a663bd148991440224efbce05fe34536d1dc5a",
       "size_bytes": 28056,
@@ -47,6 +53,18 @@
       "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit f866ab8bcb3bd1b164552172ba9b790d096f331c",
       "size_bytes": 64604,
       "sha256": "37d125e73991a83f0d99cae7caa94f6ae380370a9d95d359d1608f9605861424"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-2.json",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 740,
+      "sha256": "bcc40917e998884b47d7f09c5292a8ee8bc515ce9e3da15fe7cb252c91af6f4b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-a/raw/docs-2.log",
+      "producer": "timeout --kill-after=5s 300s bash; stdin: npm ci --ignore-scripts; npm run test:docs; npm run check:docs; git diff --check; git diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'; source commit 2f23867e0bc0e7869c3f3694dbcac32752c374fb",
+      "size_bytes": 5366,
+      "sha256": "183406963978666d1043b7099e5cdbc128b52ccd92423b33ccf48196bb8946e1"
     },
     {
       "path": "docs/operations/evidence/issue-93/child-a/raw/focused-1/command.log.gz",
