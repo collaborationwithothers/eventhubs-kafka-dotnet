@@ -275,6 +275,40 @@ public sealed class WindowConsumerTests
             TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1000), new(10, 1000), new CancellationToken(true)));
     }
 
+    [Fact]
+    public void Given_PreCancelledWork_When_Draining_Then_NoNativeOperationStarts()
+    {
+        var (consumer, fake) = Create();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        OperationCanceledException exception = Assert.Throws<OperationCanceledException>(() =>
+            WindowConsumer.Drain(consumer, Window(), fake.Clock, 0, TimeSpan.FromMilliseconds(1000),
+                TimeSpan.FromMilliseconds(1000), new(10, 1000), cancellation.Token));
+        Assert.Equal(cancellation.Token, exception.CancellationToken);
+        Assert.Equal(0, fake.AssignCalls);
+        Assert.Equal(0, fake.PositionCalls);
+        Assert.Equal(0, fake.ConsumeCalls);
+        Assert.Empty(fake.Assigned);
+        Assert.Empty(fake.Timeouts);
+    }
+
+    [Fact]
+    public void Given_WorkCancelledDuringAssignment_When_Draining_Then_NoPositionOrPollStarts()
+    {
+        var (consumer, fake) = Create();
+        using var cancellation = new CancellationTokenSource();
+        fake.AfterAssign = cancellation.Cancel;
+        OperationCanceledException exception = Assert.Throws<OperationCanceledException>(() =>
+            WindowConsumer.Drain(consumer, Window(), fake.Clock, 0, TimeSpan.FromMilliseconds(1000),
+                TimeSpan.FromMilliseconds(1000), new(10, 1000), cancellation.Token));
+        Assert.Equal(cancellation.Token, exception.CancellationToken);
+        Assert.Equal(1, fake.AssignCalls);
+        Assert.Equal(0, fake.PositionCalls);
+        Assert.Equal(0, fake.ConsumeCalls);
+        Assert.Equal([new TopicPartitionOffset("document-events", new Partition(0), new Offset(5))], fake.Assigned);
+        Assert.Empty(fake.Timeouts);
+    }
+
     private static RunWindow Window() => RunWindowTests.Create([new(0, 5)], new Dictionary<int, long> { [0] = 7 });
     private static WindowDrainResult Drain(IConsumer<byte[], byte[]> consumer, ConsumerProxy fake,
         RunWindow? window = null, ConsumedRecordBudget? budget = null) => WindowConsumer.Drain(consumer, window ?? Window(),
@@ -310,7 +344,9 @@ public sealed class WindowConsumerTests
         internal List<TimeSpan> Timeouts { get; } = [];
         internal Exception? PollError { get; set; }
         internal Action? BeforePollError { get; set; }
+        internal Action? AfterAssign { get; set; }
         internal int AssignCalls { get; private set; }
+        internal int PositionCalls { get; private set; }
         internal int ConsumeCalls { get; private set; }
         internal long Position { get; set; } = 5;
 
@@ -321,8 +357,11 @@ public sealed class WindowConsumerTests
                 case "Assign":
                     AssignCalls++;
                     Assigned.AddRange((IEnumerable<TopicPartitionOffset>)args![0]!);
+                    AfterAssign?.Invoke();
                     return null;
-                case "Position": return new Offset(Position);
+                case "Position":
+                    PositionCalls++;
+                    return new Offset(Position);
                 case "Consume":
                     ConsumeCalls++;
                     var timeout = (TimeSpan)args![0]!;

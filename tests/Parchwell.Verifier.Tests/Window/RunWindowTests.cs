@@ -27,6 +27,25 @@ public sealed class RunWindowTests
         Identity, new Dictionary<int, long> { [0] = 6 }), 7);
 
     [Fact]
+    public void Given_EmptyProblemFailure_When_Creating_Then_FallbackCheckSevenFails()
+    {
+        var parsed = ParseResult<StartLineNote>.Failure(Array.Empty<StructuralProblem>());
+        Assert.True(parsed.IsSuccess);
+        Assert.Null(parsed.Value);
+        Assert.Empty(parsed.Problems);
+        Assert.False(parsed.IsExecutionFailure);
+
+        RunWindow window = RunWindow.Create(parsed, Identity, new Dictionary<int, long> { [0] = 6 });
+        Assert.False(window.CanAssign);
+        Assert.Empty(window.RecordedStartHighs);
+        Assert.Empty(window.Partitions);
+        Assert.Equal([new KeyValuePair<int, long>(0, 6)], window.EndHighs.OrderBy(p => p.Key));
+        Assert.Equal(new CheckAssessment(7, AssessmentEvaluation.Evaluated,
+            AssessmentDisposition.Fail, AssessmentClassification.Invalid,
+            "start-line", null, null, "check_7_failed", null), Assert.Single(window.Assessments));
+    }
+
+    [Fact]
     public void Given_ParserProblemWithEveryMetadataField_When_Creating_Then_PreservesProblemWithoutSemanticRename()
     {
         var problem = new StructuralProblem(7, "synthetic_parser_problem", "notes/custom.json", 3,
@@ -122,6 +141,27 @@ public sealed class RunWindowTests
         Assert.Equal([new PartitionWindow(0, 5, 6), new PartitionWindow(1, 0, 2)], window.Partitions);
         Assert.Equal([new PartitionHigh(0, 5)], window.RecordedStartHighs);
         Assert.Contains(window.Assessments, a => a.CheckNumber == 8 && a.Disposition == AssessmentDisposition.Pass);
+    }
+
+    [Fact]
+    public void Given_SuppliedEndHighs_When_Creating_Then_RetainsIndependentSnapshot()
+    {
+        var ends = new Dictionary<int, long> { [0] = 6, [1] = 2 };
+        RunWindow window = Create([new(0, 5)], ends);
+        Assert.True(window.CanAssign);
+        Assert.Equal([new KeyValuePair<int, long>(0, 6), new KeyValuePair<int, long>(1, 2)],
+            window.EndHighs.OrderBy(p => p.Key));
+        Assert.NotSame(ends, window.EndHighs);
+        Assert.Equal([new PartitionWindow(0, 5, 6), new PartitionWindow(1, 0, 2)], window.Partitions);
+        Assert.Equal([new PartitionHigh(0, 5)], window.RecordedStartHighs);
+
+        ends[0] = 999;
+        ends.Remove(1);
+        ends[2] = 7;
+
+        Assert.Equal([new KeyValuePair<int, long>(0, 6), new KeyValuePair<int, long>(1, 2)],
+            window.EndHighs.OrderBy(p => p.Key));
+        Assert.Equal([new PartitionWindow(0, 5, 6), new PartitionWindow(1, 0, 2)], window.Partitions);
     }
 
     [Theory]

@@ -801,6 +801,61 @@ public sealed class StatisticsChecksTests
         Assert.Equal<ResultDiagnostic>([new(20, "synthetic_problem", "synthetic-native", expectedRow, "synthetic-field", "synthetic snippet")], StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 20).Diagnostics);
     }
 
+    [Theory]
+    [InlineData("name")]
+    [InlineData("nodeid")]
+    [InlineData("source")]
+    [InlineData("state")]
+    [InlineData("req_timeouts")]
+    [InlineData("txretries")]
+    [InlineData("txerrs")]
+    [InlineData("rxerrs")]
+    [InlineData("disconnects")]
+    [InlineData("throttle.cnt")]
+    [InlineData("throttle.max")]
+    [InlineData("rtt.cnt")]
+    [InlineData("rtt.p99")]
+    public void Given_SyntheticRequiredBrokerFieldMissingWithoutParserProblem_When_Evaluated_Then_Check21EmitsExactFallbackDiagnostic(string field)
+    {
+        NativeBrokerReport broker = RecordedEvidence.Broker();
+        broker = field switch
+        {
+            "name" => broker with { Name = ParsedField<string>.Missing() },
+            "nodeid" => broker with { NodeId = ParsedField<long>.Missing() },
+            "source" => broker with { Source = ParsedField<string>.Missing() },
+            "state" => broker with { State = ParsedField<string>.Missing() },
+            "req_timeouts" => broker with { RequestTimeouts = ParsedField<long>.Missing() },
+            "txretries" => broker with { TransmissionRetries = ParsedField<long>.Missing() },
+            "txerrs" => broker with { TransmissionErrors = ParsedField<long>.Missing() },
+            "rxerrs" => broker with { ReceiveErrors = ParsedField<long>.Missing() },
+            "disconnects" => broker with { Disconnects = ParsedField<long>.Missing() },
+            "throttle.cnt" => broker with { Throttle = ParsedField<NativeWindow>.FromValue(broker.Throttle.Value! with { Count = ParsedField<long>.Missing() }) },
+            "throttle.max" => broker with { Throttle = ParsedField<NativeWindow>.FromValue(broker.Throttle.Value! with { Maximum = ParsedField<long>.Missing() }) },
+            "rtt.cnt" => broker with { RoundTripTime = ParsedField<NativeWindow>.FromValue(broker.RoundTripTime.Value! with { Count = ParsedField<long>.Missing() }) },
+            "rtt.p99" => broker with { RoundTripTime = ParsedField<NativeWindow>.FromValue(broker.RoundTripTime.Value! with { P99 = ParsedField<long>.Missing() }) },
+            _ => throw new ArgumentOutOfRangeException(nameof(field))
+        };
+        ReportAssociation report = RecordedEvidence.Report(100, 50, [broker]);
+        Assert.NotNull(report.Native.Value);
+        Assert.Empty(report.Native.Problems);
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(), [report]);
+        AssertCheck(request, 21, false);
+        Assert.Equal<ResultDiagnostic>([new(21, "check_21_failed", "statistics.jsonl", 1, "brokers.broker-a." + field, null)],
+            StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 21).Diagnostics);
+    }
+
+    [Fact]
+    public void Given_SyntheticBrokerAdditionAtBoundary_When_Evaluated_Then_Check26EmitsExactDiagnosticTuple()
+    {
+        NativeBrokerReport a = RecordedEvidence.Broker();
+        NativeBrokerReport b = RecordedEvidence.Broker("broker-b");
+        RunJudgementRequest request = WithReports(RecordedEvidence.SyntheticRequest(),
+            [RecordedEvidence.Report(90, 40, [a]), RecordedEvidence.Report(100, 50, [a, b])]);
+        AssertCheck(request, 26, false);
+        Assert.Equal<ResultDiagnostic>([new(26, "check_26_failed", "statistics.jsonl", 2, "brokers", null)],
+            StatisticsChecks.Evaluate(request).Single(result => result.Assessment.CheckNumber == 26).Diagnostics);
+    }
+
     private static readonly string NativeJson = """
         {"ts":100,"age":50,"brokers":{"broker-a":{"name":"broker-a","nodeid":1,"source":"learned","state":"UP","req_timeouts":0,"txretries":0,"txerrs":0,"rxerrs":0,"disconnects":0,"throttle":{"cnt":0,"max":0},"rtt":{"cnt":0,"p99":0}}}}
         """;
