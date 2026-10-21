@@ -7,7 +7,7 @@ Binding for all Terraform in this repository. Status: approved by Hari on 2026-1
 ```
 infra/
   persistent/     applied by Hari only: budget alert, spoke VNet and peering, DNS links,
-                  Log Analytics, identities, state storage
+                  Log Analytics, identities, ACR; consumes an external state backend
   ephemeral/      applied and destroyed by the scenario workflow only: Event Hubs, AKS,
                   storage, Application Insights, private endpoints
   modules/        our own modules, only where no Azure Verified Module fits
@@ -29,7 +29,7 @@ Every fallback is recorded in ADR-011's table with the reason.
 - Every variable has a `type`, a `description`, and a `validation` block where values are constrained (SKU names, CIDRs, PU counts).
 - No hard-coded subscription IDs, tenant IDs, resource IDs or IP ranges. They come from variables or data sources.
 - Names come from one `locals` naming function, not string literals scattered across files.
-- Tags applied once through the provider's default tags: `repo`, `layer`, `scenario`, `run-id`, `expires-at` (the sweeper reads `expires-at`).
+- Declare tags once in each root's `locals.tf` and pass that map to every resource and module that supports tags: `repo`, `layer`, `scenario`, `run-id`, `expires-at`. Do not configure provider default tags; the AzureRM provider does not expose them.
 - The ephemeral layer reads the persistent layer only through `terraform_remote_state` outputs or data sources, never by guessing names.
 - No `count` or `for_each` keyed on values unknown until apply.
 
@@ -39,7 +39,9 @@ Every fallback is recorded in ADR-011's table with the reason.
 - `terraform validate` per root
 - `tflint` with the azurerm ruleset
 - `terraform test` for modules and for variable validation
-- `terraform plan` needs Azure credentials, so it cannot run on pull request events in a public repository (AGENTS.md safety rule 9). Open decision for Hari: whether plan runs inside the scenario workflow before apply only, or also from a separate workflow on branches in this repository with an identity Hari grants.
+Ephemeral Azure-backed plans run only in the protected scenario workflow immediately before apply, using its environment-bound OIDC identity. Persistent plans and applies are run by Hari. Pull-request checks run offline and hold no Azure identity. This records [the adopted plan-location decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313658165).
+
+Both roots use Hari's existing external Entra-authenticated private backend. This repository does not provision, import, modify or destroy that account or its networking. Backend permissions and connectivity are deployment prerequisites, not conclusions from mock tests. The external backend and shared tag map follow [Hari's decision on #112](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318488448); the unsupported provider field was checked against the [pinned AzureRM provider schema](https://github.com/hashicorp/terraform-provider-azurerm/blob/5782a75422c68a0d0804ac16d97dcaf3df5ee2fa/internal/provider/provider.go).
 
 ## What reviewers should not flag
 
