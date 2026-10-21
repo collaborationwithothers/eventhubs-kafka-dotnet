@@ -1,0 +1,22 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "600s",
+    "dotnet",
+    "tool",
+    "restore"
+  ],
+  "source_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "environment_overrides": {
+    "DOTNET_ROOT": "/workspace/.tools/issue-103-dotnet-10.0.402",
+    "PATH_prefix": "/workspace/.tools/issue-103-dotnet-10.0.402"
+  },
+  "started_utc": "2026-10-21T04:24:44.762793+00:00",
+  "wall_time_cap_seconds": 600,
+  "exit_code": 0,
+  "elapsed_seconds": 5.036496166000006,
+  "finished_utc": "2026-10-21T04:24:49.799307+00:00",
+  "tool_list_exit_code": 0,
+  "stryker_5_0_0_listed": true
+}

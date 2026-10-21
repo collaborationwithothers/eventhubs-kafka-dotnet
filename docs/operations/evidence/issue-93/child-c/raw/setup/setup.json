@@ -1,0 +1,25 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "600s",
+    "python3",
+    "-c",
+    "\nimport hashlib,json,os,pathlib,shutil,subprocess,sys,tarfile,time,urllib.request\nfrom datetime import datetime,timezone\nroot=pathlib.Path(sys.argv[1]); evidence=root/\"docs/operations/evidence/issue-93/child-c/raw/setup\"\ntarget=pathlib.Path(\"/workspace/.tools/issue-103-dotnet-10.0.402\")\nstarted=time.monotonic()\nreceipt={\"command\":[\"timeout\",\"--kill-after=5s\",\"600s\",*sys.orig_argv],\"source_commit\":subprocess.check_output([\"git\",\"rev-parse\",\"HEAD\"],cwd=root,text=True).strip(),\"wall_time_cap_seconds\":600,\"started_utc\":datetime.now(timezone.utc).isoformat(),\"status\":\"started\"}\ncode=1\ntry:\n    candidates=[shutil.which(\"dotnet\"),\"/usr/share/dotnet/dotnet\",str(target/\"dotnet\"),\"/workspace/.tools/issue-100-dotnet-10.0.402/dotnet\"]\n    selected=None\n    for candidate in candidates:\n        if candidate and pathlib.Path(candidate).is_file():\n            result=subprocess.run([candidate,\"--version\"],cwd=root,text=True,capture_output=True)\n            if result.returncode==0 and result.stdout.strip()==\"10.0.402\":\n                selected=candidate; break\n    if selected is None:\n        url=\"https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz\"\n        expected=\"1904a98dda2db34ba78ba3c4fb1b224455329af91c341d83547843c1839e112b04ae699ee92fa2449a8f62249196a938723078c0c60b9f65c88539d5687729c2\"\n        target.parent.mkdir(parents=True,exist_ok=True)\n        archive=target.parent/\"issue-103-dotnet-sdk.tar.gz\"\n        assert not archive.exists() and not target.exists()\n        digest=hashlib.sha512(); size=0\n        with urllib.request.urlopen(url,timeout=90) as response, archive.open(\"xb\") as output:\n            while block:=response.read(1024*1024):\n                output.write(block); digest.update(block); size+=len(block)\n        receipt[\"archive\"]={\"url\":url,\"size_bytes\":size,\"sha512\":digest.hexdigest(),\"expected_sha512\":expected}\n        assert digest.hexdigest()==expected,\"SDK archive SHA-512 mismatch\"\n        target.mkdir()\n        with tarfile.open(archive) as source: source.extractall(target,filter=\"data\")\n        selected=str(target/\"dotnet\")\n    receipt[\"selected_dotnet\"]=selected\n    environment=os.environ.copy(); environment[\"DOTNET_ROOT\"]=str(pathlib.Path(selected).parent)\n    for name,args in [(\"sdk-version.txt\",[\"--version\"]),(\"dotnet-info.txt\",[\"--info\"]),(\"runtimes.txt\",[\"--list-runtimes\"]),(\"nuget-sources.txt\",[\"nuget\",\"list\",\"source\"])]:\n        result=subprocess.run([selected,*args],cwd=root,env=environment,text=True,capture_output=True)\n        (evidence/name).write_text(result.stdout+result.stderr)\n        assert result.returncode==0,f\"{args} failed\"\n        if name==\"sdk-version.txt\": assert result.stdout.strip()==\"10.0.402\"\n    receipt[\"status\"]=\"passed\"; code=0\nexcept Exception as error:\n    receipt[\"status\"]=\"failed\"; receipt[\"error\"]=type(error).__name__+\": \"+str(error)\nfinally:\n    receipt[\"elapsed_seconds\"]=time.monotonic()-started; receipt[\"exit_code\"]=code\n    receipt[\"finished_utc\"]=datetime.now(timezone.utc).isoformat()\n    with (evidence/\"setup.json\").open(\"x\") as output: json.dump(receipt,output,indent=2); output.write(\"\\n\")\nprint(json.dumps({\"status\":receipt[\"status\"],\"elapsed_seconds\":receipt[\"elapsed_seconds\"],\"selected_dotnet\":receipt.get(\"selected_dotnet\"),\"error\":receipt.get(\"error\")}))\nsys.exit(code)\n",
+    "/workspace/eventhubs-kafka-dotnet"
+  ],
+  "source_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "wall_time_cap_seconds": 600,
+  "started_utc": "2026-10-21T04:24:16.584579+00:00",
+  "status": "passed",
+  "archive": {
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz",
+    "size_bytes": 240279509,
+    "sha512": "1904a98dda2db34ba78ba3c4fb1b224455329af91c341d83547843c1839e112b04ae699ee92fa2449a8f62249196a938723078c0c60b9f65c88539d5687729c2",
+    "expected_sha512": "1904a98dda2db34ba78ba3c4fb1b224455329af91c341d83547843c1839e112b04ae699ee92fa2449a8f62249196a938723078c0c60b9f65c88539d5687729c2"
+  },
+  "selected_dotnet": "/workspace/.tools/issue-103-dotnet-10.0.402/dotnet",
+  "elapsed_seconds": 9.903486794999935,
+  "exit_code": 0,
+  "finished_utc": "2026-10-21T04:24:26.485773+00:00"
+}

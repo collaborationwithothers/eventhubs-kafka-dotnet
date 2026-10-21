@@ -1,0 +1,12 @@
+test_changed_embedded_source_is_source_mismatch (test_map_closure.SyntheticMappingTests.test_changed_embedded_source_is_source_mismatch) ... ok
+test_changed_report_id_matches_same_tuple (test_map_closure.SyntheticMappingTests.test_changed_report_id_matches_same_tuple) ... ok
+test_duplicate_tuple_is_ambiguous (test_map_closure.SyntheticMappingTests.test_duplicate_tuple_is_ambiguous) ... ok
+test_mixed_raw_and_scored_populations (test_map_closure.SyntheticMappingTests.test_mixed_raw_and_scored_populations) ... ok
+test_proof_does_not_rewrite_survived_or_denominator (test_map_closure.SyntheticMappingTests.test_proof_does_not_rewrite_survived_or_denominator) ... ok
+test_same_id_changed_replacement_is_missing (test_map_closure.SyntheticMappingTests.test_same_id_changed_replacement_is_missing) ... ok
+test_unknown_status_and_oversize_rejected (test_map_closure.SyntheticMappingTests.test_unknown_status_and_oversize_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.068s
+
+OK

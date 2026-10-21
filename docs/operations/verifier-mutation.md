@@ -1,5 +1,11 @@
 # Verifier mutation record
 
+## Issue 93 closure measurement
+
+The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
+
+The historical PR 6b record below remains the evidence for its own tested inputs. See the child C receipt for execution completeness and any residual decision needed before #93 can close.
+
 ## PR 6b final judgement record
 
 This record implements [issue #92 plan revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6272507776) under the [approval amendments](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/92#issuecomment-6273196651).
