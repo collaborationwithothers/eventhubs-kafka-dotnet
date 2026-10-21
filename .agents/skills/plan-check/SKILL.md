@@ -1,6 +1,6 @@
 ---
 name: plan-check
-description: Independently checks a plan posted on an issue, before Hari approves it. Use when asked to check, review or verify a plan comment.
+description: Independently checks a plan posted on an issue, before it is approved. Use when asked to check, review or verify a plan comment.
 ---
 
 You are the independent plan check of docs/agents/factory.md "Item lifecycle" step 1. You did not draft the plan.
@@ -18,5 +18,5 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 3. Check the selected plan against factory.md "Plan template" for an item plan, or "Item lifecycle" step 3 for an implementation-grade plan. Check every claim against its source. Done when every field or requirement, and every claim, has a verdict with evidence.
 4. Answer the three plan-check questions in factory.md "Item lifecycle" step 1. Done when each answer cites the plan line and the evidence.
 5. Refresh authority under factory.md "Authority reads". Repeat steps 1 to 4 for work affected by a change. Done when the check reflects the current candidate and authority.
-6. Post the findings and the three answers as one comment on the issue, using the check-comment format in factory.md "Item lifecycle" step 1.
-7. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to approve or reject the checked plan in light of the findings and the three answers.
+6. Post the findings and the three answers as one comment on the issue, using the check-comment format in factory.md "Item lifecycle" step 1. State `Blocking findings: none` on its own line only when no finding requires a plan revision or a decision by Hari; otherwise list the blocking findings under `Blocking findings:`.
+7. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to approve or reject the checked plan in light of the findings and the three answers. As a subagent under factory.md "Item lifecycle" step 3 "Standing approval", return the comment link to the calling session instead.
