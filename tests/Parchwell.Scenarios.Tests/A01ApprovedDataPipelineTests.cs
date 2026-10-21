@@ -17,7 +17,7 @@ public sealed class A01ApprovedDataPipelineTests
     [
         "ledger.delivery_error_code", "ledger.delivery_latency_ms", "stats.broker.throttle.max",
         "stats.broker.req_timeouts", "stats.broker.disconnects", "stats.broker.rtt.p99",
-        "producer.request_timeout", "verifier.ok", "verifier.loss", "verifier.phantom",
+        "verifier.ok", "verifier.loss", "verifier.phantom",
         "verifier.reported_failure", "verifier.duplicate", "verifier.reorder"
     ];
 
@@ -38,21 +38,24 @@ public sealed class A01ApprovedDataPipelineTests
         Assert.Equal("Parchwell.Kafka", loaded.Definition.Baseline);
         Assert.Equal([KafkaClientRole.LoadGenProducer, KafkaClientRole.VerifierConsumer], loaded.Definition.Roles);
         Assert.Equal("profiles/saturation-ramp.yaml", loaded.Definition.Profile);
-        Assert.Equal(["C0", "C2", "C3"], loaded.Definition.Configurations.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(["C0", "C3"], loaded.Definition.Configurations.Keys.Order(StringComparer.Ordinal));
+        Assert.False(loaded.Definition.Configurations.ContainsKey("C2"));
         Assert.Equal(LiveFaultKind.Throttling, loaded.Definition.Fault.Live.Kind);
-        Assert.Equal(["C0", "C2", "C3"], loaded.Definition.Fault.Live.Configurations);
+        Assert.Equal(["C0", "C3"], loaded.Definition.Fault.Live.Configurations);
         Assert.Equal(ComponentFaultKind.ToxiproxyLatency, loaded.Definition.Fault.Component.Kind);
         Assert.Equal(["C3"], loaded.Definition.Fault.Component.Configurations);
         Assert.Equal("downstream", loaded.Definition.Fault.Component.Direction);
-        Assert.Equal(25_000, loaded.Definition.Fault.Component.LatencyMs);
+        Assert.Equal(40_000, loaded.Definition.Fault.Component.LatencyMs);
         Assert.Equal(5, loaded.Definition.Repeats);
         var gate = Assert.IsType<ProbeGate>(loaded.Definition.Gate);
         Assert.Equal("C0", gate.Configuration);
+        Assert.Equal(["C0", "C3"], gate.Configurations);
         Assert.Equal(5, gate.Repeats);
         Assert.Equal("stats.broker.throttle.max", gate.Measurement.Id);
         Assert.Equal(ProbeOperator.GreaterThan, gate.Operator);
         Assert.Equal(20_000, gate.ThresholdMs);
         Assert.Equal(ExpectedMeasureIds, loaded.Definition.Measures.Select(measure => measure.Id));
+        Assert.DoesNotContain(loaded.Definition.Measures, measure => measure.Id == "producer.request_timeout");
 
         Assert.Equal("saturation-ramp", loaded.Profile.Id);
         Assert.Equal(1, loaded.Profile.SchemaVersion);
@@ -88,11 +91,12 @@ public sealed class A01ApprovedDataPipelineTests
         var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
         var expectedProducer = ApprovedConfigurationContract.Settings(KafkaClientRole.LoadGenProducer);
         var expectedVerifier = ApprovedConfigurationContract.Settings(KafkaClientRole.VerifierConsumer);
-        foreach (var configurationId in new[] { "C0", "C2", "C3" })
+        foreach (var configurationId in new[] { "C0", "C3" })
         {
             var configuration = resolved.Configurations[configurationId];
             var producer = configuration.Roles[KafkaClientRole.LoadGenProducer].Settings;
             var verifier = configuration.Roles[KafkaClientRole.VerifierConsumer].Settings;
+            Assert.Equal("300000", producer["message.timeout.ms"].Value);
             Assert.Equal(ApprovedValues(expectedProducer, configurationId, applyA01Overrides: true),
                 producer.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal));
             Assert.Equal(ApprovedValues(expectedVerifier, configurationId, applyA01Overrides: false),
@@ -105,9 +109,10 @@ public sealed class A01ApprovedDataPipelineTests
         }
 
         Assert.Equal(["scenarios/A01/scenario.yaml", "scenarios/profiles/saturation-ramp.yaml"], source.RequestedPaths);
-        Assert.Equal("5000", resolved.Configurations["C2"].Roles[KafkaClientRole.LoadGenProducer].Settings["request.timeout.ms"].Value);
+        Assert.False(resolved.Configurations.ContainsKey("C2"));
+        Assert.Equal("60000", resolved.Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer].Settings["request.timeout.ms"].Value);
         Assert.Equal("20000", resolved.Configurations["C3"].Roles[KafkaClientRole.LoadGenProducer].Settings["socket.timeout.ms"].Value);
-        Assert.Equal("60000", resolved.Configurations["C2"].Roles[KafkaClientRole.LoadGenProducer].Settings["socket.timeout.ms"].Value);
+        Assert.Equal("60000", resolved.Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer].Settings["socket.timeout.ms"].Value);
         Assert.Equal("60000", resolved.Configurations["C3"].Roles[KafkaClientRole.LoadGenProducer].Settings["request.timeout.ms"].Value);
     }
 
@@ -116,7 +121,6 @@ public sealed class A01ApprovedDataPipelineTests
         bool applyA01Overrides)
     {
         var expected = baseline.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
-        if (applyA01Overrides && configurationId == "C2") expected["request.timeout.ms"] = "5000";
         if (applyA01Overrides && configurationId == "C3") expected["socket.timeout.ms"] = "20000";
         return expected;
     }

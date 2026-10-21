@@ -22,73 +22,58 @@ probe:
   oracle_invalidity_alone_invalidates_throttle_evidence: false
   passing_probe_proves_later_hypothesis_prerequisites: false
 
+not_tested:
+  H1:
+    question: whether Event Hubs honours the producer request.timeout.ms written into each ProduceRequest
+    reason: the pinned client cannot attribute a Policy Violation to its own throttle delay, and no source documents whether that response carries a throttle time
+    publication: not_decidable_with_pinned_client_evidence
+
 configurations:
   C0:
     H4:
       environments: [live]
       mode: recorded_only
-      observation_unit: attributable_request
-      categories:
-        - client_timeout_before_response
-        - broker_timeout_response_before_client_timeout
-        - completed_without_observed_timeout
-        - indeterminate
-      broker_timeout_cause_attribution_required: true
-      multiple_categories_per_repeat: allowed
-      exhaustive_counts_require_complete_request_evidence: true
+      observation_unit: statistics_window_and_run
+      record:
+        - delivery_error_codes_per_run
+        - req_timeouts_increment_per_window
+        - disconnects_increment_per_window
+        - throttle_max_per_window
+        - rtt_p99_per_window
+      per_request_attribution: not_claimed
       pass_fail_expectation: none
-
-  C2:
-    H1:
-      environments: [live]
-      prediction: no_timeout_attributed_policy_violation
-      qualifying_evidence:
-        wire_request_timeout_ms: 5000
-        matched_request_and_response: required
-        response_throttle_ms:
-          greater_than: 5000
-          less_than: 20000
-      qualifying_prediction_observed: consistent_with_floor
-      exact_20000_ms_floor_established: false
-      counterexample_requires_timeout_cause_attribution: true
-      fully_attributed_counterexample: contradicted
-      no_qualifying_request: inconclusive
-      missing_or_ambiguous_evidence: inconclusive
 
   C3:
     H2:
-      environments: [live, component]
-      qualifying_evidence:
-        request_type: Produce
-        request_in_flight: required
-        applicable_deadline_governed_by: socket.timeout.ms
-        absence_of_earlier_matched_response: required
-      expected_sequence:
-        - client_request_timeout
-        - timeout_driven_disconnect
-      subsequent_native_retransmission:
-        expected_when: retry_allowance_and_message_lifetime_remain
-        retry_queue_insertion_alone_is_sufficient: false
-      broker_counters: corroboration_only
-      elapsed_time_and_deadline_lateness: recorded
-      numeric_timing_pass_fail_tolerance: none
-      final_delivery_outcome: recorded_separately
-      fully_evidenced_contrary_sequence: contradicted
-      missing_or_ambiguous_evidence: inconclusive
-      no_qualifying_request: unevaluated
+      environments: [component]
+      component_latency_ms: 40000
+      client_deadlines_ms:
+        socket_timeout: 20000
+        request_timeout: 60000
+        message_timeout: 300000
+      evidence: broker_completed_produce_entries_for_trial_partition
+      observation_window_ms_after_first_produce: 60000
+      holds_when:
+        second_produce_on_new_connection_after_first_ms:
+          at_least: 20000
+          less_than: 40000
+        required_fault_trials: 5
+      contradicted_when: complete_window_evidence_shows_one_produce_for_trial_partition
+      healthy_controls: no_second_produce
+      otherwise: inconclusive
+      live: recorded_only
 
     H3:
-      environments: [live, component]
-      prediction_kind: experimental_not_source_guaranteed
-      qualifying_repeats: H2_timeout_and_native_retry_established
-      prediction:
-        measurement: verifier.duplicate
-        greater_than: 0
-        aggregation: across_qualifying_C3_repeats_within_each_environment
-      duplicates_required_in_every_repeat: false
-      authoritative_assessment: unevaluable_under_current_oracle
-      diagnostic_duplicate_witnesses: recorded_only
-      absent_diagnostic_witnesses_refute_prediction: false
+      environments: [component]
+      condition: enable_idempotence_false
+      idempotence_question: B04
+      qualifying_trials: component_fault_trials_where_H2_held
+      holds_when: observer_reads_exactly_two_target_records_in_every_qualifying_trial
+      observer_end_watermark: captured_after_observation_window_closes
+      contradicted_when: complete_scan_reads_exactly_one_target_record_in_a_qualifying_trial
+      negative_scope: bounded_to_observation_window
+      otherwise: inconclusive
+      live: recorded_only_diagnostic
 
 component_controls:
   required_successful_trials: 5
@@ -96,6 +81,12 @@ component_controls:
     - genuine_successful_delivery_callback
     - independent_consumption_of_exact_target_identity
     - complete_control_evidence
+  complete_control_evidence:
+    delivery_callback: success
+    broker_produce_entries_in_window: 1
+    observer_target_records: 1
+  trial_budget_minutes: 7
+  overall_budget_minutes: 90
   failed_or_incomplete_control_gate: inconclusive_stop_fault_matrix
   application_attempts_per_target: 1
   application_retries: 0
@@ -109,5 +100,8 @@ sources:
   native_request: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c
   native_broker: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c
   native_retry_semantics: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+  broker_request_log: https://github.com/apache/kafka/blob/3.5/core/src/main/scala/kafka/network/RequestChannel.scala
+  broker_request_log_format: https://github.com/apache/kafka/blob/3.5/core/src/main/scala/kafka/network/RequestConvertToJson.scala
+  broker_logger_configuration: https://docs.confluent.io/platform/7.5/installation/docker/operations/logging.html
   microsoft_configuration: https://github.com/MicrosoftDocs/azure-docs/blob/c2cc198a3d464afe137f93060257ef06049e0151/articles/event-hubs/apache-kafka-configurations.md
   microsoft_throttling: https://github.com/MicrosoftDocs/azure-docs/blob/c2cc198a3d464afe137f93060257ef06049e0151/articles/event-hubs/apache-kafka-troubleshooting-guide.md
