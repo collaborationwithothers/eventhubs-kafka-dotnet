@@ -1,0 +1,52 @@
+{
+  "tested_source_commit": "c4b043eb674b88352580a4818dc1663326826306",
+  "sdk": "10.0.402",
+  "full_verification_exit_code": 0,
+  "test_reports": {
+    "architecture": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "not-run": 0,
+      "errors": 0
+    },
+    "kafka": {
+      "passed": 306,
+      "failed": 0,
+      "skipped": 0,
+      "not-run": 0,
+      "errors": 0
+    },
+    "loadgen": {
+      "passed": 262,
+      "failed": 0,
+      "skipped": 0,
+      "not-run": 0,
+      "errors": 0
+    },
+    "scenarios": {
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "not-run": 0,
+      "errors": 0
+    },
+    "verifier": {
+      "passed": 2177,
+      "failed": 0,
+      "skipped": 0,
+      "not-run": 0,
+      "errors": 0
+    }
+  },
+  "total_passed": 2847,
+  "initial_verifier_failures_by_fixture": {
+    "Parchwell.Verifier.Tests.Judgement.ConfigurationFidelityTests": 36,
+    "Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests": 3
+  },
+  "initial_full_verification_exit_code": 2,
+  "documentation_check_exit_code": 0,
+  "documentation_warnings": 0,
+  "literal_yaml_and_blueprint_match": true,
+  "source_hashes_still_match_precommit_comparison": true
+}

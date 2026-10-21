@@ -13,7 +13,7 @@ internal static class ProbeGateEvaluator
         probe.Configuration == "C0" && probe.Measurement.Id == "stats.broker.throttle.max" &&
         probe.Measurement.Role == KafkaClientRole.LoadGenProducer &&
         probe.Operator == ProbeOperator.GreaterThan && probe.ThresholdMs == 20_000 &&
-        probe.Repeats == 5 && probe.Configurations.SequenceEqual(["C0", "C2", "C3"], StringComparer.Ordinal);
+        probe.Repeats == 5 && probe.Configurations.SequenceEqual(["C0", "C3"], StringComparer.Ordinal);
 
     internal static IReadOnlyList<string> GetRootReasons(IReadOnlyList<RunIdentity> expectedIdentities, int actualInputCount)
     {

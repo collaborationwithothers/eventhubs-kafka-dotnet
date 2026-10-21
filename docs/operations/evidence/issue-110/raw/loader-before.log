@@ -1,0 +1,41 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+failed Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(configuration: "C0", requestTimeout: "60000", socketTimeout: "60000") (147ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Collections differ at index 1
+              ↓ (pos 1)
+  Expected: "C2"
+  Actual:   "C3"
+              ↑ (pos 1)
+    at Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(String configuration, String requestTimeout, String socketTimeout) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs:50
+    --- End of stack trace from previous location ---
+failed Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(configuration: "C3", requestTimeout: "60000", socketTimeout: "20000") (4ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Collections differ at index 1
+              ↓ (pos 1)
+  Expected: "C2"
+  Actual:   "C3"
+              ↑ (pos 1)
+    at Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(String configuration, String requestTimeout, String socketTimeout) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs:50
+    --- End of stack trace from previous location ---
+failed Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(configuration: "C2", requestTimeout: "5000", socketTimeout: "60000") (2ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Collections differ at index 1
+              ↓ (pos 1)
+  Expected: "C2"
+  Actual:   "C3"
+              ↑ (pos 1)
+    at Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(String configuration, String requestTimeout, String socketTimeout) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs:50
+    --- End of stack trace from previous location ---
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64) failed with 3 error(s) (751ms)
+Exit code: 2
+
+  In process file artifacts produced:
+    - /workspace/scratch/issue-110-authority/loader-before/results.xml
+
+Test run summary: Failed!
+  total: 3
+  failed: 3
+  succeeded: 0
+  skipped: 0
+  duration: 970ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

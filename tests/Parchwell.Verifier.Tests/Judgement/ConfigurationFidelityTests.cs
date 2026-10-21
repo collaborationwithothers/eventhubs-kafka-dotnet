@@ -18,13 +18,13 @@ namespace Parchwell.Verifier.Tests.Judgement;
 #pragma warning disable CA1707 // Test names follow the repository's Given_When_Then convention.
 public sealed class ConfigurationFidelityTests
 {
-    private const string Timeout = "request.timeout.ms";
+    private const string Timeout = "socket.timeout.ms";
     private static readonly string[] ScenarioPaths = ["scenarios/A01/scenario.yaml", "scenarios/profiles/saturation-ramp.yaml"];
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     [Theory]
     [InlineData("C0", "60000")]
-    [InlineData("C2", "5000")]
+    [InlineData("C3", "20000")]
     public async Task Given_RealA01Resolution_When_CapturedSettingsMatch_Then_Check27Passes(string configuration, string timeout)
     {
         ResolvedRoleConfiguration selected = await Resolve(configuration);
@@ -36,20 +36,20 @@ public sealed class ConfigurationFidelityTests
 
     [Theory]
     [InlineData("missing")]
-    [InlineData("4999")]
-    [InlineData("5001")]
+    [InlineData("19999")]
+    [InlineData("20001")]
     [InlineData("extra")]
     [InlineData("key_case")]
-    public async Task Given_RealC2Selection_When_EffectiveSettingSetOrValueDiffers_Then_Check27Fails(string change)
+    public async Task Given_RealC3Selection_When_EffectiveSettingSetOrValueDiffers_Then_Check27Fails(string change)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         CapturedConfiguration captured = Capture(selected);
         var settings = captured.Settings.ToDictionary(StringComparer.Ordinal);
         if (change == "missing") settings.Remove(Timeout);
         else if (change == "extra") settings.Add("unexpected.setting", settings[Timeout]);
         else if (change == "key_case")
         {
-            settings.Add("REQUEST.TIMEOUT.MS", settings[Timeout]);
+            settings.Add("SOCKET.TIMEOUT.MS", settings[Timeout]);
             settings.Remove(Timeout);
         }
         else settings[Timeout] = settings[Timeout] with { Value = change };
@@ -58,22 +58,22 @@ public sealed class ConfigurationFidelityTests
         Assert.Equal(change == "key_case" ? 2 : 1, result.Differences.Count);
         string field = change switch
         {
-            "missing" => "resolved_configuration.settings.request.timeout.ms",
-            "4999" => "resolved_configuration.settings.request.timeout.ms.value",
-            "5001" => "resolved_configuration.settings.request.timeout.ms.value",
+            "missing" => "resolved_configuration.settings.socket.timeout.ms",
+            "19999" => "resolved_configuration.settings.socket.timeout.ms.value",
+            "20001" => "resolved_configuration.settings.socket.timeout.ms.value",
             "extra" => "resolved_configuration.settings.unexpected.setting",
-            "key_case" => "resolved_configuration.settings.REQUEST.TIMEOUT.MS",
+            "key_case" => "resolved_configuration.settings.SOCKET.TIMEOUT.MS",
             _ => throw new ArgumentOutOfRangeException(nameof(change))
         };
         Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
             AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
         SettingDifference[] expected = change switch
         {
-            "missing" => [new("request.timeout.ms", "5000", null)],
-            "4999" => [new("request.timeout.ms", "5000", "4999")],
-            "5001" => [new("request.timeout.ms", "5000", "5001")],
-            "extra" => [new("unexpected.setting", null, "5000")],
-            "key_case" => [new("REQUEST.TIMEOUT.MS", null, "5000"), new("request.timeout.ms", "5000", null)],
+            "missing" => [new("socket.timeout.ms", "20000", null)],
+            "19999" => [new("socket.timeout.ms", "20000", "19999")],
+            "20001" => [new("socket.timeout.ms", "20000", "20001")],
+            "extra" => [new("unexpected.setting", null, "20000")],
+            "key_case" => [new("SOCKET.TIMEOUT.MS", null, "20000"), new("socket.timeout.ms", "20000", null)],
             _ => throw new ArgumentOutOfRangeException(nameof(change))
         };
         Assert.Equal(expected, result.Differences);
@@ -91,21 +91,21 @@ public sealed class ConfigurationFidelityTests
     public async Task Given_IdenticalEffectiveSettings_When_OverrideAttributionCompared_Then_OnlyApprovedIncludedFieldsMatter(
         string selectedOverride, string capturedOverride, bool passes)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         if (selectedOverride == "none") selected = selected with
         {
             Settings = selected.Settings.SetItem(Timeout, selected.Settings[Timeout] with { Override = null })
         };
         CapturedConfiguration captured = Capture(selected);
         CapturedSetting setting = captured.Settings[Timeout];
-        var attribution = new Override("A01", "C2", new Location("synthetic", ParsedField<int>.FromValue(2), ParsedField<int>.FromValue(2)));
+        var attribution = new Override("A01", "C3", new Location("synthetic", ParsedField<int>.FromValue(2), ParsedField<int>.FromValue(2)));
         ParsedField<Override> observed = capturedOverride switch
         {
             "none" => ParsedField<Override>.Null(),
             "scenario" => ParsedField<Override>.FromValue(attribution with { ScenarioId = "A02" }),
-            "configuration" => ParsedField<Override>.FromValue(attribution with { ConfigurationId = "C3" }),
+            "configuration" => ParsedField<Override>.FromValue(attribution with { ConfigurationId = "C2" }),
             "scenario_case" => ParsedField<Override>.FromValue(attribution with { ScenarioId = "a01" }),
-            "configuration_case" => ParsedField<Override>.FromValue(attribution with { ConfigurationId = "c2" }),
+            "configuration_case" => ParsedField<Override>.FromValue(attribution with { ConfigurationId = "c3" }),
             _ => ParsedField<Override>.FromValue(attribution)
         };
         captured = Replace(captured, Timeout, setting with { Override = observed });
@@ -115,17 +115,17 @@ public sealed class ConfigurationFidelityTests
             ConfigurationFidelityResult result = Evaluate(selected, captured);
             string field = capturedOverride switch
             {
-                "none" => "resolved_configuration.settings.request.timeout.ms.override",
-                "match" => "resolved_configuration.settings.request.timeout.ms.override",
-                "scenario" => "resolved_configuration.settings.request.timeout.ms.override.scenario_id",
-                "scenario_case" => "resolved_configuration.settings.request.timeout.ms.override.scenario_id",
-                "configuration" => "resolved_configuration.settings.request.timeout.ms.override.configuration_id",
-                "configuration_case" => "resolved_configuration.settings.request.timeout.ms.override.configuration_id",
+                "none" => "resolved_configuration.settings.socket.timeout.ms.override",
+                "match" => "resolved_configuration.settings.socket.timeout.ms.override",
+                "scenario" => "resolved_configuration.settings.socket.timeout.ms.override.scenario_id",
+                "scenario_case" => "resolved_configuration.settings.socket.timeout.ms.override.scenario_id",
+                "configuration" => "resolved_configuration.settings.socket.timeout.ms.override.configuration_id",
+                "configuration_case" => "resolved_configuration.settings.socket.timeout.ms.override.configuration_id",
                 _ => throw new ArgumentOutOfRangeException(nameof(capturedOverride))
             };
             Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
                 AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
-            SettingDifference[] expected = [new("request.timeout.ms", "5000", "5000")];
+            SettingDifference[] expected = [new("socket.timeout.ms", "20000", "20000")];
             Assert.Equal(expected, result.Differences);
         }
     }
@@ -142,7 +142,7 @@ public sealed class ConfigurationFidelityTests
     [InlineData("omissions", 1)]
     public async Task Given_IdenticalIncludedFields_When_ExcludedMetadataDiffers_Then_Check27Passes(string change, int coordinate)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         selected = selected with { Settings = selected.Settings.SetItem(Timeout, selected.Settings[Timeout] with
         {
             Override = selected.Settings[Timeout].Override! with { Location = new SourceLocation("selected", 2, 2) }
@@ -182,14 +182,14 @@ public sealed class ConfigurationFidelityTests
     public async Task Given_LiteralCapabilitiesWireStates_When_ReadAndJudged_Then_ExistingParserOwnsCheck17AndFidelityOwns27(
         string state, bool parseSuccess, bool evaluated, bool fails)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         string resolved = state switch
         {
             "omitted" => "",
             "malformed" => "\"resolved_configuration\":false,",
             "override_omitted" => """
-                "resolved_configuration":{"role":0,"settings":{"request.timeout.ms":{"value":"5000",
-                "baseline":{"key":"request.timeout.ms","value":"60000","role":0,"disposition":0,
+                "resolved_configuration":{"role":0,"settings":{"socket.timeout.ms":{"value":"20000",
+                "baseline":{"key":"socket.timeout.ms","value":"60000","role":0,"disposition":0,
                 "inventory_ids":[],"sources":[],"selection_reason":"synthetic"}}},"omissions":[]},
                 """,
             _ => "\"resolved_configuration\":null,"
@@ -218,7 +218,7 @@ public sealed class ConfigurationFidelityTests
     [Fact]
     public async Task Given_SyntheticSuccessfulDtoWithMissingConfiguration_When_Compared_Then_Check27Fails()
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
         // This synthetic DTO cannot arise from an omitted required wire property: the reader rejects that under 17.
         request = request with { ResolvedProducerConfiguration = selected, Capabilities = ParseResult<CapturedCapabilities>.Success(
@@ -245,7 +245,7 @@ public sealed class ConfigurationFidelityTests
     [InlineData(3, 2)]
     public async Task Given_SettingDifferencesAtDiagnosticCap_When_Compared_Then_FailureSurvivesOrdinalRetention(int differenceCount, int retained)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         CapturedConfiguration captured = Capture(selected);
         var settings = captured.Settings.ToDictionary(StringComparer.Ordinal);
         string[] keys = ["z.unexpected", "a.unexpected", "m.unexpected"];
@@ -265,9 +265,9 @@ public sealed class ConfigurationFidelityTests
             AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.Assessment);
         SettingDifference[] expected = differenceCount switch
         {
-            1 => [new("z.unexpected", null, "5000")],
-            2 => [new("a.unexpected", null, "5000"), new("z.unexpected", null, "5000")],
-            3 => [new("a.unexpected", null, "5000"), new("m.unexpected", null, "5000")],
+            1 => [new("z.unexpected", null, "20000")],
+            2 => [new("a.unexpected", null, "20000"), new("z.unexpected", null, "20000")],
+            3 => [new("a.unexpected", null, "20000"), new("m.unexpected", null, "20000")],
             _ => throw new ArgumentOutOfRangeException(nameof(differenceCount))
         };
         Assert.Equal(expected, result.Differences);
@@ -279,7 +279,7 @@ public sealed class ConfigurationFidelityTests
     [InlineData(3)]
     public async Task Given_SettingDifferencesAtDiagnosticCap_When_RunJudgementRetains_Then_OrdinalOrderSurvives(int differenceCount)
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         CapturedConfiguration captured = Capture(selected);
         var settings = captured.Settings.ToDictionary(StringComparer.Ordinal);
         string[] keys = ["z.unexpected", "a.unexpected", "m.unexpected"];
@@ -299,9 +299,9 @@ public sealed class ConfigurationFidelityTests
             AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.ConfigurationFidelity.Assessment);
         SettingDifference[] expected = differenceCount switch
         {
-            1 => [new("z.unexpected", null, "5000")],
-            2 => [new("a.unexpected", null, "5000"), new("z.unexpected", null, "5000")],
-            3 => [new("a.unexpected", null, "5000"), new("m.unexpected", null, "5000")],
+            1 => [new("z.unexpected", null, "20000")],
+            2 => [new("a.unexpected", null, "20000"), new("z.unexpected", null, "20000")],
+            3 => [new("a.unexpected", null, "20000"), new("m.unexpected", null, "20000")],
             _ => throw new ArgumentOutOfRangeException(nameof(differenceCount))
         };
         Assert.Equal(expected, result.ConfigurationFidelity.Differences);
@@ -318,7 +318,7 @@ public sealed class ConfigurationFidelityTests
     [Fact]
     public async Task Given_SyntheticMissingOverrideDto_When_OverrideSelected_Then_Check27Fails()
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         CapturedConfiguration captured = Capture(selected);
         captured = Replace(captured, Timeout, captured.Settings[Timeout] with { Override = ParsedField<Override>.Missing() });
         AssertDisposition(Evaluate(selected, captured), AssessmentDisposition.Fail);
@@ -327,9 +327,9 @@ public sealed class ConfigurationFidelityTests
     [Fact]
     public async Task Given_FidelityFailureWithOneDiagnosticSlot_When_Composed_Then_EmbeddedAssessmentConsumesThatSlot()
     {
-        ResolvedRoleConfiguration selected = await Resolve("C2");
+        ResolvedRoleConfiguration selected = await Resolve("C3");
         CapturedConfiguration captured = Capture(selected);
-        captured = Replace(captured, Timeout, captured.Settings[Timeout] with { Value = "5001" });
+        captured = Replace(captured, Timeout, captured.Settings[Timeout] with { Value = "20001" });
         RunJudgementRequest request = Request(selected, captured);
         RunJudgementResult result = RunJudgement.Evaluate(request with
         {

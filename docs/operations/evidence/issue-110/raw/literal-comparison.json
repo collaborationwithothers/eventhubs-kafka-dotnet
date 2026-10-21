@@ -1,0 +1,25 @@
+{
+  "approved_comment": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6229628298",
+  "approved_updated_at": "2026-10-17T04:37:58Z",
+  "yaml_literal_matches": true,
+  "blueprint_literal_match": true,
+  "profile_unchanged": true,
+  "changed_source_files": 9,
+  "source_insertions": 159,
+  "source_deletions": 126,
+  "source_base_commit": "0c80dbc4fd223daf46fa94d979b374340c59a780",
+  "execution_head_commit": "5d6572ac3a97cd310517100dfe732eb63afa8d88",
+  "uncommitted_source_diff": true,
+  "source_diff_sha256": "bc0af9f46de87f7f6ba12d5490f80caedc5a10b59b9a37ca13a6a27d41890aa3",
+  "source_file_sha256": {
+    "docs/blueprint.md": "8fde3a35795a0b1beb680c34a5b3113f28764d8f6a359171b9f5d40648d62022",
+    "docs/operations/verifier-contract.md": "18081a48f36ea02b727c5e6ff5a2843303d91d09d8a94bf5810a265badbaff11",
+    "scenarios/A01/expected.yaml": "119e2b618a4618a1bb14583e34aff05b3272261ba18534c2f2b2d5ecccce5590",
+    "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
+    "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
+    "tests/Parchwell.Scenarios.Tests/A01ApprovedDataPipelineTests.cs": "96f5b3c18034aac5dcf5947000e148992654d404b5c72c9e3fe22da6d43c6e9d",
+    "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
+    "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
+    "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs": "72baf4d1a3c553a6643e5ba1167e9f62d11c9d5e091220806239cb9d4bacf6cf"
+  }
+}

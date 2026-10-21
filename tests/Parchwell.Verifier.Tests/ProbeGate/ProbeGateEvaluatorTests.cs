@@ -14,7 +14,7 @@ namespace Parchwell.Verifier.Tests.ProbeGate;
 public sealed class ProbeGateEvaluatorTests
 {
     internal static Parchwell.Scenarios.ProbeGate Gate() => new("C0", new("stats.broker.throttle.max", KafkaClientRole.LoadGenProducer),
-        ProbeOperator.GreaterThan, 20_000, 5, ["C0", "C2", "C3"]);
+        ProbeOperator.GreaterThan, 20_000, 5, ["C0", "C3"]);
     internal static RunIdentity[] Expected(int count = 5) => Enumerable.Range(1, count).Select(ProbeGateEvidenceBuilder.Identity).ToArray();
     internal static ProbeGateInput[] Inputs(int count = 5) => Enumerable.Range(1, count).Select(index =>
         new ProbeGateInput($"synthetic-path-{index}.json", ProbeGateInputStatus.Readable,
@@ -227,12 +227,45 @@ public sealed class ProbeGateEvaluatorTests
             "operator" => gate with { Operator = (ProbeOperator)99 },
             "threshold" => gate with { ThresholdMs = 20_001 },
             "repeats" => gate with { Repeats = 6 },
-            "full-order" => gate with { Configurations = ["C0", "C3", "C2"] },
-            _ => gate with { Configurations = ["C0", "C2"] }
+            "full-order" => gate with { Configurations = ["C3", "C0"] },
+            _ => gate with { Configurations = ["C0"] }
         };
         Assert.False(ProbeGateEvaluator.IsSupportedGate("A01", gate));
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
         Assert.Equal("The selected scenario has no supported probe gate.", exception.Message);
+    }
+
+    public static TheoryData<string[], bool> FullConfigurationSequences => new()
+    {
+        { [], false },
+        { ["C0"], false },
+        { ["C3"], false },
+        { ["C0", "C3"], true },
+        { ["C3", "C0"], false },
+        { ["C0", "C2", "C3"], false },
+        { ["C0", "C3", "C2"], false },
+        { ["C0", "C0"], false },
+        { ["c0", "C3"], false },
+        { ["C0", "c3"], false }
+    };
+
+    [Theory]
+    [MemberData(nameof(FullConfigurationSequences))]
+    public void Given_FullConfigurationSequence_When_CheckingSupport_Then_RequiresExactlyC0ThenC3(string[] configurations, bool supported)
+    {
+        Parchwell.Scenarios.ProbeGate gate = Gate() with { Configurations = [.. configurations] };
+        Assert.Equal(supported, ProbeGateEvaluator.IsSupportedGate("A01", gate));
+        if (supported)
+        {
+            ProbeGateResult result = ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit");
+            Assert.Equal("pass", result.Outcome);
+            Assert.Empty(result.Reasons);
+        }
+        else
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => ProbeGateEvaluator.Evaluate(new(gate, Expected(), Inputs()), "commit"));
+            Assert.Equal("The selected scenario has no supported probe gate.", exception.Message);
+        }
     }
 
     [Theory]

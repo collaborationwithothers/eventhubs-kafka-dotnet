@@ -12,13 +12,13 @@ namespace Parchwell.Verifier.Tests.Scenario;
 [Trait("Category", "Unit")]
 public sealed class FileSystemScenarioSourceTests
 {
-    private static readonly string[] ApprovedConfigurations = ["C0", "C2", "C3"];
+    private static readonly string[] ApprovedConfigurations = ["C0", "C3"];
     [Theory]
-    [InlineData("C0", "60000", "60000")]
-    [InlineData("C2", "5000", "60000")]
-    [InlineData("C3", "60000", "20000")]
-    public async Task Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile(
-        string configuration, string requestTimeout, string socketTimeout)
+    [InlineData("C0", "60000", "60000", true)]
+    [InlineData("C2", null, null, false)]
+    [InlineData("C3", "60000", "20000", true)]
+    public async Task Given_ActualA01Files_When_LoadingAndResolving_Then_UsesOnlyApprovedConfigurationsWithoutExpectedFile(
+        string configuration, string? requestTimeout, string? socketTimeout, bool supported)
     {
         string repository = Environment.GetEnvironmentVariable("PARCHWELL_REPOSITORY_ROOT") ?? FindRepositoryRoot();
         string root = Path.Combine(Path.GetTempPath(), "verifier-a01-" + Guid.NewGuid().ToString("N"));
@@ -48,6 +48,12 @@ public sealed class FileSystemScenarioSourceTests
             using ServiceProvider provider = services.BuildServiceProvider();
             ResolvedScenario resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
             Assert.Equal(ApprovedConfigurations, resolved.Configurations.Keys.Order(StringComparer.Ordinal));
+            if (!supported)
+            {
+                Assert.False(resolved.Configurations.ContainsKey(configuration));
+                Assert.Throws<KeyNotFoundException>(() => resolved.Configurations[configuration]);
+                return;
+            }
             ResolvedRoleConfiguration producer = resolved.Configurations[configuration].Roles[KafkaClientRole.LoadGenProducer];
             Assert.Equal(requestTimeout, producer.Settings["request.timeout.ms"].Value);
             Assert.Equal(socketTimeout, producer.Settings["socket.timeout.ms"].Value);
