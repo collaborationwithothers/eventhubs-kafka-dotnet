@@ -1,13 +1,38 @@
 {
   "approved_plan": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314026196",
   "plan_check": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314121492",
-  "pending_amendment": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314201699",
+  "amendment_proposal": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314201699",
+  "amendment_approval": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6315714834",
   "files": [
+    {
+      "path": "docs/operations/evidence/issue-110/raw/architecture.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1\ncp -- /tmp/parchwell-dotnet-verification.hl7SFQAK/Parchwell.ArchitectureTests/results.xml docs/operations/evidence/issue-110/raw/architecture.xml; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 6577,
+      "sha256": "55dcd2cb7afd41547fe23b78791691b2da13e853b4ffde811dac794fbc19463a"
+    },
     {
       "path": "docs/operations/evidence/issue-110/raw/check-docs-initial.log",
       "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-110/raw/check-docs.log 2>&1; mv docs/operations/evidence/issue-110/raw/check-docs.log docs/operations/evidence/issue-110/raw/check-docs-initial.log; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
       "size_bytes": 2043,
       "sha256": "7443c729c8050f900130c842dbb85eea546f874c9088178541c4641cd943deae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-110/raw/check-docs.log 2>&1; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 2043,
+      "sha256": "7443c729c8050f900130c842dbb85eea546f874c9088178541c4641cd943deae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/kafka.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1\ncp -- /tmp/parchwell-dotnet-verification.hl7SFQAK/Parchwell.Kafka.Tests/results.xml docs/operations/evidence/issue-110/raw/kafka.xml; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 231002,
+      "sha256": "62d4dccfab7c97d5fb3dc7d98326936a90617571602653f9758673708eb13c6c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/literal-comparison.json",
+      "producer": "python3 - <<'PY' > docs/operations/evidence/issue-110/raw/literal-comparison.json\nimport hashlib,json,pathlib,re,subprocess\nsource_paths=['docs/blueprint.md','docs/operations/verifier-contract.md','scenarios/A01/expected.yaml','scenarios/A01/scenario.yaml','src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs','tests/Parchwell.Scenarios.Tests/A01ApprovedDataPipelineTests.cs','tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs','tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs','tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs']\ncomment=json.loads(subprocess.check_output(['gh','api','repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6229628298']))\nblocks=re.findall(r'```yaml\\n(.*?)```',comment['body'],re.S)\nassert len(blocks)==2\nfor name,block in zip(('scenario.yaml','expected.yaml'),blocks,strict=True):\n assert (pathlib.Path('scenarios/A01')/name).read_bytes()==block.encode(),name\nphrase=\"hypothesis: the client's per-request wait is governed by `socket.timeout.ms` and a timed-out request is resent natively, decided in the component experiment; whether Event Hubs honours the broker-side `request.timeout.ms` is not decidable with the pinned client's available evidence (#75)\"\nrow=next(line for line in pathlib.Path('docs/blueprint.md').read_text().splitlines() if line.startswith('| A01 | Reframed:'))\nassert row.count(phrase)==1\nrows=[line.split('\\t') for line in subprocess.check_output(['git','diff','origin/main','--numstat','--',*source_paths],text=True).splitlines()]\nassert len(rows)==9\nassert not subprocess.check_output(['git','diff','origin/main','--','scenarios/profiles/saturation-ramp.yaml'])\nsource_diff=subprocess.check_output(['git','diff','origin/main','--binary','--',*source_paths])\nprint(json.dumps({'approved_comment':comment['html_url'],'approved_updated_at':comment['updated_at'],'yaml_literal_matches':True,'blueprint_literal_match':True,'profile_unchanged':True,'changed_source_files':len(rows),'source_insertions':sum(int(r[0]) for r in rows),'source_deletions':sum(int(r[1]) for r in rows),'source_base_commit':subprocess.check_output(['git','rev-parse','origin/main'],text=True).strip(),'execution_head_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'uncommitted_source_diff':True,'source_diff_sha256':hashlib.sha256(source_diff).hexdigest(),'source_file_sha256':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in source_paths}},indent=2))\nPY; source commit 5d6572ac3a97cd310517100dfe732eb63afa8d88 with uncommitted approved fixture corrections; complete source diff SHA-256 bc0af9f46de87f7f6ba12d5490f80caedc5a10b59b9a37ca13a6a27d41890aa3",
+      "size_bytes": 1770,
+      "sha256": "020cb92f0d883636f3355141d38c8aac7fa00b65b1cbecf578895e4cb799c29b"
     },
     {
       "path": "docs/operations/evidence/issue-110/raw/loader-before.log",
@@ -22,16 +47,46 @@
       "sha256": "78fdd8f0a826322220f70f2ff5aecb3904606e64786cd7cf2dded141964d38c7"
     },
     {
+      "path": "docs/operations/evidence/issue-110/raw/loadgen.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1\ncp -- /tmp/parchwell-dotnet-verification.hl7SFQAK/Parchwell.LoadGen.Tests/results.xml docs/operations/evidence/issue-110/raw/loadgen.xml; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 182559,
+      "sha256": "f54649dffacef57fd9e1bb71bc64b53fc8f4fd92845acd9585dae89409f90d1c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/scenarios.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1\ncp -- /tmp/parchwell-dotnet-verification.hl7SFQAK/Parchwell.Scenarios.Tests/results.xml docs/operations/evidence/issue-110/raw/scenarios.xml; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 70496,
+      "sha256": "6664c381ef2bd9904b764dc94cbe2562378cebec145e89788a2d012a8475a6b6"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/summary.json",
+      "producer": "python3 - <<'PY' > docs/operations/evidence/issue-110/raw/summary.json\nimport collections,json,pathlib,re,subprocess,xml.etree.ElementTree as ET\nraw=pathlib.Path('docs/operations/evidence/issue-110/raw')\nreports={}\nfor name in ('architecture','kafka','loadgen','scenarios','verifier'):\n assemblies=ET.parse(raw/(name+'.xml')).findall('.//assembly')\n assert len(assemblies)==1\n assembly=assemblies[0]\n counts={k:int(assembly.attrib[k]) for k in ('passed','failed','skipped','not-run','errors')}\n assert counts['passed']>0 and all(counts[k]==0 for k in ('failed','skipped','not-run','errors'))\n reports[name]=counts\ninitial=ET.parse(raw/'verifier-initial.xml')\nfailures=collections.Counter(t.attrib['type'] for t in initial.findall('.//test[@result=\"Fail\"]'))\nassert sum(failures.values())==39\nlog=(raw/'verify-dotnet.log').read_text()\nassert 'Verification passed. Per-project reports identify the tests executed.' in log\nassert 'Warning-as-error control: valid counterpart built; intended CS1030 error rejected.' in log\ndocs=(raw/'check-docs.log').read_text()\nassert 'Documentation scan completed.' in docs and not re.search(r'\\bwarning\\b',docs,re.I)\ncomparison=json.loads((raw/'literal-comparison.json').read_text())\nassert all(__import__('hashlib').sha256(pathlib.Path(p).read_bytes()).hexdigest()==h for p,h in comparison['source_file_sha256'].items())\nprint(json.dumps({'tested_source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sdk':'10.0.402','full_verification_exit_code':0,'test_reports':reports,'total_passed':sum(c['passed'] for c in reports.values()),'initial_verifier_failures_by_fixture':dict(failures),'initial_full_verification_exit_code':2,'documentation_check_exit_code':0,'documentation_warnings':0,'literal_yaml_and_blueprint_match':True,'source_hashes_still_match_precommit_comparison':True},indent=2))\nPY; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 1202,
+      "sha256": "e656a93ee9cb23066ed8d87062bcf7864fcc2e6e2c59c41fb0a541826b760ddf"
+    },
+    {
       "path": "docs/operations/evidence/issue-110/raw/verifier-initial.xml",
       "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1; cp /tmp/parchwell-dotnet-verification.dAEPNw74/Parchwell.Verifier.Tests/results.xml docs/operations/evidence/issue-110/raw/verifier-initial.xml; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
       "size_bytes": 1539832,
       "sha256": "9dca31351ea193eccf96f28a7fec2e5bd1a0b0fe5c91c7d6cbe3b6a741d7fcea"
     },
     {
+      "path": "docs/operations/evidence/issue-110/raw/verifier.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1\ncp -- /tmp/parchwell-dotnet-verification.hl7SFQAK/Parchwell.Verifier.Tests/results.xml docs/operations/evidence/issue-110/raw/verifier.xml; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 1503252,
+      "sha256": "fa940ad0d11e94b219c890ead0eec204f8e2c91e2f1b22a90b629654cd35481c"
+    },
+    {
       "path": "docs/operations/evidence/issue-110/raw/verify-dotnet-initial.log",
       "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1; mv docs/operations/evidence/issue-110/raw/verify-dotnet.log docs/operations/evidence/issue-110/raw/verify-dotnet-initial.log; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
       "size_bytes": 1833163,
       "sha256": "2a88226caf68c3542ca164f8ac66404030a1d8f32fce16661b7cc7c013fdd7ca"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/verify-dotnet.log",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1; source commit c4b043eb674b88352580a4818dc1663326826306",
+      "size_bytes": 1665964,
+      "sha256": "87620cc18e7d12ae18d9d30ad89603e950be7b67369fa5298970751982859c55"
     }
   ]
 }
