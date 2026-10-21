@@ -1,0 +1,53 @@
+tests/main.tftest.hcl... in progress
+  run "foundation"... pass
+
+Warning: Attribute Deprecated
+
+  with module.spoke_dns_links["eventhubs"].azapi_resource.private_dns_zone_network_link,
+  on .terraform/modules/spoke_dns_links/modules/private_dns_virtual_network_link/main.tf line 23, in resource "azapi_resource" "private_dns_zone_network_link":
+  23:   retry = var.retry
+
+The `multiplier` attribute is deprecated and will be removed in a future
+version.
+
+(and 3 more similar warnings elsewhere)
+
+  run "standalone_dns"... pass
+
+Warning: Attribute Deprecated
+
+  with module.owned_dns["eventhubs"].azapi_resource.private_dns_zone,
+  on .terraform/modules/owned_dns/main.tf line 17, in resource "azapi_resource" "private_dns_zone":
+  17:   retry          = var.retry
+
+The `multiplier` attribute is deprecated and will be removed in a future
+version.
+
+(and 11 more similar warnings elsewhere)
+
+  run "reject_suffix"... pass
+  run "reject_location"... pass
+  run "reject_runner_id"... pass
+  run "reject_spoke_cidr"... pass
+  run "reject_aks_subnet_cidr"... pass
+  run "reject_pe_subnet_cidr"... pass
+  run "reject_dns_rg"... pass
+  run "reject_budget_contacts"... pass
+  run "reject_budget_month"... pass
+  run "reject_workflow_principal"... pass
+
+Warning: Attribute Deprecated
+
+  with module.spoke_dns_links["eventhubs"].azapi_resource.private_dns_zone_network_link,
+  on .terraform/modules/spoke_dns_links/modules/private_dns_virtual_network_link/main.tf line 23, in resource "azapi_resource" "private_dns_zone_network_link":
+  23:   retry = var.retry
+
+The `multiplier` attribute is deprecated and will be removed in a future
+version.
+
+(and 3 more similar warnings elsewhere)
+
+tests/main.tftest.hcl... tearing down
+tests/main.tftest.hcl... pass
+
+Success! 12 passed, 0 failed.

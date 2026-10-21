@@ -4,3 +4,11 @@ obj/
 .env
 *.tfvars
 .artifacts/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfbackend
+*.tfbackend.json

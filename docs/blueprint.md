@@ -74,8 +74,9 @@ flowchart LR
     DNS[Private DNS zones]
     LAW[Log Analytics workspace]
     UAMI[User-assigned identities]
-    TFS[Terraform state storage]
+    ACR[ACR Standard - public Entra-only]
   end
+  TFS[Existing external Terraform state storage]
   subgraph EPH[Ephemeral layer - rg-parchwell-eph]
     subgraph AKS[AKS cluster]
       LG[loadgen pods - tainted pool]
@@ -105,7 +106,7 @@ flowchart LR
 
 ### Persistent layer
 
-Holds everything that costs little or nothing while idle, or that must survive teardown. The Azure budget alert (rule 5, applied before any other resource). A spoke VNet with subnets for AKS nodes and private endpoints, peered directly to Hari's existing runner VNet, which hosts the GitHub runner with Azure private networking. There is no hub and no firewall in the path. The runner VNet is not managed by this repo. Private DNS for `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net` must resolve from both the spoke and the runner VNet. Both zones are platform prerequisites created outside this repo by `scripts/prerequisites.ps1` (ADR-010); this repo links them to the spoke and writes records into them. Teams that run behind a hub firewall: see [docs/networking/hub-firewall.md](networking/hub-firewall.md). The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state in a storage account with Entra authentication and shared key access disabled. The spoke VNet is persistent because recreating it would mean recreating both sides of the peering every session, and the runner side lives outside this repo. Spoke address space must not overlap the runner VNet or anything else peered to it.
+Holds everything that costs little or nothing while idle, or that must survive teardown. The Azure budget alert (rule 5, applied before any other resource). A spoke VNet with subnets for AKS nodes and private endpoints, peered directly to Hari's existing runner VNet, which hosts the GitHub runner with Azure private networking. There is no hub and no firewall in the path. The runner VNet is not managed by this repo. Private DNS for `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net` must resolve from both the spoke and the runner VNet. Both zones are platform prerequisites created outside this repo by `scripts/prerequisites.ps1` (ADR-010); this repo links them to the spoke and writes records into them. Teams that run behind a hub firewall: see [docs/networking/hub-firewall.md](networking/hub-firewall.md). The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state uses Hari's existing external storage account, with Entra authentication, shared keys disabled and private access. This repo consumes supplied backend configuration and does not own that account or its networking ([decision on #112](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318488448)). The persistent layer also holds an ACR Standard registry with public access and Entra-only pulls and pushes ([registry decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552)). The spoke VNet is persistent because recreating it would mean recreating both sides of the peering every session, and the runner side lives outside this repo. Spoke address space must not overlap the runner VNet or anything else peered to it.
 
 ### Event Hubs Premium namespace
 
@@ -327,19 +328,22 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 2. AVM modules for every component, accepting their gaps.
 3. AVM modules where they expose what the design needs; a plain `azapi` or `azurerm` resource where they do not, with each gap recorded here.
 
-**Decision.** Option 3. Every module is pinned to an exact version. Mapping, as checked on 2026-10-11 against the Terraform Registry (S17):
+**Decision.** Option 3. Every module is pinned to an exact version. The initial mapping was checked on 2026-10-11 against the Terraform Registry (S17); the pins and compaction fallback below follow the [approved #112 implementation plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318201099) and its immutable upstream sources:
 
-| Component | AVM module | Version checked | Use and known gaps |
+| Component | AVM module | Version | Use and known gaps |
 |---|---|---|---|
-| Spoke VNet, subnets, peering both ways | `Azure/avm-res-network-virtualnetwork/azurerm` | 0.22.2 (2026-08-28) | `peerings` with `create_reverse_peering = true` creates the runner-side peering from the same call. Uses the `azapi` provider |
-| Spoke links to the manual DNS zones | `Azure/avm-res-network-privatednszone/azurerm`, submodule `private_dns_virtual_network_link` | 0.5.0 (2026-02-12) | Takes the existing zone's ID as `parent_id`, so it works against zones this repo does not own |
-| Event Hubs namespace, event hubs, private endpoint | `Azure/avm-res-eventhub-namespace/azurerm` | 0.1.1 (2026-10-06) | Very new. Its README documents `capacity` for Standard throughput units only, and documents no input for minimum TLS or a compaction cleanup policy. If the build confirms those gaps, `document-state` and the TLS setting fall back to `azapi` resources |
-| Claim-check storage, private endpoint | `Azure/avm-res-storage-storageaccount/azurerm` | to pin at build | |
-| AKS cluster | `Azure/avm-res-containerservice-managedcluster/azurerm` | to pin at build | |
-| Workload identities | `Azure/avm-res-managedidentity-userassignedidentity/azurerm` | to pin at build | |
-| Log Analytics workspace | `Azure/avm-res-operationalinsights-workspace/azurerm` | to pin at build | |
-| Application Insights | `Azure/avm-res-insights-component/azurerm` | to pin at build | |
-| Budget alert | none found in the AVM resource module index | | Plain `azurerm` resource |
+| Spoke VNet, subnets, both peerings | `Azure/avm-res-network-virtualnetwork/azurerm` | 0.22.2 | `create_reverse_peering = true` creates the runner-side peering; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-network-virtualnetwork/tree/c08763d616fc9f1932075a70d53fa826dfbdc72f) |
+| Existing-zone links and optional standalone zones | `Azure/avm-res-network-privatednszone/azurerm`, link submodule | 0.5.0 | The link takes the existing zone's `parent_id`; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-network-privatednszone/tree/da8b7599c740d344de310ffa8cbe32c61322a809) |
+| Event Hubs namespace, delete topics, endpoint | `Azure/avm-res-eventhub-namespace/azurerm` | 0.1.1 | Sets TLS 1.2 and passes capacity to AzureRM; its topic input lacks cleanup policy, so only `document-state` falls back to `azurerm_eventhub` with Compact retention; [module source](https://github.com/Azure/terraform-azurerm-avm-res-eventhub-namespace/tree/b72cbf565e698f3443803fef13831c0d35f91cea), [provider support](https://github.com/hashicorp/terraform-provider-azurerm/blob/5782a75422c68a0d0804ac16d97dcaf3df5ee2fa/internal/services/eventhub/eventhub_resource.go) |
+| Ephemeral Blob storage and endpoint | `Azure/avm-res-storage-storageaccount/azurerm` | 0.10.0 | Owns ledger, verifier and claim-check containers; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-storage-storageaccount/tree/5695e5ec21744a3765051677d9e82bfba16b5d98) |
+| AKS cluster | `Azure/avm-res-containerservice-managedcluster/azurerm` | 0.8.5 | Fixed pool and workload-identity inputs; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-containerservice-managedcluster/tree/4bc0128b057d10d5ed146a53d8c77933fd00ead8) |
+| Workload and control-plane identities | `Azure/avm-res-managedidentity-userassignedidentity/azurerm` | 0.5.3 | Persistent identities; cluster-specific federation uses plain `azurerm_federated_identity_credential` in the ephemeral root because the AVM attaches federation to the identity it creates; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-managedidentity-userassignedidentity/tree/ccb48fc77306879fecd04bd2a8a74b035acdc01d) |
+| Log Analytics workspace | `Azure/avm-res-operationalinsights-workspace/azurerm` | 0.5.1 | Persistent workspace; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-operationalinsights-workspace/tree/b4ffa3ff87ac09ff6de3b7014c44b4d213aa302b) |
+| Application Insights | `Azure/avm-res-insights-component/azurerm` | 0.4.0 | Ephemeral workspace-based component; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-insights-component/tree/848161e9cb89f4ef5a73d363e984e8dcdad0151d) |
+| Container registry | `Azure/avm-res-containerregistry-registry/azurerm` | 0.8.0 | Standard, public, no anonymous or admin access; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-containerregistry-registry/tree/4a032f5cf4607536008c217efdc3f06dda45f33c), [approved exception](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552) |
+| Budget alert | Plain `azurerm_consumption_budget_subscription` | Provider pinned in each root | Retains the original plain-AzureRM fallback; no budget AVM was selected in the S17 index check |
+
+The additional AKS control-plane identity receives Network Contributor only on the AKS subnet. The kubelet identity receives AcrPull only on the persistent registry; the deploying workflow identity receives AcrPush there. These infrastructure roles are separate from the three workload identities and their data roles ([approved implementation contract](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318201099)). Shared tag and external-backend rules are owned by [Terraform engineering standards](engineering/terraform.md).
 
 **A records.** Created by Terraform through each private endpoint's DNS zone group (the `private_endpoints` input with `private_dns_zone_resource_ids` on the Event Hubs and storage modules). The zone group writes the A record when the private endpoint is created and removes it when the endpoint is destroyed, so the record cannot drift from the endpoint's IP. The `private_dns_a_record` submodule is available but not used, because a hand-declared record duplicates what the zone group manages.
 
@@ -765,7 +769,7 @@ Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource
 - **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform apply and destroy run through GitHub OIDC federation, with the federated credential trusting only the protected scenario-runner environment, which requires Hari's approval; branches and pull requests are not trusted subjects.
 - **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). The runner group with Azure private networking is restricted to the scenario workflow file.
 - **Audit.** Premium runtime audit logs (`AZMSRunTimeAuditLogs`) record data-plane access per identity.
-- **Storage.** Shared key access disabled on both storage accounts; Entra-only.
+- **Storage.** The ephemeral account is configured with shared keys disabled and Entra-only access. The existing external state backend must meet the same authentication and private-access prerequisites before deployment; its settings are not managed or established by these Terraform mocks ([backend rule](engineering/terraform.md#checks-ci-required)).
 - **Deploying identity.** Terraform runs as an app registration created and permissioned by Hari, federated to GitHub OIDC as above. Its role assignments, including those on `rg-platform-privatedns` and the runner VNet, are outside this repo.
 - **Not covered in v1.** Customer-managed keys; egress firewall; Azure Policy enforcement of the above. Deferred, listed in section 12.
 

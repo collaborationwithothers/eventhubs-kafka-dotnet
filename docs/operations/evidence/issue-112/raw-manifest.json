@@ -1,0 +1,228 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-112/raw/check-docs-final.log",
+      "producer": {
+        "command": "timeout 600s npm run check:docs",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "worktree_changes": true,
+        "context": "Updated staged authoring snapshot with corrected heading anchors.",
+        "exit_code": 0
+      },
+      "size_bytes": 2203,
+      "sha256": "3c79912b44cd53614085135c5ba3b786106f1bccb111cc6aa90d2e43f1f2f164"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/check-docs-review-record.log",
+      "producer": {
+        "command": "timeout 600s npm run check:docs",
+        "source_commit": "c6b841df2e48850d6677c15bfd697d9511741048",
+        "worktree_changes": true,
+        "context": "Staged cold-review report and README link; no functional source changes.",
+        "exit_code": 0
+      },
+      "size_bytes": 2270,
+      "sha256": "0d0b5027717d207a84201807562b9c5b4361f2eb49cbd097b8414c2b7059d484"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/check-docs.log",
+      "producer": {
+        "command": "timeout 600s npm run check:docs",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "worktree_changes": true,
+        "context": "Initial authored evidence/docs snapshot; heading warnings subsequently corrected.",
+        "exit_code": 0
+      },
+      "size_bytes": 2509,
+      "sha256": "f6d0695ab14ca7a16f56f51e6f3b5ff06f5ea47323c1bacac417df3b6254cb21"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/diff-check-authored.log",
+      "producer": {
+        "command": "timeout 600s git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**'",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "worktree_changes": true,
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/diff-check-full.log",
+      "producer": {
+        "command": "timeout 600s git diff --check origin/main",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "worktree_changes": true,
+        "exit_code": 2,
+        "context": "Expected whitespace diagnostics for unchanged native validator raw bytes; retained without trimming."
+      },
+      "size_bytes": 177,
+      "sha256": "cfb728a38aa78001a905d6481ffd95b248f364825416209f259b934b98a4bedf"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/diff-check.log",
+      "producer": {
+        "command": "timeout 600s git diff --check",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "worktree_changes": true,
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/ephemeral-init.log",
+      "producer": {
+        "command": "TF_PLUGIN_CACHE_DIR=/tmp/issue-112-tools/provider-cache timeout 600s /tmp/issue-112-tools/bin/terraform -chdir=infra/ephemeral init -backend=false -input=false",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "exit_code": 0
+      },
+      "size_bytes": 1247,
+      "sha256": "3ed91024a43842ac4a41bd1e7d1724de46234b3373640911d4c1cfa9dda64d8c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/ephemeral-lint.log",
+      "producer": {
+        "command": "timeout 600s tflint --chdir=infra/ephemeral --config=/workspace/eventhubs-kafka-dotnet/.tflint.hcl",
+        "source_commit": "aa095eb753f178a15cec72692c1ffd98581fb142",
+        "context": "PATH used pinned tools; TFLINT_PLUGIN_DIR=/tmp/issue-112-tools/plugins. Ran before commit creation; relevant configuration captured at this unformatted implementation commit.",
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/ephemeral-test.log",
+      "producer": {
+        "command": "TF_PLUGIN_CACHE_DIR=/tmp/issue-112-tools/provider-cache timeout 600s /tmp/issue-112-tools/bin/terraform -chdir=infra/ephemeral test -test-directory=tests -no-color",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 4213,
+      "sha256": "ee8cfa895b432d8869961ffbac1d00fc76b40186fb55663a9881281b08104b5e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/ephemeral-validate.log",
+      "producer": {
+        "command": "timeout 600s terraform -chdir=infra/ephemeral validate -no-color",
+        "source_commit": "aa095eb753f178a15cec72692c1ffd98581fb142",
+        "context": "Ran in authoring worktree before commit creation; relevant configuration captured at this unformatted implementation commit.",
+        "exit_code": 0
+      },
+      "size_bytes": 38,
+      "sha256": "f7997225125835fdd14060ac776d273f394b874f9a481b9e2122c83dc8adc5c1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/format-equivalence.log",
+      "producer": {
+        "command": "git diff -w --ignore-blank-lines aa095eb fa39ef8 -- infra tests/terraform",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/format-infra-check.log",
+      "producer": {
+        "command": "timeout 600s /tmp/issue-112-tools/bin/terraform fmt -check -recursive infra",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/format-tests-check.log",
+      "producer": {
+        "command": "timeout 600s /tmp/issue-112-tools/bin/terraform fmt -check -recursive tests/terraform",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/persistent-init.log",
+      "producer": {
+        "command": "TF_PLUGIN_CACHE_DIR=/tmp/issue-112-tools/provider-cache timeout 600s /tmp/issue-112-tools/bin/terraform -chdir=infra/persistent init -backend=false -input=false",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "exit_code": 0
+      },
+      "size_bytes": 1247,
+      "sha256": "a23547435666d026002f9f327a3b9afa2cedf4d7e161dc6321ab7a6be0c5178c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/persistent-lint.log",
+      "producer": {
+        "command": "timeout 600s tflint --chdir=infra/persistent --config=/workspace/eventhubs-kafka-dotnet/.tflint.hcl",
+        "source_commit": "aa095eb753f178a15cec72692c1ffd98581fb142",
+        "context": "PATH used pinned tools; TFLINT_PLUGIN_DIR=/tmp/issue-112-tools/plugins. Ran before commit creation; relevant configuration captured at this unformatted implementation commit.",
+        "exit_code": 0
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/persistent-test.log",
+      "producer": {
+        "command": "TF_PLUGIN_CACHE_DIR=/tmp/issue-112-tools/provider-cache timeout 600s /tmp/issue-112-tools/bin/terraform -chdir=infra/persistent test -test-directory=tests -no-color",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 1774,
+      "sha256": "98c21b3b3f21b72a975fecf0fb3488fc2127a29b6d3921b57545e541409adf78"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/persistent-validate.log",
+      "producer": {
+        "command": "timeout 600s terraform -chdir=infra/persistent validate -no-color",
+        "source_commit": "aa095eb753f178a15cec72692c1ffd98581fb142",
+        "context": "Ran in authoring worktree before commit creation; relevant configuration captured at this unformatted implementation commit.",
+        "exit_code": 0
+      },
+      "size_bytes": 38,
+      "sha256": "f7997225125835fdd14060ac776d273f394b874f9a481b9e2122c83dc8adc5c1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/summary.json",
+      "producer": {
+        "command": "python3 docs/operations/evidence/issue-112/count-tests.py --test-source-commit fa39ef80b7509c023799ca0717266d11e507faa0",
+        "source_commit": "3c001422618ab8585329cd7a181080bcc4cb974a",
+        "exit_code": 0
+      },
+      "size_bytes": 3874,
+      "sha256": "e585ef3681df426cdff31ca0fc009a551652f0f0a485ad2df9f8f74760af273a"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/terraform-version.log",
+      "producer": {
+        "command": "timeout 600s /tmp/issue-112-tools/bin/terraform version",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 33,
+      "sha256": "1f77c918322e41782026d20a0db4aa2a0e3160226c3d17d77c64c3c3eb2e2513"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/tflint-init.log",
+      "producer": {
+        "command": "TFLINT_PLUGIN_DIR=/tmp/issue-112-tools/plugins timeout 600s /tmp/issue-112-tools/bin/tflint --init --config=\"$PWD/.tflint.hcl\"",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 34,
+      "sha256": "5164eee431730ce8348449d0d37001d85625b2b1c693cc926c17789408e335a8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-112/raw/tflint-version.log",
+      "producer": {
+        "command": "TFLINT_PLUGIN_DIR=/tmp/issue-112-tools/plugins timeout 600s /tmp/issue-112-tools/bin/tflint --version",
+        "source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+        "exit_code": 0
+      },
+      "size_bytes": 86,
+      "sha256": "0cdc2d392ac2c6c638752639687ec938f9f582714fceb0b58b22635b5bf740a4"
+    }
+  ]
+}
