@@ -104,7 +104,7 @@ Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, sym
 Four skills are owned by this repository rather than pinned from a third party. They are not in `skills-lock.json` and change only through a pull request to Hari.
 
 - `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines.
-- `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle" (#85 decision 7). The prompt that starts a session names the skill and the issue number.
+- `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle" (#85 decision 7), or one session under its step 3 "Standing approval" (#104). The prompt that starts a session names the skill and the issue number.
 
 A repository-owned skill, and any prompt that starts a session, cites a rule by file and section and never paraphrases a rule that stops, caps or gates work (#85 decision 3). An implementation prompt names `implement-plan` and the issue number.
 
