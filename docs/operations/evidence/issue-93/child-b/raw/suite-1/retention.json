@@ -1,0 +1,37 @@
+{
+  "source_directory": "/tmp/parchwell-dotnet-verification.qdNoOQy6",
+  "destination": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification",
+  "copy_command": "python3 -; shutil.copytree('/tmp/parchwell-dotnet-verification.qdNoOQy6', '/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification', ignore=shutil.ignore_patterns('bin', 'obj', 'Allowed.cs', 'Forbidden.cs', 'WarningControl.csproj', 'packages.lock.json'))",
+  "original_producer": "bash ./scripts/verify-dotnet.sh",
+  "source_commit": "80de425d403d844c34e865f264da256890b7211c",
+  "retention_scope": "Suite XML, logs, manifests and program-written spike evidence; copied warning fixture source and build intermediates are omitted.",
+  "compressions": [
+    {
+      "original_source": "/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/test.log",
+      "retained_path": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/test.log.gz",
+      "original_size_bytes": 515,
+      "original_sha256": "1c0608fd9addfa9df29155e6662b30633d017ba81569971cd8a45bc349b501c1",
+      "stored_size_bytes": 274,
+      "stored_sha256": "8b20a715333f8564a2d82e8270990add8632f1bf3ecfede30a4684b2086c6793",
+      "command": "python3 -; data=pathlib.Path('/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/test.log').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/test.log.gz').write_bytes(gzip.compress(data,mtime=0))"
+    },
+    {
+      "original_source": "/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/trial-records.json",
+      "retained_path": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/trial-records.json.gz",
+      "original_size_bytes": 1649011,
+      "original_sha256": "af06ce0db2ab8abdb0734e997ae985d3f18ee6a9b897d85e302291d4ad7c5b32",
+      "stored_size_bytes": 65753,
+      "stored_sha256": "ee1c93e61d8c8e4fae633525ce1a9d03be02dfcf9a517c50fbf971e983d885c2",
+      "command": "python3 -; data=pathlib.Path('/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/trial-records.json').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/trial-records.json.gz').write_bytes(gzip.compress(data,mtime=0))"
+    },
+    {
+      "original_source": "/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/experiment.json",
+      "retained_path": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/experiment.json.gz",
+      "original_size_bytes": 25931332,
+      "original_sha256": "3ee7ce2b56943c7e1bcadc870b9c095019be6d8b583c52c799679389d1f2ac52",
+      "stored_size_bytes": 1833553,
+      "stored_sha256": "747c476d171b60ce8ef979ba5a6e7fc312958a886bd5dadc6cf43fd8f5f32363",
+      "command": "python3 -; data=pathlib.Path('/tmp/parchwell-dotnet-verification.qdNoOQy6/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/experiment.json').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/verification/Parchwell.Kafka.Tests/spike/phantom-spike-148551d49f68416299a7663863bc5b34/experiment.json.gz').write_bytes(gzip.compress(data,mtime=0))"
+    }
+  ]
+}

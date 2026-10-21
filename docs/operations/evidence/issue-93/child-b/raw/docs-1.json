@@ -1,0 +1,17 @@
+{
+  "invocation_ordinal": 1,
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "300s",
+    "bash"
+  ],
+  "stdin": "set -euo pipefail\nnpm ci --ignore-scripts\nnpm run test:docs\nnpm run check:docs\ngit diff --check\ngit diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'\n",
+  "source_commit": "80de425d403d844c34e865f264da256890b7211c",
+  "started_utc": "2026-10-21T02:15:43.551480+00:00",
+  "wall_time_cap_seconds": 300,
+  "producer": "timeout --kill-after=5s 300s bash > /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/docs-1.log 2>&1 <<'DOCS'\nset -euo pipefail\nnpm ci --ignore-scripts\nnpm run test:docs\nnpm run check:docs\ngit diff --check\ngit diff --numstat origin/main...HEAD -- . ':(exclude)docs/operations/evidence/**/raw/**'\nDOCS; receipt: python3 /tmp/issue-100/docs-pass.py 1",
+  "exit_code": 0,
+  "elapsed_seconds": 14.982847031000006,
+  "finished_utc": "2026-10-21T02:15:58.534370+00:00"
+}

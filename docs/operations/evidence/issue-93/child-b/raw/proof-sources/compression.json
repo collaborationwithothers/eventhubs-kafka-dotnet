@@ -1,0 +1,31 @@
+{
+  "files": [
+    {
+      "original_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.headers.txt",
+      "stored_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.headers.txt.gz",
+      "original_sha256": "fcf200bb23055ca0d271585e44947ef2be36907e1206afc31c2495b3da14faa4",
+      "stored_sha256": "f90b61eefdb9a4680880d8bea263b6b9ae99a85f421745e7a8e90dc5ca08eca5",
+      "original_size_bytes": 1021,
+      "stored_size_bytes": 632,
+      "producer": "curl --fail --location --silent --show-error --dump-header docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.headers.txt --output docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.cs --write-out '{\"url_effective\":\"%{url_effective}\",\"http_code\":%{http_code},\"size_download\":%{size_download},\"time_total\":%{time_total},\"ssl_verify_result\":%{ssl_verify_result}}\\n' https://raw.githubusercontent.com/dotnet/runtime/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Private.CoreLib/src/System/Text/UTF8Encoding.cs > docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.fetch.json (upstream source commit 6aa72daa24f66c01c3d7b6a32519e9d21396deec); python3 -; data=pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.headers.txt').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/UTF8Encoding.headers.txt.gz').write_bytes(gzip.compress(data,mtime=0))"
+    },
+    {
+      "original_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.headers.txt",
+      "stored_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.headers.txt.gz",
+      "original_sha256": "024f04e3673b70617749e7630c6dbc86d84e8ea2d075d02c662961ada1bec813",
+      "stored_sha256": "de1a2e443260996df93c4324dd9b33f8c9abb83fc10e2c925a947b4278155e0a",
+      "original_size_bytes": 1021,
+      "stored_size_bytes": 633,
+      "producer": "curl --fail --location --silent --show-error --dump-header docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.headers.txt --output docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.cs --write-out '{\"url_effective\":\"%{url_effective}\",\"http_code\":%{http_code},\"size_download\":%{size_download},\"time_total\":%{time_total},\"ssl_verify_result\":%{ssl_verify_result}}\\n' https://raw.githubusercontent.com/dotnet/runtime/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Private.CoreLib/src/System/Text/Encoding.cs > docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.fetch.json (upstream source commit 6aa72daa24f66c01c3d7b6a32519e9d21396deec); python3 -; data=pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.headers.txt').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/Encoding.headers.txt.gz').write_bytes(gzip.compress(data,mtime=0))"
+    },
+    {
+      "original_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.headers.txt",
+      "stored_path": "docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.headers.txt.gz",
+      "original_sha256": "5ff57d256d8fed1c623ca186fd9a07378cc9e7b5420d29dd88fd631dd9fe42f7",
+      "stored_sha256": "0f2ebb950223ef3b0ad9a3a708c84bd338290371ae87039ec690bc14f7e82dbf",
+      "original_size_bytes": 1020,
+      "stored_size_bytes": 635,
+      "producer": "curl --fail --location --silent --show-error --dump-header docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.headers.txt --output docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.json --write-out '{\"url_effective\":\"%{url_effective}\",\"http_code\":%{http_code},\"size_download\":%{size_download},\"time_total\":%{time_total},\"ssl_verify_result\":%{ssl_verify_result}}\\n' https://raw.githubusercontent.com/dotnet/dotnet/4099f83977/src/source-manifest.json > docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.fetch.json (upstream source commit 4099f83977); python3 -; data=pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.headers.txt').read_bytes(); pathlib.Path('/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/proof-sources/source-manifest.headers.txt.gz').write_bytes(gzip.compress(data,mtime=0))"
+    }
+  ]
+}

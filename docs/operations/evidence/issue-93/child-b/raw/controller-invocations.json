@@ -1,0 +1,20 @@
+[
+  {
+    "mode": "suite",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-21T02:06:33.373987+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/suite-1/controller.json"
+  },
+  {
+    "mode": "discovery",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-21T02:13:46.434821+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/discovery-1/controller.json"
+  },
+  {
+    "mode": "baseline",
+    "ordinal": 1,
+    "reserved_utc": "2026-10-21T02:13:47.927902+00:00",
+    "receipt": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/focused-1/controller.json"
+  }
+]

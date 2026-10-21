@@ -1,0 +1,9 @@
+{
+  "started_utc": "2026-10-21T02:03:26+00:00",
+  "finished_utc": "2026-10-21T02:15:42.866669+00:00",
+  "elapsed_seconds": 736.866669,
+  "cap_seconds": 14400,
+  "source_commit": "80de425d403d844c34e865f264da256890b7211c",
+  "basis": "Conservative full wall interval from the current Approval, before B implementation/source work, through completion of the fixed assignment/proof/evidence reconciliation; includes setup/suite/waits and does not deduct authority reads. No prior B implementation allowance renewed. Governance review work follows separately.",
+  "producer": "python3 /tmp/issue-100/supplement.py; datetime interval with conservative Approval start and actual receipt completion time"
+}
