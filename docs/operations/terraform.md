@@ -48,7 +48,7 @@ Ephemeral deployment requires the reviewed persistent plan and Hari's apply rece
 
 ## Operator commands
 
-The following persistent sequence is run by Hari only, under the [owner execution rule](../engineering/terraform.md#checks). Private file paths are supplied by the operator.
+The following persistent sequence is run by Hari only, under the [owner execution rule](../engineering/terraform.md#checks-ci-required). Private file paths are supplied by the operator.
 
 ```sh
 terraform -chdir=infra/persistent init -backend-config="$PARCHWELL_PERSISTENT_BACKEND_CONFIG"

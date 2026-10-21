@@ -1,0 +1,176 @@
+{
+  "test_source_commit": "fa39ef80b7509c023799ca0717266d11e507faa0",
+  "roots": {
+    "persistent": {
+      "declared_runs": [
+        "foundation",
+        "standalone_dns",
+        "reject_suffix",
+        "reject_location",
+        "reject_runner_id",
+        "reject_spoke_cidr",
+        "reject_aks_subnet_cidr",
+        "reject_pe_subnet_cidr",
+        "reject_dns_rg",
+        "reject_budget_contacts",
+        "reject_budget_month",
+        "reject_workflow_principal"
+      ],
+      "reported_runs": [
+        {
+          "name": "foundation",
+          "status": "pass"
+        },
+        {
+          "name": "standalone_dns",
+          "status": "pass"
+        },
+        {
+          "name": "reject_suffix",
+          "status": "pass"
+        },
+        {
+          "name": "reject_location",
+          "status": "pass"
+        },
+        {
+          "name": "reject_runner_id",
+          "status": "pass"
+        },
+        {
+          "name": "reject_spoke_cidr",
+          "status": "pass"
+        },
+        {
+          "name": "reject_aks_subnet_cidr",
+          "status": "pass"
+        },
+        {
+          "name": "reject_pe_subnet_cidr",
+          "status": "pass"
+        },
+        {
+          "name": "reject_dns_rg",
+          "status": "pass"
+        },
+        {
+          "name": "reject_budget_contacts",
+          "status": "pass"
+        },
+        {
+          "name": "reject_budget_month",
+          "status": "pass"
+        },
+        {
+          "name": "reject_workflow_principal",
+          "status": "pass"
+        }
+      ],
+      "declaration_count": 12,
+      "reported_count": 12,
+      "assertion_count": 35,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "native_success_summary": [
+        12,
+        0
+      ]
+    },
+    "ephemeral": {
+      "declared_runs": [
+        "foundation",
+        "reject_suffix",
+        "reject_location",
+        "reject_backend",
+        "reject_pod_cidr",
+        "reject_service_cidr",
+        "reject_dns_ip",
+        "reject_empty_ranges",
+        "reject_bad_ranges",
+        "reject_version",
+        "reject_azure_namespace",
+        "reject_namespace_shape",
+        "reject_scenario",
+        "reject_run",
+        "reject_expiry"
+      ],
+      "reported_runs": [
+        {
+          "name": "foundation",
+          "status": "pass"
+        },
+        {
+          "name": "reject_suffix",
+          "status": "pass"
+        },
+        {
+          "name": "reject_location",
+          "status": "pass"
+        },
+        {
+          "name": "reject_backend",
+          "status": "pass"
+        },
+        {
+          "name": "reject_pod_cidr",
+          "status": "pass"
+        },
+        {
+          "name": "reject_service_cidr",
+          "status": "pass"
+        },
+        {
+          "name": "reject_dns_ip",
+          "status": "pass"
+        },
+        {
+          "name": "reject_empty_ranges",
+          "status": "pass"
+        },
+        {
+          "name": "reject_bad_ranges",
+          "status": "pass"
+        },
+        {
+          "name": "reject_version",
+          "status": "pass"
+        },
+        {
+          "name": "reject_azure_namespace",
+          "status": "pass"
+        },
+        {
+          "name": "reject_namespace_shape",
+          "status": "pass"
+        },
+        {
+          "name": "reject_scenario",
+          "status": "pass"
+        },
+        {
+          "name": "reject_run",
+          "status": "pass"
+        },
+        {
+          "name": "reject_expiry",
+          "status": "pass"
+        }
+      ],
+      "declaration_count": 15,
+      "reported_count": 15,
+      "assertion_count": 25,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "native_success_summary": [
+        15,
+        0
+      ]
+    }
+  },
+  "total_reported": 27,
+  "total_passed": 27,
+  "total_failed": 0,
+  "total_skipped": 0
+}

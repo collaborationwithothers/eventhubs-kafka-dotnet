@@ -1,0 +1,111 @@
+tests/main.tftest.hcl... in progress
+  run "foundation"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_suffix"... pass
+  run "reject_location"... pass
+  run "reject_backend"... pass
+  run "reject_pod_cidr"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_service_cidr"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_dns_ip"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_empty_ranges"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_bad_ranges"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_version"... pass
+
+Warning: Argument is deprecated
+
+  with module.application_insights.azurerm_application_insights.this,
+  on .terraform/modules/application_insights/main.tf line 9, in resource "azurerm_application_insights" "this":
+   9:   daily_data_cap_notifications_disabled = var.daily_data_cap_notifications_disabled
+
+`daily_data_cap_notifications_disabled` has been deprecated in favour of
+`daily_data_cap_notifications_enabled` and will be removed in v5.0 of the
+AzureRM Provider
+
+(and 6 more similar warnings elsewhere)
+
+  run "reject_azure_namespace"... pass
+  run "reject_namespace_shape"... pass
+  run "reject_scenario"... pass
+  run "reject_run"... pass
+  run "reject_expiry"... pass
+tests/main.tftest.hcl... tearing down
+tests/main.tftest.hcl... pass
+
+Success! 15 passed, 0 failed.
