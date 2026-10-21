@@ -26,4 +26,4 @@ No assertion, role-scope requirement, access restriction or negative input case 
 
 ## Review record
 
-Cold-review results are recorded here before the reviewed branch is pushed. The pull request requires Hari's merge because it changes persistent infrastructure, network/identity files and protected owner documents.
+The [cold review report](cold-review.md) records the independent review of the implementation and raw manifest. The pull request's self-review record records the final review of the branch state, including that report. The pull request requires Hari's merge because it changes persistent infrastructure, network/identity files and protected owner documents.

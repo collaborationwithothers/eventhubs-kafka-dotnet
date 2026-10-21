@@ -13,6 +13,18 @@
       "sha256": "3c79912b44cd53614085135c5ba3b786106f1bccb111cc6aa90d2e43f1f2f164"
     },
     {
+      "path": "docs/operations/evidence/issue-112/raw/check-docs-review-record.log",
+      "producer": {
+        "command": "timeout 600s npm run check:docs",
+        "source_commit": "c6b841df2e48850d6677c15bfd697d9511741048",
+        "worktree_changes": true,
+        "context": "Staged cold-review report and README link; no functional source changes.",
+        "exit_code": 0
+      },
+      "size_bytes": 2270,
+      "sha256": "0d0b5027717d207a84201807562b9c5b4361f2eb49cbd097b8414c2b7059d484"
+    },
+    {
       "path": "docs/operations/evidence/issue-112/raw/check-docs.log",
       "producer": {
         "command": "timeout 600s npm run check:docs",
