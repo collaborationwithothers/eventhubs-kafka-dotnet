@@ -1,0 +1,37 @@
+{
+  "approved_plan": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314026196",
+  "plan_check": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314121492",
+  "pending_amendment": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/110#issuecomment-6314201699",
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-110/raw/check-docs-initial.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-110/raw/check-docs.log 2>&1; mv docs/operations/evidence/issue-110/raw/check-docs.log docs/operations/evidence/issue-110/raw/check-docs-initial.log; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
+      "size_bytes": 2043,
+      "sha256": "7443c729c8050f900130c842dbb85eea546f874c9088178541c4641cd943deae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/loader-before.log",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 120 dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 3 --results-directory /workspace/scratch/issue-110-authority/loader-before -- --filter-method 'Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile' --report-xunit-xml --report-xunit-xml-filename results.xml > docs/operations/evidence/issue-110/raw/loader-before.log 2>&1; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
+      "size_bytes": 3404,
+      "sha256": "5bd3540a3bcb39f6939861ec96f27dcb465b3d542e61dc009649bef311dac202"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/loader-before.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 120 dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 3 --results-directory /workspace/scratch/issue-110-authority/loader-before -- --filter-method 'Parchwell.Verifier.Tests.Scenario.FileSystemScenarioSourceTests.Given_ActualA01Files_When_LoadingAndResolving_Then_UsesApprovedProducerTimeoutsWithoutExpectedFile' --report-xunit-xml --report-xunit-xml-filename results.xml > docs/operations/evidence/issue-110/raw/loader-before.log 2>&1; cp /workspace/scratch/issue-110-authority/loader-before/results.xml docs/operations/evidence/issue-110/raw/loader-before.xml; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
+      "size_bytes": 5654,
+      "sha256": "78fdd8f0a826322220f70f2ff5aecb3904606e64786cd7cf2dded141964d38c7"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/verifier-initial.xml",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1; cp /tmp/parchwell-dotnet-verification.dAEPNw74/Parchwell.Verifier.Tests/results.xml docs/operations/evidence/issue-110/raw/verifier-initial.xml; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
+      "size_bytes": 1539832,
+      "sha256": "9dca31351ea193eccf96f28a7fec2e5bd1a0b0fe5c91c7d6cbe3b6a741d7fcea"
+    },
+    {
+      "path": "docs/operations/evidence/issue-110/raw/verify-dotnet-initial.log",
+      "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-dotnet.sh > docs/operations/evidence/issue-110/raw/verify-dotnet.log 2>&1; mv docs/operations/evidence/issue-110/raw/verify-dotnet.log docs/operations/evidence/issue-110/raw/verify-dotnet-initial.log; source commit 3d37dc60bf116afd7218b0c84a4c6372c5d16a31",
+      "size_bytes": 1833163,
+      "sha256": "2a88226caf68c3542ca164f8ac66404030a1d8f32fce16661b7cc7c013fdd7ca"
+    }
+  ]
+}
