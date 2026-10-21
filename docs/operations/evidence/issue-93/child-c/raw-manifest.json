@@ -1,0 +1,178 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/closure.json",
+      "producer": "timeout --kill-after=5s 300s python3 docs/operations/evidence/issue-93/child-c/map-closure.py --repo-root . --run-dir docs/operations/evidence/issue-93/child-c/raw/mutation-full --output docs/operations/evidence/issue-93/child-c/raw/closure.json; mapper SHA-256 2cd99e240a17718aa8477377380490b4c6e6e866ec0aaea24491d0f985cdd8ab; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 413584,
+      "sha256": "7031fcb8fab3254d53f47a29f90e0c9b2a59277dea31fcd229e0fa3604aefbae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 233,
+      "sha256": "5e8a8761260e95204909fe511994e2688a41239628bd83600fa57f128c8ccfa6"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/mutation-full/command.log.gz",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 23934,
+      "sha256": "77cd9328f332984c870531cf1385ee0cb8be26a13436beed3e90f45f90c5d300"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/mutation-full/controller.json",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 2003,
+      "sha256": "3fdee9c79daa613c962e14bddc42420d8d594226144f443da79aa2e8363c695f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/mutation-full/mutation-report.json.gz",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 33387324,
+      "sha256": "4c50fecfb1ed447a4a3b9fe871fdc57d2e15c6bd06539146fa7ec2e2aa8c4e84"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/mutation-full/tested-source.json",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 41115,
+      "sha256": "c5b118bb83ec0633cadf9d8d288f8a31ebbe7be17258ebc30cc33ad1167036ae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/mutation-launch.json",
+      "producer": "python3 docs/operations/evidence/issue-92-pr6b/controller.py --mode full --repo-root /workspace/eventhubs-kafka-dotnet --cwd /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests --run-dir /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/mutation-full --ledger-path /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json --tested-commit e59271330e6ed3f727c0a0a3268ec9da77718bb5 --config /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/stryker-config.json --report /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json --seconds 7200 --max-mutants 10000 --env ParchwellVerifierMutationOnly=true --env RestoreSources=https://api.nuget.org/v3/index.json -- dotnet stryker --config-file stryker-config.json --output /workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 1655,
+      "sha256": "c4715182c3eaefc484e514f01479549080634b098566ae238f0c0433ede31a2f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/dotnet-info.txt",
+      "producer": "/workspace/.tools/issue-103-dotnet-10.0.402/dotnet --info; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 1269,
+      "sha256": "15a22731c31585ca2238afff9c42c5ad49bd2e8f7a48a400af3e26183fa8b8a3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/nuget-sources.txt",
+      "producer": "/workspace/.tools/issue-103-dotnet-10.0.402/dotnet nuget list source; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 1134,
+      "sha256": "e2513daf4d7ebe6944f11ac2d06f94e32dc8b4df9890c528493a093b945708d5"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/runtimes.txt",
+      "producer": "/workspace/.tools/issue-103-dotnet-10.0.402/dotnet --list-runtimes; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 216,
+      "sha256": "f988b13186b0e6be90cca146556c44a8b4c06cf5585ebf679dcde33c1d82990e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/sdk-version.txt",
+      "producer": "/workspace/.tools/issue-103-dotnet-10.0.402/dotnet --version; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 9,
+      "sha256": "44ea2595bc5a7acabc030531952071226aa70862fd008ed7327d752b39c8513c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/setup.json",
+      "producer": "timeout --kill-after=5s 600s python3 -c '\nimport hashlib,json,os,pathlib,shutil,subprocess,sys,tarfile,time,urllib.request\nfrom datetime import datetime,timezone\nroot=pathlib.Path(sys.argv[1]); evidence=root/\"docs/operations/evidence/issue-93/child-c/raw/setup\"\ntarget=pathlib.Path(\"/workspace/.tools/issue-103-dotnet-10.0.402\")\nstarted=time.monotonic()\nreceipt={\"command\":[\"timeout\",\"--kill-after=5s\",\"600s\",*sys.orig_argv],\"source_commit\":subprocess.check_output([\"git\",\"rev-parse\",\"HEAD\"],cwd=root,text=True).strip(),\"wall_time_cap_seconds\":600,\"started_utc\":datetime.now(timezone.utc).isoformat(),\"status\":\"started\"}\ncode=1\ntry:\n    candidates=[shutil.which(\"dotnet\"),\"/usr/share/dotnet/dotnet\",str(target/\"dotnet\"),\"/workspace/.tools/issue-100-dotnet-10.0.402/dotnet\"]\n    selected=None\n    for candidate in candidates:\n        if candidate and pathlib.Path(candidate).is_file():\n            result=subprocess.run([candidate,\"--version\"],cwd=root,text=True,capture_output=True)\n            if result.returncode==0 and result.stdout.strip()==\"10.0.402\":\n                selected=candidate; break\n    if selected is None:\n        url=\"https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz\"\n        expected=\"1904a98dda2db34ba78ba3c4fb1b224455329af91c341d83547843c1839e112b04ae699ee92fa2449a8f62249196a938723078c0c60b9f65c88539d5687729c2\"\n        target.parent.mkdir(parents=True,exist_ok=True)\n        archive=target.parent/\"issue-103-dotnet-sdk.tar.gz\"\n        assert not archive.exists() and not target.exists()\n        digest=hashlib.sha512(); size=0\n        with urllib.request.urlopen(url,timeout=90) as response, archive.open(\"xb\") as output:\n            while block:=response.read(1024*1024):\n                output.write(block); digest.update(block); size+=len(block)\n        receipt[\"archive\"]={\"url\":url,\"size_bytes\":size,\"sha512\":digest.hexdigest(),\"expected_sha512\":expected}\n        assert digest.hexdigest()==expected,\"SDK archive SHA-512 mismatch\"\n        target.mkdir()\n        with tarfile.open(archive) as source: source.extractall(target,filter=\"data\")\n        selected=str(target/\"dotnet\")\n    receipt[\"selected_dotnet\"]=selected\n    environment=os.environ.copy(); environment[\"DOTNET_ROOT\"]=str(pathlib.Path(selected).parent)\n    for name,args in [(\"sdk-version.txt\",[\"--version\"]),(\"dotnet-info.txt\",[\"--info\"]),(\"runtimes.txt\",[\"--list-runtimes\"]),(\"nuget-sources.txt\",[\"nuget\",\"list\",\"source\"])]:\n        result=subprocess.run([selected,*args],cwd=root,env=environment,text=True,capture_output=True)\n        (evidence/name).write_text(result.stdout+result.stderr)\n        assert result.returncode==0,f\"{args} failed\"\n        if name==\"sdk-version.txt\": assert result.stdout.strip()==\"10.0.402\"\n    receipt[\"status\"]=\"passed\"; code=0\nexcept Exception as error:\n    receipt[\"status\"]=\"failed\"; receipt[\"error\"]=type(error).__name__+\": \"+str(error)\nfinally:\n    receipt[\"elapsed_seconds\"]=time.monotonic()-started; receipt[\"exit_code\"]=code\n    receipt[\"finished_utc\"]=datetime.now(timezone.utc).isoformat()\n    with (evidence/\"setup.json\").open(\"x\") as output: json.dump(receipt,output,indent=2); output.write(\"\\n\")\nprint(json.dumps({\"status\":receipt[\"status\"],\"elapsed_seconds\":receipt[\"elapsed_seconds\"],\"selected_dotnet\":receipt.get(\"selected_dotnet\"),\"error\":receipt.get(\"error\")}))\nsys.exit(code)\n' /workspace/eventhubs-kafka-dotnet; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 4466,
+      "sha256": "ec95948ecc73aac56823643766995e8ced5aac2c234099686e23a46621fc2c80"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/tool-restore.json",
+      "producer": "timeout --kill-after=5s 600s dotnet tool restore; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 598,
+      "sha256": "895c9f458b9bb015a7fcbd18fd6922dee7267c4136a08ec9f2c258b3efb4a18d"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/tool-restore.log",
+      "producer": "timeout --kill-after=5s 600s dotnet tool restore; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 114,
+      "sha256": "f32acacaadbccc1bd8588e6c00105e460719fb5fe6b0b3f4ada628b641c21b89"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/setup/tools.txt",
+      "producer": "dotnet tool list --local; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 339,
+      "sha256": "7a975b7f4598c1f44134e4a893ffa85058f00efcc35c89705a1610a63cbd5f78"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/closure-validation.json",
+      "producer": "timeout --kill-after=5s 120s python3 -c '\nimport collections, hashlib, json, pathlib, sys\nroot, evidence = map(pathlib.Path, sys.argv[1:3])\nreceipt = {\"command\": [\"timeout\", \"--kill-after=5s\", \"120s\", *sys.orig_argv], \"source_commit\": sys.argv[3], \"passed\": False}\ncode = 1\ntry:\n    result = json.loads((evidence / \"raw/closure.json\").read_text())\n    frozen = json.loads((root / \"docs/operations/evidence/issue-92-pr6b/review/lines.json\").read_text())\n    selected = [line for line in frozen if line[\"category\"] in (\"missing test\", \"unresolved\")]\n    expected = {str(identifier): line[\"line_key\"] for line in selected for identifier in line[\"mutant_ids\"]}\n    assert len(selected) == 136 and len(expected) == 228\n    rows = result[\"rows\"]\n    actual = {str(row[\"original_id\"]): row[\"line_key\"] for row in rows}\n    assert len(rows) == len(actual) == 228 and actual == expected\n    assert result[\"inventory\"][\"lines\"] == 136 and result[\"inventory\"][\"variants\"] == 228\n    counts = result[\"status_counts\"]\n    allowed = {\"Killed\", \"Timeout\", \"Survived\", \"NoCoverage\", \"CompileError\", \"Ignored\"}\n    assert set(counts) <= allowed\n    assert all(type(count) is int and count >= 0 for count in counts.values())\n    assert sum(counts.values()) == result[\"serialized_count\"] <= 10000\n    numerator = counts.get(\"Killed\", 0) + counts.get(\"Timeout\", 0)\n    denominator = numerator + counts.get(\"Survived\", 0) + counts.get(\"NoCoverage\", 0)\n    assert result[\"score\"][\"numerator\"] == numerator\n    assert result[\"score\"][\"denominator\"] == denominator\n    controller = json.loads((evidence / \"raw/mutation-full/controller.json\").read_text())\n    source_bytes = (evidence / \"raw/mutation-full/tested-source.json\").read_bytes()\n    source = json.loads(source_bytes)\n    assert hashlib.sha256(source_bytes).hexdigest() == controller[\"source_manifest_sha256\"]\n    assert result[\"report_sha256\"] == controller[\"report_sha256\"]\n    assert result[\"tested_commit\"] == source[\"tested_commit\"] == sys.argv[3]\n    assert result[\"tested_tree\"] == source[\"tested_commit_tree\"]\n    report_bytes = (evidence / \"raw/mutation-full/mutation-report.json.gz\").read_bytes()\n    assert hashlib.sha256(report_bytes).hexdigest() == result[\"report_gzip_sha256\"]\n    assert result[\"generated_count\"] == controller[\"maximum_observed_generated_count\"]\n    assert type(result[\"mapping_complete\"]) is bool and type(result[\"execution_complete\"]) is bool\n    if result[\"mapping_complete\"]:\n        assert all(row[\"match_status\"] == \"unique\" and len(row[\"matches\"]) == 1 for row in rows)\n    if result[\"execution_complete\"]:\n        assert controller[\"execution_evidence_complete\"] is True\n        assert controller[\"source_inputs_unchanged\"] is True\n        assert controller[\"exit_reason\"] == \"command-exit\" and controller[\"exit_code\"] == 0\n        assert controller[\"termination\"] is None\n        assert 0 < result[\"generated_count\"] <= 10000\n    receipt.update(passed=True, lines=len(selected), variants=len(rows), numerator=numerator, denominator=denominator)\n    code = 0\nexcept Exception as error:\n    receipt[\"error\"] = type(error).__name__ + \": \" + str(error)\nfinally:\n    with (evidence / \"raw/validation/closure-validation.json\").open(\"x\") as stream:\n        json.dump(receipt, stream, indent=2)\n        stream.write(\"\\n\")\nprint(json.dumps({\"passed\": receipt[\"passed\"], \"receipt\": str(evidence / \"raw/validation/closure-validation.json\")}))\nsys.exit(code)\n' /workspace/eventhubs-kafka-dotnet /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c e59271330e6ed3f727c0a0a3268ec9da77718bb5; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 4015,
+      "sha256": "0bf015aee56f8525d4908ccc09bef148e62026790c30c16c37341a8f01f1f0e0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/closure-validation.log",
+      "producer": "timeout --kill-after=5s 120s python3 -c '\nimport collections, hashlib, json, pathlib, sys\nroot, evidence = map(pathlib.Path, sys.argv[1:3])\nreceipt = {\"command\": [\"timeout\", \"--kill-after=5s\", \"120s\", *sys.orig_argv], \"source_commit\": sys.argv[3], \"passed\": False}\ncode = 1\ntry:\n    result = json.loads((evidence / \"raw/closure.json\").read_text())\n    frozen = json.loads((root / \"docs/operations/evidence/issue-92-pr6b/review/lines.json\").read_text())\n    selected = [line for line in frozen if line[\"category\"] in (\"missing test\", \"unresolved\")]\n    expected = {str(identifier): line[\"line_key\"] for line in selected for identifier in line[\"mutant_ids\"]}\n    assert len(selected) == 136 and len(expected) == 228\n    rows = result[\"rows\"]\n    actual = {str(row[\"original_id\"]): row[\"line_key\"] for row in rows}\n    assert len(rows) == len(actual) == 228 and actual == expected\n    assert result[\"inventory\"][\"lines\"] == 136 and result[\"inventory\"][\"variants\"] == 228\n    counts = result[\"status_counts\"]\n    allowed = {\"Killed\", \"Timeout\", \"Survived\", \"NoCoverage\", \"CompileError\", \"Ignored\"}\n    assert set(counts) <= allowed\n    assert all(type(count) is int and count >= 0 for count in counts.values())\n    assert sum(counts.values()) == result[\"serialized_count\"] <= 10000\n    numerator = counts.get(\"Killed\", 0) + counts.get(\"Timeout\", 0)\n    denominator = numerator + counts.get(\"Survived\", 0) + counts.get(\"NoCoverage\", 0)\n    assert result[\"score\"][\"numerator\"] == numerator\n    assert result[\"score\"][\"denominator\"] == denominator\n    controller = json.loads((evidence / \"raw/mutation-full/controller.json\").read_text())\n    source_bytes = (evidence / \"raw/mutation-full/tested-source.json\").read_bytes()\n    source = json.loads(source_bytes)\n    assert hashlib.sha256(source_bytes).hexdigest() == controller[\"source_manifest_sha256\"]\n    assert result[\"report_sha256\"] == controller[\"report_sha256\"]\n    assert result[\"tested_commit\"] == source[\"tested_commit\"] == sys.argv[3]\n    assert result[\"tested_tree\"] == source[\"tested_commit_tree\"]\n    report_bytes = (evidence / \"raw/mutation-full/mutation-report.json.gz\").read_bytes()\n    assert hashlib.sha256(report_bytes).hexdigest() == result[\"report_gzip_sha256\"]\n    assert result[\"generated_count\"] == controller[\"maximum_observed_generated_count\"]\n    assert type(result[\"mapping_complete\"]) is bool and type(result[\"execution_complete\"]) is bool\n    if result[\"mapping_complete\"]:\n        assert all(row[\"match_status\"] == \"unique\" and len(row[\"matches\"]) == 1 for row in rows)\n    if result[\"execution_complete\"]:\n        assert controller[\"execution_evidence_complete\"] is True\n        assert controller[\"source_inputs_unchanged\"] is True\n        assert controller[\"exit_reason\"] == \"command-exit\" and controller[\"exit_code\"] == 0\n        assert controller[\"termination\"] is None\n        assert 0 < result[\"generated_count\"] <= 10000\n    receipt.update(passed=True, lines=len(selected), variants=len(rows), numerator=numerator, denominator=denominator)\n    code = 0\nexcept Exception as error:\n    receipt[\"error\"] = type(error).__name__ + \": \" + str(error)\nfinally:\n    with (evidence / \"raw/validation/closure-validation.json\").open(\"x\") as stream:\n        json.dump(receipt, stream, indent=2)\n        stream.write(\"\\n\")\nprint(json.dumps({\"passed\": receipt[\"passed\"], \"receipt\": str(evidence / \"raw/validation/closure-validation.json\")}))\nsys.exit(code)\n' /workspace/eventhubs-kafka-dotnet /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c e59271330e6ed3f727c0a0a3268ec9da77718bb5; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 146,
+      "sha256": "aca0f587acbda1f2052d043d614a05f8bc9d9693846b7895d2b9fe9cf91688df"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/docs-1.json",
+      "producer": "timeout --kill-after=5s 300s npm run check:docs; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 396,
+      "sha256": "dd4aebf29c0a9313daf0e7b7213750f6db8a63842a3677248dad36b6ec2c380f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/docs-1.log",
+      "producer": "timeout --kill-after=5s 300s npm run check:docs; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 2043,
+      "sha256": "7443c729c8050f900130c842dbb85eea546f874c9088178541c4641cd943deae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/docs-2.json",
+      "producer": "timeout --kill-after=5s 300s npm run check:docs; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 397,
+      "sha256": "26eb425e47e9fc1a7fbf0e80966ea7eca842befe30a2612937267d9c576480e0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/docs-2.log",
+      "producer": "timeout --kill-after=5s 300s npm run check:docs; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 2043,
+      "sha256": "7443c729c8050f900130c842dbb85eea546f874c9088178541c4641cd943deae"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/extraction.json",
+      "producer": "timeout --kill-after=5s 300s python3 docs/operations/evidence/issue-93/child-c/map-closure.py --repo-root . --run-dir docs/operations/evidence/issue-93/child-c/raw/mutation-full --output docs/operations/evidence/issue-93/child-c/raw/closure.json; mapper SHA-256 2cd99e240a17718aa8477377380490b4c6e6e866ec0aaea24491d0f985cdd8ab; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 693,
+      "sha256": "077e032d0472fd224c20b164719bb2ab2b47c0364cb19716f892f3b1b7f25459"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/extraction.log",
+      "producer": "timeout --kill-after=5s 300s python3 docs/operations/evidence/issue-93/child-c/map-closure.py --repo-root . --run-dir docs/operations/evidence/issue-93/child-c/raw/mutation-full --output docs/operations/evidence/issue-93/child-c/raw/closure.json; mapper SHA-256 2cd99e240a17718aa8477377380490b4c6e6e866ec0aaea24491d0f985cdd8ab; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 142,
+      "sha256": "2c9e6bb8436ae73fc2664bceef05209dd4c5d93093d3a5599d507061bb48bf53"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/helper-tests-1.json",
+      "producer": "timeout --kill-after=5s 120s python3 -m unittest discover -s docs/operations/evidence/issue-93/child-c -p test_map_closure.py -v; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 733,
+      "sha256": "949940076b9b7a2429dd0ae6620bcfa185ab71e66816a9fd74094cddf2174735"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/helper-tests-1.log",
+      "producer": "timeout --kill-after=5s 120s python3 -m unittest discover -s docs/operations/evidence/issue-93/child-c -p test_map_closure.py -v; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 1034,
+      "sha256": "b6b8276bded023304f567929de0346a08a77086c56e1171d7c2e91ad9d6c6d79"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/log-summary.json",
+      "producer": "python3 -c '\nimport gzip,hashlib,json,pathlib,re,sys\nroot=pathlib.Path(sys.argv[1]); evidence=root/\"docs/operations/evidence/issue-93/child-c\"\npath=evidence/\"raw/mutation-full/command.log.gz\"; payload=gzip.decompress(path.read_bytes()); text=payload.decode(\"utf-8\",errors=\"replace\")\nlines=text.splitlines()\nselected=[line for line in lines if re.search(r\"initial test|initial.*run|tests? (passed|failed|skipped)|test run|tests? captured|stryker|mtp|concurren|framework|version|mutants? created\",line,re.I)]\nwarnings=[line for line in lines if \"[WRN]\" in line or re.search(r\"\\bWRN\\]\",line)]\nsummary={\"command\":sys.orig_argv,\"source_commit\":\"e59271330e6ed3f727c0a0a3268ec9da77718bb5\",\"log_path\":str(path.relative_to(root)),\"stored_sha256\":hashlib.sha256(path.read_bytes()).hexdigest(),\"uncompressed_bytes\":len(payload),\"uncompressed_sha256\":hashlib.sha256(payload).hexdigest(),\"line_count\":len(lines),\"warning_count\":len(warnings),\"coverage_relay_timeout_count\":sum(\"Timed out waiting for coverage relay ack\" in line for line in warnings),\"dubious_warning_count\":sum(\"Dubious\" in line for line in warnings),\"selected_control_and_tool_lines\":selected}\nwith (evidence/\"raw/validation/log-summary.json\").open(\"x\") as stream: json.dump(summary,stream,indent=2); stream.write(\"\\n\")\nprint(json.dumps({k:summary[k] for k in (\"uncompressed_bytes\",\"line_count\",\"warning_count\",\"coverage_relay_timeout_count\",\"dubious_warning_count\")}))\nprint(\"\\n\".join(line for line in selected if \"Timed out waiting\" not in line)[:18000])\n' /workspace/eventhubs-kafka-dotnet; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 88176,
+      "sha256": "b55462b932a4b19b1523fe52b537f51667ef909b88e1ede26ce577278296b807"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/npm-ci.json",
+      "producer": "timeout --kill-after=5s 300s npm ci --ignore-scripts; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 377,
+      "sha256": "4625713c6b17bc0a8316fe9404896fbb5afac8499e0c0c29a88cceb88aae28a7"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/npm-ci.log",
+      "producer": "timeout --kill-after=5s 300s npm ci --ignore-scripts; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 511,
+      "sha256": "8fc6d3f72237c62ad3196297bff93e93415864224b3dc680bcecf3036afa84c7"
+    },
+    {
+      "path": "docs/operations/evidence/issue-93/child-c/raw/validation/ordinary-input-comparison.json",
+      "producer": "python3 -c '\nimport gzip,hashlib,json,pathlib,subprocess,sys,xml.etree.ElementTree as ET\nroot=pathlib.Path(sys.argv[1]); evidence=root/\"docs/operations/evidence/issue-93/child-c/raw/validation\"\nprior=root/\"docs/operations/evidence/issue-93/child-b/raw/suite-1\"\nsource=json.loads((prior/\"tested-source.json\").read_text())\ntracked=subprocess.check_output([\"git\",\"ls-files\",\"-z\"],cwd=root).decode().split(\"\\0\")\nroot_inputs={\".editorconfig\",\"Directory.Build.props\",\"Directory.Packages.props\",\"global.json\",\"Parchwell.slnx\"}\ndef relevant(path): return path.startswith((\"src/\",\"tests/\",\"scripts/\",\".config/\")) or path in root_inputs\nexpected={p:h for p,h in source[\"source_input_sha256\"].items() if relevant(p)}\ncurrent={p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in tracked if p and relevant(p)}\ncontroller=json.loads((prior/\"controller.json\").read_text())\nxml=[]\nfor name in (\"Parchwell.ArchitectureTests\",\"Parchwell.Kafka.Tests\",\"Parchwell.LoadGen.Tests\",\"Parchwell.Scenarios.Tests\",\"Parchwell.Verifier.Tests\"):\n path=prior/\"verification\"/name/\"results.xml\"\n if not path.exists(): path=path.with_suffix(\".xml.gz\")\n payload=gzip.decompress(path.read_bytes()) if path.suffix==\".gz\" else path.read_bytes()\n assemblies=ET.fromstring(payload).findall(\"assembly\")\n xml.append({\"path\":str(path.relative_to(root)),\"sha256\":hashlib.sha256(path.read_bytes()).hexdigest(),\"assemblies\":[dict(a.attrib) for a in assemblies]})\npassed=expected==current and controller[\"execution_evidence_complete\"] is True and controller[\"exit_code\"]==0 and all(int(a[\"failed\"])==0 and int(a[\"errors\"])==0 for f in xml for a in f[\"assemblies\"])\nreceipt={\"command\":sys.orig_argv,\"source_commit\":subprocess.check_output([\"git\",\"rev-parse\",\"HEAD\"],cwd=root,text=True).strip(),\"prior_tested_commit\":source[\"tested_commit\"],\"passed\":passed,\"matching_inputs\":len(set(expected)&set(current)),\"added\":sorted(set(current)-set(expected)),\"removed\":sorted(set(expected)-set(current)),\"mismatched\":[p for p in sorted(set(expected)&set(current)) if expected[p]!=current[p]],\"prior_input_hashes\":expected,\"current_input_hashes\":current,\"prior_controller_sha256\":hashlib.sha256((prior/\"controller.json\").read_bytes()).hexdigest(),\"prior_xml\":xml}\nwith (evidence/\"ordinary-input-comparison.json\").open(\"x\") as stream: json.dump(receipt,stream,indent=2); stream.write(\"\\n\")\nprint(json.dumps({k:receipt[k] for k in (\"passed\",\"matching_inputs\",\"added\",\"removed\",\"mismatched\")}))\nsys.exit(0 if passed else 1)\n' /workspace/eventhubs-kafka-dotnet; source commit e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+      "size_bytes": 87288,
+      "sha256": "31ceeebf96f61a4d07197475dca99e81825b065d2199037bc0af7bc8e7661d44"
+    }
+  ]
+}

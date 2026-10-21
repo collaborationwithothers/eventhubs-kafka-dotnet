@@ -1,0 +1,2 @@
+Microsoft.AspNetCore.App 10.0.13 [/workspace/.tools/issue-103-dotnet-10.0.402/shared/Microsoft.AspNetCore.App]
+Microsoft.NETCore.App 10.0.13 [/workspace/.tools/issue-103-dotnet-10.0.402/shared/Microsoft.NETCore.App]

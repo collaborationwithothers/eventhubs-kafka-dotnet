@@ -1,0 +1,49 @@
+{
+  "mode": "full",
+  "invocation_ordinal": 1,
+  "invocation_ledger": "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-c/raw/controller-invocations.json",
+  "mutant_id": null,
+  "command": [
+    "dotnet",
+    "stryker",
+    "--config-file",
+    "stryker-config.json",
+    "--output",
+    "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full"
+  ],
+  "cwd": "/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests",
+  "environment_overrides": {
+    "ParchwellVerifierMutationOnly": "true",
+    "RestoreSources": "https://api.nuget.org/v3/index.json"
+  },
+  "tested_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "comparison_commit": null,
+  "source_identity": "tested-source.json",
+  "source_manifest_sha256": "c5b118bb83ec0633cadf9d8d288f8a31ebbe7be17258ebc30cc33ad1167036ae",
+  "wall_time_cap_seconds": 7200.0,
+  "generated_mutant_cap": 10000,
+  "generated_cap_observation_boundary": "Execution is terminated after the tool logs a created count above the cap. The tool may allocate mutants before that log is observed.",
+  "observed_generated_counts": [
+    5685
+  ],
+  "maximum_observed_generated_count": 5685,
+  "started_utc": "2026-10-21T04:25:19.035578+00:00",
+  "elapsed_seconds": 6398.475696336,
+  "exit_code": 0,
+  "exit_reason": "command-exit",
+  "termination": null,
+  "restart_count": 0,
+  "command_log": "command.log.gz",
+  "report_completeness": "pending-one-pass-extraction",
+  "expected_report": "/workspace/eventhubs-kafka-dotnet/.artifacts/issue-103/mutation-full/reports/mutation-report.json",
+  "expected_xml": [],
+  "process_group": 7487,
+  "finished_utc": "2026-10-21T06:11:57.511693+00:00",
+  "source_inputs_unchanged": true,
+  "report_present": true,
+  "report_bytes": 61624434,
+  "report_sha256": "e6d0e74c18d6004f5ad8a4bd5e801b668be4385629de3db3416f9f6c860d7ab5",
+  "xml_presence": {},
+  "command_log_sha256": "77cd9328f332984c870531cf1385ee0cb8be26a13436beed3e90f45f90c5d300",
+  "execution_evidence_complete": true
+}

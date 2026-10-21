@@ -1,0 +1,27 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "120s",
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/operations/evidence/issue-93/child-c",
+    "-p",
+    "test_map_closure.py",
+    "-v"
+  ],
+  "source_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "started_utc": "2026-10-21T04:26:24.585979+00:00",
+  "wall_time_cap_seconds": 120,
+  "input_sha256": {
+    "map-closure.py": "2cd99e240a17718aa8477377380490b4c6e6e866ec0aaea24491d0f985cdd8ab",
+    "test_map_closure.py": "9b30487698b8004a46265b6a0c3af848b4c90294674a77f3d450e879faa5a87b"
+  },
+  "exit_code": 0,
+  "elapsed_seconds": 0.4319447499999569,
+  "finished_utc": "2026-10-21T04:26:25.017942+00:00",
+  "source_unchanged": true
+}

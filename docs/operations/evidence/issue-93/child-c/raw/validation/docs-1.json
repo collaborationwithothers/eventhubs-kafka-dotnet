@@ -1,0 +1,17 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "300s",
+    "npm",
+    "run",
+    "check:docs"
+  ],
+  "source_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "wall_time_cap_seconds": 300,
+  "started_utc": "2026-10-21T06:15:35.269708+00:00",
+  "status": "completed",
+  "exit_code": 0,
+  "elapsed_seconds": 7.12261576399942,
+  "finished_utc": "2026-10-21T06:15:42.392605+00:00"
+}

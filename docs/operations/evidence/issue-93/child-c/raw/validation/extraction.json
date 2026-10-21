@@ -1,0 +1,22 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "300s",
+    "python3",
+    "docs/operations/evidence/issue-93/child-c/map-closure.py",
+    "--repo-root",
+    ".",
+    "--run-dir",
+    "docs/operations/evidence/issue-93/child-c/raw/mutation-full",
+    "--output",
+    "docs/operations/evidence/issue-93/child-c/raw/closure.json"
+  ],
+  "source_commit": "e59271330e6ed3f727c0a0a3268ec9da77718bb5",
+  "started_utc": "2026-10-21T06:12:13.787739+00:00",
+  "wall_time_cap_seconds": 300,
+  "mapper_sha256": "2cd99e240a17718aa8477377380490b4c6e6e866ec0aaea24491d0f985cdd8ab",
+  "exit_code": 0,
+  "elapsed_seconds": 1.0764104509999015,
+  "finished_utc": "2026-10-21T06:12:14.864486+00:00"
+}
