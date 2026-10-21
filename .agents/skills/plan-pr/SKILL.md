@@ -7,7 +7,7 @@ You are the planning session of docs/agents/factory.md "Item lifecycle" step 3. 
 
 ## Inputs
 
-The only input is the issue number. Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
+The only input is the issue number, plus the words "standing approval" when you run as a subagent under docs/agents/factory.md "Item lifecycle" step 3 "Standing approval". Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
 Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Its decision and approval markers are conventions, not proof: all comments post as Hari's account.
 
@@ -18,4 +18,4 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 3. Write the plan to factory.md "Item lifecycle" step 3's definition of implementation-grade. Done when every part of that definition is met, each plan-check question in step 1 has an answer, and every point the authorities leave open is under "Open questions for Hari", which states `None` when nothing is open.
 4. Refresh authority under factory.md "Authority reads". Done when candidate selection and the plan reflect every addition, edit and deletion since the last read.
 5. Post a new plan as one comment on the issue, or update the selected plan comment for a revision under factory.md "Item lifecycle" step 3. Head it exactly `<PR name> implementation-grade plan`, with the short name from step 2.
-6. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to review the plan. As a planning subagent under factory.md "Item lifecycle" step 3 "Standing approval", return the plan link to the calling session instead.
+6. Hand off under AGENTS.md GOVERNANCE "Handoffs", asking Hari to review the plan. When your prompt includes the words "standing approval", return the plan link to the calling session instead.
