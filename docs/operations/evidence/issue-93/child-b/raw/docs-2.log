@@ -1,0 +1,88 @@
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 191 packages in 1s
+
+> test:docs
+> node --test scripts/tests/docs-check.test.mjs
+
+✔ recorded mistake classes are reported in an advisory scan (258.765657ms)
+✔ valid prose and Markdown examples do not produce false identifier findings (246.317038ms)
+✔ document source namespaces are local and exact (231.591261ms)
+✔ discovery excludes pinned skills and untracked documents, but includes owned and uppercase Markdown (252.6646ms)
+✔ broken configuration fails the scan rather than appearing successful (198.189942ms)
+✔ scan is read-only and external links require no successful response (261.188466ms)
+✔ image descriptions are checked for punctuation in direct and reference images (421.149282ms)
+✔ only autolinks and exactly matching link labels are excluded from prose scans (313.165668ms)
+✔ source descriptions are declarations in both tables and lists but still check punctuation (266.372473ms)
+✔ split definition identifiers do not resolve references, while whole formatted identifiers do (282.356529ms)
+✔ source ID cell S999 ![icon](icon.png) does not define a source (261.043418ms)
+✔ source ID cell S999 ![icon][picture] does not define a source (258.197658ms)
+✔ source ID cell S999 `extra` does not define a source (260.757243ms)
+✔ source ID cell `S999` does not define a source (236.017833ms)
+✔ source ID cell **S999 ![icon](icon.png)** does not define a source (296.306817ms)
+✔ source ID cell S999 extra does not define a source (276.568531ms)
+✔ whole source ID cell S999 resolves its reference (294.320934ms)
+✔ whole source ID cell **S999** resolves its reference (274.884124ms)
+✔ whole source ID cell *S999* resolves its reference (268.901625ms)
+✔ whole source ID cell ~~S999~~ resolves its reference (235.002164ms)
+✔ whole source ID cell ***S999*** resolves its reference (221.462635ms)
+✔ whole source ID cell [S999](https://example.invalid) resolves its reference (224.04716ms)
+✔ ordinary undefined source references are reported without a definition (217.884695ms)
+✔ non-text content in link labels cannot make them equal their destinations (226.289826ms)
+✔ non-text content separates ADR heading text without hiding a valid prefix (235.976504ms)
+✔ non-text content cannot create a source list declaration prefix (222.620484ms)
+✔ Unicode word characters do not delimit identifier references or ADR declarations (249.873996ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7066.58971
+
+> check:docs
+> node scripts/check-docs.mjs
+
+.agents/skills/implement-plan/SKILL.md: no issues found
+.agents/skills/plan-check/SKILL.md: no issues found
+.agents/skills/plan-pr/SKILL.md: no issues found
+.agents/skills/repo-review/SKILL.md: no issues found
+.claude/agents/repo-reviewer.md: no issues found
+.github/pull_request_template.md: no issues found
+AGENTS.md: no issues found
+CLAUDE.md: no issues found
+CONTEXT.md: no issues found
+docs/agents/factory.md: no issues found
+docs/blueprint.md: no issues found
+docs/engineering/code-comments.md: no issues found
+docs/engineering/documentation-checks.md: no issues found
+docs/engineering/dotnet-verification.md: no issues found
+docs/engineering/dotnet.md: no issues found
+docs/engineering/terraform.md: no issues found
+docs/networking/hub-firewall.md: no issues found
+docs/operations/evidence/issue-93/child-a/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-a/receipt.md: no issues found
+docs/operations/evidence/issue-93/child-b/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-b/proofs.md: no issues found
+docs/operations/evidence/issue-93/child-b/receipt.md: no issues found
+docs/operations/kafka-authentication.md: no issues found
+docs/operations/kafka-baseline.md: no issues found
+docs/operations/kafka-configuration-explained.md: no issues found
+docs/operations/loadgen-contract.md: no issues found
+docs/operations/phantom-spike/README.md: no issues found
+docs/operations/scenario-contract.md: no issues found
+docs/operations/statistics-bridge.md: no issues found
+docs/operations/verifier-contract.md: no issues found
+docs/operations/verifier-mutation.md: no issues found
+docs/research/kubernetes-kafka-clients.md: no issues found
+README.md: no issues found
+tests/fixtures/verifier-v1/README.md: no issues found
+Documentation scan completed. Warnings are advisory; external URLs were not checked.
+20	0	tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs
+34	0	tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs
+31	0	tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs
+55	0	tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs
+11	0	tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs
+40	0	tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs
+40	1	tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs

@@ -273,6 +273,40 @@ public sealed class ConfigurationFidelityTests
         Assert.Equal(expected, result.Differences);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Given_SettingDifferencesAtDiagnosticCap_When_RunJudgementRetains_Then_OrdinalOrderSurvives(int differenceCount)
+    {
+        ResolvedRoleConfiguration selected = await Resolve("C2");
+        CapturedConfiguration captured = Capture(selected);
+        var settings = captured.Settings.ToDictionary(StringComparer.Ordinal);
+        string[] keys = ["z.unexpected", "a.unexpected", "m.unexpected"];
+        foreach (string key in keys.Take(differenceCount)) settings.Add(key, captured.Settings[Timeout]);
+        RunJudgementRequest request = Request(selected, captured with { Settings = settings });
+        RunJudgementResult result = RunJudgement.Evaluate(request with
+        {
+            Limits = request.Limits with { MaxDiagnosticsPerCheck = 2 }
+        });
+        Assert.Equal(VerifierResultStatus.Invalid, result.Status);
+        Assert.Equal([27], result.FailedChecks);
+        Assert.Null(result.Counts);
+        string field = differenceCount == 1
+            ? "resolved_configuration.settings.z.unexpected"
+            : "resolved_configuration.settings.a.unexpected";
+        Assert.Equal(new CheckAssessment(27, AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail,
+            AssessmentClassification.Invalid, "capabilities.json", null, field, "check_27_failed", null), result.ConfigurationFidelity.Assessment);
+        SettingDifference[] expected = differenceCount switch
+        {
+            1 => [new("z.unexpected", null, "5000")],
+            2 => [new("a.unexpected", null, "5000"), new("z.unexpected", null, "5000")],
+            3 => [new("a.unexpected", null, "5000"), new("m.unexpected", null, "5000")],
+            _ => throw new ArgumentOutOfRangeException(nameof(differenceCount))
+        };
+        Assert.Equal(expected, result.ConfigurationFidelity.Differences);
+    }
+
     [Fact]
     public async Task Given_EmptyCapturedAndSelectedMaps_When_Compared_Then_Check27Passes()
     {

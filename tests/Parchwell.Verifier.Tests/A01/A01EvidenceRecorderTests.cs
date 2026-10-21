@@ -163,6 +163,26 @@ public sealed class A01EvidenceRecorderTests
         Assert.Null(A01EvidenceRecorder.Record(request, judgement).RecordedEvidence!.Windows);
     }
 
+    [Fact]
+    public void Given_FailedLedgerWithRetainedValue_When_Recorded_Then_DeliveryCodesRemainUnavailable()
+    {
+        RunJudgementRequest request = Request([]);
+        LedgerRow row = RecordedEvidence.LedgerRow() with { ErrorCode = -184 };
+        request = request with
+        {
+            Ledger = new ParseResult<IReadOnlyList<LedgerRow>>([row],
+                [new StructuralProblem(3, "synthetic_unreadable", "ledger.jsonl", null, null, null)])
+        };
+        Assert.False(request.Ledger.IsSuccess);
+        Assert.NotNull(request.Ledger.Value);
+        A01EvidenceRecording recording = A01EvidenceRecorder.Record(request, Judgement());
+        Assert.NotNull(recording.RecordedEvidence);
+        Assert.Null(recording.RecordedEvidence.DeliveryErrorCodes);
+        Assert.Empty(recording.RecordedEvidence.Windows!);
+        AssertUnusable(recording.ProbeObservation!);
+        Assert.Empty(recording.Diagnostics);
+    }
+
     [Theory]
     [InlineData(long.MaxValue, null)]
     [InlineData(-1, long.MaxValue)]

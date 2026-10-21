@@ -1,0 +1,9 @@
+/tmp/parchwell-dotnet-verification.qdNoOQy6/warning-control/Forbidden.cs(1,10): error CS1030: #warning: 'PARCHWELL_WARNING_CONTROL' [/tmp/parchwell-dotnet-verification.qdNoOQy6/warning-control/WarningControl.csproj]
+
+Build FAILED.
+
+/tmp/parchwell-dotnet-verification.qdNoOQy6/warning-control/Forbidden.cs(1,10): error CS1030: #warning: 'PARCHWELL_WARNING_CONTROL' [/tmp/parchwell-dotnet-verification.qdNoOQy6/warning-control/WarningControl.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:00.52

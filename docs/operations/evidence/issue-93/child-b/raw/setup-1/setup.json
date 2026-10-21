@@ -1,0 +1,23 @@
+{
+  "invocation_ordinal": 1,
+  "wall_time_cap_seconds": 600,
+  "command": [
+    "timeout",
+    "--kill-after=5s",
+    "600s",
+    "python3",
+    "-",
+    "/workspace/eventhubs-kafka-dotnet",
+    "/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-93/child-b/raw/setup-1",
+    "/workspace/.tools/issue-100-dotnet-10.0.402"
+  ],
+  "stdin_plan": "#100 Verifier coverage B implementation-grade plan Revision 2, SDK provisioning",
+  "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/100#issuecomment-6301526641",
+  "cwd": "/workspace/eventhubs-kafka-dotnet",
+  "source_commit": "80de425d403d844c34e865f264da256890b7211c",
+  "started_utc": "2026-10-21T02:06:16.428507+00:00",
+  "status": "passed",
+  "exit_code": 0,
+  "elapsed_seconds": 8.379430396000004,
+  "finished_utc": "2026-10-21T02:06:24.806114+00:00"
+}

@@ -94,6 +94,16 @@ public sealed class MessageIdentityReaderTests
             _ => "invalid_utf8"
         };
         Assert.Equal([new StructuralProblem(6, code, "consumed", null, field, null)], MessageIdentityReader.Read(record).Problems);
+        if (mode == "utf8")
+        {
+            var result = MessageIdentityReader.Read(record);
+            switch (field)
+            {
+                case "instance-id": Assert.Null(result.InstanceId); break;
+                case "attempt-id": Assert.Null(result.AttemptId); break;
+                case "sequence": Assert.Null(result.Sequence); break;
+            }
+        }
     }
 
     [Theory]
@@ -106,6 +116,7 @@ public sealed class MessageIdentityReaderTests
         Assert.Contains(MessageIdentityReader.Read(record).Problems, p => p.CheckNumber == 6 && p.Field == "key");
         Assert.Equal([new StructuralProblem(6, invalid ? "invalid_utf8" : "null_identity_bytes", "consumed", null, "key", null)],
             MessageIdentityReader.Read(record).Problems);
+        Assert.Null(MessageIdentityReader.Read(record).Key);
     }
 
     [Fact]

@@ -64,6 +64,37 @@ public sealed class RunJudgementTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Given_SyntheticNoncanonicalWindowAssessment_When_Judging_Then_CurrentStatusPredicateIsPreserved(bool failedWithoutClassification)
+    {
+        RunJudgementRequest request = RecordedEvidence.SyntheticRequest();
+        var supplied = new CheckAssessment(10, AssessmentEvaluation.Evaluated,
+            failedWithoutClassification ? AssessmentDisposition.Fail : AssessmentDisposition.Pass,
+            failedWithoutClassification ? null : AssessmentClassification.Incomplete,
+            "synthetic-window", null, null, "check_10_failed", null);
+        RunJudgementResult result = RunJudgement.Evaluate(request with
+        {
+            WindowAssessments = request.WindowAssessments.Select(a => a.CheckNumber == 10 ? supplied : a).ToArray()
+        });
+        Assert.Equal(supplied, result.Assessments.Single(a => a.CheckNumber == 10));
+        if (failedWithoutClassification)
+        {
+            Assert.Null(result.Status);
+            Assert.Equal([10], result.FailedChecks);
+            Assert.Null(result.Counts);
+            Assert.Equal<ResultDiagnostic>([new(10, "check_10_failed", "synthetic-window", null, null, null)], result.Diagnostics);
+        }
+        else
+        {
+            Assert.Equal(VerifierResultStatus.CompleteValid, result.Status);
+            Assert.Empty(result.FailedChecks);
+            Assert.Empty(result.Diagnostics);
+            Assert.Equal(new OutcomeCounts(1, 0, 0, 0, 0, 0), result.Counts);
+        }
+    }
+
+    [Theory]
     [InlineData(7)] [InlineData(8)] [InlineData(9)] [InlineData(10)] [InlineData(11)]
     public void Given_MissingWindowAssessment_When_Judging_Then_StatusAndCountsCannotBePublished(int check)
     {
