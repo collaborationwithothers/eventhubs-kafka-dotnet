@@ -137,7 +137,7 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
     internal Task<int> StartAsync(CancellationToken token) => new StartLineHandler(
         Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(false), this).ExecuteAsync(token);
     internal Task<int> VerifyAsync(CancellationToken token) => new VerifyRunHandler(
-        Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(true), this, this, loader, resolver).ExecuteAsync(token);
+        Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(true), this, this, loader, resolver, new HelmValuesGenerator()).ExecuteAsync(token);
 
     private VerifierKafkaSessionFactory Factory(bool end) => new(_ =>
     {

@@ -1,0 +1,7 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Parchwell.Scenarios.Tests
+  Discovered:  Parchwell.Scenarios.Tests
+  Starting:    Parchwell.Scenarios.Tests
+  Finished:    Parchwell.Scenarios.Tests (ID = '5c8bca6fb04ab531fd1dea670bf72abe9f0e6e1c17fc025b36b7eabfb16b2858')
+=== TEST EXECUTION SUMMARY ===
+   Parchwell.Scenarios.Tests  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.484s

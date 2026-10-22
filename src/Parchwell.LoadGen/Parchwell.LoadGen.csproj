@@ -1,7 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <ContainerRepository>parchwell/loadgen</ContainerRepository>
+    <ContainerUser>1654</ContainerUser>
+    <ContainerWorkingDirectory>/app</ContainerWorkingDirectory>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/runtime:10.0.13-noble@sha256:939555726cae4c916d212323ac3c0792996dcac2614f00e82cc40fcf059e1af3</ContainerBaseImage>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="../../scenarios/A01/scenario.yaml" Link="scenarios/A01/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/profiles/saturation-ramp.yaml" Link="scenarios/profiles/saturation-ramp.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />

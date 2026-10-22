@@ -1,0 +1,10 @@
+{
+  "path": "chart-tool-acquisition-status.json",
+  "producer": "python3 - <<'PYEDIT'\nfrom pathlib import Path\np=Path('scripts/fetch-service-tags.sh');s=p.read_text().replace(\"not isinstance(root.get('changeNumber'),int)\", \"type(root.get('changeNumber')) is not int\").replace(\"not isinstance(props.get('changeNumber'),int)\", \"type(props.get('changeNumber')) is not int\");p.write_text(s)\nout=Path('docs/operations/evidence/issue-114/raw/chart-tool-acquisition');import json\np=out/'receipt.json';j=json.loads(p.read_text());j['blocked_destinations'].append('centralus.data.mcr.microsoft.com');j['sdk_container_publish_attempted']=True;j['sdk_locked_linux_x64_restore_build_succeeded']=True;j['sdk_container_archive_produced']=False;j['image_smoke_executed']=False;j['mcr_blob_redirect_host']='centralus.data.mcr.microsoft.com';p.write_text(json.dumps(j,indent=2)+'\\n')\nPath('docs/operations/evidence/issue-114/raw/deployment-tests-final/build.log').write_bytes(Path('/workspace/scratch/chart-final-source-build.log').read_bytes())\nPYEDIT [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; dirty worktree; historical input hashes unavailable]",
+  "size_bytes": 892,
+  "sha256": "43637bd85e327bde502f1f5b88f0f900b87d0105c0c6c6ebb68a2fe37b23adc8",
+  "prior_raw_path": "raw/chart-tool-acquisition/receipt.json",
+  "classification": "authored acquisition conclusions moved byte-for-byte into reviewed scope",
+  "relocation_operation": "shutil.move(str(p/old['path']),str(p/target)); byte size and SHA-256 asserted against original manifest",
+  "relocated_from_source": "0da5afc4206dc80856cd034bb7f80b6986996aef"
+}

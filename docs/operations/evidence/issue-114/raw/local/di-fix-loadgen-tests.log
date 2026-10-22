@@ -1,0 +1,88 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Parchwell.LoadGen.Tests
+  Discovered:  Parchwell.LoadGen.Tests
+  Starting:    Parchwell.LoadGen.Tests
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-99d5932530ed412fab3568d4e4370b3c
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 109
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 114
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-37486c7baa6741caba4f4838d4e64be6
+      System.InvalidOperationException: generated_values_mismatch
+         at Parchwell.Scenarios.GeneratedValuesCompatibility.Validate(HelmValuesGenerator generator, ResolvedScenario resolved, String configurationId, String comparisonFilePath) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Generation/GeneratedValuesCompatibility.cs:line 20
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 89
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-809bda9ee5a847cdaf241f35d235c541
+      System.IO.FileNotFoundException: Could not find file '/tmp/worker-values-83db46cc9c72484fac4a819dad8e8788'.
+      File name: '/tmp/worker-values-83db46cc9c72484fac4a819dad8e8788'
+         at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+         at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+         at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+         at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+         at System.IO.File.OpenRead(String path)
+         at Parchwell.Scenarios.GeneratedValuesCompatibility.Validate(HelmValuesGenerator generator, ResolvedScenario resolved, String configurationId, String comparisonFilePath) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Generation/GeneratedValuesCompatibility.cs:line 18
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 89
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[1]
+      Load generator worker cancelled for scenario A01 run host-run-d307f817dc7046618a6274630dc32c95
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-1d50d070ee044a2989d0387f43cedaa3
+      System.InvalidOperationException: artifact_publication_unavailable
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 100
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-7fcafa57d62740dbb265abc869a96552
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 109
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 114
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-6c74e54fe5194c4b858ac01ac22e1680
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 109
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 114
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-b27cd43e571343d2822fc1659ad8a86e
+      System.InvalidOperationException: synthetic_upload_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.RecordingPublisher.PublishAsync(RunExecutionResult result, RunPublicationOptions options, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 474
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 114
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-128ac81218f64c4ab5137f9d8c40a87e
+      System.InvalidOperationException: synthetic_stop_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.StopAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 297
+         at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.WaitForShutdownAsync(IHost host, CancellationToken token)
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 75
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-add6f893c05a4c7484e1673bcb3e68ca
+      System.InvalidOperationException: synthetic_dispose_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.Dispose() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 303
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 95
+loadgen_startup_or_host_failure:InvalidOperationException scenario_id=A01 run_id=host-run-add6f893c05a4c7484e1673bcb3e68ca
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:IOException for scenario A01 run host-run-1ef311668d034bb28ecb71b42607f122
+      System.IO.IOException: synthetic_receipt_write_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.CompletionWriter.WriteLineAsync(String value) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 313
+         at Parchwell.LoadGen.Program.WriteCompletionAsync(TextWriter output, String completion) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 142
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 106
+loadgen_startup_or_host_failure:IOException scenario_id=A01 run_id=host-run-1ef311668d034bb28ecb71b42607f122
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-1579fd32c1da4a6384314c835f1566b1
+      System.InvalidOperationException: synthetic_start_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.StartAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 290
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 73
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-906b4428292d4ce59ee63ae1df359e08
+      System.InvalidOperationException: synthetic_upload_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.RecordingPublisher.PublishAsync(RunExecutionResult result, RunPublicationOptions options, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 474
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 114
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 57
+  Finished:    Parchwell.LoadGen.Tests (ID = '2a67848406c52d59e4af45e85d2ac9873502a2eac92feac5e3d4338b25f10c4c')
+=== TEST EXECUTION SUMMARY ===
+   Parchwell.LoadGen.Tests  Total: 21, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 1.727s

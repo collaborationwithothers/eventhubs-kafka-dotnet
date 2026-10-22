@@ -19,6 +19,18 @@ internal static class A01EvidenceRecorder
         if (request.Identity.ScenarioId != "A01" || request.Identity.ConfigurationId != "C0")
             return new(null, null, []);
 
+        return Project(request, judgement, includeProbe: true);
+    }
+
+    internal static A01EvidenceRecording RecordC3(RunJudgementRequest request, RunJudgementResult judgement)
+    {
+        if (request.Identity.ScenarioId != "A01" || request.Identity.ConfigurationId != "C3")
+            return new(null, null, []);
+        return Project(request, judgement, includeProbe: false);
+    }
+
+    private static A01EvidenceRecording Project(RunJudgementRequest request, RunJudgementResult judgement, bool includeProbe)
+    {
         int[]? codes = request.Ledger.IsSuccess && request.Ledger.Value is not null
             ? request.Ledger.Value.Select(row => row.ErrorCode).Where(code => code != 0).Distinct().Order().ToArray()
             : null;
@@ -30,7 +42,7 @@ internal static class A01EvidenceRecorder
         if (complete && Passed(3) && Passed(27) && selected is { } chosen)
             observation = new(true, chosen.Window.ThrottleMaximumMilliseconds!.Value > 20_000,
                 chosen.Window.Broker, chosen.Window.ReportIndex, chosen.Count, chosen.Window.ThrottleMaximumMilliseconds);
-        return new(observation, new(codes, windows), diagnostics);
+        return new(includeProbe ? observation : null, new(codes, windows), diagnostics);
 
         bool Passed(int number) => judgement.Assessments.Any(assessment => assessment.CheckNumber == number &&
             assessment.Evaluation == AssessmentEvaluation.Evaluated && assessment.Disposition == AssessmentDisposition.Pass);

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Statistics;
@@ -29,8 +30,14 @@ internal static class Program
         LoggerMessage.Define<string, string, string>(LogLevel.Critical, new EventId(4, nameof(HostFailure)),
             "loadgen_startup_or_host_failure:{FailureType} for scenario {ScenarioId} run {RunId}");
 
-    private static async Task<int> Main(string[] args)
+    private static Task<int> Main(string[] args) => RunAsync(args);
+
+    internal static async Task<int> RunAsync(string[] args, Action<IServiceCollection>? configureTestServices = null,
+        TextWriter? completionOutput = null, Func<IHost>? hostFactory = null)
     {
+        if (args.Length == 1 && args[0] == "--image-smoke") return ImageSmoke();
+        completionOutput ??= Console.Out;
+        string? completion = null;
         ITimer? processWatchdog = null;
         IHost? host = null;
         LoadGenHostOptions? runOptions = null;
@@ -38,7 +45,9 @@ internal static class Program
         int exitCode = 1;
         try
         {
-            host = BuildHost(args);
+            IConfiguration configuration = new ConfigurationBuilder().AddEnvironmentVariables().AddCommandLine(args).Build();
+            IReadOnlyDictionary<string, string?>? admitted = await DeploymentAdmission.WaitAsync(configuration, TimeProvider.System).ConfigureAwait(false);
+            host = hostFactory?.Invoke() ?? BuildHost(args, configureTestServices, admitted);
             LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
             ILogger processLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Parchwell.LoadGen.Process");
             if (IsValid(options))
@@ -66,6 +75,13 @@ internal static class Program
             await host.WaitForShutdownAsync().ConfigureAwait(false);
             await host.StopAsync().ConfigureAwait(false);
             exitCode = worker.ExitCode;
+            if (exitCode == 0)
+            {
+                string sourceCommit = host.Services.GetRequiredService<IConfiguration>()["PARCHWELL_SOURCE_COMMIT"] ??
+                    typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+').Last() ?? string.Empty;
+                completion = CreateCompletionReceipt(new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId,
+                    options.ActualInstanceId, options.ExpectedInstanceId, options.ClientId), sourceCommit);
+            }
         }
         catch (Exception exception)
         {
@@ -83,6 +99,18 @@ internal static class Program
                 ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                 exitCode = 1;
             }
+            if (exitCode == 0 && completion is not null)
+            {
+                try
+                {
+                    await WriteCompletionAsync(completionOutput, completion).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                    exitCode = 1;
+                }
+            }
             try
             {
                 processWatchdog?.Dispose();
@@ -94,6 +122,25 @@ internal static class Program
             }
         }
         return exitCode;
+    }
+
+    internal static string CreateCompletionReceipt(RunIdentity identity, string sourceCommit) => JsonSerializer.Serialize(new
+    {
+        schema_version = 1, mode = "loadgen",
+        identity = new
+        {
+            scenario_id = identity.ScenarioId, configuration_id = identity.ConfigurationId, run_id = identity.RunId,
+            instance_id = identity.InstanceId, expected_instance_id = identity.ExpectedInstanceId, client_id = identity.ClientId
+        },
+        source_commit = sourceCommit, handler_exit_code = 0, cleanup_completed = true
+    });
+
+    internal static async Task WriteCompletionAsync(TextWriter output, string completion)
+    {
+        if (System.Text.Encoding.UTF8.GetByteCount(completion) > 65536)
+            throw new InvalidDataException("loadgen_completion_receipt_too_large");
+        await output.WriteLineAsync("PARCHWELL_COMPLETION " + completion).ConfigureAwait(false);
+        await output.FlushAsync().ConfigureAwait(false);
     }
 
     private static void ReportHostFailure(Exception exception, LoadGenHostOptions? options, ILogger? logger,
@@ -122,9 +169,39 @@ internal static class Program
             Console.Error.WriteLine("loadgen_startup_or_host_failure:" + exception.GetType().Name);
     }
 
-    internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null)
+    internal static int ImageSmoke()
+    {
+        try
+        {
+            _ = Library.VersionString;
+            string[] paths = ["scenarios/A01/scenario.yaml", "scenarios/profiles/saturation-ramp.yaml"];
+            foreach (string path in paths)
+            {
+                string current = AppContext.BaseDirectory;
+                foreach (string segment in path.Split('/'))
+                {
+                    current = Path.Combine(current, segment);
+                    if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                        throw new InvalidDataException("image_scenario_file_not_regular");
+                }
+                if ((File.GetAttributes(current) & FileAttributes.Directory) != 0)
+                    throw new InvalidDataException("image_scenario_file_not_regular");
+            }
+            Console.Out.WriteLine("{\"native_loaded\":true,\"scenario_files\":2,\"uid_expected\":1654}");
+            return 0;
+        }
+        catch
+        {
+            Console.Error.WriteLine("loadgen_image_smoke_failed");
+            return 1;
+        }
+    }
+
+    internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null,
+        IReadOnlyDictionary<string, string?>? deploymentInputs = null)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+        if (deploymentInputs is not null) builder.Configuration.AddInMemoryCollection(deploymentInputs);
         builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
         builder.Services.AddOptions<LoadGenHostOptions>()
             .Configure(options => BindOptions(options, builder.Configuration))
@@ -227,6 +304,11 @@ internal static class Program
         foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!property.CanWrite) continue;
+            if (property.Name == nameof(LoadGenHostOptions.GeneratedValuesFile))
+            {
+                options.GeneratedValuesFile = configuration["PARCHWELL_GENERATED_VALUES_FILE"] ?? section[property.Name];
+                continue;
+            }
             string? raw = section[property.Name];
             if (raw is null) throw new InvalidOperationException("required_loadgen_setting_missing:" + property.Name);
             Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;

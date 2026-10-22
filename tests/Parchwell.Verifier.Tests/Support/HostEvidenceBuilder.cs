@@ -164,7 +164,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public StartLineHandler StartLine() => new(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
         new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this);
     public VerifyRunHandler Verify() => new(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
-        new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this, this, Loader, Resolver);
+        new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this, this, Loader, Resolver, new HelmValuesGenerator());
 
     public Task<byte[]?> ReadAsync(string logicalFixedName, CancellationToken cancellationToken)
     {

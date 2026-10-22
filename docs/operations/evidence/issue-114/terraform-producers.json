@@ -1,0 +1,48 @@
+{
+  "source_commit": "4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55",
+  "source_status": "dirty shared worktree; implementation files uncommitted; not reviewed-head acceptance",
+  "working_directory": "/workspace/eventhubs-kafka-dotnet",
+  "commands": {
+    "persistent-init.log": "timeout 600 /workspace/scratch/terraform/terraform -chdir=infra/persistent init -backend=false -input=false",
+    "persistent-validate.log": "timeout 600 /workspace/scratch/terraform/terraform -chdir=infra/persistent validate -no-color",
+    "persistent-test.log": "timeout 600 /workspace/scratch/terraform/terraform -chdir=infra/persistent test -test-directory=tests -no-color",
+    "format-infra-check.log": "/workspace/scratch/terraform/terraform fmt -check -recursive infra",
+    "format-tests-check.log": "/workspace/scratch/terraform/terraform fmt -check -recursive tests/terraform",
+    "tflint-init.log": "timeout 600 /workspace/scratch/tflint/tflint --init --config=\"$PWD/.tflint.hcl\"",
+    "persistent-lint.log": "timeout 600 /workspace/scratch/tflint/tflint --chdir=infra/persistent --config=\"$PWD/.tflint.hcl\"",
+    "check-docs.log": "npm run check:docs",
+    "diff-check.log": "git diff --check"
+  },
+  "outcomes": {
+    "init": 0,
+    "validate": 0,
+    "test": 0,
+    "test_runs_passed": 12,
+    "fmt_infra": 0,
+    "fmt_tests": 0,
+    "tflint_init": 1,
+    "tflint": 1,
+    "check_docs": 0,
+    "diff_check": 0,
+    "docs_warning": "Only missing evidence/issue-114/README.md, which root agent is authoring; new a01-runner.md staged for scan."
+  },
+  "tflint_release": "https://api.github.com/repos/terraform-linters/tflint/releases/tags/v0.64.0",
+  "tflint_archive_sha256": "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537",
+  "blocker": "Signature verification requires https://tuf-repo-cdn.sigstore.dev/15.root.json; proxy returned Forbidden. No signature bypass.",
+  "input_sha256": {
+    "infra/persistent/backend.tf": "e1471de5d75b232ccb9e8787c8eceff85ccb8ee113c3082e4b3c53130e2f560b",
+    "infra/persistent/budget.tf": "7fb8d2fe262fef0df7947743aa483d024f6e952ae5b8297ae54878ba35ce64c7",
+    "infra/persistent/identity.tf": "62f87392f9776f59f562fed2ce5fa14c7cdb72f75f8d44fecf8ec3d5d0ed92a2",
+    "infra/persistent/locals.tf": "4dd72361d10f0579d37a0548f4b380e7ddf432467fadfa203588dce5bc7575ea",
+    "infra/persistent/network.tf": "4c8f32a912f006b8b95716aedb81e7fa58d9ef53f9610d82d05ec91dc604b7f7",
+    "infra/persistent/observability.tf": "953a559f56ce8b6c05670dcabf98642f5aa83e0b2ec91ff341efa09d0f2ae38a",
+    "infra/persistent/outputs.tf": "4dcdc908569c1eb58b9215fa3e84527cec3b82e72de21d878622cc17fb1ab0d5",
+    "infra/persistent/providers.tf": "cb3e20941427e7e72e686a27b9e9a67ae58c3e3a64779144c623165c20bb0c46",
+    "infra/persistent/registry.tf": "a5d16d4bb2b3f4ce2681840baff7d503893bffc89474ee7c30490425063b0f20",
+    "infra/persistent/resource-group.tf": "cdfad550849091ed353953c8c54d4bb527f9f429c3ec4d8752740d730bd5c4d7",
+    "infra/persistent/storage.tf": "0658bc33ed7082bee376d945ff5d775fcdbef51674db89f20e403f15e707a28d",
+    "infra/persistent/variables.tf": "f9c358bec97680cb0dd460443082255b55e2e8ffb69d5629a4be606f8dc0cb19",
+    "infra/persistent/versions.tf": "e48870c4a86aa2589b263df116943f208fcf8a4a5e41dcfdcd9fea264d580e91",
+    "tests/terraform/persistent/main.tftest.hcl": "15b4d944995db3d55191525c3638575697cf977417057f61c52d3a9270420603"
+  }
+}

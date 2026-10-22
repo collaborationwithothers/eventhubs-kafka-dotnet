@@ -1,0 +1,1 @@
+PARCHWELL_COMPLETION {"schema_version":1,"mode":"start-line","identity":{"scenario_id":"A01","configuration_id":"C3","run_id":"rehearsal-c3-r5","instance_id":"rehearsal-c3-r5-pod","expected_instance_id":"rehearsal-c3-r5-pod","client_id":"rehearsal-c3-r5-pod"},"source_commit":"4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55","handler_exit_code":0,"cleanup_completed":true}

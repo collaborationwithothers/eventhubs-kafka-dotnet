@@ -1,6 +1,6 @@
 # Terraform foundations
 
-The persistent root creates the shared network, identities, registry and Log Analytics workspace. The ephemeral root creates the A01 cluster, Event Hubs, evidence storage and private endpoints. Both roots consume Hari's existing external state backend; offline checks use synthetic provider responses.
+The persistent root creates the shared network, identities, registry, Log Analytics workspace and private persistent run ledger/evidence storage. The ephemeral root creates the A01 cluster, Event Hubs, evidence storage and private endpoints. Both roots consume Hari's existing external state backend; offline checks use synthetic provider responses.
 
 The [approved implementation plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318201099) defines this interface. [Terraform engineering standards](../engineering/terraform.md) own execution, tagging and backend rules; [the blueprint](../blueprint.md#adr-011-terraform-with-azure-verified-modules-where-they-cover-the-need) owns module selection and documented fallbacks.
 
@@ -44,7 +44,9 @@ The existing backend must provide Entra authentication, disabled shared keys, pr
 
 Before a credentialed plan, review the real address spaces for overlap and the API server authorized ranges for the intended operators. Verify that the subscription's budget is in GBP and that the supplied start month is valid. Resolve an available GA UK South Kubernetes patch explicitly. The root validates its version string format; mocks do not establish GA availability.
 
-Ephemeral deployment requires the reviewed persistent plan and Hari's apply receipt. A missing prerequisite stops that later deployment, not offline implementation. The later scenario workflow and sweeper remain entry C of the [approved split](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313658165).
+Ephemeral deployment requires the reviewed persistent plan and Hari's apply receipt. A missing prerequisite stops that later deployment, not offline implementation. The scenario workflow and sweeper are delivered as installable text under [the A01 runtime contract](a01-runner.md), following the [approved split](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313658165).
+
+The [#114 storage decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257) adds a separate persistent run account using the same pinned AVM `0.10.0` as the ephemeral account. Before live use Hari records account security, Blob private endpoint/DNS readiness and the existing workflow principal's read/create/conditional-update rights on `ledger` plus create/read rights on `evidence`, in both workflow environments. This extension creates no role assignment. The private readiness receipt is a deployment prerequisite; passing mocks do not establish it.
 
 ## Operator commands
 
@@ -80,6 +82,7 @@ These output values are deployment data held in private state. They are not publ
 | Persistent | `workload_identities` | `loadgen`, `enrichment-consumer`, `verifier`, each with `id`, `client_id`, `principal_id` |
 | Persistent | `aks_identity_id` | Separate AKS control-plane identity |
 | Persistent | `acr` | `id`, `name`, `login_server` |
+| Persistent | `run_storage` | `id`, `account_url`, `containers` keyed `ledger`, `evidence` |
 | Ephemeral | `aks` | `id`, `name`, `node_pools` |
 | Ephemeral | `eventhubs` | `namespace_name`, `bootstrap_servers`, `topics` keyed `events`, `state`, `dlq` |
 | Ephemeral | `blob` | `account_url`, `containers` keyed `ledger`, `verifier`, `claim_check` |

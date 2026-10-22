@@ -9,7 +9,7 @@
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Parchwell.LoadGen' Or '$(MSBuildProjectName)' == 'Parchwell.Enrichment' Or '$(MSBuildProjectName)' == 'Parchwell.Verifier'">
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Parchwell.LoadGen' Or '$(MSBuildProjectName)' == 'Parchwell.Enrichment' Or '$(MSBuildProjectName)' == 'Parchwell.Verifier' Or '$(MSBuildProjectName)' == 'Parchwell.Runner'">
     <RootNamespace>$(MSBuildProjectName)</RootNamespace>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>

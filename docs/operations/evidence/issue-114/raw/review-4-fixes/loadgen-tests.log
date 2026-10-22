@@ -1,0 +1,418 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Parchwell.LoadGen.Tests
+  Discovered:  Parchwell.LoadGen.Tests
+  Starting:    Parchwell.LoadGen.Tests
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-8c953b6e1b7c4847aedf4f6d5754a49e
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 106
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-05c5cede22e64735800d1e5ad3408657
+      System.InvalidOperationException: generated_values_mismatch
+         at Parchwell.Scenarios.GeneratedValuesCompatibility.Validate(HelmValuesGenerator generator, ResolvedScenario resolved, String configurationId, String comparisonFilePath) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Generation/GeneratedValuesCompatibility.cs:line 20
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 86
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-6895ac6e80cb4395b4b400f50b149a6b
+      System.IO.FileNotFoundException: Could not find file '/tmp/worker-values-41d3fc5925f546c99f59418850ddb159'.
+      File name: '/tmp/worker-values-41d3fc5925f546c99f59418850ddb159'
+         at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+         at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+         at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+         at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+         at System.IO.File.OpenRead(String path)
+         at Parchwell.Scenarios.GeneratedValuesCompatibility.Validate(HelmValuesGenerator generator, ResolvedScenario resolved, String configurationId, String comparisonFilePath) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Generation/GeneratedValuesCompatibility.cs:line 18
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 86
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[1]
+      Load generator worker cancelled for scenario A01 run host-run-fc6885ffaca94b1289d2677fd51f0dd1
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-007fa4eff25644e3951c4bcc2da5d5a3
+      System.InvalidOperationException: artifact_publication_unavailable
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 97
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-b798b5c584c846b8a4e9e81a5292049a
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 106
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-b8f12e4f252e4bf9b6bef4dbe4549b8b
+      System.InvalidOperationException: worker_run_incomplete
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 106
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-53fc067f7343412a950ef9e40841773a
+      System.InvalidOperationException: synthetic_upload_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.RecordingPublisher.PublishAsync(RunExecutionResult result, RunPublicationOptions options, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 515
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 108
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-1b03a4f78c8b4fd7a334456b62129a56
+      System.InvalidOperationException: synthetic_stop_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.StopAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 337
+         at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.WaitForShutdownAsync(IHost host, CancellationToken token)
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 75
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-84139631a0744a5f9fe58a44e78204d1
+      System.InvalidOperationException: synthetic_dispose_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.Dispose() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 343
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 95
+loadgen_startup_or_host_failure:InvalidOperationException scenario_id=A01 run_id=host-run-84139631a0744a5f9fe58a44e78204d1
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:IOException for scenario A01 run host-run-8355d48f47774a3bb297215dbbc03b5c
+      System.IO.IOException: synthetic_receipt_write_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.CompletionWriter.WriteLineAsync(String value) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 353
+         at Parchwell.LoadGen.Program.WriteCompletionAsync(TextWriter output, String completion) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 142
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 106
+loadgen_startup_or_host_failure:IOException scenario_id=A01 run_id=host-run-8355d48f47774a3bb297215dbbc03b5c
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[1]
+      Load generator worker cancelled for scenario A01 run host-run-c0106e97c11e4b30870b340c4edcf638
+crit: Parchwell.LoadGen.Process[4]
+      loadgen_startup_or_host_failure:InvalidOperationException for scenario A01 run host-run-badc4cbcc56943d1bea4bb5b4b06b62c
+      System.InvalidOperationException: synthetic_start_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.LifecycleHost.StartAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 330
+         at Parchwell.LoadGen.Program.RunAsync(String[] args, Action`1 configureTestServices, TextWriter completionOutput, Func`1 hostFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 73
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Microsoft.Extensions.Hosting.Internal.Host[11]
+      Hosting failed to start
+      Microsoft.Extensions.Options.OptionsValidationException: LoadGen host inputs or finite budgets are invalid.
+         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)
+         at Microsoft.Extensions.Options.UnnamedOptionsManager`1.get_Value()
+         at Parchwell.LoadGen.Run.Execution.RunSessionFactory..ctor(IOptions`1 options, RunEvidenceSinkRouter sinkRouter, KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory, TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory, Func`5 producerFactory) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs:line 32
+         at InvokeStub_RunSessionFactory..ctor(Object, Span`1)
+         at System.Reflection.MethodBaseInvoker.InvokeWithManyArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.ServiceProviderEngineScope.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Parchwell.LoadGen.Program.<>c.<BuildHost>b__8_10(IServiceProvider provider) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Program.cs:line 276
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitFactory(FactoryCallSite factoryCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitIEnumerable(IEnumerableCallSite enumerableCallSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+         at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+         at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+         at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)
+fail: Parchwell.LoadGen.Run.Execution.LoadGenWorker[2]
+      Load generator worker failed for scenario A01 run host-run-3f45c60e42e94afa8c5ef548c2505f29
+      System.InvalidOperationException: synthetic_upload_failure
+         at Parchwell.LoadGen.Tests.Host.LoadGenWorkerHostTests.RecordingPublisher.PublishAsync(RunExecutionResult result, RunPublicationOptions options, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs:line 515
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 108
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteRunAsync(CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 111
+         at Parchwell.LoadGen.Run.Execution.LoadGenWorker.ExecuteAsync(CancellationToken stoppingToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs:line 54
+  Finished:    Parchwell.LoadGen.Tests (ID = '2a67848406c52d59e4af45e85d2ac9873502a2eac92feac5e3d4338b25f10c4c')
+=== TEST EXECUTION SUMMARY ===
+   Parchwell.LoadGen.Tests  Total: 33, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 1.765s

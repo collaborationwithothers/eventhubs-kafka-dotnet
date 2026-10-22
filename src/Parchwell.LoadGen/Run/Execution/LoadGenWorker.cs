@@ -22,6 +22,7 @@ public sealed class LoadGenWorker : BackgroundService
     private readonly LoadGenHostOptions _hostOptions;
     private readonly ScenarioLoader _loader;
     private readonly ScenarioResolver _resolver;
+    private readonly HelmValuesGenerator _valuesGenerator;
     private readonly RunSessionFactory _runSessionFactory;
     private readonly IWorkerAdmission _admission;
     private readonly IRunArtifactPublisher _publisher;
@@ -30,11 +31,12 @@ public sealed class LoadGenWorker : BackgroundService
     public LoadGenWorker(IOptions<LoadGenHostOptions> hostOptions, ScenarioLoader loader,
         ScenarioResolver resolver, RunSessionFactory runSessionFactory, IWorkerAdmission admission,
         IRunArtifactPublisher publisher, IHostApplicationLifetime lifetime,
-        ILogger<LoadGenWorker> logger)
+        ILogger<LoadGenWorker> logger, HelmValuesGenerator valuesGenerator)
     {
         _hostOptions = hostOptions.Value;
         _loader = loader;
         _resolver = resolver;
+        _valuesGenerator = valuesGenerator;
         _runSessionFactory = runSessionFactory;
         _admission = admission;
         _publisher = publisher;
@@ -80,6 +82,8 @@ public sealed class LoadGenWorker : BackgroundService
         if (string.Equals(identity.InstanceId, loaded.Profile.Seed.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal))
             throw new InvalidOperationException("worker_identity_must_be_distinct_from_workload_seed");
         ResolvedScenario resolved = _resolver.Resolve(loaded);
+        if (options.GeneratedValuesFile is not null)
+            GeneratedValuesCompatibility.Validate(_valuesGenerator, resolved, options.ConfigurationId, options.GeneratedValuesFile);
         if (!resolved.Configurations.TryGetValue(options.ConfigurationId, out ResolvedConfiguration? configuration))
             throw new InvalidOperationException("selected_configuration_not_declared_by_scenario");
         if (!configuration.Roles.TryGetValue(KafkaClientRole.LoadGenProducer, out ResolvedRoleConfiguration? role))

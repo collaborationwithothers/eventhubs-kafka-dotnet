@@ -1,0 +1,12 @@
+{
+  "phases": 3,
+  "probe_repeats": 5,
+  "full_C0_repeats": 5,
+  "full_C3_repeats": 5,
+  "applies": 3,
+  "destroys": 3,
+  "azure_calls": 0,
+  "replacement_repeats": 0,
+  "result": "passed",
+  "negative_cases": 23
+}

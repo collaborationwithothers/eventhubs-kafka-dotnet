@@ -10,7 +10,7 @@ namespace Parchwell.Scenarios;
 /// Helm values are generated, never written by hand, so a deployment always matches its reviewed
 /// definition (ADR-014). The output is deterministic: the same input gives the same bytes, with no
 /// timestamps or random ids. The format is fixed by docs/operations/scenario-contract.md,
-/// "Composition and output"; no chart consumes it yet.
+/// "Composition and output".
 /// </remarks>
 public sealed class HelmValuesGenerator
 {

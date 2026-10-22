@@ -1,0 +1,102 @@
+{
+  "record_type": "authored retrospective transcript of executed producer commands",
+  "authored_after": "source-receipts.json, fetch-sources.py, conclusion.md",
+  "basis": "Exact command strings copied from this subagent turn tool-call history, not inferred from filesystem timestamps. This JSON is authored evidence, not an original tool execution log. It has not been re-executed.",
+  "source_scope": "Read-only original official upstream source fetches and local filtering/comparison; no repository edits/builds/tests/Azure calls.",
+  "later_script_correction": "fetch-sources.py was authored after source-receipts.json as a future reproducible fetcher. It was never executed and is not the original producer. Its later mtime must not be used as an original-fetch timestamp.",
+  "operations": [
+    {
+      "id": "initial-cli-source-fetch",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,pathlib\nbase='https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/'\npaths=['src/azure-cli/azure/cli/command_modules/storage/_client_factory.py','src/azure-cli/azure/cli/command_modules/storage/operations/blob.py','src/azure-cli/azure/cli/command_modules/storage/commands.py','src/azure-cli/requirements.py3.Linux.txt','src/azure-cli-core/azure/cli/core/_config.py']\nout=pathlib.Path('/workspace/scratch/blob-retry-114');out.mkdir(exist_ok=True)\nfor p in paths:\n try:\n  b=urllib.request.urlopen(base+p).read(); target=out/pathlib.Path(p).name;target.write_bytes(b);print(str(target),len(b))\n except Exception as e:print(p,e)\nPY\nrg -n 'retry|Retry|upload_blob|upload_block_blob|azure-storage-blob|azure-core|azure-cli-core' /workspace/scratch/blob-retry-114/*",
+      "produces": [
+        "_client_factory.py",
+        "blob.py",
+        "commands.py",
+        "requirements.py3.Linux.txt",
+        "_config.py"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "additional-cli-core-sources",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,pathlib\nbase='https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/'\nfor p in ['src/azure-cli-core/azure/cli/core/commands/client_factory.py','src/azure-cli/azure/cli/command_modules/storage/_params.py','src/azure-cli-core/azure/cli/core/__init__.py']:\n b=urllib.request.urlopen(base+p).read(); t=pathlib.Path('/workspace/scratch/blob-retry-114')/('core-'+pathlib.Path(p).name if 'core/' in p else pathlib.Path(p).name);t.write_bytes(b);print(t,len(b))\nPY\nrg -n 'retry|Retry|config\\.get|ENV_VAR|CLIConfig' /workspace/scratch/blob-retry-114/core-client_factory.py /workspace/scratch/blob-retry-114/core-__init__.py /workspace/scratch/blob-retry-114/_params.py | head -100",
+      "produces": [
+        "core-client_factory.py",
+        "_params.py",
+        "core-__init__.py"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "cli-policy-and-sdk-tag-sources",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,pathlib\np='src/azure-cli-core/azure/cli/core/sdk/policies.py';u='https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/'+p\nb=urllib.request.urlopen(u).read();pathlib.Path('/workspace/scratch/blob-retry-114/core-policies.py').write_bytes(b)\nroot='https://raw.githubusercontent.com/Azure/azure-sdk-for-python/azure-storage-blob_12.29.0b1/sdk/storage/azure-storage-blob/azure/storage/blob/'\nfor p in ['_shared/policies.py','_shared/base_client.py','_blob_client.py','_upload_helpers.py']:\n try:\n  b=urllib.request.urlopen(root+p).read();t=pathlib.Path('/workspace/scratch/blob-retry-114')/('sdk-'+p.replace('/','-'));t.write_bytes(b);print(t,len(b))\n except Exception as e:print(p,e)\nPY\nrg -n 'environ|retry|Retry|hook' /workspace/scratch/blob-retry-114/core-policies.py /workspace/scratch/blob-retry-114/sdk-_shared-base_client.py /workspace/scratch/blob-retry-114/sdk-_shared-policies.py | head -100",
+      "produces": [
+        "core-policies.py",
+        "sdk-_shared-policies.py",
+        "sdk-_shared-base_client.py",
+        "sdk-_blob_client.py",
+        "sdk-_upload_helpers.py"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "archive-fetch-and-first-filter",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,tarfile,io,pathlib\nu='https://codeload.github.com/Azure/azure-cli/tar.gz/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e'; b=urllib.request.urlopen(u).read();p=pathlib.Path('/workspace/scratch/blob-retry-114/azure-cli.tar.gz');p.write_bytes(b); print('archive',len(b))\nt=tarfile.open(fileobj=io.BytesIO(b),mode='r:gz')\nfor m in t.getmembers():\n if m.isfile() and ('/src/azure-cli-core/azure/cli/core/' in m.name or '/src/azure-cli/azure/cli/command_modules/storage/' in m.name) and m.name.endswith('.py'):\n  data=t.extractfile(m).read()\n  if any(v in data for v in [b'retry_total',b'AZURE_CORE_RETRY',b'AZURE_STORAGE_RETRY',b'no_retry']):\n   dest=pathlib.Path('/workspace/scratch/blob-retry-114/tree')/m.name.split('/',1)[1];dest.parent.mkdir(exist_ok=True,parents=True);dest.write_bytes(data);print(dest)\nPY\nrg -n 'retry_total|AZURE_CORE_RETRY|AZURE_STORAGE_RETRY|no_retry' /workspace/scratch/blob-retry-114/tree",
+      "produces": [
+        "azure-cli.tar.gz"
+      ],
+      "notes": "Observed archive length 181623437 bytes. First filter matched no files, so tree did not exist and following rg exited 2. Retrieval ran once; no subsequent archive redownload."
+    },
+    {
+      "id": "additional-sdk-core-and-cli-sources",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,pathlib\nurls={\n'cli-_debug.py':'https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/_debug.py',\n'core-retry.py':'https://raw.githubusercontent.com/Azure/azure-sdk-for-python/azure-core_1.39.0/sdk/core/azure-core/azure/core/pipeline/policies/_retry.py',\n'cli-storage-init.py':'https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/__init__.py'}\nfor n,u in urls.items():\n try:\n  b=urllib.request.urlopen(u,timeout=20).read();t=pathlib.Path('/workspace/scratch/blob-retry-114')/n;t.write_bytes(b);print(n,len(b))\n except Exception as e:print(n,e)\nPY\nrg -n 'retry|Retry|environ|config\\.get' /workspace/scratch/blob-retry-114/cli-storage-init.py /workspace/scratch/blob-retry-114/cli-_debug.py /workspace/scratch/blob-retry-114/core-retry.py | head -100; sed -n '500,590p' /workspace/scratch/blob-retry-114/sdk-_shared-policies.py; sed -n '95,175p' /workspace/scratch/blob-retry-114/core-policies.py",
+      "produces": [
+        "cli-_debug.py",
+        "core-retry.py",
+        "cli-storage-init.py"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "archive-inspection",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport tarfile,pathlib\np=pathlib.Path('/workspace/scratch/blob-retry-114/azure-cli.tar.gz')\nt=tarfile.open(p)\nfor i,m in enumerate(t.getmembers()[:8]): print(m.name,m.type)\nprint('total members',len(t.getmembers()))\nprint('client samples', [m.name for m in t.getmembers() if m.name.endswith('client_factory.py')][:8])\nPY",
+      "produces": [],
+      "notes": "Read existing archive; observed total members 10558."
+    },
+    {
+      "id": "archive-retry-filter-and-scan",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport tarfile,pathlib,re\nroot=pathlib.Path('/workspace/scratch/blob-retry-114'); t=tarfile.open(root/'azure-cli.tar.gz'); lines=[]\nfor m in t:\n if m.isfile() and ('/src/azure-cli-core/azure/cli/core/' in m.name or '/src/azure-cli/azure/cli/command_modules/storage/' in m.name) and m.name.endswith('.py') and '/tests/' not in m.name:\n  data=t.extractfile(m).read(); name=m.name.split('/',1)[1]\n  if b'retr' in data.lower():\n   dest=root/'tree'/name;dest.parent.mkdir(exist_ok=True,parents=True);dest.write_bytes(data)\n   for i,l in enumerate(data.decode().splitlines(),1):\n    if re.search(r'retr(y|ies)',l,re.I):lines.append(f'{name}:{i}:{l}')\n(root/'cli-retry-source-scan.txt').write_text('\\n'.join(lines)+'\\n');print('\\n'.join(lines));print('lines',len(lines))\nPY",
+      "produces": [
+        "tree/ selected original Python source files",
+        "cli-retry-source-scan.txt"
+      ],
+      "notes": "Reads existing archive once in this command. It examines all production Python in both named subtrees, writes files whose lowercased content includes retr, and emits 48 retry/ies matching source lines. It does not retain every production Python file; a later finite-subset archive must make that distinction."
+    },
+    {
+      "id": "sdk-tag-ref-fetches",
+      "phase": "before source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport urllib.request,pathlib,json\nroot=pathlib.Path('/workspace/scratch/blob-retry-114')\nfor tag in ['azure-storage-blob_12.29.0b1','azure-core_1.39.0']:\n try:\n  b=urllib.request.urlopen('https://api.github.com/repos/Azure/azure-sdk-for-python/git/ref/tags/'+tag,timeout=20).read();(root/('ref-'+tag+'.json')).write_bytes(b);j=json.loads(b);print(tag,j['object'])\n except Exception as e: print(e)\nPY",
+      "produces": [
+        "ref-azure-storage-blob_12.29.0b1.json",
+        "ref-azure-core_1.39.0.json"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "sdk-commit-byte-comparison-and-source-receipts",
+      "phase": "source-receipts.json generation",
+      "exact_executed_shell_command": "python - <<'PY'\nimport pathlib,urllib.request,hashlib,json\nr=pathlib.Path('/workspace/scratch/blob-retry-114'); cli='https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/'\nsources={\n'_client_factory.py':cli+'src/azure-cli/azure/cli/command_modules/storage/_client_factory.py','blob.py':cli+'src/azure-cli/azure/cli/command_modules/storage/operations/blob.py','commands.py':cli+'src/azure-cli/azure/cli/command_modules/storage/commands.py','requirements.py3.Linux.txt':cli+'src/azure-cli/requirements.py3.Linux.txt','_config.py':cli+'src/azure-cli-core/azure/cli/core/_config.py','core-client_factory.py':cli+'src/azure-cli-core/azure/cli/core/commands/client_factory.py','_params.py':cli+'src/azure-cli/azure/cli/command_modules/storage/_params.py','core-__init__.py':cli+'src/azure-cli-core/azure/cli/core/__init__.py','core-policies.py':cli+'src/azure-cli-core/azure/cli/core/sdk/policies.py','cli-_debug.py':cli+'src/azure-cli-core/azure/cli/core/_debug.py','cli-storage-init.py':cli+'src/azure-cli/azure/cli/command_modules/storage/__init__.py','azure-cli.tar.gz':'https://codeload.github.com/Azure/azure-cli/tar.gz/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e'}\nfor p in ['_shared/policies.py','_shared/base_client.py','_blob_client.py','_upload_helpers.py']:\n sources['sdk-'+p.replace('/','-')]='https://raw.githubusercontent.com/Azure/azure-sdk-for-python/5eca695d87ce704eabe665ce42c698440521c289/sdk/storage/azure-storage-blob/azure/storage/blob/'+p\nsources['core-retry.py']='https://raw.githubusercontent.com/Azure/azure-sdk-for-python/27bf66d7ecfbf25d8a607467e7cd3123c61e4cc5/sdk/core/azure-core/azure/core/pipeline/policies/_retry.py'\nrows=[]\nfor name,url in sources.items():\n b=(r/name).read_bytes()\n if name.startswith('sdk-') or name=='core-retry.py':\n  actual=urllib.request.urlopen(url,timeout=20).read();assert actual==b,(name,'tag/commit bytes differ')\n rows.append({'path':str(r/name),'url':url,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'producer':'Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit.'})\n(r/'source-receipts.json').write_text(json.dumps(rows,indent=2)+'\\n')\nprint('source receipts',len(rows),'SDK tag bytes match resolved commit')\nPY",
+      "produces": [
+        "source-receipts.json"
+      ],
+      "notes": "This operation makes five additional source HTTP GETs: four Blob SDK files plus core retry policy, each by resolved immutable commit. It compares fetched bytes directly with retained original tag-fetched bytes and does not overwrite those retained source files. It does not re-fetch the CLI files/archive."
+    }
+  ]
+}

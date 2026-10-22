@@ -1,0 +1,10 @@
+  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll
+  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll
+  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll
+  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.71

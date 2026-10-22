@@ -1,0 +1,88 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+failed Parchwell.Runner.Tests.Execution.KubernetesWatchTests.Given_ReplacementAddedAndDeletedWhileOtherWorkWaits_When_ExportEnds_Then_HistoricalSecondUidPreventsAcceptance(stage: "export") (14ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : publication_prefix_member_set
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.DownloadPublicationAsync(RepeatContext context, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:155
+    at Parchwell.Runner.Tests.Execution.KubernetesWatchTests.Given_ReplacementAddedAndDeletedWhileOtherWorkWaits_When_ExportEnds_Then_HistoricalSecondUidPreventsAcceptance(String stage) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/KubernetesWatchTests.cs:65
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(resultBytes: 3, accepted: False) (27ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   0
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:95
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(resultBytes: 2, accepted: True) (20ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : independent_broker_inventory_required
+    at Parchwell.Runner.Run.Deployment.DeploymentGenerator.GenerateAsync(JsonElement input, String outputDirectory, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs:96
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.GenerateAsync(RepeatContext context, String mode, String producer, IReadOnlyList`1 brokers, CancellationToken token) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:399
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList`1 brokers, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:176
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:89
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(resultBytes: 1, accepted: True) (23ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : independent_broker_inventory_required
+    at Parchwell.Runner.Run.Deployment.DeploymentGenerator.GenerateAsync(JsonElement input, String outputDirectory, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs:96
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.GenerateAsync(RepeatContext context, String mode, String producer, IReadOnlyList`1 brokers, CancellationToken token) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:399
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList`1 brokers, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:176
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_StartLineAndPublicationLeaveTwoBytes_When_VerifierResultArrives_Then_ResultUsesOnlyRemainingAllowance(Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:89
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(remainingBytes: 1, resultBytes: 1, accepted: True) (17ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : independent_broker_inventory_required
+    at Parchwell.Runner.Run.Deployment.DeploymentGenerator.GenerateAsync(JsonElement input, String outputDirectory, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs:96
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.GenerateAsync(RepeatContext context, String mode, String producer, IReadOnlyList`1 brokers, CancellationToken token) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:399
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList`1 brokers, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:176
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(Int32 remainingBytes, Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:200
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(remainingBytes: 2, resultBytes: 1, accepted: True) (12ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : independent_broker_inventory_required
+    at Parchwell.Runner.Run.Deployment.DeploymentGenerator.GenerateAsync(JsonElement input, String outputDirectory, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs:96
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.GenerateAsync(RepeatContext context, String mode, String producer, IReadOnlyList`1 brokers, CancellationToken token) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:399
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList`1 brokers, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:176
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(Int32 remainingBytes, Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:200
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(remainingBytes: 0, resultBytes: 1, accepted: False) (13ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   0
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(Int32 remainingBytes, Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:206
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(remainingBytes: 0, resultBytes: 0, accepted: True) (13ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IO.InvalidDataException : independent_broker_inventory_required
+    at Parchwell.Runner.Run.Deployment.DeploymentGenerator.GenerateAsync(JsonElement input, String outputDirectory, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs:96
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.GenerateAsync(RepeatContext context, String mode, String producer, IReadOnlyList`1 brokers, CancellationToken token) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:399
+    at Parchwell.Runner.Run.Execution.KubernetesRunCluster.VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList`1 brokers, CancellationToken cancellationToken) in /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs:176
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_ActualOneGiBRepeatBoundaryAndRaisedConfiguration_When_VerifierDownloads_Then_FixedCeilingAndZeroLengthMetadataAreRespected(Int32 remainingBytes, Int32 resultBytes, Boolean accepted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:200
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_RetainedFailureBytes_When_NormalVerifierDownloads_Then_TheirPhysicalBytesConsumeTheSameAllowance (23ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   0
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_RetainedFailureBytes_When_NormalVerifierDownloads_Then_TheirPhysicalBytesConsumeTheSameAllowance() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:142
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_NormalOriginalsAndOverBudgetResult_When_FailureArtifactsAreCollected_Then_CanonicalFilesAreReusedAndResultStillCannotTransfer (28ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 2
+  Actual:   1
+    at Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests.Given_NormalOriginalsAndOverBudgetResult_When_FailureArtifactsAreCollected_Then_CanonicalFilesAreReusedAndResultStillCannotTransfer() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/NormalDownloadBudgetTests.cs:113
+    --- End of stack trace from previous location ---
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64) failed with 10 error(s) (25s 289ms)
+Exit code: 2
+
+  In process file artifacts produced:
+    - /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-114/raw/review-9-fixes/runner-tests-attempt-1.xml
+
+Test run summary: Failed!
+  total: 1001
+  failed: 10
+  succeeded: 991
+  skipped: 0
+  duration: 25s 562ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

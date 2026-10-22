@@ -20,7 +20,7 @@ namespace Parchwell.Verifier.VerifyRun;
 /// <summary>Judges fixed producer inputs and one fixed Kafka window before publishing once.</summary>
 internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
     VerifierKafkaSessionFactory sessions, IVerifierArtifactStore artifacts, ILedgerArtifactSource ledgerSource,
-    ScenarioLoader scenarioLoader, ScenarioResolver scenarioResolver) : IVerifierModeHandler
+    ScenarioLoader scenarioLoader, ScenarioResolver scenarioResolver, HelmValuesGenerator valuesGenerator) : IVerifierModeHandler
 {
     private static readonly HashSet<string> JudgedPayloads = new(StringComparer.Ordinal)
     {
@@ -67,7 +67,10 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             {
                 LoadedScenario scenario = await scenarioLoader.LoadAsync(options.ScenarioId!, local.Token).ConfigureAwait(false);
                 CheckDeadline(localOrigin, options.IoTimeout.Value, local.Token);
-                producer = scenarioResolver.Resolve(scenario).Configurations[options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
+                ResolvedScenario resolved = scenarioResolver.Resolve(scenario);
+                if (options.GeneratedValuesFile is not null)
+                    GeneratedValuesCompatibility.Validate(valuesGenerator, resolved, options.ConfigurationId!, options.GeneratedValuesFile);
+                producer = resolved.Configurations[options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
                 CheckDeadline(localOrigin, options.IoTimeout.Value, local.Token);
             }
             ReadOnlyMemory<byte>? noteBytes;
@@ -116,7 +119,9 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 manifest, statistics, lifecycle, capabilities, reports, options.ExpectedBrokerNames!, producer,
                 drain?.Records ?? [], assessments, outputLimits);
             RunJudgementResult judgement = RunJudgement.Evaluate(request);
-            A01EvidenceRecording a01 = A01EvidenceRecorder.Record(request, judgement);
+            A01EvidenceRecording a01 = options.ConfigurationId == "C3"
+                ? A01EvidenceRecorder.RecordC3(request, judgement)
+                : A01EvidenceRecorder.Record(request, judgement);
             status = judgement.Status ?? throw new InvalidOperationException("The available evidence does not establish a verifier result status.");
             var result = new VerifierResult(1, identity, manifest.Value?.GeneratorVersion, manifest.Value?.RuntimeVersions,
                 options.VerifierCommit!, typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString,

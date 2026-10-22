@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Parchwell.Scenarios/Parchwell.Scenarios.csproj" />
+    <ProjectReference Include="../Parchwell.Kafka/Parchwell.Kafka.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Parchwell.Runner.Tests" />
+  </ItemGroup>
+</Project>

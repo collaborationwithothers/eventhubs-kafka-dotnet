@@ -30,6 +30,8 @@ internal sealed class VerifierKafkaSession
 
     public IConsumer<byte[], byte[]> Consumer { get; }
 
+    public IReadOnlyList<BrokerMetadata>? MetadataBrokers { get; private set; }
+
     public void InstallToken(CancellationToken cancellationToken = default)
     {
         long origin = clock.GetTimestamp();
@@ -91,6 +93,7 @@ internal sealed class VerifierKafkaSession
                 _ = RemainingWatermarkTime();
                 highs.Add(partition.PartitionId, offsets.High.Value);
             }
+            MetadataBrokers = metadata.Brokers.ToArray();
             return highs;
 
             TimeSpan RemainingWatermarkTime()

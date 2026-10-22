@@ -1,0 +1,2672 @@
+{
+  "source_commit": "4590e7818b3ac720e593ef680ecb6a0d51467546",
+  "source_status": "dirty cold-review-8 fixes worktree before build attempt 2",
+  "captured_utc": "2026-10-22T07:12:41.844100+00:00",
+  "files": [
+    {
+      "path": ".agents/skills/code-review/SKILL.md",
+      "size_bytes": 6670,
+      "sha256": "09eb147f793e4647949edd32dbad278f0554dfb56e0d46b699cd4c2c55bf0357"
+    },
+    {
+      "path": ".agents/skills/code-review/agents/openai.yaml",
+      "size_bytes": 100,
+      "sha256": "8229ca854e11dc8e6aef2131ee03f31fb1561cf905fab9ccc325180cf3331352"
+    },
+    {
+      "path": ".agents/skills/codebase-design/DEEPENING.md",
+      "size_bytes": 2553,
+      "sha256": "f3dd099ce99289bd213914d8ee3e2429b78309c3957ca4583f7659551b1d53c1"
+    },
+    {
+      "path": ".agents/skills/codebase-design/DESIGN-IT-TWICE.md",
+      "size_bytes": 2665,
+      "sha256": "52b52e75655a27aea59c6966b410bac82448968ad46ef1ebb9f07c274e3ae010"
+    },
+    {
+      "path": ".agents/skills/codebase-design/SKILL.md",
+      "size_bytes": 6446,
+      "sha256": "2c20617f87ec8af6a434859f381b2f061a69b530444e74eb39e78bb016a6d1e2"
+    },
+    {
+      "path": ".agents/skills/codebase-design/agents/openai.yaml",
+      "size_bytes": 102,
+      "sha256": "edebc9e4fcfe102114012575eaa9600b9b5fd08c311664f389c36e7bc717740f"
+    },
+    {
+      "path": ".agents/skills/diagnosing-bugs/SKILL.md",
+      "size_bytes": 8664,
+      "sha256": "849198df88cdb65fd0d97236604c1fca7ff2f22d2f705f9724a800d0266b118d"
+    },
+    {
+      "path": ".agents/skills/diagnosing-bugs/agents/openai.yaml",
+      "size_bytes": 103,
+      "sha256": "3e430dbe4334a87597488c060cb3dc3786bb00c9182877d6f5ec41f62490e90b"
+    },
+    {
+      "path": ".agents/skills/diagnosing-bugs/scripts/hitl-loop.template.sh",
+      "size_bytes": 1316,
+      "sha256": "35103539fc36873eea36074769ad454f9379d6fc8b2dc0e26ce987fd3bfe5503"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/ADR-FORMAT.md",
+      "size_bytes": 2733,
+      "sha256": "944c92aa790e8fbdc9199640b170979abb8a34ba8d0fe18c2a01a63bce140ca0"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/GLOSSARY-FORMAT.md",
+      "size_bytes": 2300,
+      "sha256": "21dcc40cdec8e151a829b98ab1517c1867bc444e3665134a98c6983411996801"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/SKILL.md",
+      "size_bytes": 3346,
+      "sha256": "7b925d7b1e341a2eeae33ad68a8a8c0ab889a38ddd22a7598e4c240e5a7556a3"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/agents/openai.yaml",
+      "size_bytes": 101,
+      "sha256": "f6bf2aa996c6e6f53fdd0708e18a0d16a56aed8322cca59fedbe3c0d2c75f06b"
+    },
+    {
+      "path": ".agents/skills/grilling/SKILL.md",
+      "size_bytes": 2049,
+      "sha256": "befdff1e27a1dfe2a294d5871169ac1afe16d983911daa4f32627514a48c1e15"
+    },
+    {
+      "path": ".agents/skills/grilling/agents/openai.yaml",
+      "size_bytes": 113,
+      "sha256": "1411d7df7d99b7e621a1ff8283c8133cc2464be63d064e52d8ce169c6800ee9b"
+    },
+    {
+      "path": ".agents/skills/implement-plan/SKILL.md",
+      "size_bytes": 2120,
+      "sha256": "e699d399676979ec4c95a0685f7015fffd840376715a8c8079dba4b704ba409e"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/HTML-REPORT.md",
+      "size_bytes": 6641,
+      "sha256": "581e8bb5a521e46bbda8ca7e19b15948bed882187108092ebb90c62513b77528"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "size_bytes": 6000,
+      "sha256": "552240a5ab5cec6b67c15dd1ad6e9f6962b1bca6ce870059a8c2713760c20392"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/agents/openai.yaml",
+      "size_bytes": 166,
+      "sha256": "c8cb20f68ebf0edb4e497bc11ae5fcaa196004e661cd189015b04f4109ced7f1"
+    },
+    {
+      "path": ".agents/skills/plan-check/SKILL.md",
+      "size_bytes": 2321,
+      "sha256": "9274ca634f9cb96db1d20446a451b4f4835cd21916bc5e02ea5991471afc59dc"
+    },
+    {
+      "path": ".agents/skills/plan-pr/SKILL.md",
+      "size_bytes": 2381,
+      "sha256": "cd14b0243ac3f400f115173e79c5329e9dcc4a70a011c04a00e81241396ca90b"
+    },
+    {
+      "path": ".agents/skills/repo-review/SKILL.md",
+      "size_bytes": 2875,
+      "sha256": "2456fa390924b9d1acdabbe665e23d6fa853b958217dcee289384d6dd782e126"
+    },
+    {
+      "path": ".agents/skills/research/SKILL.md",
+      "size_bytes": 794,
+      "sha256": "985569f15739c713d6784887c3d186d4ef9ac85bec5ad9c068d25bf0739928e4"
+    },
+    {
+      "path": ".agents/skills/research/agents/openai.yaml",
+      "size_bytes": 94,
+      "sha256": "9b4c470d63221c1f68f22df70b83e2f12401b317babe0d1b7b5f24a974474d0d"
+    },
+    {
+      "path": ".agents/skills/tdd/SKILL.md",
+      "size_bytes": 3629,
+      "sha256": "5505d25bbaa8fc14a79e4d20163936958992a2995b7f1dd1d6197edc9ed722e0"
+    },
+    {
+      "path": ".agents/skills/tdd/agents/openai.yaml",
+      "size_bytes": 87,
+      "sha256": "ea6f01cf1b8c06a4b0f5b649d74b1b8ce8685e72af1b38d70d877693e092af0b"
+    },
+    {
+      "path": ".agents/skills/tdd/mocking.md",
+      "size_bytes": 1481,
+      "sha256": "3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef"
+    },
+    {
+      "path": ".agents/skills/tdd/tests.md",
+      "size_bytes": 2214,
+      "sha256": "859f9e592c188fda4fc7277dd180e4ce9c7a2e13f6efe1f6f29eccc9d28c106a"
+    },
+    {
+      "path": ".agents/skills/writing-for-agents/SKILL-MECHANICS.md",
+      "size_bytes": 2629,
+      "sha256": "c768e6307c7c10728c401c213f2c4ba71c542127eeb7ad2956aabd15a0fa0059"
+    },
+    {
+      "path": ".agents/skills/writing-for-agents/SKILL.md",
+      "size_bytes": 10886,
+      "sha256": "551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a"
+    },
+    {
+      "path": ".agents/skills/writing-for-agents/agents/openai.yaml",
+      "size_bytes": 102,
+      "sha256": "eacb24b2a618cfb81dacb0416f4fdd75ddf3a8060f8ddb99aae1b1e301907e4b"
+    },
+    {
+      "path": ".claude/agents/repo-reviewer.md",
+      "size_bytes": 584,
+      "sha256": "08bfde6d1a09a5cb15b58046abda46767db3ef6448facaf60608fc1b535aa367"
+    },
+    {
+      "path": ".claude/hooks/handoff-lib.sh",
+      "size_bytes": 939,
+      "sha256": "3485f86fbfe1f7bfebfb8c7edf09a818b4f9f7432747f9719ad8b1c21375e259"
+    },
+    {
+      "path": ".claude/hooks/handoff-session-start.sh",
+      "size_bytes": 785,
+      "sha256": "76e2bf9896f0db3ff1f71074e87722879e080a3f7802f85526c7d927b7eee427"
+    },
+    {
+      "path": ".claude/hooks/require-handoff.sh",
+      "size_bytes": 6561,
+      "sha256": "d3e45fd24a81a4c99140082ecab7a0a591e1a461616d72919b0f313832720d7d"
+    },
+    {
+      "path": ".claude/hooks/tests/require-handoff.test.sh",
+      "size_bytes": 13626,
+      "sha256": "aa0dd9526f5f263db89eb6999904bbb5bf99f89d86733ccb6ca585f7f6587809"
+    },
+    {
+      "path": ".claude/settings.json",
+      "size_bytes": 494,
+      "sha256": "212ffecd123b781422f7b68c9e3f8c0041a7feadd7c13c5b062e26ac9a0682a1"
+    },
+    {
+      "path": ".config/dotnet-tools.json",
+      "size_bytes": 164,
+      "sha256": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244"
+    },
+    {
+      "path": ".editorconfig",
+      "size_bytes": 315,
+      "sha256": "f72d9fb67dd095d35386af43b66555583ec4d77d93d8425c762f555ce7c87d5f"
+    },
+    {
+      "path": ".gitattributes",
+      "size_bytes": 59,
+      "sha256": "216063fb49d871442a276bb99bb1c61109a2329d0d15945f2888d20b17ee065d"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "size_bytes": 902,
+      "sha256": "fff615e60434c5d78eb8018fe1585b9397066b13cebf8129de158af8846b9c41"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "size_bytes": 743,
+      "sha256": "0fa891ee9bfec1470abb6937d48abea16ebb5462d190778d36b6b20fcb3cc775"
+    },
+    {
+      "path": ".github/workflows/docs-advisory.yml",
+      "size_bytes": 569,
+      "sha256": "39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec"
+    },
+    {
+      "path": ".github/workflows/dotnet-verification.yml",
+      "size_bytes": 1016,
+      "sha256": "fc5636536931d1d4f37d4b38cb3b8a59eb230692666385bc786e82643da977e6"
+    },
+    {
+      "path": ".gitignore",
+      "size_bytes": 144,
+      "sha256": "63b0dcaab3c16392670f9b62bae2be02444a5537d19786a482dde8e3ad3316e9"
+    },
+    {
+      "path": ".remarkrc.mjs",
+      "size_bytes": 231,
+      "sha256": "5f37641b865210a1e525b8b31603ffceb969e7f201a4313ac117fa5e502653a6"
+    },
+    {
+      "path": ".terraform-version",
+      "size_bytes": 7,
+      "sha256": "daeaf141ff185c99181f226b065481eff050e543e05a500b09cb0f2c69829e81"
+    },
+    {
+      "path": ".tflint.hcl",
+      "size_bytes": 192,
+      "sha256": "00e1c91569cd5a5971ef914ad1dcead21f6fdea0bd68ce9d66cc7d14e006c9b0"
+    },
+    {
+      "path": "AGENTS.md",
+      "size_bytes": 29626,
+      "sha256": "24310ade7509cdb6d529ffb0d3de467d88a6b58c5d6018c468be93c910f53cac"
+    },
+    {
+      "path": "CLAUDE.md",
+      "size_bytes": 4013,
+      "sha256": "ec7b55b02d28d9b3435f24d39962aab64f5072ed2b30acf00f644aac9dd22a6f"
+    },
+    {
+      "path": "CONTEXT.md",
+      "size_bytes": 212,
+      "sha256": "6a73b3232dff39af7fe68cb3be2f640cf053f5cbc1318ffc2d30790da754a1b2"
+    },
+    {
+      "path": "Directory.Build.props",
+      "size_bytes": 835,
+      "sha256": "b1b9131914c0ffa72768e791e6609e11e4129d46d40607ae24fafaa96dbff079"
+    },
+    {
+      "path": "Directory.Packages.props",
+      "size_bytes": 872,
+      "sha256": "f1f244a31f1cea601824be515347ea2de6c73d8881a92f8aad15e76a00e61186"
+    },
+    {
+      "path": "Parchwell.slnx",
+      "size_bytes": 1125,
+      "sha256": "0905592a44f1629a2937ab0b2a99a2a0b270fc638e51b39175924ca80ad85c09"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 1603,
+      "sha256": "33c8da8460386e8acb4d46045662e96dde435a7de7f11da2efa7879a7e913930"
+    },
+    {
+      "path": "charts/parchwell/Chart.yaml",
+      "size_bytes": 133,
+      "sha256": "b3052a645a61b198f6feacc2e9965db967e5c8d574d09f5205d0f9379f12bfd7"
+    },
+    {
+      "path": "charts/parchwell/templates/_helpers.tpl",
+      "size_bytes": 145,
+      "sha256": "e405ba13d38df13a6a52cb569d66b002ec4c0a6f4fad5bcc5300ee16f2d13c2b"
+    },
+    {
+      "path": "charts/parchwell/templates/admission.yaml",
+      "size_bytes": 243,
+      "sha256": "e08b95fccc505851426d11d7aeb46e7ba46d6cce19b50342859211076891bd16"
+    },
+    {
+      "path": "charts/parchwell/templates/generated-values.yaml",
+      "size_bytes": 383,
+      "sha256": "4d077c69a93e6d1029282613e3c819f08ed8be7bfce32c0e6ae68b2a779c757d"
+    },
+    {
+      "path": "charts/parchwell/templates/jobs.yaml",
+      "size_bytes": 3126,
+      "sha256": "11a186c656be1c0ebd9cc6959279e1d5c5b02fbb2f68a3a0459b972fb2e97363"
+    },
+    {
+      "path": "charts/parchwell/templates/networkpolicies.yaml",
+      "size_bytes": 1492,
+      "sha256": "43f0a20ee2ac6f7faa11d5b00a289ccb072ab9a7f9a43836c89ec08658911c24"
+    },
+    {
+      "path": "charts/parchwell/templates/serviceaccounts.yaml",
+      "size_bytes": 418,
+      "sha256": "8a7121041f2e5d41e6883b6c201278301ed85639f0466dafe958c5693e33d49c"
+    },
+    {
+      "path": "charts/parchwell/values.schema.json",
+      "size_bytes": 7401,
+      "sha256": "1ed04b10a181c835856b8660b5d7dfe01d43fceef03c4f46a2fb96ceee1a03c6"
+    },
+    {
+      "path": "charts/parchwell/values.yaml",
+      "size_bytes": 79,
+      "sha256": "6168ec86e9647ee9d3e78624c3b9957a45992f6f55a6fe460ea5125ee6fa9dd9"
+    },
+    {
+      "path": "docs/agents/factory.md",
+      "size_bytes": 27383,
+      "sha256": "c1e489c647ed7ba139d230c9d46ccf7a4d645c13a197993e4fc51c612e18fd37"
+    },
+    {
+      "path": "docs/blueprint.md",
+      "size_bytes": 129796,
+      "sha256": "165955336ac173acab9b47f545123707534c3354a96aaea1e6c9d78dc263aae5"
+    },
+    {
+      "path": "docs/engineering/code-comments.md",
+      "size_bytes": 3735,
+      "sha256": "14710889cc600f1d12eaf3946613b32f3e100d32144d6de6b157fa6e474e7d32"
+    },
+    {
+      "path": "docs/engineering/documentation-checks.md",
+      "size_bytes": 6465,
+      "sha256": "efe0071487326693dd556da0471554ef9eb85d6229e0461e50504cff82bda59c"
+    },
+    {
+      "path": "docs/engineering/dotnet-verification.md",
+      "size_bytes": 15184,
+      "sha256": "d8688b81c194a49112d40172f6835c6ae09d50d8cec8d783b140cd39c46d1a51"
+    },
+    {
+      "path": "docs/engineering/dotnet.md",
+      "size_bytes": 6507,
+      "sha256": "580eb4a20af3ae2519ccf050cddb08144660c8d33fe490b5f6b53fa458114d65"
+    },
+    {
+      "path": "docs/engineering/terraform.md",
+      "size_bytes": 3913,
+      "sha256": "dc79c102b9a4236db50cb71ee81bb59c0db7ec40406b18adc7f0d2125d54c7e2"
+    },
+    {
+      "path": "docs/networking/hub-firewall.md",
+      "size_bytes": 10341,
+      "sha256": "fbc0c09874bd1e4e3b5c6490851b4c311cb0d05574236909ba6fbd0fcec0d8cc"
+    },
+    {
+      "path": "docs/operations/a01-runner.md",
+      "size_bytes": 26749,
+      "sha256": "0215bf4705542227628834baba78f09285e6cb74b21fbc8c99bbc9ec182f90b2"
+    },
+    {
+      "path": "docs/operations/a01-runtime-limits.json",
+      "size_bytes": 3672,
+      "sha256": "5bbcf22a4e17df2f9b33833b64fdc96bcbc0c9b07689c6d36ec7eecb29ba349e"
+    },
+    {
+      "path": "docs/operations/kafka-authentication.md",
+      "size_bytes": 8380,
+      "sha256": "ca2319b37741a27929174015150ffefdfb61e7dc101c2544d39c294de16b3189"
+    },
+    {
+      "path": "docs/operations/kafka-baseline.md",
+      "size_bytes": 14808,
+      "sha256": "759b4d8a13042abda3be7bf0cc5e04dd8c45d6994fc84e1cf2a5c4f07da0bd81"
+    },
+    {
+      "path": "docs/operations/kafka-configuration-explained.md",
+      "size_bytes": 39922,
+      "sha256": "cb4115b823e0cc8c3ea68aaf5bf6ddc4424a01523f9474977e18b9f9df1a9404"
+    },
+    {
+      "path": "docs/operations/kql/a01-runtime.kql",
+      "size_bytes": 1067,
+      "sha256": "c8a2c101dd3f7f627f66a3ef7626f0c9f42e44348c03e648bb5c350c5217c444"
+    },
+    {
+      "path": "docs/operations/loadgen-contract.md",
+      "size_bytes": 27597,
+      "sha256": "1a8e4b9ddb29ad89039cbfedc592cdaf1150e759319be13b0b2464da63c14b66"
+    },
+    {
+      "path": "docs/operations/phantom-spike/README.md",
+      "size_bytes": 21230,
+      "sha256": "25e691305fdd06c17ba3ae45d525d565f3a53d43049a8c3aaefca3dce37cfb05"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/admin-setup-timeout.json.gz",
+      "size_bytes": 58720,
+      "sha256": "52fc068b127cdb7f19ca0b270629bf49def35b6e8214876d336845702d85da4d"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/cached-image-identities.json",
+      "size_bytes": 720,
+      "sha256": "62248f313ba372f05c221e9b3106410d1f557bc492bde4b540cb023a5c7cac62"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/cleanup-recovery.json",
+      "size_bytes": 618,
+      "sha256": "e8e6f0c2610ff39cf4993c79e4d3ca2b0457b82d1fa6c89e8d7428a1c15a9607"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/decision.json",
+      "size_bytes": 1892,
+      "sha256": "850ce0ae5dc94f892ba05b3dbdff6cc2a41ecd4593b4d05644793919152e7c72"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/docker-create-timeout.json.gz",
+      "size_bytes": 9204,
+      "sha256": "27a33e66320aa7f1605d2a54593a2bb4ed5f5f645809efce90681a06becdff55"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/experiment.json.gz",
+      "size_bytes": 1821782,
+      "sha256": "81d9de266c86d787ce66a1b58c8b59789eaf6bdf1dc88cc0a011336ec4ed6069"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/initial-listener-validation.json.gz",
+      "size_bytes": 18168,
+      "sha256": "e2ebbaf8886357e0d331191e4059d6677d15a48485b71ca217d5378998ccf970"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/live-container-images.json",
+      "size_bytes": 744,
+      "sha256": "f61f1dd50d508ef0c761625646fc21f9fa6952699b6c22b6b549534913e101de"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/results.xml",
+      "size_bytes": 20389,
+      "sha256": "8c0398e89d1989bbfddd93274c74e279619f4bcad8f0f156df1303134b1b35c1"
+    },
+    {
+      "path": "docs/operations/phantom-spike/evidence/2026-10-14/trial-records.json",
+      "size_bytes": 1648995,
+      "sha256": "f17c13fe8d7e63cb291a84fc20a2e256aea8a38c3beab917a41b76c8b9d96339"
+    },
+    {
+      "path": "docs/operations/scenario-contract.md",
+      "size_bytes": 11725,
+      "sha256": "81c9b4e382dfedb5f93119160f84b94536bd8f107805124dedbb224b82b126b3"
+    },
+    {
+      "path": "docs/operations/statistics-bridge.md",
+      "size_bytes": 14126,
+      "sha256": "10fbcfa5021e772f8273c9a9bbeaecd1ff454f33a9610cbe9205f2070f91701c"
+    },
+    {
+      "path": "docs/operations/terraform.md",
+      "size_bytes": 11603,
+      "sha256": "e3306ae84dbc5818f0c01e92039f7237263b74e2e85d55a5d97beb3559941fcb"
+    },
+    {
+      "path": "docs/operations/verifier-contract.md",
+      "size_bytes": 56699,
+      "sha256": "0149840ff66581afc6ece443c1ba0e13139488d23bb9ebb9bbf83d177a6e7580"
+    },
+    {
+      "path": "docs/operations/verifier-mutation.md",
+      "size_bytes": 1223636,
+      "sha256": "82271d8f993e384b4e6b9163ce01201c7c65c06508e18b806ee9d3730a6a5e18"
+    },
+    {
+      "path": "docs/operations/workflows/a01-deployment-acceptance.yml.txt",
+      "size_bytes": 3023,
+      "sha256": "a92735654267ddf11741686cd8459d1b8b0561011d7080b6bc1e59cdb83201ae"
+    },
+    {
+      "path": "docs/operations/workflows/scenario.yml.txt",
+      "size_bytes": 38767,
+      "sha256": "c45987831e1ae0da5791f2159c62521482af79d3ac92f26b2db908c8b2c8186c"
+    },
+    {
+      "path": "docs/operations/workflows/sweeper.yml.txt",
+      "size_bytes": 5367,
+      "sha256": "c6fad37fcd3424000def57e500f145f037ab320797f6e2dd41d54eee03a69f73"
+    },
+    {
+      "path": "docs/research/kubernetes-kafka-clients.md",
+      "size_bytes": 23578,
+      "sha256": "52b79fe824ba140cbf9f727f50e9eb2662376ea26a735927f1f1186d1c5a4fd5"
+    },
+    {
+      "path": "global.json",
+      "size_bytes": 165,
+      "sha256": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a"
+    },
+    {
+      "path": "infra/ephemeral/.terraform.lock.hcl",
+      "size_bytes": 5750,
+      "sha256": "c7092550dcd221bf8429cda4c01f9c431360b3f508032d0d85b214c6df8b4fa3"
+    },
+    {
+      "path": "infra/ephemeral/aks.tf",
+      "size_bytes": 4020,
+      "sha256": "9d59362e54a72d9080ad2a4422cbcc7d64965fb167a02e486991ae8e32ed9192"
+    },
+    {
+      "path": "infra/ephemeral/backend.tf",
+      "size_bytes": 68,
+      "sha256": "e1471de5d75b232ccb9e8787c8eceff85ccb8ee113c3082e4b3c53130e2f560b"
+    },
+    {
+      "path": "infra/ephemeral/eventhubs.tf",
+      "size_bytes": 3385,
+      "sha256": "ce85f8b68fdad25ba052185b55d3518ce64b687b641728540a17bad273bed49d"
+    },
+    {
+      "path": "infra/ephemeral/identity.tf",
+      "size_bytes": 2756,
+      "sha256": "8c97db2bd1b5f98a47b09a1e0bdd0cd324aa3b942297362b9d349232214601a1"
+    },
+    {
+      "path": "infra/ephemeral/locals.tf",
+      "size_bytes": 871,
+      "sha256": "feaaeff41411f0bb9229434eb9103a6aebe439b80b80c366e817de604745bd35"
+    },
+    {
+      "path": "infra/ephemeral/network.tf",
+      "size_bytes": 572,
+      "sha256": "7209e50f09de705079ed9cffc46735c99c1a9b3496b17954dd11f9d7646bfcd9"
+    },
+    {
+      "path": "infra/ephemeral/observability.tf",
+      "size_bytes": 1002,
+      "sha256": "61e4c24bdbb79598a17b7922569c1f46e42aefb5944e4a84f2ce1c673505325d"
+    },
+    {
+      "path": "infra/ephemeral/outputs.tf",
+      "size_bytes": 1875,
+      "sha256": "f0d0d6284d556331ae5c630d0524c6ba232cb8ddb01f7b1c2ef4aaa3aaaa785d"
+    },
+    {
+      "path": "infra/ephemeral/providers.tf",
+      "size_bytes": 146,
+      "sha256": "cb3e20941427e7e72e686a27b9e9a67ae58c3e3a64779144c623165c20bb0c46"
+    },
+    {
+      "path": "infra/ephemeral/resource-group.tf",
+      "size_bytes": 140,
+      "sha256": "722a4ebd9dfdd83cde48e4a19f82f9d79412a0419b7d385074cc4bd5b0d5e2eb"
+    },
+    {
+      "path": "infra/ephemeral/storage.tf",
+      "size_bytes": 3221,
+      "sha256": "da2d6933cfa803f1486dc53f2e64ae985d2e930f8d957b6e8fa642bf54be6353"
+    },
+    {
+      "path": "infra/ephemeral/variables.tf",
+      "size_bytes": 3555,
+      "sha256": "8bf8d878c12c69e68752490826ce1b15e0ec8009409d257ef32cdedfde982e50"
+    },
+    {
+      "path": "infra/ephemeral/versions.tf",
+      "size_bytes": 400,
+      "sha256": "e48870c4a86aa2589b263df116943f208fcf8a4a5e41dcfdcd9fea264d580e91"
+    },
+    {
+      "path": "infra/persistent/.terraform.lock.hcl",
+      "size_bytes": 5801,
+      "sha256": "8d6bdf9b31f8bdf3cdfe061a5851078750a924ceb082b1b11c574ff1b52db48a"
+    },
+    {
+      "path": "infra/persistent/backend.tf",
+      "size_bytes": 68,
+      "sha256": "e1471de5d75b232ccb9e8787c8eceff85ccb8ee113c3082e4b3c53130e2f560b"
+    },
+    {
+      "path": "infra/persistent/budget.tf",
+      "size_bytes": 614,
+      "sha256": "7fb8d2fe262fef0df7947743aa483d024f6e952ae5b8297ae54878ba35ce64c7"
+    },
+    {
+      "path": "infra/persistent/identity.tf",
+      "size_bytes": 1317,
+      "sha256": "62f87392f9776f59f562fed2ce5fa14c7cdb72f75f8d44fecf8ec3d5d0ed92a2"
+    },
+    {
+      "path": "infra/persistent/locals.tf",
+      "size_bytes": 4196,
+      "sha256": "4dd72361d10f0579d37a0548f4b380e7ddf432467fadfa203588dce5bc7575ea"
+    },
+    {
+      "path": "infra/persistent/network.tf",
+      "size_bytes": 2637,
+      "sha256": "4c8f32a912f006b8b95716aedb81e7fa58d9ef53f9610d82d05ec91dc604b7f7"
+    },
+    {
+      "path": "infra/persistent/observability.tf",
+      "size_bytes": 903,
+      "sha256": "953a559f56ce8b6c05670dcabf98642f5aa83e0b2ec91ff341efa09d0f2ae38a"
+    },
+    {
+      "path": "infra/persistent/outputs.tf",
+      "size_bytes": 1754,
+      "sha256": "4dcdc908569c1eb58b9215fa3e84527cec3b82e72de21d878622cc17fb1ab0d5"
+    },
+    {
+      "path": "infra/persistent/providers.tf",
+      "size_bytes": 146,
+      "sha256": "cb3e20941427e7e72e686a27b9e9a67ae58c3e3a64779144c623165c20bb0c46"
+    },
+    {
+      "path": "infra/persistent/registry.tf",
+      "size_bytes": 1199,
+      "sha256": "a5d16d4bb2b3f4ce2681840baff7d503893bffc89474ee7c30490425063b0f20"
+    },
+    {
+      "path": "infra/persistent/resource-group.tf",
+      "size_bytes": 212,
+      "sha256": "cdfad550849091ed353953c8c54d4bb527f9f429c3ec4d8752740d730bd5c4d7"
+    },
+    {
+      "path": "infra/persistent/storage.tf",
+      "size_bytes": 3208,
+      "sha256": "0658bc33ed7082bee376d945ff5d775fcdbef51674db89f20e403f15e707a28d"
+    },
+    {
+      "path": "infra/persistent/variables.tf",
+      "size_bytes": 3396,
+      "sha256": "f9c358bec97680cb0dd460443082255b55e2e8ffb69d5629a4be606f8dc0cb19"
+    },
+    {
+      "path": "infra/persistent/versions.tf",
+      "size_bytes": 400,
+      "sha256": "e48870c4a86aa2589b263df116943f208fcf8a4a5e41dcfdcd9fea264d580e91"
+    },
+    {
+      "path": "package-lock.json",
+      "size_bytes": 100205,
+      "sha256": "7becd6893f9e50878645ba2c08f30a9353a3744c8b193c27ed12b36c28678fce"
+    },
+    {
+      "path": "package.json",
+      "size_bytes": 454,
+      "sha256": "7de0a55bfcaeafdaea117cd6d47de7b4379cfcfb63b30b0a9c36f3f2b6a720f9"
+    },
+    {
+      "path": "scenarios/A01/expected.yaml",
+      "size_bytes": 4702,
+      "sha256": "119e2b618a4618a1bb14583e34aff05b3272261ba18534c2f2b2d5ecccce5590"
+    },
+    {
+      "path": "scenarios/A01/scenario.yaml",
+      "size_bytes": 1290,
+      "sha256": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc"
+    },
+    {
+      "path": "scenarios/profiles/saturation-ramp.yaml",
+      "size_bytes": 992,
+      "sha256": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215"
+    },
+    {
+      "path": "scripts/check-docs.mjs",
+      "size_bytes": 1253,
+      "sha256": "2e154e37f91356cdf5ecfc2d262e0a86067fa23ff8b9d98f5ddefaf37d2a6996"
+    },
+    {
+      "path": "scripts/docs-rules.mjs",
+      "size_bytes": 3658,
+      "sha256": "4b89b22ff7581a93a2209e68bc1f2146d3fdad1144259f1da3716f60c0581dd5"
+    },
+    {
+      "path": "scripts/dotnet-verification.proj",
+      "size_bytes": 10972,
+      "sha256": "c5444c7786f7422029afdf01dbca32e382a1e929fa777c4d7bbf4e440a74530e"
+    },
+    {
+      "path": "scripts/fetch-service-tags.sh",
+      "size_bytes": 2705,
+      "sha256": "9584642cfbfbde5f00228d2deec2ac923091c74805bd0943fc409c95550fdf04"
+    },
+    {
+      "path": "scripts/kafka-coverage.config",
+      "size_bytes": 359,
+      "sha256": "bebc866d55af22d2780d8cb4e98daccd012068ffa64682d4ded794d7889ecd85"
+    },
+    {
+      "path": "scripts/prerequisites.ps1",
+      "size_bytes": 7415,
+      "sha256": "6300224b2eed9b0562f1f37fb908e7ba901a8de5b26952e669017737bac9e623"
+    },
+    {
+      "path": "scripts/test-kafka-coverage.sh",
+      "size_bytes": 7037,
+      "sha256": "7ae81f7b4393ee8de344661fdcee5ed221c512b06008cb48c9fe0360156f701c"
+    },
+    {
+      "path": "scripts/test-kafka-documentation.sh",
+      "size_bytes": 5671,
+      "sha256": "9fd7b5e4959083224fa7326478c7bbb6f045eec04a2663a6f9dc8aa1a2965ad8"
+    },
+    {
+      "path": "scripts/tests/docs-check.test.mjs",
+      "size_bytes": 11820,
+      "sha256": "b9aaa0441b1220de1d2db1f75007be028cc5bbe55b1b225d49e0589ac1e85058"
+    },
+    {
+      "path": "scripts/verification/ValidateKafkaDocumentation.cs",
+      "size_bytes": 5651,
+      "sha256": "44fd0652a716d187027ee8fb41dadd223d3013ee4bc429505b25a53e808e1d97"
+    },
+    {
+      "path": "scripts/verification/ValidateKafkaMappingCoverage.cs",
+      "size_bytes": 1128,
+      "sha256": "ac5e74ad069c953e6ce8abbd5e2fe9074ee73e339a4f65b77f8c59aa1c10da88"
+    },
+    {
+      "path": "scripts/verification/assert-a01-deployment.py",
+      "size_bytes": 8756,
+      "sha256": "e9442648077a0eedd7e591ad025dee374eca3b526c0088293bb4a3217ff35ab4"
+    },
+    {
+      "path": "scripts/verify-a01-deployment.sh",
+      "size_bytes": 10576,
+      "sha256": "116f760f02577d4e2d98150baad35fabc7a91f4f050b0f2710c003295139a6b5"
+    },
+    {
+      "path": "scripts/verify-dotnet.sh",
+      "size_bytes": 6489,
+      "sha256": "21ae2c5bedfe38b000aea63a0bb4b6d1c217f31671cf530e621b1cb8350a6127"
+    },
+    {
+      "path": "scripts/verify-kafka-coverage.sh",
+      "size_bytes": 1302,
+      "sha256": "9902e9f8750a4f9b464842b4092890240065cac63dd0f5ca0cf928ae5bee4bb0"
+    },
+    {
+      "path": "skills-lock.json",
+      "size_bytes": 2299,
+      "sha256": "87e73d50e4455bf1a93ade3fc837a37d42323236c96dde8564dd4475c5d81782"
+    },
+    {
+      "path": "src/Parchwell.Enrichment/Parchwell.Enrichment.csproj",
+      "size_bytes": 36,
+      "sha256": "8d654c44b7bebb6b31a9f2f606927f45b5072193adc4eef8cce3f3cf3b278df3"
+    },
+    {
+      "path": "src/Parchwell.Enrichment/packages.lock.json",
+      "size_bytes": 61,
+      "sha256": "03eeadc5ef377c17f787ab65f41fb4c8a9c936bb7f7f4171111fdeec8a81cb46"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs",
+      "size_bytes": 588,
+      "sha256": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs",
+      "size_bytes": 2392,
+      "sha256": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFactory.cs",
+      "size_bytes": 6994,
+      "sha256": "7cc854cf3111c270d4571ac04114bffdb4f5a2f9ea0c52e6c85ff36597380c33"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFailure.cs",
+      "size_bytes": 531,
+      "sha256": "ade2e461ed1abb1533f2853288731011048b8e8080a0e66678823316040883cd"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationIdentity.cs",
+      "size_bytes": 614,
+      "sha256": "8a59b91bf696fe38e5be37322afd3dc05134df049c134193bc93458a9f906773"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs",
+      "size_bytes": 1754,
+      "sha256": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs",
+      "size_bytes": 2902,
+      "sha256": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs",
+      "size_bytes": 8949,
+      "sha256": "b335fd8898d30b9a79850c20470da1263028f253c1ca9b8488f6b2639c410b44"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs",
+      "size_bytes": 860,
+      "sha256": "db84c636e7ac3a93b1c8f1601843857b0808d2e4bf39f57905477bae2d49c42a"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs",
+      "size_bytes": 972,
+      "sha256": "f0f70d41795062dc7f3b9fbcd11ea8a9644d6e106e7a135e2029afc98ab82839"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Authentication/WorkloadIdentityTokenProvider.cs",
+      "size_bytes": 590,
+      "sha256": "655f43faa26ecc4ac88b5729496ced429e52f6dd47ab5f1c5cfa1dd9b87891a3"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs",
+      "size_bytes": 20417,
+      "sha256": "d3e4da406d125c275b76fddd0fce83f9751469a7becd9f31942357ef606bbf57"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/FrozenInventory.cs",
+      "size_bytes": 1963,
+      "sha256": "5416a103a29c8f8e65581e734bf499510c543446f7a20575c3763262ea9f5619"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaBaseline.cs",
+      "size_bytes": 2231,
+      "sha256": "e8a1de90b0742b2de9ecd15dde1e38337022b0d79cfa9f31a341c19f7c054982"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaBaselineOptions.cs",
+      "size_bytes": 910,
+      "sha256": "17994d170d095cc2f583234189fb58abbe8a87e3d924f2cee84494524c3a64b1"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaBaselineOptionsValidator.cs",
+      "size_bytes": 1460,
+      "sha256": "eadbd4b70b42611cebe5daeb36f458f538e504ffeb97b94dc8014b1606a1092d"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaClientRole.cs",
+      "size_bytes": 1265,
+      "sha256": "fc8b0772bba663ee627dc9aba0152737b29b1a8633fc2d759e1db9ea90ae8953"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs",
+      "size_bytes": 5363,
+      "sha256": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs",
+      "size_bytes": 3452,
+      "sha256": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs",
+      "size_bytes": 217,
+      "sha256": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs",
+      "size_bytes": 5405,
+      "sha256": "8bbb4b3eb8870e06fedfcf60b64b9b854dd40415c693a53d7df743a4edac5b1d"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs",
+      "size_bytes": 2085,
+      "sha256": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs",
+      "size_bytes": 3279,
+      "sha256": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaSettingDisposition.cs",
+      "size_bytes": 991,
+      "sha256": "eba8f58bf6e32353c9ef9ddd694c66b168e298a9a6ea1b72ca90500345c9e043"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaSettingKeys.cs",
+      "size_bytes": 30324,
+      "sha256": "f925f793b8bdaf20fca9ae90670ae111d224a55144363bf23f70b8215a7f4533"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaSettingMetadata.cs",
+      "size_bytes": 3464,
+      "sha256": "021ec6d57d49d9e2e71729b085c14b6bfa5e53a93293a12f64c6d322205c3fa0"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs",
+      "size_bytes": 1010,
+      "sha256": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Parchwell.Kafka.csproj",
+      "size_bytes": 336,
+      "sha256": "a6f1f444b913d6a583dbf6f1e0dcd1527250355828d01c1d4e8427fe5ec5bafb"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Properties/AssemblyInfo.cs",
+      "size_bytes": 154,
+      "sha256": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs",
+      "size_bytes": 598,
+      "sha256": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs",
+      "size_bytes": 1795,
+      "sha256": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs",
+      "size_bytes": 3535,
+      "sha256": "1ff709cdfe5390aca4cf9e3ff5434895c370bc257d5a4517c98b8720e4430646"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs",
+      "size_bytes": 1067,
+      "sha256": "b5115ca74fabc1048a4fd2bdedf3df6d1cf5e099553fb47c79645dfec4492b35"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs",
+      "size_bytes": 502,
+      "sha256": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs",
+      "size_bytes": 621,
+      "sha256": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs",
+      "size_bytes": 3092,
+      "sha256": "fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs",
+      "size_bytes": 1543,
+      "sha256": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs",
+      "size_bytes": 10853,
+      "sha256": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs",
+      "size_bytes": 1150,
+      "sha256": "61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs",
+      "size_bytes": 2869,
+      "sha256": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs",
+      "size_bytes": 31261,
+      "sha256": "d98483a3bae1917a9ea8483772d9faa567db8665bd8f796e3c9c4cd8e523fd97"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs",
+      "size_bytes": 1208,
+      "sha256": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2"
+    },
+    {
+      "path": "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs",
+      "size_bytes": 814,
+      "sha256": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b"
+    },
+    {
+      "path": "src/Parchwell.Kafka/packages.linux-x64.lock.json",
+      "size_bytes": 6780,
+      "sha256": "4b117c26c72cead22ecaaff03b275654afac238f999670eb7557c2d4ca94f223"
+    },
+    {
+      "path": "src/Parchwell.Kafka/packages.lock.json",
+      "size_bytes": 6299,
+      "sha256": "8c9df8df0972460aa7d5f0aa401f932ab29c64c2aca33048d40f481a66174ddc"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Parchwell.LoadGen.csproj",
+      "size_bytes": 1320,
+      "sha256": "3fdf5cb48b3eca57d96e7148ee59e167204ef3975eacf248e762eb8fad3389d4"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Program.cs",
+      "size_bytes": 15357,
+      "sha256": "16ef1a5fda3c13a5c32ff8f348a4659435d8dc769f4b49e9b6aa00951324273d"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Contracts/AttemptEntry.cs",
+      "size_bytes": 659,
+      "sha256": "65ac7dc2fdd45b4a3f6ef4cc58dda04f092eda6aea552669fd700c0cdf74063b"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Contracts/LedgerRow.cs",
+      "size_bytes": 478,
+      "sha256": "113ceb0d5684b9328cafdc276ec660d6fac2da59e304eeefdaaa9ce3ad87db86"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Contracts/RunIdentity.cs",
+      "size_bytes": 999,
+      "sha256": "fb68f1a92902143527753c9d1d350ac72e37bf8176904a360af1e5e24ee9e559"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Contracts/RunManifest.cs",
+      "size_bytes": 712,
+      "sha256": "cbc2123b3efff0592ad9d383a5906ca82147cd5e4e6aec027f4270aaf344b4ab"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/ProbeEvidence.cs",
+      "size_bytes": 8667,
+      "sha256": "7e9dbffc19728734800b4dc362e9e6b00d98a114af5f6c943327db86b997f27d"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/RequestCapabilityCatalogue.cs",
+      "size_bytes": 8203,
+      "sha256": "3cd6486034705772537e08e072ba98ba4eea984bbdc6e8648f8a81f76931ec2b"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/RunEvidenceExpectations.cs",
+      "size_bytes": 2396,
+      "sha256": "433f2a4693a44c1363af02101fd9550f92302c2bb1a58eeb5c01554d64aecf5e"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/RunEvidenceOptions.cs",
+      "size_bytes": 1510,
+      "sha256": "1184f3af71c3dd4c45733b4178f3a13cddf982734fd281f8ae0c7194e2a0a5b5"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/RunEvidenceReader.cs",
+      "size_bytes": 58730,
+      "sha256": "47e671a011cb3d044aee15cdb35330c412579f59a248397bd2388877dd89e7c1"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Evidence/RunEvidenceSession.cs",
+      "size_bytes": 27071,
+      "sha256": "2fa4cbe1e3f1037fde28e70767d0efbcb33f1b296a1d3f19d750c87088eb0d82"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/IWorkerAdmission.cs",
+      "size_bytes": 1458,
+      "sha256": "628be1d3d383f18bc0b801680251d0c83c7b542ba3397847e8834bdec97490ec"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/LoadGenWorker.cs",
+      "size_bytes": 6110,
+      "sha256": "ccf00914ed3582d549a63420e5d094e78614144d588c56f94be680ca276c8df6"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/RunEvidenceSinkRouter.cs",
+      "size_bytes": 957,
+      "sha256": "2616f741a15ab02ec2515649cdb42efb349f5dcc3ba4d3f36de08d1591f1ff69"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/RunExecutionOptions.cs",
+      "size_bytes": 2409,
+      "sha256": "f80d164d031ca5cf150da174e39e254c8e2c2ae64b77980024d98e01be180329"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/RunExecutionResult.cs",
+      "size_bytes": 451,
+      "sha256": "8e38bda63eee51704388a0eaa63eb2b6ab17619bb108fb7e7c32834031a0cd93"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/RunExecutor.cs",
+      "size_bytes": 30226,
+      "sha256": "a767add6f548576da85f33bc3e3301606b81f483f1ed253e4daaf717a7d54158"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Execution/RunSessionFactory.cs",
+      "size_bytes": 7597,
+      "sha256": "ed5ee156e8a5b65f6774c4850b51fbddb0443410b9e6a4d124b83895c8b8ed45"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Input/DeploymentAdmission.cs",
+      "size_bytes": 6190,
+      "sha256": "dc24ae630448a67b721fd0ff894e1ab0a60393a8d047b17e3a08642ac0bfdf25"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Input/FileSystemScenarioSource.cs",
+      "size_bytes": 3903,
+      "sha256": "3a2b1b21143474cdeceec060e89e9478ad0feb820a15289b5f9abeaf5b2992a8"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs",
+      "size_bytes": 9456,
+      "sha256": "541829f54fa24f04ca97fcdc08b65e66007e75c1792ceb984ab08eee5575c0f7"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/AssemblyInfo.cs",
+      "size_bytes": 188,
+      "sha256": "dd1df35601906a866056f9c071e365b914dffdac5692b112ca0048c53f436cdf"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/AttemptInventory.cs",
+      "size_bytes": 5375,
+      "sha256": "e25a4ffc3069baf7c4bd8f5f34696746bb94dafaf481657157df6e147135e8ab"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/ILedgerStore.cs",
+      "size_bytes": 1377,
+      "sha256": "5f4a74d0fc55aff74962470b18425aee859305deb371e0d6f451a14a59df4735"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/LedgerStoreOptions.cs",
+      "size_bytes": 1538,
+      "sha256": "cb5f99891f38d628fffb0a5edc6b10282151d6271f44b678625a29ab3fd53e32"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/LedgerValidator.cs",
+      "size_bytes": 24974,
+      "sha256": "4cab4f069e86b23321bd1fe5857c01c603539b56eb561c7aaeaffe427f6798e4"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Ledger/LocalLedgerStore.cs",
+      "size_bytes": 6798,
+      "sha256": "3c5deee0707d3df0469ba476e058956d4de5ad1c09fc4e93228506226c48dcf5"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Publication/BlobRunArtifactPublisher.cs",
+      "size_bytes": 20075,
+      "sha256": "991e6d6e7acf9ebdd250ebc1125c1d196909bf826123b57f39375e949193a5db"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Publication/IRunArtifactPublisher.cs",
+      "size_bytes": 1545,
+      "sha256": "49f5578b97a66768c8075213c529142f162879dea23712b506420d152a044cbc"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Publication/RunArtifactIndex.cs",
+      "size_bytes": 20957,
+      "sha256": "81b55d8882375f5285d42f85089620070bd66289dfa171e299f944c564c0a8b2"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Workload/PlannedEvent.cs",
+      "size_bytes": 322,
+      "sha256": "a5fc61072ab43da4430f4591a034499bed848e5908f859037b69bfa33ee6e496"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/Run/Workload/WorkloadGenerator.cs",
+      "size_bytes": 11539,
+      "sha256": "e39567998e163b7c4094ebac4e80ed70704d2854df0a92927184ec2467887b25"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/packages.linux-x64.lock.json",
+      "size_bytes": 19807,
+      "sha256": "4d3c7706f310500fd529708a9a40db960232a12d9ecb2f6681491bce6259446b"
+    },
+    {
+      "path": "src/Parchwell.LoadGen/packages.lock.json",
+      "size_bytes": 19103,
+      "sha256": "942caeffe57d747bca9415518fc3bad9c9818c3d112a848d13e5944ab5419409"
+    },
+    {
+      "path": "src/Parchwell.Runner/Parchwell.Runner.csproj",
+      "size_bytes": 505,
+      "sha256": "002e8f5a1f1a2d5b82fc0364f6de01ef8e36b479190a3497e0c33a26af8ef214"
+    },
+    {
+      "path": "src/Parchwell.Runner/Program.cs",
+      "size_bytes": 21508,
+      "sha256": "bc6cd73c09b4f7244ebe06225bf7a647fa8f21fb673c0615bcafd92e5d1c45a3"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/ExecutionBudgets.cs",
+      "size_bytes": 2182,
+      "sha256": "2572faf195712ba80e58e08be1e3651ebea2b6c6c8befb285e4dcfe1522c89bd"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/IArtifactStore.cs",
+      "size_bytes": 604,
+      "sha256": "c91cb4b3ce5ede9ad1d37e5981408b6a1edab03add051eef30ee5f563ba9baa3"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/IProcessRunner.cs",
+      "size_bytes": 528,
+      "sha256": "764b03733fd7d7e67a98a26cf32fcc051ae1581ab8f1eb8a82afcb41e1de81a6"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/IRunCluster.cs",
+      "size_bytes": 1997,
+      "sha256": "c887ad7d2e5de46d890a9be8401afb5b3ccb5bb5a9d2eb5ba25073d281fb495f"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/IRunGate.cs",
+      "size_bytes": 362,
+      "sha256": "bc69c63916dd41e4b2f8263b0e148cb74a926765b27db7d635b1b3a29c827a06"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/ITerraformEnvironment.cs",
+      "size_bytes": 888,
+      "sha256": "cc19fec0e093bf095eefe2af22888accb73c75f9b40fae3876e8d9a159aaa118"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Contracts/WorkerIdentity.cs",
+      "size_bytes": 731,
+      "sha256": "8a93c7794a8e4b7bcb5a713555079a59d0112466c6ba96eb8c74b4587e969658"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Cost/ActualCostReconciler.cs",
+      "size_bytes": 7143,
+      "sha256": "3f09857244fbeb1d18320a989cbf06e592f3bf25fdb4b8877718d77371106779"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Cost/AzureCliRunStore.cs",
+      "size_bytes": 8558,
+      "sha256": "cc57dd27c2dc51b0f271578808e1b174c73ddd58a07234d0dc106ead75064715"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Cost/LedgerModels.cs",
+      "size_bytes": 1847,
+      "sha256": "61da45729f2733468c01b1bb92bb2b606cac341e6a4205f12e54ac1da0791840"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Cost/PhaseReservation.cs",
+      "size_bytes": 2736,
+      "sha256": "ee78dc3ca96dca719fa310375a022c6a5bbab38a61907b47ec8a396788fb57e6"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Cost/RunLedger.cs",
+      "size_bytes": 27032,
+      "sha256": "01778bd58cd57856bc5a931051776dea3f19a90e984d0ea9e20f009fee3d9d95"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/ChartRenderer.cs",
+      "size_bytes": 1792,
+      "sha256": "1050427f2d97a3021c40a3978b6fe19b57194158295c805ae386d7265612e25f"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/DeploymentGenerator.cs",
+      "size_bytes": 16812,
+      "sha256": "5cb4e9fb62fc8250c774983c4b4375fabc914218f57b3efbff09d3a0a8b96db0"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/DeploymentPreflight.cs",
+      "size_bytes": 5479,
+      "sha256": "1994031d78a478abfa6ec33bd2867e61e913f6e9f9fd05f5d7b03824e7c8fb9e"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/DeploymentRuntimeLimits.cs",
+      "size_bytes": 6686,
+      "sha256": "007bf9650b47774bf3d88f6fa7283cf71e777518e326dfdc9afea6adfdb1f460"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/DeploymentScenarioSource.cs",
+      "size_bytes": 1158,
+      "sha256": "7df2f920e1a27220e1aeffb5e478e4b46baa1b2a290889ddb1be68856cecbd6c"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Deployment/ServiceTagData.cs",
+      "size_bytes": 3633,
+      "sha256": "999295a5bd10103ebb8b85967ccc4ff4bf22ec04299b3e164ab2b5c26cadafe7"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/EvidenceExporter.cs",
+      "size_bytes": 12879,
+      "sha256": "1910a11d7e9a7dbeacd042a28afd9bb0b26c6c835407bbaa0b40d89d3d5b0511"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/KqlCollector.cs",
+      "size_bytes": 4477,
+      "sha256": "417d05b6af3281b8807564fd1ab9c4e378ad44ec1b105d282c9b37dcd8fac892"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/PhaseCandidate.cs",
+      "size_bytes": 14735,
+      "sha256": "d42f1c6635b41c3d7738ab6423c5623eb3873e8e03e75a1f43bf680daef66451"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/PrivateEvidenceCollector.cs",
+      "size_bytes": 2226,
+      "sha256": "26ec5da07c89cc9fe7f90d7bd44d38f94a09168d2eb06ce6a1ca41a13207d3db"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/PrivateProvenanceCollector.cs",
+      "size_bytes": 6491,
+      "sha256": "115858023922efd80e9895a164c19d000ce7d6d16c0feb421342a4912133f8a5"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Evidence/PublicCandidate.cs",
+      "size_bytes": 5490,
+      "sha256": "cd63c49322219ed0a2bcb4760a340df46e76a7403fa9ef64443d340a9022bb4d"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/AksKubeconfigBinding.cs",
+      "size_bytes": 6057,
+      "sha256": "25f5cf6708d293fd36b63dc7d9d0c70aa75b9213397d570880d7528a81015de7"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/BoundedProcessRunner.cs",
+      "size_bytes": 2945,
+      "sha256": "2db07fc94289d7d0fc48ca0a8a87f6cf403d3db2021505e63d3a3bfffbde71ad"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/BrokerInventory.cs",
+      "size_bytes": 2362,
+      "sha256": "853ee824548788b45de1c5f1cef9ac7b88e6bd11f37939203a16dc699598a3d3"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/GenerationGuard.cs",
+      "size_bytes": 1493,
+      "sha256": "a2956a74bdb3d867dda57434afdb6ca6e0e2a10977c9a077b39f21896d704a34"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs",
+      "size_bytes": 30485,
+      "sha256": "b9eef347e08e0aae6425df9f0592d4f0ee8bd4566632061f112e47a3b380f1dd"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/LocalVerifierGate.cs",
+      "size_bytes": 2984,
+      "sha256": "f0715f22a36add3b32e75ee8d034d56436f3c9668fc9f483be1ee920ac3090f0"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/PhaseExecutor.cs",
+      "size_bytes": 15293,
+      "sha256": "1f5507388b7933f445f9849ce74d3e0597aa799421891f3032b6ea353e811f52"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/PodAdmission.cs",
+      "size_bytes": 2562,
+      "sha256": "75df3d277ba0cb45308dfec4d8253ad54e51a80198180ac989ea0f61e3a49fa7"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/ProbeGateRunner.cs",
+      "size_bytes": 2845,
+      "sha256": "23dfd4e308e4e9c534b811cf36f765a4356821a57bcd632a51986c9ed46f598d"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/PublicationAcceptance.cs",
+      "size_bytes": 2554,
+      "sha256": "6fb70e7a9e786f78cc34340e504c479faace9fa10f2d3e7038df9977e396bbc8"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/RecoveryEvidenceCollector.cs",
+      "size_bytes": 12654,
+      "sha256": "bcadaaa5aaeca1620b3eced532aa06d49b783ecf60da1b1a609750035d0befe3"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/RepeatExecutor.cs",
+      "size_bytes": 6925,
+      "sha256": "101dba8c72df6764a3ad051a7218f106c80145d178e773b5f28e87914e817194"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/SweepExecutor.cs",
+      "size_bytes": 3536,
+      "sha256": "18f154862fe2c25347bdd2aa6a5bf998561aa8fa2253ff2c4a4674157dc2cd5a"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/TerraformEnvironment.cs",
+      "size_bytes": 10260,
+      "sha256": "8c24df5a1b9654a525d0986d098c24f6251f48a413991248008ef231c8a3a60e"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/WorkerBlobDownloader.cs",
+      "size_bytes": 1992,
+      "sha256": "68b3ead0d5d63319dd57f434af329943b34a0b5ddfb51397f173a37b28540193"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Execution/WorkerOutcome.cs",
+      "size_bytes": 3919,
+      "sha256": "41da8987c92e70ab54ef491ef1d9ea84618f6f0f340abd531695a554adb3dda2"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Rehearsal/RehearsalRunner.cs",
+      "size_bytes": 6637,
+      "sha256": "aac569919a7569d82fbb8e21d424536cf96eb80cbb3a20ba74242ff578c27522"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Rehearsal/RehearsalScenarioFactory.cs",
+      "size_bytes": 1094,
+      "sha256": "f855cb8a74338fe5c0f87fcbfa471adbb062f5d15026855d04bbd37579f92930"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Rehearsal/RehearsalTransports.cs",
+      "size_bytes": 8742,
+      "sha256": "1a0ca16824960de48ad80755a233a05e094f55f5f6bdc4e7f5f5d31076933243"
+    },
+    {
+      "path": "src/Parchwell.Runner/Run/Rehearsal/WireFixtures.cs",
+      "size_bytes": 3631,
+      "sha256": "a96f98f0c7b99f05f17f7b280923a8f29797bacf61663630c3f290ce935b7c46"
+    },
+    {
+      "path": "src/Parchwell.Runner/packages.lock.json",
+      "size_bytes": 17970,
+      "sha256": "3fe7bc7fa8be7553089a67d98a532690209c62f21ad35cfe092377efdf701966"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs",
+      "size_bytes": 665,
+      "sha256": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/InputNodes.cs",
+      "size_bytes": 1033,
+      "sha256": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs",
+      "size_bytes": 3706,
+      "sha256": "fe78c5a6007305019b6047a0b484056f6043685d0481837f07db623da4638cf5"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs",
+      "size_bytes": 11442,
+      "sha256": "e747cbff988f8cdd6ad2f909102e182a2a2e423c7236db15e37fd23697c18156"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs",
+      "size_bytes": 983,
+      "sha256": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs",
+      "size_bytes": 1258,
+      "sha256": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Generation/GeneratedValuesCompatibility.cs",
+      "size_bytes": 1495,
+      "sha256": "6ae62f066a5891725aa0d8f644050e597df5425100433bca87edc4ed9fc73be7"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Generation/HelmValuesGenerator.cs",
+      "size_bytes": 6746,
+      "sha256": "25155197698335ea39e767e0ae4fa8f17f81efa11437414f2fd93ce0ba13f209"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Loading/DefinitionReader.cs",
+      "size_bytes": 21212,
+      "sha256": "2d11fd518427bd3cf8402d9502381fa7eafc0bf6d28dc633ff3c0026105df64b"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Loading/NodeValidation.cs",
+      "size_bytes": 7428,
+      "sha256": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Loading/ProfileReader.cs",
+      "size_bytes": 9737,
+      "sha256": "5ddb24c0868e5acf1ecc05f5d96e9cd0c39df75f0bb159142522a3e154973dd2"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Loading/ScenarioLoader.cs",
+      "size_bytes": 4475,
+      "sha256": "032766f6ed77233ab6771067c65ad6d98a39dc8763a3a26ff7969faa065e100a"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Loading/YamlInput.cs",
+      "size_bytes": 13134,
+      "sha256": "5d71b5c818ded0211f2eb841d65954e970ac6655d8ed9305b1d30d73528be79a"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Parchwell.Scenarios.csproj",
+      "size_bytes": 261,
+      "sha256": "2430b704445cd856081232b12b34bdd40edca0c8d4602ba130497a8bcc522f8e"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs",
+      "size_bytes": 11681,
+      "sha256": "60e5364d7f7c06c142915495e36bfb3a03e72f7f24892577ecdd172ebe3a9b9a"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs",
+      "size_bytes": 1444,
+      "sha256": "98d3915ea45164fb1ff23004b47333684acb89fac754d5c77f1bee9ef01f5506"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/packages.linux-x64.lock.json",
+      "size_bytes": 7274,
+      "sha256": "1bcff7fed1bbb9d3e9c83dfc1c259ccddf8f5642aeadd56fad086eea308e33ed"
+    },
+    {
+      "path": "src/Parchwell.Scenarios/packages.lock.json",
+      "size_bytes": 6793,
+      "sha256": "4da8200cd484fd674867152cbd443985fc467356e2cc24406449ce1089f2aa78"
+    },
+    {
+      "path": "src/Parchwell.Verifier/AssemblyInfo.cs",
+      "size_bytes": 157,
+      "sha256": "4f7f41bc59843729147e342ba5353495183e1a616f08425284eb396e34605057"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs",
+      "size_bytes": 979,
+      "sha256": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs",
+      "size_bytes": 549,
+      "sha256": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs",
+      "size_bytes": 7360,
+      "sha256": "61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs",
+      "size_bytes": 2570,
+      "sha256": "003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Results/VerifierResult.cs",
+      "size_bytes": 3524,
+      "sha256": "605a3870f0829f8aae99a53635af4c37aaa07d029b00e4ec1d075cec1d6f7c8a"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs",
+      "size_bytes": 50407,
+      "sha256": "dba64167a9293e89585c4c4df2d663d228cf8e819c984a2ed815c4e88274c45a"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs",
+      "size_bytes": 3959,
+      "sha256": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs",
+      "size_bytes": 1875,
+      "sha256": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs",
+      "size_bytes": 16996,
+      "sha256": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs",
+      "size_bytes": 3712,
+      "sha256": "89f43d10e9a7ead230fa7e107695cf00690f705745f858c3675776e125f1f722"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs",
+      "size_bytes": 353,
+      "sha256": "d54262e2dcef4c722a87550c79a568141e53ec1ad7dc2f3bf176ab981d50dcaa"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Window/StartLineNote.cs",
+      "size_bytes": 600,
+      "sha256": "130f42ca2d55f1336fd4b4d16ca6d5ba46ebe41763802e2f51503969a38ca1de"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs",
+      "size_bytes": 10664,
+      "sha256": "822976c818524799a2762561ef8092d68805464fcd34e9da1418fb98e4624dd6"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ImageSmoke.cs",
+      "size_bytes": 999,
+      "sha256": "5ec6aba40104e0af0f791d891a248a20bea65942fd11554b216837e7a543e633"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Parchwell.Verifier.csproj",
+      "size_bytes": 1321,
+      "sha256": "4fe36e1064ad7507b9e82fdd2baea8884279cba9ee05a7a6988e057a52c02062"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs",
+      "size_bytes": 347,
+      "sha256": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs",
+      "size_bytes": 887,
+      "sha256": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs",
+      "size_bytes": 3871,
+      "sha256": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs",
+      "size_bytes": 7118,
+      "sha256": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs",
+      "size_bytes": 762,
+      "sha256": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2"
+    },
+    {
+      "path": "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs",
+      "size_bytes": 4318,
+      "sha256": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Program.cs",
+      "size_bytes": 17088,
+      "sha256": "76752f8df65f15a8cbe6c8b558ef960397fa7e7e453b74a40092b13be56b5582"
+    },
+    {
+      "path": "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs",
+      "size_bytes": 3014,
+      "sha256": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041"
+    },
+    {
+      "path": "src/Parchwell.Verifier/StartLine/StartLineHandler.cs",
+      "size_bytes": 3672,
+      "sha256": "a511b596c62391fe5abcf37308b2038721b02c995c6564ed618e75c0b841d5d8"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifierCompletionState.cs",
+      "size_bytes": 2432,
+      "sha256": "d362c7361317322ccca1a9598c652b60af325bb12a062842e7083ea2139bfe0d"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifierHostOptions.cs",
+      "size_bytes": 4329,
+      "sha256": "f105a60d3dde2d7414ed32b9fe8ea8f170ecbbf8019e9f82d046a006e3e8a2d7"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs",
+      "size_bytes": 14275,
+      "sha256": "08a6fbe82f6dea5d1ef6fc918520dff465de0aaf1f40796dd5dca735f20a5acf"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifierWorker.cs",
+      "size_bytes": 7743,
+      "sha256": "ee14845b435bdd2bf7f6ee0b574335bb0d0606b3df50230d03dfcc8c648354d6"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs",
+      "size_bytes": 4977,
+      "sha256": "1e7f2d1c0b18f20edcb67b838c11e28b6eef3200f426d1ae11bace87a18d5dcf"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs",
+      "size_bytes": 8105,
+      "sha256": "47ea5d201901581f238987150704432044096e3bdc4af10c963a1ab60c76985e"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs",
+      "size_bytes": 8911,
+      "sha256": "527c6a5139aaf12f239b5688f4253617717594acd630b3ce774a5628cb420c98"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs",
+      "size_bytes": 34522,
+      "sha256": "7dc2acfc15552f68b1751b2ac51b03239ceba53179a0e9cea83cfd21991992ef"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/ConsumedRecord.cs",
+      "size_bytes": 563,
+      "sha256": "8705fb1386537567b288c05542bdd0a0350ba18d04e0bba3e341693d93c27d4b"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs",
+      "size_bytes": 13137,
+      "sha256": "9a0652de60a50e2a33bfa51c121d9be735256d435204742ec10e8399409a8905"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs",
+      "size_bytes": 13241,
+      "sha256": "dad4aee4c997dff49b63eddb671895cc0847de4db21e2b20dcff5b34d2f3b598"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs",
+      "size_bytes": 9214,
+      "sha256": "3b7278ed1d948d269534b63ac1de254ce184d005d958f3939adf6284d1f9abb4"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs",
+      "size_bytes": 9576,
+      "sha256": "584e3bb78d221427313e13fa2b76375ca791c5da8fcae10d95f89ba8e2d3b701"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs",
+      "size_bytes": 1762,
+      "sha256": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs",
+      "size_bytes": 3451,
+      "sha256": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs",
+      "size_bytes": 4233,
+      "sha256": "abcecba0479f7d441faea6c0660b28b89c1059023557b93ea48cc15fa8ba777c"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs",
+      "size_bytes": 1792,
+      "sha256": "6eb32433d785940f434035c2922c7d81616c861888bc86f42fc102cf6b5064f0"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs",
+      "size_bytes": 7448,
+      "sha256": "0216567573084142510aef22ce2319796f62636df23f86c7fcc9af3b32c07587"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs",
+      "size_bytes": 12791,
+      "sha256": "cc8e90c0bb577fef8490ab1fb8c0751d6ef27516cce89084a57c82182fe8c708"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs",
+      "size_bytes": 1441,
+      "sha256": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs",
+      "size_bytes": 289,
+      "sha256": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs",
+      "size_bytes": 11536,
+      "sha256": "c02ca07529e344fe4a78b9f58c48b1aff657e1615411d2482ffe9e9ccd35b3ef"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs",
+      "size_bytes": 1741,
+      "sha256": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs",
+      "size_bytes": 2417,
+      "sha256": "77ea7833225fafcf37727978e763ded94fc8756515a41219f41e61a072d35b45"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs",
+      "size_bytes": 3932,
+      "sha256": "cd3bae8727af2f527334439d5410dfd3e6dcf44b4a6908814dce1c6e2bf2e668"
+    },
+    {
+      "path": "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs",
+      "size_bytes": 3580,
+      "sha256": "548e12b60d521bb16fb360a5673260d85bfb0af4728f7e4a4dcc3397bc5190ab"
+    },
+    {
+      "path": "src/Parchwell.Verifier/packages.linux-x64.lock.json",
+      "size_bytes": 19807,
+      "sha256": "4d3c7706f310500fd529708a9a40db960232a12d9ecb2f6681491bce6259446b"
+    },
+    {
+      "path": "src/Parchwell.Verifier/packages.lock.json",
+      "size_bytes": 19103,
+      "sha256": "942caeffe57d747bca9415518fc3bad9c9818c3d112a848d13e5944ab5419409"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/CompiledArchitectureTests.cs",
+      "size_bytes": 5872,
+      "sha256": "208257a62c2c133ef1edf396a12314ad8148bf37612f424593b2ad61059bc70a"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/FoundationTests.cs",
+      "size_bytes": 8292,
+      "sha256": "638cc37f8c6363244a6339ec704ea4e33c8ba121066c78634666d289cbd09b81"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj",
+      "size_bytes": 1183,
+      "sha256": "8193a1525585619c9b691aaa620e273757cca5732dd77ba6333cd6c1daf2f79e"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/ProjectModel.cs",
+      "size_bytes": 4094,
+      "sha256": "a825a2f3a4e76d9d54b5a34e9661b5a5526e89b781a013040308dee82341049b"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/SourceNamespaceRules.cs",
+      "size_bytes": 4431,
+      "sha256": "8d9686a9df229b8ba4811741124edb7ab30b212462bb2d8f75051e4190b55f38"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/Verification/KafkaCoverageVerifier.cs",
+      "size_bytes": 5794,
+      "sha256": "700ad42f5be21c7b2b925df246f63d393fb4647fe6c564407a9455cf9e4073e6"
+    },
+    {
+      "path": "tests/Parchwell.ArchitectureTests/packages.lock.json",
+      "size_bytes": 26462,
+      "sha256": "e4494ff6f60082d98a2a59103b6afd640b53e946fbf9a05d8132222df79ec56f"
+    },
+    {
+      "path": "tests/Parchwell.Enrichment.Tests/Parchwell.Enrichment.Tests.csproj",
+      "size_bytes": 364,
+      "sha256": "c269f59db66e833f1b582c2fd7948d4412a9e8aef0a43e7520e3ff5b7f525a09"
+    },
+    {
+      "path": "tests/Parchwell.Enrichment.Tests/packages.lock.json",
+      "size_bytes": 5042,
+      "sha256": "ce693986a96f145bf2bf176c59e71a7835020ac8bb06859ad782fa2dedf4ab0d"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/AuthenticationConfigurationTests.cs",
+      "size_bytes": 6454,
+      "sha256": "31d74ca7fc3daa88d4fce595c9d9ab5a8017c39be06f6f521141ee9103517d37"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/KafkaAuthenticationAttachmentTests.cs",
+      "size_bytes": 6349,
+      "sha256": "51734f76faa1c5b529cf13c0498c54905740bf0bad53a57f6356a6d27b5c7de0"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/KafkaAuthenticationDependencyInjectionTests.cs",
+      "size_bytes": 4184,
+      "sha256": "7ba2c71d9fa5994acfe7108d990a62f644867f7a45bf5c0a59a476b721b01fb7"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/KafkaAuthenticationMetricsTests.cs",
+      "size_bytes": 10744,
+      "sha256": "d406bc22d1f73a7420f3829825be143be5b57cc7e76725468a54b120467ee7c5"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/KafkaOAuthBearerNativeClientTests.cs",
+      "size_bytes": 21513,
+      "sha256": "2ba1432fa37281b759d56767d61024cf707b53a905e2a1e3fa679d55ad79edbf"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/OAuthBearerSessionTests.cs",
+      "size_bytes": 13576,
+      "sha256": "552b266ab601ae7762dbd05f7f28328606520f691003f5948a7128298fe6c6ca"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/WorkloadIdentityOptionsTests.cs",
+      "size_bytes": 1597,
+      "sha256": "88f7d18def6cdea93847efcc25dae4227bab713cedf861c3e408ea6347332ecb"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Authentication/WorkloadIdentityTokenProviderTests.cs",
+      "size_bytes": 1905,
+      "sha256": "faf71de59eaf73047bdd7e2aa5be5b4e6a694e1f4740ff8ec0d9fd83d1806439"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Configuration/ApprovedConfigurationContract.cs",
+      "size_bytes": 6443,
+      "sha256": "79eef734d9b6738bd4fe570fbf6ebcd72ddfadb7d5a983efa4e4d8525be5d103"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Configuration/ConfigurationMappingTests.cs",
+      "size_bytes": 14015,
+      "sha256": "17255f8f36cc852a220eb8e0302a544c0ae2ca592c0ae651458a6c16747a746a"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Configuration/ConfigurationValidationTests.cs",
+      "size_bytes": 9827,
+      "sha256": "07637d72976a9a974de148e8ca0357d97224881c7c11de07bcdc65586b1e75f7"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Configuration/MetadataValidationTests.cs",
+      "size_bytes": 8284,
+      "sha256": "4b9eb25c19309346a66a8ae272160d097d89d4f102528c7a68c988da8e985202"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs",
+      "size_bytes": 7723,
+      "sha256": "a3c693865b86ea43fb033d233d19680396e35fe70503307ce20a020f3642788b"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Parchwell.Kafka.Tests.csproj",
+      "size_bytes": 531,
+      "sha256": "f99bb45fd75e071da1bbfa7137e65f062d845dc1cfd6bb489c4a3bc21b5c4bc7"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Contracts.cs",
+      "size_bytes": 4581,
+      "sha256": "0e3b050802ba18b614ce6edcb5e33903adc65a78f002591b9af004e0f851a73d"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Evidence/SpikeEvidence.cs",
+      "size_bytes": 13070,
+      "sha256": "9293a7addce963621362a585e62951ef616ebfcd903fdfed5aafa8562c79d963"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Evidence/SpikeEvidenceWriter.cs",
+      "size_bytes": 3051,
+      "sha256": "fd83d297d5e615eb715b254bb4bf83d49c03fe0dbc056352c2564a8d34f16217"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/EvidenceBehaviorTests.cs",
+      "size_bytes": 15932,
+      "sha256": "585610d7bbe813824bc6fdb901735cba0e37b366318c6f87bb63a39a81a45e62"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/DirectObserver.cs",
+      "size_bytes": 7287,
+      "sha256": "ae6b2912117931623cb8fb7d7a039c1ec0be47066a802c5d213e0b4d521b7ba6"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/ProducerProbe.cs",
+      "size_bytes": 8996,
+      "sha256": "770db7dea81a676172e9b8df5c33c28fd16f11257fccdb2a5317eb1e064520e4"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Experiment/SpikeRunner.cs",
+      "size_bytes": 17355,
+      "sha256": "9e77a23fd87369ad415250612b5134b992ad996736fd45019d47a53ae124d08b"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/BrokerEnvironment.cs",
+      "size_bytes": 20072,
+      "sha256": "fe6c7b54534ef31a7e8f8a64b912504b4f7554a013a50b7a49cdbd87563d010d"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/BrokerStartupException.cs",
+      "size_bytes": 933,
+      "sha256": "58d146475b32f39fa35b4a7ea20732f4c479a2e23e7553bf43299c9bcc835a7f"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/ExperimentDockerAuthentication.cs",
+      "size_bytes": 1245,
+      "sha256": "db70d488652bdca0d19ffd14e524de1402d2ab42273e2347b3162ce8543a8843"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/Infrastructure/InfraEndpointTests.cs",
+      "size_bytes": 3208,
+      "sha256": "2ed973dbced19fd74c9744cec0cb511598b0bc050f0b59a773c06a96592cc67d"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/PhantomSpike/PhantomSpikeTests.cs",
+      "size_bytes": 1919,
+      "sha256": "7c8f1d3357173fca70b1986498db4347024fa7140a49644fee2bbc5ac9983ded"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsBoundaryTests.cs",
+      "size_bytes": 8792,
+      "sha256": "4d7fa7ff8129eb0be554f34e211aaca7c619b15451b639f68a94bac80eaa436c"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsCounterTests.cs",
+      "size_bytes": 9519,
+      "sha256": "d3cf38184393c193b1d7b71ecd7800a910c7ec478405f4f83017b9b699db0dc5"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsDependencyInjectionTests.cs",
+      "size_bytes": 3208,
+      "sha256": "a4c70ed15e8db86f31a488d6675969d50e240d64801bf5cda05cad33df81ee7e"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsLifetimeTests.cs",
+      "size_bytes": 10251,
+      "sha256": "d9fede0d40d295d25b25ed678fb63821faf95242ba870c40fe56f0c47813bfb4"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsMetricsTests.cs",
+      "size_bytes": 7350,
+      "sha256": "b466cf12f711569eada4253f215313ca0dfed9d84eed1084f26180d1ed8665a7"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsParserTests.cs",
+      "size_bytes": 8112,
+      "sha256": "502117d3312da43fb9a731a7d20cce98b3ed808a5e7f069483c23fee95a546ba"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsSessionTests.cs",
+      "size_bytes": 26008,
+      "sha256": "169460f228be54956d50db749acd514e3f9747070452018a2bffa119c8e8b936"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/StatisticsFixtures.cs",
+      "size_bytes": 2028,
+      "sha256": "f67dae1a791e7c5bd226f4c7c6db94122242ab1c1deabdfc73f3b59d1cadc8bd"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/Statistics/StatisticsTestSupport.cs",
+      "size_bytes": 8967,
+      "sha256": "7d24930ce4358fcfffaf4e7d29d529ae9cca0651eb25cda94fa699d2138c7e9b"
+    },
+    {
+      "path": "tests/Parchwell.Kafka.Tests/packages.lock.json",
+      "size_bytes": 15464,
+      "sha256": "e06489951cb68ea3f7af5820723566a26e662dad89c1a2f93e973ccd3c3925be"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs",
+      "size_bytes": 5304,
+      "sha256": "d29f0229357b8b1b38d9264793ac1ab97fdd3c0eed18316f6f7e3515f01ae760"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Component/RunExecutorComponentTests.cs",
+      "size_bytes": 19585,
+      "sha256": "3070c3eee4e89466c276dacba974473393b17ee133293f7247801beb4e46e7da"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Contracts/RunIdentityTests.cs",
+      "size_bytes": 973,
+      "sha256": "f117e6e8e9c9bf6bdcd5f0e1274a3769cc235abbbb85db5633b6647529428f26"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/GoldenArtifactFixture.cs",
+      "size_bytes": 14478,
+      "sha256": "1de397d69041aebdf52849c46aaa35a0fb9c7f7cd1d18b07f260971e72a2130a"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/GoldenArtifactWriterTests.cs",
+      "size_bytes": 3441,
+      "sha256": "be47cb8463c3931488ccb1ed5eb10b07681660bd8c9000ad439fa0f43e54b51f"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/PureProbeEvaluatorTests.cs",
+      "size_bytes": 8933,
+      "sha256": "8b823e6471d5c333378991ed306019214c1f131cd4e3acc65b714e6647719a2a"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/RequestCapabilityCatalogueTests.cs",
+      "size_bytes": 2338,
+      "sha256": "4d7cfe29cbd0fd4f1c03c17d57d7f447a7edfe9485bb07572f313a9a6f54de08"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/RunEvidenceReaderTests.cs",
+      "size_bytes": 64814,
+      "sha256": "5c664489e7df420a0ca0f7dd53eb7312299a59cdda0a3a50a30ed15c39a71366"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Evidence/RunEvidenceSessionTests.cs",
+      "size_bytes": 27619,
+      "sha256": "c9dbe505fe468ed9d292a8d466c5ccb83040f10e88bfbfa5d32fbc62637b3538"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Execution/RunExecutorAuthenticationTests.cs",
+      "size_bytes": 23349,
+      "sha256": "f45392dd668af44aa2ca6563d40b434a48c70e29e426768c6c48211a8c3fe8d4"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Execution/RunExecutorCaptureFailureTests.cs",
+      "size_bytes": 4761,
+      "sha256": "8f61f5ec75219cf1c68b4e6f9c2b6ef2236627e4785ea9ee4fc5e6eb62e0e07a"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Execution/RunExecutorTests.cs",
+      "size_bytes": 32918,
+      "sha256": "db88a9ec526fd46c241bc437a0dbe1908d7adf78a82246c69cf350c9f0072e77"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/DeploymentAdmissionTests.cs",
+      "size_bytes": 9383,
+      "sha256": "444be95a369fb2b9a2cf8bbf8b82d982ff3b78707264c743108a67a5932389ec"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/FileSystemScenarioSourceTests.cs",
+      "size_bytes": 3044,
+      "sha256": "74d9de9934c4662a67b2c662037e43cd684c273e448f02baf6f2ba54b537d1dc"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/GeneratedValuesCompatibilityTests.cs",
+      "size_bytes": 3142,
+      "sha256": "112eaaa1f3d3c3ae8d08906ccbce4530ecd9d18389a770c646c1c2faa70a9485"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/LoadGenHostProcessTests.cs",
+      "size_bytes": 12736,
+      "sha256": "cb0c14755cbddab59bfade35d7924fc66ec6a06eba50efa88f1c966f6868ccde"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/LoadGenWorkerHostTests.cs",
+      "size_bytes": 29010,
+      "sha256": "af16caf9af7f642acee0d96ee320b6b65106f867e68b926e939edd5a6c51abeb"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Host/OAuthBearerWorkerAdmissionTests.cs",
+      "size_bytes": 3316,
+      "sha256": "8d6b028762cc4b05ff59044e4812e4cd7ae3d486f7e5713601c5048b4cb74228"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Integration/BlobPublicationIntegrationTests.cs",
+      "size_bytes": 39022,
+      "sha256": "0cb9467ad6bceb2a990b6dd5223cb5b8d8bdb3ebfb2b43dcc48a278e52001653"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Integration/LoadGenNativeAuthenticationIntegrationTests.cs",
+      "size_bytes": 16208,
+      "sha256": "feb7f7acd507f68181265fa3bef0da1a0a1461da14df6878cf956348e2e2671a"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Ledger/LedgerValidatorTests.cs",
+      "size_bytes": 16058,
+      "sha256": "f1f069f04c7db252ba62a898941cd4fd332fb72f8ac16a26e8382186433628a4"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Ledger/LocalLedgerStoreTests.cs",
+      "size_bytes": 13500,
+      "sha256": "3d6f2decb3c5dc693d4ff7e5dfe91406728949494654902a6596f92ceaa2499e"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj",
+      "size_bytes": 650,
+      "sha256": "f01e7ca04ff0baf6c987942f9599e925275231bf02e0bab034ad8877f75374f5"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Publication/BlobRunArtifactPublisherTests.cs",
+      "size_bytes": 4257,
+      "sha256": "f971261cdf53423d0aa665ab96c4cb0c23f113f7f314d1e3731a40ba3964103d"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Publication/RunArtifactIndexReaderTests.cs",
+      "size_bytes": 32714,
+      "sha256": "101eccacee6c811865915f4fa4da2e24bf67a60741875675c3b330641c0c56fd"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/Workload/WorkloadGeneratorTests.cs",
+      "size_bytes": 6798,
+      "sha256": "763df54ada40dfde282b7f1fcf8ad7bd10e9b0be8f02709416b9cb1db21609cb"
+    },
+    {
+      "path": "tests/Parchwell.LoadGen.Tests/packages.lock.json",
+      "size_bytes": 28046,
+      "sha256": "fe8e02a65c52f3b4e9ccaa7f6a130820435c841e9038247470c3114a393e357a"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/ChartContractTests.cs",
+      "size_bytes": 1675,
+      "sha256": "1710ad73ee5d790f8acaf8b04cbdbe9aad00ddc8348c5336cd1aa75a7cc8ffbc"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Contracts/ExecutionBudgetsTests.cs",
+      "size_bytes": 2498,
+      "sha256": "46a38f655e3616cf11a208c81963b98e72046c1d2d36bb6a47208f84aeac52a6"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Cost/ActualCostReconcilerTests.cs",
+      "size_bytes": 11492,
+      "sha256": "0094d04b074b3d79c372c7c61301e0c1137b956f6739b6761440700ed5dbe2bd"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs",
+      "size_bytes": 4530,
+      "sha256": "d08e1ebbbfdcf58d10f21f9451c90484f0e44425bc88849b8a305762a1364639"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Cost/PhaseReservationTests.cs",
+      "size_bytes": 20226,
+      "sha256": "720fd989b007ef8927e54180608e72635eecc1da4ccf3434cd77bf75bfdba03d"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Cost/RuntimeCostBoundaryTests.cs",
+      "size_bytes": 9946,
+      "sha256": "0b01ffeec435c756dc3a27a9487fd52b40b10bd7f72529e30170da2a77020b09"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Deployment/DeploymentGeneratorTests.cs",
+      "size_bytes": 17182,
+      "sha256": "4201c4d5da6f956dfaf1bbdeac55763a5512aa9833837c0c48e0f41240ca60a0"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Deployment/DeploymentPreflightTests.cs",
+      "size_bytes": 8399,
+      "sha256": "ec1cf6b618073a76b47a01341c1a17ff79be81fada564fed5bf09827fcb2a78c"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Deployment/DeploymentRuntimeLimitsTests.cs",
+      "size_bytes": 8774,
+      "sha256": "4fdcbcd8932369e34425a39f4cb5c0291b8a9d680d7b7d53a6b6fb5690ccd1f8"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Deployment/ServiceTagDataTests.cs",
+      "size_bytes": 2769,
+      "sha256": "919d024712bbbfb0fe65f25020a8d598fd52f2a03b4043899f3fd68fd1604fca"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/CandidateContractTests.cs",
+      "size_bytes": 14909,
+      "sha256": "6635d6869314757aca00e2f445840d179978b74e7d2c50d841682de9a57b3d79"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/EvidenceExportBoundaryTests.cs",
+      "size_bytes": 8493,
+      "sha256": "938d8dac7279e6d4dca2e8d8db5d9bc3b0e8e66d990fd7e139d2ee7c9169f0c8"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/EvidenceExporterTests.cs",
+      "size_bytes": 12333,
+      "sha256": "3c7cb92b0fad8cb1698585e3fea70b199da479aaaa2a93879b22e8e34202e6da"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/KqlBoundaryTests.cs",
+      "size_bytes": 6121,
+      "sha256": "9c502dcec575c2b463999ab3ce84b4e19944170021e51f73b299497f273432f6"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/PhaseCandidateTests.cs",
+      "size_bytes": 23459,
+      "sha256": "abac79bdf828cc684cc85cbd45240b36737bfac1cee5f897e07c552b0dce5b72"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/PrivateProvenanceCollectorTests.cs",
+      "size_bytes": 11821,
+      "sha256": "98593f99ad92d12a1f188e1aaa0e5b9129aa13d6c10c6ae8bf247a6b7fd8ad6a"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/PublicCandidateBoundaryTests.cs",
+      "size_bytes": 1391,
+      "sha256": "bc6f30b8198ec7025e09780097e4cba2edeb8abafc704699b2a148b862d54bfb"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/RecoveryExportTests.cs",
+      "size_bytes": 6415,
+      "sha256": "e7179e607f0944ae7b46b9ce4584dd14708463fb2f048ec978ccd13706ae0872"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Evidence/azure-cli-query-recording.json",
+      "size_bytes": 4942,
+      "sha256": "b9d61c9e5edb6fd2c518c7d8e56b682126b4618416c19310118978e5e5f4bdac"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/AksKubeconfigBindingTests.cs",
+      "size_bytes": 6348,
+      "sha256": "3a0b01512f0c7286b7051c36e8c44954403a8eab31f5ad8213e8920e1e30bc36"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/BoundedProcessRunnerTests.cs",
+      "size_bytes": 6215,
+      "sha256": "811a81847d0ae5e3bd325650e0477ed0993c9ce92c585169d33b167871d3a32a"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/FailureArtifactPreservationTests.cs",
+      "size_bytes": 29529,
+      "sha256": "36f1935e6a0390a55c0e7ea2f2ea0635f2cd9c084bbe5b62c19773b662c8083f"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/GenerationGuardTests.cs",
+      "size_bytes": 13644,
+      "sha256": "5855614c297e6db139e7a93a95f221a4ea066da8f7a1b02b44098cfa4e7d5935"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/KubernetesWatchTests.cs",
+      "size_bytes": 17539,
+      "sha256": "bf6181dba3a64e38151fff354f785745ccfd94b840ba150033e525b990ce906b"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/PhaseEvidenceBoundaryTests.cs",
+      "size_bytes": 11808,
+      "sha256": "e7463d032b0cfa5d5c3bd5674f214103987b6806143d2f9b19badfba100a6f0b"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/PhaseEvidenceInventoryTests.cs",
+      "size_bytes": 10495,
+      "sha256": "a50a3505d4ba75c7e30c5ee6c506727cfa0b122db6263ec085d15fc3cdbb83bb"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/PodAdmissionTests.cs",
+      "size_bytes": 6312,
+      "sha256": "69af75d0832d56667262f093bb5fa59556badc7b6e2025ab6b9eee8a8c26740a"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/PublicationBoundaryTests.cs",
+      "size_bytes": 2866,
+      "sha256": "8687ba9877c20ce94cb06cd9880152f7b93a78408bd4fe0e340085bad288f1d0"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/RecoveryEvidenceTests.cs",
+      "size_bytes": 18709,
+      "sha256": "060406598935a4431bd8faff39d37fa18efc03265c8783c3625dd86280a19167"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/TerraformEnvironmentTests.cs",
+      "size_bytes": 6609,
+      "sha256": "96df218f58f2084ae372928604f3f3e82a0f9770015de1cf9edab14a6d44d38c"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/WorkerBlobBoundaryTests.cs",
+      "size_bytes": 3309,
+      "sha256": "fb3993dbfa284c441cb9c0ff7ba987ef0a7e572d4eddf88638ef50ded107996a"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Execution/WorkerOutcomeBoundaryTests.cs",
+      "size_bytes": 6082,
+      "sha256": "0eab3c20b387115f09d746b6ee60642a33542cbdd6cd36c25b27a4605060d5df"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj",
+      "size_bytes": 638,
+      "sha256": "1810be707964d14224d34215be998480cd20222314304bcd68c31a7a969fb699"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/RehearsalTests.cs",
+      "size_bytes": 2622,
+      "sha256": "3399eb95ebf20afb886b09622878c432acde24bef9785b1e6d56cc3bedb0bf18"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/Support/WorkerWireFixtures.cs",
+      "size_bytes": 1735,
+      "sha256": "83e42bd5438455cfeb51af0706b8e2e6c5b89e7334c5f2bd51fbe483a385991c"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/WireFixtureBoundsTests.cs",
+      "size_bytes": 7202,
+      "sha256": "06502163175e4eaed6365c5117f358ccf3706a510f3118e40881c1ec1865c388"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/WorkerPublicationFixture.cs",
+      "size_bytes": 14645,
+      "sha256": "e1219113770dcac8f9a81cadd3d0597c57eb3aa2fc6ac0ccb2d4f2a5363f2364"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/WorkerWireCompatibilityTests.cs",
+      "size_bytes": 9806,
+      "sha256": "70fa21ec4a36ae1903ea951ce3cbb36a79454ce9b8cf4ff1343e67df6b3e2e31"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/WorkerWireFixtureTests.cs",
+      "size_bytes": 7542,
+      "sha256": "27103a287b9f526a9750cb7d7f9bb2c9c866a82a985e32963bd9f73e187c0811"
+    },
+    {
+      "path": "tests/Parchwell.Runner.Tests/packages.lock.json",
+      "size_bytes": 24865,
+      "sha256": "314bc02c6b5af057ef152cb2c2ec94e913b5916cd171515d912fe4938cf1cd5a"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/A01ApprovedDataPipelineTests.cs",
+      "size_bytes": 12499,
+      "sha256": "96f5b3c18034aac5dcf5947000e148992654d404b5c72c9e3fe22da6d43c6e9d"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ApprovedScenarioConfigurationContract.cs",
+      "size_bytes": 6267,
+      "sha256": "6d1cdbb2fe73adbad72876f41aecdc4a0d0c805cfabccff97c8a1be0078801e4"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/GeneratedValuesCompatibilityTests.cs",
+      "size_bytes": 3625,
+      "sha256": "eea5720756aab152a6fb593e4270d04c678d24db0e465971fdb45c38e46cd63b"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/Parchwell.Scenarios.Tests.csproj",
+      "size_bytes": 740,
+      "sha256": "7ac927a9bdc297ce416795b2fd941a1317745afe2b8aa567056ec985ba68def1"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioDeclarationTests.cs",
+      "size_bytes": 4875,
+      "sha256": "b8b0764af56af5671344fcfcd7913ce813fc2a4eb8319a7da156b7b60e241f2e"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioDependencyInjectionTests.cs",
+      "size_bytes": 3919,
+      "sha256": "abf07d0b7dea5c0344251ba29349936eb4d3a31d4787d675610377894d0eb333"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioLoaderTests.cs",
+      "size_bytes": 20117,
+      "sha256": "94dc679880d25c4621341790176f6ed7740aea01fedd313e053ce7e9b03aa6da"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioResolutionAndGenerationTests.cs",
+      "size_bytes": 16695,
+      "sha256": "23d5c597b373559d12ebde8fd8cb60d40e213e89c176c12a50f90d63f78fa578"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioTestData.cs",
+      "size_bytes": 4711,
+      "sha256": "3a0f7c107c095c67b6420cf3bdf72eb713e70fc8c62ea4a3d22412e491c2475f"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/ScenarioValidationBoundaryTests.cs",
+      "size_bytes": 4819,
+      "sha256": "969d147cab19645723f7fe4e8518ff861bcd288bd9057baf6d48af406550a500"
+    },
+    {
+      "path": "tests/Parchwell.Scenarios.Tests/packages.lock.json",
+      "size_bytes": 12123,
+      "sha256": "0b067ba9398c49df81d6790517b6cf983449f8803a9dd66dcf23be39a530df38"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs",
+      "size_bytes": 7208,
+      "sha256": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs",
+      "size_bytes": 15673,
+      "sha256": "4b1eba5d3c27dbad51a62a823019bee91ba8a4dd6389c7be6791d01d8c6b5687"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/ComponentRunHarness.cs",
+      "size_bytes": 11212,
+      "sha256": "c48fb021c382bc50ec63657fcce094da986a6235f7923b6a339facf8a57766fa"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/LocalKafkaFixture.cs",
+      "size_bytes": 19204,
+      "sha256": "444bd031be7ff04c880efda642a42c51b2ee862315bb0cc8a12ee4078f78fa14"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/OAuthKafkaFixture.cs",
+      "size_bytes": 5626,
+      "sha256": "ef5d3cdfddfdbe349e0516de9bd9c16de0b9cc69f5a511f04dc26c7b3c144654"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/VerifierOAuthComponentTests.cs",
+      "size_bytes": 9495,
+      "sha256": "33f8aa581fbc3dc253090232e308af689b76ba98be77dcb353820a94f12bb650"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/VerifierOutcomeComponentTests.cs",
+      "size_bytes": 15837,
+      "sha256": "62dff45117b28bbc607f20482e2b34e11895520b8490367d222f2fbc7ec53813"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Component/VerifierWindowComponentTests.cs",
+      "size_bytes": 10390,
+      "sha256": "51e3489c71a5cabc3e2f465eadd9aecfc02b36b52d72ac90941fb6f104ae3827"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs",
+      "size_bytes": 10575,
+      "sha256": "ac657a3c90cd00874fb5caa3ca227a6ac555a20231d3eec01d0ccb021d84dd23"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs",
+      "size_bytes": 2339,
+      "sha256": "9c1d4cd706768c85d7302cc44669903ad30c7ce1a702f217aa38579f295151e5"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/GeneratedValuesCompatibilityTests.cs",
+      "size_bytes": 4354,
+      "sha256": "85beecc3a7ce7610110a069b5acc4ae3f994cd8e6b6504dc8a3756bdc566561a"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs",
+      "size_bytes": 1851,
+      "sha256": "91eaf6af86720fe6c3e97b4596691c08e63a915ffd69785610483167eaedc941"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs",
+      "size_bytes": 7967,
+      "sha256": "54ff8a79873d61ca6a7863872917186da69425e8113c5fc0f9f5d9fbbafb38d9"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs",
+      "size_bytes": 6814,
+      "sha256": "1f1a09fac6f35e863e53460df55eaa74983df2a692bf370584eb2c93c62a21d7"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/VerifierHostTests.cs",
+      "size_bytes": 57667,
+      "sha256": "a93e4712256e9645b64ee53d0bca2b4d4619d1a78b4cf99413e51333d925c326"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs",
+      "size_bytes": 8081,
+      "sha256": "5175e44f68e09e679d293c1deacb1b4747a6bc60019ec2c05e2538b94f3aa8f6"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Host/VerifyRunHandlerTests.cs",
+      "size_bytes": 34319,
+      "sha256": "ff26c156fc4610ad76939b8b704fc0623b0bf70425b43a65795bc0cab137986d"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs",
+      "size_bytes": 11647,
+      "sha256": "f277746364d1f143ab9538d538078785dab0f2bdce0ba72546a699d1f56f9171"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs",
+      "size_bytes": 80291,
+      "sha256": "b5fa5c96ad1f34afb0c0e84461b45e32332b652163e8790a71cec7fad3f5b194"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs",
+      "size_bytes": 26672,
+      "sha256": "1fa73d65386b32656a67e8439373b0e5ffe376aa1fec3ef89c1605d2957c422e"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/BrokerCountTests.cs",
+      "size_bytes": 7600,
+      "sha256": "dfc40cbefb86fff388f8e5783b0aad1ba7168515dac23b5a94427457c4784824"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs",
+      "size_bytes": 27142,
+      "sha256": "72baf4d1a3c553a6643e5ba1167e9f62d11c9d5e091220806239cb9d4bacf6cf"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs",
+      "size_bytes": 21893,
+      "sha256": "9523390ba70369f7473e0ab52373de42d59098655cfa4a791f424d917e08f236"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs",
+      "size_bytes": 5436,
+      "sha256": "3c39dfc578eca2566b53589795f2cc05142353e66e9e28f1889d1e08b472dfab"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs",
+      "size_bytes": 16490,
+      "sha256": "1176af81e3b5156d754b15d873389f77af16cc941776667e4b8f2fb9b9f8665b"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs",
+      "size_bytes": 52795,
+      "sha256": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj",
+      "size_bytes": 939,
+      "sha256": "e293c52fea0ef8b52cf4daa25937ffe1db80550d49447350b0a70d39bb30f32e"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs",
+      "size_bytes": 14631,
+      "sha256": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs",
+      "size_bytes": 28235,
+      "sha256": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs",
+      "size_bytes": 56824,
+      "sha256": "2de1f39811454f6796f3d6504eff3fe4b8293bf781113673dbf837744b0cea0d"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs",
+      "size_bytes": 11663,
+      "sha256": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs",
+      "size_bytes": 13648,
+      "sha256": "7c673447b42a7b2a00fd8dd19507fe025230a993225a9822f3cf217204b2ab65"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Support/ComponentEvidenceBuilder.cs",
+      "size_bytes": 23235,
+      "sha256": "f77b9cf072feffc64408e9420e468cf495a1df7580af330f05f4e604fc55e4bd"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs",
+      "size_bytes": 13631,
+      "sha256": "e4145b91e7cf7dd4d34850dc2d8ba657d9b69f7e1ee7892bce44469790458d5f"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs",
+      "size_bytes": 8204,
+      "sha256": "8bd1908bf0ddd5496b47e885d38defe2fd185c15fd0fb436087dc41f52b9c231"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs",
+      "size_bytes": 12546,
+      "sha256": "d549491d34999d7b6eb793274f1b76e7c41a04db6a39fec0957bfcd9a8225611"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs",
+      "size_bytes": 7015,
+      "sha256": "75ed939ab1713a52fea177e85ef97a40a9c330e9ea110b3f428f2c986166c6c0"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs",
+      "size_bytes": 4486,
+      "sha256": "44538e6c3555cfca6f09f8a4ad8621f606ad3f73af32760b593478f641c144bd"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs",
+      "size_bytes": 7000,
+      "sha256": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs",
+      "size_bytes": 11074,
+      "sha256": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs",
+      "size_bytes": 11735,
+      "sha256": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs",
+      "size_bytes": 17646,
+      "sha256": "e87ae0e7911d27f615ef7661cf589e3360652cdc3d9fcfc3ae99b33810aa3590"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/packages.lock.json",
+      "size_bytes": 28047,
+      "sha256": "efe28c7abc729a03d5af83d09c177bdcd84a4012545f87bce066432f7f7a2fe5"
+    },
+    {
+      "path": "tests/Parchwell.Verifier.Tests/stryker-config.json",
+      "size_bytes": 491,
+      "sha256": "d6b0b494cecd06fccc04af990e43f02c9aafe36e23759804d6628a9156c6361b"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/README.md",
+      "size_bytes": 4074,
+      "sha256": "e5cfd58c10bb65530ebf28f123571877165205fe104cd84afe4a3fd3e7bbab98"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/capabilities.json",
+      "size_bytes": 28731,
+      "sha256": "eee741b47feecbc9bce246e14e77a0b6e7d31b1f3325aa30b8991216dadd93de"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/index.json",
+      "size_bytes": 932,
+      "sha256": "12fee7dfca83b80eda3c8fa0a05c86aeff8e6104724bc72812b938f9d79705ba"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/ledger.jsonl",
+      "size_bytes": 1467,
+      "sha256": "bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/manifest.json",
+      "size_bytes": 1323,
+      "sha256": "c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl",
+      "size_bytes": 1162,
+      "sha256": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2"
+    },
+    {
+      "path": "tests/fixtures/verifier-v1/captured-run/statistics.jsonl",
+      "size_bytes": 3422,
+      "sha256": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
+    },
+    {
+      "path": "tests/terraform/ephemeral/main.tftest.hcl",
+      "size_bytes": 44370,
+      "sha256": "1c19121f3fe020c589a6adb93c1a7df802c9ff6069a0b8115ba82e36739d6771"
+    },
+    {
+      "path": "tests/terraform/fixtures/README.md",
+      "size_bytes": 2478,
+      "sha256": "b29998b2f5db0d41247705b9f066ad30c5aec75e3f9d8991d4c0e11b2d15d705"
+    },
+    {
+      "path": "tests/terraform/persistent/main.tftest.hcl",
+      "size_bytes": 44979,
+      "sha256": "15b4d944995db3d55191525c3638575697cf977417057f61c52d3a9270420603"
+    },
+    {
+      "path": "tests/verification-fixtures/references/Allowed.csproj.fixture",
+      "size_bytes": 332,
+      "sha256": "aeae87b1c6613a4b9c6675cc24ec6e45a10bb4fd89c54e474aa9217b1170aca9"
+    },
+    {
+      "path": "tests/verification-fixtures/references/Forbidden.csproj.fixture",
+      "size_bytes": 337,
+      "sha256": "9ccb3d57de8f1bde09b8376434611cc8cfa6810a29cd7591634fc88b81c77e74"
+    },
+    {
+      "path": "tests/verification-fixtures/references/Parchwell.Enrichment.csproj.fixture",
+      "size_bytes": 194,
+      "sha256": "22a2024c9c3a80f1909858a368db0f2b402d5848cf28f5b83d1efaab5ead3fcd"
+    },
+    {
+      "path": "tests/verification-fixtures/references/Parchwell.Kafka.csproj.fixture",
+      "size_bytes": 194,
+      "sha256": "22a2024c9c3a80f1909858a368db0f2b402d5848cf28f5b83d1efaab5ead3fcd"
+    },
+    {
+      "path": "tests/verification-fixtures/warnings/Allowed.cs.fixture",
+      "size_bytes": 70,
+      "sha256": "5e7470a9aff7c0d4713de0d12c5098fc36c0f5b79da09e2ea37b313b2f4c8ad2"
+    },
+    {
+      "path": "tests/verification-fixtures/warnings/Forbidden.cs.fixture",
+      "size_bytes": 106,
+      "sha256": "dea374148d9722511fe1951447f7e97a02f5cadfbfcb03e4bb248d221da44db2"
+    },
+    {
+      "path": "tests/verification-fixtures/warnings/WarningControl.csproj.fixture",
+      "size_bytes": 291,
+      "sha256": "45a4b9db70a31799ef83282436dcf03084be6388483591396e24deb733027469"
+    }
+  ]
+}

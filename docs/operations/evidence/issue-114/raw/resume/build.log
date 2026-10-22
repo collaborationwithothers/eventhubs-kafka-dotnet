@@ -1,0 +1,19 @@
+  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll
+  Parchwell.Enrichment -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/bin/Release/net10.0/Parchwell.Enrichment.dll
+  Parchwell.Kafka.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll
+  Parchwell.Enrichment.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/bin/Release/net10.0/Parchwell.Enrichment.Tests.dll
+  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll
+  Parchwell.LoadGen -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/bin/Release/net10.0/Parchwell.LoadGen.dll
+  Parchwell.Scenarios.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll
+  Parchwell.Runner -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll
+  Parchwell.LoadGen.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll
+  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll
+  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll
+  Parchwell.ArchitectureTests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll
+  Parchwell.Runner.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.67

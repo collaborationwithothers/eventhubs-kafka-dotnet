@@ -1,0 +1,121 @@
+[
+  {
+    "path": "/workspace/scratch/blob-retry-114/_client_factory.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/_client_factory.py",
+    "bytes": 18657,
+    "sha256": "2f899c31027ff6ea450fa198f05d4bff0aa7cd1dd93a4ac8cdbb8d11b79fd48e",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/blob.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/operations/blob.py",
+    "bytes": 62335,
+    "sha256": "21c829ec2763ab7d8ab43c1d0cf46ca7f094b1adbd6900681e65fdf3b554fee4",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/commands.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/commands.py",
+    "bytes": 63135,
+    "sha256": "f1ec8a294a8a7043362c8fbeaf8e9a0890b32c84b5616822c735a0f943400697",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/requirements.py3.Linux.txt",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/requirements.py3.Linux.txt",
+    "bytes": 3816,
+    "sha256": "79054d3748e8dbfbe3052af25b6490c669e2866f0c65cde8e6d5aa8fa5598375",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/_config.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/_config.py",
+    "bytes": 616,
+    "sha256": "f59320cac474ba6f4367b7c43e3bb9b0158f0bd8e6241f81240ce52cb6126048",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/core-client_factory.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/commands/client_factory.py",
+    "bytes": 13920,
+    "sha256": "b1aaa5fac31ebdc53472cf774f9cc16cc055215384a0b28195659dc4e46108c0",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/_params.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/_params.py",
+    "bytes": 222726,
+    "sha256": "8642d418a71a61ea5a0a20069b7be6b4af5969379ea1fa62ea2137932604b06b",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/core-__init__.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/__init__.py",
+    "bytes": 75452,
+    "sha256": "cc2914826d491eb24ef85fa777ac9d1a3e4429ca383c8ab1f820744ac7f5155c",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/core-policies.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/sdk/policies.py",
+    "bytes": 8048,
+    "sha256": "74da04e97eab80eadd9f4e86faa2a30b984d72f235182ae634913abd2b4d905b",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/cli-_debug.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli-core/azure/cli/core/_debug.py",
+    "bytes": 2123,
+    "sha256": "667a3790b9a0d0afc0fdfa9ccdaf4d160e3a66056095ab957cd5d115bfc1ec58",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/cli-storage-init.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-cli/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/storage/__init__.py",
+    "bytes": 23052,
+    "sha256": "4462452de27eb8746eab1151c1c63189b9a757456c722b0e61bfd15370788c7f",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/azure-cli.tar.gz",
+    "url": "https://codeload.github.com/Azure/azure-cli/tar.gz/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e",
+    "bytes": 181623437,
+    "sha256": "b3647cdd726ce31f9876f130207974421099c59594e1de21c022d4470460291c",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/sdk-_shared-policies.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-python/5eca695d87ce704eabe665ce42c698440521c289/sdk/storage/azure-storage-blob/azure/storage/blob/_shared/policies.py",
+    "bytes": 32462,
+    "sha256": "3c713c1dbf88170f415a5f00602d86fe7ff1f16989db57acca853375edcaf589",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/sdk-_shared-base_client.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-python/5eca695d87ce704eabe665ce42c698440521c289/sdk/storage/azure-storage-blob/azure/storage/blob/_shared/base_client.py",
+    "bytes": 18911,
+    "sha256": "2024fb3b1f4e28785b8c678401bd9ef2ff7c200abc51a4178eaa108f25e10c64",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/sdk-_blob_client.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-python/5eca695d87ce704eabe665ce42c698440521c289/sdk/storage/azure-storage-blob/azure/storage/blob/_blob_client.py",
+    "bytes": 195430,
+    "sha256": "49307e6b03ecfc3016b9db0466d523d95978fede09dbdb78be65b56f5dd61d45",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/sdk-_upload_helpers.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-python/5eca695d87ce704eabe665ce42c698440521c289/sdk/storage/azure-storage-blob/azure/storage/blob/_upload_helpers.py",
+    "bytes": 14688,
+    "sha256": "f99a6acd24fec05756a829bf238a1618b4cc4393746986f7447c5a32f99ff50e",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  },
+  {
+    "path": "/workspace/scratch/blob-retry-114/core-retry.py",
+    "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-python/27bf66d7ecfbf25d8a607467e7cd3123c61e4cc5/sdk/core/azure-core/azure/core/pipeline/policies/_retry.py",
+    "bytes": 25385,
+    "sha256": "23439b098cfd8569dd4ea702097680ad440c5933a04a41075e1fc034005c9967",
+    "producer": "Python urllib.request.urlopen(url).read(); pathlib.Path(path).write_bytes(bytes). SDK files initially fetched by version tag and verified byte-identical against resolved commit."
+  }
+]

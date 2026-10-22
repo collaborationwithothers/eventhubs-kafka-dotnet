@@ -107,3 +107,18 @@ Local tests use the real SDK through its [transport seam][sdk-transport], fake t
 [sdk-transport]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Core_1.60.0/sdk/core/Azure.Core/src/Pipeline/HttpClientTransport.cs#L107-L136
 
 [a01-plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6198834304
+
+## Optional deployment boundary
+
+The [approved A01 deployment plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789) adds optional `PARCHWELL_ADMISSION_FILE` and `PARCHWELL_GENERATED_VALUES_FILE`. With admission enabled, wait before host/native construction for at most 180 seconds, polling each second, for a schema-1 release of at most 65536 bytes. Match run ID, downward-API Pod name/UID, independent broker names and comparison-file hash. Missing/malformed/mismatched/late release fails execution; admission is never permission for a replacement repeat. Deployment input projections may be symlinks; scenario files retain their existing regular-file restrictions.
+
+Use the admitted Pod name for expected/actual instance, Pod name and producer client ID. Compare the LoadGen-context generated version-1 document byte-for-byte with the worker's own resolution before native producer construction, as [the worker engineering rules](../engineering/dotnet.md#kubernetes-workers) require. An absent comparison setting preserves nondeployment callers; a configured missing or different file fails.
+
+For the deployed producer, `/deployment/admission.json` and
+`/deployment/generated-values.yaml` share the same per-run ConfigMap volume.
+Runner publishes the permit and both final comparison documents in one update,
+then requests a Pod annotation refresh as described in
+[the runner contract](a01-runner.md#bounds-and-lifecycle). The worker retains its
+existing deadline, byte bound and immediate rejection of a mismatched hash.
+
+Only successful publication and cleanup emit a bounded normal-completion stdout line prefixed `PARCHWELL_COMPLETION ` with schema version 1, mode, run identity, source commit, handler exit code 0 and `cleanup_completed:true`. Runner acceptance requires actual exit 0, that receipt and all six original index-last publication objects; a lone index or receipt never authorizes verify. See [the runner contract](a01-runner.md).

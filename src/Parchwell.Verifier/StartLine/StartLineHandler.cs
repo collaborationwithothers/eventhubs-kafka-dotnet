@@ -20,6 +20,7 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
         VerifierHostOptions options = configured.Value;
         VerifierKafkaSession? session = null;
         byte[] bytes;
+        byte[]? inventory = null;
         try
         {
             session = sessions.Create(cancellationToken);
@@ -31,6 +32,9 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
                 highs.OrderBy(p => p.Key).Select(p => new PartitionHigh(p.Key, p.Value)).ToArray(),
                 clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture), options.VerifierCommit!,
                 typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString);
+            if (options.BrokerInventoryOutputName is not null)
+                inventory = BrokerInventoryCodec.Write(identity, session.MetadataBrokers!, options.VerifierCommit!,
+                    options.MaxOutputBytes!.Value);
             bytes = StartLineNoteCodec.Write(note, new OutputLimits(options.MaxOutputBytes!.Value,
                 options.MaxDiagnosticsPerCheck!.Value, options.MaxDiagnosticBytes!.Value));
         }
@@ -48,6 +52,11 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
         using var publication = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, publicationDeadline.Token);
         await artifacts.CreateAsync(options.StartLineOutputName!, bytes, publication.Token).ConfigureAwait(false);
         CheckDeadline(publicationOrigin, options.BlobIoTimeout.Value, publication.Token);
+        if (inventory is not null)
+        {
+            await artifacts.CreateAsync(options.BrokerInventoryOutputName!, inventory, publication.Token).ConfigureAwait(false);
+            CheckDeadline(publicationOrigin, options.BlobIoTimeout.Value, publication.Token);
+        }
         return 0;
     }
 

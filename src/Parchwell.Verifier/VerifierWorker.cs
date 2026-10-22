@@ -20,6 +20,7 @@ internal sealed partial class VerifierWorker : BackgroundService
     private readonly IOptions<VerifierHostOptions> _options;
     private readonly IEnumerable<IVerifierModeHandler> _handlers;
     private readonly VerifierExecutionState _executionState;
+    private readonly VerifierCompletionState _completionState;
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<VerifierWorker> _logger;
 
@@ -27,12 +28,14 @@ internal sealed partial class VerifierWorker : BackgroundService
         IOptions<VerifierHostOptions> options,
         IEnumerable<IVerifierModeHandler> handlers,
         VerifierExecutionState executionState,
+        VerifierCompletionState completionState,
         IHostApplicationLifetime applicationLifetime,
         ILogger<VerifierWorker> logger)
     {
         _options = options;
         _handlers = handlers;
         _executionState = executionState;
+        _completionState = completionState;
         _applicationLifetime = applicationLifetime;
         _logger = logger;
     }
@@ -44,6 +47,10 @@ internal sealed partial class VerifierWorker : BackgroundService
             static state => ((VerifierExecutionState)state!).MarkStopped(), _executionState);
         using CancellationTokenRegistration workerStoppingRegistration = stoppingToken.Register(
             static state => ((VerifierExecutionState)state!).MarkStopped(), _executionState);
+        using CancellationTokenRegistration completionHostStop = applicationStopping.Register(
+            static state => ((VerifierCompletionState)state!).MarkStopped(), _completionState);
+        using CancellationTokenRegistration completionWorkerStop = stoppingToken.Register(
+            static state => ((VerifierCompletionState)state!).MarkStopped(), _completionState);
         try
         {
             var configuredMode = _options.Value.Mode;
@@ -53,6 +60,7 @@ internal sealed partial class VerifierWorker : BackgroundService
                 if (handler is not null)
                 {
                     int exitCode = await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
+                    _completionState.MarkReturned(_options.Value, exitCode, stoppingToken, applicationStopping);
                     if (exitCode == 0)
                     {
                         _executionState.MarkSucceeded(stoppingToken, applicationStopping);

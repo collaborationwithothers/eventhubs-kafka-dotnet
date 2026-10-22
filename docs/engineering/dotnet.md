@@ -14,6 +14,7 @@ src/
   Parchwell.LoadGen/          service, vertical slices
   Parchwell.Enrichment/       service, vertical slices
   Parchwell.Verifier/         service, vertical slices; the oracle (protected path)
+  Parchwell.Runner/           bounded A01 orchestration, deployment and evidence export
 tests/
   <Project>.Tests/            one test project per source project
   Parchwell.ArchitectureTests/
@@ -75,3 +76,9 @@ Rules:
 ## What reviewers should not flag
 
 Style the analyzers enforce. Duplication that exists in only two places and is not yet a pattern; extract on the third.
+
+## Kubernetes workers
+
+The [#109 deployment decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313658165) and [registry amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552) own these deployment rules. Use SDK container publishing without Dockerfiles, full source-commit image tags, and recorded immutable digests for deployment. Package regular scenario/profile files; generate each worker's comparison document through the existing resolver and compare every generated profile/Kafka value byte-for-byte before native client construction. Keep the generated contract version unchanged.
+
+Workers use Jobs with `restartPolicy: Never`, `backoffLimit: 0`, one completion and one parallel pod. Preserve scoped workload identities and the declared LoadGen/Verifier node placement. Apply workload-scoped ingress/egress default deny; allow only explicit private endpoint IPs, committed service-tag prefixes and DNS. The DNS peer combines namespace and pod selectors in one peer. [NetworkPolicy semantics](https://kubernetes.io/docs/concepts/services-networking/network-policies/#behavior-of-to-and-from-selectors) define that conjunction. The [A01 runtime contract](../operations/a01-runner.md) owns finite deadlines, admission and receipts; these execution failures do not change scientific verdict rules.

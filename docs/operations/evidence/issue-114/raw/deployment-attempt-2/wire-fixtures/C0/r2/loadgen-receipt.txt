@@ -1,0 +1,1 @@
+PARCHWELL_COMPLETION {"schema_version":1,"mode":"loadgen","identity":{"scenario_id":"A01","configuration_id":"C0","run_id":"rehearsal-c0-r2","instance_id":"rehearsal-c0-r2-pod","expected_instance_id":"rehearsal-c0-r2-pod","client_id":"rehearsal-c0-r2-pod"},"source_commit":"4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55","handler_exit_code":0,"cleanup_completed":true}

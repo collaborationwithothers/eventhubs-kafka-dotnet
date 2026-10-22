@@ -34,6 +34,12 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             case VerifierMode.StartLine:
                 AddKafkaInputs(options, errors, requiredBudgets);
                 RequireText(options.StartLineOutputName, "Verifier:StartLineOutputName", errors);
+                if (options.BrokerInventoryOutputName is not null)
+                {
+                    RequireText(options.BrokerInventoryOutputName, "Verifier:BrokerInventoryOutputName", errors);
+                    if (options.BrokerInventoryOutputName == options.StartLineOutputName)
+                        errors.Add("Broker inventory and start-line output names must differ.");
+                }
                 RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
                 break;
@@ -46,6 +52,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequireText(options.StartLineInputName, "Verifier:StartLineInputName", errors);
                 RequireText(options.ResultOutputName, "Verifier:ResultOutputName", errors);
                 RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
+                ValidateOptionalPath(options.GeneratedValuesFile, "Verifier:GeneratedValuesFile", errors);
                 RequireCollection(options.ExpectedBrokerNames, "Verifier:ExpectedBrokerNames", errors);
                 AddPositive(options.SafetyStop, "Verifier:SafetyStop", errors, requiredBudgets);
                 RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);
@@ -120,6 +127,25 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequirePositive(limits.MaxNestingDepth, "Verifier:ScenarioLoadOptions:MaxNestingDepth", errors);
         RequirePositive(limits.MaxScalarCharacters, "Verifier:ScenarioLoadOptions:MaxScalarCharacters", errors);
         RequirePositive(limits.MaxParserEvents, "Verifier:ScenarioLoadOptions:MaxParserEvents", errors);
+    }
+
+    private static void ValidateOptionalPath(string? value, string name, List<string> errors)
+    {
+        if (value is null) return;
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
+        {
+            errors.Add($"{name} must be a nonblank path without control characters.");
+            return;
+        }
+
+        try
+        {
+            _ = Path.GetFullPath(value);
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or NotSupportedException)
+        {
+            errors.Add($"{name} must be a valid path.");
+        }
     }
 
     /// <summary>

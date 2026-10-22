@@ -121,8 +121,157 @@ override_resource {
   values          = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ContainerRegistry/registries/acrparchwelloffline1", "login_server" = "acrparchwelloffline1.azurecr.io" }
 }
 
+override_resource {
+  target          = module.run_storage.azapi_resource.this
+  override_during = plan
+  values = {
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchrunoffline1"
+    "output" = {
+      "properties" = {
+        "primaryEndpoints" = {
+          "blob" = "https://stparchrunoffline1.blob.core.windows.net/"
+        }
+        "secondaryEndpoints" = {
+
+        }
+        "primaryLocation"   = "uksouth"
+        "secondaryLocation" = null
+      }
+    }
+  }
+}
+
+override_resource {
+  target          = module.run_storage.module.containers["ledger"].azapi_resource.this
+  override_during = plan
+  values = {
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchrunoffline1/blobServices/default/containers/ledger"
+    "output" = {
+
+    }
+  }
+}
+
+override_resource {
+  target          = module.run_storage.module.containers["evidence"].azapi_resource.this
+  override_during = plan
+  values = {
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchrunoffline1/blobServices/default/containers/evidence"
+    "output" = {
+
+    }
+  }
+}
+
+override_resource {
+  target          = module.run_storage.module.private_endpoints["blob"].azapi_resource.this
+  override_during = plan
+  values = {
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/privateEndpoints/pe-run-blob-offline1"
+    "output" = {
+
+    }
+  }
+}
+
+override_resource {
+  target          = module.run_storage.module.private_endpoints["blob"].azapi_resource.private_dns_zone_group[0]
+  override_during = plan
+  values = {
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/privateEndpoints/pe-run-blob-offline1/privateDnsZoneGroups/default"
+    "output" = {
+
+    }
+  }
+}
+
 run "foundation" {
   command = plan
+  assert {
+    condition     = module.run_storage.resource.name == "stparchrunoffline1" && module.run_storage.resource.location == "uksouth" && module.run_storage.resource.parent_id == azurerm_resource_group.persistent.id && module.run_storage.resource.body.kind == "StorageV2" && module.run_storage.resource.body.sku.name == "Standard_LRS" && module.run_storage.resource.body.properties.accessTier == "Hot" && jsonencode(module.run_storage.resource.tags) == jsonencode(local.tags)
+    error_message = "The actual pinned storage module resource must receive persistent naming, region, parent, SKU, tier and tags."
+  }
+  assert {
+    condition     = module.run_storage.resource.body.properties.allowSharedKeyAccess == false && module.run_storage.resource.body.properties.defaultToOAuthAuthentication == true && module.run_storage.resource.body.properties.publicNetworkAccess == "Disabled" && module.run_storage.resource.body.properties.minimumTlsVersion == "TLS1_2" && module.run_storage.resource.body.properties.supportsHttpsTrafficOnly == true && module.run_storage.resource.body.properties.allowBlobPublicAccess == false
+    error_message = "Blob account must retain Entra/private access and HTTPS/TLS restrictions."
+  }
+
+  assert {
+    condition = jsonencode(local.run_storage_config) == jsonencode({
+      "name"      = "stparchrunoffline1"
+      "location"  = "uksouth"
+      "parent_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist"
+      "tags" = {
+        "repo"       = "eventhubs-kafka-dotnet"
+        "layer"      = "persistent"
+        "scenario"   = "shared"
+        "run-id"     = "persistent"
+        "expires-at" = "never"
+      }
+      "enable_telemetry"                = false
+      "account_kind"                    = "StorageV2"
+      "account_sku_name"                = "Standard_LRS"
+      "access_tier"                     = "Hot"
+      "public_network_access_enabled"   = false
+      "shared_access_key_enabled"       = false
+      "default_to_oauth_authentication" = true
+      "allow_nested_items_to_be_public" = false
+      "https_traffic_only_enabled"      = true
+      "min_tls_version"                 = "TLS1_2"
+      "role_assignments" = {
+
+      }
+      "containers" = {
+        "ledger" = {
+          "name"          = "ledger"
+          "public_access" = "None"
+          "role_assignments" = {
+
+          }
+        }
+        "evidence" = { name = "evidence", public_access = "None", role_assignments = {} }
+      }
+      "private_endpoints_manage_dns_zone_group" = true
+      "private_endpoints" = {
+        "blob" = {
+          "name"                          = "pe-run-blob-offline1"
+          "subnet_resource_id"            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-private-endpoints"
+          "subresource_name"              = "blob"
+          "private_dns_zone_resource_ids" = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-privatedns/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"]
+          "tags" = {
+            "repo"       = "eventhubs-kafka-dotnet"
+            "layer"      = "persistent"
+            "scenario"   = "shared"
+            "run-id"     = "persistent"
+            "expires-at" = "never"
+          }
+          "role_assignments" = {
+
+          }
+        }
+      }
+    })
+    error_message = "Storage configuration must retain exactly the private Blob endpoint, nonpublic containers and empty optional role maps."
+  }
+
+  assert {
+    condition     = jsonencode(keys(module.run_storage.private_endpoints)) == jsonencode(["blob"])
+    error_message = "Storage must expose exactly its Blob endpoint."
+  }
+
+  assert {
+    condition = jsonencode(output.run_storage) == jsonencode({
+      id          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchrunoffline1"
+      account_url = "https://stparchrunoffline1.blob.core.windows.net"
+      containers  = { ledger = "ledger", evidence = "evidence" }
+    }) && jsonencode(keys(module.run_storage.containers)) == jsonencode(["evidence", "ledger"])
+    error_message = "Persistent run storage must expose its actual account, exact two containers and HTTPS Blob URL."
+  }
+  assert {
+    condition     = length(module.run_storage.resource.body.properties) > 0 && alltrue([for key, container in local.run_storage_config.containers : container.name == key && container.public_access == "None" && length(container.role_assignments) == 0]) && length(local.run_storage_config.role_assignments) == 0 && length(local.run_storage_config.private_endpoints.blob.role_assignments) == 0
+    error_message = "New run storage creates no identity grants or public containers."
+  }
+
   assert {
     condition     = azurerm_consumption_budget_subscription.monthly.amount == 150 && azurerm_consumption_budget_subscription.monthly.time_grain == "Monthly" && azurerm_consumption_budget_subscription.monthly.time_period[0].start_date == "2026-11-01T00:00:00Z"
     error_message = "Budget must retain its exact amount, period and synthetic start date."

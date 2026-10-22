@@ -1,0 +1,14 @@
+{
+  "source_commit": "d60de515d9404e0563cfe102c2b6a37968f1221f",
+  "source_status": "post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes",
+  "commands": {
+    "run.json": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed",
+    "jobs.json": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558/jobs?per_page=100&page=1\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed",
+    "artifacts.json": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558/artifacts?per_page=100&page=1\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed",
+    "approval-disposition.json": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6336121859 > docs/operations/evidence/issue-114/raw/ci/approval-disposition.json",
+    "security-review.json": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6336426806 > docs/operations/evidence/issue-114/raw/ci/security-review.json",
+    "job-119721772459.log": "tools.mcp__codex_apps__github_fetch_workflow_job_logs({job_id:119721772459,repo_full_name:\"collaborationwithothers/eventhubs-kafka-dotnet\"}); structuredContent.content saved as UTF-8 with BOM and final newline preserved; documented REST GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs; complete decoded job log, not ZIP archive or XML artifact",
+    "check-docs.log": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/ci/check-docs.log 2>&1",
+    "authored-diff-check.log": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/ci/authored-diff-check.log 2>&1"
+  }
+}

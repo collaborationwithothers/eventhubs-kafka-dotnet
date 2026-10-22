@@ -1,0 +1,48 @@
+src/azure-cli-core/azure/cli/core/__init__.py:1010:            # Unknown top-level command on latest should prefer extension-only retry and avoid
+src/azure-cli-core/azure/cli/core/_session.py:20:    be followed by a call to `save_with_retry` or `save`.
+src/azure-cli-core/azure/cli/core/_session.py:57:    def save_with_retry(self, retries=5):
+src/azure-cli-core/azure/cli/core/_session.py:58:        for _ in range(retries - 1):
+src/azure-cli-core/azure/cli/core/_session.py:75:        self.save_with_retry()
+src/azure-cli-core/azure/cli/core/_session.py:79:        self.save_with_retry()
+src/azure-cli-core/azure/cli/core/aaz/_client.py:50:            RetryPolicy, CustomHookPolicy, RedirectPolicy, SansIOHTTPPolicy
+src/azure-cli-core/azure/cli/core/aaz/_client.py:59:        self.retry_policy = kwargs.get('retry_policy') or RetryPolicy(**kwargs)
+src/azure-cli-core/azure/cli/core/aaz/_http_policy.py:29:        # across retries but isn't passed to a transport implementation
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:9:from azure.cli.core.decorators import retry
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:30:    @retry()
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:32:        """Load cache with retry. If it still fails at last, raise the original exception as-is."""
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:37:            # The cache file has not been created. This is expected. No need to retry.
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:46:            # If we still get exception after retry, ignore all types of exceptions and use a new cache.
+src/azure-cli-core/azure/cli/core/auth/binary_cache.py:53:    @retry()
+src/azure-cli-core/azure/cli/core/auth/identity.py:51:    # MSAL HTTP cache for MSAL's tenant discovery, retry-after error cache, etc.
+src/azure-cli-core/azure/cli/core/auth/persistence.py:17:from azure.cli.core.decorators import retry
+src/azure-cli-core/azure/cli/core/auth/persistence.py:64:    @retry()
+src/azure-cli-core/azure/cli/core/commands/arm.py:791:    retry_times = 36
+src/azure-cli-core/azure/cli/core/commands/arm.py:793:    for retry_time in range(0, retry_times):
+src/azure-cli-core/azure/cli/core/commands/arm.py:802:            if retry_time < retry_times and ' does not exist in the directory ' in ex.message:
+src/azure-cli-core/azure/cli/core/commands/arm.py:804:                logger.warning('Retrying role assignment creation: %s/%s', retry_time + 1,
+src/azure-cli-core/azure/cli/core/commands/arm.py:805:                               retry_times)
+src/azure-cli-core/azure/cli/core/decorators.py:90:def retry(retry_times=3, interval=0.5, exceptions=Exception):
+src/azure-cli-core/azure/cli/core/decorators.py:94:    :param retry_times: Times to retry.
+src/azure-cli-core/azure/cli/core/decorators.py:95:    :param interval: Interval between retries.
+src/azure-cli-core/azure/cli/core/decorators.py:101:            for attempt in range(1, retry_times + 1):
+src/azure-cli-core/azure/cli/core/decorators.py:105:                    if attempt < retry_times:
+src/azure-cli-core/azure/cli/core/decorators.py:112:                        raise  # End of retry. Re-raise the exception as-is.
+src/azure-cli-core/azure/cli/core/extension/dynamic_install.py:39:            EXT_CMD_TREE.save_with_retry()
+src/azure-cli-core/azure/cli/core/extension/operations.py:20:from azure.cli.core.util import CLIError, reload_module, rmtree_with_retry
+src/azure-cli-core/azure/cli/core/extension/operations.py:82:    rmtree_with_retry(tmp_dir)
+src/azure-cli-core/azure/cli/core/extension/operations.py:172:        rmtree_with_retry(extension_path)
+src/azure-cli-core/azure/cli/core/extension/operations.py:410:        rmtree_with_retry(ext.path)
+src/azure-cli-core/azure/cli/core/extension/operations.py:458:        rmtree_with_retry(extension_path)
+src/azure-cli-core/azure/cli/core/extension/operations.py:464:            rmtree_with_retry(backup_dir)
+src/azure-cli-core/azure/cli/core/util.py:336:    if not check_connectivity(url=AME_STORAGE_BASE_URL, max_retries=0):
+src/azure-cli-core/azure/cli/core/util.py:937:def check_connectivity(url='https://azure.microsoft.com', max_retries=5, timeout=1):
+src/azure-cli-core/azure/cli/core/util.py:944:            s.mount(url, requests.adapters.HTTPAdapter(max_retries=max_retries))
+src/azure-cli-core/azure/cli/core/util.py:1589:def rmtree_with_retry(path):
+src/azure-cli-core/azure/cli/core/util.py:1591:    # Retry shutil.rmtree several times, but even if it fails after several retries, don't block the command execution.
+src/azure-cli-core/azure/cli/core/util.py:1592:    retry_num = 3
+src/azure-cli-core/azure/cli/core/util.py:1600:            # The folder has already been deleted. No further retry is needed.
+src/azure-cli-core/azure/cli/core/util.py:1604:            if retry_num > 0:
+src/azure-cli-core/azure/cli/core/util.py:1605:                logger.warning("Failed to delete '%s': %s. Retrying ...", path, err)
+src/azure-cli-core/azure/cli/core/util.py:1606:                retry_num -= 1
+src/azure-cli/azure/cli/command_modules/storage/_params.py:278:        c.argument('retry_wait', options_list=('--retry-interval',))
+src/azure-cli/azure/cli/command_modules/storage/operations/logging.py:30:                    and 'Max retries exceeded with url: /?restype=service&comp=properties' in ex.args[0].args[0]:
