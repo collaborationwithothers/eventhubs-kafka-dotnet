@@ -2,6 +2,8 @@
 name: A01 destroy-only sweeper
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 permissions:
   contents: read
   id-token: write
