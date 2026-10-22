@@ -2,8 +2,6 @@
 name: A01 scenario
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * 0"
 permissions:
   contents: read
   id-token: write
