@@ -181,9 +181,11 @@ jobs:
           (out/'runtime.json').write_text(json.dumps(runtime))
           (out/'image-receipts.json').write_text(json.dumps(runtime['images']))
           PYTHON
-      # The federated Azure CLI session holds a one-hour access token and cannot refresh
-      # it, while a phase may run for 9600 seconds. A background loop re-logs in every
-      # 40 minutes with a fresh job ID token. A failed refresh is logged, never fatal.
+      # The federated Azure CLI session holds an access token that Entra issues with a
+      # default lifetime of 60 to 90 minutes and cannot refresh, while a phase may run
+      # for 9600 seconds. A background loop re-logs in every 40 minutes with a fresh job
+      # ID token. A failed refresh is logged, never fatal. The EXIT trap stops the loop
+      # whatever the phase returns, so it cannot run into the export and destroy steps.
       - name: Run phase with durable reservation and guarded cleanup
         id: phase
         shell: bash
@@ -199,10 +201,8 @@ jobs:
             done
           ) &
           refresher=$!
+          trap 'kill "$refresher" 2>/dev/null || true' EXIT
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-          status=$?
-          kill "$refresher" 2>/dev/null || true
-          exit "$status"
       # On cancellation GitHub stops remaining steps after five minutes, so the export
       # is skipped and the generation-checked destroy below runs at once. Evidence from
       # a cancelled run is lost; the environment is not.
@@ -413,9 +413,11 @@ jobs:
                   log.write(receipt); log.flush()
                   assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
           PYTHON
-      # The federated Azure CLI session holds a one-hour access token and cannot refresh
-      # it, while a phase may run for 9600 seconds. A background loop re-logs in every
-      # 40 minutes with a fresh job ID token. A failed refresh is logged, never fatal.
+      # The federated Azure CLI session holds an access token that Entra issues with a
+      # default lifetime of 60 to 90 minutes and cannot refresh, while a phase may run
+      # for 9600 seconds. A background loop re-logs in every 40 minutes with a fresh job
+      # ID token. A failed refresh is logged, never fatal. The EXIT trap stops the loop
+      # whatever the phase returns, so it cannot run into the export and destroy steps.
       - name: Run phase with durable reservation and guarded cleanup
         id: phase
         shell: bash
@@ -431,10 +433,8 @@ jobs:
             done
           ) &
           refresher=$!
+          trap 'kill "$refresher" 2>/dev/null || true' EXIT
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-          status=$?
-          kill "$refresher" 2>/dev/null || true
-          exit "$status"
       # On cancellation GitHub stops remaining steps after five minutes, so the export
       # is skipped and the generation-checked destroy below runs at once. Evidence from
       # a cancelled run is lost; the environment is not.
@@ -633,9 +633,11 @@ jobs:
                   log.write(receipt); log.flush()
                   assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
           PYTHON
-      # The federated Azure CLI session holds a one-hour access token and cannot refresh
-      # it, while a phase may run for 9600 seconds. A background loop re-logs in every
-      # 40 minutes with a fresh job ID token. A failed refresh is logged, never fatal.
+      # The federated Azure CLI session holds an access token that Entra issues with a
+      # default lifetime of 60 to 90 minutes and cannot refresh, while a phase may run
+      # for 9600 seconds. A background loop re-logs in every 40 minutes with a fresh job
+      # ID token. A failed refresh is logged, never fatal. The EXIT trap stops the loop
+      # whatever the phase returns, so it cannot run into the export and destroy steps.
       - name: Run phase with durable reservation and guarded cleanup
         id: phase
         shell: bash
@@ -651,10 +653,8 @@ jobs:
             done
           ) &
           refresher=$!
+          trap 'kill "$refresher" 2>/dev/null || true' EXIT
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-          status=$?
-          kill "$refresher" 2>/dev/null || true
-          exit "$status"
       # On cancellation GitHub stops remaining steps after five minutes, so the export
       # is skipped and the generation-checked destroy below runs at once. Evidence from
       # a cancelled run is lost; the environment is not.
