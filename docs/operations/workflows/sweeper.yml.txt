@@ -14,7 +14,7 @@ jobs:
   sweep:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-sweeper
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -100,5 +100,7 @@ jobs:
         shell: bash
         run: |
           timeout 1500 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1
-      # All recovery evidence remains private. A failed lock/export/cleanup is retried
-      # by the next scheduled sweep, with fresh generation checks and no reset.
+      # All recovery evidence remains private. A failed lock or a failed destroy is
+      # retried by the next scheduled sweep with fresh generation checks and no reset.
+      # A failed export followed by a successful destroy is final: the source data is
+      # gone, the destroy receipt is complete, and no later sweep retries the export.

@@ -2,8 +2,6 @@
 name: A01 scenario
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * 0"
 permissions:
   contents: read
   id-token: write
@@ -14,7 +12,7 @@ jobs:
   probe:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     outputs:
       full_allowed: ${{ steps.gate.outputs.full_allowed }}
       loadgen_digest: ${{ steps.images.outputs.loadgen_digest }}
@@ -188,8 +186,11 @@ jobs:
         shell: bash
         run: |
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-      - name: Always export available private evidence
-        if: always() && steps.prepare.outcome == 'success'
+      # On cancellation GitHub stops remaining steps after five minutes, so the export
+      # is skipped and the generation-checked destroy below runs at once. Evidence from
+      # a cancelled run is lost; the environment is not.
+      - name: Export available private evidence unless the run was cancelled
+        if: always() && !cancelled() && steps.prepare.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
@@ -210,8 +211,14 @@ jobs:
           allowed=receipt.get('outcome')=='pass'
           with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('full_allowed='+str(allowed).lower()+'\n')
           PYTHON
+      - name: Check whether a public candidate was written
+        id: candidate
+        if: always() && steps.prepare.outcome == 'success'
+        shell: bash
+        run: |
+          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
       - name: Upload only the allowlisted public candidate
-        if: success()
+        if: always() && steps.candidate.outputs.exists == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: a01-${{ env.A01_PHASE }}-candidate
@@ -222,7 +229,7 @@ jobs:
     if: needs.probe.outputs.full_allowed == 'true'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -394,8 +401,11 @@ jobs:
         shell: bash
         run: |
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-      - name: Always export available private evidence
-        if: always() && steps.prepare.outcome == 'success'
+      # On cancellation GitHub stops remaining steps after five minutes, so the export
+      # is skipped and the generation-checked destroy below runs at once. Evidence from
+      # a cancelled run is lost; the environment is not.
+      - name: Export available private evidence unless the run was cancelled
+        if: always() && !cancelled() && steps.prepare.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
@@ -404,8 +414,14 @@ jobs:
         shell: bash
         run: |
           timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+      - name: Check whether a public candidate was written
+        id: candidate
+        if: always() && steps.prepare.outcome == 'success'
+        shell: bash
+        run: |
+          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
       - name: Upload only the allowlisted public candidate
-        if: success()
+        if: always() && steps.candidate.outputs.exists == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: a01-${{ env.A01_PHASE }}-candidate
@@ -416,7 +432,7 @@ jobs:
     if: needs.probe.outputs.full_allowed == 'true' && needs['full-C0'].result == 'success'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -588,8 +604,11 @@ jobs:
         shell: bash
         run: |
           timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
-      - name: Always export available private evidence
-        if: always() && steps.prepare.outcome == 'success'
+      # On cancellation GitHub stops remaining steps after five minutes, so the export
+      # is skipped and the generation-checked destroy below runs at once. Evidence from
+      # a cancelled run is lost; the environment is not.
+      - name: Export available private evidence unless the run was cancelled
+        if: always() && !cancelled() && steps.prepare.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
@@ -598,8 +617,14 @@ jobs:
         shell: bash
         run: |
           timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+      - name: Check whether a public candidate was written
+        id: candidate
+        if: always() && steps.prepare.outcome == 'success'
+        shell: bash
+        run: |
+          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
       - name: Upload only the allowlisted public candidate
-        if: success()
+        if: always() && steps.candidate.outputs.exists == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: a01-${{ env.A01_PHASE }}-candidate
