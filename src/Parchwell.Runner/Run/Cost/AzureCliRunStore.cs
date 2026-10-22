@@ -5,7 +5,10 @@ using Parchwell.Runner.Run.Contracts;
 
 namespace Parchwell.Runner.Run.Cost;
 
-/// <summary>Existing OIDC login only; conditional Blob operations never obtain keys or retry writes.</summary>
+/// <summary>
+/// Uses the existing OIDC login for conditional Blob operations without key lookup or Runner-initiated write retries.
+/// Azure CLI's SDK may retry conditional requests within the process deadline.
+/// </summary>
 public sealed partial class AzureCliRunStore : IArtifactStore
 {
     private static readonly string[] BlobCommand = ["storage", "blob"];

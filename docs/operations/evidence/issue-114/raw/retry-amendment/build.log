@@ -1,0 +1,29 @@
+  Parchwell.Enrichment -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/bin/Release/net10.0/Parchwell.Enrichment.dll
+  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll
+  Parchwell.Enrichment.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/bin/Release/net10.0/Parchwell.Enrichment.Tests.dll
+  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll
+  Parchwell.Kafka.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll
+  Parchwell.LoadGen -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/bin/Release/net10.0/Parchwell.LoadGen.dll
+  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll
+  Parchwell.Scenarios.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll
+  Parchwell.LoadGen.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll
+  Parchwell.Runner -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(110,31): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(110,60): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(136,22): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(112,22): error xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(137,9): error xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+  Parchwell.ArchitectureTests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/bin/Release/net10.0/Parchwell.ArchitectureTests.dll
+  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll
+
+Build FAILED.
+
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(110,31): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(110,60): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(136,22): error CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(112,22): error xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Cost/AzureCliRunStoreTests.cs(137,9): error xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj]
+    0 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:37.07

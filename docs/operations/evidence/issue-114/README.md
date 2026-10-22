@@ -14,8 +14,11 @@ The [twelfth review](cold-review-12.md) also identified a required-plan
 incompatibility: the mandated CLI inherits SDK write retries without a verified
 disable control. The [source investigation](blob-retry-investigation.md) and
 [narrow amendment proposal](retry-amendment-proposal.md) make that decision
-reviewable. This P1 remains valid and unresolved; no ordinary push or PR has
-been made, and no PR CI or external Codex review is claimed.
+reviewable. Hari adopted that narrow amendment in
+[decision 6336034219](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219).
+The original P1 remains correct for the earlier contract; the amended contract
+permits SDK retries inside the same deadlines while preserving conflict-stop.
+Required PR CI and external Codex review remain pending.
 
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
@@ -25,9 +28,9 @@ been made, and no PR CI or external Codex review is claimed.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-[Release build](raw/review-11-fixes/build.log) has zero warnings and errors;
-all 1001 Runner tests pass in
-[the current local test report](raw/review-9-fixes/runner-tests-attempt-2.xml).
+[Release build](raw/retry-amendment/build-attempt-2.log) has zero warnings and errors;
+the prior full local Runner report records 1001 passing tests in
+[the ninth-review report](raw/review-9-fixes/runner-tests-attempt-2.xml).
 The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
 passing startup and compatibility tests. The
 [rehearsal summary](raw/review-9-fixes/rehearsal-summary.json) and
@@ -148,6 +151,18 @@ The [store test report](raw/review-12-blocker/store-tests.xml) records 28 passin
 existing CLI-boundary and ledger cases. They confirm application calls,
 conflict-stop and uncertain-byte readback; fake processes do not exercise or
 disable SDK retries and do not resolve the finding.
+After the approved amendment, all 30 store and ledger cases pass in
+[the retained report](raw/retry-amendment/store-tests.xml), including two new
+synthetic committed-upload/CLI-412 cases against the rebuilt assemblies.
+They use the real CLI adapter and ledger with a fake process, preserve the
+conditional arguments/deadlines, and require conflict-stop with no returned
+transition, readback or reinvocation. An explicit later read can observe the
+committed bytes; this does not turn the failed transition into returned success.
+They do not execute SDK HTTP retries. The new
+[source inventory](raw/retry-amendment/repository-inputs-before-build-2.json)
+hashes inputs before the passing build. Its first attempt caught analyzer
+requirements for constant arrays and the assertion predicate overload; those
+were corrected with the assertions unchanged, and the original output remains.
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the

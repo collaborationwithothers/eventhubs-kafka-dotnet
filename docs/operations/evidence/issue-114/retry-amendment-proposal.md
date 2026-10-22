@@ -1,5 +1,10 @@
 # Proposed clarification of the Blob retry contract
 
+Hari adopted the recommended narrow amendment in
+[decision 6336034219](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219).
+That recognized decision supplies implementation authority; the original
+proposal below is retained as its reviewable input.
+
 The required Azure CLI interface inherits SDK write retries and exposes no
 verified retry-disable control at the pinned source. This proposal resolves
 that incompatibility while retaining the existing conditional-write protocol.

@@ -2647,6 +2647,60 @@
       "sha256": "d1269ed4106983424cebec72b9d98fb840f6c2ae001ebe06f9853488c9bbabae"
     },
     {
+      "path": "raw/retry-amendment/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/retry-amendment/authored-diff-check.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/retry-amendment/build-attempt-2.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/retry-amendment/build-attempt-2.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 1819,
+      "sha256": "4ed6b6b5e1ab0a36a7431c6dfe118d9d3bbeb6533a4f7f0b547197a102f8ecc8"
+    },
+    {
+      "path": "raw/retry-amendment/build.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/retry-amendment/build.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 5903,
+      "sha256": "1bd91d029595a9daa3f1e5b1e940200eab51e894100637069fee69dd9a3372df"
+    },
+    {
+      "path": "raw/retry-amendment/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/retry-amendment/check-docs.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 9646,
+      "sha256": "edab563a153bb4536d875420f12576f92825b1d3660e3dee1c6cbe269c5772c5"
+    },
+    {
+      "path": "raw/retry-amendment/decision.json",
+      "producer": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6336034219 > docs/operations/evidence/issue-114/raw/retry-amendment/decision.json [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 5399,
+      "sha256": "6101f08751c1162f729e241882843bbe7187a6ff15220bf8e82abafb32e40f9b"
+    },
+    {
+      "path": "raw/retry-amendment/repository-inputs-before-build-2.json",
+      "producer": "timeout 180 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/retry-amendment'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty approved retry-amendment worktree before build attempt 2','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs-before-build-2.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 103264,
+      "sha256": "afad2e4bcb8e788e56ac99b0578fc95d6eb1dbafa341b25c0e089b0fc0183bb9"
+    },
+    {
+      "path": "raw/retry-amendment/repository-inputs.json",
+      "producer": "timeout 180 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/retry-amendment'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty approved retry-amendment worktree before build','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 103254,
+      "sha256": "3d8176f0113ac74f7dcf567433ba90c3c8312365bd7125202420c840e9ca7198"
+    },
+    {
+      "path": "raw/retry-amendment/store-tests.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Cost.AzureCliRunStoreTests -class Parchwell.Runner.Tests.Cost.PhaseReservationTests -result-xml docs/operations/evidence/issue-114/raw/retry-amendment/store-tests.xml > docs/operations/evidence/issue-114/raw/retry-amendment/store-tests.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 425,
+      "sha256": "038d416c7c5f490943bcacdfa868882bbe37893ef2d721d58cfed11a08d17889"
+    },
+    {
+      "path": "raw/retry-amendment/store-tests.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Cost.AzureCliRunStoreTests -class Parchwell.Runner.Tests.Cost.PhaseReservationTests -result-xml docs/operations/evidence/issue-114/raw/retry-amendment/store-tests.xml > docs/operations/evidence/issue-114/raw/retry-amendment/store-tests.log 2>&1 [source 831e171d688870abc7b393f9e652dc9b84e1c603; dirty user-approved retry-amendment worktree; local build/finite store-ledger fixtures, not live SDK retries or exact-head PR CI]",
+      "size_bytes": 20285,
+      "sha256": "68f535cc9f15cab810197238643d5c69702ae92b3e35ec3f9ee0cf394940af8f"
+    },
+    {
       "path": "raw/review-10-fixes/authored-diff-check.log",
       "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-10-fixes/authored-diff-check.log 2>&1 [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
       "size_bytes": 0,

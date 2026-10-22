@@ -60,9 +60,13 @@ The [twelfth review](cold-review-12.md) found that one `az storage blob upload`
 invocation can retry its conditional HTTP write inside the SDK. The
 [independent source investigation](blob-retry-investigation.md) confirms that
 the exact pinned CLI has no verified retry-disable control. This conflicts with
-the selected plan's explicit no-write-retry requirement. The P1 is valid and
-unresolved; the [amendment proposal](retry-amendment-proposal.md) has no authority
-until Hari records a recognized decision. No substitute credential, unsupported
+the selected plan's original explicit no-write-retry requirement. The original
+P1 is valid. Hari adopted the [amendment proposal](retry-amendment-proposal.md)
+in [decision 6336034219](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219):
+Runner does not reinvoke writes; the CLI may retain internal conditional-request
+retries inside the same deadlines. CLI conflicts still stop advancement even
+when bytes may already have committed. Other uncertain outcomes retain the
+same bounded readback. No substitute credential, unsupported
 flag/environment setting or new transport is implemented. The citation P2 is
 corrected to the actual pinned CLI extension source path.
 
@@ -94,9 +98,10 @@ substantive findings for churn; these further trips pass under decision
 
 Round 12 revisited execution/evidence with the CLI SDK-retry P1 and reiterated
 the same disputed sweeper P0. This further churn trip passes under decision
-`6333713470`; that override does not resolve the valid retry-contract finding.
-An ordinary push and PR remain blocked by that P1, independently of the
-already-disclosed sweeper dispute.
+`6333713470`; that override did not resolve the valid retry-contract finding.
+The separate retry decision supplies its narrow contract amendment. A fresh
+cold review remains required before an ordinary push. The sweeper P0 remains
+disputed and outside the approval-only exception.
 
 The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md), [ninth](cold-review-9.md) [tenth](cold-review-10.md) and [eleventh](cold-review-11.md) reports retain their original findings and reviewed source identities.
 
@@ -125,3 +130,9 @@ Eleventh-review fixes start from `d8b43a88729a74746a29d98fda1521b1407ea780`.
 Their local build and targeted host tests belong under `raw/review-11-fixes/`,
 with exact commands in `review-11-producers.json` and a fresh source inventory.
 The required PR workflow remains separate.
+
+The approved retry amendment starts from
+`831e171d688870abc7b393f9e652dc9b84e1c603`. Local evidence belongs under
+`raw/retry-amendment/`, including the original decision response, input hashes,
+build attempts and the store/ledger regression report. Exact commands are in
+`retry-amendment-producers.json`; no live SDK failure injection is claimed.

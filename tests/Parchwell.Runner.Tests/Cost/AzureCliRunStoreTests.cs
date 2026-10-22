@@ -1,4 +1,5 @@
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
+using System.Text.Json;
 using Xunit;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Cost;
@@ -7,6 +8,10 @@ namespace Parchwell.Runner.Tests.Cost;
 
 public sealed class AzureCliRunStoreTests
 {
+    private static readonly string[] CreateConflictCommands = ["show", "upload"];
+    private static readonly string[] UpdateConflictCommands = ["show", "download", "upload"];
+    private static readonly string[] ExplicitReadCommands = ["show", "download"];
+
     [Fact]
     public async Task Given_Read_When_Downloaded_Then_UsesPropertyEtagAndExplicitEntraLogin()
     {
@@ -48,6 +53,95 @@ public sealed class AzureCliRunStoreTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_SyntheticCommittedWriteWithCli412_When_LedgerTransitions_Then_StopsWithoutReadbackOrReinvocation(bool create)
+    {
+        const string sourceCommit = "1111111111111111111111111111111111111111";
+        const string initialETag = "synthetic-etag-before";
+        var clock = new DeadlineRecordingClock();
+        var process = new RecordingProcess();
+        var store = new AzureCliRunStore(process, "https://stexample.blob.core.windows.net", Path.GetTempPath(), clock);
+        var ledger = new RunLedger(store, clock);
+        var input = PhaseReservationTests.Input();
+        byte[]? committedBytes = null;
+        byte[]? uploadedBytes = null;
+        string currentETag = initialETag;
+        bool returnConflict = create;
+        process.Handler = request =>
+        {
+            var arguments = request.Arguments.ToList();
+            switch (arguments[2])
+            {
+                case "show":
+                    return committedBytes is null ? new(1, "", "BlobNotFound") :
+                        new(0, JsonSerializer.Serialize(new { properties = new { etag = currentETag, contentLength = committedBytes.Length } }), "");
+                case "download":
+                    Assert.NotNull(committedBytes);
+                    Assert.Equal(currentETag, arguments[arguments.IndexOf("--if-match") + 1]);
+                    File.WriteAllBytes(arguments[arguments.IndexOf("--file") + 1], committedBytes);
+                    return new(0, "", "");
+                case "upload":
+                    uploadedBytes = File.ReadAllBytes(arguments[arguments.IndexOf("--file") + 1]);
+                    committedBytes = uploadedBytes.ToArray();
+                    // Synthetic CLI outcome: committed bytes followed by 412. This fake does not execute SDK HTTP retries.
+                    currentETag = returnConflict ? "synthetic-etag-after-conflict" : initialETag;
+                    return returnConflict ? new(1, "", "ConditionNotMet (412)") : new(0, "", "");
+                default:
+                    throw new InvalidOperationException("unexpected_synthetic_blob_command");
+            }
+        };
+        if (!create)
+        {
+            await ledger.InitializeAsync(input, sourceCommit, true, true, TestContext.Current.CancellationToken);
+            process.Requests.Clear();
+            clock.DueTimes.Clear();
+            returnConflict = true;
+        }
+
+        LedgerDocument? returned = null;
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            returned = create
+                ? await ledger.InitializeAsync(input, sourceCommit, true, true, TestContext.Current.CancellationToken)
+                : await ledger.ReserveAsync("probe", "synthetic-env", input, TestContext.Current.CancellationToken);
+        });
+
+        Assert.Equal("ledger_etag_conflict", error.Message);
+        Assert.Null(returned);
+        Assert.NotNull(uploadedBytes);
+        Assert.Equal(uploadedBytes, committedBytes);
+        Assert.Equal(create ? CreateConflictCommands : UpdateConflictCommands,
+            process.Requests.Select(request => request.Arguments[2]));
+        var upload = Assert.Single(process.Requests, request => request.Arguments.Contains("upload"));
+        var uploadArguments = upload.Arguments.ToList();
+        Assert.Equal(create ? "*" : initialETag, uploadArguments[uploadArguments.IndexOf(create ? "--if-none-match" : "--if-match") + 1]);
+        Assert.Equal(create ? "false" : "true", uploadArguments[uploadArguments.IndexOf("--overwrite") + 1]);
+        Assert.DoesNotContain(create ? "--if-match" : "--if-none-match", uploadArguments);
+        Assert.All(process.Requests, request =>
+        {
+            Assert.Equal("az", request.FileName);
+            Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout);
+            var arguments = request.Arguments.ToList();
+            Assert.Equal("ledger", arguments[arguments.IndexOf("--container-name") + 1]);
+            Assert.Equal(RunLedger.BlobPath, arguments[arguments.IndexOf("--name") + 1]);
+            Assert.Equal("login", arguments[arguments.IndexOf("--auth-mode") + 1]);
+        });
+        Assert.Equal(3, clock.DueTimes.Count);
+        Assert.All(clock.DueTimes, dueTime => Assert.Equal(TimeSpan.FromSeconds(180), dueTime));
+
+        // A later explicit read can observe the committed state without treating the failed transition as returned success.
+        var observed = await ledger.ReadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(uploadedBytes, JsonSerializer.SerializeToUtf8Bytes(observed, LedgerJson.Options));
+        Assert.Equal(create ? 0 : 1, observed.Revision);
+        Assert.Equal(create ? "not_started" : "reserved", observed.Phases["probe"].State);
+        Assert.Equal(create ? null : "synthetic-env", observed.Phases["probe"].EnvironmentRunId);
+        Assert.Equal(create ? 4 : 5, process.Requests.Count);
+        Assert.Equal(ExplicitReadCommands, process.Requests.TakeLast(2).Select(request => request.Arguments[2]));
+        Assert.Single(process.Requests, request => request.Arguments.Contains("upload"));
+    }
+
+    [Theory]
     [InlineData("https://stexample.blob.core.windows.net/?sig=private")]
     [InlineData("http://stexample.blob.core.windows.net")]
     [InlineData("https://stexample.blob.core.windows.net.attacker.invalid")]
@@ -81,6 +175,16 @@ public sealed class AzureCliRunStoreTests
         {
             Requests.Add(request);
             return Task.FromResult(Handler(request));
+        }
+    }
+
+    private sealed class DeadlineRecordingClock : TimeProvider
+    {
+        public List<TimeSpan> DueTimes { get; } = [];
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            DueTimes.Add(dueTime);
+            return base.CreateTimer(callback, state, dueTime, period);
         }
     }
 }
