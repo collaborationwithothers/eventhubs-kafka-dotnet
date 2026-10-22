@@ -89,6 +89,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
+              private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
@@ -275,6 +276,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
+              private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
@@ -343,6 +345,15 @@ jobs:
               digest=os.environ[worker.upper()+'_DIGEST']; assert re.fullmatch('sha256:[0-9a-f]{64}',digest)
               runtime.setdefault('images',{})[worker]={'source_commit':runtime['source_commit'],'digest':digest}
           path.write_text(json.dumps(runtime))
+          (path.parent/'image-receipts.json').write_text(json.dumps(runtime['images']))
+          # Retain each exact registry response privately and reject a changed probe digest.
+          acr=runtime['persistent_outputs']['acr']; acr=acr.get('value',acr)
+          assert re.fullmatch('[a-z0-9]+',acr['name'])
+          with (path.parent/'image-reference-readback.log').open('wb') as log:
+              for worker in ['loadgen','verifier']:
+                  receipt=__import__('subprocess').check_output(['timeout','60','az','acr','repository','show','--name',acr['name'],'--image',f"parchwell/{worker}:{runtime['source_commit']}",'--output','json'],stderr=log)
+                  log.write(receipt); log.flush()
+                  assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
           PYTHON
       - name: Run phase with durable reservation and guarded cleanup
         id: phase
@@ -442,6 +453,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
+              private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
@@ -510,6 +522,15 @@ jobs:
               digest=os.environ[worker.upper()+'_DIGEST']; assert re.fullmatch('sha256:[0-9a-f]{64}',digest)
               runtime.setdefault('images',{})[worker]={'source_commit':runtime['source_commit'],'digest':digest}
           path.write_text(json.dumps(runtime))
+          (path.parent/'image-receipts.json').write_text(json.dumps(runtime['images']))
+          # Retain each exact registry response privately and reject a changed probe digest.
+          acr=runtime['persistent_outputs']['acr']; acr=acr.get('value',acr)
+          assert re.fullmatch('[a-z0-9]+',acr['name'])
+          with (path.parent/'image-reference-readback.log').open('wb') as log:
+              for worker in ['loadgen','verifier']:
+                  receipt=__import__('subprocess').check_output(['timeout','60','az','acr','repository','show','--name',acr['name'],'--image',f"parchwell/{worker}:{runtime['source_commit']}",'--output','json'],stderr=log)
+                  log.write(receipt); log.flush()
+                  assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
           PYTHON
       - name: Run phase with durable reservation and guarded cleanup
         id: phase

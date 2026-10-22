@@ -98,6 +98,8 @@ public sealed class RehearsalCluster(WireFixtures fixtures, string? failure = nu
     }
     public Task<WorkerExecution> VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList<string> brokers, CancellationToken cancellationToken)
     { Step("verify", cancellationToken); return Task.FromResult(new WorkerExecution(Receipt(context, "verify", 1), fixtures.Get((context.Phase == "probe" && probeVariant != "pass" ? "probe-" + probeVariant + "/r" + context.Ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/" : Prefix(context)) + "result.json"))); }
+    public Task PreserveAvailableArtifactsAsync(RepeatContext context, CancellationToken cancellationToken)
+    { Step("failure_artifacts", cancellationToken); return Task.CompletedTask; }
     public Task CompleteProducerWatchAsync(RepeatContext context, PodAdmission admission, CancellationToken cancellationToken)
     { Step("watch_complete", cancellationToken); _ = admission.Producer; return Task.CompletedTask; }
     private ProcessResult Receipt(RepeatContext context, string mode, int exit) => new(exit, Encoding.UTF8.GetString(fixtures.Get(Prefix(context) + mode + "-receipt.txt")), "");

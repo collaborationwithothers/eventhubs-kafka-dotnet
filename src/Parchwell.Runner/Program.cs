@@ -34,7 +34,8 @@ internal static class Program
                 using ServiceProvider rehearsal = rehearsalServices.BuildServiceProvider();
                 return await rehearsal.GetRequiredService<RehearsalRunner>().ExecuteAsync(Required(options, "--fixtures"), output, cancellation.Token).ConfigureAwait(false);
             }
-            using JsonDocument runtimeDocument = await ReadDocumentAsync(Required(options, "--input"), cancellation.Token).ConfigureAwait(false);
+            byte[] runtimeBytes = await PrivateProvenanceCollector.ReadBoundedAsync(Required(options, "--input"), PrivateProvenanceCollector.MaxDocumentBytes, cancellation.Token).ConfigureAwait(false);
+            using JsonDocument runtimeDocument = JsonDocument.Parse(runtimeBytes, new JsonDocumentOptions { MaxDepth = 32 });
             JsonElement runtime = runtimeDocument.RootElement;
             string commit = WorkerIdentity.Text(runtime, "source_commit");
             if (commit != WireFixtures.BuiltSourceCommit()) throw new InvalidDataException("approved_source_commit_mismatch");
@@ -99,7 +100,9 @@ internal static class Program
             switch (args[0])
             {
                 case "phase":
-                    CostInput cost = PhaseReservation.Read(await File.ReadAllBytesAsync(WorkerIdentity.Text(runtime, "cost_file"), cancellation.Token).ConfigureAwait(false));
+                    PrivateProvenanceCapture provenance = await PrivateProvenanceCollector.CollectAsync(runtime, runtimeBytes, output, cancellation.Token).ConfigureAwait(false);
+                    if (!provenance.Complete) throw new InvalidDataException("private_provenance_incomplete");
+                    CostInput cost = PhaseReservation.Read(provenance.CostBytes!);
                     PhaseExecution executed = await provider.GetRequiredService<PhaseExecutor>().ExecuteAsync(new(phase, env, commit, output, cost,
                         runtime.GetProperty("initialize_ledger").GetBoolean()), cancellation.Token).ConfigureAwait(false);
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
@@ -133,9 +136,10 @@ internal static class Program
                     exit = 0;
                     break;
                 case "export":
-                    await ExportAsync(ledger, provider.GetRequiredService<EvidenceExporter>(), phase, env, output, cancellation.Token).ConfigureAwait(false);
+                    bool complete = await ExportAsync(ledger, provider.GetRequiredService<EvidenceExporter>(),
+                        provider.GetRequiredService<TimeProvider>(), runtime, runtimeBytes, phase, env, output, cancellation.Token).ConfigureAwait(false);
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
-                    exit = 0;
+                    exit = complete ? 0 : 1;
                     break;
                 case "destroy":
                     await DestroyAsync(ledger, terraform, provider.GetRequiredService<GenerationGuard>(), provider.GetRequiredService<EvidenceExporter>(),
@@ -158,15 +162,15 @@ internal static class Program
         }
     }
 
-    private static async Task ExportAsync(RunLedger ledger, EvidenceExporter exporter, string phase, string env, string output, CancellationToken token)
+    private static async Task<bool> ExportAsync(RunLedger ledger, EvidenceExporter exporter,
+        TimeProvider clock, JsonElement runtime, byte[] runtimeBytes, string phase, string env, string output, CancellationToken token)
     {
         PhaseRecord record = (await ledger.ReadAsync(token).ConfigureAwait(false)).Phases[phase];
         if (record.EnvironmentRunId != env) throw new InvalidDataException("export_generation_mismatch");
-        if (record.PrivateExport?.Complete == true) return;
-        EvidenceFile[] files = Directory.EnumerateFiles(output, "*", SearchOption.AllDirectories).Where(path => !Path.GetRelativePath(output, path).StartsWith("private-store/", StringComparison.Ordinal))
-            .Take(257).Select(path => new EvidenceFile(Path.GetRelativePath(output, path).Replace('\\', '/'), path)).ToArray();
-        PrivateExportReceipt receipt = await exporter.ExportAsync(env, files, token).ConfigureAwait(false);
+        if (record.PrivateExport?.Complete == true) return true;
+        PrivateExportReceipt receipt = await PrivateProvenanceCollector.ExportAvailableAsync(runtime, runtimeBytes, output, env, exporter, clock, token).ConfigureAwait(false);
         await ledger.MarkExportedAsync(phase, env, receipt, token).ConfigureAwait(false);
+        return receipt.Complete;
     }
 
     private static async Task ReconcileAvailableCostAsync(JsonElement runtime, string phase, ActualCostReconciler reconciler, CancellationToken token)

@@ -5,11 +5,11 @@ issue #114. The implementation follows the checked Revision 2 plan. Deployment
 acceptance remains incomplete because the environment blocks required downloads;
 the raw files here are synthetic fixtures and tool results, not live results.
 
-This is unaccepted work in progress. The [second cold review](cold-review-2.md)
-found evidence-retention defects in normal worker failure and workflow provenance
-export. They remain unfixed because the execution/evidence component received P1
-findings in both cold-review rounds, triggering AGENTS.md's mandatory churn
-handoff. No pull request, required CI run or clean reviewed head exists.
+The [continuation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6333713470)
+lifts the earlier cold-review churn stop without another split. The
+[resumption record](resume-status.md) describes the normal-failure artifact and
+workflow provenance fixes, along with the required override trip record.
+Deployment acceptance and the required PR workflow evidence remain incomplete.
 
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
@@ -19,10 +19,10 @@ handoff. No pull request, required CI run or clean reviewed head exists.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-Release build has zero warnings and errors; all 177 Runner tests pass in
-[the current local test report](raw/local/round2-runner-tests.xml). The
-[rehearsal summary](raw/local/round2-rehearsal-summary.json) and
-[case traces](raw/local/round2-rehearsal-cases.json) retain the synthetic phase and
+Release build has zero warnings and errors; all 204 Runner tests pass in
+[the current local test report](raw/resume/runner-tests.xml). The
+[rehearsal summary](raw/resume/rehearsal-summary.json) and
+[case traces](raw/resume/rehearsal-cases.json) retain the synthetic phase and
 failure-path checks. Required
 verification from the existing pull-request workflow is pending; no local run
 substitutes for that evidence.
@@ -49,14 +49,17 @@ raw bytes are retained unchanged and hashed rather than reformatted.
 of every retained raw file. Evidence produced before the implementation commit
 is identified as a dirty worktree based on the recorded source revision, with
 input hashes where supplied. It does not claim a reviewed head commit.
+The resumed checks retain a [repository input inventory](raw/resume/repository-inputs-pre-validation.json)
+captured before validation; it hashes repository inputs outside the evidence
+directory and does not stand in for PR CI.
 The earlier chart and deployment captures have no contemporaneous dirty-input
 hashes. The post-execution source inventory cannot establish their historical
 source bytes; the raw manifest retains their exact producer commands.
 
 The [first cold-review report and dispositions](cold-review-1.md) are retained.
-The second report records the remaining findings and the required handoff.
-The required workflow run ID and tested commit have not been produced because
-the handoff occurred before a pull request could be opened.
+The second report records the findings and historical handoff before the
+continuation decision. Subsequent cold-review results belong to the PR
+self-review. The required workflow run ID and tested commit are pending PR CI.
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the

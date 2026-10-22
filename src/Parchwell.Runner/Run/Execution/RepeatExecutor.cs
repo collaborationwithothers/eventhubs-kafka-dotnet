@@ -10,6 +10,8 @@ public sealed record RepeatExecution(WorkerIdentity Identity, AcceptedWorkerOutc
 
 public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, ExecutionBudgets? budgets = null)
 {
+    private readonly Dictionary<string, PodAdmission> admissions = new(StringComparer.Ordinal);
+
     public Task PreflightAsync(System.Text.Json.JsonElement outputs, CancellationToken cancellationToken) => cluster.PreflightAsync(outputs, cancellationToken);
 
     public async Task<RepeatExecution> ExecuteAsync(RepeatContext context,
@@ -19,6 +21,7 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         using var work = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         CancellationToken token = work.Token;
         PodAdmission admission = await cluster.EstablishProducerWatchAsync(context, token).ConfigureAwait(false);
+        admissions.Add(context.RunId, admission);
         await cluster.CreateProducerAsync(context, token).ConfigureAwait(false);
         ProducerPod pod = await cluster.ObserveProducerAsync(context, admission, token).ConfigureAwait(false);
         if (pod != admission.Producer) throw new InvalidDataException("independent_producer_identity");
@@ -48,6 +51,21 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         AcceptedWorkerOutcome outcome = WorkerOutcome.Reconcile(verifier.Process, result, identity, context.SourceCommit);
         if (!outcome.ExecutionCompleted) throw new InvalidDataException(outcome.Reason);
         return new(identity, outcome, publication, result, admission.Events.ToArray()) { Admission = admission };
+    }
+
+    public async Task PreserveFailureAsync(RepeatContext context, CancellationToken cancellationToken, CancellationToken retentionToken)
+    {
+        try { await cluster.PreserveAvailableArtifactsAsync(context, cancellationToken).ConfigureAwait(false); }
+        finally
+        {
+            if (admissions.TryGetValue(context.RunId, out PodAdmission? admission))
+            {
+                try { await cluster.CompleteProducerWatchAsync(context, admission, cancellationToken).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { }
+                await File.WriteAllBytesAsync(Path.Combine(context.OutputDirectory, "pod-history.json"),
+                    System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(admission.Events), retentionToken).ConfigureAwait(false);
+            }
+        }
     }
 
     public async Task ObserveThroughExportAsync(RepeatContext context, RepeatExecution repeat, CancellationToken cancellationToken)

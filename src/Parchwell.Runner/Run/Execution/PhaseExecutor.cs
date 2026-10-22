@@ -47,6 +47,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
         bool exported = false;
         bool destroyed = false;
         bool failed = false;
+        RepeatContext? activeRepeat = null;
         try
         {
             await JournalAsync(request.OutputDirectory, "apply_started", work.Token).ConfigureAwait(false);
@@ -66,6 +67,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
                 string directory = Path.Combine(request.OutputDirectory, runId);
                 Directory.CreateDirectory(directory);
                 var context = new RepeatContext(request.Phase, ordinal, runId, request.SourceCommit, directory);
+                activeRepeat = context;
                 RepeatExecution result = await repeats.ExecuteAsync(context, async (identity, token) =>
                 {
                     await ledger.RecordAdmissionAsync(request.Phase, request.EnvironmentRunId, ordinal, identity.InstanceId, token).ConfigureAwait(false);
@@ -84,6 +86,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
                     new(result.Outcome.Status, result.Outcome.Reason, ResultHash: Hash(result.Result),
                         PublicationHash: Hash(result.Publication.Objects["index.json"])), repeatWork.Token).ConfigureAwait(false);
                 completed.Add(result);
+                activeRepeat = null;
                 await JournalAsync(request.OutputDirectory, "repeat_" + ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture), repeatWork.Token).ConfigureAwait(false);
             }
         }
@@ -97,9 +100,29 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
             using var exportDeadline = new CancellationTokenSource(budgets?.Seconds("export_seconds") ?? TimeSpan.FromSeconds(300), clock);
             try
             {
+                if (failed && activeRepeat is not null)
+                {
+                    // Spend at most one API-call slot collecting failed-worker originals; leave the rest for private export.
+                    using var captureDeadline = new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock);
+                    using var capture = CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, captureDeadline.Token);
+                    try { await repeats.PreserveFailureAsync(activeRepeat, capture.Token, exportDeadline.Token).ConfigureAwait(false); }
+                    catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+                    {
+                        try
+                        {
+                            await File.WriteAllTextAsync(Path.Combine(activeRepeat.OutputDirectory, "failure-artifacts-unavailable.json"),
+                                "{\"accepted_counts\":false,\"reason\":\"failure_artifact_collection_incomplete\"}", exportDeadline.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException) { }
+                    }
+                }
                 if (collectCorroboration is not null)
                 {
-                    try { await collectCorroboration(request.OutputDirectory, exportDeadline.Token).ConfigureAwait(false); }
+                    using var corroborationDeadline = failed
+                        ? new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock) : null;
+                    using var corroboration = corroborationDeadline is null ? null
+                        : CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, corroborationDeadline.Token);
+                    try { await collectCorroboration(request.OutputDirectory, corroboration?.Token ?? exportDeadline.Token).ConfigureAwait(false); }
                     catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
                     {
                         // Collection failure preserves available bounded evidence and cannot skip teardown.

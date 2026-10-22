@@ -12,6 +12,7 @@ for (const [name, prefix] of [
   ['terraform-producers.json', 'terraform'],
   ['aks-binding-producers.json', 'aks-binding'],
   ['local-producers.json', 'local'],
+  ['resume-producers.json', 'resume'],
 ]) {
   const receipt = await readJson(name);
   for (const [file, command] of Object.entries(receipt.commands)) {

@@ -2545,6 +2545,96 @@
       "sha256": "3fb1f6612adf1a8c2f81ad2b1470947db6b2a7fe5fcaea14dbb4519b3d70ec74"
     },
     {
+      "path": "raw/resume/authored-diff-check.log",
+      "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/resume/authored-diff-check.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/resume/build.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/resume/build.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 1819,
+      "sha256": "f1dee4e30de971776cf412bb343d366f5335411ab331f0e54e89e90377be7d1d"
+    },
+    {
+      "path": "raw/resume/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/resume/check-docs.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 2586,
+      "sha256": "dacb1f78c5a81a95823c1cf71b8d7cfc63cb847f8c000934597d65cdc2f8bfb3"
+    },
+    {
+      "path": "raw/resume/failure-build.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-restore -v minimal > /workspace/scratch/issue-114-failure-evidence/build-frozen.log 2>&1; cp /workspace/scratch/issue-114-failure-evidence/build-frozen.log docs/operations/evidence/issue-114/raw/resume/failure-build.log [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 819,
+      "sha256": "f9208eb115d17dd03465638365b5bb924e870b37dce01aa2622585d7a3919dba"
+    },
+    {
+      "path": "raw/resume/failure-tests.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build -- -class '*FailureArtifactPreservationTests' -class '*PhaseEvidenceInventoryTests' -class '*KubernetesWatchTests' -class '*RehearsalTests' -result-xml /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.xml > /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.log 2>&1; cp /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.log docs/operations/evidence/issue-114/raw/resume/failure-tests.log [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 425,
+      "sha256": "c4d8da2a1a0762e33a91c9c13605e9a6666de36abf52a14569da50c3b913f05d"
+    },
+    {
+      "path": "raw/resume/failure-tests.xml",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build -- -class '*FailureArtifactPreservationTests' -class '*PhaseEvidenceInventoryTests' -class '*KubernetesWatchTests' -class '*RehearsalTests' -result-xml /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.xml > /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.log 2>&1; cp /workspace/scratch/issue-114-failure-evidence/failure-frozen-tests.xml docs/operations/evidence/issue-114/raw/resume/failure-tests.xml [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 20858,
+      "sha256": "a04606cae6610e0ebc2e6a68f53635df16b2b5c938226f1d1493972ef6d86a2c"
+    },
+    {
+      "path": "raw/resume/provenance-build.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --no-restore -c Release --nologo > /workspace/scratch/issue-114-provenance-status-build.log 2>&1; cp /workspace/scratch/issue-114-provenance-status-build.log docs/operations/evidence/issue-114/raw/resume/provenance-build.log [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 819,
+      "sha256": "b477227df62f7c859ca3636449776dbac4e9783008dbf1271f1300a74dc8ebeb"
+    },
+    {
+      "path": "raw/resume/provenance-tests.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class 'Parchwell.Runner.Tests.Evidence.PrivateProvenanceCollectorTests' -result-xml /workspace/scratch/issue-114-provenance-status-tests.xml > /workspace/scratch/issue-114-provenance-status-tests.log 2>&1; cp /workspace/scratch/issue-114-provenance-status-tests.log docs/operations/evidence/issue-114/raw/resume/provenance-tests.log [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 425,
+      "sha256": "de691afc7f64cc11a239ca8ea9a12e8a5f638c0d6b7bd2438f6bd8deb648e629"
+    },
+    {
+      "path": "raw/resume/provenance-tests.xml",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class 'Parchwell.Runner.Tests.Evidence.PrivateProvenanceCollectorTests' -result-xml /workspace/scratch/issue-114-provenance-status-tests.xml > /workspace/scratch/issue-114-provenance-status-tests.log 2>&1; cp /workspace/scratch/issue-114-provenance-status-tests.xml docs/operations/evidence/issue-114/raw/resume/provenance-tests.xml [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 9241,
+      "sha256": "e39490be9cfd371bb1c9867b78f8f268816bbeed0ce7b57a7c5490adc38d78d6"
+    },
+    {
+      "path": "raw/resume/rehearsal-cases.json",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-resume-wire --output /workspace/scratch/issue-114-resume-rehearsal > docs/operations/evidence/issue-114/raw/resume/rehearsal.log 2>&1; cp /workspace/scratch/issue-114-resume-rehearsal/rehearsal-cases.json docs/operations/evidence/issue-114/raw/resume/rehearsal-cases.json [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 23915,
+      "sha256": "fbfae431ff8c23d3ed2a3088af98bdf369fd19e5bf97354a44f0a20fac115370"
+    },
+    {
+      "path": "raw/resume/rehearsal-summary.json",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-resume-wire --output /workspace/scratch/issue-114-resume-rehearsal > docs/operations/evidence/issue-114/raw/resume/rehearsal.log 2>&1; cp /workspace/scratch/issue-114-resume-rehearsal/summary.json docs/operations/evidence/issue-114/raw/resume/rehearsal-summary.json [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 214,
+      "sha256": "69e0bf27fde375b97c6eb74abdb8de83d3b2486271cb41bcb6650b80547f7887"
+    },
+    {
+      "path": "raw/resume/rehearsal.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-resume-wire --output /workspace/scratch/issue-114-resume-rehearsal > docs/operations/evidence/issue-114/raw/resume/rehearsal.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/resume/repository-inputs-pre-validation.json",
+      "producer": "timeout 600 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/resume';out.mkdir(parents=True,exist_ok=True)\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty implementation worktree before resumed validation','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs-pre-validation.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 99793,
+      "sha256": "4638a60d10703d44fd3fe32518698cba1704024bd153d295713ef52cef41ffa2"
+    },
+    {
+      "path": "raw/resume/runner-tests.log",
+      "producer": "PARCHWELL_WIRE_FIXTURE_DIRECTORY=/workspace/scratch/issue-114-resume-wire timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/resume\" -- --report-xunit-xml --report-xunit-xml-filename runner-tests.xml > docs/operations/evidence/issue-114/raw/resume/runner-tests.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 530,
+      "sha256": "95c2ccb311714f4bc974fcf43e11c70b2e758142990787819010604b2675d97e"
+    },
+    {
+      "path": "raw/resume/runner-tests.xml",
+      "producer": "PARCHWELL_WIRE_FIXTURE_DIRECTORY=/workspace/scratch/issue-114-resume-wire timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/resume\" -- --report-xunit-xml --report-xunit-xml-filename runner-tests.xml > docs/operations/evidence/issue-114/raw/resume/runner-tests.log 2>&1 [source 7e28dd472b269e84513d2d20b59e9bf055d4fe11; dirty resumed implementation worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 143194,
+      "sha256": "d1269ed4106983424cebec72b9d98fb840f6c2ae001ebe06f9853488c9bbabae"
+    },
+    {
       "path": "raw/terraform/check-docs.log",
       "producer": "npm run check:docs [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; dirty shared worktree; implementation files uncommitted; not reviewed-head acceptance]",
       "size_bytes": 2479,

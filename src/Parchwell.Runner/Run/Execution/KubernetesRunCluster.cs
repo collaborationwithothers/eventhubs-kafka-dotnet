@@ -10,6 +10,10 @@ namespace Parchwell.Runner.Run.Execution;
 public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGenerator generator,
     ChartRenderer renderer, JsonElement runtime, string chartDirectory, TimeProvider clock, ExecutionBudgets? budgets = null, string? privateKubeconfigPath = null, string? toolReceiptDirectory = null) : IRunCluster, IDisposable
 {
+    private static readonly string[] PublicationNames = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "index.json"];
+    private static readonly string[] VerifierNames = ["start-line.json", "broker-inventory.json", "result.json"];
+    private readonly Dictionary<(string RunId, string Container, string Name), string> downloaded = [];
+    private readonly HashSet<string> releaseAttempted = new(StringComparer.Ordinal);
     private JsonElement currentRuntime = runtime;
     private IReadOnlyDictionary<string, string>? clusterEnvironment;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> versions = new(StringComparer.Ordinal);
@@ -126,8 +130,11 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         return new(worker with { Result = boundary }, inventory);
     }
 
-    public Task ReleaseAsync(RepeatContext context, byte[] permit, CancellationToken cancellationToken) =>
-        PatchAsync(context.RunId + "-admission", new { data = new Dictionary<string, string> { ["admission.json"] = System.Text.Encoding.UTF8.GetString(permit) } }, cancellationToken);
+    public async Task ReleaseAsync(RepeatContext context, byte[] permit, CancellationToken cancellationToken)
+    {
+        releaseAttempted.Add(context.RunId);
+        await PatchAsync(context.RunId + "-admission", new { data = new Dictionary<string, string> { ["admission.json"] = System.Text.Encoding.UTF8.GetString(permit) } }, cancellationToken).ConfigureAwait(false);
+    }
 
     public Task<WorkerExecution> WaitProducerAsync(RepeatContext context, CancellationToken cancellationToken) => WaitJobAsync(context, "loadgen", budgets?.Number("loadgen_job_seconds") ?? 840, cancellationToken);
 
@@ -162,6 +169,67 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         WorkerExecution worker = await WaitJobAsync(context, "verify", budgets?.Number("verify_job_seconds") ?? 750, cancellationToken).ConfigureAwait(false);
         byte[] result = await DownloadAsync(context, "verifier", context.Phase + "/" + context.RunId + "/result.json", "result.json", cancellationToken).ConfigureAwait(false);
         return worker with { Result = result };
+    }
+
+    public async Task PreserveAvailableArtifactsAsync(RepeatContext context, CancellationToken cancellationToken)
+    {
+        string directory = Path.Combine(context.OutputDirectory, "failure-artifacts");
+        Directory.CreateDirectory(directory);
+        var entries = new List<object>();
+        var artifacts = VerifierNames.Select(name => (Container: "verifier", Name: context.Phase + "/" + context.RunId + "/" + name, Filename: name)).ToList();
+        bool producerKnown = producers.TryGetValue(context.RunId, out ProducerPod? producer);
+        if (producerKnown)
+        {
+            string prefix = "A01/" + (context.Phase == "probe" ? "C0" : context.Phase) + "/" + context.RunId + "/" + producer!.Name + "/";
+            var publication = PublicationNames.Select(name => ("ledger", prefix + name, name));
+            if (releaseAttempted.Contains(context.RunId)) artifacts.InsertRange(0, publication);
+            else artifacts.AddRange(publication);
+        }
+        try
+        {
+            foreach ((string container, string name, string filename) in artifacts)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string path = Path.Combine(directory, container, filename);
+                string status = "unavailable";
+                try
+                {
+                    if (downloaded.TryGetValue((context.RunId, container, name), out string? retained))
+                        path = retained;
+                    else
+                    {
+                        long retainedBytes = RetainedInputBytes(context.OutputDirectory);
+                        long remaining = (budgets?.Number("repeat_input_bytes") ?? 1073741824) - retainedBytes;
+                        if (remaining <= 0) throw new InvalidDataException("failure_repeat_input_limit");
+                        await WorkerBlobDownloader.DownloadAsync(process, AccountName(), container, name, path,
+                            Math.Min(budgets?.Number("producer_artifact_bytes") ?? 268435456, remaining),
+                            budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                        downloaded.Add((context.RunId, container, name), path);
+                    }
+                    status = "retained";
+                }
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !cancellationToken.IsCancellationRequested) { }
+                entries.Add(new { container, name = filename, status,
+                    path = File.Exists(path) ? Path.GetRelativePath(context.OutputDirectory, path).Replace('\\', '/') : null });
+            }
+        }
+        finally
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, "collection-receipt.json"), JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                schema_version = 1, accepted_counts = false, execution_completed = false,
+                producer_identity_available = producerKnown, artifacts = entries,
+                reason = "failed_repeat_diagnostic_artifacts"
+            }), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static long RetainedInputBytes(string directory)
+    {
+        IEnumerable<string> originals = PublicationNames.Concat(VerifierNames).Select(name => Path.Combine(directory, name)).Where(File.Exists);
+        string failed = Path.Combine(directory, "failure-artifacts");
+        if (Directory.Exists(failed)) originals = originals.Concat(Directory.EnumerateFiles(failed, "*", SearchOption.AllDirectories));
+        return originals.Sum(path => new FileInfo(path).Length);
     }
 
     public async Task CompleteProducerWatchAsync(RepeatContext context, PodAdmission admission, CancellationToken cancellationToken)
@@ -266,10 +334,11 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     { await KubectlAsync(["patch", "configmap", name, "-n", "parchwell", "--type=merge", "-p", JsonSerializer.Serialize(patch)], token).ConfigureAwait(false); }
     private async Task<byte[]> DownloadAsync(RepeatContext context, string container, string name, string filename, CancellationToken token)
     {
-        string directory = Path.Combine(context.OutputDirectory, "downloads"); Directory.CreateDirectory(directory);
-        string destination = Path.Combine(directory, filename);
+        Directory.CreateDirectory(context.OutputDirectory);
+        string destination = Path.Combine(context.OutputDirectory, filename);
         await WorkerBlobDownloader.DownloadAsync(process, AccountName(), container, name, destination,
             budgets?.Number("producer_artifact_bytes") ?? 268435456, budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), token).ConfigureAwait(false);
+        downloaded.Add((context.RunId, container, name), destination);
         return await File.ReadAllBytesAsync(destination, token).ConfigureAwait(false);
     }
     private string AccountName()
