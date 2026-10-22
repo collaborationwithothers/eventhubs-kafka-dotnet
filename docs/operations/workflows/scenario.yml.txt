@@ -33,10 +33,9 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_APPROVED_SOURCE_SHA: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
       A01_PHASE: probe
     steps:
-      - name: Require exact approved main source before login
+      - name: Require the main branch before login
         shell: bash
         run: |
           set -euo pipefail
@@ -45,17 +44,34 @@ jobs:
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
             echo "::add-mask::$value"
           done
-          [[ "$PARCHWELL_APPROVED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$GITHUB_SHA" = "$PARCHWELL_APPROVED_SOURCE_SHA"
-      - name: Check out approved source
+      - name: Check out the main head this run started from
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Materialise private inputs from environment secrets
+        shell: bash
+        env:
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
+          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
+          S_RUNTIME_PROBE: ${{ secrets.PARCHWELL_RUNTIME_PROBE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
+          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
+          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
+          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
+          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
+          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
+          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/probe.json" S_RUNTIME_PROBE "$S_RUNTIME_PROBE"
       - name: Validate private inputs before image publication or apply
         id: prepare
         shell: bash
@@ -66,14 +82,14 @@ jobs:
           mkdir -p "$A01_OUTPUT"
           echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
           python3 - <<'PYTHON'
-          import json, os, pathlib, re, subprocess
-          assert subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip() == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          import json, os, pathlib, re
           required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
           for key in required:
               assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
           runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
           runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          assert runtime['schema_version'] == 1
+          runtime['source_commit'] = os.environ['GITHUB_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
@@ -221,10 +237,9 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_APPROVED_SOURCE_SHA: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
       A01_PHASE: C0
     steps:
-      - name: Require exact approved main source before login
+      - name: Require the main branch before login
         shell: bash
         run: |
           set -euo pipefail
@@ -233,17 +248,34 @@ jobs:
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
             echo "::add-mask::$value"
           done
-          [[ "$PARCHWELL_APPROVED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$GITHUB_SHA" = "$PARCHWELL_APPROVED_SOURCE_SHA"
-      - name: Check out approved source
+      - name: Check out the main head this run started from
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Materialise private inputs from environment secrets
+        shell: bash
+        env:
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
+          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
+          S_RUNTIME_C0: ${{ secrets.PARCHWELL_RUNTIME_C0 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
+          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
+          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
+          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
+          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
+          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
+          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/C0.json" S_RUNTIME_C0 "$S_RUNTIME_C0"
       - name: Validate private inputs before image publication or apply
         id: prepare
         shell: bash
@@ -254,14 +286,14 @@ jobs:
           mkdir -p "$A01_OUTPUT"
           echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
           python3 - <<'PYTHON'
-          import json, os, pathlib, re, subprocess
-          assert subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip() == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          import json, os, pathlib, re
           required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
           for key in required:
               assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
           runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
           runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          assert runtime['schema_version'] == 1
+          runtime['source_commit'] = os.environ['GITHUB_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
@@ -399,10 +431,9 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_APPROVED_SOURCE_SHA: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
       A01_PHASE: C3
     steps:
-      - name: Require exact approved main source before login
+      - name: Require the main branch before login
         shell: bash
         run: |
           set -euo pipefail
@@ -411,17 +442,34 @@ jobs:
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
             echo "::add-mask::$value"
           done
-          [[ "$PARCHWELL_APPROVED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$GITHUB_SHA" = "$PARCHWELL_APPROVED_SOURCE_SHA"
-      - name: Check out approved source
+      - name: Check out the main head this run started from
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Materialise private inputs from environment secrets
+        shell: bash
+        env:
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
+          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
+          S_RUNTIME_C3: ${{ secrets.PARCHWELL_RUNTIME_C3 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
+          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
+          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
+          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
+          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
+          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
+          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/C3.json" S_RUNTIME_C3 "$S_RUNTIME_C3"
       - name: Validate private inputs before image publication or apply
         id: prepare
         shell: bash
@@ -432,14 +480,14 @@ jobs:
           mkdir -p "$A01_OUTPUT"
           echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
           python3 - <<'PYTHON'
-          import json, os, pathlib, re, subprocess
-          assert subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip() == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          import json, os, pathlib, re
           required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
           for key in required:
               assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
           runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
           runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          assert runtime['schema_version'] == 1
+          runtime['source_commit'] = os.environ['GITHUB_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()

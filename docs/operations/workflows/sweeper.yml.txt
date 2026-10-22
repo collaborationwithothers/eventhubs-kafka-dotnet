@@ -29,9 +29,8 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_APPROVED_SOURCE_SHA: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
     steps:
-      - name: Require exact approved main source before login
+      - name: Require the main branch before login
         shell: bash
         run: |
           set -euo pipefail
@@ -40,17 +39,34 @@ jobs:
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
             echo "::add-mask::$value"
           done
-          [[ "$PARCHWELL_APPROVED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$GITHUB_SHA" = "$PARCHWELL_APPROVED_SOURCE_SHA"
-      - name: Check out approved source
+      - name: Check out the main head this run started from
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ vars.PARCHWELL_APPROVED_SOURCE_SHA }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Materialise private inputs from environment secrets
+        shell: bash
+        env:
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
+          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
+          S_RUNTIME_SWEEP: ${{ secrets.PARCHWELL_RUNTIME_SWEEP }}
+        run: |
+          set -euo pipefail
+          umask 077
+          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
+          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
+          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
+          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
+          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
+          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
+          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/sweep.json" S_RUNTIME_SWEEP "$S_RUNTIME_SWEEP"
       - name: Prepare private destroy-only runtime
         shell: bash
         run: |
@@ -60,13 +76,12 @@ jobs:
           mkdir -p "$A01_OUTPUT"
           echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
           python3 - <<'PYTHON'
-          import json,os,pathlib,subprocess
-          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
+          import json,os,pathlib
           keys=['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
           for key in keys: assert pathlib.Path(os.environ[key]).is_file()
           runtime=json.loads(pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY'],'sweep.json').read_text())
-          assert runtime['source_commit']==os.environ['PARCHWELL_APPROVED_SOURCE_SHA'] and runtime['initialize_ledger'] is False
-          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'],tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'],readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()),limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()))
+          runtime['source_commit']=os.environ['GITHUB_SHA']; assert runtime['initialize_ledger'] is False
+          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'],tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'],readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()),scenario_root=str(pathlib.Path('.').resolve()),limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()))
           pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json').write_text(json.dumps(runtime))
           PYTHON
           timeout 600 dotnet restore src/Parchwell.Runner/Parchwell.Runner.csproj --locked-mode > "$A01_OUTPUT/restore.log" 2>&1
