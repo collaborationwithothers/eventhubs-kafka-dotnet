@@ -9,7 +9,8 @@ The [continuation decision](https://github.com/collaborationwithothers/eventhubs
 lifts the earlier cold-review churn stop without another split. The
 [resumption record](resume-status.md) describes the normal-failure artifact and
 workflow provenance fixes, along with the required override trip record.
-Deployment acceptance and the required PR workflow evidence remain incomplete.
+Deployment acceptance remains incomplete. The required PR workflow passed at
+the exact implementation head, as recorded below.
 The [twelfth review](cold-review-12.md) also identified a required-plan
 incompatibility: the mandated CLI inherits SDK write retries without a verified
 disable control. The [source investigation](blob-retry-investigation.md) and
@@ -18,7 +19,15 @@ reviewable. Hari adopted that narrow amendment in
 [decision 6336034219](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219).
 The original P1 remains correct for the earlier contract; the amended contract
 permits SDK retries inside the same deadlines while preserving conflict-stop.
-Required PR CI and external Codex review remain pending.
+Required PR CI passed. External Codex code review remains pending; its security
+review completed with no findings at the same implementation head.
+The [thirteenth review](cold-review-13.md) covered every authored file and found
+only four approval-only groups, with no non-approval P0/P1 or P2. The exact
+sweeper P0 is now approval-only under
+[decision 6336121859](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336121859),
+alongside the three plan-required dependency groups. Severity is retained and
+Hari merges. That decision also bounds the remaining cold review through round
+14; its exact handoff condition remains in force.
 
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
@@ -35,9 +44,32 @@ The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
 passing startup and compatibility tests. The
 [rehearsal summary](raw/review-9-fixes/rehearsal-summary.json) and
 [case traces](raw/review-9-fixes/rehearsal-cases.json) retain the synthetic phase and
-failure-path checks. Required
-verification from the existing pull-request workflow is pending; no local run
-substitutes for that evidence.
+failure-path checks. The existing pull-request workflow now supplies the required
+full verification; the local runs remain separately identified.
+
+[.NET verification run 39748172558](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558)
+completed successfully for exact tested head
+`d60de515d9404e0563cfe102c2b6a37968f1221f`, event `pull_request`, attempt 1.
+The original [run metadata](raw/ci/run.json), [jobs](raw/ci/jobs.json) and
+[artifact listing](raw/ci/artifacts.json) are retained. The listing contains zero
+artifacts. The run-archive download was denied by the redirect host; the GitHub
+connector successfully retrieved the complete decoded original
+[job log](raw/ci/job-119721772459.log) through the documented REST job-logs route.
+This is original job text, not a reconstructed ZIP or retained test XML.
+[Producer records](ci-producers.json) distinguish both retrieval attempts.
+The log confirms the exact checkout, locked restore, Release build, architecture
+checks and warning-as-error negative control. Its checked reports record 8
+Architecture, 306 Kafka, 308 LoadGen, 1003 Runner, 96 Scenarios and 2294 Verifier
+passing tests. Enrichment is explicitly an empty scaffold. The separate mapping
+coverage pass records 121 passing tests and 368 instrumented source lines
+covered; branch completeness is checked by behavioral tests, with no measured
+branch percentage claimed.
+
+The [security review receipt](raw/ci/security-review.json) reports no security
+issues for implementation head `d60de515d9`. Code review was still running at the
+evidence checkpoint. These captures precede an evidence-only commit; the PR body
+records any later final-head checks separately, without claiming that these
+originals tested a later commit.
 
 The [workflow preparation check](raw/review-5-fixes/workflow-preparation.json)
 executes the actual private runtime preparation blocks with synthetic missing,
@@ -124,7 +156,7 @@ aggregate byte ceilings before transfer, including prior verifier originals,
 canonical reuse, raised configuration and zero-byte equality. Publication names
 are checked as the existing exact member set before any Blob metadata request.
 Subsequent cold-review results belong to the PR self-review. The required
-workflow run ID and tested commit are pending PR CI.
+workflow run ID and exact tested commit are recorded above.
 The [tenth report](cold-review-10.md) found incompatible counter types in the
 corroborating KQL union. The diagnostic counter now converts to `long` before
 union. The [source audit](review-10-kql-audit.json) cites the original official
@@ -138,8 +170,10 @@ The [eleventh report](cold-review-11.md) records the Verifier startup correction
 and a disputed P0 concerning sweeper federation trust. The
 [authority reconciliation](sweeper-authority.md) and
 [disposition](resume-status.md#finding-dispositions) retain the finding's
-severity and the exact already-authorized design. This is not a clean-review
-claim or merge clearance; the draft PR must disclose the dispute for Hari.
+severity and the exact already-authorized design. This was a disputed finding
+at that checkpoint. The later decision 6336121859 supplies the current exact
+approval-only disposition; the draft PR lists it for Hari without merge
+clearance.
 The twelfth review retained that dispute and found the CLI retry P1. Its P2
 source-locator correction is applied in the query parser comment. Original
 small upstream sources and the retry-source subset are retained under

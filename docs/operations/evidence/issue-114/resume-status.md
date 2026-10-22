@@ -6,6 +6,15 @@ The selected [plan](https://github.com/collaborationwithothers/eventhubs-kafka-d
 
 ## Finding dispositions
 
+Current disposition is governed by
+[decision 6336121859](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336121859):
+the exact sweeper P0 is approval-only, with its severity retained and Hari's
+merge. It is excluded from all round limits. That decision also ends the churn
+override after rounds 13 and 14; if round 14 has a non-approval P0/P1, list every
+open finding in the PR and hand off. The earlier dispute and counts below are
+historical evidence. The [thirteenth review](cold-review-13.md) reports only
+the four approval-only groups and no non-approval P0/P1 or P2.
+
 The normal-failure path preserves available original worker artifacts inside the existing export reserve before guarded teardown. Failed or missing completion receipts still block verification and accepted counts. Partial transfers and unavailable objects remain diagnostic. Artifact collection and failed-run corroboration receive bounded shares of the same export deadline so a canceled collector or failed marker cannot suppress the available-file export. The producer watch is joined and its available history retained. Canonical local paths avoid retaining duplicate copies of the same downloaded original.
 
 The workflow and Runner stage the exact runtime and original sourced cost document alongside named image/tool receipts before phase execution. Probe records its image publication log; C0/C3 record actual image-reference readbacks for the reused digests. Fallback export retains available inputs with an incomplete receipt if required provenance is missing, changed, oversized or cannot be recorded. The same original cost bytes supply reservation parsing. Raw provenance stays in the private export; public artifacts remain limited to the candidate summary.
@@ -46,6 +55,8 @@ design is required by decision `6332413257` point 4 and the checked Revision 2
 plan. Its authentication trust is broader than the old sole protected subject;
 the original severity is preserved. The [independent reconciliation](sweeper-authority.md)
 distinguishes that authorized design from the unchanged review rule.
+
+Historical response before decision 6336121859:
 
 Not valid: requiring reversion of this exact design amendment conflicts with
 the recognized point-4 decision and the plan's explicit blueprint amendment.
@@ -92,9 +103,10 @@ Round 10 revisited execution/evidence with the corroborating KQL counter types.
 This further trip passes under decision `6333713470`.
 
 Round 11 revisited deployment/worker-input validation with the Verifier path and
-execution/deployment with the disputed sweeper identity scope. Both count as
-substantive findings for churn; these further trips pass under decision
-`6333713470`. The disputed P0 remains outside the approval-only exception.
+execution/deployment with the disputed sweeper identity scope. Both were counted
+as substantive at that checkpoint; these further trips passed under decision
+`6333713470`. The later decision 6336121859 expressly excludes the exact sweeper
+P0 from all round limits and retains the other finding's history.
 
 Round 12 revisited execution/evidence with the CLI SDK-retry P1 and reiterated
 the same disputed sweeper P0. This further churn trip passes under decision
@@ -113,7 +125,7 @@ Third-review fixes start from `f2c41aec2990bf8af532110062beb001906cb3eb`. Their 
 
 Fourth-review fixes start from `5cea1260b9d7ef3fb23909c762872cd692787c80`. Their local evidence belongs under `raw/review-4-fixes/`, with exact commands in `review-4-producers.json` and a fresh source input inventory before validation. None of these local checks substitutes for the required PR workflow.
 
-Fifth-review fixes start from `0d25c6d71c2196dd49b32d87989f5aee5fb633ff`. Their local evidence belongs under `raw/review-5-fixes/`, with exact commands in `review-5-producers.json` and a fresh pre-validation input inventory. The required PR workflow remains pending publication.
+Fifth-review fixes start from `0d25c6d71c2196dd49b32d87989f5aee5fb633ff`. Their local evidence belongs under `raw/review-5-fixes/`, with exact commands in `review-5-producers.json` and a fresh pre-validation input inventory. The PR workflow was pending at that historical checkpoint; the README now links the completed exact-implementation-head run.
 
 Seventh-review fixes start from `886acbc991df56abfd31f5591646b8a9cfdf6c83`. Their local evidence belongs under `raw/review-7-fixes/`, with exact commands in `review-7-producers.json` and a pre-validation input inventory. These local checks do not substitute for the required exact-head PR workflow.
 

@@ -79,6 +79,54 @@
       "sha256": "2f583bffd23761005a0ef7bc4a33ff3236d5952f64230a2ca2f9abadceae372d"
     },
     {
+      "path": "raw/ci/approval-disposition.json",
+      "producer": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6336121859 > docs/operations/evidence/issue-114/raw/ci/approval-disposition.json [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 5082,
+      "sha256": "557e16aebb5cc1dab4de35b80d48f138a8d36f1d6b465fb357c11eb732194aef"
+    },
+    {
+      "path": "raw/ci/artifacts.json",
+      "producer": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558/artifacts?per_page=100&page=1\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 32,
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+    },
+    {
+      "path": "raw/ci/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/ci/authored-diff-check.log 2>&1 [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/ci/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/ci/check-docs.log 2>&1 [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 9716,
+      "sha256": "9425464c1991d0dd2794848059af776af73bd94d19be9d7a794552c95976f444"
+    },
+    {
+      "path": "raw/ci/job-119721772459.log",
+      "producer": "tools.mcp__codex_apps__github_fetch_workflow_job_logs({job_id:119721772459,repo_full_name:\"collaborationwithothers/eventhubs-kafka-dotnet\"}); structuredContent.content saved as UTF-8 with BOM and final newline preserved; documented REST GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs; complete decoded job log, not ZIP archive or XML artifact [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 1886105,
+      "sha256": "0b32d47cf0d4892e3c83a87cc4bee28134969808b2fbd3b6b3ba1a6d5ea765f8"
+    },
+    {
+      "path": "raw/ci/jobs.json",
+      "producer": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558/jobs?per_page=100&page=1\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 2528,
+      "sha256": "7852af46a706864642f53476ff9b012ab6b3a1804df2ddda7f376f4a2ed5a926"
+    },
+    {
+      "path": "raw/ci/run.json",
+      "producer": "timeout 180 python3 /workspace/scratch/issue-114-capture-ci.py 39748172558 d60de515d9404e0563cfe102c2b6a37968f1221f; nested argv [\"gh\", \"api\", \"repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/39748172558\"]; original stdout bytes; script retained as ci-fetch.py; later run ZIP retrieval failed [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 15589,
+      "sha256": "46c2d750f5a2c81ddd0d7d333f51421fecc9f3478027f3c8e394dcd131113713"
+    },
+    {
+      "path": "raw/ci/security-review.json",
+      "producer": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6336426806 > docs/operations/evidence/issue-114/raw/ci/security-review.json [source d60de515d9404e0563cfe102c2b6a37968f1221f; post-run evidence-only retrieval; exact implementation head tested by PR CI run 39748172558, attempt 1; no source changes]",
+      "size_bytes": 4521,
+      "sha256": "40f78b01297da6b5a43eb450f7e8898441fbeff7f6d23e2b3b633d4e3e70d036"
+    },
+    {
       "path": "raw/deployment-attempt-1/assertions.json",
       "producer": "PATH=/workspace/scratch/dotnet:$PATH timeout 600 ./scripts/verify-a01-deployment.sh --output /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-114/raw/deployment-attempt-1 [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; dirty worktree; historical input hashes unavailable]",
       "size_bytes": 157,

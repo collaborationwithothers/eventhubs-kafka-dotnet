@@ -1,5 +1,11 @@
 # Independent authority reconciliation: #114 sweeper identity finding
 
+Current disposition: [decision 6336121859](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336121859)
+explicitly makes this exact P0 approval-only under rule 8, with severity retained,
+PR disclosure, exclusion from round limits and Hari's merge. The reconciliation
+below predates that decision and preserves the historical dispute; it does not
+override the later recognized disposition.
+
 The second environment/FIC design is already expressly authorized by Hari. The current literal P0 finding nevertheless remains supportable under the unchanged review process. I do not find authority to call this a clean review, retain it under the approval-only exception, or silently substitute a different identity design. The missing authority concerns disposition of this exact review-rule conflict, not whether Hari intended the second environment.
 
 ## Read evidence and freshness
