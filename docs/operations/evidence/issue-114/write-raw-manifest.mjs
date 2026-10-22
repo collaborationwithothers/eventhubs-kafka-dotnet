@@ -16,6 +16,7 @@ for (const [name, prefix] of [
   ['review-fix-producers.json', 'review-fixes'],
   ['review-4-producers.json', 'review-4-fixes'],
   ['review-5-producers.json', 'review-5-fixes'],
+  ['review-7-producers.json', 'review-7-fixes'],
   ['placement-producers.json', 'placement-fix'],
 ]) {
   const receipt = await readJson(name);

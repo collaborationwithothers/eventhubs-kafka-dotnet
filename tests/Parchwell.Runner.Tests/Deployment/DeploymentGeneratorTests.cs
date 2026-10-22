@@ -1,6 +1,7 @@
 #pragma warning disable CA1707 // Repository-required Given/When/Then test names.
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -13,6 +14,32 @@ namespace Parchwell.Runner.Tests.Deployment;
 
 public sealed class DeploymentGeneratorTests
 {
+    [Theory]
+    [InlineData("MaxAttempts", null)]
+    [InlineData("MaxAttempts", "\"186000\"")]
+    [InlineData("MaxAttempts", "-1")]
+    [InlineData("MaxAttempts", "0")]
+    [InlineData("UploadTimeout", null)]
+    [InlineData("UploadTimeout", "30")]
+    [InlineData("UploadTimeout", "\"-00:00:01\"")]
+    [InlineData("UploadTimeout", "\"00:00:00\"")]
+    public async Task Given_MissingOrInvalidDeploymentBound_When_Generated_Then_NoDeploymentFilesAreEmitted(string field, string? json)
+    {
+        using var fixture = new DeploymentFixture();
+        Dictionary<string, object?> input = fixture.Input("C0");
+        string limitsPath = Path.Combine(fixture.Directory, "limits.json");
+        JsonNode limits = JsonNode.Parse(await File.ReadAllTextAsync((string)input["limits_file"]!, TestContext.Current.CancellationToken))!;
+        if (json is null) limits["loadgen"]!.AsObject().Remove(field);
+        else limits["loadgen"]![field] = JsonNode.Parse(json);
+        await File.WriteAllTextAsync(limitsPath, limits.ToJsonString(), TestContext.Current.CancellationToken);
+        input["limits_file"] = limitsPath;
+        string output = Path.Combine(fixture.Directory, "generated");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Generator().GenerateAsync(JsonSerializer.SerializeToElement(input), output, TestContext.Current.CancellationToken));
+
+        Assert.False(System.IO.Directory.Exists(output));
+    }
+
     [Theory]
     [InlineData("C0")]
     [InlineData("C3")]

@@ -22,6 +22,8 @@ Both startup and public-candidate guards reject padded GUIDs before parsing. The
 
 The [sixth review](cold-review-6.md) found a manually assigned acquisition-status receipt under the excluded raw directory. The receipt is moved byte-for-byte into authored evidence, with its historical producer and hash retained in [the provenance record](acquisition-status-provenance.json). The [status note](acquisition-status.md) links the supporting captures and a fresh MCR destination probe. No implementation or test behavior changes in this correction.
 
+The [seventh review](cold-review-7.md) found that generation accepted missing or invalid deployment limits and that the plan's neighboring boundary tests were incomplete. Generation and preflight now share required-field, type and finite-bound validation before deployment configuration is used. Existing worker reader ceilings, zero replacement repeats and zero schedule lateness remain intact. The new regressions cover the audited byte, entry, row, broker, duration and cleanup-reserve boundaries. Large phase-export cases prove metadata admission through a deliberate transport stop; recovery cases exercise real streaming hashes of synthetic sparse files. Neither fixture represents live worker evidence.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -34,7 +36,9 @@ Round 5 revisited execution/evidence and deployment/worker-input validation with
 
 Round 6 revisited the evidence component with the authored/raw acquisition-status placement finding. This further trip passes under decision `6333713470`.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md) and [sixth](cold-review-6.md) reports retain their original findings and reviewed source identities.
+Round 7 revisited deployment/worker-input validation and execution/evidence with missing or invalid generation limits and the required neighboring boundary tests. These further trips pass under decision `6333713470`.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md) and [seventh](cold-review-7.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
@@ -45,3 +49,5 @@ Third-review fixes start from `f2c41aec2990bf8af532110062beb001906cb3eb`. Their 
 Fourth-review fixes start from `5cea1260b9d7ef3fb23909c762872cd692787c80`. Their local evidence belongs under `raw/review-4-fixes/`, with exact commands in `review-4-producers.json` and a fresh source input inventory before validation. None of these local checks substitutes for the required PR workflow.
 
 Fifth-review fixes start from `0d25c6d71c2196dd49b32d87989f5aee5fb633ff`. Their local evidence belongs under `raw/review-5-fixes/`, with exact commands in `review-5-producers.json` and a fresh pre-validation input inventory. The required PR workflow remains pending publication.
+
+Seventh-review fixes start from `886acbc991df56abfd31f5591646b8a9cfdf6c83`. Their local evidence belongs under `raw/review-7-fixes/`, with exact commands in `review-7-producers.json` and a pre-validation input inventory. These local checks do not substitute for the required exact-head PR workflow.

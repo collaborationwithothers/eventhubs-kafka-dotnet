@@ -1,0 +1,35 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+failed Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(totalBytes: 8589934591, admitted: True) (445ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   2
+    at Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(Int64 totalBytes, Boolean admitted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/PhaseEvidenceBoundaryTests.cs:33
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(totalBytes: 8589934593, admitted: False) (409ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   2
+    at Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(Int64 totalBytes, Boolean admitted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/PhaseEvidenceBoundaryTests.cs:33
+    --- End of stack trace from previous location ---
+failed Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(totalBytes: 8589934592, admitted: True) (361ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 1
+  Actual:   2
+    at Parchwell.Runner.Tests.Execution.PhaseEvidenceBoundaryTests.Given_SyntheticPhaseEvidenceByteBoundary_When_FirstRepeatIsRetained_Then_OnlyBoundedTotalReachesRepeatExport(Int64 totalBytes, Boolean admitted) in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Execution/PhaseEvidenceBoundaryTests.cs:33
+    --- End of stack trace from previous location ---
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64) failed with 3 error(s) (23s 900ms)
+Exit code: 2
+
+  In process file artifacts produced:
+    - /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-114/raw/review-7-fixes/runner-tests-attempt-1.xml
+
+Test run summary: Failed!
+  total: 913
+  failed: 3
+  succeeded: 910
+  skipped: 0
+  duration: 24s 376ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

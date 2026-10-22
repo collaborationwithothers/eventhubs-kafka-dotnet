@@ -43,21 +43,7 @@ public sealed class DeploymentPreflight(ScenarioLoader loader)
         if (tags.RootElement.TryGetProperty("synthetic", out JsonElement tagSynthetic) && tagSynthetic.GetBoolean())
             throw new InvalidDataException("production_service_tags_must_not_be_synthetic");
         using JsonDocument limits = JsonDocument.Parse(await ReadAsync(Text(runtime, "limits_file"), 1048576, cancellationToken).ConfigureAwait(false));
-        if (limits.RootElement.GetProperty("schema_version").GetInt32() != 1) throw new InvalidDataException("limits_schema_invalid");
-        string[] sections = ["scenario_parsing", "loadgen", "verifier_shared", "verifier_kafka", "verifier_start_line", "verifier_verify", "verifier_gate", "execution"];
-        foreach (string section in sections)
-        {
-            JsonElement value = limits.RootElement.GetProperty(section);
-            if (value.ValueKind != JsonValueKind.Object || !value.EnumerateObject().Any()) throw new InvalidDataException("limits_section_required");
-            foreach (JsonProperty property in value.EnumerateObject())
-            {
-                if (property.Value.ValueKind == JsonValueKind.Number && (!property.Value.TryGetInt64(out long number) || number < 0 || (number == 0 && property.Name != "replacement_repeats")))
-                    throw new InvalidDataException("execution_limit_invalid");
-                if (property.Name.EndsWith("Timeout", StringComparison.Ordinal) || property.Name is "ProcessLifetime" or "SafetyStop" or "PollSlice")
-                    if (!TimeSpan.TryParse(property.Value.GetString(), System.Globalization.CultureInfo.InvariantCulture, out TimeSpan timeout) || timeout <= TimeSpan.Zero || timeout.TotalMilliseconds > int.MaxValue)
-                        throw new InvalidDataException("execution_duration_invalid");
-            }
-        }
+        DeploymentRuntimeLimits.Validate(limits.RootElement);
         await loader.LoadAsync("A01", cancellationToken).ConfigureAwait(false);
         await VerifyHelmAsync(Text(runtime, "helm_archive_file"), Text(runtime, "helm_binary_file"), cancellationToken).ConfigureAwait(false);
     }

@@ -1,0 +1,12 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64) passed (23s 254ms)
+
+  In process file artifacts produced:
+    - /workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-114/raw/review-7-fixes/runner-tests-attempt-2.xml
+
+Test run summary: Passed!
+  total: 913
+  failed: 0
+  succeeded: 913
+  skipped: 0
+  duration: 23s 505ms

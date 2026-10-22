@@ -55,7 +55,7 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
             if (!IPAddress.TryParse(Text(ips, endpoint), out IPAddress? ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
                 throw new InvalidDataException("private_endpoint_ipv4_required");
         using JsonDocument limits = await ReadDocumentAsync(Text(input, "limits_file"), 1048576, cancellationToken).ConfigureAwait(false);
-        if (limits.RootElement.GetProperty("schema_version").GetInt32() != 1) throw new InvalidDataException("limits_schema_invalid");
+        DeploymentRuntimeLimits.Validate(limits.RootElement);
         using JsonDocument tags = await ReadDocumentAsync(Text(input, "service_tags_file"), 16777216, cancellationToken).ConfigureAwait(false);
         ServiceTagData.Validate(tags.RootElement);
         if (tags.RootElement.TryGetProperty("synthetic", out JsonElement synthetic) && synthetic.GetBoolean() &&

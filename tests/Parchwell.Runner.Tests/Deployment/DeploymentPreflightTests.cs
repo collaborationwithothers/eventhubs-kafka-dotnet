@@ -12,6 +12,39 @@ namespace Parchwell.Runner.Tests.Deployment;
 public sealed class DeploymentPreflightTests
 {
     [Theory]
+    [InlineData("MaxAttempts", null)]
+    [InlineData("MaxAttempts", "\"186000\"")]
+    [InlineData("MaxAttempts", "-1")]
+    [InlineData("MaxAttempts", "0")]
+    [InlineData("UploadTimeout", null)]
+    [InlineData("UploadTimeout", "30")]
+    [InlineData("UploadTimeout", "\"-00:00:01\"")]
+    [InlineData("UploadTimeout", "\"00:00:00\"")]
+    public async Task Given_MissingOrInvalidDeploymentBound_When_Preflight_Then_ItRejectsBeforeScenarioOrToolUse(string field, string? json)
+    {
+        using var fixture = new DeploymentFixture();
+        var token = TestContext.Current.CancellationToken;
+        Dictionary<string, object?> runtime = fixture.Input("C0");
+        runtime["synthetic"] = false;
+        JsonNode tags = JsonNode.Parse(await File.ReadAllTextAsync((string)runtime["service_tags_file"]!, token))!;
+        tags["synthetic"] = false;
+        await File.WriteAllTextAsync((string)runtime["service_tags_file"]!, tags.ToJsonString(), token);
+        JsonNode limits = JsonNode.Parse(await File.ReadAllTextAsync((string)runtime["limits_file"]!, token))!;
+        if (json is null) limits["loadgen"]!.AsObject().Remove(field);
+        else limits["loadgen"]![field] = JsonNode.Parse(json);
+        string limitsPath = Path.Combine(fixture.Directory, "limits.json");
+        await File.WriteAllTextAsync(limitsPath, limits.ToJsonString(), token);
+        runtime["limits_file"] = limitsPath;
+        var source = new RecordingScenarioSource();
+        using ServiceProvider provider = PreflightProvider(source);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => provider.GetRequiredService<DeploymentPreflight>()
+            .ValidateAsync(JsonSerializer.SerializeToElement(runtime), token));
+
+        Assert.Empty(source.RequestedPaths);
+    }
+
+    [Theory]
     [InlineData("{}")]
     [InlineData("{\"subscription_guid\":null}")]
     [InlineData("{\"subscription_guid\":1}")]
