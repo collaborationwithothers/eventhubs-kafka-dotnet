@@ -26,6 +26,8 @@ The [seventh review](cold-review-7.md) found that generation accepted missing or
 
 The [eighth review](cold-review-8.md) found that the public candidate omitted the plan's provenance, timing, gate and eligible result summaries. Its count allowlist also did not match the verifier's authoritative fields. The candidate projection now retains only the allowed summary fields from accepted outcomes and verified private originals, with nulls and stable unavailable reasons for missing data. Gate decisions refresh the summary on both execution and replay. The [operational contract](../../a01-runner.md) defines phase count totals and diagnostic window maxima without introducing a new verdict predicate.
 
+The [ninth review](cold-review-9.md) found that normal downloads checked the repeat total after transfer and omitted earlier verifier originals. Normal, failed and recovery collection now enforce remaining aggregate and individual ceilings before transfer, with canonical retained files sharing one accounting boundary. The existing exact publication member-set check runs before Blob I/O so unknown or duplicate names cannot bypass that accounting. Empty originals remain permitted at an exactly exhausted byte budget; positive bytes remain rejected.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -42,7 +44,9 @@ Round 7 revisited deployment/worker-input validation and execution/evidence with
 
 Round 8 revisited the execution/evidence component with the incomplete public candidate and count-field projection. This further trip passes under decision `6333713470`.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md) and [eighth](cold-review-8.md) reports retain their original findings and reviewed source identities.
+Round 9 revisited execution/evidence with download accounting and publication-member validation before transfer. This further trip passes under decision `6333713470`.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md) and [ninth](cold-review-9.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
@@ -57,3 +61,5 @@ Fifth-review fixes start from `0d25c6d71c2196dd49b32d87989f5aee5fb633ff`. Their 
 Seventh-review fixes start from `886acbc991df56abfd31f5591646b8a9cfdf6c83`. Their local evidence belongs under `raw/review-7-fixes/`, with exact commands in `review-7-producers.json` and a pre-validation input inventory. These local checks do not substitute for the required exact-head PR workflow.
 
 Eighth-review fixes start from `4590e7818b3ac720e593ef680ecb6a0d51467546`. Their local evidence belongs under `raw/review-8-fixes/`, with exact commands in `review-8-producers.json` and a fresh input inventory before validation. The required PR workflow remains separate.
+
+Ninth-review fixes start from `26b2fa6ba326b64fd7732c654c2a7077115b2595`. Their local evidence belongs under `raw/review-9-fixes/`, with exact commands in `review-9-producers.json` and pre-validation input hashes. Local checks remain separate from the required PR workflow.

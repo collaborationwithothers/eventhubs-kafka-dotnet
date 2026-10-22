@@ -10,6 +10,8 @@ namespace Parchwell.Runner.Run.Execution;
 public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGenerator generator,
     ChartRenderer renderer, JsonElement runtime, string chartDirectory, TimeProvider clock, ExecutionBudgets? budgets = null, string? privateKubeconfigPath = null, string? toolReceiptDirectory = null) : IRunCluster, IDisposable
 {
+    private const long MaximumRepeatInputBytes = 1_073_741_824;
+    private const long MaximumArtifactBytes = 268_435_456;
     private static readonly string[] PublicationNames = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "index.json"];
     private static readonly string[] VerifierNames = ["start-line.json", "broker-inventory.json", "result.json"];
     private readonly Dictionary<(string RunId, string Container, string Name), string> downloaded = [];
@@ -150,17 +152,20 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
             "--auth-mode", "login", "--num-results", "7", "-o", "json"], cancellationToken).ConfigureAwait(false);
         using JsonDocument document = JsonDocument.Parse(listing.StandardOutput);
         JsonElement members = document.RootElement;
-        if (members.GetArrayLength() != 6) throw new InvalidDataException("publication_prefix_member_set");
-        var objects = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-        long total = 0;
+        if (members.GetArrayLength() != PublicationNames.Length) throw new InvalidDataException("publication_prefix_member_set");
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (JsonElement member in members.EnumerateArray())
         {
             string name = WorkerIdentity.Text(member, "name");
             if (!name.StartsWith(prefix, StringComparison.Ordinal) || name[prefix.Length..].Contains('/', StringComparison.Ordinal)) throw new InvalidDataException("publication_prefix_member_name");
             string relative = name[prefix.Length..];
+            if (!PublicationNames.Contains(relative, StringComparer.Ordinal) || !names.TryAdd(relative, name))
+                throw new InvalidDataException("publication_prefix_member_set");
+        }
+        var objects = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach ((string relative, string name) in names)
+        {
             byte[] bytes = await DownloadAsync(context, "ledger", name, relative, cancellationToken).ConfigureAwait(false);
-            total = checked(total + bytes.LongLength);
-            if (total > 1073741824) throw new InvalidDataException("publication_total_limit");
             objects.Add(relative, bytes);
         }
         return new(objects);
@@ -236,10 +241,10 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
                     else
                     {
                         long retainedBytes = RetainedInputBytes(context.OutputDirectory);
-                        long remaining = (budgets?.Number("repeat_input_bytes") ?? 1073741824) - retainedBytes;
-                        if (remaining <= 0) throw new InvalidDataException("failure_repeat_input_limit");
+                        long remaining = Math.Min(budgets?.Number("repeat_input_bytes") ?? MaximumRepeatInputBytes, MaximumRepeatInputBytes) - retainedBytes;
+                        if (remaining < 0) throw new InvalidDataException("failure_repeat_input_limit");
                         await WorkerBlobDownloader.DownloadAsync(process, AccountName(), container, name, path,
-                            Math.Min(budgets?.Number("producer_artifact_bytes") ?? 268435456, remaining),
+                            Math.Min(Math.Min(budgets?.Number("producer_artifact_bytes") ?? MaximumArtifactBytes, MaximumArtifactBytes), remaining),
                             budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
                         downloaded.Add((context.RunId, container, name), path);
                     }
@@ -403,10 +408,13 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     { await KubectlAsync(["patch", "configmap", name, "-n", "parchwell", "--type=merge", "-p", JsonSerializer.Serialize(patch)], token).ConfigureAwait(false); }
     private async Task<byte[]> DownloadAsync(RepeatContext context, string container, string name, string filename, CancellationToken token)
     {
+        long remaining = Math.Min(budgets?.Number("repeat_input_bytes") ?? MaximumRepeatInputBytes, MaximumRepeatInputBytes) - RetainedInputBytes(context.OutputDirectory);
+        if (remaining < 0) throw new InvalidDataException("repeat_input_limit");
         Directory.CreateDirectory(context.OutputDirectory);
         string destination = Path.Combine(context.OutputDirectory, filename);
         await WorkerBlobDownloader.DownloadAsync(process, AccountName(), container, name, destination,
-            budgets?.Number("producer_artifact_bytes") ?? 268435456, budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), token).ConfigureAwait(false);
+            Math.Min(Math.Min(budgets?.Number("producer_artifact_bytes") ?? MaximumArtifactBytes, MaximumArtifactBytes), remaining),
+            budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), token).ConfigureAwait(false);
         downloaded.Add((context.RunId, container, name), destination);
         return await File.ReadAllBytesAsync(destination, token).ConfigureAwait(false);
     }

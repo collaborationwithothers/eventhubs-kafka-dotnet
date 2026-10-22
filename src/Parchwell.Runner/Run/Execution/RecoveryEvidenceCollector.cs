@@ -14,6 +14,8 @@ public sealed record RecoveryCapture(string CaptureSha256, IReadOnlyList<Evidenc
 public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, TerraformEnvironment environment,
     TimeProvider clock, ExecutionBudgets budgets, string privateKubeconfigPath)
 {
+    private const long MaximumRepeatInputBytes = 1_073_741_824;
+    private const long MaximumArtifactBytes = 268_435_456;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     private static readonly string[] PublicationNames = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "index.json"];
     private static readonly string[] VerifierNames = ["start-line.json", "broker-inventory.json", "result.json"];
@@ -122,10 +124,10 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
                 {
                     string path = Path.Combine(target, relative);
                     long retained = Directory.Exists(target) ? Directory.EnumerateFiles(target, "*", SearchOption.AllDirectories).Sum(file => new FileInfo(file).Length) : 0;
-                    long remaining = budgets.Number("repeat_input_bytes") - retained;
-                    if (remaining <= 0) throw new InvalidDataException("recovery_repeat_input_limit");
+                    long remaining = Math.Min(budgets.Number("repeat_input_bytes"), MaximumRepeatInputBytes) - retained;
+                    if (remaining < 0) throw new InvalidDataException("recovery_repeat_input_limit");
                     await WorkerBlobDownloader.DownloadAsync(process, account, container, name, path,
-                        Math.Min(budgets.Number("producer_artifact_bytes"), remaining), budgets.Seconds("api_seconds"), token).ConfigureAwait(false);
+                        Math.Min(Math.Min(budgets.Number("producer_artifact_bytes"), MaximumArtifactBytes), remaining), budgets.Seconds("api_seconds"), token).ConfigureAwait(false);
                     _ = Files(directory);
                 }
                 catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !token.IsCancellationRequested)

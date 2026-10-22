@@ -13,7 +13,7 @@ public sealed class KubernetesWatchTests
 {
     private const string InitialVersion = "list/rv&1";
     private static readonly byte[] ArtifactBytes = [1, 2, 3];
-    private static readonly string[] ArtifactNames = ["manifest.json", "ledger.ndjson", "attempt-inventory.ndjson", "statistics.ndjson", "evidence.json", "index.json"];
+    private static readonly string[] ArtifactNames = [.. WorkerPublicationFixture.ArtifactNames, "index.json"];
 
     [Fact]
     public async Task Given_ContinuousWatchWithBookmarks_When_RenewedAndDrained_Then_EveryRequestResumesItsLastAcknowledgedVersion()
