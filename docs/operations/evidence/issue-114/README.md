@@ -19,21 +19,34 @@ reviewable. Hari adopted that narrow amendment in
 [decision 6336034219](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219).
 The original P1 remains correct for the earlier contract; the amended contract
 permits SDK retries inside the same deadlines while preserving conflict-stop.
-Required PR CI passed. External Codex code review remains pending; its security
-review completed with no findings at the same implementation head.
+The prior implementation passed required PR CI. External code review then
+completed on `534ab8f70059f37bdd027781573023d971058b0b`; its confirmed admission
+projection P1 is addressed by the [comment repairs](review-15-dispositions.md).
+The security review completed with no findings at the earlier implementation
+head. The direct `fixcomments` continuation in
+[decision 6337640356](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6337640356)
+supersedes the round-14 stop for these repairs and their required review.
 The [thirteenth review](cold-review-13.md) covered every authored file and found
 only four approval-only groups, with no non-approval P0/P1 or P2. The exact
 sweeper P0 is now approval-only under
 [decision 6336121859](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336121859),
 alongside the three plan-required dependency groups. Severity is retained and
 Hari merges. That decision also bounds the remaining cold review through round
-14; its exact handoff condition remains in force.
+14 at that earlier checkpoint. The later user-directed continuation above
+authorizes the current repairs and necessary review. The separate three-round
+external code-review cap and merge gates remain unchanged.
 
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
 - [Storage and cleanup decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257)
 
 ## Validation status
+
+The repaired worktree builds with zero warnings/errors and passes 92 focused
+Runner cases and 23 worker admission cases. The
+[repair disposition](review-15-dispositions.md) links original reports,
+pre-build input inventories and the retained first fixture failure. These local
+checks do not substitute for repaired-head PR CI.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined

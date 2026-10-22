@@ -78,11 +78,6 @@ spec:
             - name: comparison
               mountPath: /deployment
               readOnly: true
-            {{- if eq $role "loadgen" }}
-            - name: admission
-              mountPath: /admission
-              readOnly: true
-            {{- end }}
       volumes:
         - name: work
           emptyDir:
@@ -91,9 +86,4 @@ spec:
           emptyDir: {}
         - name: comparison
           configMap:
-            name: {{ printf "%s-%s-values" .Values.runtime.run_id $role | quote }}
-        {{- if eq $role "loadgen" }}
-        - name: admission
-          configMap:
-            name: {{ .Values.runtime.admission_name | quote }}
-        {{- end }}
+            name: {{ ternary .Values.runtime.admission_name (printf "%s-%s-values" .Values.runtime.run_id $role) (eq $role "loadgen") | quote }}

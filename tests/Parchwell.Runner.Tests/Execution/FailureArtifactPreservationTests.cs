@@ -207,7 +207,7 @@ public sealed class FailureArtifactPreservationTests
         public Task CreateProducerAsync(RepeatContext context, CancellationToken cancellationToken) { Created++; return Task.CompletedTask; }
         public Task<ProducerPod> ObserveProducerAsync(RepeatContext context, PodAdmission admission, CancellationToken cancellationToken) =>
             failure == "pre_admission" ? throw new IOException("synthetic_admission_failed") : production.ObserveProducerAsync(context, admission, cancellationToken);
-        public Task<string> GenerateComparisonAsync(RepeatContext context, WorkerIdentity identity, CancellationToken cancellationToken) => Task.FromResult(new string('b', 64));
+        public Task<string> GenerateComparisonAsync(RepeatContext context, WorkerIdentity identity, CancellationToken cancellationToken) => production.GenerateComparisonAsync(context, identity, cancellationToken);
         public async Task<StartLineExecution> StartLineAsync(RepeatContext context, WorkerIdentity identity, CancellationToken cancellationToken)
         {
             process.Initialize(context);

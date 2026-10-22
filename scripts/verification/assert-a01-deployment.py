@@ -68,7 +68,12 @@ for configuration in ('C0', 'C3'):
         lg = yaml.safe_load((directory/'loadgen-values.yaml').read_text()); ver = yaml.safe_load((directory/'verifier-values.yaml').read_text())
         check(prefix + 'role_contexts', lg['profile'] == ver['profile'] and lg['kafka']['LoadGenProducer'] == ver['kafka']['LoadGenProducer'] and lg['kafka']['VerifierConsumer']['client.id'] != ver['kafka']['VerifierConsumer']['client.id'])
         if role == 'loadgen':
-            check(prefix + 'admission_initially_closed', configmaps[runtime['admission_name']]['data'] == {} and mounts['admission']['mountPath'] == '/admission')
+            check(prefix + 'admission_initially_closed', configmaps[runtime['admission_name']]['data'] == {} and env['PARCHWELL_ADMISSION_FILE'] == '/deployment/admission.json' and volumes['comparison']['configMap']['name'] == runtime['admission_name'] and 'admission' not in volumes and 'admission' not in mounts)
+            admission = configmaps[runtime['admission_name']]
+            for comparison_role, key in (('loadgen', 'generated-values.yaml'), ('verifier', 'verifier-values.yaml')):
+                check(prefix + comparison_role + '_admission_bytes', base64.b64decode(admission['binaryData'][key], validate=True) == (directory / (comparison_role+'-values.yaml')).read_bytes())
+        else:
+            check(prefix + 'producer_admission_untouched', runtime['admission_name'] not in configmaps)
         policies = [obj for obj in objects if obj['kind'] == 'NetworkPolicy']
         check(prefix + 'scoped_deny', len(policies) == 2 and all(p['spec']['podSelector'] == {'matchLabels':{'app.kubernetes.io/name':'parchwell'}} for p in policies))
         deny = next(p for p in policies if p['metadata']['name'].endswith('-default-deny'))['spec']

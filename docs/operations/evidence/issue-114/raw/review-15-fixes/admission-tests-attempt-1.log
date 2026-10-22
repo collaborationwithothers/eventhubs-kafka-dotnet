@@ -1,0 +1,15 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Parchwell.LoadGen.Tests
+  Discovered:  Parchwell.LoadGen.Tests
+  Starting:    Parchwell.LoadGen.Tests
+    Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests.Given_PendingProjectedGeneration_When_FinalComparisonAndPermitArriveAtomically_Then_WaitingWorkerAcceptsMatchingPodAndBrokers [FAIL]
+      System.IO.FileNotFoundException : Could not find file '/tmp/admission-457657614de94e8a9f45739220a57436/..data_tmp'.
+      Stack Trace:
+           at System.IO.File.Move(String sourceFileName, String destFileName, Boolean overwrite)
+        tests/Parchwell.LoadGen.Tests/Host/DeploymentAdmissionTests.cs(179,0): at Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests.Given_PendingProjectedGeneration_When_FinalComparisonAndPermitArriveAtomically_Then_WaitingWorkerAcceptsMatchingPodAndBrokers()
+        --- End of stack trace from previous location ---
+{"native_loaded":true,"scenario_files":2,"uid_expected":1654}
+loadgen_startup_or_host_failure:InvalidDataException
+  Finished:    Parchwell.LoadGen.Tests (ID = '2a67848406c52d59e4af45e85d2ac9873502a2eac92feac5e3d4338b25f10c4c')
+=== TEST EXECUTION SUMMARY ===
+   Parchwell.LoadGen.Tests  Total: 23, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.543s

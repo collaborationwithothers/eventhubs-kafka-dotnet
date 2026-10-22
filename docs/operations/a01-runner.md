@@ -39,6 +39,24 @@ The committed [limits file](a01-runtime-limits.json) has schema version 1. `scen
 
 ## Bounds and lifecycle
 
+The producer mounts its comparison document and admission file from one per-run
+ConfigMap volume. After start-line, Runner patches the release JSON and both
+final worker comparison documents in one request. Later start-line/verify chart
+applications leave that admission ConfigMap untouched. After the atomic patch,
+Runner updates an annotation on the independently observed producer Pod to
+request immediate projection refresh. Kubernetes documents eventual mounted
+ConfigMap updates and this annotation refresh mechanism in its
+[pinned 1.35 source](https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/tasks/configure-pod-container/configure-pod-configmap.md#L743-L758).
+This is not a network timing guarantee: the unchanged worker identity/hash checks
+must pass before host construction, and delayed or mismatched release still
+fails closed at its existing deadline.
+
+One Runner admission deadline also spans producer creation, identity observation,
+comparison generation, start-line and release/refresh. It is not reset between
+those steps. Producer execution then uses the enclosing repeat deadline; neither
+the annotation request nor a slow start-line extends the worker's admission
+window or permits another repeat.
+
 The exact literals live in [a01-runtime-limits.json](a01-runtime-limits.json). LoadGen/start-line/verify/gate execution watchdogs are respectively 660/120/720/60 seconds; Job deadlines are 840/150/750/90 seconds. Admission is 180 seconds; a repeat is at most 1500 seconds. The 9600-second phase includes up to five repeats, 900-second apply, 300-second export and 900-second destroy reserve. Phase workflow jobs allow 180 minutes and sweep jobs 30 minutes. These workflow caps do not extend Runner's bounds.
 
 CLI/API calls allow 60 seconds and bounded output; read-only operations allow at most three attempts with delays 1/2 seconds inside that bound. Runner does not reinvoke mutations. The [durable-store retry amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6336034219) permits the required Azure CLI's pinned SDK to retry conditional requests internally within the existing 60-second CLI and 180-second store-operation deadlines. A watch allows 10000 events; each event/JSON document is at most 16 MiB. Evidence allows 8 GiB per phase, 256 MiB per downloaded producer artifact, 1 GiB per-repeat input and 16 MiB per container log. Ledger/manifest allow 1048576 bytes, with at most 256 manifest entries. KQL allows 10000 rows/16 MiB, at most three reads spaced 30 seconds within export. Over-limit data is visibly incomplete, never silently successful truncation.

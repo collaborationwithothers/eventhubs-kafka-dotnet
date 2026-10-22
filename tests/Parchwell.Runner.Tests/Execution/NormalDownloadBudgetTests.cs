@@ -228,6 +228,55 @@ public sealed class NormalDownloadBudgetTests
         Assert.Equal(0, fixture.Process.Shows("start-line.json"));
     }
 
+    [Fact]
+    public async Task Given_ObservedProducerAndFinalComparisons_When_Releasing_Then_OnePatchContainsPermitAndBothExactFilesBeforeRefreshingThatUid()
+    {
+        using var fixture = new NormalFixture(checked((int)RepeatLimit));
+        await fixture.BindAsync();
+        await fixture.ObserveProducerAsync();
+        string hash = await fixture.Cluster.GenerateComparisonAsync(fixture.Context, fixture.Identity, TestContext.Current.CancellationToken);
+        Assert.Empty(fixture.Process.Patches);
+        byte[] permit = JsonSerializer.SerializeToUtf8Bytes(new { release = true, generated_values_sha256 = hash });
+
+        await fixture.Cluster.ReleaseAsync(fixture.Context, permit, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, fixture.Process.Patches.Count);
+        ProcessRequest configuration = fixture.Process.Patches[0], refresh = fixture.Process.Patches[1];
+        Assert.Equal(["patch", "configmap", fixture.Context.RunId + "-admission", "-n", "parchwell", "--type=merge", "-p"], configuration.Arguments.Take(7));
+        using JsonDocument patch = JsonDocument.Parse(configuration.Arguments[7]);
+        Assert.Equal(System.Text.Encoding.UTF8.GetString(permit), patch.RootElement.GetProperty("data").GetProperty("admission.json").GetString());
+        JsonElement binary = patch.RootElement.GetProperty("binaryData");
+        Assert.Equal(["generated-values.yaml", "verifier-values.yaml"], binary.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        foreach ((string role, string key) in new[] { ("loadgen", "generated-values.yaml"), ("verifier", "verifier-values.yaml") })
+        {
+            byte[] expected = await File.ReadAllBytesAsync(Path.Combine(fixture.Context.OutputDirectory, "loadgen-deployment", role + "-values.yaml"), TestContext.Current.CancellationToken);
+            Assert.Equal(expected, Convert.FromBase64String(binary.GetProperty(key).GetString()!));
+        }
+        Assert.Equal(["patch", "pod", fixture.Context.RunId + "-pod", "-n", "parchwell", "--type=merge", "-p"], refresh.Arguments.Take(7));
+        using JsonDocument annotation = JsonDocument.Parse(refresh.Arguments[7]);
+        Assert.Equal("synthetic-pod-uid", annotation.RootElement.GetProperty("metadata").GetProperty("uid").GetString());
+        Assert.Equal(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(permit)),
+            annotation.RootElement.GetProperty("metadata").GetProperty("annotations").GetProperty("parchwell.io/admission-sha256").GetString());
+        Assert.All(fixture.Process.Patches, request => Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout));
+    }
+
+    [Theory]
+    [InlineData("configmap", 1)]
+    [InlineData("pod", 2)]
+    public async Task Given_AdmissionMutationFails_When_Releasing_Then_NoFollowingMutationOrRetryIsIssued(string failure, int calls)
+    {
+        using var fixture = new NormalFixture(checked((int)RepeatLimit));
+        await fixture.BindAsync();
+        await fixture.ObserveProducerAsync();
+        await fixture.Cluster.GenerateComparisonAsync(fixture.Context, fixture.Identity, TestContext.Current.CancellationToken);
+        fixture.Process.FailedPatchKind = failure;
+
+        await Assert.ThrowsAsync<IOException>(() => fixture.Cluster.ReleaseAsync(fixture.Context, "{}"u8.ToArray(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(calls, fixture.Process.Patches.Count);
+        Assert.Equal(failure, fixture.Process.Patches[^1].Arguments[1]);
+    }
+
     private sealed class NormalFixture : IDisposable
     {
         private readonly DeploymentFixture deployment = new();
@@ -281,6 +330,8 @@ public sealed class NormalDownloadBudgetTests
         internal string PublicationPrefix { get; }
         internal List<string> Listing { get; }
         internal List<ProcessRequest> StorageRequests { get; } = [];
+        internal List<ProcessRequest> Patches { get; } = [];
+        internal string? FailedPatchKind { get; set; }
         internal void SetVerifier(string filename, long length, bool stopAtTransport = false) => blobs[("verifier", context.Phase + "/" + context.RunId + "/" + filename)] = new(length, stopAtTransport);
         internal int Shows(string filename) => Count("show", filename);
         internal int Downloads(string filename) => Count("download", filename);
@@ -298,6 +349,11 @@ public sealed class NormalDownloadBudgetTests
             if (request.FileName == "helm") return new(0, args[0] == "version" ? "v4.3.1+synthetic" : "synthetic rendered output", "");
             if (request.FileName == "kubectl")
             {
+                if (args[0] == "patch")
+                {
+                    Patches.Add(request);
+                    return new(args[1] == FailedPatchKind ? 1 : 0, "", "");
+                }
                 if (args[1] == "--raw") return new(0, "{\"type\":\"BOOKMARK\",\"object\":{\"metadata\":{\"resourceVersion\":\"2\"}}}", "");
                 if (args[0] == "logs") return new(0, "synthetic original stdout", "");
                 if (args[0] == "get")

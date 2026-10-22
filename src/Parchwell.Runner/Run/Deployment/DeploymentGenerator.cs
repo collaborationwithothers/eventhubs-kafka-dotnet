@@ -116,7 +116,7 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
             env["PARCHWELL_SOURCE_COMMIT"] = source;
             env["PARCHWELL_GENERATED_VALUES_FILE"] = "/deployment/generated-values.yaml";
         }
-        loadgenEnv["PARCHWELL_ADMISSION_FILE"] = "/admission/admission.json";
+        loadgenEnv["PARCHWELL_ADMISSION_FILE"] = "/deployment/admission.json";
         loadgenEnv["PARCHWELL_EXPECTED_RUN_ID"] = run;
         loadgenEnv["LoadGen__GeneratedValuesFile"] = "/deployment/generated-values.yaml";
         var runtime = new Dictionary<string, object?>

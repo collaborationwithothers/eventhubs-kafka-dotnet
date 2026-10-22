@@ -146,6 +146,70 @@ public sealed class DeploymentAdmissionTests : IDisposable
         Assert.NotNull(await DeploymentAdmission.WaitAsync(configuration, TimeProvider.System, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task Given_PendingProjectedGeneration_When_FinalComparisonAndPermitArriveAtomically_Then_WaitingWorkerAcceptsMatchingPodAndBrokers()
+    {
+        IConfiguration configuration = CreateConfiguration();
+        string initial = Path.Combine(_directory, "..initial");
+        string final = Path.Combine(_directory, "..final");
+        Directory.CreateDirectory(initial);
+        Directory.CreateDirectory(final);
+        File.Move(ValuesPath, Path.Combine(initial, "generated-values.yaml"));
+        File.WriteAllText(Path.Combine(initial, "generated-values.yaml"), "comparison for run-1-pending\n", new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(initial, "admission.json"), "{}");
+        string dataPath = Path.Combine(_directory, "..data");
+        Directory.CreateSymbolicLink(dataPath, "..initial");
+        File.CreateSymbolicLink(ValuesPath, Path.Combine("..data", "generated-values.yaml"));
+        File.CreateSymbolicLink(AdmissionPath, Path.Combine("..data", "admission.json"));
+        string pendingHash = Hash();
+        byte[] finalValues = Encoding.UTF8.GetBytes("comparison for producer-pod\n");
+        string finalHash = Convert.ToHexStringLower(SHA256.HashData(finalValues));
+        File.WriteAllBytes(Path.Combine(final, "generated-values.yaml"), finalValues);
+        File.WriteAllText(Path.Combine(final, "admission.json"), Release().Replace(pendingHash, finalHash, StringComparison.Ordinal));
+        Assert.NotEqual(pendingHash, finalHash);
+
+        var clock = new ManualTimeProvider();
+        Task<IReadOnlyDictionary<string, string?>?> waiting = DeploymentAdmission.WaitAsync(configuration, clock,
+            TestContext.Current.CancellationToken);
+        await clock.PollCreated.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.False(waiting.IsCompleted);
+        Assert.Equal("{}", File.ReadAllText(AdmissionPath));
+        Assert.Equal(pendingHash, Hash());
+
+        string replacement = Path.Combine(_directory, "..data_tmp");
+        Directory.CreateSymbolicLink(replacement, "..final");
+        using var rename = new System.Diagnostics.Process
+        {
+            StartInfo = new("mv")
+            {
+                UseShellExecute = false,
+                ArgumentList = { "--force", "--no-target-directory", replacement, dataPath }
+            }
+        };
+        Assert.True(rename.Start());
+        await rename.WaitForExitAsync(TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal(0, rename.ExitCode);
+        Assert.Equal(Path.Combine("..data", "generated-values.yaml"), new FileInfo(ValuesPath).LinkTarget);
+        Assert.Equal(Path.Combine("..data", "admission.json"), new FileInfo(AdmissionPath).LinkTarget);
+        Assert.Equal(finalValues, File.ReadAllBytes(ValuesPath));
+        using (JsonDocument permit = JsonDocument.Parse(File.ReadAllBytes(AdmissionPath)))
+        {
+            Assert.True(permit.RootElement.GetProperty("release").GetBoolean());
+            Assert.Equal(Hash(), permit.RootElement.GetProperty("generated_values_sha256").GetString());
+            Assert.NotEqual(pendingHash, permit.RootElement.GetProperty("generated_values_sha256").GetString());
+        }
+        clock.Timers[1].Fire();
+
+        IReadOnlyDictionary<string, string?>? values = await waiting.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.NotNull(values);
+        Assert.Equal("producer-pod", values["LoadGen:ExpectedInstanceId"]);
+        Assert.Equal("producer-pod", values["LoadGen:ActualInstanceId"]);
+        Assert.Equal("producer-pod", values["LoadGen:PodName"]);
+        Assert.Equal("producer-pod", values["LoadGen:ClientId"]);
+        Assert.Equal("sasl_ssl://broker.example.invalid:9093/0", values["LoadGen:ExpectedBrokerNamesCsv"]);
+    }
+
     private IConfiguration CreateConfiguration()
     {
         File.WriteAllText(ValuesPath, "comparison\n", new UTF8Encoding(false));

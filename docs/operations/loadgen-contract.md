@@ -114,4 +114,11 @@ The [approved A01 deployment plan](https://github.com/collaborationwithothers/ev
 
 Use the admitted Pod name for expected/actual instance, Pod name and producer client ID. Compare the LoadGen-context generated version-1 document byte-for-byte with the worker's own resolution before native producer construction, as [the worker engineering rules](../engineering/dotnet.md#kubernetes-workers) require. An absent comparison setting preserves nondeployment callers; a configured missing or different file fails.
 
+For the deployed producer, `/deployment/admission.json` and
+`/deployment/generated-values.yaml` share the same per-run ConfigMap volume.
+Runner publishes the permit and both final comparison documents in one update,
+then requests a Pod annotation refresh as described in
+[the runner contract](a01-runner.md#bounds-and-lifecycle). The worker retains its
+existing deadline, byte bound and immediate rejection of a mismatched hash.
+
 Only successful publication and cleanup emit a bounded normal-completion stdout line prefixed `PARCHWELL_COMPLETION ` with schema version 1, mode, run identity, source commit, handler exit code 0 and `cleanup_completed:true`. Runner acceptance requires actual exit 0, that receipt and all six original index-last publication objects; a lone index or receipt never authorizes verify. See [the runner contract](a01-runner.md).

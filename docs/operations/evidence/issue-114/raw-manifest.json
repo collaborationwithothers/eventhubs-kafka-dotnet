@@ -2995,6 +2995,114 @@
       "sha256": "84a4d5f4e9766d9def57d2ac612eae43ab8d93168d74daaffb0210c04f71f135"
     },
     {
+      "path": "raw/review-15-fixes/admission-tests-attempt-1.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.log 2>&1; byte-preserving rename: mv docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.log docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-1.log [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 1296,
+      "sha256": "f12b026ce10a68f5f35ce6665eadf69d7f9ca52ff73f9b0afcd71adfed77bd0c"
+    },
+    {
+      "path": "raw/review-15-fixes/admission-tests-attempt-1.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.log 2>&1; byte-preserving rename: mv docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests.xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-1.xml [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 16066,
+      "sha256": "87109b8484d38d8d8c15d9a34dda2195e94bf2cc4fdc641656a2fd53cb2598e5"
+    },
+    {
+      "path": "raw/review-15-fixes/admission-tests-attempt-2.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 545,
+      "sha256": "c2cff204144030eefd57c68e668fac9b24aaa3e4c8fb6feea8fcb01a7ac8b816"
+    },
+    {
+      "path": "raw/review-15-fixes/admission-tests-attempt-2.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 15376,
+      "sha256": "cbd7579f91f83c5b7408afa4c4d0f9cda855bca8cf206ceb5318a0f806210d20"
+    },
+    {
+      "path": "raw/review-15-fixes/atomic-writer-source.txt",
+      "producer": "set -o pipefail && gh api 'repos/kubernetes/kubernetes/contents/pkg/volume/util/atomic_writer.go?ref=v1.35.0' --jq .content | base64 --decode > docs/operations/evidence/issue-114/raw/review-15-fixes/atomic-writer-source.txt [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 16982,
+      "sha256": "eb5f473227d4f90dce481fd0e0cfa679df1c559fb6b8343954a84f5ff86693a2"
+    },
+    {
+      "path": "raw/review-15-fixes/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-15-fixes/authored-diff-check.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/review-15-fixes/build-attempt-1.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-15-fixes/build-attempt-1.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 1819,
+      "sha256": "35d783062546d7285447a8668622aa805283f3696687cfd4356f1e6c6ec2cccc"
+    },
+    {
+      "path": "raw/review-15-fixes/build-attempt-2.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-15-fixes/build-attempt-2.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 1819,
+      "sha256": "35fcc201c2d80d584347b59f2ff31928c75d09a46f9be5d5d1ec91d2f698aa4d"
+    },
+    {
+      "path": "raw/review-15-fixes/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-15-fixes/check-docs.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 9794,
+      "sha256": "7cfffeb6aa066422fb2df5fcc0f26f469a7694dbda997741d755ddf53e652e6d"
+    },
+    {
+      "path": "raw/review-15-fixes/configmap-projection-source.txt",
+      "producer": "set -o pipefail && gh api 'repos/kubernetes/website/contents/content/en/docs/tasks/configure-pod-container/configure-pod-configmap.md?ref=8817d358864b70a9710c5ad34f78df6a239be33d' --jq .content | base64 --decode > docs/operations/evidence/issue-114/raw/review-15-fixes/configmap-projection-source.txt [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 28879,
+      "sha256": "97da7ff958503e573e3e88d4a2bdaf7f45f8f38772613e3f33d85a236ae79298"
+    },
+    {
+      "path": "raw/review-15-fixes/continuation.json",
+      "producer": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6337640356 > docs/operations/evidence/issue-114/raw/review-15-fixes/continuation.json [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 4629,
+      "sha256": "a3708179b6ec79e0146bc9be47d464ae60de2d5d21016defbd44eb5025da261b"
+    },
+    {
+      "path": "raw/review-15-fixes/external-review.json",
+      "producer": "gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/pulls/115/reviews/5611667408 > docs/operations/evidence/issue-114/raw/review-15-fixes/external-review.json [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 2585,
+      "sha256": "7b7eb31d0391afa66549404515102a60c392d0c3d9638fd481f6439e28e9ecfa"
+    },
+    {
+      "path": "raw/review-15-fixes/repository-inputs-before-build-1.json",
+      "producer": "python3 /workspace/scratch/issue-114-review15-inputs.py repository-inputs-before-build-1.json [executed script retained byte-for-byte as review-15-inputs.py] [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 103494,
+      "sha256": "83962f36113d568edf1ee9cf404828d26aac998888293c02ff53483bb331e91d"
+    },
+    {
+      "path": "raw/review-15-fixes/repository-inputs-before-build-2.json",
+      "producer": "python3 /workspace/scratch/issue-114-review15-inputs.py repository-inputs-before-build-2.json [executed script retained byte-for-byte as review-15-inputs.py] [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 103494,
+      "sha256": "c3550694b3dc0aa35e7823915c181740ae5ebcada722997ba604ad026cd181ba"
+    },
+    {
+      "path": "raw/review-15-fixes/review-comments.json",
+      "producer": "gh api 'repos/collaborationwithothers/eventhubs-kafka-dotnet/pulls/115/comments?per_page=100&page=1' > docs/operations/evidence/issue-114/raw/review-15-fixes/review-comments.json [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 75590,
+      "sha256": "4b321f10a443da834da76209c692c100343046ea86ef82ef41009760c9428cce"
+    },
+    {
+      "path": "raw/review-15-fixes/runner-tests.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests -class Parchwell.Runner.Tests.Execution.RepeatAdmissionDeadlineTests -class Parchwell.Runner.Tests.Execution.FailureArtifactPreservationTests -class Parchwell.Runner.Tests.Execution.AksKubeconfigBindingTests -class Parchwell.Runner.Tests.Deployment.DeploymentGeneratorTests -class Parchwell.Runner.Tests.ChartContractTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/runner-tests.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/runner-tests.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 425,
+      "sha256": "41eb3456ab34378c69333ca9d8243df538723736e20491278f5f80238b3ff230"
+    },
+    {
+      "path": "raw/review-15-fixes/runner-tests.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Execution.NormalDownloadBudgetTests -class Parchwell.Runner.Tests.Execution.RepeatAdmissionDeadlineTests -class Parchwell.Runner.Tests.Execution.FailureArtifactPreservationTests -class Parchwell.Runner.Tests.Execution.AksKubeconfigBindingTests -class Parchwell.Runner.Tests.Deployment.DeploymentGeneratorTests -class Parchwell.Runner.Tests.ChartContractTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/runner-tests.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/runner-tests.log 2>&1 [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 70170,
+      "sha256": "e81d3a50848d5f3bd32fccdfa20b7a230e02a59d1987af9797ad01319457dc7e"
+    },
+    {
+      "path": "raw/review-15-fixes/uid-validation-source.txt",
+      "producer": "set -o pipefail && gh api 'repos/kubernetes/apimachinery/contents/pkg/api/validation/objectmeta.go?ref=v0.35.0' --jq .content | base64 --decode > docs/operations/evidence/issue-114/raw/review-15-fixes/uid-validation-source.txt [source 534ab8f70059f37bdd027781573023d971058b0b; dirty user-directed fixcomments worktree; local focused checks with pre-build input inventories; original external review is of prior committed head; not exact-head PR CI]",
+      "size_bytes": 16149,
+      "sha256": "8c45a41329acf6b4e7c1390c705946901d496812f64fb6fc01d9346263797ef4"
+    },
+    {
       "path": "raw/review-4-fixes/authored-diff-check.log",
       "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-4-fixes/authored-diff-check.log 2>&1 [source 5cea1260b9d7ef3fb23909c762872cd692787c80; dirty cold-review-4 fixes worktree; local checks, not exact-head PR CI acceptance]",
       "size_bytes": 0,

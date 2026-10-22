@@ -116,11 +116,6 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     {
         DeploymentFiles deployment = await GenerateAsync(context, "loadgen", identity.InstanceId, [], cancellationToken).ConfigureAwait(false);
         files[context.RunId] = deployment;
-        foreach ((string role, string path) in new[] { ("loadgen", deployment.LoadGenValuesPath), ("verifier", deployment.VerifierValuesPath) })
-        {
-            byte[] bytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
-            await PatchAsync(context.RunId + "-" + role + "-values", new { binaryData = new Dictionary<string, string> { ["generated-values.yaml"] = Convert.ToBase64String(bytes) } }, cancellationToken).ConfigureAwait(false);
-        }
         return Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(deployment.LoadGenValuesPath, cancellationToken).ConfigureAwait(false)));
     }
 
@@ -139,7 +134,31 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     public async Task ReleaseAsync(RepeatContext context, byte[] permit, CancellationToken cancellationToken)
     {
         releaseAttempted.Add(context.RunId);
-        await PatchAsync(context.RunId + "-admission", new { data = new Dictionary<string, string> { ["admission.json"] = System.Text.Encoding.UTF8.GetString(permit) } }, cancellationToken).ConfigureAwait(false);
+        DeploymentFiles deployment = files[context.RunId];
+        byte[] loadgen = await File.ReadAllBytesAsync(deployment.LoadGenValuesPath, cancellationToken).ConfigureAwait(false);
+        byte[] verifier = await File.ReadAllBytesAsync(deployment.VerifierValuesPath, cancellationToken).ConfigureAwait(false);
+        // One volume generation exposes the permit together with both exact comparison documents.
+        await PatchAsync(WorkerIdentity.Text(deployment.Runtime, "admission_name"), new
+        {
+            data = new Dictionary<string, string> { ["admission.json"] = System.Text.Encoding.UTF8.GetString(permit) },
+            binaryData = new Dictionary<string, string>
+            {
+                ["generated-values.yaml"] = Convert.ToBase64String(loadgen),
+                ["verifier-values.yaml"] = Convert.ToBase64String(verifier)
+            }
+        }, cancellationToken).ConfigureAwait(false);
+        ProducerPod producer = producers[context.RunId];
+        await KubectlAsync(["patch", "pod", producer.Name, "-n", "parchwell", "--type=merge", "-p", JsonSerializer.Serialize(new
+        {
+            metadata = new
+            {
+                uid = producer.Uid,
+                annotations = new Dictionary<string, string>
+                {
+                    ["parchwell.io/admission-sha256"] = Convert.ToHexStringLower(SHA256.HashData(permit))
+                }
+            }
+        })], cancellationToken).ConfigureAwait(false);
     }
 
     public Task<WorkerExecution> WaitProducerAsync(RepeatContext context, CancellationToken cancellationToken) => WaitJobAsync(context, "loadgen", budgets?.Number("loadgen_job_seconds") ?? 840, cancellationToken);

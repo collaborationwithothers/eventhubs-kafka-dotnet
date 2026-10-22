@@ -1,5 +1,10 @@
 # Issue 114 resumed implementation
 
+Current comment repairs are authorized by the later direct `fixcomments`
+continuation in [decision 6337640356](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6337640356).
+Their [disposition and validation](review-15-dispositions.md) supersede the
+historical round-14 stop for this repair; earlier checkpoints below are retained.
+
 The [continuation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6333713470) authorizes fixing the evidence-retention findings from the second cold review without another split. The checked Revision 2 plan remains the implementation authority. This record describes those fixes and the review override; it contains no live results.
 
 The selected [plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789) was last edited at `2026-10-22T04:14:53Z`. Its [independent standing-approval check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289) identifies that revision and states `Blocking findings: none`. Parent and child authority was refreshed before resuming. The continuation decision was created at `2026-10-22T05:45:20Z` and states: "The override lasts until the pull request is clean. List every trip passed under it in the pull request description. Rule 6 and rule 10's three-round Codex cap are unchanged. No further split."

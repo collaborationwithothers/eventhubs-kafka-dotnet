@@ -22,20 +22,23 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         CancellationToken token = work.Token;
         PodAdmission admission = await cluster.EstablishProducerWatchAsync(context, token).ConfigureAwait(false);
         admissions.Add(context.RunId, admission);
-        await cluster.CreateProducerAsync(context, token).ConfigureAwait(false);
-        ProducerPod pod = await cluster.ObserveProducerAsync(context, admission, token).ConfigureAwait(false);
+        using var admissionDeadline = new CancellationTokenSource(budgets?.Seconds("admission_seconds") ?? TimeSpan.FromSeconds(180), clock);
+        using var admissionWork = CancellationTokenSource.CreateLinkedTokenSource(token, admissionDeadline.Token);
+        CancellationToken admissionToken = admissionWork.Token;
+        await cluster.CreateProducerAsync(context, admissionToken).ConfigureAwait(false);
+        ProducerPod pod = await cluster.ObserveProducerAsync(context, admission, admissionToken).ConfigureAwait(false);
         if (pod != admission.Producer) throw new InvalidDataException("independent_producer_identity");
         var identity = new WorkerIdentity("A01", context.Phase == "probe" ? "C0" : context.Phase,
             context.RunId, pod.Name, pod.Name, pod.Name);
-        await recordAdmission(identity, token).ConfigureAwait(false);
-        string comparisonHash = await cluster.GenerateComparisonAsync(context, identity, token).ConfigureAwait(false);
-        StartLineExecution start = await cluster.StartLineAsync(context, identity, token).ConfigureAwait(false);
-        await PersistWorkerAsync(context, "start-line", start.Worker, token).ConfigureAwait(false);
+        await recordAdmission(identity, admissionToken).ConfigureAwait(false);
+        string comparisonHash = await cluster.GenerateComparisonAsync(context, identity, admissionToken).ConfigureAwait(false);
+        StartLineExecution start = await cluster.StartLineAsync(context, identity, admissionToken).ConfigureAwait(false);
+        await PersistWorkerAsync(context, "start-line", start.Worker, admissionToken).ConfigureAwait(false);
         if (start.Worker.Process.ExitCode != 0 || !WorkerOutcome.HasReceipt(start.Worker.Process, "start-line", identity, context.SourceCommit))
             throw new InvalidDataException("start_line_execution");
-        await File.WriteAllBytesAsync(Path.Combine(context.OutputDirectory, "broker-inventory.json"), start.Inventory, token).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(Path.Combine(context.OutputDirectory, "broker-inventory.json"), start.Inventory, admissionToken).ConfigureAwait(false);
         IReadOnlyList<string> brokers = BrokerInventory.Read(start.Inventory, identity, context.SourceCommit);
-        await cluster.ReleaseAsync(context, admission.Release(brokers, comparisonHash), token).ConfigureAwait(false);
+        await cluster.ReleaseAsync(context, admission.Release(brokers, comparisonHash), admissionToken).ConfigureAwait(false);
         WorkerExecution producer = await cluster.WaitProducerAsync(context, token).ConfigureAwait(false);
         await PersistWorkerAsync(context, "loadgen", producer, token).ConfigureAwait(false);
         if (producer.Process.ExitCode != 0 || !WorkerOutcome.HasReceipt(producer.Process, "loadgen", identity, context.SourceCommit))
