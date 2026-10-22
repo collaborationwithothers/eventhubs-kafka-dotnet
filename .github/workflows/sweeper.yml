@@ -1,0 +1,106 @@
+# Install only after Hari configures parchwell-sweeper, its FIC and runner allowlist.
+name: A01 destroy-only sweeper
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: parchwell-ephemeral
+  cancel-in-progress: false
+jobs:
+  sweep:
+    runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
+    environment: parchwell-sweeper
+    timeout-minutes: 50
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
+      PARCHWELL_PERSISTENT_OUTPUTS_PATH: ${{ vars.PARCHWELL_PERSISTENT_OUTPUTS_PATH }}
+      PARCHWELL_EPHEMERAL_BACKEND_CONFIG: ${{ vars.PARCHWELL_EPHEMERAL_BACKEND_CONFIG }}
+      PARCHWELL_EPHEMERAL_TFVARS_PATH: ${{ vars.PARCHWELL_EPHEMERAL_TFVARS_PATH }}
+      PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
+      PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
+      PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
+    steps:
+      - name: Require the main branch before login
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
+            [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+            echo "::add-mask::$value"
+          done
+      - name: Check out the main head this run started from
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up pinned SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Materialise private inputs from environment secrets
+        shell: bash
+        env:
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
+          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
+          S_RUNTIME_SWEEP: ${{ secrets.PARCHWELL_RUNTIME_SWEEP }}
+        run: |
+          set -euo pipefail
+          umask 077
+          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
+          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
+          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
+          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
+          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
+          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
+          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/sweep.json" S_RUNTIME_SWEEP "$S_RUNTIME_SWEEP"
+      - name: Prepare private destroy-only runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          export A01_OUTPUT="$RUNNER_TEMP/a01-sweep"
+          mkdir -p "$A01_OUTPUT"
+          echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
+          python3 - <<'PYTHON'
+          import json,os,pathlib
+          keys=['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
+          for key in keys: assert pathlib.Path(os.environ[key]).is_file()
+          runtime=json.loads(pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY'],'sweep.json').read_text())
+          runtime['source_commit']=os.environ['GITHUB_SHA']; assert runtime['initialize_ledger'] is False
+          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'],tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'],readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()),scenario_root=str(pathlib.Path('.').resolve()),limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()))
+          pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json').write_text(json.dumps(runtime))
+          PYTHON
+          timeout 600 dotnet restore src/Parchwell.Runner/Parchwell.Runner.csproj --locked-mode > "$A01_OUTPUT/restore.log" 2>&1
+          timeout 600 dotnet build src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-restore > "$A01_OUTPUT/build.log" 2>&1
+          test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
+          terraform version -json > "$A01_OUTPUT/terraform-version.json"
+          timeout 60 az version > "$A01_OUTPUT/azure-cli-version.json"
+          timeout 60 kubectl version --client -o json > "$A01_OUTPUT/kubectl-version.json"
+      - name: Existing environment OIDC login
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Export aged generation and attempt guarded destroy
+        shell: bash
+        run: |
+          timeout 1500 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1
+      # All recovery evidence remains private. A failed lock or a failed destroy is
+      # retried by the next scheduled sweep with fresh generation checks and no reset.
+      # A failed export followed by a successful destroy is final: the source data is
+      # gone, the destroy receipt is complete, and no later sweep retries the export.
