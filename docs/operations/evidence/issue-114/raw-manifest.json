@@ -2713,6 +2713,42 @@
       "sha256": "2655cd75865a7c89c1b2084f535398e5b3b952a07647b8ca0827e0ea0c0d7d18"
     },
     {
+      "path": "raw/review-11-fixes/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-11-fixes/authored-diff-check.log 2>&1 [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/review-11-fixes/build.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-11-fixes/build.log 2>&1 [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 1819,
+      "sha256": "258915114998b080066a9e02339859f1305355093bd5fbb795d237a31d871d71"
+    },
+    {
+      "path": "raw/review-11-fixes/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-11-fixes/check-docs.log 2>&1 [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 9416,
+      "sha256": "41aa95e2e37b2c06bfe705769edcac4b0f273eae5ab32bdd8f52d8bd109bbc55"
+    },
+    {
+      "path": "raw/review-11-fixes/repository-inputs.json",
+      "producer": "timeout 180 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/review-11-fixes'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty cold-review-11 Verifier startup-validation fixes before build','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 103268,
+      "sha256": "2aaa1643c2621a013255430febe45d02fb53811218ba6f7054cba83c28ba8c1c"
+    },
+    {
+      "path": "raw/review-11-fixes/verifier-host-tests.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll -class Parchwell.Verifier.Tests.Host.GeneratedValuesCompatibilityTests -class Parchwell.Verifier.Tests.Host.VerifierHostTests -result-xml docs/operations/evidence/issue-114/raw/review-11-fixes/verifier-host-tests.xml > docs/operations/evidence/issue-114/raw/review-11-fixes/verifier-host-tests.log 2>&1 [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 77440,
+      "sha256": "4cbaa7a5de885596de9fbc0ee255b03efd022de772d0e2e3ae2b0aee54e6ebfa"
+    },
+    {
+      "path": "raw/review-11-fixes/verifier-host-tests.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll -class Parchwell.Verifier.Tests.Host.GeneratedValuesCompatibilityTests -class Parchwell.Verifier.Tests.Host.VerifierHostTests -result-xml docs/operations/evidence/issue-114/raw/review-11-fixes/verifier-host-tests.xml > docs/operations/evidence/issue-114/raw/review-11-fixes/verifier-host-tests.log 2>&1 [source d8b43a88729a74746a29d98fda1521b1407ea780; dirty cold-review-11 Verifier startup-validation fixes; local build and targeted host checks, not exact-head PR CI acceptance]",
+      "size_bytes": 255832,
+      "sha256": "a8590358b5819eb449bb2d906dcc0eeaa9c3542bd15ffbf8b42955c71f5ea10c"
+    },
+    {
       "path": "raw/review-4-fixes/authored-diff-check.log",
       "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-4-fixes/authored-diff-check.log 2>&1 [source 5cea1260b9d7ef3fb23909c762872cd692787c80; dirty cold-review-4 fixes worktree; local checks, not exact-head PR CI acceptance]",
       "size_bytes": 0,

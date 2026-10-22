@@ -35,6 +35,27 @@ aggregation. The [official-source audit](review-10-kql-audit.json) records the
 documented schemas, union behavior and conversion. Existing query tests cover
 binding, private retention and CLI output; no live KQL execution is claimed.
 
+The [eleventh review](cold-review-11.md) found that Verifier's optional generated
+values path lacked startup validation. Verify mode now rejects blank/control
+paths and path-representation failures through its existing options validator,
+before handlers or Blob/native operations. Omitted paths and valid relative or
+absolute paths remain supported. The other modes do not consume this option.
+
+The review also raised a P0 on the second sweeper federation subject. The exact
+design is required by decision `6332413257` point 4 and the checked Revision 2
+plan. Its authentication trust is broader than the old sole protected subject;
+the original severity is preserved. The [independent reconciliation](sweeper-authority.md)
+distinguishes that authorized design from the unchanged review rule.
+
+Not valid: requiring reversion of this exact design amendment conflicts with
+the recognized point-4 decision and the plan's explicit blueprint amendment.
+This response disputes required corrective action, not the factual expansion
+of federation trust or the literal P0 flag. It is a disputed P0 awaiting Hari,
+not an approval-only exception or clean-review/merge clearance. Rule 8 permits
+presenting this evidence-backed dispute in a reviewed draft PR; rule 10 requires
+the PR description to list it, and factory "Escapes" leaves its merge resolution
+with Hari. The implementation does not create the external credential.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -56,7 +77,12 @@ Round 9 revisited execution/evidence with download accounting and publication-me
 Round 10 revisited execution/evidence with the corroborating KQL counter types.
 This further trip passes under decision `6333713470`.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md) [ninth](cold-review-9.md) and [tenth](cold-review-10.md) reports retain their original findings and reviewed source identities.
+Round 11 revisited deployment/worker-input validation with the Verifier path and
+execution/deployment with the disputed sweeper identity scope. Both count as
+substantive findings for churn; these further trips pass under decision
+`6333713470`. The disputed P0 remains outside the approval-only exception.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md), [ninth](cold-review-9.md) [tenth](cold-review-10.md) and [eleventh](cold-review-11.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
@@ -78,3 +104,8 @@ Tenth-review fixes start from `edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0`.
 Their source captures and targeted checks belong under `raw/review-10-fixes/`,
 with exact commands in `review-10-producers.json`. They do not replace PR CI or
 deployment acceptance.
+
+Eleventh-review fixes start from `d8b43a88729a74746a29d98fda1521b1407ea780`.
+Their local build and targeted host tests belong under `raw/review-11-fixes/`,
+with exact commands in `review-11-producers.json` and a fresh source inventory.
+The required PR workflow remains separate.

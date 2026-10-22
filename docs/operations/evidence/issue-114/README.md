@@ -19,7 +19,7 @@ Deployment acceptance and the required PR workflow evidence remain incomplete.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-[Release build](raw/review-9-fixes/build-attempt-2.log) has zero warnings and errors;
+[Release build](raw/review-11-fixes/build.log) has zero warnings and errors;
 all 1001 Runner tests pass in
 [the current local test report](raw/review-9-fixes/runner-tests-attempt-2.xml).
 The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
@@ -36,6 +36,14 @@ malformed and valid subscription inputs. Its nine cases check early failure,
 private file permissions, suppressed identifier output and candidate-only
 artifact paths. The exact supporting script is retained in
 `review-5-producers.json`; it adds no CI job or live operation.
+
+The [eleventh-review host report](raw/review-11-fixes/verifier-host-tests.xml)
+records 382 passing Verifier startup and compatibility cases. Invalid generated
+values paths fail options validation before handler, Blob or native calls;
+omission and valid relative/absolute paths remain supported. The
+[input inventory](raw/review-11-fixes/repository-inputs.json) hashes the updated
+source before this build and targeted run. These local checks do not replace
+the required PR workflow.
 
 The deployment script retained locked restore when it found the runtime-specific
 lockfile mismatch. The subsequent image attempt reached the official registry's
@@ -117,6 +125,12 @@ checks do not execute KQL against Azure. All 35 targeted tests pass in
 [the retained report](raw/review-10-fixes/query-tests.xml), using the unchanged
 .NET assemblies from the ninth-review build. The updated query source is hashed
 in [the tenth-review inventory](raw/review-10-fixes/repository-inputs.json).
+The [eleventh report](cold-review-11.md) records the Verifier startup correction
+and a disputed P0 concerning sweeper federation trust. The
+[authority reconciliation](sweeper-authority.md) and
+[disposition](resume-status.md#finding-dispositions) retain the finding's
+severity and the exact already-authorized design. This is not a clean-review
+claim or merge clearance; the draft PR must disclose the dispute for Hari.
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the
