@@ -19,6 +19,7 @@
     "admission-tests-attempt-2.log": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.log 2>&1",
     "admission-tests-attempt-2.xml": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Host.DeploymentAdmissionTests -result-xml docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.xml > docs/operations/evidence/issue-114/raw/review-15-fixes/admission-tests-attempt-2.log 2>&1",
     "check-docs.log": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-15-fixes/check-docs.log 2>&1",
-    "authored-diff-check.log": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-15-fixes/authored-diff-check.log 2>&1"
+    "authored-diff-check.log": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-15-fixes/authored-diff-check.log 2>&1",
+    "check-docs-attempt-1.log": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-15-fixes/check-docs.log 2>&1; byte-preserving rename: mv docs/operations/evidence/issue-114/raw/review-15-fixes/check-docs.log docs/operations/evidence/issue-114/raw/review-15-fixes/check-docs-attempt-1.log"
   }
 }

@@ -3,7 +3,8 @@
 The direct `fixcomments` instruction resumes the repairs under
 [decision 6337640356](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6337640356).
 The confirmed admission projection P1 and retry-summary clarification are
-addressed; approval-only findings and the namespace dispute remain disclosed.
+addressed; approval-only findings remain disclosed. Hari has closed the
+source-backed namespace dispute in its existing review thread.
 
 The original [review](raw/review-15-fixes/external-review.json) and
 [findings/replies](raw/review-15-fixes/review-comments.json) concern head
@@ -30,8 +31,12 @@ closed without another repeat.
 
 The namespace finding remains answered `Not valid:`: Preflight awaits BindAsync,
 which selects `ensureNamespace=true` and awaits explicit Namespace application.
-Existing binding assertions cover that order and failure stop. Hari still
-decides that dispute under factory.md "Escapes"; no namespace fix is claimed.
+Existing binding assertions cover that order and failure stop. Hari explicitly
+[agreed and closed the dispute](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/115#discussion_r4346757680)
+in that same thread, as retained in the cited original findings/replies. This
+satisfies factory.md "Escapes"; no namespace fix is claimed. The in-progress
+review caught the earlier stale status in this document and it was corrected
+before the completed review and push, with production source unchanged.
 The `IArtifactStore` summary now distinguishes prohibited Runner reinvocation
 from permitted pinned CLI SDK retries, addressing issue #116. The exact sweeper
 P0 and three dependency P1 groups remain approval-only with severity preserved.
