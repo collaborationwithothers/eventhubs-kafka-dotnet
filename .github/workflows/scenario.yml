@@ -14,7 +14,7 @@ jobs:
   probe:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     outputs:
       full_allowed: ${{ steps.gate.outputs.full_allowed }}
       loadgen_digest: ${{ steps.images.outputs.loadgen_digest }}
@@ -222,7 +222,7 @@ jobs:
     if: needs.probe.outputs.full_allowed == 'true'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -416,7 +416,7 @@ jobs:
     if: needs.probe.outputs.full_allowed == 'true' && needs['full-C0'].result == 'success'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}

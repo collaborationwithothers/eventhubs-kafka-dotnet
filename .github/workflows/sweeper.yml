@@ -2,8 +2,6 @@
 name: A01 destroy-only sweeper
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/15 * * * *"
 permissions:
   contents: read
   id-token: write
@@ -14,7 +12,7 @@ jobs:
   sweep:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-sweeper
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
