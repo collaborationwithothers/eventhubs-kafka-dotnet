@@ -73,12 +73,6 @@
       "sha256": "d8f92f5f384147888849cf5cf88a296127721f87bba0182391422c02f8d759b4"
     },
     {
-      "path": "raw/chart-tool-acquisition/receipt.json",
-      "producer": "python3 - <<'PYEDIT'\nfrom pathlib import Path\np=Path('scripts/fetch-service-tags.sh');s=p.read_text().replace(\"not isinstance(root.get('changeNumber'),int)\", \"type(root.get('changeNumber')) is not int\").replace(\"not isinstance(props.get('changeNumber'),int)\", \"type(props.get('changeNumber')) is not int\");p.write_text(s)\nout=Path('docs/operations/evidence/issue-114/raw/chart-tool-acquisition');import json\np=out/'receipt.json';j=json.loads(p.read_text());j['blocked_destinations'].append('centralus.data.mcr.microsoft.com');j['sdk_container_publish_attempted']=True;j['sdk_locked_linux_x64_restore_build_succeeded']=True;j['sdk_container_archive_produced']=False;j['image_smoke_executed']=False;j['mcr_blob_redirect_host']='centralus.data.mcr.microsoft.com';p.write_text(json.dumps(j,indent=2)+'\\n')\nPath('docs/operations/evidence/issue-114/raw/deployment-tests-final/build.log').write_bytes(Path('/workspace/scratch/chart-final-source-build.log').read_bytes())\nPYEDIT [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; dirty worktree; historical input hashes unavailable]",
-      "size_bytes": 892,
-      "sha256": "43637bd85e327bde502f1f5b88f0f900b87d0105c0c6c6ebb68a2fe37b23adc8"
-    },
-    {
       "path": "raw/chart-tool-acquisition/service-tags-host-denial.txt",
       "producer": "curl --silent --show-error --max-time 60 --head https://download.microsoft.com/download/ServiceTags_Public.json > /workspace/scratch/service-tags-host-denial.txt 2>&1 || true [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; dirty worktree; historical input hashes unavailable]",
       "size_bytes": 190,
@@ -2543,6 +2537,24 @@
       "producer": "python /workspace/scratch/write-chart-producers.py; byte-preserving move of chart-deployment-source-inventory-post-execution.json to raw/metadata/ [source 4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55; post-execution dirty-source inventory, not historical execution provenance]",
       "size_bytes": 45893,
       "sha256": "3fb1f6612adf1a8c2f81ad2b1470947db6b2a7fe5fcaea14dbb4519b3d70ec74"
+    },
+    {
+      "path": "raw/placement-fix/authored-diff-check.log",
+      "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/placement-fix/authored-diff-check.log 2>&1 [source 0da5afc4206dc80856cd034bb7f80b6986996aef; dirty evidence-placement correction; implementation unchanged]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/placement-fix/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/placement-fix/check-docs.log 2>&1 [source 0da5afc4206dc80856cd034bb7f80b6986996aef; dirty evidence-placement correction; implementation unchanged]",
+      "size_bytes": 2936,
+      "sha256": "06203b1011f56c6030c827469bf40430fde7aeeec308126e6413e027eb75c8b4"
+    },
+    {
+      "path": "raw/placement-fix/mcr-host-probe.txt",
+      "producer": "curl --max-time 20 --silent --show-error --head --location --write-out '\\nhttp_code=%{http_code}\\nexitcode=%{exitcode}\\n' https://centralus.data.mcr.microsoft.com/ > docs/operations/evidence/issue-114/raw/placement-fix/mcr-host-probe.txt 2>&1 [source 0da5afc4206dc80856cd034bb7f80b6986996aef; dirty evidence-placement correction; implementation unchanged]",
+      "size_bytes": 217,
+      "sha256": "12313689e2e5af3c501f019425c0fcda50a1abc1206ca30270061622f4d06f69"
     },
     {
       "path": "raw/resume/authored-diff-check.log",

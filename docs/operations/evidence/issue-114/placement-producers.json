@@ -1,0 +1,9 @@
+{
+  "source_commit": "0da5afc4206dc80856cd034bb7f80b6986996aef",
+  "source_status": "dirty evidence-placement correction; implementation unchanged",
+  "commands": {
+    "mcr-host-probe.txt": "curl --max-time 20 --silent --show-error --head --location --write-out '\\nhttp_code=%{http_code}\\nexitcode=%{exitcode}\\n' https://centralus.data.mcr.microsoft.com/ > docs/operations/evidence/issue-114/raw/placement-fix/mcr-host-probe.txt 2>&1",
+    "check-docs.log": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/placement-fix/check-docs.log 2>&1",
+    "authored-diff-check.log": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/placement-fix/authored-diff-check.log 2>&1"
+  }
+}

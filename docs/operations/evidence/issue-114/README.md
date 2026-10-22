@@ -45,8 +45,9 @@ dataset also remain unverified.
 The required download hosts are `centralus.data.mcr.microsoft.com`, `get.helm.sh`,
 `download.microsoft.com`, and `tuf-repo-cdn.sigstore.dev`. The last host serves the
 signature metadata required by the TFLint provider installer. No signature or
-network-policy bypass was used. The acquisition receipts and failed commands
-are retained under `raw/`.
+network-policy bypass was used. The failed commands remain under `raw/`. The
+[authored acquisition status and provenance](acquisition-status.md) are retained
+in reviewed scope outside that directory.
 
 The authored diff passes the whitespace check. The unfiltered cached check
 reports whitespace in original tool output and HTTP response captures; those
@@ -72,7 +73,9 @@ and dependency-construction findings. The [fourth report](cold-review-4.md)
 records the account-projection and LoadGen options findings addressed in the
 earlier checks. The [fifth report](cold-review-5.md) records the worker-observation,
 redaction-startup and positive count-acceptance findings addressed in the current
-local checks.
+local checks. The [sixth report](cold-review-6.md) found the acquisition-status
+placement issue; the authored summary was moved unchanged into reviewed scope
+while original tool captures remain raw.
 Subsequent cold-review results belong to the PR self-review. The required
 workflow run ID and tested commit are pending PR CI.
 The new projects, references, protected-path edits

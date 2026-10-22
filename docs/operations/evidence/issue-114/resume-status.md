@@ -20,6 +20,8 @@ The [fifth review](cold-review-5.md) found worker observations lost when a later
 
 Both startup and public-candidate guards reject padded GUIDs before parsing. The [pinned runtime parser](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Guid.cs#L441-L454) trims whitespace; accepting a padded redaction literal could otherwise leave its unpadded occurrence unchanged. The regressions retain valid lowercase/uppercase inputs and reject leading/trailing spaces or tabs.
 
+The [sixth review](cold-review-6.md) found a manually assigned acquisition-status receipt under the excluded raw directory. The receipt is moved byte-for-byte into authored evidence, with its historical producer and hash retained in [the provenance record](acquisition-status-provenance.json). The [status note](acquisition-status.md) links the supporting captures and a fresh MCR destination probe. No implementation or test behavior changes in this correction.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -30,7 +32,9 @@ Round 4 revisited the deployment/worker-input component with the account project
 
 Round 5 revisited execution/evidence and deployment/worker-input validation with worker observations, early redaction configuration and the required count-acceptance test. These further trips pass under the same continuation decision.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md) and [fifth](cold-review-5.md) reports retain their original findings and reviewed source identities.
+Round 6 revisited the evidence component with the authored/raw acquisition-status placement finding. This further trip passes under decision `6333713470`.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md) and [sixth](cold-review-6.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
