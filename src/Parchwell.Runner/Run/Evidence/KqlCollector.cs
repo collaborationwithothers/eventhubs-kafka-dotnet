@@ -44,7 +44,8 @@ public sealed class KqlCollector(IProcessRunner process, TimeProvider clock)
         return receipt;
     }
 
-    // Azure CLI 74172d7 log-analytics/_custom.py flattens tables to a row array;
+    // Azure CLI extension source flattens tables to a row array:
+    // https://github.com/Azure/azure-cli-extensions/blob/74172d7cf4637fdf039e6b9325498feaed459888/src/log-analytics/azext_loganalytics/custom.py
     // each row has TableName and string-valued columns, including numeric counts.
     public static KqlReceipt Parse(byte[] output, string query)
     {

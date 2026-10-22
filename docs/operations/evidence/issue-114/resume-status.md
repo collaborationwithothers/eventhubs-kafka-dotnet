@@ -56,6 +56,16 @@ presenting this evidence-backed dispute in a reviewed draft PR; rule 10 requires
 the PR description to list it, and factory "Escapes" leaves its merge resolution
 with Hari. The implementation does not create the external credential.
 
+The [twelfth review](cold-review-12.md) found that one `az storage blob upload`
+invocation can retry its conditional HTTP write inside the SDK. The
+[independent source investigation](blob-retry-investigation.md) confirms that
+the exact pinned CLI has no verified retry-disable control. This conflicts with
+the selected plan's explicit no-write-retry requirement. The P1 is valid and
+unresolved; the [amendment proposal](retry-amendment-proposal.md) has no authority
+until Hari records a recognized decision. No substitute credential, unsupported
+flag/environment setting or new transport is implemented. The citation P2 is
+corrected to the actual pinned CLI extension source path.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -81,6 +91,12 @@ Round 11 revisited deployment/worker-input validation with the Verifier path and
 execution/deployment with the disputed sweeper identity scope. Both count as
 substantive findings for churn; these further trips pass under decision
 `6333713470`. The disputed P0 remains outside the approval-only exception.
+
+Round 12 revisited execution/evidence with the CLI SDK-retry P1 and reiterated
+the same disputed sweeper P0. This further churn trip passes under decision
+`6333713470`; that override does not resolve the valid retry-contract finding.
+An ordinary push and PR remain blocked by that P1, independently of the
+already-disclosed sweeper dispute.
 
 The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md), [ninth](cold-review-9.md) [tenth](cold-review-10.md) and [eleventh](cold-review-11.md) reports retain their original findings and reviewed source identities.
 

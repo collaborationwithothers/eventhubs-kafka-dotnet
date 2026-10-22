@@ -10,6 +10,12 @@ lifts the earlier cold-review churn stop without another split. The
 [resumption record](resume-status.md) describes the normal-failure artifact and
 workflow provenance fixes, along with the required override trip record.
 Deployment acceptance and the required PR workflow evidence remain incomplete.
+The [twelfth review](cold-review-12.md) also identified a required-plan
+incompatibility: the mandated CLI inherits SDK write retries without a verified
+disable control. The [source investigation](blob-retry-investigation.md) and
+[narrow amendment proposal](retry-amendment-proposal.md) make that decision
+reviewable. This P1 remains valid and unresolved; no ordinary push or PR has
+been made, and no PR CI or external Codex review is claimed.
 
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
@@ -131,6 +137,17 @@ and a disputed P0 concerning sweeper federation trust. The
 [disposition](resume-status.md#finding-dispositions) retain the finding's
 severity and the exact already-authorized design. This is not a clean-review
 claim or merge clearance; the draft PR must disclose the dispute for Hari.
+The twelfth review retained that dispute and found the CLI retry P1. Its P2
+source-locator correction is applied in the query parser comment. Original
+small upstream sources and the retry-source subset are retained under
+`raw/review-12-blocker/`; the original large CLI archive remains in scratch,
+with its immutable URL/hash in `review-12-source-receipts.json`. That archive
+is not claimed as a committed raw file. The exact original fetch/filter
+commands are authored provenance in `review-12-source-commands.json`.
+The [store test report](raw/review-12-blocker/store-tests.xml) records 28 passing
+existing CLI-boundary and ledger cases. They confirm application calls,
+conflict-stop and uncertain-byte readback; fake processes do not exercise or
+disable SDK retries and do not resolve the finding.
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the
