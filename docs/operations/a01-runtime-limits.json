@@ -119,8 +119,8 @@
     "service_tag_prefixes_per_tag": 4096,
     "termination_grace_seconds": 30,
     "expiry_hours": 4,
-    "phase_job_minutes": 180,
-    "sweep_job_minutes": 30,
+    "phase_job_minutes": 240,
+    "sweep_job_minutes": 50,
     "offline_command_seconds": 600,
     "item_limit_gbp": 15
   }
