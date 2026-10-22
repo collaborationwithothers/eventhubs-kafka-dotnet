@@ -2881,6 +2881,84 @@
       "sha256": "2085a18ae46966237d1c5839feb6a166dbc632115668aca807ff5d72f04bfdf6"
     },
     {
+      "path": "raw/review-8-fixes/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-8-fixes/authored-diff-check.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/review-8-fixes/build-attempt-1.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-8-fixes/build-attempt-1.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 2274,
+      "sha256": "2fb755d395ac0ee447e35a1764f27232f7e7a1047b9c90c837f68dffa19fd0a4"
+    },
+    {
+      "path": "raw/review-8-fixes/build-attempt-2.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-8-fixes/build-attempt-2.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 33390,
+      "sha256": "bb0ec11cac598e7163323127afee4fdcd2edd95a1028ede8e3c5ba323a9a9bc1"
+    },
+    {
+      "path": "raw/review-8-fixes/build-attempt-3.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore > docs/operations/evidence/issue-114/raw/review-8-fixes/build-attempt-3.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 1819,
+      "sha256": "5d5a8604ca326248c9c05321d9534916bb0e9a122e15f000433be377e621f751"
+    },
+    {
+      "path": "raw/review-8-fixes/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-8-fixes/check-docs.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 3005,
+      "sha256": "36957734898414039c1a78319ed0a2e0643a8ad9f385130da290c8469040a70d"
+    },
+    {
+      "path": "raw/review-8-fixes/rehearsal-cases.json",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-review-8-wire --output /workspace/scratch/issue-114-review-8-rehearsal > docs/operations/evidence/issue-114/raw/review-8-fixes/rehearsal.log 2>&1\ncp /workspace/scratch/issue-114-review-8-rehearsal/rehearsal-cases.json docs/operations/evidence/issue-114/raw/review-8-fixes/rehearsal-cases.json [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 23915,
+      "sha256": "fbfae431ff8c23d3ed2a3088af98bdf369fd19e5bf97354a44f0a20fac115370"
+    },
+    {
+      "path": "raw/review-8-fixes/rehearsal-summary.json",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-review-8-wire --output /workspace/scratch/issue-114-review-8-rehearsal > docs/operations/evidence/issue-114/raw/review-8-fixes/rehearsal.log 2>&1\ncp /workspace/scratch/issue-114-review-8-rehearsal/summary.json docs/operations/evidence/issue-114/raw/review-8-fixes/rehearsal-summary.json [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 214,
+      "sha256": "69e0bf27fde375b97c6eb74abdb8de83d3b2486271cb41bcb6650b80547f7887"
+    },
+    {
+      "path": "raw/review-8-fixes/rehearsal.log",
+      "producer": "timeout 600 /workspace/scratch/dotnet/dotnet run --project src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-build -- rehearse --fixtures /workspace/scratch/issue-114-review-8-wire --output /workspace/scratch/issue-114-review-8-rehearsal > docs/operations/evidence/issue-114/raw/review-8-fixes/rehearsal.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/review-8-fixes/repository-inputs-before-build-2.json",
+      "producer": "timeout 600 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/review-8-fixes'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty cold-review-8 fixes worktree before build attempt 2','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs-before-build-2.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 102848,
+      "sha256": "85f8902c351907eb13334314180df4d24666852a46938ef8f77e8420766c0e92"
+    },
+    {
+      "path": "raw/review-8-fixes/repository-inputs-before-build-3.json",
+      "producer": "timeout 600 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/review-8-fixes'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty cold-review-8 fixes worktree before build attempt 3','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs-before-build-3.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 102848,
+      "sha256": "e000588c04faf206c719abbea1541edc4e665eda425b62cc9356fbf705e383b3"
+    },
+    {
+      "path": "raw/review-8-fixes/repository-inputs-pre-validation.json",
+      "producer": "timeout 600 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/review-8-fixes'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty cold-review-8 fixes worktree before validation','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs-pre-validation.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 102843,
+      "sha256": "f13007d99b82fbeedfa2f9cfd6fe7cacd60df72d3f59449ba1ee0f73f0f635b7"
+    },
+    {
+      "path": "raw/review-8-fixes/runner-tests-attempt-1.log",
+      "producer": "PARCHWELL_WIRE_FIXTURE_DIRECTORY=/workspace/scratch/issue-114-review-8-wire timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/review-8-fixes\" -- --report-xunit-xml --report-xunit-xml-filename runner-tests-attempt-1.xml > docs/operations/evidence/issue-114/raw/review-8-fixes/runner-tests-attempt-1.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 550,
+      "sha256": "21da493ffc35dd9eca22daef6da9af06612bef9d3db0200d244032dab11b4d79"
+    },
+    {
+      "path": "raw/review-8-fixes/runner-tests-attempt-1.xml",
+      "producer": "PARCHWELL_WIRE_FIXTURE_DIRECTORY=/workspace/scratch/issue-114-review-8-wire timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/review-8-fixes\" -- --report-xunit-xml --report-xunit-xml-filename runner-tests-attempt-1.xml > docs/operations/evidence/issue-114/raw/review-8-fixes/runner-tests-attempt-1.log 2>&1 [source 4590e7818b3ac720e593ef680ecb6a0d51467546; dirty cold-review-8 fixes worktree; local checks, not exact-head PR CI acceptance]",
+      "size_bytes": 685549,
+      "sha256": "5d40593fa9f3dfeb47f50cc6b6701fe2353a7c0b55aa02c7d23f7966ddd10518"
+    },
+    {
       "path": "raw/review-fixes/authored-diff-check.log",
       "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-fixes/authored-diff-check.log 2>&1 [source f2c41aec2990bf8af532110062beb001906cb3eb; dirty cold-review-3 fixes worktree; local checks, not exact-head PR CI acceptance]",
       "size_bytes": 0,

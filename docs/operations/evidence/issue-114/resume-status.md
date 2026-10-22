@@ -24,6 +24,8 @@ The [sixth review](cold-review-6.md) found a manually assigned acquisition-statu
 
 The [seventh review](cold-review-7.md) found that generation accepted missing or invalid deployment limits and that the plan's neighboring boundary tests were incomplete. Generation and preflight now share required-field, type and finite-bound validation before deployment configuration is used. Existing worker reader ceilings, zero replacement repeats and zero schedule lateness remain intact. The new regressions cover the audited byte, entry, row, broker, duration and cleanup-reserve boundaries. Large phase-export cases prove metadata admission through a deliberate transport stop; recovery cases exercise real streaming hashes of synthetic sparse files. Neither fixture represents live worker evidence.
 
+The [eighth review](cold-review-8.md) found that the public candidate omitted the plan's provenance, timing, gate and eligible result summaries. Its count allowlist also did not match the verifier's authoritative fields. The candidate projection now retains only the allowed summary fields from accepted outcomes and verified private originals, with nulls and stable unavailable reasons for missing data. Gate decisions refresh the summary on both execution and replay. The [operational contract](../../a01-runner.md) defines phase count totals and diagnostic window maxima without introducing a new verdict predicate.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -38,7 +40,9 @@ Round 6 revisited the evidence component with the authored/raw acquisition-statu
 
 Round 7 revisited deployment/worker-input validation and execution/evidence with missing or invalid generation limits and the required neighboring boundary tests. These further trips pass under decision `6333713470`.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md) and [seventh](cold-review-7.md) reports retain their original findings and reviewed source identities.
+Round 8 revisited the execution/evidence component with the incomplete public candidate and count-field projection. This further trip passes under decision `6333713470`.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md) and [eighth](cold-review-8.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
@@ -51,3 +55,5 @@ Fourth-review fixes start from `5cea1260b9d7ef3fb23909c762872cd692787c80`. Their
 Fifth-review fixes start from `0d25c6d71c2196dd49b32d87989f5aee5fb633ff`. Their local evidence belongs under `raw/review-5-fixes/`, with exact commands in `review-5-producers.json` and a fresh pre-validation input inventory. The required PR workflow remains pending publication.
 
 Seventh-review fixes start from `886acbc991df56abfd31f5591646b8a9cfdf6c83`. Their local evidence belongs under `raw/review-7-fixes/`, with exact commands in `review-7-producers.json` and a pre-validation input inventory. These local checks do not substitute for the required exact-head PR workflow.
+
+Eighth-review fixes start from `4590e7818b3ac720e593ef680ecb6a0d51467546`. Their local evidence belongs under `raw/review-8-fixes/`, with exact commands in `review-8-producers.json` and a fresh input inventory before validation. The required PR workflow remains separate.

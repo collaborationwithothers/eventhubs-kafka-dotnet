@@ -19,13 +19,13 @@ Deployment acceptance and the required PR workflow evidence remain incomplete.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-[Release build](raw/review-7-fixes/build-attempt-3.log) has zero warnings and errors;
-all 913 Runner tests pass in
-[the current local test report](raw/review-7-fixes/runner-tests-attempt-2.xml).
+[Release build](raw/review-8-fixes/build-attempt-3.log) has zero warnings and errors;
+all 964 Runner tests pass in
+[the current local test report](raw/review-8-fixes/runner-tests-attempt-1.xml).
 The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
 passing startup and compatibility tests. The
-[rehearsal summary](raw/review-7-fixes/rehearsal-summary.json) and
-[case traces](raw/review-7-fixes/rehearsal-cases.json) retain the synthetic phase and
+[rehearsal summary](raw/review-8-fixes/rehearsal-summary.json) and
+[case traces](raw/review-8-fixes/rehearsal-cases.json) retain the synthetic phase and
 failure-path checks. Required
 verification from the existing pull-request workflow is pending; no local run
 substitutes for that evidence.
@@ -60,13 +60,15 @@ raw bytes are retained unchanged and hashed rather than reformatted.
 of every retained raw file. Evidence produced before the implementation commit
 is identified as a dirty worktree based on the recorded source revision, with
 input hashes where supplied. It does not claim a reviewed head commit.
-The current checks retain a [repository input inventory](raw/review-7-fixes/repository-inputs-before-build-3.json)
+The current checks retain a [repository input inventory](raw/review-8-fixes/repository-inputs-before-build-3.json)
 captured before validation; it hashes repository inputs outside the evidence
 directory and does not stand in for PR CI.
 Earlier attempts are retained: the first build exposed a C# keyword collision in
 test data accessors, and the first test run exposed an incorrect fixture count
 for the fallback export attempt. Both test-fixture issues were corrected before
 the passing build and test run; their original output remains in the manifest.
+The eighth-review builds also exposed analyzer requirements in the projection
+and new tests; those were corrected before the current passing build.
 The earlier chart and deployment captures have no contemporaneous dirty-input
 hashes. The post-execution source inventory cannot establish their historical
 source bytes; the raw manifest retains their exact producer commands.
@@ -87,6 +89,11 @@ and the audited boundary fixtures address those findings. Large export fixtures
 check metadata admission before a deliberate transport stop; recovery fixtures
 stream hashes of synthetic sparse files. They do not claim live evidence or a
 completed large private upload.
+The [eighth report](cold-review-8.md) found incomplete public candidate fields
+and the count-key mismatch. The candidate now projects verified provenance,
+timings, gate decisions and eligible summaries. Its regressions cover durable
+replay, tampered or missing originals, observed image receipts, count overflow,
+redaction and preservation of failed execution status after cleanup.
 Subsequent cold-review results belong to the PR self-review. The required
 workflow run ID and tested commit are pending PR CI.
 The new projects, references, protected-path edits

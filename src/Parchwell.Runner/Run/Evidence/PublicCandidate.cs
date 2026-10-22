@@ -10,10 +10,10 @@ public static partial class PublicCandidate
     private static readonly string[] ScalarKeys = ["scenario_id", "configuration_id", "run_id", "source_commit", "status", "gate"];
     private static readonly Dictionary<string, string[]> ObjectKeys = new(StringComparer.Ordinal)
     {
-        ["versions"] = ["runner", "loadgen", "verifier", "confluent_kafka", "librdkafka", "dotnet"],
+        ["versions"] = ["runner", "loadgen", "verifier", "workload_generator", "confluent_kafka", "librdkafka", "dotnet"],
         ["image_digests"] = ["loadgen", "verifier"],
         ["timings"] = ["started_utc", "ended_utc", "duration_seconds"],
-        ["counts"] = ["attempted", "acknowledged", "consumed", "missing", "duplicates", "out_of_order"],
+        ["counts"] = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"],
         ["costs"] = ["estimate_gbp", "actual_gbp", "actual_available"],
         ["diagnostics"] = ["error_codes", "max_throttle_ms", "request_timeout_increment", "disconnect_increment", "rtt_p99_ms"]
     };
@@ -38,6 +38,7 @@ public static partial class PublicCandidate
                 if (!value.TryGetProperty(field, out var child)) continue;
                 if (key == "diagnostics" && field == "error_codes")
                 {
+                    if (child.ValueKind == JsonValueKind.Null) { nested[field] = null; continue; }
                     if (child.ValueKind != JsonValueKind.Array || child.GetArrayLength() > 100) throw new InvalidDataException("candidate_codes_invalid");
                     nested[field] = child.EnumerateArray().Select(code => code.GetInt32()).ToArray();
                 }

@@ -37,7 +37,9 @@ internal static class Program
             byte[] runtimeBytes = await PrivateProvenanceCollector.ReadBoundedAsync(Required(options, "--input"), PrivateProvenanceCollector.MaxDocumentBytes, cancellation.Token).ConfigureAwait(false);
             using JsonDocument runtimeDocument = JsonDocument.Parse(runtimeBytes, new JsonDocumentOptions { MaxDepth = 32 });
             JsonElement runtime = runtimeDocument.RootElement;
-            if (args[0] == "phase") DeploymentPreflight.ValidatePublicCandidateInputs(runtime);
+            bool refreshCandidate = args[0] is "phase" or "gate" ||
+                args[0] is "export" or "destroy" && File.Exists(Path.Combine(output, "candidate.json"));
+            if (refreshCandidate) DeploymentPreflight.ValidatePublicCandidateInputs(runtime);
             string commit = WorkerIdentity.Text(runtime, "source_commit");
             if (commit != WireFixtures.BuiltSourceCommit()) throw new InvalidDataException("approved_source_commit_mismatch");
             var services = new ServiceCollection();
@@ -71,6 +73,7 @@ internal static class Program
             await ValidateReadinessAsync(WorkerIdentity.Text(runtime, "readiness_file"), accountUrl, cancellation.Token).ConfigureAwait(false);
             services.AddSingleton<IArtifactStore>(provider => new AzureCliRunStore(provider.GetRequiredService<IProcessRunner>(), accountUrl, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(output))!, "private-store")));
             services.AddSingleton<RunLedger>(); services.AddSingleton<EvidenceExporter>(); services.AddSingleton<ActualCostReconciler>();
+            services.AddSingleton<PhaseCandidate>();
             services.AddSingleton<ITerraformEnvironment>(provider => new TerraformEnvironment(provider.GetRequiredService<IProcessRunner>(),
                 WorkerIdentity.Text(runtime, "ephemeral_root"), WorkerIdentity.Text(runtime, "backend_config"), WorkerIdentity.Text(runtime, "tfvars_file"), Path.Combine(output, "terraform"), provider.GetRequiredService<TimeProvider>()));
             services.AddSingleton(provider => (TerraformEnvironment)provider.GetRequiredService<ITerraformEnvironment>());
@@ -108,7 +111,8 @@ internal static class Program
                     PhaseExecution executed = await provider.GetRequiredService<PhaseExecutor>().ExecuteAsync(new(phase, env, commit, output, cost,
                         runtime.GetProperty("initialize_ledger").GetBoolean()), cancellation.Token).ConfigureAwait(false);
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
-                    await WriteCandidateAsync(runtime, output, executed.Result, ledger, cancellation.Token).ConfigureAwait(false);
+                    await WriteCandidateAsync(runtime, output, executed.Result, ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token,
+                        executions: executed.Repeats).ConfigureAwait(false);
                     exit = executed.Result is "completed" or "already_completed" ? 0 : 1;
                     break;
                 case "gate":
@@ -120,6 +124,7 @@ internal static class Program
                     {
                         byte[] retainedGate = await provider.GetRequiredService<EvidenceExporter>().ReadGateAsync(probe.EnvironmentRunId!, probe.GateReceipt.SourceSha256, cancellation.Token).ConfigureAwait(false);
                         await File.WriteAllBytesAsync(Path.Combine(output, "gate.json"), retainedGate, cancellation.Token).ConfigureAwait(false);
+                        await WriteCandidateAsync(runtime, output, "already_completed", ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token, "probe").ConfigureAwait(false);
                         return 0;
                     }
                     var captured = new List<RepeatExecution>();
@@ -135,18 +140,23 @@ internal static class Program
                     ProbeGateDecision decision = ProbeGateRunner.Inspect(gate, commit, captured.Select(item => item.Identity).ToArray());
                     await provider.GetRequiredService<EvidenceExporter>().UploadGateAsync(probe.EnvironmentRunId!, gate.Bytes, cancellation.Token).ConfigureAwait(false);
                     await ledger.RecordGateAsync(new(decision.Outcome, Convert.ToHexStringLower(SHA256.HashData(gate.Bytes)), commit), cancellation.Token).ConfigureAwait(false);
+                    await WriteCandidateAsync(runtime, output, "completed", ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token, "probe").ConfigureAwait(false);
                     exit = 0;
                     break;
                 case "export":
                     bool complete = await ExportAsync(ledger, provider.GetRequiredService<EvidenceExporter>(),
                         provider.GetRequiredService<TimeProvider>(), runtime, runtimeBytes, phase, env, output, cancellation.Token).ConfigureAwait(false);
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
+                    if (refreshCandidate)
+                        await WriteCandidateAsync(runtime, output, null, ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token).ConfigureAwait(false);
                     exit = complete ? 0 : 1;
                     break;
                 case "destroy":
                     await DestroyAsync(ledger, terraform, provider.GetRequiredService<GenerationGuard>(), provider.GetRequiredService<EvidenceExporter>(),
                         provider.GetRequiredService<TimeProvider>(), phase, env, output, cancellation.Token).ConfigureAwait(false);
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
+                    if (refreshCandidate)
+                        await WriteCandidateAsync(runtime, output, null, ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token).ConfigureAwait(false);
                     exit = 0;
                     break;
                 default:
@@ -200,16 +210,13 @@ internal static class Program
         await File.WriteAllBytesAsync(Path.Combine(output, "cleanup-receipt.json"), JsonSerializer.SerializeToUtf8Bytes(new { complete }), token).ConfigureAwait(false);
     }
 
-    private static async Task WriteCandidateAsync(JsonElement runtime, string output, string status, RunLedger ledger, CancellationToken token)
+    private static async Task WriteCandidateAsync(JsonElement runtime, string output, string? status, RunLedger ledger,
+        PhaseCandidate builder, CancellationToken token, string? phaseName = null, IReadOnlyList<RepeatExecution>? executions = null)
     {
         LedgerDocument document = await ledger.ReadAsync(token).ConfigureAwait(false);
-        PhaseRecord phase = document.Phases[WorkerIdentity.Text(runtime, "phase")];
-        byte[] candidate = PublicCandidate.Create(JsonSerializer.SerializeToUtf8Bytes(new {
-            scenario_id = "A01", configuration_id = WorkerIdentity.Text(runtime, "phase") == "probe" ? "C0" : WorkerIdentity.Text(runtime, "phase"),
-            run_id = phase.EnvironmentRunId, source_commit = document.SourceCommit, status,
-            costs = new { estimate_gbp = phase.ReservedTotalGbp, actual_gbp = phase.ActualCostGbp, actual_available = phase.ActualCostGbp is not null },
-            reasons = new[] { phase.ActualCostGbp is null ? "actual_cost_unavailable" : "actual_cost_received" }
-        }), WorkerIdentity.Text(runtime, "subscription_guid"));
+        string selectedPhase = phaseName ?? WorkerIdentity.Text(runtime, "phase");
+        byte[] candidate = await builder.CreateAsync(runtime, document, selectedPhase, status ?? PhaseCandidate.DurableStatus(document.Phases[selectedPhase]),
+            executions, output, token).ConfigureAwait(false);
         await File.WriteAllBytesAsync(Path.Combine(output, "candidate.json"), candidate, token).ConfigureAwait(false);
     }
 
