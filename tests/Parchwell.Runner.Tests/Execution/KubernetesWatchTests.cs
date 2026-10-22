@@ -9,7 +9,7 @@ using Xunit;
 namespace Parchwell.Runner.Tests.Execution;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
-public sealed class KubernetesWatchTests
+public sealed partial class KubernetesWatchTests
 {
     private const string InitialVersion = "list/rv&1";
     private static readonly byte[] ArtifactBytes = [1, 2, 3];
@@ -189,12 +189,13 @@ public sealed class KubernetesWatchTests
         internal KubernetesRunCluster Cluster { get; }
         internal string KubeconfigPath => Path.Combine(_deployment.Directory, "private-context", "config");
         internal RepeatContext Context { get; }
-        internal WatchFixture(params Step[] steps)
+        internal WatchFixture(params Step[] steps) : this(TimeProvider.System, steps) { }
+        internal WatchFixture(TimeProvider clock, params Step[] steps)
         {
             Context = new("probe", 1, "synthetic-a01-r1", new string('a', 40), _deployment.Directory);
             Process = new WatchProcess(KubeconfigPath, Context, steps);
             Cluster = new(Process, _deployment.Generator(), new ChartRenderer(Process), JsonSerializer.SerializeToElement(new { }),
-                "unused-chart", TimeProvider.System, privateKubeconfigPath: KubeconfigPath);
+                "unused-chart", clock, privateKubeconfigPath: KubeconfigPath);
         }
         internal Task BindAsync() => Cluster.BindClusterAsync(JsonSerializer.SerializeToElement(new
         {

@@ -1,0 +1,19 @@
+  Parchwell.Enrichment -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/bin/Release/net10.0/Parchwell.Enrichment.dll
+  Parchwell.Kafka -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/bin/Release/net10.0/Parchwell.Kafka.dll
+  Parchwell.Enrichment.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/bin/Release/net10.0/Parchwell.Enrichment.Tests.dll
+  Parchwell.Kafka.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/bin/Release/net10.0/Parchwell.Kafka.Tests.dll
+  Parchwell.Scenarios -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/bin/Release/net10.0/Parchwell.Scenarios.dll
+  Parchwell.LoadGen -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/bin/Release/net10.0/Parchwell.LoadGen.dll
+  Parchwell.Verifier -> /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll
+  Parchwell.Scenarios.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/bin/Release/net10.0/Parchwell.Scenarios.Tests.dll
+/workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Evidence/EvidenceExporter.cs(106,31): error CA1068: Method 'Parchwell.Runner.Run.Evidence.EvidenceExporter.ReadVerifiedFileAsync(string, string, Parchwell.Runner.Run.Cost.PrivateExportReceipt, System.Threading.CancellationToken, int)' should take CancellationToken as the last parameter (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1068) [/workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Parchwell.Runner.csproj]
+  Parchwell.LoadGen.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll
+  Parchwell.Verifier.Tests -> /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll
+
+Build FAILED.
+
+/workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Run/Evidence/EvidenceExporter.cs(106,31): error CA1068: Method 'Parchwell.Runner.Run.Evidence.EvidenceExporter.ReadVerifiedFileAsync(string, string, Parchwell.Runner.Run.Cost.PrivateExportReceipt, System.Threading.CancellationToken, int)' should take CancellationToken as the last parameter (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1068) [/workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Parchwell.Runner.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:23.53

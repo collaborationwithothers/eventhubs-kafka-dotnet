@@ -11,7 +11,8 @@ public sealed class SweepExecutor(RunLedger ledger, ITerraformEnvironment enviro
     public async Task<bool> ExecuteAsync(string outputDirectory, CancellationToken cancellationToken)
     {
         EnvironmentGeneration? aged = await environment.ReadGenerationAsync(cancellationToken).ConfigureAwait(false);
-        if (aged is null || clock.GetUtcNow() <= aged.ExpiresAt) return false;
+        if (aged is null) return await RecoverDestroyedAsync(cancellationToken).ConfigureAwait(false);
+        if (clock.GetUtcNow() <= aged.ExpiresAt) return false;
         LedgerDocument document = await ledger.ReadAsync(cancellationToken).ConfigureAwait(false);
         KeyValuePair<string, PhaseRecord>[] matches = document.Phases.Where(item => item.Value.EnvironmentRunId == aged.RunId &&
             item.Value.ExpiresAt == aged.ExpiresAt && item.Value.ApplyStartedUtc is not null).ToArray();
@@ -39,9 +40,38 @@ public sealed class SweepExecutor(RunLedger ledger, ITerraformEnvironment enviro
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { destroyed = false; }
         var receipt = new DestroyReceipt(aged.RunId, clock.GetUtcNow(), destroyed,
             exportFailed ? "recovery_export_incomplete" : destroyed ? "destroyed" : "destroy_incomplete", RecoveryExport: recovered);
-        EvidenceObjectReceipt stored = await exporter.UploadCleanupReceiptAsync(aged.RunId, receipt, cleanup.Token).ConfigureAwait(false);
-        await ledger.MarkDestroyedAsync(phase, aged.RunId, receipt with { PrivateReceiptPath = stored.Path, PrivateReceiptSha256 = stored.Sha256 }, cleanup.Token).ConfigureAwait(false);
+        await PersistReceiptAsync(phase, receipt, cleanup.Token).ConfigureAwait(false);
         if (exportFailed || !destroyed) throw new IOException(exportFailed ? "sweep_export_incomplete" : "sweep_destroy_incomplete");
         return true;
+    }
+
+    private async Task<bool> RecoverDestroyedAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new CancellationTokenSource(budgets?.Seconds("destroy_seconds") ?? TimeSpan.FromSeconds(900), clock);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timer.Token);
+        LedgerDocument document = await ledger.ReadAsync(deadline.Token).ConfigureAwait(false);
+        KeyValuePair<string, PhaseRecord>[] unresolved = document.Phases.Where(item =>
+            item.Value.ReservationId is not null && item.Value.DestroyReceipt?.Complete != true).ToArray();
+        if (unresolved.Length == 0) return false;
+        if (unresolved.Length != 1 || unresolved[0].Value.ApplyStartedUtc is null || unresolved[0].Value.ExpiresAt is null)
+            throw new InvalidDataException("sweep_cleanup_recovery_ambiguous");
+        var (phase, current) = unresolved[0];
+        if (clock.GetUtcNow() <= current.ExpiresAt)
+            throw new InvalidDataException("sweep_cleanup_generation_not_aged");
+        // Empty state permits completion only for this existing registered ownership.
+        // It does not establish an earlier successful apply or recover missing export/watch evidence.
+        if (await environment.ReadGenerationAsync(deadline.Token).ConfigureAwait(false) is not null)
+            throw new InvalidDataException("environment_generation_changed");
+        var receipt = new DestroyReceipt(current.EnvironmentRunId!, clock.GetUtcNow(), true, "already_empty",
+            RecoveryExport: current.DestroyReceipt?.RecoveryExport);
+        await PersistReceiptAsync(phase, receipt, deadline.Token).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task PersistReceiptAsync(string phase, DestroyReceipt receipt, CancellationToken cancellationToken)
+    {
+        EvidenceObjectReceipt stored = await exporter.UploadCleanupReceiptAsync(receipt.EnvironmentRunId, receipt, cancellationToken).ConfigureAwait(false);
+        await ledger.MarkDestroyedAsync(phase, receipt.EnvironmentRunId,
+            receipt with { PrivateReceiptPath = stored.Path, PrivateReceiptSha256 = stored.Sha256 }, cancellationToken).ConfigureAwait(false);
     }
 }

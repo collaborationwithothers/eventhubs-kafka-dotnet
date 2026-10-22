@@ -1,0 +1,113 @@
+
+> check:docs
+> node scripts/check-docs.mjs
+
+.agents/skills/implement-plan/SKILL.md: no issues found
+.agents/skills/plan-check/SKILL.md: no issues found
+.agents/skills/plan-pr/SKILL.md: no issues found
+.agents/skills/repo-review/SKILL.md: no issues found
+.claude/agents/repo-reviewer.md: no issues found
+.github/pull_request_template.md: no issues found
+AGENTS.md: no issues found
+CLAUDE.md: no issues found
+CONTEXT.md: no issues found
+docs/agents/factory.md: no issues found
+docs/blueprint.md: no issues found
+docs/engineering/code-comments.md: no issues found
+docs/engineering/documentation-checks.md: no issues found
+docs/engineering/dotnet-verification.md: no issues found
+docs/engineering/dotnet.md: no issues found
+docs/engineering/terraform.md: no issues found
+docs/networking/hub-firewall.md: no issues found
+docs/operations/a01-runner.md: no issues found
+docs/operations/evidence/issue-112/cold-review.md: no issues found
+docs/operations/evidence/issue-112/README.md: no issues found
+docs/operations/evidence/issue-114/acquisition-status.md: no issues found
+docs/operations/evidence/issue-114/blob-retry-investigation.md: no issues found
+docs/operations/evidence/issue-114/cold-review-1.md: no issues found
+docs/operations/evidence/issue-114/cold-review-10.md: no issues found
+docs/operations/evidence/issue-114/cold-review-11.md: no issues found
+docs/operations/evidence/issue-114/cold-review-12.md: no issues found
+docs/operations/evidence/issue-114/cold-review-13.md: no issues found
+docs/operations/evidence/issue-114/cold-review-2.md: no issues found
+docs/operations/evidence/issue-114/cold-review-3.md: no issues found
+docs/operations/evidence/issue-114/cold-review-4.md: no issues found
+docs/operations/evidence/issue-114/cold-review-5.md: no issues found
+docs/operations/evidence/issue-114/cold-review-6.md: no issues found
+docs/operations/evidence/issue-114/cold-review-7.md: no issues found
+docs/operations/evidence/issue-114/cold-review-8.md: no issues found
+docs/operations/evidence/issue-114/cold-review-9.md: no issues found
+docs/operations/evidence/issue-114/raw/review-10-fixes/azmsdiagnosticerrorlogs.md: no issues found
+docs/operations/evidence/issue-114/raw/review-10-fixes/azmskafkausererrorlogs.md: no issues found
+docs/operations/evidence/issue-114/raw/review-10-fixes/long.md
+10:13-10:68   warning Cannot find file `../../includes/applies-to-version/applies.md`             missing-file            remark-validate-links:missing-file
+10:80-10:133  warning Cannot find file `../../includes/applies-to-version/fabric.md`              missing-file            remark-validate-links:missing-file
+10:145-10:224 warning Cannot find file `../../includes/applies-to-version/azure-data-explorer.md` missing-file            remark-validate-links:missing-file
+10:236-10:291 warning Cannot find file `../../includes/applies-to-version/monitor.md`             missing-file            remark-validate-links:missing-file
+10:303-10:360 warning Cannot find file `../../includes/applies-to-version/sentinel.md`            missing-file            remark-validate-links:missing-file
+25:30-25:58   warning Cannot find file `null-values.md`                                           missing-file            remark-validate-links:missing-file
+27:11-27:79   warning Cannot find file `../../includes/syntax-conventions-note.md`                missing-file            remark-validate-links:missing-file
+31:3-31:36    warning Cannot find file `../tolong-function.md`; did you mean `tolong-function.md` missing-file            remark-validate-links:missing-file
+32:53-32:93   warning Cannot find file `../tohex-function.md`                                     missing-file            remark-validate-links:missing-file
+
+docs/operations/evidence/issue-114/raw/review-10-fixes/tolong-function.md
+10:13-10:65   warning Cannot find file `../includes/applies-to-version/applies.md`                missing-file            remark-validate-links:missing-file
+10:77-10:127  warning Cannot find file `../includes/applies-to-version/fabric.md`                 missing-file            remark-validate-links:missing-file
+10:139-10:215 warning Cannot find file `../includes/applies-to-version/azure-data-explorer.md`    missing-file            remark-validate-links:missing-file
+10:227-10:279 warning Cannot find file `../includes/applies-to-version/monitor.md`                missing-file            remark-validate-links:missing-file
+10:291-10:345 warning Cannot find file `../includes/applies-to-version/sentinel.md`               missing-file            remark-validate-links:missing-file
+15:22-15:78   warning Cannot find file `scalar-data-types/long.md`                                missing-file            remark-validate-links:missing-file
+15:22-15:78   warning Cannot find heading for `#long-literals` in `scalar-data-types/long.md`     missing-heading-in-file remark-validate-links:missing-heading-in-file
+21:11-21:76   warning Cannot find file `../includes/syntax-conventions-note.md`                   missing-file            remark-validate-links:missing-file
+27:70-27:103  warning Cannot find file `scalar-data-types/long.md`                                missing-file            remark-validate-links:missing-file
+49:3-49:59    warning Cannot find file `scalar-functions.md`                                      missing-file            remark-validate-links:missing-file
+50:3-50:50    warning Cannot find file `scalar-data-types/long.md`                                missing-file            remark-validate-links:missing-file
+51:3-51:31    warning Cannot find file `toint-function.md`; did you mean `tolong-function.md`     missing-file            remark-validate-links:missing-file
+52:3-52:39    warning Cannot find file `todecimal-function.md`                                    missing-file            remark-validate-links:missing-file
+
+docs/operations/evidence/issue-114/raw/review-10-fixes/union-operator.md
+11:13-11:65   warning Cannot find file `../includes/applies-to-version/applies.md`                missing-file            remark-validate-links:missing-file
+11:77-11:127  warning Cannot find file `../includes/applies-to-version/fabric.md`                 missing-file            remark-validate-links:missing-file
+11:139-11:215 warning Cannot find file `../includes/applies-to-version/azure-data-explorer.md`    missing-file            remark-validate-links:missing-file
+11:227-11:279 warning Cannot find file `../includes/applies-to-version/monitor.md`                missing-file            remark-validate-links:missing-file
+11:291-11:345 warning Cannot find file `../includes/applies-to-version/sentinel.md`               missing-file            remark-validate-links:missing-file
+30:11-30:76   warning Cannot find file `../includes/syntax-conventions-note.md`                   missing-file            remark-validate-links:missing-file
+35:128-35:161 warning Cannot find file `set-statement.md`                                         missing-file            remark-validate-links:missing-file
+35:173-35:243 warning Cannot find file `../api/netfx/client-request-properties.md`                missing-file            remark-validate-links:missing-file
+35:293-35:463 warning Use ASCII punctuation in prose                                              punctuation             docs
+47:666-47:700 warning Cannot find file `scalar-data-types/index.md`                               missing-file            remark-validate-links:missing-file
+66:666-66:700 warning Cannot find file `scalar-data-types/index.md`                               missing-file            remark-validate-links:missing-file
+75:35-75:69   warning Cannot find file `let-statement.md`                                         missing-file            remark-validate-links:missing-file
+76:40-76:79   warning Cannot find file `../management/functions.md`                               missing-file            remark-validate-links:missing-file
+76:113-76:146 warning Cannot find file `let-statement.md`                                         missing-file            remark-validate-links:missing-file
+
+docs/operations/evidence/issue-114/README.md: no issues found
+docs/operations/evidence/issue-114/resume-status.md: no issues found
+docs/operations/evidence/issue-114/retry-amendment-proposal.md: no issues found
+docs/operations/evidence/issue-114/review-15-dispositions.md: no issues found
+docs/operations/evidence/issue-114/review-16-dispositions.md: no issues found
+docs/operations/evidence/issue-114/sweeper-authority.md: no issues found
+docs/operations/evidence/issue-93/child-a/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-a/receipt.md: no issues found
+docs/operations/evidence/issue-93/child-b/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-b/proofs.md: no issues found
+docs/operations/evidence/issue-93/child-b/receipt.md: no issues found
+docs/operations/evidence/issue-93/child-c/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-c/receipt.md: no issues found
+docs/operations/kafka-authentication.md: no issues found
+docs/operations/kafka-baseline.md: no issues found
+docs/operations/kafka-configuration-explained.md: no issues found
+docs/operations/loadgen-contract.md: no issues found
+docs/operations/phantom-spike/README.md: no issues found
+docs/operations/scenario-contract.md: no issues found
+docs/operations/statistics-bridge.md: no issues found
+docs/operations/terraform.md: no issues found
+docs/operations/verifier-contract.md: no issues found
+docs/operations/verifier-mutation.md: no issues found
+docs/research/kubernetes-kafka-clients.md: no issues found
+README.md: no issues found
+tests/fixtures/verifier-v1/README.md: no issues found
+tests/terraform/fixtures/README.md: no issues found
+
+⚠ 36 warnings
+Documentation scan completed. Warnings are advisory; external URLs were not checked.

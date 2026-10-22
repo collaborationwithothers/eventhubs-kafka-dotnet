@@ -16,6 +16,101 @@ namespace Parchwell.Runner.Tests.Execution;
 
 public sealed class RecoveryEvidenceTests
 {
+    private static readonly string[] RecoveryCommands = ["init", "state"];
+    [Theory]
+    [InlineData("cleanup-upload")]
+    [InlineData("ledger-update")]
+    public async Task Given_SuccessfulDestroyAndFailedReceiptPersistence_When_FreshSweepRuns_Then_ClosesRegisteredCleanupWithoutAnotherDestroy(string failure)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Store.FailPersistenceOnce = failure;
+        var token = TestContext.Current.CancellationToken;
+        await Assert.ThrowsAsync<IOException>(() => fixture.Sweep.ExecuteAsync(fixture.Output, token));
+        Assert.Equal(1, fixture.Process.Destroys);
+        Assert.Null((await fixture.Ledger.ReadAsync(token)).Phases["probe"].DestroyReceipt);
+        int requests = fixture.Process.Requests.Count;
+
+        Assert.True(await fixture.FreshSweep().ExecuteAsync(Path.Combine(fixture.Output, "fresh"), token));
+        PhaseRecord recovered = (await fixture.Ledger.ReadAsync(token)).Phases["probe"];
+        Assert.Equal("destroyed", recovered.State);
+        Assert.True(recovered.DestroyReceipt!.Complete);
+        Assert.Equal("already_empty", recovered.DestroyReceipt.Reason);
+        Assert.Null(recovered.DestroyReceipt.RecoveryExport);
+        Assert.Equal("interrupted", recovered.Repeats[0].State);
+        Assert.Null(recovered.PrivateExport);
+        Assert.Equal(1, fixture.Process.Destroys);
+        Assert.All(fixture.Process.Requests.Skip(requests), request =>
+        {
+            Assert.Equal("terraform", request.FileName);
+            Assert.Contains(request.Arguments[0], RecoveryCommands);
+        });
+        Assert.False(await fixture.FreshSweep().ExecuteAsync(Path.Combine(fixture.Output, "again"), token));
+    }
+
+    [Theory]
+    [InlineData("ambiguous")]
+    [InlineData("not-applied")]
+    [InlineData("not-aged")]
+    [InlineData("at-expiry")]
+    public async Task Given_EmptyStateWithoutUniqueAgedAppliedOwnership_When_SweepRuns_Then_NeverRecordsCleanup(string condition)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var token = TestContext.Current.CancellationToken;
+        fixture.Process.Empty = true;
+        if (condition is "ambiguous" or "not-applied")
+        {
+            LedgerDocument document = await fixture.Ledger.ReadAsync(token);
+            PhaseRecord probe = document.Phases["probe"];
+            if (condition == "ambiguous") document.Phases["C0"] = probe with
+            {
+                ReservationId = "A01/C0", EnvironmentRunId = "other-generation",
+                Repeats = Enumerable.Range(1, 5).Select(ordinal => new RepeatRecord(ordinal, "other-generation-r" + ordinal)).ToArray()
+            };
+            else document.Phases["probe"] = probe with
+            {
+                State = "reserved", ApplyStartedUtc = null, ExpiresAt = null,
+                Repeats = Enumerable.Range(1, 5).Select(ordinal => new RepeatRecord(ordinal, "rehearsal-probe-r" + ordinal)).ToArray()
+            };
+            StoredArtifact original = fixture.Store.Objects[("ledger", RunLedger.BlobPath)];
+            fixture.Store.Objects[("ledger", RunLedger.BlobPath)] = original with { Bytes = JsonSerializer.SerializeToUtf8Bytes(document, LedgerJson.Options) };
+        }
+        else fixture.Clock.Now = fixture.Clock.Now.AddHours(condition == "at-expiry" ? -1 : -2);
+        int writes = fixture.Store.Objects.Count;
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.FreshSweep().ExecuteAsync(fixture.Output, token));
+        Assert.Null((await fixture.Ledger.ReadAsync(token)).Phases["probe"].DestroyReceipt);
+        Assert.Equal(writes, fixture.Store.Objects.Count);
+        Assert.Equal(0, fixture.Process.Destroys);
+    }
+
+    [Fact]
+    public async Task Given_UnresolvedCleanupAndNewGeneration_When_FreshSweepRuns_Then_DoesNotCloseOrDestroyNewGeneration()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var token = TestContext.Current.CancellationToken;
+        fixture.Store.FailPersistenceOnce = "ledger-update";
+        await Assert.ThrowsAsync<IOException>(() => fixture.Sweep.ExecuteAsync(fixture.Output, token));
+        fixture.Process.Empty = false;
+        fixture.Process.Changed = true;
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.FreshSweep().ExecuteAsync(fixture.Output, token));
+        Assert.Null((await fixture.Ledger.ReadAsync(token)).Phases["probe"].DestroyReceipt);
+        Assert.Equal(1, fixture.Process.Destroys);
+    }
+
+    [Fact]
+    public async Task Given_EmptyStateReplacedBeforeReceipt_When_FreshSweepRechecks_Then_NeverClosesAnotherGeneration()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var token = TestContext.Current.CancellationToken;
+        fixture.Store.FailPersistenceOnce = "cleanup-upload";
+        await Assert.ThrowsAsync<IOException>(() => fixture.Sweep.ExecuteAsync(fixture.Output, token));
+        fixture.Process.AfterStateRead = () => { fixture.Process.Empty = false; fixture.Process.Changed = true; };
+        int objects = fixture.Store.Objects.Count;
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.FreshSweep().ExecuteAsync(fixture.Output, token));
+        Assert.Null((await fixture.Ledger.ReadAsync(token)).Phases["probe"].DestroyReceipt);
+        Assert.Equal(objects, fixture.Store.Objects.Count);
+        Assert.Equal(1, fixture.Process.Destroys);
+    }
+
     [Fact]
     public async Task Given_EmptyFreshRunner_When_SweepingAgedGeneration_Then_RecoversOriginalBytesPrivatelyBeforeGuardedDestroy()
     {
@@ -120,6 +215,8 @@ public sealed class RecoveryEvidenceTests
         internal RunLedger Ledger { get; }
         internal SweepExecutor Sweep { get; }
         internal List<string> Trace { get; }
+        internal Func<SweepExecutor> FreshSweep { get; private set; } = null!;
+        internal Clock Clock { get; private set; } = null!;
         internal static async Task<Fixture> CreateAsync()
         {
             string root = Path.Combine(Path.GetTempPath(), "recovery-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
@@ -151,7 +248,16 @@ public sealed class RecoveryEvidenceTests
             var terraform = new TerraformEnvironment(process, Path.Combine(root, "ephemeral"), "private-backend", "private-tfvars", Path.Combine(root, "plans"), clock);
             var collector = new RecoveryEvidenceCollector(process, terraform, clock, budgets, Path.Combine(root, "credentials", "kubeconfig"));
             var sweep = new SweepExecutor(ledger, terraform, new GenerationGuard(terraform, clock), new EvidenceExporter(store, clock), clock, collector, budgets);
-            return new(root, process, store, ledger, sweep, trace);
+            return new(root, process, store, ledger, sweep, trace)
+            {
+                Clock = clock,
+                FreshSweep = () =>
+                {
+                    var freshTerraform = new TerraformEnvironment(process, Path.Combine(root, "ephemeral"), "private-backend", "private-tfvars", Path.Combine(root, "fresh-plans"), clock);
+                    var freshCollector = new RecoveryEvidenceCollector(process, freshTerraform, clock, budgets, Path.Combine(root, "fresh-credentials", "kubeconfig"));
+                    return new(new RunLedger(store, clock), freshTerraform, new GenerationGuard(freshTerraform, clock), new EvidenceExporter(store, clock), clock, freshCollector, budgets);
+                }
+            };
         }
         public ValueTask DisposeAsync() { Directory.Delete(Root, true); return ValueTask.CompletedTask; }
         private static string FindRepository()
@@ -174,6 +280,7 @@ public sealed class RecoveryEvidenceTests
         internal Dictionary<(string Container, string Path), StoredArtifact> Objects => inner.Objects;
         internal bool CorruptOnce { get; set; }
         internal Action? AfterRecoveryManifest { get; set; }
+        internal string? FailPersistenceOnce { get; set; }
         public async Task<StoredArtifact?> ReadAsync(string container, string path, int maxBytes, CancellationToken cancellationToken)
         {
             StoredArtifact? stored = await inner.ReadAsync(container, path, maxBytes, cancellationToken);
@@ -186,6 +293,14 @@ public sealed class RecoveryEvidenceTests
         }
         public async Task<ArtifactWriteOutcome> WriteAsync(string container, string path, ReadOnlyMemory<byte> bytes, string? expectedETag, bool createOnly, CancellationToken cancellationToken)
         {
+            bool fail = FailPersistenceOnce == "cleanup-upload" && path.Contains("/cleanup/", StringComparison.Ordinal);
+            if (FailPersistenceOnce == "ledger-update" && container == "ledger")
+            {
+                using JsonDocument document = JsonDocument.Parse(bytes);
+                fail = document.RootElement.GetProperty("phases").GetProperty("probe").GetProperty("destroy_receipt") is { ValueKind: JsonValueKind.Object } receipt &&
+                    receipt.GetProperty("complete").GetBoolean();
+            }
+            if (fail) { FailPersistenceOnce = null; throw new IOException("synthetic_receipt_persistence_failure"); }
             ArtifactWriteOutcome result = await inner.WriteAsync(container, path, bytes, expectedETag, createOnly, cancellationToken);
             if (path.Contains("/recovery/", StringComparison.Ordinal) && path.EndsWith("/_private-export-manifest.json", StringComparison.Ordinal)) AfterRecoveryManifest?.Invoke();
             return result;
@@ -196,11 +311,12 @@ public sealed class RecoveryEvidenceTests
     {
         internal string? Failure { get; set; }
         internal Action? Cancel { get; set; }
+        internal Action? AfterStateRead { get; set; }
         internal bool Changed { get; set; }
         internal int Destroys { get; private set; }
         internal List<ProcessRequest> Requests { get; } = [];
         internal Dictionary<string, byte[]> Blobs { get; } = new(StringComparer.Ordinal);
-        private bool destroyed;
+        internal bool Empty { get; set; }
         internal string StateA => State(generation);
         internal string Outputs { get; } = JsonSerializer.Serialize(new
         {
@@ -216,10 +332,10 @@ public sealed class RecoveryEvidenceTests
             {
                 switch (args[0])
                 {
-                    case "state": result = destroyed ? "" : State(Changed ? generation with { RunId = "generation-b", Serial = 8 } : generation); break;
+                    case "state": result = Empty ? "" : State(Changed ? generation with { RunId = "generation-b", Serial = 8 } : generation); AfterStateRead?.Invoke(); break;
                     case "output": result = Failure == "partial-outputs" ? "{}" : Outputs; if (Failure == "changed-generation") Changed = true; break;
                     case "show": result = JsonSerializer.Serialize(new { prior_state = new { values = new { root_module = new { resources = new[] { new { type = "azurerm_resource_group", values = new { tags = Tags(generation) } } } } } } }); break;
-                    case "apply": trace.Add("destroy"); Destroys++; destroyed = true; break;
+                    case "apply": trace.Add("destroy"); Destroys++; Empty = true; break;
                 }
             }
             else if (request.FileName == "az" && args[0] == "aks") await File.WriteAllTextAsync(Value(args, "--file"), "synthetic kubeconfig", cancellationToken);

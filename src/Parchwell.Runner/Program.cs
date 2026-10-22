@@ -127,15 +127,9 @@ internal static class Program
                         await WriteCandidateAsync(runtime, output, "already_completed", ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token, "probe").ConfigureAwait(false);
                         return 0;
                     }
-                    var captured = new List<RepeatExecution>();
-                    foreach (RepeatRecord repeat in probe.Repeats)
-                    {
-                        string name = repeat.AdmittedIdentity ?? throw new InvalidDataException("gate_admission_missing");
-                        var identity = new WorkerIdentity("A01", "C0", repeat.RunId!, name, name, name);
-                        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(output, repeat.RunId!, "result.json"), cancellation.Token).ConfigureAwait(false);
-                        if (repeat.ResultHash != Convert.ToHexStringLower(SHA256.HashData(bytes))) throw new InvalidDataException("gate_result_hash");
-                        captured.Add(new(identity, new(true, false, "diagnostic", null, "diagnostic"), new(new Dictionary<string, byte[]>()), bytes, []));
-                    }
+                    IReadOnlyList<RepeatExecution> captured = await PhaseResultReplay.RestoreGateInputsAsync(
+                        provider.GetRequiredService<EvidenceExporter>(), provider.GetRequiredService<TimeProvider>(), document, commit, output,
+                        cancellation.Token).ConfigureAwait(false);
                     GateExecution gate = await provider.GetRequiredService<IRunGate>().ExecuteAsync(captured, commit, output, cancellation.Token).ConfigureAwait(false);
                     ProbeGateDecision decision = ProbeGateRunner.Inspect(gate, commit, captured.Select(item => item.Identity).ToArray());
                     await provider.GetRequiredService<EvidenceExporter>().UploadGateAsync(probe.EnvironmentRunId!, gate.Bytes, cancellation.Token).ConfigureAwait(false);

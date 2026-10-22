@@ -35,10 +35,8 @@ public sealed class PhaseCandidate(EvidenceExporter exporter, TimeProvider clock
                     repeat.Outcome is not ("complete_valid" or "invalid" or "incomplete") || repeat.Reason != repeat.Outcome)
                     throw new InvalidDataException("candidate_repeat_unavailable");
                 RepeatExecution? execution = executions?.SingleOrDefault(item => item.Identity.RunId == repeat.RunId);
-                byte[] bytes = execution is not null ? execution.Result : outputDirectory is not null
-                    ? await PrivateProvenanceCollector.ReadBoundedAsync(Path.Combine(outputDirectory, repeat.RunId, "result.json"),
-                        PrivateProvenanceCollector.MaxReceiptBytes, deadline.Token).ConfigureAwait(false)
-                    : throw new InvalidDataException("candidate_result_unavailable");
+                byte[] bytes = execution is not null ? execution.Result : await PhaseResultReplay.ReadAsync(exporter, document,
+                    phaseName, repeat, outputDirectory, deadline.Token).ConfigureAwait(false);
                 if (bytes.Length > PrivateProvenanceCollector.MaxReceiptBytes || Hash(bytes) != repeat.ResultHash)
                     throw new InvalidDataException("candidate_result_hash");
                 using JsonDocument parsed = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 32 });
@@ -69,7 +67,7 @@ public sealed class PhaseCandidate(EvidenceExporter exporter, TimeProvider clock
         }
 
         var totals = CountNames.ToDictionary(name => name, _ => (long?)null, StringComparer.Ordinal);
-        if (phase.Repeats.Length == 5 && acceptedCounts.Count == 5)
+        if (PhaseResultReplay.HasExpectedOrdinals(phase) && acceptedCounts.Count == 5)
         {
             try
             {

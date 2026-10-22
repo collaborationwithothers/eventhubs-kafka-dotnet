@@ -97,9 +97,12 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
 
     public async Task<ProducerPod> ObserveProducerAsync(RepeatContext context, PodAdmission admission, CancellationToken cancellationToken)
     {
-        long start = clock.GetTimestamp();
-        while (clock.GetElapsedTime(start) < (budgets?.Seconds("admission_seconds") ?? TimeSpan.FromSeconds(180)) - TimeSpan.FromSeconds(60))
+        // RepeatExecutor's shared admission token remains authoritative; direct callers are also bounded.
+        using var deadline = new CancellationTokenSource(budgets?.Seconds("admission_seconds") ?? TimeSpan.FromSeconds(180), clock);
+        using var work = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        while (true)
         {
+            work.Token.ThrowIfCancellationRequested();
             if (watches[context.RunId].Work.IsFaulted) await watches[context.RunId].Work.ConfigureAwait(false);
             if (admission.Events.Any(item => item.Pod is not null))
             {
@@ -107,9 +110,8 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
                 producers[context.RunId] = producer;
                 return producer;
             }
-            await Task.Delay(budgets?.Seconds("kubernetes_poll_seconds") ?? TimeSpan.FromSeconds(1), clock, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(budgets?.Seconds("kubernetes_poll_seconds") ?? TimeSpan.FromSeconds(1), clock, work.Token).ConfigureAwait(false);
         }
-        throw new TimeoutException("producer_admission_deadline");
     }
 
     public async Task<string> GenerateComparisonAsync(RepeatContext context, WorkerIdentity identity, CancellationToken cancellationToken)

@@ -103,8 +103,11 @@ public sealed class EvidenceExporter(IArtifactStore store, TimeProvider clock)
         return await PutVerifiedAsync(Prefix(environmentRunId) + "cleanup/" + Convert.ToHexStringLower(SHA256.HashData(bytes)) + ".json", bytes, deadline.Token).ConfigureAwait(false);
     }
 
+    public Task<byte[]> ReadVerifiedFileAsync(string environmentRunId, string relativePath, PrivateExportReceipt receipt,
+        CancellationToken cancellationToken = default) => ReadVerifiedFileAsync(environmentRunId, relativePath, receipt, MaxFileBytes, cancellationToken);
+
     public async Task<byte[]> ReadVerifiedFileAsync(string environmentRunId, string relativePath, PrivateExportReceipt receipt,
-        CancellationToken cancellationToken = default)
+        int maxBytes, CancellationToken cancellationToken = default)
     {
         ValidateRunId(environmentRunId);
         ValidateRelativePath(relativePath);
@@ -124,7 +127,8 @@ public sealed class EvidenceExporter(IArtifactStore store, TimeProvider clock)
             throw new InvalidDataException("private_manifest_invalid");
         var selected = manifest.Files.SingleOrDefault(file => file.Path == relativePath)
             ?? throw new InvalidDataException("private_manifest_file_missing");
-        if (selected.SizeBytes is < 0 or > MaxFileBytes) throw new InvalidDataException("private_manifest_file_size_invalid");
+        if (maxBytes is < 0 or > MaxFileBytes || selected.SizeBytes < 0 || selected.SizeBytes > maxBytes)
+            throw new InvalidDataException("private_manifest_file_size_invalid");
         var content = await store.ReadAsync("evidence", Prefix(environmentRunId) + relativePath, (int)selected.SizeBytes, deadline.Token).ConfigureAwait(false)
             ?? throw new InvalidDataException("private_evidence_file_missing");
         if (content.Bytes.LongLength != selected.SizeBytes || Convert.ToHexStringLower(SHA256.HashData(content.Bytes)) != selected.Sha256)
