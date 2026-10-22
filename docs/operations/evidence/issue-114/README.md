@@ -5,6 +5,12 @@ issue #114. The implementation follows the checked Revision 2 plan. Deployment
 acceptance remains incomplete because the environment blocks required downloads;
 the raw files here are synthetic fixtures and tool results, not live results.
 
+This is unaccepted work in progress. The [second cold review](cold-review-2.md)
+found evidence-retention defects in normal worker failure and workflow provenance
+export. They remain unfixed because the execution/evidence component received P1
+findings in both cold-review rounds, triggering AGENTS.md's mandatory churn
+handoff. No pull request, required CI run or clean reviewed head exists.
+
 - [Approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6321098789)
 - [Independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332608289)
 - [Storage and cleanup decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257)
@@ -48,8 +54,9 @@ hashes. The post-execution source inventory cannot establish their historical
 source bytes; the raw manifest retains their exact producer commands.
 
 The [first cold-review report and dispositions](cold-review-1.md) are retained.
-The pull request self-review records the final cold-review result. The required
-workflow run ID and tested commit remain pending until the pull request exists.
+The second report records the remaining findings and the required handoff.
+The required workflow run ID and tested commit have not been produced because
+the handoff occurred before a pull request could be opened.
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the
