@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "phase_jobs": 3,
+  "cases": [
+    {
+      "job": "probe",
+      "case": "missing",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "probe",
+      "case": "malformed",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "probe",
+      "case": "valid",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C0",
+      "case": "missing",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C0",
+      "case": "malformed",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C0",
+      "case": "valid",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C3",
+      "case": "missing",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C3",
+      "case": "malformed",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    },
+    {
+      "job": "full-C3",
+      "case": "valid",
+      "expected_exit_observed": true,
+      "private_value_not_printed": true
+    }
+  ],
+  "prepare_precedes_phase": true,
+  "runtime_permissions_private": true,
+  "artifact_upload_candidate_only": true
+}

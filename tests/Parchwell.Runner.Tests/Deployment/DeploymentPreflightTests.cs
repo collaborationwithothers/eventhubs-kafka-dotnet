@@ -11,6 +11,50 @@ namespace Parchwell.Runner.Tests.Deployment;
 
 public sealed class DeploymentPreflightTests
 {
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"subscription_guid\":null}")]
+    [InlineData("{\"subscription_guid\":1}")]
+    [InlineData("{\"subscription_guid\":\"\"}")]
+    [InlineData("{\"subscription_guid\":\" \"}")]
+    [InlineData("{\"subscription_guid\":\"not-a-guid\"}")]
+    [InlineData("{\"subscription_guid\":\"00000000000000000000000000000001\"}")]
+    [InlineData("{\"subscription_guid\":\"{00000000-0000-0000-0000-000000000001}\"}")]
+    public async Task Given_MissingOrMalformedRedactionInput_When_Preflight_Then_ItRejectsBeforeReadingOtherPrerequisites(string json)
+    {
+        using JsonDocument runtime = JsonDocument.Parse(json);
+        var source = new RecordingScenarioSource();
+        using ServiceProvider provider = PreflightProvider(source);
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => provider.GetRequiredService<DeploymentPreflight>()
+            .ValidateAsync(runtime.RootElement, TestContext.Current.CancellationToken));
+
+        Assert.Equal("subscription_redaction_input_invalid", exception.Message);
+        Assert.Empty(source.RequestedPaths);
+    }
+
+    [Theory]
+    [InlineData(" 00000000-0000-0000-0000-000000000001")]
+    [InlineData("00000000-0000-0000-0000-000000000001 ")]
+    [InlineData("\t00000000-0000-0000-0000-000000000001")]
+    [InlineData("00000000-0000-0000-0000-000000000001\t")]
+    public void Given_PaddedSubscriptionGuid_When_ValidatingPublicCandidateInputs_Then_RedactionPrerequisiteIsRejected(string subscription)
+    {
+        JsonElement runtime = JsonSerializer.SerializeToElement(new { subscription_guid = subscription });
+        var exception = Assert.Throws<InvalidDataException>(() => DeploymentPreflight.ValidatePublicCandidateInputs(runtime));
+        Assert.Equal("subscription_redaction_input_invalid", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("00000000-0000-0000-0000-000000000001")]
+    [InlineData("abcdef01-abcd-abcd-abcd-abcdef012345")]
+    [InlineData("ABCDEF01-ABCD-ABCD-ABCD-ABCDEF012345")]
+    public void Given_ExactDFormatSubscriptionGuid_When_ValidatingPublicCandidateInputs_Then_RedactionPrerequisiteIsAccepted(string subscription)
+    {
+        JsonElement runtime = JsonSerializer.SerializeToElement(new { subscription_guid = subscription });
+        DeploymentPreflight.ValidatePublicCandidateInputs(runtime);
+    }
+
     [Fact]
     public async Task Given_MissingCommittedServiceTags_When_Preflight_Then_ItRejectsBeforeAnyProductionTransportCanBeConstructed()
     {

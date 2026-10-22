@@ -20,6 +20,10 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     private readonly Dictionary<string, WatchSession> watches = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DeploymentFiles> files = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ProducerPod> producers = new(StringComparer.Ordinal);
+    // Only the active repeat's three fixed worker modes are cached. Prior repeats have persisted their canonical files.
+    // Each original stream retains the existing bounded process output ceiling.
+    private readonly Dictionary<string, WorkerObservation> observations = new(StringComparer.Ordinal);
+    private string? observedRunId;
 
     public async Task PreflightAsync(JsonElement outputs, CancellationToken cancellationToken)
     {
@@ -171,6 +175,39 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         return worker with { Result = result };
     }
 
+    public async Task PreserveObservedWorkersAsync(RepeatContext context, CancellationToken cancellationToken)
+    {
+        if (observedRunId != context.RunId) return;
+        bool incomplete = false;
+        foreach ((string mode, WorkerObservation observation) in observations)
+        {
+            var originals = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [mode + "-pod.json"] = observation.Pod.StandardOutput,
+                [mode + "-pod-stderr.log"] = observation.Pod.StandardError,
+                [mode + "-logs-command.json"] = JsonSerializer.Serialize(new
+                {
+                    pod_command = new { exit_code = observation.Pod.ExitCode, timed_out = observation.Pod.TimedOut },
+                    available = observation.Logs is not null,
+                    exit_code = observation.Logs?.ExitCode, timed_out = observation.Logs?.TimedOut,
+                    reason = observation.LogFailure
+                })
+            };
+            if (observation.ExitCode is { } code)
+                originals[mode + "-termination.json"] = JsonSerializer.Serialize(new { exit_code = code, timed_out = false });
+            if (observation.Logs is { } logs)
+            {
+                originals[mode + "-stdout.log"] = logs.StandardOutput;
+                originals[mode + "-logs-stderr.log"] = logs.StandardError;
+            }
+            foreach ((string name, string content) in originals)
+                try { await File.WriteAllTextAsync(Path.Combine(context.OutputDirectory, name), content, cancellationToken).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+                { incomplete = true; }
+        }
+        if (incomplete) throw new IOException("worker_observation_retention_incomplete");
+    }
+
     public async Task PreserveAvailableArtifactsAsync(RepeatContext context, CancellationToken cancellationToken)
     {
         string directory = Path.Combine(context.OutputDirectory, "failure-artifacts");
@@ -291,7 +328,17 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         long origin = clock.GetTimestamp();
         while (clock.GetElapsedTime(origin) < TimeSpan.FromSeconds(seconds))
         {
-            ProcessResult result = await KubectlAsync(["get", "pods", "-n", "parchwell", "-l", "job-name=" + context.RunId + "-" + mode, "-o", "json"], cancellationToken).ConfigureAwait(false);
+            ProcessResult result = await process.RunAsync(new("kubectl",
+                ["get", "pods", "-n", "parchwell", "-l", "job-name=" + context.RunId + "-" + mode, "-o", "json"],
+                budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), Environment: RequireClusterEnvironment()), cancellationToken).ConfigureAwait(false);
+            if (observedRunId != context.RunId)
+            {
+                observations.Clear();
+                observedRunId = context.RunId;
+            }
+            var observation = new WorkerObservation(result);
+            observations[mode] = observation;
+            if (result.ExitCode != 0 || result.TimedOut) throw new IOException("external_command_failed");
             using JsonDocument document = JsonDocument.Parse(result.StandardOutput);
             JsonElement items = document.RootElement.GetProperty("items");
             if (items.GetArrayLength() > 1) throw new InvalidDataException("worker_pod_replacement");
@@ -308,13 +355,35 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
                             int code = termination.GetProperty("exitCode").GetInt32();
                             if (termination.TryGetProperty("reason", out JsonElement reason) && reason.GetString() == "OOMKilled") code = 137;
                             if (termination.TryGetProperty("signal", out JsonElement signal) && signal.GetInt32() != 0) code = 128 + signal.GetInt32();
-                            ProcessResult logs = await KubectlAsync(["logs", "-n", "parchwell", WorkerIdentity.Text(pod.GetProperty("metadata"), "name"), "--limit-bytes=16777217"], cancellationToken).ConfigureAwait(false);
-                            return new(new(code, logs.StandardOutput, ""));
+                            observation.ExitCode = code;
+                            try
+                            {
+                                ProcessResult logs = await process.RunAsync(new("kubectl",
+                                    ["logs", "-n", "parchwell", WorkerIdentity.Text(pod.GetProperty("metadata"), "name"), "--limit-bytes=16777217"],
+                                    budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), Environment: RequireClusterEnvironment()), cancellationToken).ConfigureAwait(false);
+                                observation.Logs = logs;
+                                observation.LogFailure = null;
+                                if (logs.ExitCode != 0 || logs.TimedOut) throw new IOException("external_command_failed");
+                                return new(new(code, logs.StandardOutput, ""));
+                            }
+                            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+                            {
+                                observation.LogFailure = exception is OperationCanceledException ? "logs_call_cancelled" : "logs_call_failed";
+                                throw;
+                            }
                         }
             }
             await Task.Delay(budgets?.Seconds("kubernetes_poll_seconds") ?? TimeSpan.FromSeconds(1), clock, cancellationToken).ConfigureAwait(false);
         }
         throw new TimeoutException("worker_job_deadline");
+    }
+
+    private sealed class WorkerObservation(ProcessResult pod)
+    {
+        internal ProcessResult Pod { get; } = pod;
+        internal int? ExitCode { get; set; }
+        internal ProcessResult? Logs { get; set; }
+        internal string? LogFailure { get; set; } = "logs_not_observed";
     }
 
     private async Task<DeploymentFiles> GenerateAsync(RepeatContext context, string mode, string producer, IReadOnlyList<string> brokers, CancellationToken token)

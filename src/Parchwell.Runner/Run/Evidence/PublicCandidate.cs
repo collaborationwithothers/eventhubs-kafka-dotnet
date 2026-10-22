@@ -20,7 +20,8 @@ public static partial class PublicCandidate
 
     public static byte[] Create(ReadOnlySpan<byte> input, string subscriptionGuid)
     {
-        if (!Guid.TryParseExact(subscriptionGuid, "D", out _)) throw new InvalidDataException("subscription_redaction_input_invalid");
+        if (subscriptionGuid is not { Length: 36 } || !Guid.TryParseExact(subscriptionGuid, "D", out _))
+            throw new InvalidDataException("subscription_redaction_input_invalid");
         if (input.Length > 1_048_576) throw new InvalidDataException("candidate_size_exceeded");
         using var source = JsonDocument.Parse(input.ToArray(), new JsonDocumentOptions { MaxDepth = 12 });
         if (source.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("candidate_object_required");

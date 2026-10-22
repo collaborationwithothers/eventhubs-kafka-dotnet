@@ -65,12 +65,14 @@ public sealed class TerraformEnvironmentTests
     {
         string directory = Path.Combine(Path.GetTempPath(), "parchwell-state-capture-" + Guid.NewGuid().ToString("N"));
         const string originalState = "{\n  \"format_version\":\"1.0\", \"values\": {\"root_module\":{}}\n}\n";
-        var process = new ScriptedProcess(new(0, "{\"aks\":{\"value\":{\"id\":\"synthetic-cluster\"}}}", ""), new(0, originalState, ""));
+        const string originalOutputs = "{\n  \"aks\":{\"value\":{\"id\":\"synthetic-cluster\"}}\n}\n";
+        var process = new ScriptedProcess(new(0, originalOutputs, ""), new(0, originalState, ""));
         try
         {
             JsonElement outputs = await Create(process, directory).ReadOutputsAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal("synthetic-cluster", outputs.GetProperty("aks").GetProperty("value").GetProperty("id").GetString());
+            Assert.Equal(originalOutputs, await File.ReadAllTextAsync(Path.Combine(directory, "outputs.private.json"), TestContext.Current.CancellationToken));
             Assert.Equal(originalState, await File.ReadAllTextAsync(Path.Combine(directory, "state.private.json"), TestContext.Current.CancellationToken));
             Assert.Equal(OutputArguments, process.Requests[0].Arguments);
             Assert.Equal(ShowArguments, process.Requests[1].Arguments);
@@ -83,8 +85,15 @@ public sealed class TerraformEnvironmentTests
     [Fact]
     public async Task Given_StateReadbackFails_When_OutputsAreRead_Then_IncompleteScopeCannotBeReturned()
     {
-        var process = new ScriptedProcess(new(0, "{}", ""), new(1, "", "synthetic-state-failure"));
-        await Assert.ThrowsAsync<IOException>(() => Create(process, Path.GetTempPath()).ReadOutputsAsync(TestContext.Current.CancellationToken));
+        string directory = Path.Combine(Path.GetTempPath(), "parchwell-state-failure-" + Guid.NewGuid().ToString("N"));
+        const string originalOutputs = "{\n  \"synthetic\":true\n}\n";
+        var process = new ScriptedProcess(new(0, originalOutputs, ""), new(1, "", "synthetic-state-failure"));
+        try
+        {
+            await Assert.ThrowsAsync<IOException>(() => Create(process, directory).ReadOutputsAsync(TestContext.Current.CancellationToken));
+            Assert.Equal(originalOutputs, await File.ReadAllTextAsync(Path.Combine(directory, "outputs.private.json"), TestContext.Current.CancellationToken));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
 
     [Theory]

@@ -148,6 +148,29 @@ public sealed class EvidenceExporterTests
     }
 
     [Theory]
+    [InlineData(" 01234567-89ab-cdef-0123-456789abcdef")]
+    [InlineData("01234567-89ab-cdef-0123-456789abcdef ")]
+    [InlineData("\t01234567-89ab-cdef-0123-456789abcdef")]
+    [InlineData("01234567-89ab-cdef-0123-456789abcdef\t")]
+    public void Given_PaddedSubscriptionGuid_When_CandidateCreated_Then_RejectsBeforePublishingBareSubscription(string subscription)
+    {
+        byte[] input = JsonSerializer.SerializeToUtf8Bytes(new { run_id = "run-01234567-89ab-cdef-0123-456789abcdef" });
+        var exception = Assert.Throws<InvalidDataException>(() => PublicCandidate.Create(input, subscription));
+        Assert.Equal("subscription_redaction_input_invalid", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("01234567-89ab-cdef-0123-456789abcdef")]
+    [InlineData("01234567-89AB-CDEF-0123-456789ABCDEF")]
+    public void Given_ExactDFormatSubscriptionGuid_When_CandidateCreated_Then_BareSubscriptionIsRedactedRegardlessOfCase(string subscription)
+    {
+        byte[] input = JsonSerializer.SerializeToUtf8Bytes(new { run_id = "run-01234567-89ab-cdef-0123-456789abcdef" });
+        string output = Encoding.UTF8.GetString(PublicCandidate.Create(input, subscription));
+        Assert.DoesNotContain(subscription, output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("[REDACTED_SUBSCRIPTION]", output, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("{\"run_id\":\"/subscriptions/private/resourceGroups/private\"}")]
     [InlineData("{\"reasons\":[\"arbitrary exception text with secrets\"]}")]
     [InlineData("{\"diagnostics\":{\"max_throttle_ms\":{\"secret\":\"private\"}}}")]

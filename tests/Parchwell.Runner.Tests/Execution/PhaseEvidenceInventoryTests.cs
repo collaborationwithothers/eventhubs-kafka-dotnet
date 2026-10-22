@@ -37,6 +37,9 @@ public sealed class PhaseEvidenceInventoryTests
         await File.WriteAllBytesAsync((string)inputs["cost_file"]!, JsonSerializer.SerializeToUtf8Bytes(PhaseReservationTests.Input()), TestContext.Current.CancellationToken);
         JsonElement runtime = JsonSerializer.SerializeToElement(inputs);
         Assert.True((await PrivateProvenanceCollector.CollectAsync(runtime, JsonSerializer.SerializeToUtf8Bytes(inputs), output, TestContext.Current.CancellationToken)).Complete);
+        await new TerraformEnvironment(new OutputCaptureTransport(), Path.Combine(deployment.Directory, "infra", "ephemeral"),
+            "synthetic.tfbackend", "synthetic.tfvars", Path.Combine(output, "terraform"))
+            .ReadOutputsAsync(TestContext.Current.CancellationToken);
         var store = new PersistentTestStore();
         var ledger = new RunLedger(store, TimeProvider.System);
         var environment = new RehearsalEnvironment();
@@ -59,6 +62,8 @@ public sealed class PhaseEvidenceInventoryTests
         string[] paths = manifest.RootElement.GetProperty("files").EnumerateArray().Select(file => file.GetProperty("path").GetString()!).ToArray();
         Assert.Equal(receipt.VerifiedFileCount, paths.Length);
         Assert.Equal(14, paths.Count(path => path.StartsWith("private-provenance/", StringComparison.Ordinal)));
+        Assert.Contains("terraform/outputs.private.json", paths);
+        Assert.Contains("terraform/state.private.json", paths);
         for (int ordinal = 1; ordinal <= 5; ordinal++)
         {
             string prefix = "rehearsal-probe-r" + ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/";
@@ -107,6 +112,15 @@ public sealed class PhaseEvidenceInventoryTests
             input["images"] = new { loadgen = new { source_commit = context.SourceCommit, digest = "sha256:" + new string('a', 64) }, verifier = new { source_commit = context.SourceCommit, digest = "sha256:" + new string('b', 64) } };
             DeploymentFiles files = await deployment.Generator().GenerateAsync(JsonSerializer.SerializeToElement(input), Path.Combine(context.OutputDirectory, mode + "-deployment"), token);
             if (render) await new ChartRenderer(new RenderTransport()).RenderAsync(files, "synthetic-chart", Path.Combine(context.OutputDirectory, mode + "-render"), token);
+        }
+    }
+
+    private sealed class OutputCaptureTransport : IProcessRunner
+    {
+        public Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new ProcessResult(0, request.Arguments[0] == "output" ? "{}" : "{\"format_version\":\"1.0\",\"values\":{}}", ""));
         }
     }
 

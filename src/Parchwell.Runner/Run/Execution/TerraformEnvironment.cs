@@ -69,11 +69,12 @@ public sealed class TerraformEnvironment(IProcessRunner process, string root, st
     public async Task<JsonElement> ReadOutputsAsync(CancellationToken cancellationToken)
     {
         ProcessResult result = await RunAsync(["output", "-json"], 60, cancellationToken).ConfigureAwait(false);
+        Directory.CreateDirectory(outputDirectory);
+        await File.WriteAllTextAsync(Path.Combine(outputDirectory, "outputs.private.json"), result.StandardOutput, cancellationToken).ConfigureAwait(false);
         using JsonDocument document = JsonDocument.Parse(result.StandardOutput);
         // The pinned AKS module exports the independently assigned node resource group in state.
         ProcessResult state = await RunAsync(["show", "-json"], 60, cancellationToken).ConfigureAwait(false);
         using JsonDocument stateDocument = JsonDocument.Parse(state.StandardOutput);
-        Directory.CreateDirectory(outputDirectory);
         await File.WriteAllTextAsync(Path.Combine(outputDirectory, "state.private.json"), state.StandardOutput, cancellationToken).ConfigureAwait(false);
         return document.RootElement.Clone();
     }

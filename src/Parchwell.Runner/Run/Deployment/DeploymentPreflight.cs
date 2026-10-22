@@ -13,8 +13,18 @@ public sealed class DeploymentPreflight(ScenarioLoader loader)
     private const int DocumentBytes = 16777216;
     private const int ToolBytes = 67108864;
 
+    /// <summary>Validates the private input needed to redact the phase's public candidate.</summary>
+    public static void ValidatePublicCandidateInputs(JsonElement runtime)
+    {
+        if (!runtime.TryGetProperty("subscription_guid", out JsonElement subscription) ||
+            subscription.ValueKind != JsonValueKind.String || subscription.GetString() is not { Length: 36 } subscriptionGuid ||
+            !Guid.TryParseExact(subscriptionGuid, "D", out _))
+            throw new InvalidDataException("subscription_redaction_input_invalid");
+    }
+
     public async Task ValidateAsync(JsonElement runtime, CancellationToken cancellationToken = default)
     {
+        ValidatePublicCandidateInputs(runtime);
         if (runtime.GetProperty("schema_version").GetInt32() != 1 ||
             (runtime.TryGetProperty("synthetic", out JsonElement synthetic) && synthetic.GetBoolean()))
             throw new InvalidDataException("production_runtime_must_not_be_synthetic");

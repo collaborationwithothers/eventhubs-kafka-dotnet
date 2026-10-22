@@ -1,0 +1,53 @@
+
+> check:docs
+> node scripts/check-docs.mjs
+
+.agents/skills/implement-plan/SKILL.md: no issues found
+.agents/skills/plan-check/SKILL.md: no issues found
+.agents/skills/plan-pr/SKILL.md: no issues found
+.agents/skills/repo-review/SKILL.md: no issues found
+.claude/agents/repo-reviewer.md: no issues found
+.github/pull_request_template.md: no issues found
+AGENTS.md: no issues found
+CLAUDE.md: no issues found
+CONTEXT.md: no issues found
+docs/agents/factory.md: no issues found
+docs/blueprint.md: no issues found
+docs/engineering/code-comments.md: no issues found
+docs/engineering/documentation-checks.md: no issues found
+docs/engineering/dotnet-verification.md: no issues found
+docs/engineering/dotnet.md: no issues found
+docs/engineering/terraform.md: no issues found
+docs/networking/hub-firewall.md: no issues found
+docs/operations/a01-runner.md: no issues found
+docs/operations/evidence/issue-112/cold-review.md: no issues found
+docs/operations/evidence/issue-112/README.md: no issues found
+docs/operations/evidence/issue-114/cold-review-1.md: no issues found
+docs/operations/evidence/issue-114/cold-review-2.md: no issues found
+docs/operations/evidence/issue-114/cold-review-3.md: no issues found
+docs/operations/evidence/issue-114/cold-review-4.md: no issues found
+docs/operations/evidence/issue-114/cold-review-5.md: no issues found
+docs/operations/evidence/issue-114/README.md: no issues found
+docs/operations/evidence/issue-114/resume-status.md: no issues found
+docs/operations/evidence/issue-93/child-a/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-a/receipt.md: no issues found
+docs/operations/evidence/issue-93/child-b/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-b/proofs.md: no issues found
+docs/operations/evidence/issue-93/child-b/receipt.md: no issues found
+docs/operations/evidence/issue-93/child-c/cold-review.md: no issues found
+docs/operations/evidence/issue-93/child-c/receipt.md: no issues found
+docs/operations/kafka-authentication.md: no issues found
+docs/operations/kafka-baseline.md: no issues found
+docs/operations/kafka-configuration-explained.md: no issues found
+docs/operations/loadgen-contract.md: no issues found
+docs/operations/phantom-spike/README.md: no issues found
+docs/operations/scenario-contract.md: no issues found
+docs/operations/statistics-bridge.md: no issues found
+docs/operations/terraform.md: no issues found
+docs/operations/verifier-contract.md: no issues found
+docs/operations/verifier-mutation.md: no issues found
+docs/research/kubernetes-kafka-clients.md: no issues found
+README.md: no issues found
+tests/fixtures/verifier-v1/README.md: no issues found
+tests/terraform/fixtures/README.md: no issues found
+Documentation scan completed. Warnings are advisory; external URLs were not checked.

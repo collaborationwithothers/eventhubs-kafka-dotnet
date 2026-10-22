@@ -19,6 +19,7 @@ public interface IRunCluster
     Task<WorkerExecution> WaitProducerAsync(RepeatContext context, CancellationToken cancellationToken);
     Task<ProducerPublication> DownloadPublicationAsync(RepeatContext context, CancellationToken cancellationToken);
     Task<WorkerExecution> VerifyAsync(RepeatContext context, WorkerIdentity identity, IReadOnlyList<string> brokers, CancellationToken cancellationToken);
+    Task PreserveObservedWorkersAsync(RepeatContext context, CancellationToken cancellationToken) => Task.CompletedTask;
     Task PreserveAvailableArtifactsAsync(RepeatContext context, CancellationToken cancellationToken);
     Task CompleteProducerWatchAsync(RepeatContext context, PodAdmission admission, CancellationToken cancellationToken);
 }

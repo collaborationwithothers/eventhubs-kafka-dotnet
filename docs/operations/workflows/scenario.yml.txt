@@ -75,6 +75,7 @@ jobs:
           runtime = json.loads(runtime_path.read_text())
           assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
+          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
           assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
@@ -89,7 +90,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              private_provenance_directory=os.environ['A01_OUTPUT'],
+              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
@@ -262,6 +263,7 @@ jobs:
           runtime = json.loads(runtime_path.read_text())
           assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
+          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
           assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
@@ -276,7 +278,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              private_provenance_directory=os.environ['A01_OUTPUT'],
+              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
@@ -439,6 +441,7 @@ jobs:
           runtime = json.loads(runtime_path.read_text())
           assert runtime['schema_version'] == 1 and runtime['source_commit'] == os.environ['PARCHWELL_APPROVED_SOURCE_SHA']
           assert runtime['phase'] == os.environ['A01_PHASE']
+          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
           assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
@@ -453,7 +456,7 @@ jobs:
           runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
               backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
               cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              private_provenance_directory=os.environ['A01_OUTPUT'],
+              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
               service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),

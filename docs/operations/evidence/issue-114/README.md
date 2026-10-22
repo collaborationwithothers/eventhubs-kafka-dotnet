@@ -19,15 +19,22 @@ Deployment acceptance and the required PR workflow evidence remain incomplete.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-Release build has zero warnings and errors; all 228 Runner tests pass in
-[the current local test report](raw/review-4-fixes/runner-tests.xml).
+Release build has zero warnings and errors; all 271 Runner tests pass in
+[the current local test report](raw/review-5-fixes/runner-tests.xml).
 The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
 passing startup and compatibility tests. The
-[rehearsal summary](raw/review-4-fixes/rehearsal-summary.json) and
-[case traces](raw/review-4-fixes/rehearsal-cases.json) retain the synthetic phase and
+[rehearsal summary](raw/review-5-fixes/rehearsal-summary.json) and
+[case traces](raw/review-5-fixes/rehearsal-cases.json) retain the synthetic phase and
 failure-path checks. Required
 verification from the existing pull-request workflow is pending; no local run
 substitutes for that evidence.
+
+The [workflow preparation check](raw/review-5-fixes/workflow-preparation.json)
+executes the actual private runtime preparation blocks with synthetic missing,
+malformed and valid subscription inputs. Its nine cases check early failure,
+private file permissions, suppressed identifier output and candidate-only
+artifact paths. The exact supporting script is retained in
+`review-5-producers.json`; it adds no CI job or live operation.
 
 The deployment script retained locked restore when it found the runtime-specific
 lockfile mismatch. The subsequent image attempt reached the official registry's
@@ -51,7 +58,7 @@ raw bytes are retained unchanged and hashed rather than reformatted.
 of every retained raw file. Evidence produced before the implementation commit
 is identified as a dirty worktree based on the recorded source revision, with
 input hashes where supplied. It does not claim a reviewed head commit.
-The current checks retain a [repository input inventory](raw/review-4-fixes/repository-inputs-pre-validation.json)
+The current checks retain a [repository input inventory](raw/review-5-fixes/repository-inputs-pre-validation.json)
 captured before validation; it hashes repository inputs outside the evidence
 directory and does not stand in for PR CI.
 The earlier chart and deployment captures have no contemporaneous dirty-input
@@ -63,7 +70,9 @@ The second report records the findings and historical handoff before the
 continuation decision. The [third report](cold-review-3.md) records the cost-scope
 and dependency-construction findings. The [fourth report](cold-review-4.md)
 records the account-projection and LoadGen options findings addressed in the
-current local checks.
+earlier checks. The [fifth report](cold-review-5.md) records the worker-observation,
+redaction-startup and positive count-acceptance findings addressed in the current
+local checks.
 Subsequent cold-review results belong to the PR self-review. The required
 workflow run ID and tested commit are pending PR CI.
 The new projects, references, protected-path edits

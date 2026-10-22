@@ -37,6 +37,7 @@ internal static class Program
             byte[] runtimeBytes = await PrivateProvenanceCollector.ReadBoundedAsync(Required(options, "--input"), PrivateProvenanceCollector.MaxDocumentBytes, cancellation.Token).ConfigureAwait(false);
             using JsonDocument runtimeDocument = JsonDocument.Parse(runtimeBytes, new JsonDocumentOptions { MaxDepth = 32 });
             JsonElement runtime = runtimeDocument.RootElement;
+            if (args[0] == "phase") DeploymentPreflight.ValidatePublicCandidateInputs(runtime);
             string commit = WorkerIdentity.Text(runtime, "source_commit");
             if (commit != WireFixtures.BuiltSourceCommit()) throw new InvalidDataException("approved_source_commit_mismatch");
             var services = new ServiceCollection();

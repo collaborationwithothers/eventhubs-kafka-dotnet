@@ -55,6 +55,10 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
 
     public async Task PreserveFailureAsync(RepeatContext context, CancellationToken cancellationToken, CancellationToken retentionToken)
     {
+        bool observationsIncomplete = false;
+        try { await cluster.PreserveObservedWorkersAsync(context, retentionToken).ConfigureAwait(false); }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        { observationsIncomplete = true; }
         try { await cluster.PreserveAvailableArtifactsAsync(context, cancellationToken).ConfigureAwait(false); }
         finally
         {
@@ -66,6 +70,7 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
                     System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(admission.Events), retentionToken).ConfigureAwait(false);
             }
         }
+        if (observationsIncomplete) throw new IOException("worker_observation_retention_incomplete");
     }
 
     public async Task ObserveThroughExportAsync(RepeatContext context, RepeatExecution repeat, CancellationToken cancellationToken)
