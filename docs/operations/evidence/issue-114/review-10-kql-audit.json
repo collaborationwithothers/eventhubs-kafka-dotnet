@@ -1,0 +1,84 @@
+{
+  "kind": "authored_producer_and_source_audit",
+  "date_utc": "2026-10-22",
+  "producer_command": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl",
+  "producer_script": "/tmp/kql-type-114-source/fetch-sources.py",
+  "source_receipt": "/tmp/kql-type-114-source/fetch-result.jsonl",
+  "sources": [
+    {
+      "path": "/tmp/kql-type-114-source/union-operator.md",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/dataexplorer-docs/85351b30116da41b75c5a4e8a5b7f5730d81ab08/data-explorer/kusto/query/union-operator.md",
+      "bytes": 10436,
+      "sha256": "2655cd75865a7c89c1b2084f535398e5b3b952a07647b8ca0827e0ea0c0d7d18"
+    },
+    {
+      "path": "/tmp/kql-type-114-source/long.md",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/dataexplorer-docs/85351b30116da41b75c5a4e8a5b7f5730d81ab08/data-explorer/kusto/query/scalar-data-types/long.md",
+      "bytes": 1379,
+      "sha256": "b30d2bedee3c8f304537819ffc7942a187f478af95b1ee6b4823a46b0e3c53e3"
+    },
+    {
+      "path": "/tmp/kql-type-114-source/tolong-function.md",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/dataexplorer-docs/ac19a887fb20eab5c08ec7742478621be92c56fd/data-explorer/kusto/query/tolong-function.md",
+      "bytes": 1774,
+      "sha256": "46ce96e6346a302ca0c6ca9e9c3ab81784df99f6017e95bdd736e36c95b7e079"
+    },
+    {
+      "path": "/tmp/kql-type-114-source/azmsdiagnosticerrorlogs.md",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-monitor-docs/6c8e97c9e8b8e57c19e3b319bda5188e4ceba029/articles/azure-monitor/reference/tables/azmsdiagnosticerrorlogs.md",
+      "bytes": 2491,
+      "sha256": "823a47912caf70224ae15c9e336b99985929bc5461dfaa835b6eba37b2eac3a3"
+    },
+    {
+      "path": "/tmp/kql-type-114-source/azmskafkausererrorlogs.md",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-monitor-docs/6c8e97c9e8b8e57c19e3b319bda5188e4ceba029/articles/azure-monitor/reference/tables/azmskafkausererrorlogs.md",
+      "bytes": 1998,
+      "sha256": "f8af038284e0c8550e2861b7745fafcdfa77727e117b5fc67af15d7e75981e65"
+    }
+  ],
+  "current_path_commit_lookup_template": "https://api.github.com/repos/{repo}/commits?path={path}&per_page=1",
+  "official_claims": [
+    {
+      "source": "union-operator.md",
+      "claim": "union defaults to outer; one output column per name/type, suffixing conflicting types. Official example x=1 plus x=toint(2) produces x_long/x_int."
+    },
+    {
+      "source": "long.md",
+      "claim": "Integer literals default to long."
+    },
+    {
+      "source": "tolong-function.md",
+      "claim": "tolong converts a scalar to long; successful conversion returns long."
+    },
+    {
+      "source": "azmsdiagnosticerrorlogs.md",
+      "claim": "ErrorCount is int; ErrorMessage string; TimeGenerated datetime; _ResourceId string."
+    },
+    {
+      "source": "azmskafkausererrorlogs.md",
+      "claim": "Message string; TimeGenerated datetime; _ResourceId string."
+    }
+  ],
+  "same_class_audit": {
+    "tracked_kql_count": 1,
+    "tracked_kql_paths": [
+      "docs/operations/kql/a01-runtime.kql"
+    ],
+    "blueprint_kusto_block_count": 7,
+    "blueprint_union_block_count": 0,
+    "other_query_consumers": [
+      "src/Parchwell.Runner/Program.cs",
+      "src/Parchwell.Runner/Run/Evidence/KqlCollector.cs",
+      "tests/Parchwell.Runner.Tests/Evidence/KqlBoundaryTests.cs",
+      "tests/Parchwell.Runner.Tests/Evidence/EvidenceExporterTests.cs"
+    ],
+    "result": "Only runtime query unions differently typed projected counters; blueprint snippets do not use union, consumer code treats source as opaque text."
+  },
+  "minimal_fix": {
+    "path": "docs/operations/kql/a01-runtime.kql",
+    "before": "ObservedErrorCount=ErrorCount",
+    "after": "ObservedErrorCount=tolong(ErrorCount)",
+    "expected_inference": "Both union arms expose ObservedErrorCount long, retaining the unsuffixed name for sum."
+  },
+  "validation_limit": "Source/schema audit and existing finite targeted binding/retention/parser tests; no Azure identity, live query, full suite, local Kafka, new package/project or checker."
+}

@@ -53,6 +53,10 @@ in reviewed scope outside that directory.
 The authored diff passes the whitespace check. The unfiltered cached check
 reports whitespace in original tool output and HTTP response captures; those
 raw bytes are retained unchanged and hashed rather than reformatted.
+The tenth-review documentation scan reports 36 advisory warnings in the captured
+upstream Markdown: its relative includes/links are unavailable locally and one
+source sentence uses non-ASCII punctuation. These original source bytes remain
+unchanged; the pull request retains the warnings with this explanation.
 
 ## Review and provenance
 
@@ -60,7 +64,7 @@ raw bytes are retained unchanged and hashed rather than reformatted.
 of every retained raw file. Evidence produced before the implementation commit
 is identified as a dirty worktree based on the recorded source revision, with
 input hashes where supplied. It does not claim a reviewed head commit.
-The current checks retain a [repository input inventory](raw/review-9-fixes/repository-inputs-before-build-2.json)
+The ninth-review checks retain a [repository input inventory](raw/review-9-fixes/repository-inputs-before-build-2.json)
 captured before validation; it hashes repository inputs outside the evidence
 directory and does not stand in for PR CI.
 Earlier attempts are retained: the first build exposed a C# keyword collision in
@@ -104,6 +108,15 @@ canonical reuse, raised configuration and zero-byte equality. Publication names
 are checked as the existing exact member set before any Blob metadata request.
 Subsequent cold-review results belong to the PR self-review. The required
 workflow run ID and tested commit are pending PR CI.
+The [tenth report](cold-review-10.md) found incompatible counter types in the
+corroborating KQL union. The diagnostic counter now converts to `long` before
+union. The [source audit](review-10-kql-audit.json) cites the original official
+schemas, literal types, union behavior and conversion. Existing targeted tests
+check query binding, private byte retention and CLI response parsing; these
+checks do not execute KQL against Azure. All 35 targeted tests pass in
+[the retained report](raw/review-10-fixes/query-tests.xml), using the unchanged
+.NET assemblies from the ninth-review build. The updated query source is hashed
+in [the tenth-review inventory](raw/review-10-fixes/repository-inputs.json).
 The new projects, references, protected-path edits
 and provisioned `kubelogin` prerequisite require Hari's review. Persistent plans
 and applies, workflow installation and live readiness remain with Hari under the

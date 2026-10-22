@@ -2647,6 +2647,72 @@
       "sha256": "d1269ed4106983424cebec72b9d98fb840f6c2ae001ebe06f9853488c9bbabae"
     },
     {
+      "path": "raw/review-10-fixes/authored-diff-check.log",
+      "producer": "git diff --check origin/main -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-10-fixes/authored-diff-check.log 2>&1 [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/review-10-fixes/azmsdiagnosticerrorlogs.md",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 2491,
+      "sha256": "823a47912caf70224ae15c9e336b99985929bc5461dfaa835b6eba37b2eac3a3"
+    },
+    {
+      "path": "raw/review-10-fixes/azmskafkausererrorlogs.md",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 1998,
+      "sha256": "f8af038284e0c8550e2861b7745fafcdfa77727e117b5fc67af15d7e75981e65"
+    },
+    {
+      "path": "raw/review-10-fixes/check-docs.log",
+      "producer": "timeout 600 npm run check:docs > docs/operations/evidence/issue-114/raw/review-10-fixes/check-docs.log 2>&1 [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 9273,
+      "sha256": "7bc6c58922d3c0253486b503fae16aa278dc3461e71d89f3b7b28d9011d60c3c"
+    },
+    {
+      "path": "raw/review-10-fixes/fetch-result.jsonl",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 1610,
+      "sha256": "ed668a6e2af4fbecdd3b78eba3e9d8dbef9f539593b5c23869fa44a197a9dc6a"
+    },
+    {
+      "path": "raw/review-10-fixes/long.md",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 1379,
+      "sha256": "b30d2bedee3c8f304537819ffc7942a187f478af95b1ee6b4823a46b0e3c53e3"
+    },
+    {
+      "path": "raw/review-10-fixes/query-tests.log",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Evidence.KqlBoundaryTests -class Parchwell.Runner.Tests.Evidence.EvidenceExporterTests -result-xml docs/operations/evidence/issue-114/raw/review-10-fixes/query-tests.xml > docs/operations/evidence/issue-114/raw/review-10-fixes/query-tests.log 2>&1 [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 425,
+      "sha256": "7a5c673935c2933af849c52f1eeb84018fb6eae04d07970e6d6f7a961c96fd7e"
+    },
+    {
+      "path": "raw/review-10-fixes/query-tests.xml",
+      "producer": "timeout 180 /workspace/scratch/dotnet/dotnet tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll -class Parchwell.Runner.Tests.Evidence.KqlBoundaryTests -class Parchwell.Runner.Tests.Evidence.EvidenceExporterTests -result-xml docs/operations/evidence/issue-114/raw/review-10-fixes/query-tests.xml > docs/operations/evidence/issue-114/raw/review-10-fixes/query-tests.log 2>&1 [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 24932,
+      "sha256": "2525c6e3707a5e872a18259adf7fae064019fd67f6c3833e68f0aca3c7c50887"
+    },
+    {
+      "path": "raw/review-10-fixes/repository-inputs.json",
+      "producer": "timeout 180 python3 - <<'PY'\nimport subprocess,pathlib,json,hashlib,datetime\nroot=pathlib.Path('.');out=root/'docs/operations/evidence/issue-114/raw/review-10-fixes'\npaths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\\0')\nfiles=[]\nfor name in sorted(set(paths)):\n if not name or name.startswith('docs/operations/evidence/'):continue\n path=root/name\n if not path.is_file() or path.is_symlink():continue\n data=path.read_bytes();files.append({'path':name,'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})\nrecord={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':'dirty cold-review-10 query fix before targeted checks; .NET assemblies unchanged since review-9 passing build','captured_utc':datetime.datetime.now(datetime.UTC).isoformat(),'files':files}\n(out/'repository-inputs.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('repository input files',len(files))\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 103310,
+      "sha256": "540468f54c1a3687853c5f39a7c1d00ae729fd961506a5abcf8b1b2ad4c13f67"
+    },
+    {
+      "path": "raw/review-10-fixes/tolong-function.md",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 1774,
+      "sha256": "46ce96e6346a302ca0c6ca9e9c3ab81784df99f6017e95bdd736e36c95b7e079"
+    },
+    {
+      "path": "raw/review-10-fixes/union-operator.md",
+      "producer": "python /tmp/kql-type-114-source/fetch-sources.py > /tmp/kql-type-114-source/fetch-result.jsonl\npython3 - <<'PY'\nfrom pathlib import Path\nimport shutil,json\nroot=Path('docs/operations/evidence/issue-114')\nraw=root/'raw/review-10-fixes';raw.mkdir(parents=True,exist_ok=True)\nshutil.copyfile('/workspace/scratch/issue-114-cold-review-10-report.md',root/'cold-review-10.md')\nfor name in ['union-operator.md','long.md','tolong-function.md','azmsdiagnosticerrorlogs.md','azmskafkausererrorlogs.md','fetch-result.jsonl']:\n shutil.copyfile(Path('/tmp/kql-type-114-source')/name,raw/name)\nshutil.copyfile('/tmp/kql-type-114-source/fetch-sources.py',root/'review-10-fetch-sources.py')\nshutil.copyfile('/tmp/kql-type-114-source/producer-audit.json',root/'review-10-kql-audit.json')\nPY [source edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0; dirty cold-review-10 KQL fix worktree; targeted local checks and official-source captures, not exact-head PR CI or live query acceptance]",
+      "size_bytes": 10436,
+      "sha256": "2655cd75865a7c89c1b2084f535398e5b3b952a07647b8ca0827e0ea0c0d7d18"
+    },
+    {
       "path": "raw/review-4-fixes/authored-diff-check.log",
       "producer": "git diff --cached --check -- ':(top)' ':(top,exclude,glob)docs/operations/evidence/**/raw/**' > docs/operations/evidence/issue-114/raw/review-4-fixes/authored-diff-check.log 2>&1 [source 5cea1260b9d7ef3fb23909c762872cd692787c80; dirty cold-review-4 fixes worktree; local checks, not exact-head PR CI acceptance]",
       "size_bytes": 0,

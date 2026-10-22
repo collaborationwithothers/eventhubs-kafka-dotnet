@@ -28,6 +28,13 @@ The [eighth review](cold-review-8.md) found that the public candidate omitted th
 
 The [ninth review](cold-review-9.md) found that normal downloads checked the repeat total after transfer and omitted earlier verifier originals. Normal, failed and recovery collection now enforce remaining aggregate and individual ceilings before transfer, with canonical retained files sharing one accounting boundary. The existing exact publication member-set check runs before Blob I/O so unknown or duplicate names cannot bypass that accounting. Empty originals remain permitted at an exactly exhausted byte budget; positive bytes remain rejected.
 
+The [tenth review](cold-review-10.md) found that the corroborating KQL union mixed
+the diagnostic table's `int` counter with a `long` literal. The diagnostic counter
+now converts to `long` before the union, preserving one counter column for the
+aggregation. The [official-source audit](review-10-kql-audit.json) records the
+documented schemas, union behavior and conversion. Existing query tests cover
+binding, private retention and CLI output; no live KQL execution is claimed.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
@@ -46,7 +53,10 @@ Round 8 revisited the execution/evidence component with the incomplete public ca
 
 Round 9 revisited execution/evidence with download accounting and publication-member validation before transfer. This further trip passes under decision `6333713470`.
 
-The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md) and [ninth](cold-review-9.md) reports retain their original findings and reviewed source identities.
+Round 10 revisited execution/evidence with the corroborating KQL counter types.
+This further trip passes under decision `6333713470`.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md), [fourth](cold-review-4.md), [fifth](cold-review-5.md), [sixth](cold-review-6.md), [seventh](cold-review-7.md), [eighth](cold-review-8.md) [ninth](cold-review-9.md) and [tenth](cold-review-10.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
@@ -63,3 +73,8 @@ Seventh-review fixes start from `886acbc991df56abfd31f5591646b8a9cfdf6c83`. Thei
 Eighth-review fixes start from `4590e7818b3ac720e593ef680ecb6a0d51467546`. Their local evidence belongs under `raw/review-8-fixes/`, with exact commands in `review-8-producers.json` and a fresh input inventory before validation. The required PR workflow remains separate.
 
 Ninth-review fixes start from `26b2fa6ba326b64fd7732c654c2a7077115b2595`. Their local evidence belongs under `raw/review-9-fixes/`, with exact commands in `review-9-producers.json` and pre-validation input hashes. Local checks remain separate from the required PR workflow.
+
+Tenth-review fixes start from `edc7c5792e20df2c5dd42ecd65d6f349bfb0c4f0`.
+Their source captures and targeted checks belong under `raw/review-10-fixes/`,
+with exact commands in `review-10-producers.json`. They do not replace PR CI or
+deployment acceptance.

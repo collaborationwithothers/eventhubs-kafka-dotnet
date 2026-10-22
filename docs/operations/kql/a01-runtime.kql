@@ -3,6 +3,9 @@
 // https://github.com/MicrosoftDocs/azure-monitor-docs/blob/6c8e97c9e8b8e57c19e3b319bda5188e4ceba029/
 // articles/azure-monitor/reference/tables/azmskafkausererrorlogs.md and
 // articles/azure-monitor/reference/tables/azmsdiagnosticerrorlogs.md.
+// Normalize counts to long so union retains one count column:
+// https://github.com/MicrosoftDocs/dataexplorer-docs/blob/85351b30116da41b75c5a4e8a5b7f5730d81ab08/data-explorer/kusto/query/union-operator.md
+// https://github.com/MicrosoftDocs/dataexplorer-docs/blob/ac19a887fb20eab5c08ec7742478621be92c56fd/data-explorer/kusto/query/tolong-function.md
 union
     (AZMSKafkaUserErrorLogs
         | where TimeGenerated >= start_utc and TimeGenerated <= end_utc
@@ -11,6 +14,6 @@ union
     (AZMSDiagnosticErrorLogs
         | where TimeGenerated >= start_utc and TimeGenerated <= end_utc
         | where _ResourceId == resource_id
-        | project TimeGenerated, SourceTable="AZMSDiagnosticErrorLogs", Detail=ErrorMessage, ObservedErrorCount=ErrorCount)
+        | project TimeGenerated, SourceTable="AZMSDiagnosticErrorLogs", Detail=ErrorMessage, ObservedErrorCount=tolong(ErrorCount))
 | summarize ObservedRows=count(), ErrorCount=sum(ObservedErrorCount) by SourceTable, Detail=substring(Detail, 0, 2048)
 | take 10001
