@@ -1,0 +1,32 @@
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:1: trailing whitespace.
++HTTP/1.1 403 Forbidden
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:2: trailing whitespace.
++content-length: 16
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:3: trailing whitespace.
++content-type: text/plain
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:4: trailing whitespace.
++date: Thu, 22 Oct 2026 04:33:04 GMT
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:5: trailing whitespace.
++server: envoy
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:6: trailing whitespace.
++connection: close
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/helm-host-denial.txt:7: trailing whitespace.
++
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:2: trailing whitespace.
++HTTP/1.1 403 Forbidden
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:3: trailing whitespace.
++content-length: 16
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:4: trailing whitespace.
++content-type: text/plain
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:5: trailing whitespace.
++date: Thu, 22 Oct 2026 04:32:12 GMT
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:6: trailing whitespace.
++server: envoy
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:7: trailing whitespace.
++connection: close
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:8: trailing whitespace.
++
+docs/operations/evidence/issue-114/raw/chart-tool-acquisition/service-tags-host-denial.txt:8: new blank line at EOF.
+docs/operations/evidence/issue-114/raw/deployment-attempt-1/tools/docker-info.txt:61: new blank line at EOF.
+docs/operations/evidence/issue-114/raw/deployment-attempt-2/tools/docker-info.txt:61: new blank line at EOF.
+docs/operations/evidence/issue-114/raw/terraform/persistent-validate.log:2: new blank line at EOF.

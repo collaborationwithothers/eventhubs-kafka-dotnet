@@ -214,10 +214,111 @@ public sealed class LoadGenWorkerHostTests
         DeleteOutput(publisher);
     }
 
+    [Theory]
+    [InlineData("matching")]
+    [InlineData("mismatching")]
+    [InlineData("missing")]
+    public async Task Given_OptionalComparisonFile_When_WorkerResolvesItsActualInputs_Then_FidelityFailurePrecedesNativeProducerAndArtifacts(string state)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "worker-values-" + Guid.NewGuid().ToString("N"));
+        var publisher = new RecordingPublisher();
+        var tracker = new ProducerFactoryTracker();
+        using IHost host = CreateHost(publisher, durationSeconds: 1, tracker, generatedValuesFile: path);
+        try
+        {
+            if (state == "matching")
+            {
+                LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("A01", TestContext.Current.CancellationToken);
+                ResolvedScenario resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded);
+                File.WriteAllText(path, new HelmValuesGenerator().Generate(resolved, "C0"), new System.Text.UTF8Encoding(false));
+            }
+            else if (state == "mismatching") File.WriteAllText(path, "profile: changed\n");
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
+            await host.StopAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(state == "matching" ? 0 : 1, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+            Assert.Equal(state == "matching", tracker.Called);
+            Assert.Equal(state == "matching", publisher.Called);
+            Assert.Equal(state == "matching", Directory.Exists(publisher.OutputRoot));
+        }
+        finally
+        {
+            File.Delete(path);
+            DeleteOutput(publisher);
+        }
+    }
+
+    [Theory]
+    [InlineData("success")]
+    [InlineData("publication")]
+    [InlineData("stop")]
+    [InlineData("dispose")]
+    [InlineData("write")]
+    [InlineData("cancel")]
+    [InlineData("start")]
+    public async Task Given_ProcessLifecycle_When_Completing_Then_ReceiptRequiresPublicationStopDisposalAndWritableOutput(string outcome)
+    {
+        var publisher = new RecordingPublisher(throwOnPublish: outcome == "publication");
+        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1), outcome);
+        using var output = new CompletionWriter(host, publisher, failWrite: outcome == "write");
+        int exitCode = await Program.RunAsync([], completionOutput: output, hostFactory: () => host);
+        Assert.Equal(outcome is not ("start" or "cancel"), publisher.Called);
+        Assert.True(host.Disposed);
+        Assert.Equal(outcome == "success" ? 0 : 1, exitCode);
+        if (outcome == "success")
+        {
+            string line = output.ToString();
+            Assert.StartsWith("PARCHWELL_COMPLETION ", line, StringComparison.Ordinal);
+            using JsonDocument receipt = JsonDocument.Parse(line["PARCHWELL_COMPLETION ".Length..]);
+            Assert.Equal(1, receipt.RootElement.GetProperty("schema_version").GetInt32());
+            Assert.Equal("loadgen", receipt.RootElement.GetProperty("mode").GetString());
+            Assert.Equal("A01", receipt.RootElement.GetProperty("identity").GetProperty("scenario_id").GetString());
+            Assert.Equal(publisher.RunId, receipt.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
+            Assert.Equal(0, receipt.RootElement.GetProperty("handler_exit_code").GetInt32());
+            Assert.True(receipt.RootElement.GetProperty("cleanup_completed").GetBoolean());
+        }
+        else Assert.Equal(string.Empty, output.ToString());
+        DeleteOutput(publisher);
+    }
+
+    private sealed class LifecycleHost(IHost inner, string outcome) : IHost
+    {
+        internal bool Disposed { get; private set; }
+        public IServiceProvider Services => inner.Services;
+        public async Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            if (outcome == "start") throw new InvalidOperationException("synthetic_start_failure");
+            await inner.StartAsync(cancellationToken);
+            if (outcome == "cancel") await inner.StopAsync(cancellationToken);
+        }
+        public async Task StopAsync(CancellationToken cancellationToken = default)
+        {
+            await inner.StopAsync(cancellationToken);
+            if (outcome == "stop") throw new InvalidOperationException("synthetic_stop_failure");
+        }
+        public void Dispose()
+        {
+            inner.Dispose();
+            Disposed = true;
+            if (outcome == "dispose") throw new InvalidOperationException("synthetic_dispose_failure");
+        }
+    }
+
+    private sealed class CompletionWriter(LifecycleHost host, RecordingPublisher publisher, bool failWrite) : StringWriter
+    {
+        public override Task WriteLineAsync(string? value)
+        {
+            Assert.True(host.Disposed);
+            Assert.True(publisher.Called);
+            if (failWrite) throw new IOException("synthetic_receipt_write_failure");
+            return base.WriteLineAsync(value);
+        }
+    }
+
     private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
         ProducerFactoryTracker? producerFactory = null,
         Action<KafkaOAuthBearerSession, RunEvidenceSession>? authenticationCallback = null,
-        IKafkaTokenProvider? tokenProvider = null)
+        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
         if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
@@ -235,6 +336,7 @@ public sealed class LoadGenWorkerHostTests
         values["AZURE_TENANT_ID"] = "synthetic-tenant";
         values["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         values["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
+        if (generatedValuesFile is not null) values["PARCHWELL_GENERATED_VALUES_FILE"] = generatedValuesFile;
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
 
         return Program.BuildHost(args, services =>

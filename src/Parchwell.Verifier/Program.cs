@@ -33,7 +33,9 @@ internal static partial class Program
     [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Verifier disposal failed for scenario {ScenarioId} run {RunId}.")]
     private static partial void LogDisposalFailed(ILogger logger, Exception exception, string? scenarioId, string? runId);
 
-    public static Task<int> Main(string[] args) => RunAsync(args);
+    public static Task<int> Main(string[] args) => args.Length == 1 && args[0] == "--image-smoke"
+        ? ImageSmoke.RunAsync(Console.Out, AppContext.BaseDirectory)
+        : RunAsync(args);
 
     internal static IHost BuildHost(
         string[] args,
@@ -56,6 +58,7 @@ internal static partial class Program
         builder.Services.AddSingleton<IValidateOptions<VerifierHostOptions>, VerifierHostOptionsValidator>();
         builder.Services.AddSingleton(timeProvider ?? TimeProvider.System);
         builder.Services.AddSingleton<VerifierExecutionState>();
+        builder.Services.AddSingleton<VerifierCompletionState>();
 
         RegisterSelectedMode(builder.Services, builder.Configuration);
         configureForTests?.Invoke(builder.Services);
@@ -91,9 +94,9 @@ internal static partial class Program
         });
         services.AddParchwellKafkaAuthentication(options =>
         {
-            options.TenantId = configuration["Verifier:TenantId"];
-            options.ClientId = configuration["Verifier:WorkloadIdentityClientId"];
-            options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"];
+            options.TenantId = configuration["Verifier:TenantId"] ?? configuration["AZURE_TENANT_ID"];
+            options.ClientId = configuration["Verifier:WorkloadIdentityClientId"] ?? configuration["AZURE_CLIENT_ID"];
+            options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"] ?? configuration["AZURE_FEDERATED_TOKEN_FILE"];
         });
         services.AddSingleton<VerifierKafkaSessionFactory>();
         services.AddSingleton<IVerifierArtifactStore>(provider =>
@@ -146,18 +149,22 @@ internal static partial class Program
     internal static async Task<int> RunAsync(
         string[] args,
         Action<IServiceCollection>? configureForTests = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        TextWriter? completionOutputForTests = null)
     {
         IHost? host = null;
         ProcessWatchdog? watchdog = null;
         VerifierExecutionState? state = null;
         ILogger? logger = null;
         IConfiguration? configuration = null;
+        VerifierCompletionState? completion = null;
+        bool cleanupCompleted = true;
         try
         {
             host = BuildHostCore(args, configureForTests, timeProvider);
             var clock = timeProvider ?? TimeProvider.System;
             state = host.Services.GetRequiredService<VerifierExecutionState>();
+            completion = host.Services.GetRequiredService<VerifierCompletionState>();
             logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
             configuration = host.Services.GetRequiredService<IConfiguration>();
             watchdog = TryStartWatchdog(host, clock);
@@ -170,6 +177,7 @@ internal static partial class Program
             }
             catch (Exception exception)
             {
+                cleanupCompleted = false;
                 state!.MarkFailed();
                 LogHostFailed(
                     logger!,
@@ -180,6 +188,7 @@ internal static partial class Program
         }
         catch (Exception exception)
         {
+            cleanupCompleted = false;
             if (host is not null)
             {
                 logger ??= host.Services.GetService<ILoggerFactory>()?.CreateLogger(nameof(Program));
@@ -215,6 +224,7 @@ internal static partial class Program
                         configuration?["Verifier:RunId"]);
                 }
 
+                cleanupCompleted = false;
                 state?.MarkFailed();
             }
 
@@ -240,12 +250,24 @@ internal static partial class Program
                         configuration?["Verifier:RunId"]);
                 }
 
+                cleanupCompleted = false;
                 state?.MarkFailed();
             }
         }
 
         try
         {
+            if (cleanupCompleted && completion is not null)
+            {
+                try
+                {
+                    await completion.WriteReceiptAsync(completionOutputForTests ?? Console.Out).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    return 1;
+                }
+            }
             return state?.ExitCode ?? 1;
         }
         finally
@@ -343,6 +365,10 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
             .AddInMemoryCollection(values)
             .Build();
         filtered.Bind(options);
+        options.GeneratedValuesFile = _configuration["PARCHWELL_GENERATED_VALUES_FILE"] ?? options.GeneratedValuesFile;
+        options.TenantId ??= _configuration["AZURE_TENANT_ID"];
+        options.WorkloadIdentityClientId ??= _configuration["AZURE_CLIENT_ID"];
+        options.FederatedTokenFilePath ??= _configuration["AZURE_FEDERATED_TOKEN_FILE"];
     }
 
     private static bool KeepValue(string key, HashSet<string> usedBudgets, string? mode)

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "source_commit": "4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55",
+  "helm_version": "v4.3.1",
+  "official_release_url": "https://api.github.com/repos/helm/helm/releases/tags/v4.3.1",
+  "official_linux_amd64_archive_sha256": "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b",
+  "archive_acquired": false,
+  "helm_lint_or_template_executed": false,
+  "committed_service_tags_acquired": false,
+  "blocked_destinations": [
+    "get.helm.sh",
+    "download.microsoft.com",
+    "centralus.data.mcr.microsoft.com"
+  ],
+  "status": "blocked_by_destination_policy",
+  "service_tags_probe_is_host_reachability_only": true,
+  "sdk_container_publish_attempted": true,
+  "sdk_locked_linux_x64_restore_build_succeeded": true,
+  "sdk_container_archive_produced": false,
+  "image_smoke_executed": false,
+  "mcr_blob_redirect_host": "centralus.data.mcr.microsoft.com"
+}

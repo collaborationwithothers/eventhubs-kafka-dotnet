@@ -714,6 +714,7 @@ public sealed class VerifierHostTests
             stdout,
             stderr);
         Assert.Equal(124, child.ExitCode);
+        Assert.DoesNotContain("PARCHWELL_COMPLETION ", stdout, StringComparison.Ordinal);
         Assert.False(File.Exists(outputPath), $"Child wrote output. stdout={stdout} stderr={stderr}");
     }
 
@@ -742,6 +743,15 @@ public sealed class VerifierHostTests
             string errors = await stderr;
             Assert.Equal(expectedExit, child.ExitCode);
             Assert.Equal(published, File.Exists(outputPath));
+            string[] receipts = output.Split('\n').Where(line => line.StartsWith("PARCHWELL_COMPLETION ", StringComparison.Ordinal)).ToArray();
+            if (scenario is "successful-note" or "valid-result" or "invalid-result" or "incomplete-result")
+            {
+                string receipt = Assert.Single(receipts);
+                using JsonDocument completion = JsonDocument.Parse(receipt["PARCHWELL_COMPLETION ".Length..]);
+                Assert.Equal(expectedExit, completion.RootElement.GetProperty("handler_exit_code").GetInt32());
+                Assert.True(completion.RootElement.GetProperty("cleanup_completed").GetBoolean());
+            }
+            else Assert.Empty(receipts);
             if (published)
             {
                 using JsonDocument json = JsonDocument.Parse(await File.ReadAllBytesAsync(outputPath, cancellationToken));

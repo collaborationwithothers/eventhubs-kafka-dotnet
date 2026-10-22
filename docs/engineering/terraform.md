@@ -7,7 +7,7 @@ Binding for all Terraform in this repository. Status: approved by Hari on 2026-1
 ```
 infra/
   persistent/     applied by Hari only: budget alert, spoke VNet and peering, DNS links,
-                  Log Analytics, identities, ACR; consumes an external state backend
+                  Log Analytics, identities, ACR, private run ledger/evidence storage; consumes an external state backend
   ephemeral/      applied and destroyed by the scenario workflow only: Event Hubs, AKS,
                   storage, Application Insights, private endpoints
   modules/        our own modules, only where no Azure Verified Module fits
@@ -46,3 +46,5 @@ Both roots use Hari's existing external Entra-authenticated private backend. Thi
 ## What reviewers should not flag
 
 Formatting that `terraform fmt` enforces. Module choices already recorded in ADR-011.
+
+The persistent run-storage account and its `ledger`/`evidence` containers follow [the #114 storage decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257). They are separate from the external Terraform backend and the ephemeral worker account. No new grants are declared: Hari verifies existing workflow access, private endpoint routing and DNS before live use. Mock plans establish configuration only.

@@ -1,0 +1,219 @@
+[
+  {
+    "TableName": "getschema",
+    "ColumnName": "TenantId",
+    "ColumnOrdinal": "0",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "SourceSystem",
+    "ColumnOrdinal": "1",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "TimeGenerated",
+    "ColumnOrdinal": "2",
+    "DataType": "System.DateTime",
+    "ColumnType": "datetime"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "MG",
+    "ColumnOrdinal": "3",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ManagementGroupName",
+    "ColumnOrdinal": "4",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "SourceComputerId",
+    "ColumnOrdinal": "5",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ComputerIP",
+    "ColumnOrdinal": "6",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Computer",
+    "ColumnOrdinal": "7",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Category",
+    "ColumnOrdinal": "8",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "OSType",
+    "ColumnOrdinal": "9",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "OSName",
+    "ColumnOrdinal": "10",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "OSMajorVersion",
+    "ColumnOrdinal": "11",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "OSMinorVersion",
+    "ColumnOrdinal": "12",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Version",
+    "ColumnOrdinal": "13",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "SCAgentChannel",
+    "ColumnOrdinal": "14",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "IsGatewayInstalled",
+    "ColumnOrdinal": "15",
+    "DataType": "System.SByte",
+    "ColumnType": "bool"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "RemoteIPLongitude",
+    "ColumnOrdinal": "16",
+    "DataType": "System.Double",
+    "ColumnType": "real"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "RemoteIPLatitude",
+    "ColumnOrdinal": "17",
+    "DataType": "System.Double",
+    "ColumnType": "real"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "RemoteIPCountry",
+    "ColumnOrdinal": "18",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "SubscriptionId",
+    "ColumnOrdinal": "19",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ResourceGroup",
+    "ColumnOrdinal": "20",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ResourceProvider",
+    "ColumnOrdinal": "21",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Resource",
+    "ColumnOrdinal": "22",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ResourceId",
+    "ColumnOrdinal": "23",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ResourceType",
+    "ColumnOrdinal": "24",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ComputerEnvironment",
+    "ColumnOrdinal": "25",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Solutions",
+    "ColumnOrdinal": "26",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "VMUUID",
+    "ColumnOrdinal": "27",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "ComputerPrivateIPs",
+    "ColumnOrdinal": "28",
+    "DataType": "System.Object",
+    "ColumnType": "dynamic"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "Type",
+    "ColumnOrdinal": "29",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  },
+  {
+    "TableName": "getschema",
+    "ColumnName": "_ResourceId",
+    "ColumnOrdinal": "30",
+    "DataType": "System.String",
+    "ColumnType": "string"
+  }
+]

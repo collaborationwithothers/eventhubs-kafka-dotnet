@@ -37,3 +37,15 @@ output "acr" {
   description = "Shared registry resource ID, name and login server."
   value       = { id = module.acr.resource_id, name = module.acr.name, login_server = module.acr.login_server }
 }
+
+output "run_storage" {
+  description = "Persistent private reservation ledger and raw evidence account; grants remain external prerequisites."
+  value = {
+    id          = module.run_storage.resource_id
+    account_url = "https://${module.run_storage.fqdn.blob}"
+    containers = {
+      ledger   = module.run_storage.containers["ledger"].name
+      evidence = module.run_storage.containers["evidence"].name
+    }
+  }
+}

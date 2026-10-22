@@ -18,5 +18,6 @@
     <ProjectReference Include="../../src/Parchwell.LoadGen/Parchwell.LoadGen.csproj" />
     <ProjectReference Include="../../src/Parchwell.Enrichment/Parchwell.Enrichment.csproj" />
     <ProjectReference Include="../../src/Parchwell.Verifier/Parchwell.Verifier.csproj" />
+    <ProjectReference Include="../../src/Parchwell.Runner/Parchwell.Runner.csproj" />
   </ItemGroup>
 </Project>

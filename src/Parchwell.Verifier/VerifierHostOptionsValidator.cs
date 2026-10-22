@@ -34,6 +34,12 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             case VerifierMode.StartLine:
                 AddKafkaInputs(options, errors, requiredBudgets);
                 RequireText(options.StartLineOutputName, "Verifier:StartLineOutputName", errors);
+                if (options.BrokerInventoryOutputName is not null)
+                {
+                    RequireText(options.BrokerInventoryOutputName, "Verifier:BrokerInventoryOutputName", errors);
+                    if (options.BrokerInventoryOutputName == options.StartLineOutputName)
+                        errors.Add("Broker inventory and start-line output names must differ.");
+                }
                 RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
                 break;

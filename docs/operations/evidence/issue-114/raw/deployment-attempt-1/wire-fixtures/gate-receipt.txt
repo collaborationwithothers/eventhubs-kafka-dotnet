@@ -1,0 +1,1 @@
+PARCHWELL_COMPLETION {"schema_version":1,"mode":"probe-gate","identity":{"scenario_id":"A01"},"source_commit":"4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55","handler_exit_code":0,"cleanup_completed":true}

@@ -1,0 +1,99 @@
+{{- $mode := .Values.runtime.mode -}}
+{{- $role := ternary "loadgen" "verifier" (eq $mode "loadgen") -}}
+{{- $account := index .Values.runtime.service_accounts $role -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-%s" .Values.runtime.run_id $mode | quote }}
+  namespace: parchwell
+  labels:
+    {{- include "parchwell.labels" . | nindent 4 }}
+    parchwell.io/role: {{ $role | quote }}
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ .Values.runtime.job_deadline_seconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "parchwell.labels" . | nindent 8 }}
+        parchwell.io/role: {{ $role | quote }}
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: {{ $account.name | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 30
+      nodeSelector:
+        workload: {{ ternary "loadgen" "workload" (eq $role "loadgen") | quote }}
+      {{- if eq $role "loadgen" }}
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: loadgen
+          effect: NoSchedule
+      {{- end }}
+      securityContext:
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $role }}
+          image: {{ index .Values.runtime (printf "%s_image" $role) | quote }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "3"
+              memory: 12Gi
+          env:
+            {{- range $key, $value := index .Values.runtime (printf "%s_environment" $role) }}
+            - name: {{ $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: PARCHWELL_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PARCHWELL_POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+            - name: comparison
+              mountPath: /deployment
+              readOnly: true
+            {{- if eq $role "loadgen" }}
+            - name: admission
+              mountPath: /admission
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: work
+          emptyDir:
+            sizeLimit: 8Gi
+        - name: tmp
+          emptyDir: {}
+        - name: comparison
+          configMap:
+            name: {{ printf "%s-%s-values" .Values.runtime.run_id $role | quote }}
+        {{- if eq $role "loadgen" }}
+        - name: admission
+          configMap:
+            name: {{ .Values.runtime.admission_name | quote }}
+        {{- end }}

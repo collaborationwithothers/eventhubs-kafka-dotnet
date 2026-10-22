@@ -1,0 +1,36 @@
+{
+  "source_commit": "4a0acc5d886a12cafdfdeafbe1e71f4d0802bf55",
+  "source_status": "dirty shared worktree; bounded diagnostic build/focused fake-transport test; not reviewed-head CI acceptance",
+  "working_directory": "/workspace/eventhubs-kafka-dotnet",
+  "commands": {
+    "build-initial.log": "timeout 600 /workspace/scratch/dotnet/dotnet build tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-restore",
+    "build.log": "timeout 600 /workspace/scratch/dotnet/dotnet build tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-restore",
+    "test.log": "timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/aks-binding\" -- --filter-class '*AksKubeconfigBindingTests' --report-xunit-xml --report-xunit-xml-filename results.xml",
+    "check-docs.log": "npm run check:docs",
+    "diff-check.log": "git diff --check",
+    "results.xml": "timeout 600 /workspace/scratch/dotnet/dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory \"$PWD/docs/operations/evidence/issue-114/raw/aks-binding\" -- --filter-class '*AksKubeconfigBindingTests' --report-xunit-xml --report-xunit-xml-filename results.xml",
+    "adapter-build.log": "timeout 600 /workspace/scratch/dotnet/dotnet build src/Parchwell.Runner/Parchwell.Runner.csproj --configuration Release --no-restore"
+  },
+  "input_sha256": {
+    "src/Parchwell.Runner/Run/Execution/AksKubeconfigBinding.cs": "73391cfa79a44d8d86f806d2d66e65b5b6add8f102a5053ac8e877ad8022959f",
+    "tests/Parchwell.Runner.Tests/Execution/AksKubeconfigBindingTests.cs": "3a0b01512f0c7286b7051c36e8c44954403a8eab31f5ad8213e8920e1e30bc36"
+  },
+  "sources": {
+    "kubelogin_azurecli": "https://github.com/Azure/kubelogin/blob/bdf0e79b5a0ea6fe9fd3b7ada771378c344ad760/docs/book/src/concepts/login-modes/azurecli.md",
+    "azure_cli": "https://github.com/Azure/azure-cli/blob/da4c0548a2725ea3d08b1d94b8e7fa1b0b07256e/src/azure-cli/azure/cli/command_modules/acs/_params.py#L1096-L1103"
+  },
+  "outcomes": {
+    "initial_build": 1,
+    "corrected_build": 0,
+    "test": 0,
+    "passed": 12,
+    "failed": 0,
+    "check_docs": 0,
+    "diff_check": 0,
+    "adapter_build": 0
+  },
+  "adapter_source_sha256": {
+    "src/Parchwell.Runner/Run/Execution/AksKubeconfigBinding.cs": "73391cfa79a44d8d86f806d2d66e65b5b6add8f102a5053ac8e877ad8022959f",
+    "src/Parchwell.Runner/Run/Execution/KubernetesRunCluster.cs": "bb2784f5ed87ab7690eaaebbfc3fe8eb4c262629916abe185e2305aa3dada379"
+  }
+}

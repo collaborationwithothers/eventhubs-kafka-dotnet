@@ -50,10 +50,10 @@ internal sealed record ProjectModel(string Path, IReadOnlyDictionary<string, str
 internal static class ProjectRules
 {
     internal static readonly string[] SourceNames =
-    ["Parchwell.Kafka", "Parchwell.Scenarios", "Parchwell.LoadGen", "Parchwell.Enrichment", "Parchwell.Verifier"];
+    ["Parchwell.Kafka", "Parchwell.Scenarios", "Parchwell.LoadGen", "Parchwell.Enrichment", "Parchwell.Verifier", "Parchwell.Runner"];
 
     internal static readonly string[] ServiceNames =
-    ["Parchwell.LoadGen", "Parchwell.Enrichment", "Parchwell.Verifier"];
+    ["Parchwell.LoadGen", "Parchwell.Enrichment", "Parchwell.Verifier", "Parchwell.Runner"];
 
     internal static string[] ForbiddenReferences(IEnumerable<ProjectModel> projects)
     {

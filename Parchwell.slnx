@@ -5,6 +5,7 @@
     <Project Path="src/Parchwell.LoadGen/Parchwell.LoadGen.csproj" />
     <Project Path="src/Parchwell.Enrichment/Parchwell.Enrichment.csproj" />
     <Project Path="src/Parchwell.Verifier/Parchwell.Verifier.csproj" />
+    <Project Path="src/Parchwell.Runner/Parchwell.Runner.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Parchwell.Kafka.Tests/Parchwell.Kafka.Tests.csproj" />
@@ -12,6 +13,7 @@
     <Project Path="tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj" />
     <Project Path="tests/Parchwell.Enrichment.Tests/Parchwell.Enrichment.Tests.csproj" />
     <Project Path="tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj" />
+    <Project Path="tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj" />
     <Project Path="tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj" />
   </Folder>
 </Solution>

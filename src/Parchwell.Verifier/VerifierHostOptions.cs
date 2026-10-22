@@ -41,6 +41,9 @@ internal sealed class VerifierHostOptions
     public string? WorkloadIdentityClientId { get; set; }
     public string? FederatedTokenFilePath { get; set; }
 
+    public string? BrokerInventoryOutputName { get; set; }
+    public string? GeneratedValuesFile { get; set; }
+
     public string? StartLineOutputName { get; set; }
     public int? MaxPartitions { get; set; }
     public int? MaxInputDepth { get; set; }

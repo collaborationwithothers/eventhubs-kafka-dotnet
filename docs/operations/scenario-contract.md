@@ -1,6 +1,6 @@
 # Scenario declaration contract
 
-Parchwell.Scenarios loads scenario declarations and profiles, composes Kafka settings and emits values for a future Helm chart. A valid declaration is not evidence that a worker, measurement collector or deployment exists. The [agreed plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/58#issuecomment-6185687560) separates library validation from execution readiness.
+Parchwell.Scenarios loads scenario declarations and profiles, composes Kafka settings and emits versioned values for the A01 Helm chart. A valid declaration is not evidence that a worker, measurement collector or deployment exists. The [agreed plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/58#issuecomment-6185687560) separates library validation from execution readiness.
 
 ## Input and ownership
 
@@ -66,7 +66,7 @@ Only LoadGenProducer request.timeout.ms and socket.timeout.ms replacements are s
 
 Generate(resolved, configurationId) emits only the selected configuration. Root keys, in order, are contract_version, scenario_id, configuration_id, profile and kafka. Output version is the contract literal 1. Profile contains the expanded typed profile with the same field names above. Kafka is a map from exact role name to its complete effective key/string dictionary. Map keys are ordinally ordered; meaningful profile lists retain order. Strings are double-quoted, numbers invariant plain decimals, line endings LF, with one terminal newline and no document marker. No timestamps or random IDs are emitted.
 
-Output excludes orchestration instructions, measurement retrieval, provenance and component fault execution. These remain in the resolved plan. A later chart must consume this versioned contract and prove deployment compatibility. No chart, images or runtime deployment envelope are introduced here. expected.yaml is never an input.
+Output excludes orchestration instructions, measurement retrieval, provenance and component fault execution. These remain in the resolved plan. The A01 chart consumes this unchanged version-1 contract as its first values file. A separate runtime envelope and each worker's byte equality check prove deployment compatibility; [the runtime contract](a01-runner.md) describes that boundary. expected.yaml is never an input.
 
 ## Measurements and review boundaries
 
