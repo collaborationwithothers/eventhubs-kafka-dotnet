@@ -10,6 +10,8 @@ namespace Parchwell.Runner.Tests.Execution;
 public sealed class TerraformEnvironmentTests
 {
     private static readonly string[] StatePullArguments = ["state", "pull"];
+    private static readonly string[] OutputArguments = ["output", "-json"];
+    private static readonly string[] ShowArguments = ["show", "-json"];
 
     [Fact]
     public async Task Given_FreshBackend_When_GenerationIsRead_Then_InitializedSuccessfulEmptyStateIsAbsent()
@@ -57,6 +59,33 @@ public sealed class TerraformEnvironmentTests
 
     private static TerraformEnvironment Create(IProcessRunner process, string output) =>
         new(process, Path.Combine(Path.GetTempPath(), "infra", "ephemeral"), "private.tfbackend", "private.tfvars", output);
+
+    [Fact]
+    public async Task Given_AppliedEnvironment_When_OutputsAreRead_Then_OriginalStateIsCapturedPrivatelyWithinExistingApiBound()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "parchwell-state-capture-" + Guid.NewGuid().ToString("N"));
+        const string originalState = "{\n  \"format_version\":\"1.0\", \"values\": {\"root_module\":{}}\n}\n";
+        var process = new ScriptedProcess(new(0, "{\"aks\":{\"value\":{\"id\":\"synthetic-cluster\"}}}", ""), new(0, originalState, ""));
+        try
+        {
+            JsonElement outputs = await Create(process, directory).ReadOutputsAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal("synthetic-cluster", outputs.GetProperty("aks").GetProperty("value").GetProperty("id").GetString());
+            Assert.Equal(originalState, await File.ReadAllTextAsync(Path.Combine(directory, "state.private.json"), TestContext.Current.CancellationToken));
+            Assert.Equal(OutputArguments, process.Requests[0].Arguments);
+            Assert.Equal(ShowArguments, process.Requests[1].Arguments);
+            Assert.All(process.Requests, request => Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout));
+            Assert.All(process.Requests, request => Assert.Equal(16777216, request.MaxOutputBytes));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task Given_StateReadbackFails_When_OutputsAreRead_Then_IncompleteScopeCannotBeReturned()
+    {
+        var process = new ScriptedProcess(new(0, "{}", ""), new(1, "", "synthetic-state-failure"));
+        await Assert.ThrowsAsync<IOException>(() => Create(process, Path.GetTempPath()).ReadOutputsAsync(TestContext.Current.CancellationToken));
+    }
 
     [Theory]
     [InlineData("2026-10-22T05:02:03Z", true)]

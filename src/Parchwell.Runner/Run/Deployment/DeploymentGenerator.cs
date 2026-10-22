@@ -160,8 +160,9 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
         var services = new ServiceCollection();
         foreach (KafkaClientRole role in loaded.Definition.Roles)
             services.AddParchwellKafka(role, options => { options.NamespaceName = ns; options.ClientId = role == KafkaClientRole.VerifierConsumer ? verifier : producer; options.EnrichmentGroupId = "a01-unused-enrichment"; });
+        services.AddSingleton<ScenarioResolver>();
         using ServiceProvider provider = services.BuildServiceProvider();
-        var resolver = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>());
+        var resolver = provider.GetRequiredService<ScenarioResolver>();
         return generator.Generate(resolver.Resolve(loaded), configuration);
     }
 

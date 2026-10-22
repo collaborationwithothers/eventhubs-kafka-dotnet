@@ -13,6 +13,7 @@ for (const [name, prefix] of [
   ['aks-binding-producers.json', 'aks-binding'],
   ['local-producers.json', 'local'],
   ['resume-producers.json', 'resume'],
+  ['review-fix-producers.json', 'review-fixes'],
 ]) {
   const receipt = await readJson(name);
   for (const [file, command] of Object.entries(receipt.commands)) {

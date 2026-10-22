@@ -2,19 +2,18 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 using Parchwell.Scenarios;
 
 namespace Parchwell.Runner.Run.Deployment;
 
 /// <summary>Checks local deployment prerequisites before any production transport may apply.</summary>
-public static class DeploymentPreflight
+public sealed class DeploymentPreflight(ScenarioLoader loader)
 {
     public const string OfficialHelmArchiveSha256 = "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b";
     private const int DocumentBytes = 16777216;
     private const int ToolBytes = 67108864;
 
-    public static async Task ValidateAsync(JsonElement runtime, CancellationToken cancellationToken = default)
+    public async Task ValidateAsync(JsonElement runtime, CancellationToken cancellationToken = default)
     {
         if (runtime.GetProperty("schema_version").GetInt32() != 1 ||
             (runtime.TryGetProperty("synthetic", out JsonElement synthetic) && synthetic.GetBoolean()))
@@ -49,10 +48,6 @@ public static class DeploymentPreflight
                         throw new InvalidDataException("execution_duration_invalid");
             }
         }
-        ScenarioLoadOptions parsing = JsonSerializer.Deserialize<ScenarioLoadOptions>(limits.RootElement.GetProperty("scenario_parsing"))
-            ?? throw new InvalidDataException("scenario_limits_required");
-        var sourceFiles = new DeploymentScenarioSource(Text(runtime, "scenario_root"));
-        var loader = new ScenarioLoader(sourceFiles, Options.Create(parsing));
         await loader.LoadAsync("A01", cancellationToken).ConfigureAwait(false);
         await VerifyHelmAsync(Text(runtime, "helm_archive_file"), Text(runtime, "helm_binary_file"), cancellationToken).ConfigureAwait(false);
     }

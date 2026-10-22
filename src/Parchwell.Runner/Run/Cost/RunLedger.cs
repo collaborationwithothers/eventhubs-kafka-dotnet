@@ -150,13 +150,16 @@ public sealed partial class RunLedger(IArtifactStore store, TimeProvider clock)
             return current with { GateReceipt = receipt };
         }, cancellationToken);
 
-    public Task<LedgerDocument> ReconcileAsync(string phase, ActualCostRecord actual, string expectedResourceScope,
+    public Task<LedgerDocument> ReconcileAsync(string phase, ActualCostRecord actual, string expectedResourceScope, string expectedNodeResourceScope,
         CancellationToken cancellationToken = default) => ChangeAsync(phase, actual.EnvironmentRunId, (_, current) =>
         {
+            if (actual.ResourceScope != expectedResourceScope || string.IsNullOrWhiteSpace(expectedResourceScope) ||
+                actual.NodeResourceScope != expectedNodeResourceScope || string.IsNullOrWhiteSpace(expectedNodeResourceScope) ||
+                expectedResourceScope.Equals(expectedNodeResourceScope, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("actual_cost_scope_incomplete");
             if (current.ActualCostSource == actual) return current;
             if (current.DestroyReceipt?.Complete != true || !actual.Settled || actual.Currency != "GBP" || actual.CostGbp < 0 ||
                 string.IsNullOrWhiteSpace(actual.RecordId) || string.IsNullOrWhiteSpace(actual.Source) || actual.ReceivedAt == default ||
-                actual.ResourceScope != expectedResourceScope || string.IsNullOrWhiteSpace(expectedResourceScope) ||
                 actual.CoverageThrough < current.DestroyReceipt.CompletedAt || actual.ReceivedAt < actual.CoverageThrough || current.ActualCostSource is not null)
                 throw new InvalidOperationException("actual_cost_not_settled");
             return current with { ActualCostGbp = actual.CostGbp, ActualCostSource = actual };
@@ -327,7 +330,8 @@ public sealed partial class RunLedger(IArtifactStore store, TimeProvider clock)
                 throw new InvalidDataException("ledger_gate_receipt_invalid");
             if (phase.ActualCostSource is { } actual && (!actual.Settled || actual.Currency != "GBP" || actual.CostGbp != phase.ActualCostGbp ||
                 actual.EnvironmentRunId != phase.EnvironmentRunId || string.IsNullOrWhiteSpace(actual.RecordId) || string.IsNullOrWhiteSpace(actual.Source) ||
-                string.IsNullOrWhiteSpace(actual.ResourceScope) || phase.DestroyReceipt?.Complete != true ||
+                string.IsNullOrWhiteSpace(actual.ResourceScope) || string.IsNullOrWhiteSpace(actual.NodeResourceScope) ||
+                actual.ResourceScope.Equals(actual.NodeResourceScope, StringComparison.OrdinalIgnoreCase) || phase.DestroyReceipt?.Complete != true ||
                 actual.CoverageThrough < phase.DestroyReceipt.CompletedAt || actual.ReceivedAt < actual.CoverageThrough))
                 throw new InvalidDataException("ledger_actual_cost_invalid");
             for (var i = 0; i < 5; i++)

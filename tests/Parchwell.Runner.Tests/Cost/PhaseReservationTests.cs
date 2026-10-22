@@ -115,12 +115,12 @@ public sealed class PhaseReservationTests
         var now = DateTimeOffset.UtcNow.AddMinutes(1);
         await ledger.MarkDestroyedAsync("probe", "env-a", new DestroyReceipt("env-a", now, true, "destroyed", "A01/env-a/cleanup/" + new string('a', 64) + ".json", new string('a', 64)), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(0.5m, PhaseReservation.CommittedSpend(await ledger.ReadAsync(cancellationToken: TestContext.Current.CancellationToken)));
-        var actual = new ActualCostRecord("cost-1", "GBP", 0.3m, "private-cost-record", now.AddMinutes(2), "env-a", "exact-phase-scope", now.AddMinutes(1), false);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ledger.ReconcileAsync("probe", actual, "exact-phase-scope", cancellationToken: TestContext.Current.CancellationToken));
+        var actual = new ActualCostRecord("cost-1", "GBP", 0.3m, "private-cost-record", now.AddMinutes(2), "env-a", "exact-phase-scope", now.AddMinutes(1), false, "exact-node-scope");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ledger.ReconcileAsync("probe", actual, "exact-phase-scope", "exact-node-scope", cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0.5m, PhaseReservation.CommittedSpend(await ledger.ReadAsync(cancellationToken: TestContext.Current.CancellationToken)));
         actual = actual with { Settled = true };
-        var reconciled = await ledger.ReconcileAsync("probe", actual, "exact-phase-scope", cancellationToken: TestContext.Current.CancellationToken);
-        var replay = await ledger.ReconcileAsync("probe", actual, "exact-phase-scope", cancellationToken: TestContext.Current.CancellationToken);
+        var reconciled = await ledger.ReconcileAsync("probe", actual, "exact-phase-scope", "exact-node-scope", cancellationToken: TestContext.Current.CancellationToken);
+        var replay = await ledger.ReconcileAsync("probe", actual, "exact-phase-scope", "exact-node-scope", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(reconciled.Revision, replay.Revision);
         Assert.Equal(0.3m, PhaseReservation.CommittedSpend(replay));
     }
@@ -133,6 +133,37 @@ public sealed class PhaseReservationTests
         Assert.Throws<InvalidDataException>(() => PhaseReservation.Validate(Input() with { Sources = [] }));
         Assert.Throws<InvalidDataException>(() => PhaseReservation.Validate(Input() with { Sources = [new("https://example.invalid", DateTimeOffset.UtcNow, "hour", 1, -1)] }));
         Assert.Throws<InvalidDataException>(() => PhaseReservation.Validate(Input() with { PhaseEstimates = new() }));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("null")]
+    [InlineData("empty")]
+    [InlineData("primary")]
+    public async Task Given_PersistedActualCostWithoutDistinctNodeScope_When_FreshProcessReads_Then_LegacySettlementCannotAuthorizeSpend(string fault)
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        var store = new PersistentTestStore();
+        var ledger = new RunLedger(store, TimeProvider.System);
+        await ledger.InitializeAsync(Input(), Source, true, true, token);
+        await ledger.ReserveAsync("probe", "env-a", Input(), token);
+        await ledger.MarkApplyStartedAsync("probe", "env-a", token);
+        DateTimeOffset now = TimeProvider.System.GetUtcNow();
+        await ledger.MarkDestroyedAsync("probe", "env-a", new DestroyReceipt("env-a", now, true, "destroyed", "A01/env-a/cleanup/" + new string('a', 64) + ".json", new string('a', 64)), token);
+        var actual = new ActualCostRecord("cost-1", "GBP", 0.3m, "private-cost-record", now.AddMinutes(2), "env-a", "exact-phase-scope", now.AddMinutes(1), true, "exact-node-scope");
+        await ledger.ReconcileAsync("probe", actual, "exact-phase-scope", "exact-node-scope", token);
+        StoredArtifact original = store.Objects[("ledger", RunLedger.BlobPath)];
+        var json = System.Text.Json.Nodes.JsonNode.Parse(original.Bytes)!;
+        var recordedActual = json["phases"]!["probe"]!["actual_cost_source"]!.AsObject();
+        if (fault == "missing") recordedActual.Remove("node_resource_scope");
+        else recordedActual["node_resource_scope"] = fault switch { "null" => null, "empty" => "", _ => "exact-phase-scope" };
+        store.Objects[("ledger", RunLedger.BlobPath)] = original with { Bytes = JsonSerializer.SerializeToUtf8Bytes(json) };
+        int writes = store.WriteCount;
+        var fresh = new RunLedger(store, TimeProvider.System);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => fresh.ReadAsync(token));
+        await Assert.ThrowsAsync<InvalidDataException>(() => fresh.ReserveAsync("C0", "env-b", Input(), token));
+        Assert.Equal(writes, store.WriteCount);
     }
 
     [Fact]

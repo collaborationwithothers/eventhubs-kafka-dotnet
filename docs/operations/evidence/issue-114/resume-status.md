@@ -12,12 +12,18 @@ The workflow and Runner stage the exact runtime and original sourced cost docume
 
 Process death before private export can leave staged workflow provenance unavailable to a later sweeper. Recovery remains explicitly incomplete in that case. The changes do not reconstruct missing history or authorize counts from a failed run.
 
+The [third cold review](cold-review-3.md) found incomplete actual-cost resource coverage and a second scenario-loader graph in preflight. Reconciliation now requires received costs covering both the primary and AKS node resource groups. Verified original Terraform output and state establish the exact cluster, generation and scopes; missing or mismatched evidence preserves the reservation. Preflight uses the registered scenario loader, and deployment generation resolves its scenario resolver through its existing local dependency-injection graph.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
 
-The required new-project/reference finding remains the plan-required approval-only exception. It does not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md) and [second](cold-review-2.md) reports retain their original findings and the earlier handoff state.
+Round 3 repeated the deployment dependency-construction component from round 1, and its actual-cost coverage finding also belongs to the execution/evidence component already covered by the earlier trip. These further trips pass under the same continuation decision. Rule 6 and rule 10's completed Codex review-round cap remain unchanged. Rule 8 excludes cold-review rounds from rule 6.
+
+The required new-project/reference finding remains the plan-required approval-only exception. It does not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md) and [third](cold-review-3.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
 The resumed source starts from `7e28dd472b269e84513d2d20b59e9bf055d4fe11`. New local evidence is recorded under `raw/resume/`, with exact commands and source status in `resume-producers.json` and `raw-manifest.json`. Local dirty-worktree checks do not replace the required PR workflow run and REST logs. The [evidence README](README.md) records the current validation status and remaining deployment acceptance blockers.
+
+Third-review fixes start from `f2c41aec2990bf8af532110062beb001906cb3eb`. Their local evidence belongs under `raw/review-fixes/`, with exact commands in `review-fix-producers.json` and source input hashes captured before validation. It remains dirty-worktree evidence until the PR workflow tests a committed head.

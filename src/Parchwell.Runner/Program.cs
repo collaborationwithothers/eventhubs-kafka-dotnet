@@ -52,6 +52,7 @@ internal static class Program
             services.AddSingleton(Options.Create(parser));
             services.AddSingleton<ScenarioLoader>(); services.AddSingleton<HelmValuesGenerator>();
             services.AddSingleton<DeploymentGenerator>(); services.AddSingleton<ChartRenderer>();
+            services.AddSingleton<DeploymentPreflight>();
             if (args[0] == "generate")
             {
                 using ServiceProvider generation = services.BuildServiceProvider();
@@ -60,7 +61,6 @@ internal static class Program
             }
             if (args[0] is not ("phase" or "gate" or "export" or "destroy" or "sweep")) throw new InvalidDataException("unknown_command");
             if (runtime.TryGetProperty("synthetic", out JsonElement synthetic) && synthetic.GetBoolean()) throw new InvalidDataException("synthetic_input_cannot_execute");
-            if (args[0] == "phase") await DeploymentPreflight.ValidateAsync(runtime, cancellation.Token).ConfigureAwait(false);
             string phase = WorkerIdentity.Text(runtime, "phase");
             string env = WorkerIdentity.Text(runtime, "environment_run_id");
             if (env.Length > 29 || env.Length == 0 || !env.All(character => char.IsAsciiLetterLower(character) || char.IsAsciiDigit(character) || character == '-') || !char.IsAsciiLetterOrDigit(env[0]) || !char.IsAsciiLetterOrDigit(env[^1]))
@@ -91,6 +91,7 @@ internal static class Program
             services.AddSingleton<ProbeGateRunner>();
             services.AddSingleton<IRunGate>(provider => new LocalVerifierGate(provider.GetRequiredService<ProbeGateRunner>(), runtime));
             using ServiceProvider provider = services.BuildServiceProvider();
+            if (args[0] == "phase") await provider.GetRequiredService<DeploymentPreflight>().ValidateAsync(runtime, cancellation.Token).ConfigureAwait(false);
             var store = (AzureCliRunStore)provider.GetRequiredService<IArtifactStore>();
             await store.VerifyCliAsync(Path.Combine(output, "tools", "azure-cli"), cancellation.Token).ConfigureAwait(false);
             var ledger = provider.GetRequiredService<RunLedger>();
