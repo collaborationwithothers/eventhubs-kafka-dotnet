@@ -52,10 +52,19 @@ public sealed class LoadGenHostOptions
     public bool? RequireStatisticsEvidence { get; set; }
     public bool? RequireRequestEvidence { get; set; }
 
+    /// <summary>Gets or sets the optional generated-values file compared before native client construction.</summary>
+    public string? GeneratedValuesFile { get; set; }
+
     /// <summary>Validates all required inputs, identities, storage destinations, and finite time limits.</summary>
     public void Validate()
     {
         Validator.ValidateObject(this, new ValidationContext(this), validateAllProperties: true);
+        if (GeneratedValuesFile is not null)
+        {
+            if (string.IsNullOrWhiteSpace(GeneratedValuesFile) || GeneratedValuesFile.Any(char.IsControl))
+                throw new InvalidOperationException("generated_values_file_missing_or_invalid");
+            _ = Path.GetFullPath(GeneratedValuesFile);
+        }
         if (MaxEvidenceFileBytes > int.MaxValue)
             throw new InvalidOperationException("evidence_file_budget_exceeds_reader_limit");
         if (MaxLedgerBytes > int.MaxValue)

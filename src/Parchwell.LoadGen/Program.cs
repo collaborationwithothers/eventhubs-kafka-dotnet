@@ -304,6 +304,11 @@ internal static class Program
         foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!property.CanWrite) continue;
+            if (property.Name == nameof(LoadGenHostOptions.GeneratedValuesFile))
+            {
+                options.GeneratedValuesFile = configuration["PARCHWELL_GENERATED_VALUES_FILE"] ?? section[property.Name];
+                continue;
+            }
             string? raw = section[property.Name];
             if (raw is null) throw new InvalidOperationException("required_loadgen_setting_missing:" + property.Name);
             Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;

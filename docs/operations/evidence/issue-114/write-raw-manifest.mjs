@@ -14,6 +14,7 @@ for (const [name, prefix] of [
   ['local-producers.json', 'local'],
   ['resume-producers.json', 'resume'],
   ['review-fix-producers.json', 'review-fixes'],
+  ['review-4-producers.json', 'review-4-fixes'],
 ]) {
   const receipt = await readJson(name);
   for (const [file, command] of Object.entries(receipt.commands)) {

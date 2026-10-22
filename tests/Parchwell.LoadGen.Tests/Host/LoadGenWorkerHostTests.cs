@@ -6,6 +6,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Parchwell.LoadGen;
 using Parchwell.Kafka.Statistics;
 using Parchwell.Kafka.Authentication;
@@ -215,6 +216,45 @@ public sealed class LoadGenWorkerHostTests
     }
 
     [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("generated-alias.yaml", null, "generated-alias.yaml")]
+    [InlineData(null, "generated-section.yaml", "generated-section.yaml")]
+    [InlineData("generated-alias.yaml", "generated-section.yaml", "generated-alias.yaml")]
+    public void Given_OptionalComparisonSettings_When_BindingHostOptions_Then_AliasOverridesSectionAndAbsenceRemainsOptional(
+        string? aliasPath, string? sectionPath, string? expectedPath)
+    {
+        var publisher = new RecordingPublisher();
+        using IHost host = CreateHost(publisher, durationSeconds: 1,
+            generatedValuesFile: aliasPath, generatedValuesSectionFile: sectionPath);
+
+        Assert.Equal(expectedPath, host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.GeneratedValuesFile);
+        Assert.False(Directory.Exists(publisher.OutputRoot));
+    }
+
+    [Theory]
+    [InlineData(false, "")]
+    [InlineData(true, "")]
+    [InlineData(false, " ")]
+    [InlineData(true, " ")]
+    [InlineData(false, "generated\nvalues.yaml")]
+    [InlineData(true, "generated\nvalues.yaml")]
+    [InlineData(false, "generated\0values.yaml")]
+    [InlineData(true, "generated\0values.yaml")]
+    public async Task Given_InvalidOptionalComparisonPath_When_StartingHost_Then_ValidationPrecedesProducerPublicationAndArtifacts(
+        bool useSection, string path)
+    {
+        var publisher = new RecordingPublisher();
+        var tracker = new ProducerFactoryTracker();
+        using IHost host = CreateHost(publisher, durationSeconds: 1, tracker,
+            generatedValuesFile: useSection ? null : path, generatedValuesSectionFile: useSection ? path : null);
+
+        await Assert.ThrowsAsync<OptionsValidationException>(() => host.StartAsync(TestContext.Current.CancellationToken));
+        Assert.False(tracker.Called);
+        Assert.False(publisher.Called);
+        Assert.False(Directory.Exists(publisher.OutputRoot));
+    }
+
+    [Theory]
     [InlineData("matching")]
     [InlineData("mismatching")]
     [InlineData("missing")]
@@ -318,7 +358,7 @@ public sealed class LoadGenWorkerHostTests
     private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
         ProducerFactoryTracker? producerFactory = null,
         Action<KafkaOAuthBearerSession, RunEvidenceSession>? authenticationCallback = null,
-        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null)
+        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null, string? generatedValuesSectionFile = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
         if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
@@ -337,6 +377,7 @@ public sealed class LoadGenWorkerHostTests
         values["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         values["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
         if (generatedValuesFile is not null) values["PARCHWELL_GENERATED_VALUES_FILE"] = generatedValuesFile;
+        if (generatedValuesSectionFile is not null) values["LoadGen__GeneratedValuesFile"] = generatedValuesSectionFile;
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
 
         return Program.BuildHost(args, services =>

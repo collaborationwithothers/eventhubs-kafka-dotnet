@@ -19,10 +19,12 @@ Deployment acceptance and the required PR workflow evidence remain incomplete.
 
 The persistent Terraform validation and native plan tests pass; their original
 output is in [the Terraform logs](raw/terraform/persistent-test.log). The combined
-Release build has zero warnings and errors; all 226 Runner tests pass in
-[the current local test report](raw/review-fixes/runner-tests.xml). The
-[rehearsal summary](raw/review-fixes/rehearsal-summary.json) and
-[case traces](raw/review-fixes/rehearsal-cases.json) retain the synthetic phase and
+Release build has zero warnings and errors; all 228 Runner tests pass in
+[the current local test report](raw/review-4-fixes/runner-tests.xml).
+The [focused LoadGen report](raw/review-4-fixes/loadgen-tests.xml) records 33
+passing startup and compatibility tests. The
+[rehearsal summary](raw/review-4-fixes/rehearsal-summary.json) and
+[case traces](raw/review-4-fixes/rehearsal-cases.json) retain the synthetic phase and
 failure-path checks. Required
 verification from the existing pull-request workflow is pending; no local run
 substitutes for that evidence.
@@ -49,7 +51,7 @@ raw bytes are retained unchanged and hashed rather than reformatted.
 of every retained raw file. Evidence produced before the implementation commit
 is identified as a dirty worktree based on the recorded source revision, with
 input hashes where supplied. It does not claim a reviewed head commit.
-The current checks retain a [repository input inventory](raw/review-fixes/repository-inputs-pre-validation.json)
+The current checks retain a [repository input inventory](raw/review-4-fixes/repository-inputs-pre-validation.json)
 captured before validation; it hashes repository inputs outside the evidence
 directory and does not stand in for PR CI.
 The earlier chart and deployment captures have no contemporaneous dirty-input
@@ -59,7 +61,9 @@ source bytes; the raw manifest retains their exact producer commands.
 The [first cold-review report and dispositions](cold-review-1.md) are retained.
 The second report records the findings and historical handoff before the
 continuation decision. The [third report](cold-review-3.md) records the cost-scope
-and dependency-construction findings addressed in the current local checks.
+and dependency-construction findings. The [fourth report](cold-review-4.md)
+records the account-projection and LoadGen options findings addressed in the
+current local checks.
 Subsequent cold-review results belong to the PR self-review. The required
 workflow run ID and tested commit are pending PR CI.
 The new projects, references, protected-path edits

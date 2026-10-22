@@ -36,11 +36,13 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
         JsonElement eh = Output(ephemeral, "eventhubs"), blob = Output(ephemeral, "blob");
         JsonElement ips = Output(ephemeral, "private_endpoint_ips"), identity = Output(ephemeral, "workload_identity");
         if (Text(identity, "namespace") != "parchwell") throw new InvalidDataException("workload_namespace_invalid");
+        var serviceAccounts = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (string role in new[] { "loadgen", "verifier" })
         {
             JsonElement serviceAccount = identity.GetProperty("service_accounts").GetProperty(role);
             if (Text(serviceAccount, "name") != role || string.IsNullOrWhiteSpace(Text(serviceAccount, "client_id")))
                 throw new InvalidDataException("scoped_service_account_invalid");
+            serviceAccounts.Add(role, serviceAccount.Clone());
         }
         string ns = Text(eh, "namespace_name"), account = Text(blob, "account_url");
         if (!Uri.TryCreate(account, UriKind.Absolute, out Uri? uri) || uri.Scheme != "https" || uri.AbsolutePath != "/" || uri.Query.Length != 0 || uri.UserInfo.Length != 0)
@@ -116,6 +118,7 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
         }
         loadgenEnv["PARCHWELL_ADMISSION_FILE"] = "/admission/admission.json";
         loadgenEnv["PARCHWELL_EXPECTED_RUN_ID"] = run;
+        loadgenEnv["LoadGen__GeneratedValuesFile"] = "/deployment/generated-values.yaml";
         var runtime = new Dictionary<string, object?>
         {
             ["job_deadline_seconds"] = limits.RootElement.GetProperty("execution").GetProperty(mode switch { "loadgen" => "loadgen_job_seconds", "start-line" => "start_line_job_seconds", _ => "verify_job_seconds" }).GetInt32(),
@@ -127,7 +130,7 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
             ["eventhubs_ip"] = Text(ips, "eventhubs"), ["blob_ip"] = Text(ips, "blob"),
             ["service_tags"] = tags.RootElement.Clone(), ["admission_name"] = run + "-admission",
             ["loadgen_image"] = Image(input, "loadgen", registry, source), ["verifier_image"] = Image(input, "verifier", registry, source),
-            ["service_accounts"] = identity.GetProperty("service_accounts").Clone()
+            ["service_accounts"] = serviceAccounts
         };
         Directory.CreateDirectory(outputDirectory);
         string generated = Path.Combine(outputDirectory, "generated-values.yaml"), envelope = Path.Combine(outputDirectory, "runtime-values.yaml");

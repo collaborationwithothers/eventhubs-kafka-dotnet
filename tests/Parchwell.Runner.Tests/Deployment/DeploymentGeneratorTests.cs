@@ -14,6 +14,44 @@ namespace Parchwell.Runner.Tests.Deployment;
 public sealed class DeploymentGeneratorTests
 {
     [Theory]
+    [InlineData("C0")]
+    [InlineData("C3")]
+    public async Task Given_ThreeTerraformServiceAccounts_When_Generated_Then_OnlySchemaPermittedWorkerIdentitiesRemain(string phase)
+    {
+        using var fixture = new DeploymentFixture();
+        Dictionary<string, object?> input = fixture.Input(phase);
+        JsonElement sourceAccounts = JsonSerializer.SerializeToElement(input).GetProperty("ephemeral_outputs")
+            .GetProperty("workload_identity").GetProperty("service_accounts");
+        Assert.Equal(["enrichment-consumer", "loadgen", "verifier"], sourceAccounts.EnumerateObject()
+            .Select(property => property.Name).Order(StringComparer.Ordinal));
+        DeploymentFiles files = await fixture.Generator().GenerateAsync(JsonSerializer.SerializeToElement(input), fixture.Directory, TestContext.Current.CancellationToken);
+        using JsonDocument envelope = JsonDocument.Parse(await File.ReadAllBytesAsync(files.RuntimeValuesPath, TestContext.Current.CancellationToken));
+        using JsonDocument schema = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(DeploymentFixture.RepositoryRoot, "charts/parchwell/values.schema.json"), TestContext.Current.CancellationToken));
+        JsonElement accountSchema = schema.RootElement.GetProperty("properties").GetProperty("runtime")
+            .GetProperty("properties").GetProperty("service_accounts");
+        Assert.False(accountSchema.GetProperty("additionalProperties").GetBoolean());
+        foreach (JsonElement runtime in new[] { files.Runtime, envelope.RootElement.GetProperty("runtime") })
+        {
+            JsonElement accounts = runtime.GetProperty("service_accounts");
+            string[] names = accounts.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray();
+            Assert.Equal(accountSchema.GetProperty("properties").EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal), names);
+            Assert.Equal(accountSchema.GetProperty("required").EnumerateArray().Select(property => property.GetString()).Order(StringComparer.Ordinal), names);
+            Assert.False(accounts.TryGetProperty("enrichment-consumer", out _));
+            foreach (string role in names)
+            {
+                JsonElement original = sourceAccounts.GetProperty(role), actual = accounts.GetProperty(role);
+                Assert.Equal(original.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal),
+                    actual.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+                foreach (string field in new[] { "name", "client_id", "subject" })
+                    Assert.Equal(original.GetProperty(field).GetString(), actual.GetProperty(field).GetString());
+            }
+        }
+        JsonElement loadgen = files.Runtime.GetProperty("loadgen_environment");
+        Assert.Equal("/deployment/generated-values.yaml", loadgen.GetProperty("LoadGen__GeneratedValuesFile").GetString());
+        Assert.Equal(loadgen.GetProperty("PARCHWELL_GENERATED_VALUES_FILE").GetString(), loadgen.GetProperty("LoadGen__GeneratedValuesFile").GetString());
+    }
+
+    [Theory]
     [InlineData("C0", "60000")]
     [InlineData("C3", "20000")]
     public async Task Given_RealScenario_When_Generated_Then_BothActualWorkerResolutionsMatch(string phase, string socket)
@@ -134,6 +172,7 @@ internal sealed class DeploymentFixture : IDisposable
     private readonly string scenarioRoot = RepositoryRoot;
     private static readonly string[] AadPrefixes = ["192.0.2.0/24"];
     private static readonly string[] MonitorPrefixes = ["198.51.100.0/24"];
+    private static readonly string[] TerraformWorkloads = ["loadgen", "enrichment-consumer", "verifier"];
     public string Directory { get; } = Path.Combine(Path.GetTempPath(), "parchwell-deployment-" + Guid.NewGuid().ToString("N"));
     public DeploymentFixture()
     {
@@ -153,7 +192,7 @@ internal sealed class DeploymentFixture : IDisposable
         ["expected_broker_names"] = new[] { "sasl_ssl://broker.example.invalid:9093/0" },
         ["images"] = new { loadgen = new { source_commit = new string('a',40), digest = "sha256:" + new string('a',64) }, verifier = new { source_commit = new string('a',40), digest = "sha256:" + new string('b',64) } },
         ["persistent_outputs"] = new { acr = new { login_server = "registry.example.invalid" } },
-        ["ephemeral_outputs"] = new { eventhubs = new { namespace_name = "synthetic-ns" }, blob = new { account_url = "https://storage.example.invalid", containers = new { ledger = "ledger", verifier = "verifier" } }, private_endpoint_ips = new { eventhubs = "203.0.113.1", blob = "203.0.113.2" }, workload_identity = new { @namespace = "parchwell", service_accounts = new { loadgen = new { name = "loadgen", client_id = "synthetic-loadgen" }, verifier = new { name = "verifier", client_id = "synthetic-verifier" } } } }
+        ["ephemeral_outputs"] = new { eventhubs = new { namespace_name = "synthetic-ns" }, blob = new { account_url = "https://storage.example.invalid", containers = new { ledger = "ledger", verifier = "verifier" } }, private_endpoint_ips = new { eventhubs = "203.0.113.1", blob = "203.0.113.2" }, workload_identity = new { @namespace = "parchwell", service_accounts = TerraformWorkloads.ToDictionary(role => role, role => new { name = role, client_id = "synthetic-" + role, subject = "system:serviceaccount:parchwell:" + role }, StringComparer.Ordinal) } }
     };
     public Task<DeploymentFiles> GenerateAsync(string phase, string mode = "verify", string? sourceRoot = null) => Generator(sourceRoot).GenerateAsync(JsonSerializer.SerializeToElement(Input(phase, mode)), Path.Combine(Directory, phase + "-" + mode), TestContext.Current.CancellationToken);
     public void Dispose() => System.IO.Directory.Delete(Directory, true);

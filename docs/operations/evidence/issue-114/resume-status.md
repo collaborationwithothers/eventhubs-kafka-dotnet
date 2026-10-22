@@ -14,16 +14,22 @@ Process death before private export can leave staged workflow provenance unavail
 
 The [third cold review](cold-review-3.md) found incomplete actual-cost resource coverage and a second scenario-loader graph in preflight. Reconciliation now requires received costs covering both the primary and AKS node resource groups. Verified original Terraform output and state establish the exact cluster, generation and scopes; missing or mismatched evidence preserves the reservation. Preflight uses the registered scenario loader, and deployment generation resolves its scenario resolver through its existing local dependency-injection graph.
 
+The [fourth review](cold-review-4.md) found that copying Terraform's complete service-account map conflicted with the chart's two-worker schema. Generation now projects the original LoadGen and Verifier accounts; test and acceptance inputs retain the real three-account Terraform shape. The review also found a direct configuration read in LoadGenWorker. Its generated-values path now binds through validated host options, preserving the comparison before native producer construction and optional nondeployment behavior.
+
 ## Review override record
 
 The churn trip after cold-review round 2 covered the execution/evidence component: round 1 found missing aged-generation capture before sweeper teardown; round 2 found missing normal-failure artifacts and workflow provenance before teardown. Decision `6333713470` authorizes passing that trip while fixing the findings. The pull request description must list this trip and any further trips passed before its clean review.
 
 Round 3 repeated the deployment dependency-construction component from round 1, and its actual-cost coverage finding also belongs to the execution/evidence component already covered by the earlier trip. These further trips pass under the same continuation decision. Rule 6 and rule 10's completed Codex review-round cap remain unchanged. Rule 8 excludes cold-review rounds from rule 6.
 
-The required new-project/reference finding remains the plan-required approval-only exception. It does not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md) and [third](cold-review-3.md) reports retain their original findings and reviewed source identities.
+Round 4 revisited the deployment/worker-input component with the account projection and LoadGen configuration findings. This further trip also passes under decision `6333713470`, with no further split.
+
+The required new-project/reference findings remain the plan-required approval-only exception. They do not count toward review-round stops, and Hari retains merge authority. The historical [first](cold-review-1.md), [second](cold-review-2.md), [third](cold-review-3.md) and [fourth](cold-review-4.md) reports retain their original findings and reviewed source identities.
 
 ## Validation and provenance
 
 The resumed source starts from `7e28dd472b269e84513d2d20b59e9bf055d4fe11`. New local evidence is recorded under `raw/resume/`, with exact commands and source status in `resume-producers.json` and `raw-manifest.json`. Local dirty-worktree checks do not replace the required PR workflow run and REST logs. The [evidence README](README.md) records the current validation status and remaining deployment acceptance blockers.
 
 Third-review fixes start from `f2c41aec2990bf8af532110062beb001906cb3eb`. Their local evidence belongs under `raw/review-fixes/`, with exact commands in `review-fix-producers.json` and source input hashes captured before validation. It remains dirty-worktree evidence until the PR workflow tests a committed head.
+
+Fourth-review fixes start from `5cea1260b9d7ef3fb23909c762872cd692787c80`. Their local evidence belongs under `raw/review-4-fixes/`, with exact commands in `review-4-producers.json` and a fresh source input inventory before validation. None of these local checks substitutes for the required PR workflow.
