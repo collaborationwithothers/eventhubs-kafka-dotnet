@@ -49,7 +49,6 @@
         "verifier_environment",
         "eventhubs_ip",
         "blob_ip",
-        "service_tags",
         "admission_name",
         "job_deadline_seconds",
         "definition_sha256",
@@ -175,94 +174,6 @@
           "minProperties": 1,
           "additionalProperties": {
             "type": "string"
-          }
-        },
-        "service_tags": {
-          "type": "object",
-          "required": [
-            "schema_version",
-            "source_url",
-            "retrieved_utc",
-            "source_sha256",
-            "change_number",
-            "tags"
-          ],
-          "properties": {
-            "schema_version": {
-              "const": 1
-            },
-            "source_url": {
-              "type": "string",
-              "pattern": "^https://download\\.microsoft\\.com/"
-            },
-            "retrieved_utc": {
-              "type": "string",
-              "minLength": 1
-            },
-            "source_sha256": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{64}$"
-            },
-            "change_number": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "tags": {
-              "type": "object",
-              "required": [
-                "AzureActiveDirectory",
-                "AzureMonitor"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "AzureActiveDirectory": {
-                  "type": "object",
-                  "required": [
-                    "change_number",
-                    "address_prefixes"
-                  ],
-                  "properties": {
-                    "change_number": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "address_prefixes": {
-                      "type": "array",
-                      "minItems": 1,
-                      "maxItems": 4096,
-                      "uniqueItems": true,
-                      "items": {
-                        "type": "string",
-                        "pattern": "^[0-9a-fA-F:.]+/[1-9][0-9]*$"
-                      }
-                    }
-                  }
-                },
-                "AzureMonitor": {
-                  "type": "object",
-                  "required": [
-                    "change_number",
-                    "address_prefixes"
-                  ],
-                  "properties": {
-                    "change_number": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "address_prefixes": {
-                      "type": "array",
-                      "minItems": 1,
-                      "maxItems": 4096,
-                      "uniqueItems": true,
-                      "items": {
-                        "type": "string",
-                        "pattern": "^[0-9a-fA-F:.]+/[1-9][0-9]*$"
-                      }
-                    }
-                  }
-                }
-              }
-            }
           }
         },
         "job_deadline_seconds": {

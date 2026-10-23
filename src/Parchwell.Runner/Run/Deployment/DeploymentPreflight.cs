@@ -10,7 +10,6 @@ namespace Parchwell.Runner.Run.Deployment;
 public sealed class DeploymentPreflight(ScenarioLoader loader)
 {
     public const string OfficialHelmArchiveSha256 = "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b";
-    private const int DocumentBytes = 16777216;
     private const int ToolBytes = 67108864;
 
     /// <summary>Validates the private input needed to redact the phase's public candidate.</summary>
@@ -38,10 +37,6 @@ public sealed class DeploymentPreflight(ScenarioLoader loader)
                 digest.Length != 71 || digest[7..].Any(c => !char.IsAsciiHexDigitLower(c)))
                 throw new InvalidDataException("immutable_image_receipt_mismatch");
         }
-        using JsonDocument tags = JsonDocument.Parse(await ReadAsync(Text(runtime, "service_tags_file"), DocumentBytes, cancellationToken).ConfigureAwait(false));
-        ServiceTagData.Validate(tags.RootElement);
-        if (tags.RootElement.TryGetProperty("synthetic", out JsonElement tagSynthetic) && tagSynthetic.GetBoolean())
-            throw new InvalidDataException("production_service_tags_must_not_be_synthetic");
         using JsonDocument limits = JsonDocument.Parse(await ReadAsync(Text(runtime, "limits_file"), 1048576, cancellationToken).ConfigureAwait(false));
         DeploymentRuntimeLimits.Validate(limits.RootElement);
         await loader.LoadAsync("A01", cancellationToken).ConfigureAwait(false);

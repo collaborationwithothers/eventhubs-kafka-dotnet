@@ -26,9 +26,6 @@ public sealed class DeploymentPreflightTests
         var token = TestContext.Current.CancellationToken;
         Dictionary<string, object?> runtime = fixture.Input("C0");
         runtime["synthetic"] = false;
-        JsonNode tags = JsonNode.Parse(await File.ReadAllTextAsync((string)runtime["service_tags_file"]!, token))!;
-        tags["synthetic"] = false;
-        await File.WriteAllTextAsync((string)runtime["service_tags_file"]!, tags.ToJsonString(), token);
         JsonNode limits = JsonNode.Parse(await File.ReadAllTextAsync((string)runtime["limits_file"]!, token))!;
         if (json is null) limits["loadgen"]!.AsObject().Remove(field);
         else limits["loadgen"]![field] = JsonNode.Parse(json);
@@ -89,14 +86,19 @@ public sealed class DeploymentPreflightTests
     }
 
     [Fact]
-    public async Task Given_MissingCommittedServiceTags_When_Preflight_Then_ItRejectsBeforeAnyProductionTransportCanBeConstructed()
+    public async Task Given_NoServiceTagInput_When_Preflight_Then_ItReachesHelmVerification()
     {
         using var fixture = new DeploymentFixture();
         Dictionary<string, object?> runtime = fixture.Input("C0");
         runtime["synthetic"] = false;
-        runtime["service_tags_file"] = Path.Combine(fixture.Directory, "missing-committed-service-tags.json");
+        string archivePath = Path.Combine(fixture.Directory, "missing-helm.tar.gz");
+        runtime["helm_archive_file"] = archivePath;
+        runtime["helm_binary_file"] = Path.Combine(fixture.Directory, "missing-helm");
         using ServiceProvider provider = PreflightProvider();
-        await Assert.ThrowsAsync<FileNotFoundException>(() => provider.GetRequiredService<DeploymentPreflight>().ValidateAsync(JsonSerializer.SerializeToElement(runtime), TestContext.Current.CancellationToken));
+        Assert.False(runtime.ContainsKey("service_tags_file"));
+        var exception = await Assert.ThrowsAsync<FileNotFoundException>(() => provider.GetRequiredService<DeploymentPreflight>()
+            .ValidateAsync(JsonSerializer.SerializeToElement(runtime), TestContext.Current.CancellationToken));
+        Assert.Equal(archivePath, exception.FileName);
     }
 
     [Fact]
@@ -116,10 +118,6 @@ public sealed class DeploymentPreflightTests
         runtime["synthetic"] = false;
         runtime["scenario_root"] = Path.Combine(fixture.Directory, "unregistered-source");
         runtime["helm_archive_file"] = Path.Combine(fixture.Directory, "missing-helm.tar.gz");
-        string tagsPath = (string)runtime["service_tags_file"]!;
-        JsonNode tags = JsonNode.Parse(await File.ReadAllTextAsync(tagsPath, token))!;
-        tags["synthetic"] = false;
-        await File.WriteAllTextAsync(tagsPath, tags.ToJsonString(), token);
         var source = new RecordingScenarioSource();
         using ServiceProvider provider = PreflightProvider(source, new ScenarioLoadOptions
         { MaxDocumentCharacters = 1, MaxNestingDepth = 32, MaxScalarCharacters = 65536, MaxParserEvents = 100000 });

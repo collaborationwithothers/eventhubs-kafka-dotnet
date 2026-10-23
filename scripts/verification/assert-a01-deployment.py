@@ -74,20 +74,8 @@ for configuration in ('C0', 'C3'):
                 check(prefix + comparison_role + '_admission_bytes', base64.b64decode(admission['binaryData'][key], validate=True) == (directory / (comparison_role+'-values.yaml')).read_bytes())
         else:
             check(prefix + 'producer_admission_untouched', runtime['admission_name'] not in configmaps)
-        policies = [obj for obj in objects if obj['kind'] == 'NetworkPolicy']
-        check(prefix + 'scoped_deny', len(policies) == 2 and all(p['spec']['podSelector'] == {'matchLabels':{'app.kubernetes.io/name':'parchwell'}} for p in policies))
-        deny = next(p for p in policies if p['metadata']['name'].endswith('-default-deny'))['spec']
-        check(prefix + 'deny_both', deny['policyTypes'] == ['Ingress','Egress'] and deny['ingress'] == [] and deny['egress'] == [])
-        egress = next(p for p in policies if p['metadata']['name'].endswith('-egress'))['spec']['egress']
-        dns = egress[0]
-        check(prefix + 'dns_combined_selectors', dns == {'to':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}},'podSelector':{'matchLabels':{'k8s-app':'kube-dns'}}}],'ports':[{'protocol':'UDP','port':53},{'protocol':'TCP','port':53}]})
-        expected_peers = [(runtime['eventhubs_ip']+'/32',9093),(runtime['blob_ip']+'/32',443)]
-        all_prefixes = sorted({cidr for tag in ('AzureActiveDirectory','AzureMonitor') for cidr in runtime['service_tags']['tags'][tag]['address_prefixes']})
-        expected_peers += [(cidr,443) for cidr in all_prefixes]
-        actual_peers = []
-        for entry in egress[1:]:
-            check(prefix+'single_exact_ip_peer_'+str(len(actual_peers)), len(entry['to']) == 1 and set(entry['to'][0]) == {'ipBlock'} and len(entry['ports']) == 1 and entry['ports'][0]['protocol'] == 'TCP')
-            actual_peers.append((entry['to'][0]['ipBlock']['cidr'],entry['ports'][0]['port']))
-        check(prefix + 'exact_egress_no_wildcards', actual_peers == expected_peers and all(cidr not in ('0.0.0.0/0','::/0') for cidr,_ in actual_peers))
+        check(prefix + 'no_network_policies', not any(obj['kind'] == 'NetworkPolicy' for obj in objects))
+        check(prefix + 'no_service_tags', 'service_tags' not in runtime)
+        check(prefix + 'private_endpoint_data', runtime['eventhubs_ip'] == '203.0.113.1' and runtime['blob_ip'] == '203.0.113.2')
 
 (output/'assertions.json').write_text(json.dumps({'schema_version':1,'synthetic':True,'azure_calls':0,'assertions':assertions,'result':'passed'},indent=2)+'\n')
