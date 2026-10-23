@@ -9,6 +9,7 @@ namespace Parchwell.Runner.Tests.Execution;
 
 public sealed class AksKubeconfigBindingTests
 {
+    private static readonly string[] ConversionArguments = ["convert-kubeconfig", "-l", "azurecli"];
     private const string Subscription = "00000000-0000-0000-0000-000000000000";
     private const string ResourceId = "/subscriptions/" + Subscription + "/resourceGroups/rg-synthetic/providers/Microsoft.ContainerService/managedClusters/aks-synthetic";
 
@@ -33,7 +34,7 @@ public sealed class AksKubeconfigBindingTests
             Assert.Equal(new[] { "aks", "get-credentials", "--subscription", Subscription, "--resource-group", "rg-synthetic",
                 "--name", "aks-synthetic", "--file", path, "--overwrite-existing", "--format", "exec", "--only-show-errors" }, process.Requests[0].Arguments);
             Assert.DoesNotContain("--admin", process.Requests[0].Arguments);
-            Assert.Equal(new[] { "convert-kubeconfig", "-l", "azurecli" }, process.Requests[3].Arguments);
+            Assert.Equal(ConversionArguments, process.Requests[3].Arguments);
             Assert.Equal("kubectl", process.Requests[4].FileName);
             Assert.Equal(new[] { "apply", "-f", Path.Combine(directory, "namespace.json") }, process.Requests[4].Arguments);
             using JsonDocument ns = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(directory, "namespace.json"), TestContext.Current.CancellationToken));
