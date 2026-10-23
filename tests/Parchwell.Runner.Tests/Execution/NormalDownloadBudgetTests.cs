@@ -354,7 +354,16 @@ public sealed class NormalDownloadBudgetTests
                     Patches.Add(request);
                     return new(args[1] == FailedPatchKind ? 1 : 0, "", "");
                 }
-                if (args[1] == "--raw") return new(0, "{\"type\":\"BOOKMARK\",\"object\":{\"metadata\":{\"resourceVersion\":\"2\"}}}", "");
+                if (args[1] == "--raw" && args[2].StartsWith("/api/v1/namespaces/parchwell/pods?watch=true&", StringComparison.Ordinal))
+                    return new(0, "{\"type\":\"BOOKMARK\",\"object\":{\"metadata\":{\"resourceVersion\":\"2\"}}}", "");
+                if (args[1] == "--raw" && args[2] == "/api/v1/namespaces/parchwell/pods?labelSelector=" +
+                    Uri.EscapeDataString("app.kubernetes.io/instance=" + context.RunId + ",parchwell.io/role=loadgen"))
+                    return new(0, JsonSerializer.Serialize(new
+                    {
+                        apiVersion = "v1", kind = "PodList", metadata = new { resourceVersion = "1" },
+                        items = new[] { new { metadata = new { name = context.RunId + "-pod", uid = "synthetic-pod-uid" },
+                            status = new { containerStatuses = new[] { new { name = "loadgen", restartCount = 0, state = new { terminated = new { exitCode = 0 } } } } } } }
+                    }), "");
                 if (args[0] == "logs") return new(0, "synthetic original stdout", "");
                 if (args[0] == "get")
                 {
