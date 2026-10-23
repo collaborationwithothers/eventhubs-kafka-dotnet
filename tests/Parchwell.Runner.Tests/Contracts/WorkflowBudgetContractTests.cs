@@ -81,7 +81,7 @@ public sealed class WorkflowBudgetContractTests
                 int end = Array.FindIndex(lines, start + 1,
                     line => line.StartsWith("  ", StringComparison.Ordinal) && !line.StartsWith("   ", StringComparison.Ordinal));
                 string[] jobLines = lines[start..(end < 0 ? lines.Length : end)];
-                string debug = Assert.Single(jobLines, line => line.Contains("PARCHWELL_DEBUG_FAILURES:", StringComparison.Ordinal));
+                string debug = Assert.Single(jobLines, line => line.TrimStart().StartsWith("PARCHWELL_DEBUG_FAILURES:", StringComparison.Ordinal));
                 Assert.Equal("      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}", debug);
             }
         }
