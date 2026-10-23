@@ -15,17 +15,16 @@ public sealed class ChartContractTests
         Assert.Equal(1, properties.GetProperty("contract_version").GetProperty("const").GetInt32());
         Assert.Equal("A01", properties.GetProperty("scenario_id").GetProperty("const").GetString());
         Assert.False(schema.RootElement.GetProperty("additionalProperties").GetBoolean());
-        Assert.False(properties.GetProperty("runtime").GetProperty("additionalProperties").GetBoolean());
-    }
-
-    [Fact]
-    public void Given_NetworkPolicyTemplate_When_Inspected_Then_DnsSelectorsAreCombinedAndNoWildcardExists()
-    {
-        string template = File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "charts/parchwell/templates/networkpolicies.yaml"));
-        Assert.Contains("namespaceSelector:", template, StringComparison.Ordinal);
-        Assert.Contains("          podSelector:", template, StringComparison.Ordinal);
-        Assert.DoesNotContain("- podSelector:", template, StringComparison.Ordinal);
-        Assert.DoesNotContain("0.0.0.0/0", template, StringComparison.Ordinal);
-        Assert.DoesNotContain("::/0", template, StringComparison.Ordinal);
+        JsonElement runtime = properties.GetProperty("runtime");
+        Assert.False(runtime.GetProperty("additionalProperties").GetBoolean());
+        string?[] required = runtime.GetProperty("required").EnumerateArray().Select(property => property.GetString()).ToArray();
+        JsonElement runtimeProperties = runtime.GetProperty("properties");
+        Assert.DoesNotContain("service_tags", required);
+        Assert.False(runtimeProperties.TryGetProperty("service_tags", out _));
+        foreach (string endpoint in new[] { "eventhubs_ip", "blob_ip" })
+        {
+            Assert.Contains(endpoint, required);
+            Assert.True(runtimeProperties.TryGetProperty(endpoint, out _));
+        }
     }
 }

@@ -95,6 +95,12 @@ public sealed class DeploymentGeneratorTests
         Assert.Equal(verifier, await File.ReadAllTextAsync(result.GeneratedValuesPath, TestContext.Current.CancellationToken));
         using JsonDocument envelope = JsonDocument.Parse(await File.ReadAllTextAsync(result.RuntimeValuesPath, TestContext.Current.CancellationToken));
         Assert.Equal(["runtime"], envelope.RootElement.EnumerateObject().Select(property => property.Name));
+        foreach (JsonElement runtime in new[] { result.Runtime, envelope.RootElement.GetProperty("runtime") })
+        {
+            Assert.False(runtime.TryGetProperty("service_tags", out _));
+            Assert.Equal("203.0.113.1", runtime.GetProperty("eventhubs_ip").GetString());
+            Assert.Equal("203.0.113.2", runtime.GetProperty("blob_ip").GetString());
+        }
         foreach (string role in new[] { "loadgen", "verifier" })
         {
             Dictionary<string, string> env = result.Runtime.GetProperty(role + "_environment").Deserialize<Dictionary<string, string>>()!;
@@ -197,14 +203,11 @@ internal sealed class DeploymentFixture : IDisposable
 {
     public static string RepositoryRoot { get; } = FindRepository();
     private readonly string scenarioRoot = RepositoryRoot;
-    private static readonly string[] AadPrefixes = ["192.0.2.0/24"];
-    private static readonly string[] MonitorPrefixes = ["198.51.100.0/24"];
     private static readonly string[] TerraformWorkloads = ["loadgen", "enrichment-consumer", "verifier"];
     public string Directory { get; } = Path.Combine(Path.GetTempPath(), "parchwell-deployment-" + Guid.NewGuid().ToString("N"));
     public DeploymentFixture()
     {
         System.IO.Directory.CreateDirectory(Directory);
-        File.WriteAllText(Path.Combine(Directory, "tags.json"), JsonSerializer.Serialize(new { schema_version = 1, synthetic = true, source_url = "https://download.microsoft.com/synthetic-fixture.json", retrieved_utc = "2026-10-22T00:00:00Z", source_sha256 = new string('a',64), change_number = 1, tags = new Dictionary<string, object> { ["AzureActiveDirectory"] = new { change_number = 1, address_prefixes = AadPrefixes }, ["AzureMonitor"] = new { change_number = 1, address_prefixes = MonitorPrefixes } } }));
     }
     public DeploymentGenerator Generator(string? sourceRoot = null)
     {
@@ -216,7 +219,7 @@ internal sealed class DeploymentFixture : IDisposable
         ["schema_version"] = 1, ["synthetic"] = true, ["source_commit"] = new string('a',40), ["phase"] = phase,
         ["subscription_guid"] = "00000000-0000-0000-0000-000000000001",
         ["run_id"] = "synthetic-a01-r1", ["producer_pod_name"] = "synthetic-producer-pod", ["mode"] = mode,
-        ["limits_file"] = Path.Combine(RepositoryRoot, "docs/operations/a01-runtime-limits.json"), ["service_tags_file"] = Path.Combine(Directory, "tags.json"),
+        ["limits_file"] = Path.Combine(scenarioRoot, "docs/operations/a01-runtime-limits.json"),
         ["expected_broker_names"] = new[] { "sasl_ssl://broker.example.invalid:9093/0" },
         ["images"] = new { loadgen = new { source_commit = new string('a',40), digest = "sha256:" + new string('a',64) }, verifier = new { source_commit = new string('a',40), digest = "sha256:" + new string('b',64) } },
         ["persistent_outputs"] = new { acr = new { login_server = "registry.example.invalid" } },

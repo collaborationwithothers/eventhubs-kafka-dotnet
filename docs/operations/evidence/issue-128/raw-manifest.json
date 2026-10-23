@@ -1,0 +1,64 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-128/raw/build-initial.log",
+      "producer": "source commit 7596a815aeeac7f25b5c724abf2be4c8d0930d16; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore; combined stdout/stderr captured and shell exit_code appended",
+      "size_bytes": 2448,
+      "sha256": "5082981344abe1706e613867fca25ba09f11b38823eb2a16b393e354434f4146"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/build.log",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore; combined stdout/stderr captured and shell exit_code appended",
+      "size_bytes": 1832,
+      "sha256": "329b0915ac9c9966bdd8b1806d172cc8d24086477a04e9d80be24a92391f3df8"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/diff-check.log",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: git diff --check HEAD; combined stdout/stderr captured and shell exit_code appended; pending evidence files included in working tree/index",
+      "size_bytes": 13,
+      "sha256": "9fa3b6ead7afc298499f30c5b70014c78b6686a8269611537606fa5a7c02b6a2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/docs-initial.log",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 npm run check:docs; combined stdout/stderr captured and shell exit_code appended; pending evidence files included in working tree/index",
+      "size_bytes": 10374,
+      "sha256": "c137cea897500822f5f17bfbb43d8cb414d7571bd7aa0c80395fa80bbd6ca798"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/docs.log",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 npm run check:docs; combined stdout/stderr captured and shell exit_code appended; pending evidence files included in working tree/index",
+      "size_bytes": 10076,
+      "sha256": "a39a962c6d152e3711c40c0a5887a298faf247874e8d2d22080fad743e753ecf"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/helm-acquisition.log",
+      "producer": "source commit c7918c02c2746b5a73a5223e721457d8149fdb99; repository root /workspace/eventhubs-kafka-dotnet; command: curl --fail --silent --show-error --location --max-time 60 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o /tmp/issue128-tools/helm-v4.3.1-linux-amd64.tar.gz; combined stdout/stderr captured and shell exit_code appended",
+      "size_bytes": 63,
+      "sha256": "1c300c7ee8ba8505fc537ef78a905025d32c787885e013a5e59e57d6bfd8121b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/restore.log",
+      "producer": "source commit c7918c02c2746b5a73a5223e721457d8149fdb99; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 dotnet restore Parchwell.slnx --locked-mode; combined stdout/stderr captured and shell exit_code appended; working tree removal edits underway, dependency inputs unchanged",
+      "size_bytes": 2573,
+      "sha256": "ccf095c0425f5814fdec4e9bd2ef184ac51bc604f1ac638ea70d0db182c82eab"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/runner-results.xml",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename results.xml; cp TestResults/results.xml docs/operations/evidence/issue-128/raw/runner-results.xml",
+      "size_bytes": 745904,
+      "sha256": "0f010001643a89b131fda036d8d1773bd28ab1f27c7d14dade3c4d051a5fde06"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/runner-tests.log",
+      "producer": "source commit d945d14f2c0b39dce738ab994b79d4fcf13a9b53; repository root /workspace/eventhubs-kafka-dotnet; command: timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename results.xml; combined stdout/stderr captured and shell exit_code appended",
+      "size_bytes": 508,
+      "sha256": "83defc2f50992a599eda1403cde89749cb02cd5983d76fd64b2226dc678836c3"
+    },
+    {
+      "path": "docs/operations/evidence/issue-128/raw/workflow-references.log",
+      "producer": "source commit 7596a815aeeac7f25b5c724abf2be4c8d0930d16; repository root /workspace/eventhubs-kafka-dotnet; command: if rg -n 'committed_service_tags_missing|service_tags_file' docs/operations/workflows/scenario.yml.txt; then exit 1; fi; combined stdout/stderr captured and shell exit_code appended",
+      "size_bytes": 13,
+      "sha256": "9fa3b6ead7afc298499f30c5b70014c78b6686a8269611537606fa5a7c02b6a2"
+    }
+  ]
+}

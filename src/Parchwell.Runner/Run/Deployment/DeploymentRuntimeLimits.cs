@@ -27,7 +27,7 @@ internal static class DeploymentRuntimeLimits
             Durations: "ProcessLifetime SafetyStop"),
         new("verifier_gate", LongIntegers: "MaxArtifactBytes MaxTotalInputBytes", Durations: "ProcessLifetime", Text: "ScenarioRoot"),
         new("execution",
-            Integers: "phase_count repeats_per_phase admission_seconds admission_poll_seconds admission_bytes loadgen_job_seconds verify_job_seconds start_line_job_seconds gate_job_seconds loadgen_seconds verify_seconds start_line_seconds gate_seconds repeat_seconds phase_seconds apply_seconds export_seconds destroy_seconds api_seconds watch_events json_document_bytes kubernetes_poll_seconds read_attempts store_operation_seconds producer_artifact_bytes repeat_input_bytes container_log_bytes kql_rows kql_bytes kql_reads kql_spacing_seconds ledger_bytes manifest_bytes manifest_entries service_tag_prefixes_per_tag termination_grace_seconds expiry_hours phase_job_minutes sweep_job_minutes offline_command_seconds",
+            Integers: "phase_count repeats_per_phase admission_seconds admission_poll_seconds admission_bytes loadgen_job_seconds verify_job_seconds start_line_job_seconds gate_job_seconds loadgen_seconds verify_seconds start_line_seconds gate_seconds repeat_seconds phase_seconds apply_seconds export_seconds destroy_seconds api_seconds watch_events json_document_bytes kubernetes_poll_seconds read_attempts store_operation_seconds producer_artifact_bytes repeat_input_bytes container_log_bytes kql_rows kql_bytes kql_reads kql_spacing_seconds ledger_bytes manifest_bytes manifest_entries termination_grace_seconds expiry_hours phase_job_minutes sweep_job_minutes offline_command_seconds",
             LongIntegers: "phase_evidence_bytes")
     ];
 

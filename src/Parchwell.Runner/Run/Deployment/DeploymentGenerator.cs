@@ -56,11 +56,6 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
                 throw new InvalidDataException("private_endpoint_ipv4_required");
         using JsonDocument limits = await ReadDocumentAsync(Text(input, "limits_file"), 1048576, cancellationToken).ConfigureAwait(false);
         DeploymentRuntimeLimits.Validate(limits.RootElement);
-        using JsonDocument tags = await ReadDocumentAsync(Text(input, "service_tags_file"), 16777216, cancellationToken).ConfigureAwait(false);
-        ServiceTagData.Validate(tags.RootElement);
-        if (tags.RootElement.TryGetProperty("synthetic", out JsonElement synthetic) && synthetic.GetBoolean() &&
-            (!input.TryGetProperty("synthetic", out JsonElement fixture) || !fixture.GetBoolean()))
-            throw new InvalidDataException("synthetic_service_tags_cannot_deploy");
         LoadedScenario loaded = await loader.LoadAsync("A01", cancellationToken).ConfigureAwait(false);
         string definitionText = await ReadScenarioAsync(loaded.Definition.Source.Path, limits.RootElement.GetProperty("scenario_parsing").GetProperty("MaxDocumentCharacters").GetInt32(), cancellationToken).ConfigureAwait(false);
         string profileText = await ReadScenarioAsync(loaded.Profile.Source.Path, limits.RootElement.GetProperty("scenario_parsing").GetProperty("MaxDocumentCharacters").GetInt32(), cancellationToken).ConfigureAwait(false);
@@ -128,7 +123,7 @@ public sealed partial class DeploymentGenerator(ScenarioLoader loader, HelmValue
             ["loadgen_generated_sha256"] = Hash(loadgenValues), ["verifier_generated_sha256"] = Hash(verifierValues),
             ["loadgen_environment"] = loadgenEnv, ["verifier_environment"] = verifierEnv,
             ["eventhubs_ip"] = Text(ips, "eventhubs"), ["blob_ip"] = Text(ips, "blob"),
-            ["service_tags"] = tags.RootElement.Clone(), ["admission_name"] = run + "-admission",
+            ["admission_name"] = run + "-admission",
             ["loadgen_image"] = Image(input, "loadgen", registry, source), ["verifier_image"] = Image(input, "verifier", registry, source),
             ["service_accounts"] = serviceAccounts
         };

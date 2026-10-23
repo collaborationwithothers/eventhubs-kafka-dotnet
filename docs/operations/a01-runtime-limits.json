@@ -116,7 +116,6 @@
     "ledger_bytes": 1048576,
     "manifest_bytes": 1048576,
     "manifest_entries": 256,
-    "service_tag_prefixes_per_tag": 4096,
     "termination_grace_seconds": 30,
     "expiry_hours": 4,
     "phase_job_minutes": 240,
