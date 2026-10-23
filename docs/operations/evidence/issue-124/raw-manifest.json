@@ -161,6 +161,38 @@
       "sha256": "227dada7f5e1e7da1893fb4cbf69056938274afa66cb98726a458c58bda4fcd8"
     },
     {
+      "path": "raw/docs-3.json",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "3d0f324c423fcaf41b71b004845f298d9f706bf8",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 298,
+      "sha256": "83a56aae32698e2165282b3422c3d1a9a03645bf78bd84350408af5d0f0f3165"
+    },
+    {
+      "path": "raw/docs-3.log",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "3d0f324c423fcaf41b71b004845f298d9f706bf8",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 10001,
+      "sha256": "227dada7f5e1e7da1893fb4cbf69056938274afa66cb98726a458c58bda4fcd8"
+    },
+    {
       "path": "raw/python-1.json",
       "producer": {
         "command": "timeout 60 python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -v",

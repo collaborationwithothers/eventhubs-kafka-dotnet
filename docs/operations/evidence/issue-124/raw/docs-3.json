@@ -1,0 +1,11 @@
+{
+  "source_commit": "3d0f324c423fcaf41b71b004845f298d9f706bf8",
+  "command": "timeout 60 npm run check:docs",
+  "environment": {
+    "PATH_prefix": "/tmp/issue124-dotnet",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_NOLOGO": "1",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "exit_code": 0
+}
