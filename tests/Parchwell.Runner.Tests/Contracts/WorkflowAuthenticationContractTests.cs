@@ -40,7 +40,14 @@ public sealed class WorkflowAuthenticationContractTests
           if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
           shell: bash
           run: |
-            timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
+            timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
+              if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+                cat "$A01_OUTPUT/export.log"
+              else
+                grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
+              fi
+              exit 1
+            }
         """;
 
     private const string DestroyStep = """
@@ -48,14 +55,28 @@ public sealed class WorkflowAuthenticationContractTests
           if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
           shell: bash
           run: |
-            timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+            timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+              if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+                cat "$A01_OUTPUT/destroy.log"
+              else
+                grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
+              fi
+              exit 1
+            }
         """;
 
     private const string SweepStep = """
         - name: Export aged generation and attempt guarded destroy
           shell: bash
           run: |
-            timeout 1500 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1
+            timeout 1500 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1 || {
+              if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+                cat "$A01_OUTPUT/sweep.log"
+              else
+                grep '^runner_execution_failed' "$A01_OUTPUT/sweep.log" || true
+              fi
+              exit 1
+            }
         """;
 
     [Fact]

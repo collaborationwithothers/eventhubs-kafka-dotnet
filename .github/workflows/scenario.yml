@@ -31,6 +31,7 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
+      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
       A01_PHASE: probe
     steps:
       - name: Require the main branch before login
@@ -223,7 +224,14 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
+          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/phase.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
+            fi
+            exit 1
+          }
       # On cancellation the export is skipped so the destroy below starts first. GitHub
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
@@ -231,18 +239,39 @@ jobs:
         if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
+          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/export.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
+            fi
+            exit 1
+          }
       - name: Always attempt generation-checked destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/destroy.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
+            fi
+            exit 1
+          }
       - name: Gate full phases only after completed probe cleanup
         id: gate
         shell: bash
         run: |
           set -euo pipefail
-          timeout 90 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll gate --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/gate.log" 2>&1
+          timeout 90 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll gate --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/gate.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/gate.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/gate.log" || true
+            fi
+            exit 1
+          }
           python3 - <<'PYTHON'
           import json,os,pathlib
           receipt=json.loads(pathlib.Path(os.environ['A01_OUTPUT'],'phase','gate.json').read_text())
@@ -282,6 +311,7 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
+      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
       A01_PHASE: C0
     steps:
       - name: Require the main branch before login
@@ -476,7 +506,14 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
+          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/phase.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
+            fi
+            exit 1
+          }
       # On cancellation the export is skipped so the destroy below starts first. GitHub
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
@@ -484,12 +521,26 @@ jobs:
         if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
+          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/export.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
+            fi
+            exit 1
+          }
       - name: Always attempt generation-checked destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/destroy.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
+            fi
+            exit 1
+          }
       - name: Check whether a public candidate was written
         id: candidate
         if: always() && steps.prepare.outcome == 'success'
@@ -523,6 +574,7 @@ jobs:
       PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
       PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
       PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
+      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
       A01_PHASE: C3
     steps:
       - name: Require the main branch before login
@@ -717,7 +769,14 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1
+          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/phase.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
+            fi
+            exit 1
+          }
       # On cancellation the export is skipped so the destroy below starts first. GitHub
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
@@ -725,12 +784,26 @@ jobs:
         if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
+          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/export.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
+            fi
+            exit 1
+          }
       - name: Always attempt generation-checked destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
+          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
+              cat "$A01_OUTPUT/destroy.log"
+            else
+              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
+            fi
+            exit 1
+          }
       - name: Check whether a public candidate was written
         id: candidate
         if: always() && steps.prepare.outcome == 'success'

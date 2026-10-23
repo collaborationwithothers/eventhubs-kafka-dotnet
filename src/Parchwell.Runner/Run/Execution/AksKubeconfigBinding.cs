@@ -74,7 +74,7 @@ public static partial class AksKubeconfigBinding
         async Task<ProcessResult> RunAsync(string tool, IReadOnlyList<string> arguments, IReadOnlyDictionary<string, string> overlay)
         {
             ProcessResult result = await process.RunAsync(new(tool, arguments, timeout, Environment: overlay), cancellationToken).ConfigureAwait(false);
-            if (result.TimedOut || result.ExitCode != 0) throw new IOException("aks_context_binding_failed");
+            if (result.TimedOut || result.ExitCode != 0) throw FailureDiagnostics.WithCommandOutput(new IOException("aks_context_binding_failed"), tool, result);
             return result;
         }
     }
