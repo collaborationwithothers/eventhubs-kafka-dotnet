@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Cost;
+using Parchwell.Runner.Run.Execution;
 
 namespace Parchwell.Runner.Run.Evidence;
 
@@ -63,6 +64,6 @@ public sealed class KqlCollector(IProcessRunner process, TimeProvider clock)
                     return new("incomplete", "query_shape_invalid", rows, output, query);
             return new("available", "corroborating_only", rows, output, query);
         }
-        catch (JsonException) { return new("incomplete", "query_json_invalid", 0, output, query); }
+        catch (JsonException exception) { FailureDiagnostics.Write(exception, Console.Error); return new("incomplete", "query_json_invalid", 0, output, query); }
     }
 }

@@ -229,7 +229,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
             foreach ((string name, string content) in originals)
                 try { await File.WriteAllTextAsync(Path.Combine(context.OutputDirectory, name), content, cancellationToken).ConfigureAwait(false); }
                 catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
-                { incomplete = true; }
+                { FailureDiagnostics.Write(exception, Console.Error); incomplete = true; }
         }
         if (incomplete) throw new IOException("worker_observation_retention_incomplete");
     }
@@ -271,7 +271,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
                     }
                     status = "retained";
                 }
-                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !cancellationToken.IsCancellationRequested) { }
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !cancellationToken.IsCancellationRequested) { FailureDiagnostics.Write(exception, Console.Error); }
                 entries.Add(new { container, name = filename, status,
                     path = File.Exists(path) ? Path.GetRelativePath(context.OutputDirectory, path).Replace('\\', '/') : null });
             }
@@ -300,7 +300,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         WatchSession session = watches[context.RunId];
         await session.Stop.CancelAsync().ConfigureAwait(false);
         try { await session.Work.ConfigureAwait(false); }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && session.Stop.IsCancellationRequested) { }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested && session.Stop.IsCancellationRequested) { FailureDiagnostics.Write(exception, Console.Error); }
         // Re-read the event stream from its last acknowledged version after export; cancellation cannot discard the final events.
         await ObserveWatchAsync(context, admission, cancellationToken).ConfigureAwait(false);
     }
@@ -321,7 +321,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         {
             session.Stop.Cancel();
             try { session.Work.GetAwaiter().GetResult(); }
-            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { }
+            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { FailureDiagnostics.Write(exception, Console.Error); }
             session.Stop.Dispose();
             session.Deadline.Dispose();
         }

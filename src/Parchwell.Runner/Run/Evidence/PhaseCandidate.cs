@@ -63,7 +63,7 @@ public sealed class PhaseCandidate(EvidenceExporter exporter, TimeProvider clock
                     acceptedCounts.Add(counts);
                 }
             }
-            catch (Exception exception) when (Unavailable(exception)) { reasons.Add("repeat_evidence_unavailable"); }
+            catch (Exception exception) when (Unavailable(exception)) { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("repeat_evidence_unavailable"); }
         }
 
         var totals = CountNames.ToDictionary(name => name, _ => (long?)null, StringComparer.Ordinal);
@@ -73,8 +73,9 @@ public sealed class PhaseCandidate(EvidenceExporter exporter, TimeProvider clock
             {
                 foreach (string name in CountNames) totals[name] = acceptedCounts.Aggregate(0L, (total, counts) => checked(total + counts[name]));
             }
-            catch (OverflowException)
+            catch (OverflowException exception)
             {
+                FailureDiagnostics.Write(exception, Console.Error);
                 foreach (string name in CountNames) totals[name] = null;
                 reasons.Add("counts_overflow");
             }
@@ -107,6 +108,7 @@ public sealed class PhaseCandidate(EvidenceExporter exporter, TimeProvider clock
         }
         catch (Exception exception) when (Unavailable(exception))
         {
+            FailureDiagnostics.Write(exception, Console.Error);
             foreach (string role in digests.Keys.ToArray()) digests[role] = null;
             reasons.Add("image_digests_unavailable");
         }

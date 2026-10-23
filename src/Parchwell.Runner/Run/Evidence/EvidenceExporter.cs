@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Cost;
+using Parchwell.Runner.Run.Execution;
 
 namespace Parchwell.Runner.Run.Evidence;
 
@@ -174,7 +175,7 @@ public sealed class EvidenceExporter(IArtifactStore store, TimeProvider clock)
                     return new EvidenceObjectReceipt(path, Convert.ToHexStringLower(SHA256.HashData(bytes)), bytes.LongLength);
                 if (outcome != ArtifactWriteOutcome.Uncertain) break;
             }
-            catch (IOException) when (outcome == ArtifactWriteOutcome.Uncertain && attempt < 2) { }
+            catch (IOException exception) when (outcome == ArtifactWriteOutcome.Uncertain && attempt < 2) { FailureDiagnostics.Write(exception, Console.Error); }
         }
         throw new InvalidDataException("private_export_readback_conflict");
     }

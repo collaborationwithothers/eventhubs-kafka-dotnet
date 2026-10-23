@@ -16,6 +16,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
 {
     public async Task<PhaseExecution> ExecuteAsync(PhaseRequest request, CancellationToken cancellationToken)
     {
+        using IDisposable diagnosticScope = FailureDiagnostics.UseStage("apply");
         ArgumentNullException.ThrowIfNull(request);
         if (request.Phase is not ("probe" or "C0" or "C3")) throw new InvalidDataException("phase_selection");
         using var phaseDeadline = new CancellationTokenSource(budgets is null ? TimeSpan.FromSeconds(8400) : budgets.Seconds("phase_seconds") - budgets.Seconds("export_seconds") - budgets.Seconds("destroy_seconds"), clock); // 9600 total less independent export/destroy reserves.
@@ -48,6 +49,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
         bool destroyed = false;
         bool failed = false;
         RepeatContext? activeRepeat = null;
+        string failureStage = "apply";
         try
         {
             await JournalAsync(request.OutputDirectory, "apply_started", work.Token).ConfigureAwait(false);
@@ -58,8 +60,10 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
             await environment.PreflightAsync(outputs, work.Token).ConfigureAwait(false);
             await repeats.PreflightAsync(outputs, work.Token).ConfigureAwait(false);
             await JournalAsync(request.OutputDirectory, "preflight", work.Token).ConfigureAwait(false);
+            failureStage = "repeat";
             for (int ordinal = 1; ordinal <= 5; ordinal++)
             {
+                using IDisposable repeatScope = FailureDiagnostics.UseStage("repeat");
                 using var repeatDeadline = new CancellationTokenSource(budgets?.Seconds("repeat_seconds") ?? TimeSpan.FromSeconds(1500), clock);
                 using var repeatWork = CancellationTokenSource.CreateLinkedTokenSource(work.Token, repeatDeadline.Token);
                 await ledger.MarkRepeatStartedAsync(request.Phase, request.EnvironmentRunId, ordinal, cancellationToken: repeatWork.Token).ConfigureAwait(false);
@@ -79,7 +83,11 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
                 EnsurePhaseEvidenceBudget(request.OutputDirectory);
                 EvidenceFile[] repeatFiles = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Take(257)
                     .Select(path => new EvidenceFile(Path.GetRelativePath(directory, path).Replace('\\', '/'), path)).ToArray();
-                PrivateExportReceipt repeatExport = await exporter.ExportRepeatAsync(request.EnvironmentRunId, runId, repeatFiles, repeatWork.Token).ConfigureAwait(false);
+                failureStage = "export";
+                PrivateExportReceipt repeatExport;
+                using (FailureDiagnostics.UseStage("export"))
+                    repeatExport = await exporter.ExportRepeatAsync(request.EnvironmentRunId, runId, repeatFiles, repeatWork.Token).ConfigureAwait(false);
+                failureStage = "repeat";
                 await File.WriteAllBytesAsync(Path.Combine(directory, "repeat-private-export.json"), JsonSerializer.SerializeToUtf8Bytes(repeatExport), repeatWork.Token).ConfigureAwait(false);
                 await repeats.ObserveThroughExportAsync(context, result, repeatWork.Token).ConfigureAwait(false);
                 await ledger.MarkRepeatCompletedAsync(request.Phase, request.EnvironmentRunId, ordinal,
@@ -92,59 +100,75 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
         {
+            FailureDiagnostics.Write(exception, Console.Error, failureStage);
             failed = true;
+            using IDisposable failureScope = FailureDiagnostics.UseStage(failureStage);
             await BestEffortInterruptedAsync(request, cancellationToken: work.Token).ConfigureAwait(false);
         }
         finally
         {
-            using var exportDeadline = new CancellationTokenSource(budgets?.Seconds("export_seconds") ?? TimeSpan.FromSeconds(300), clock);
-            try
+            using (FailureDiagnostics.UseStage("export"))
             {
-                if (failed && activeRepeat is not null)
+                using var exportDeadline = new CancellationTokenSource(budgets?.Seconds("export_seconds") ?? TimeSpan.FromSeconds(300), clock);
+                try
                 {
-                    // Spend at most one API-call slot collecting failed-worker originals; leave the rest for private export.
-                    using var captureDeadline = new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock);
-                    using var capture = CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, captureDeadline.Token);
-                    try { await repeats.PreserveFailureAsync(activeRepeat, capture.Token, exportDeadline.Token).ConfigureAwait(false); }
-                    catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+                    if (failed && activeRepeat is not null)
                     {
-                        try
+                        // Spend at most one API-call slot collecting failed-worker originals; leave the rest for private export.
+                        using var captureDeadline = new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock);
+                        using var capture = CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, captureDeadline.Token);
+                        try { await repeats.PreserveFailureAsync(activeRepeat, capture.Token, exportDeadline.Token).ConfigureAwait(false); }
+                        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
                         {
-                            await File.WriteAllTextAsync(Path.Combine(activeRepeat.OutputDirectory, "failure-artifacts-unavailable.json"),
-                                "{\"accepted_counts\":false,\"reason\":\"failure_artifact_collection_incomplete\"}", exportDeadline.Token).ConfigureAwait(false);
+                            FailureDiagnostics.Write(exception, Console.Error);
+                            try
+                            {
+                                await File.WriteAllTextAsync(Path.Combine(activeRepeat.OutputDirectory, "failure-artifacts-unavailable.json"),
+                                    "{\"accepted_counts\":false,\"reason\":\"failure_artifact_collection_incomplete\"}", exportDeadline.Token).ConfigureAwait(false);
+                            }
+                            catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException)
+                            {
+                                FailureDiagnostics.Write(writeException, Console.Error);
+                            }
                         }
-                        catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException) { }
                     }
+                    if (collectCorroboration is not null)
+                    {
+                        using var corroborationDeadline = failed
+                            ? new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock) : null;
+                        using var corroboration = corroborationDeadline is null ? null
+                            : CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, corroborationDeadline.Token);
+                        try { await collectCorroboration(request.OutputDirectory, corroboration?.Token ?? exportDeadline.Token).ConfigureAwait(false); }
+                        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+                        {
+                            FailureDiagnostics.Write(exception, Console.Error);
+                            // Collection failure preserves available bounded evidence and cannot skip teardown.
+                            try
+                            {
+                                await File.WriteAllTextAsync(Path.Combine(request.OutputDirectory, "kql-unavailable.json"),
+                                    "{\"status\":\"unavailable\",\"reason\":\"corroboration_collection_failed\"}", exportDeadline.Token).ConfigureAwait(false);
+                            }
+                            catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException)
+                            {
+                                FailureDiagnostics.Write(writeException, Console.Error);
+                                failed = true;
+                            }
+                        }
+                    }
+                    EvidenceFile[] files = Directory.EnumerateFiles(request.OutputDirectory, "*", SearchOption.AllDirectories)
+                        .Take(257).Select(path => new EvidenceFile(Path.GetRelativePath(request.OutputDirectory, path).Replace('\\', '/'), path)).ToArray();
+                    PrivateExportReceipt receipt = await exporter.ExportAsync(request.EnvironmentRunId, files, exportDeadline.Token).ConfigureAwait(false);
+                    await ledger.MarkExportedAsync(request.Phase, request.EnvironmentRunId, receipt, exportDeadline.Token).ConfigureAwait(false);
+                    exported = receipt.Complete;
                 }
-                if (collectCorroboration is not null)
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
                 {
-                    using var corroborationDeadline = failed
-                        ? new CancellationTokenSource(budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), clock) : null;
-                    using var corroboration = corroborationDeadline is null ? null
-                        : CancellationTokenSource.CreateLinkedTokenSource(exportDeadline.Token, corroborationDeadline.Token);
-                    try { await collectCorroboration(request.OutputDirectory, corroboration?.Token ?? exportDeadline.Token).ConfigureAwait(false); }
-                    catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
-                    {
-                        // Collection failure preserves available bounded evidence and cannot skip teardown.
-                        try
-                        {
-                            await File.WriteAllTextAsync(Path.Combine(request.OutputDirectory, "kql-unavailable.json"),
-                                "{\"status\":\"unavailable\",\"reason\":\"corroboration_collection_failed\"}", exportDeadline.Token).ConfigureAwait(false);
-                        }
-                        catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException) { failed = true; }
-                    }
+                    FailureDiagnostics.Write(exception, Console.Error);
+                    failed = true;
+                    await BestEffortInterruptedAsync(request, "export_incomplete", work.Token).ConfigureAwait(false);
                 }
-                EvidenceFile[] files = Directory.EnumerateFiles(request.OutputDirectory, "*", SearchOption.AllDirectories)
-                    .Take(257).Select(path => new EvidenceFile(Path.GetRelativePath(request.OutputDirectory, path).Replace('\\', '/'), path)).ToArray();
-                PrivateExportReceipt receipt = await exporter.ExportAsync(request.EnvironmentRunId, files, exportDeadline.Token).ConfigureAwait(false);
-                await ledger.MarkExportedAsync(request.Phase, request.EnvironmentRunId, receipt, exportDeadline.Token).ConfigureAwait(false);
-                exported = receipt.Complete;
             }
-            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
-            {
-                failed = true;
-                await BestEffortInterruptedAsync(request, "export_incomplete", work.Token).ConfigureAwait(false);
-            }
+            using IDisposable destroyScope = FailureDiagnostics.UseStage("destroy");
             using var destroyDeadline = new CancellationTokenSource(budgets?.Seconds("destroy_seconds") ?? TimeSpan.FromSeconds(900), clock);
             try
             {
@@ -152,7 +176,11 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
                 ValidateCleanupGeneration(generation, request.EnvironmentRunId, expiry);
                 destroyed = generation is null || await guard.DestroyAsync(generation, false, destroyDeadline.Token).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { failed = true; destroyed = false; }
+            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                FailureDiagnostics.Write(exception, Console.Error);
+                failed = true; destroyed = false;
+            }
             try
             {
                 var receipt = new DestroyReceipt(request.EnvironmentRunId, clock.GetUtcNow(), destroyed, destroyed ? "destroyed" : "destroy_incomplete");
@@ -160,7 +188,11 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
                 await ledger.MarkDestroyedAsync(request.Phase, request.EnvironmentRunId,
                     receipt with { PrivateReceiptPath = stored.Path, PrivateReceiptSha256 = stored.Sha256 }, destroyDeadline.Token).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { failed = true; destroyed = false; }
+            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                FailureDiagnostics.Write(exception, Console.Error);
+                failed = true; destroyed = false;
+            }
         }
         return new(request.Phase, failed || !exported || !destroyed ? "failed" : "completed", completed, destroyed, exported);
     }
@@ -170,7 +202,10 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(180), clock);
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         try { await ledger.MarkInterruptedAsync(request.Phase, request.EnvironmentRunId, reason, bounded.Token).ConfigureAwait(false); }
-        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            FailureDiagnostics.Write(exception, Console.Error);
+        }
     }
 
     private static void ValidateCleanupGeneration(EnvironmentGeneration? generation, string runId, DateTimeOffset expiry)

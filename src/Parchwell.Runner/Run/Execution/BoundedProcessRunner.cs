@@ -34,8 +34,8 @@ public sealed class BoundedProcessRunner(TimeProvider clock) : IProcessRunner
         {
             if (!process.HasExited) process.Kill(entireProcessTree: true);
             try { await process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1), clock, CancellationToken.None).ConfigureAwait(false); }
-            catch (InvalidOperationException) { }
-            catch (TimeoutException) { }
+            catch (InvalidOperationException exception) { FailureDiagnostics.Write(exception, Console.Error); }
+            catch (TimeoutException exception) { FailureDiagnostics.Write(exception, Console.Error); }
             throw;
         }
     }

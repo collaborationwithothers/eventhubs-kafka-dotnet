@@ -13,6 +13,7 @@ public sealed class RehearsalRunner(TimeProvider clock, RehearsalScenarioFactory
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     public async Task<int> ExecuteAsync(string fixtureDirectory, string outputDirectory, CancellationToken cancellationToken)
     {
+        using var diagnosticStage = FailureDiagnostics.UseStage("repeat");
         WireFixtures fixtures = await WireFixtures.LoadAsync(fixtureDirectory, cancellationToken).ConfigureAwait(false);
         Directory.CreateDirectory(outputDirectory);
         ScenarioReport happy = await RunAsync("happy", null, "pass", false).ConfigureAwait(false);
@@ -70,7 +71,7 @@ public sealed class RehearsalRunner(TimeProvider clock, RehearsalScenarioFactory
                     }
                 }
             }
-            catch (Exception exception) when (exception is IOException or InvalidOperationException or InvalidDataException or OperationCanceledException) { result = "failed"; }
+            catch (Exception exception) when (exception is IOException or InvalidOperationException or InvalidDataException or OperationCanceledException) { FailureDiagnostics.Write(exception, Console.Error); result = "failed"; }
             int repeatCount(string phase) => results.Where(item => item.Phase == phase).Sum(item => item.Repeats.Count);
             return new(name, results.Count, repeatCount("probe"), repeatCount("C0"), repeatCount("C3"),
                 environment.Applies, environment.Destroys, environment.Trace.Count(item => item == "destroy_plan"), result, trace.ToArray());

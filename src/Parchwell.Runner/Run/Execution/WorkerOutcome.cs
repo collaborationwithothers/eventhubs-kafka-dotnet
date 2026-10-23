@@ -28,7 +28,7 @@ public static class WorkerOutcome
                 (identity is null ? receipt.GetProperty("identity").GetProperty("scenario_id").GetString() == "A01" : WorkerIdentity.Read(receipt.GetProperty("identity")) == identity);
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or KeyNotFoundException or InvalidDataException or FormatException)
-        { return false; }
+        { FailureDiagnostics.Write(exception, Console.Error); return false; }
     }
 
     public static AcceptedWorkerOutcome Reconcile(ProcessResult process, ReadOnlyMemory<byte> result,
@@ -59,7 +59,7 @@ public static class WorkerOutcome
             return Rejected("result_exit_disagreement");
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or KeyNotFoundException or InvalidDataException or FormatException)
-        { return Rejected("malformed_result"); }
+        { FailureDiagnostics.Write(exception, Console.Error); return Rejected("malformed_result"); }
     }
 
     private static AcceptedWorkerOutcome Rejected(string reason) => new(false, false, "execution_failure", null, reason);
