@@ -1,0 +1,4 @@
+Command: git diff --check origin/main
+Source commit: a20dad4b736c81956961a2be57abc347a450d0a8
+
+Exit code: 0

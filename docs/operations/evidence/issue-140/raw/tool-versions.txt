@@ -1,0 +1,13 @@
+Command: dotnet --version && terraform version && tflint --version && node --version && npm --version
+Source commit: a20dad4b736c81956961a2be57abc347a450d0a8
+10.0.402
+Terraform v1.16.6
+on linux_amd64
+TFLint version 0.64.0
+
+Your version of TFLint is out of date! The latest version is 0.65.0.
+You can update by downloading from https://github.com/terraform-linters/tflint/releases
+v24.19.0
+11.9.0
+
+Exit code: 0

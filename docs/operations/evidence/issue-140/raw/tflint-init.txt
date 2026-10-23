@@ -1,0 +1,6 @@
+Command: timeout 600 tflint --init --config="$PWD/.tflint.hcl"
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+Installing "azurerm" plugin...
+Failed to install a plugin; Failed to check checksums.txt signature: failed to load metadata: tuf refresh failed: Get "https://tuf-repo-cdn.sigstore.dev/15.root.json": Forbidden
+
+Exit code: 1

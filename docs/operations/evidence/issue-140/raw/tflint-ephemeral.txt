@@ -1,0 +1,5 @@
+Command: timeout 600 tflint --chdir=infra/ephemeral --config="$PWD/.tflint.hcl"
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+Failed to initialize plugins; Plugin "azurerm" not found. Did you run "tflint --init"?
+
+Exit code: 1

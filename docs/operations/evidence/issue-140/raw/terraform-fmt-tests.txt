@@ -1,0 +1,4 @@
+Command: timeout 600 terraform fmt -check -recursive tests/terraform
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+
+Exit code: 0
