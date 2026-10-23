@@ -38,8 +38,8 @@ public sealed class WorkflowBudgetContractTests
         (string File, string[] Jobs, (string Command, int Seconds, int Count)[] Wrappers)[] workflows =
         [
             ("scenario.yml", ["probe", "full-C0", "full-C3"],
-                [("phase", 9600, 3), ("export", 300, 3), ("destroy", 900, 3), ("gate", 90, 1)]),
-            ("sweeper.yml", ["sweep"], [("sweep", 1500, 1)])
+                [("phase", 9750, 3), ("export", 300, 3), ("destroy", 1050, 3), ("gate", 90, 1)]),
+            ("sweeper.yml", ["sweep"], [("sweep", 1650, 1)])
         ];
         foreach ((string file, string[] jobs, (string Command, int Seconds, int Count)[] wrappers) in workflows)
         {

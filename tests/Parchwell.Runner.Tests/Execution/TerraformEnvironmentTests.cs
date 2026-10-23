@@ -50,6 +50,8 @@ public sealed class TerraformEnvironmentTests
             Assert.Contains("-var=expires_at=2026-10-22T05:02:03Z", plan.Arguments);
             Assert.Contains("-out=" + saved, plan.Arguments);
             Assert.Equal(new[] { "apply", "-input=false", "-lock=true", saved }, apply.Arguments);
+            Assert.Equal(TimeSpan.FromSeconds(900), plan.Timeout);
+            Assert.Equal(TimeSpan.FromSeconds(900), apply.Timeout);
         }
         finally
         {

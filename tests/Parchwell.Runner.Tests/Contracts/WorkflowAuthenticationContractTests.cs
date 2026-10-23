@@ -55,7 +55,7 @@ public sealed class WorkflowAuthenticationContractTests
           if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
           shell: bash
           run: |
-            timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+            timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
               if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
                 cat "$A01_OUTPUT/destroy.log"
               else
@@ -69,7 +69,7 @@ public sealed class WorkflowAuthenticationContractTests
         - name: Export aged generation and attempt guarded destroy
           shell: bash
           run: |
-            timeout 1500 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1 || {
+            timeout 1650 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1 || {
               if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
                 cat "$A01_OUTPUT/sweep.log"
               else

@@ -32,18 +32,27 @@ public sealed class ExecutionBudgetsTests
     }
 
     [Theory]
-    [InlineData(2099, false)]
-    [InlineData(2100, false)]
-    [InlineData(2101, true)]
+    [InlineData(2249, false)]
+    [InlineData(2250, false)]
+    [InlineData(2251, true)]
     public void Given_PhaseDeadlineAroundCleanupReserve_When_Read_Then_TimeMustRemainForExecution(int seconds, bool accepted)
     {
         JsonObject limits = ReadLimits();
         JsonNode execution = limits["execution"]!;
-        Assert.Equal(2100, execution["apply_seconds"]!.GetValue<int>() + execution["export_seconds"]!.GetValue<int>() + execution["destroy_seconds"]!.GetValue<int>());
+        Assert.Equal(2250, execution["apply_seconds"]!.GetValue<int>() + execution["export_seconds"]!.GetValue<int>() + execution["destroy_seconds"]!.GetValue<int>());
         execution["phase_seconds"] = seconds;
         JsonElement input = JsonSerializer.SerializeToElement(limits);
         if (accepted) Assert.Equal(TimeSpan.FromSeconds(seconds), ExecutionBudgets.Read(input).Seconds("phase_seconds"));
         else Assert.Equal("phase_cleanup_reserve", Assert.Throws<InvalidDataException>(() => ExecutionBudgets.Read(input)).Message);
+    }
+
+    [Fact]
+    public void Given_CheckedInPhaseBudgets_When_CleanupIsReserved_Then_ExistingWorkAllowanceRemains()
+    {
+        ExecutionBudgets budgets = ExecutionBudgets.Read(JsonSerializer.SerializeToElement(ReadLimits()));
+        Assert.Equal(9750, budgets.Number("phase_seconds"));
+        Assert.Equal(1050, budgets.Number("destroy_seconds"));
+        Assert.Equal(8400, budgets.Number("phase_seconds") - budgets.Number("export_seconds") - budgets.Number("destroy_seconds"));
     }
 
     private static JsonObject ReadLimits() => JsonNode.Parse(File.ReadAllText(

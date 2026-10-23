@@ -224,7 +224,7 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/phase.log"
             else
@@ -251,7 +251,7 @@ jobs:
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/destroy.log"
             else
@@ -506,7 +506,7 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/phase.log"
             else
@@ -533,7 +533,7 @@ jobs:
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/destroy.log"
             else
@@ -769,7 +769,7 @@ jobs:
         id: phase
         shell: bash
         run: |
-          timeout 9600 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
+          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/phase.log"
             else
@@ -796,7 +796,7 @@ jobs:
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
-          timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
+          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
             if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
               cat "$A01_OUTPUT/destroy.log"
             else

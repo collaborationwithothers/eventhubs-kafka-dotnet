@@ -5,10 +5,11 @@ using Parchwell.Runner.Run.Contracts;
 namespace Parchwell.Runner.Run.Execution;
 
 public sealed class TerraformEnvironment(IProcessRunner process, string root, string backendConfig,
-    string tfvars, string outputDirectory, TimeProvider? timeProvider = null) : ITerraformEnvironment
+    string tfvars, string outputDirectory, TimeProvider? timeProvider = null, ExecutionBudgets? budgets = null) : ITerraformEnvironment
 {
     private bool initialized;
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+    private readonly int destroySeconds = budgets?.Number("destroy_seconds") ?? 900;
 
     public async Task<EnvironmentGeneration?> ReadGenerationAsync(CancellationToken cancellationToken)
     {
@@ -93,7 +94,7 @@ public sealed class TerraformEnvironment(IProcessRunner process, string root, st
         Directory.CreateDirectory(outputDirectory);
         string path = Path.GetFullPath(Path.Combine(outputDirectory, "destroy.tfplan"));
         await RunAsync(["plan", "-destroy", "-input=false", "-lock=true", "-var-file=" + tfvars,
-            "-var=run_id=" + expected.RunId, "-var=expires_at=" + TerraformTimestamp(expected.ExpiresAt), "-out=" + path], 900, cancellationToken).ConfigureAwait(false);
+            "-var=run_id=" + expected.RunId, "-var=expires_at=" + TerraformTimestamp(expected.ExpiresAt), "-out=" + path], destroySeconds, cancellationToken).ConfigureAwait(false);
         ProcessResult show = await RunAsync(["show", "-json", path], 60, cancellationToken).ConfigureAwait(false);
         using JsonDocument document = JsonDocument.Parse(show.StandardOutput);
         List<JsonElement> groups = [];
@@ -109,7 +110,7 @@ public sealed class TerraformEnvironment(IProcessRunner process, string root, st
     {
         ArgumentNullException.ThrowIfNull(plan);
         GenerationGuard.EnsureSame(plan.Generation, await ReadGenerationAsync(cancellationToken).ConfigureAwait(false) ?? throw new InvalidDataException("generation_absent_before_apply"));
-        await RunAsync(["apply", "-input=false", "-lock=true", plan.Path], 900, cancellationToken).ConfigureAwait(false);
+        await RunAsync(["apply", "-input=false", "-lock=true", plan.Path], destroySeconds, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken)

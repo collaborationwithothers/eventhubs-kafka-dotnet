@@ -13,8 +13,18 @@ public sealed class PrivateEvidenceCollector(KqlCollector collector, string para
         if (new FileInfo(sourceFile).Length > 65_536) throw new InvalidDataException("private_kql_input_limit");
         byte[] source = await File.ReadAllBytesAsync(sourceFile, cancellationToken).ConfigureAwait(false);
         await File.WriteAllBytesAsync(Path.Combine(directory, "source.kql"), source, cancellationToken).ConfigureAwait(false);
-        if (new FileInfo(parametersFile).Length > 1_048_576) throw new InvalidDataException("private_kql_input_limit");
-        byte[] parameters = await File.ReadAllBytesAsync(parametersFile, cancellationToken).ConfigureAwait(false);
+        byte[] parameters;
+        try
+        {
+            if (new FileInfo(parametersFile).Length > 1_048_576) throw new InvalidDataException("private_kql_input_limit");
+            parameters = await File.ReadAllBytesAsync(parametersFile, cancellationToken).ConfigureAwait(false);
+        }
+        catch (IOException exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, "receipt.json"), JsonSerializer.SerializeToUtf8Bytes(new
+            { status = "unavailable", reason = "kql_parameters_file_missing", rows = 0, corroborating_only = true }, LedgerJson.Options), cancellationToken).ConfigureAwait(false);
+            return;
+        }
         await File.WriteAllBytesAsync(Path.Combine(directory, "parameters.private.json"), parameters, cancellationToken).ConfigureAwait(false);
         KqlReceipt receipt = await collector.CollectAsync(KqlCollector.ReadPrivateParameters(parameters), System.Text.Encoding.UTF8.GetString(source), cancellationToken).ConfigureAwait(false);
         await File.WriteAllTextAsync(Path.Combine(directory, "query.kql"), receipt.Query, cancellationToken).ConfigureAwait(false);

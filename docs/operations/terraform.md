@@ -68,6 +68,8 @@ terraform -chdir=infra/ephemeral apply "$PARCHWELL_EPHEMERAL_PLAN_PATH"
 
 Teardown and the sweeper follow [AGENTS.md hard safety rules](../../AGENTS.md#hard-safety-rules) and the [factory run lifecycle](../agents/factory.md#item-lifecycle). This change does not execute a live plan, apply, migration or destroy.
 
+The ephemeral AzureRM provider sets `resource_group.prevent_deletion_if_contains_resources = false`. The [AzureRM 4.81.0 features guide](https://github.com/hashicorp/terraform-provider-azurerm/blob/v4.81.0/website/docs/guides/features-block.html.markdown#resource_group), read 2026-10-23, states that the default `true` requires all resources in a group to be deleted before the provider deletes the group. This change disables that preliminary check for the disposable ephemeral group, including resources outside Terraform state. Hari's teardown report in [#140](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/140) records an auto-created Application Insights smart detector alert rule that blocked group deletion. The issue directs this flag unless managing that auto-created rule has been verified; no such alternative has been verified for this repair. The persistent provider is unchanged, and the Runner's generation-checked teardown remains in place.
+
 ## Output contract
 
 These output values are deployment data held in private state. They are not public experiment evidence.

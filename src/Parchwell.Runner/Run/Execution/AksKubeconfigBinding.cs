@@ -59,7 +59,7 @@ public static partial class AksKubeconfigBinding
         await File.WriteAllTextAsync(Path.Combine(directory, "kubelogin-convert-help.txt"), help.StandardOutput, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(version.StandardOutput) || !help.StandardOutput.Contains("azurecli", StringComparison.Ordinal) ||
             !help.StandardOutput.Contains("--login", StringComparison.Ordinal)) throw new InvalidDataException("kubelogin_azurecli_prerequisite_missing");
-        await RunAsync("kubelogin", ["convert-kubeconfig", "-l", "azurecli", "--subscription", target.Subscription], environment).ConfigureAwait(false);
+        await RunAsync("kubelogin", ["convert-kubeconfig", "-l", "azurecli"], environment).ConfigureAwait(false);
         if (ensureNamespace)
         {
         string namespacePath = Path.Combine(directory, "namespace.json");

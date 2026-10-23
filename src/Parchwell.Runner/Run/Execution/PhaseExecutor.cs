@@ -19,7 +19,7 @@ public sealed class PhaseExecutor(RunLedger ledger, ITerraformEnvironment enviro
         using IDisposable diagnosticScope = FailureDiagnostics.UseStage("apply");
         ArgumentNullException.ThrowIfNull(request);
         if (request.Phase is not ("probe" or "C0" or "C3")) throw new InvalidDataException("phase_selection");
-        using var phaseDeadline = new CancellationTokenSource(budgets is null ? TimeSpan.FromSeconds(8400) : budgets.Seconds("phase_seconds") - budgets.Seconds("export_seconds") - budgets.Seconds("destroy_seconds"), clock); // 9600 total less independent export/destroy reserves.
+        using var phaseDeadline = new CancellationTokenSource(budgets is null ? TimeSpan.FromSeconds(8400) : budgets.Seconds("phase_seconds") - budgets.Seconds("export_seconds") - budgets.Seconds("destroy_seconds"), clock); // Total phase budget less independent export/destroy reserves.
         using var work = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, phaseDeadline.Token);
         Directory.CreateDirectory(request.OutputDirectory);
         EnvironmentGeneration? existing = await environment.ReadGenerationAsync(work.Token).ConfigureAwait(false);

@@ -33,7 +33,7 @@ public sealed class AksKubeconfigBindingTests
             Assert.Equal(new[] { "aks", "get-credentials", "--subscription", Subscription, "--resource-group", "rg-synthetic",
                 "--name", "aks-synthetic", "--file", path, "--overwrite-existing", "--format", "exec", "--only-show-errors" }, process.Requests[0].Arguments);
             Assert.DoesNotContain("--admin", process.Requests[0].Arguments);
-            Assert.Equal(new[] { "convert-kubeconfig", "-l", "azurecli", "--subscription", Subscription }, process.Requests[3].Arguments);
+            Assert.Equal(new[] { "convert-kubeconfig", "-l", "azurecli" }, process.Requests[3].Arguments);
             Assert.Equal("kubectl", process.Requests[4].FileName);
             Assert.Equal(new[] { "apply", "-f", Path.Combine(directory, "namespace.json") }, process.Requests[4].Arguments);
             using JsonDocument ns = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(directory, "namespace.json"), TestContext.Current.CancellationToken));
