@@ -219,7 +219,7 @@ internal sealed class DeploymentFixture : IDisposable
         ["schema_version"] = 1, ["synthetic"] = true, ["source_commit"] = new string('a',40), ["phase"] = phase,
         ["subscription_guid"] = "00000000-0000-0000-0000-000000000001",
         ["run_id"] = "synthetic-a01-r1", ["producer_pod_name"] = "synthetic-producer-pod", ["mode"] = mode,
-        ["limits_file"] = Path.Combine(RepositoryRoot, "docs/operations/a01-runtime-limits.json"),
+        ["limits_file"] = Path.Combine(scenarioRoot, "docs/operations/a01-runtime-limits.json"),
         ["expected_broker_names"] = new[] { "sasl_ssl://broker.example.invalid:9093/0" },
         ["images"] = new { loadgen = new { source_commit = new string('a',40), digest = "sha256:" + new string('a',64) }, verifier = new { source_commit = new string('a',40), digest = "sha256:" + new string('b',64) } },
         ["persistent_outputs"] = new { acr = new { login_server = "registry.example.invalid" } },
