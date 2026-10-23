@@ -1,0 +1,23 @@
+Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+failed Parchwell.Runner.Tests.Contracts.WorkflowBudgetContractTests.Given_RunnerWorkflowFailures_When_Forwarded_Then_ExactDiagnosticBlocksPreserveCommandsAndCopies (41ms)
+  from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64)
+  Assert.Single() Failure: The collection contained 5 matching items
+  Expected:      (predicate expression)
+  Collection:    ["  probe:", "    runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}", "    environment: parchwell-scenarios", "    timeout-minutes: 240", "    outputs:", ···]
+  Match indices: 22, 216, 231, 243, 256
+    at Parchwell.Runner.Tests.Contracts.WorkflowBudgetContractTests.Given_RunnerWorkflowFailures_When_Forwarded_Then_ExactDiagnosticBlocksPreserveCommandsAndCopies() in /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Contracts/WorkflowBudgetContractTests.cs:84
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0|x64) failed with 1 error(s) (19s 391ms)
+Exit code: 2
+
+  In process file artifacts produced:
+    - /workspace/eventhubs-kafka-dotnet/TestResults/runner-results.xml
+
+Test run summary: Failed!
+  total: 1104
+  failed: 1
+  succeeded: 1103
+  skipped: 0
+  duration: 19s 592ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

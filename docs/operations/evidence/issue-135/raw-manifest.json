@@ -1,0 +1,108 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-135/raw/build-before-contract-fix.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore -warnaserror",
+        "source_commit": "3e29e8e123c5b1cb65334a94447ee9fb41297bf4",
+        "exit_code": 0
+      },
+      "size_bytes": 1819,
+      "sha256": "2f8aea0a3af67bdb33bb4bb493eb0e867b37e15a4aa119e62e94dc095d3cbcf2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/build-initial.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore -warnaserror",
+        "source_commit": "aa749b5ac141330a6e0795f45689b965898e5fcf",
+        "exit_code": 1
+      },
+      "size_bytes": 4253,
+      "sha256": "9d6abfd1688b104a054e928bec0cc9225d0eeb36cf908e89eb6f6e30d75c091b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/build.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore -warnaserror",
+        "source_commit": "4dc018edb84829d60f024f6dad4231083dc84ebc",
+        "exit_code": 0
+      },
+      "size_bytes": 1819,
+      "sha256": "76c30e770d4ac38180af06e53aab8c6ee730af21d3879db512a3913af221f640"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/check-docs-initial.log",
+      "producer": {
+        "command": "timeout 600 npm run check:docs",
+        "source_commit": "4dc018edb84829d60f024f6dad4231083dc84ebc",
+        "exit_code": 0,
+        "worktree": "with staged issue-135 evidence README"
+      },
+      "size_bytes": 10266,
+      "sha256": "a367a84207eee3d3358c8c17bd78f812327e0432ce96ac1544467e090392063c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/check-docs.log",
+      "producer": {
+        "command": "timeout 600 npm run check:docs",
+        "source_commit": "4dc018edb84829d60f024f6dad4231083dc84ebc",
+        "worktree": "with staged issue-135 evidence README and raw manifest",
+        "exit_code": 0
+      },
+      "size_bytes": 10125,
+      "sha256": "fd6d8befab3fe2a068b5fbe68aaa823f33e18c6ff83ea3286265d12bf668a470"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/restore.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet restore Parchwell.slnx --locked-mode",
+        "source_commit": "6aa9935391d3679799c38fa6cf1fdacde474391c",
+        "exit_code": 0
+      },
+      "size_bytes": 2557,
+      "sha256": "f5f2ad861d9c780d2f2ed0d6a32a71df1a7113523a70e2b5b27f358aae8f1776"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/runner-results-initial.xml",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename runner-results.xml",
+        "source_commit": "3e29e8e123c5b1cb65334a94447ee9fb41297bf4",
+        "exit_code": 2,
+        "original_output": "TestResults/runner-results.xml"
+      },
+      "size_bytes": 786883,
+      "sha256": "cf3be1181042b93c58093f0eba7ef250c2d35d2ed4429ab5206fec4e761b34b1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/runner-results.xml",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename runner-results.xml",
+        "source_commit": "4dc018edb84829d60f024f6dad4231083dc84ebc",
+        "exit_code": 0,
+        "original_output": "TestResults/runner-results.xml"
+      },
+      "size_bytes": 786260,
+      "sha256": "cf9d4b429d168536137051d0458d795429706d28fd4a4e5d81d38ea3cce59b1e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/runner-tests-initial.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename runner-results.xml",
+        "source_commit": "3e29e8e123c5b1cb65334a94447ee9fb41297bf4",
+        "exit_code": 2
+      },
+      "size_bytes": 1719,
+      "sha256": "835983fbf017fa5e33028911e0bb8b2fedd529439214f026279fbf6e71d0e012"
+    },
+    {
+      "path": "docs/operations/evidence/issue-135/raw/runner-tests.log",
+      "producer": {
+        "command": "PATH=/tmp/runner135-dotnet:$PATH timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --report-xunit-xml --report-xunit-xml-filename runner-results.xml",
+        "source_commit": "4dc018edb84829d60f024f6dad4231083dc84ebc",
+        "exit_code": 0
+      },
+      "size_bytes": 502,
+      "sha256": "43f4ecc1168dd75f47f525c7ae8e6cd0334cdd2cbf4344727bd8879521e20b9b"
+    }
+  ]
+}
