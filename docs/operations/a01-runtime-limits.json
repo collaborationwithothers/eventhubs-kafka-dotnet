@@ -119,7 +119,7 @@
     "termination_grace_seconds": 30,
     "expiry_hours": 4,
     "phase_job_minutes": 240,
-    "sweep_job_minutes": 50,
+    "sweep_job_minutes": 60,
     "offline_command_seconds": 600,
     "item_limit_gbp": 15
   }
