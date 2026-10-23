@@ -1,4 +1,4 @@
-# Install only after Hari records the external prerequisites in a01-runner.md.
+# Installed at .github/workflows/scenario.yml; committed copy at docs/operations/workflows/scenario.yml.txt; the two are byte-identical (AGENTS.md hard safety rule 8).
 name: A01 scenario
 on:
   workflow_dispatch:
@@ -132,6 +132,10 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
+          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
@@ -362,6 +366,10 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
+          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
@@ -582,6 +590,10 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
+          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
