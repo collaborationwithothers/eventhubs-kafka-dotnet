@@ -47,6 +47,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Install the pinned Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -91,7 +96,6 @@ jobs:
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
           assert readiness['schema_version'] == 1
           for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
@@ -107,7 +111,6 @@ jobs:
               subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
               helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
               helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
               verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
@@ -274,6 +277,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Install the pinned Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -318,7 +326,6 @@ jobs:
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
           assert readiness['schema_version'] == 1
           for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
@@ -334,7 +341,6 @@ jobs:
               subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
               helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
               helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
               verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
@@ -491,6 +497,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Install the pinned Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -535,7 +546,6 @@ jobs:
           assert runtime['phase'] == os.environ['A01_PHASE']
           assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
           assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          assert pathlib.Path('docs/operations/service-tags.json').is_file(), 'committed_service_tags_missing'
           readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
           assert readiness['schema_version'] == 1
           for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
@@ -551,7 +561,6 @@ jobs:
               subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
               ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
               chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              service_tags_file=str(pathlib.Path('docs/operations/service-tags.json').resolve()),
               helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
               helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
               verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
