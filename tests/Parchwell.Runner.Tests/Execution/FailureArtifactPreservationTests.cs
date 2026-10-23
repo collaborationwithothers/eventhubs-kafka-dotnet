@@ -333,8 +333,7 @@ public sealed class FailureArtifactPreservationTests
             if (request.FileName == "kubectl")
             {
                 if (failure == "release_uncertain" && args[0] == "patch") return new(1, "", "synthetic uncertain response after permit delivery");
-                if (args[1] == "--raw" && args[2] == "/api/v1/namespaces/parchwell/pods?labelSelector=" +
-                    Uri.EscapeDataString("app.kubernetes.io/instance=" + context!.RunId + ",parchwell.io/role=loadgen"))
+                if (args[1] == "--raw" && args[2].StartsWith("/api/v1/namespaces/parchwell/pods?labelSelector=", StringComparison.Ordinal))
                     return new(0, "{\"apiVersion\":\"v1\",\"kind\":\"PodList\",\"metadata\":{\"resourceVersion\":\"1\"},\"items\":[]}", "");
                 if (args[1] == "--raw" && args[2].StartsWith("/api/v1/namespaces/parchwell/pods?watch=true&", StringComparison.Ordinal)) return new(0, ++watches == 1
                     ? "{\"type\":\"ADDED\",\"object\":{\"metadata\":{\"resourceVersion\":\"2\",\"name\":\"failure-phase-r1-pod\",\"uid\":\"original-uid\"}}}"
