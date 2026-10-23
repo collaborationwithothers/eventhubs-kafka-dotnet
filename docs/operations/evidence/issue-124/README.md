@@ -4,7 +4,7 @@ The renewable CLI wrapper and workflow templates passed the offline checks recor
 
 The [approved r3 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/124#issuecomment-6351953474), [independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/124#issuecomment-6357751311) and [implementation approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/124#issuecomment-6357767571) define the scope. The [runbook](../../a01-runner.md#renewable-azure-cli-session) owns the authentication contract and source citations.
 
-Implementation source commit: `5da2925425e05cc445adcb1e37f14ee6dbdc8f39`. Each raw receipt records its command, source commit, environment overrides and exit code. Restore ran on the baseline before authoring; project, package and lock files are unchanged.
+Implementation source commit: `5da2925425e05cc445adcb1e37f14ee6dbdc8f39`. Each raw receipt records its command, source commit, environment overrides and exit code. Restore ran on the baseline before authoring; project, package and lock files are unchanged. The initial documentation receipt names the implementation base commit and also inspected staged evidence files; later documentation scans name the commits containing those authored records.
 
 | Check | Observed result | Evidence |
 | --- | --- | --- |
