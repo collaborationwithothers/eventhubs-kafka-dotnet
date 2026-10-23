@@ -24,7 +24,7 @@ internal static class WorkerBlobDownloader
         async Task<ProcessResult> RunAsync(IReadOnlyList<string> arguments)
         {
             ProcessResult result = await process.RunAsync(new("az", arguments, timeout), cancellationToken).ConfigureAwait(false);
-            if (result.ExitCode != 0 || result.TimedOut) throw new IOException("worker_blob_read_failed");
+            if (result.ExitCode != 0 || result.TimedOut) throw FailureDiagnostics.WithCommandOutput(new IOException("worker_blob_read_failed"), "az", result);
             return result;
         }
     }

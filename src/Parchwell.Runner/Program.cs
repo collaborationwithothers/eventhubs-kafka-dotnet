@@ -162,8 +162,10 @@ internal static class Program
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
         {
-            // Exception messages may contain resource identities, private file names or CLI output.
-            Console.Error.WriteLine("runner_execution_failed");
+            // Normal output contains only exception types and complete reason-code messages.
+            // PARCHWELL_DEBUG_FAILURES=true also emits unredacted exceptions and command output;
+            // workflows mask only the three Azure IDs.
+            FailureDiagnostics.Write(exception, Console.Error);
             return 1;
         }
     }

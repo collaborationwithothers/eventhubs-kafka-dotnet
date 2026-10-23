@@ -126,7 +126,7 @@ public sealed class TerraformEnvironment(IProcessRunner process, string root, st
     {
         if (Path.GetFileName(Path.TrimEndingDirectorySeparator(root)) != "ephemeral") throw new InvalidOperationException("ephemeral_root_only");
         ProcessResult result = await process.RunAsync(new("terraform", arguments, TimeSpan.FromSeconds(seconds), WorkingDirectory: root), cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode != 0 || result.TimedOut) throw new IOException("terraform_command_failed");
+        if (result.ExitCode != 0 || result.TimedOut) throw FailureDiagnostics.WithCommandOutput(new IOException("terraform_command_failed"), "terraform", result);
         return result;
     }
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Parchwell.Runner.Run.Contracts;
+using Parchwell.Runner.Run.Execution;
 
 namespace Parchwell.Runner.Run.Cost;
 
@@ -127,7 +128,7 @@ public sealed partial class AzureCliRunStore : IArtifactStore
 
     private static void RequireSuccess(ProcessResult result)
     {
-        if (result.TimedOut || result.ExitCode != 0) throw new IOException("private_storage_cli_failed");
+        if (result.TimedOut || result.ExitCode != 0) throw FailureDiagnostics.WithCommandOutput(new IOException("private_storage_cli_failed"), "az", result);
     }
 
     private static void ValidatePath(string container, string path)

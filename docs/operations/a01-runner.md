@@ -6,6 +6,8 @@ This is the operational contract for the synthetic A01 deployment. The [approved
 
 For the live commands (`phase`, `gate`, `export`, `destroy`, `sweep`), run the Release executable built from the `main` head the workflow checked out; `generate` and `rehearse` run locally under Offline acceptance. Commands use explicit path arguments, never shell-generated command strings:
 
+A failed Runner command writes a stderr line beginning `runner_execution_failed`, followed by exception type names and only complete reason-code messages containing lowercase ASCII letters, underscores or colons; inner exception types and safe reasons follow on that same line. Set the GitHub environment variable `PARCHWELL_DEBUG_FAILURES` to exactly `true` only for a diagnostic window, then remove it: this also prints the unredacted exception and the last 50 lines of captured stdout and stderr attached at failed command boundaries, and the scenario and sweeper workflows print the whole redirected Runner log on failure. Workflows mask only the three Azure IDs, so debug output can expose other identifiers, paths and command output; ordinary failure forwarding prints only lines beginning `runner_execution_failed`.
+
 ```sh
 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll generate --input <private-runtime.json> --output <private-directory>
 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input <private-runtime.json> --output <private-directory>

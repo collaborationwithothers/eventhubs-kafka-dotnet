@@ -337,7 +337,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
             "&labelSelector=" + Uri.EscapeDataString(Selector(context)) + "&timeoutSeconds=1&allowWatchBookmarks=true";
         ProcessResult result = await process.RunAsync(new("kubectl", ["get", "--raw", uri, "--request-timeout=60s"],
             budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), Environment: RequireClusterEnvironment()), cancellationToken).ConfigureAwait(false);
-        if (result.TimedOut || result.ExitCode != 0) throw new InvalidDataException("pod_watch_lost");
+        if (result.TimedOut || result.ExitCode != 0) throw FailureDiagnostics.WithCommandOutput(new InvalidDataException("pod_watch_lost"), "kubectl", result);
         foreach (JsonElement item in ReadDocuments(result.StandardOutput))
         {
             string type = WorkerIdentity.Text(item, "type");
@@ -364,7 +364,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
             }
             var observation = new WorkerObservation(result);
             observations[mode] = observation;
-            if (result.ExitCode != 0 || result.TimedOut) throw new IOException("external_command_failed");
+            if (result.ExitCode != 0 || result.TimedOut) throw FailureDiagnostics.WithCommandOutput(new IOException("external_command_failed:kubectl"), "kubectl", result);
             using JsonDocument document = JsonDocument.Parse(result.StandardOutput);
             JsonElement items = document.RootElement.GetProperty("items");
             if (items.GetArrayLength() > 1) throw new InvalidDataException("worker_pod_replacement");
@@ -389,7 +389,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
                                     budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), Environment: RequireClusterEnvironment()), cancellationToken).ConfigureAwait(false);
                                 observation.Logs = logs;
                                 observation.LogFailure = null;
-                                if (logs.ExitCode != 0 || logs.TimedOut) throw new IOException("external_command_failed");
+                                if (logs.ExitCode != 0 || logs.TimedOut) throw FailureDiagnostics.WithCommandOutput(new IOException("external_command_failed:kubectl"), "kubectl", logs);
                                 return new(new(code, logs.StandardOutput, ""));
                             }
                             catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
@@ -450,7 +450,7 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
     private async Task<ProcessResult> CheckedAsync(string tool, IReadOnlyList<string> args, CancellationToken token)
     {
         ProcessResult result = await process.RunAsync(new(tool, args, budgets?.Seconds("api_seconds") ?? TimeSpan.FromSeconds(60), Environment: tool == "kubectl" ? RequireClusterEnvironment() : null), token).ConfigureAwait(false);
-        if (result.ExitCode != 0 || result.TimedOut) throw new IOException("external_command_failed");
+        if (result.ExitCode != 0 || result.TimedOut) throw FailureDiagnostics.WithCommandOutput(new IOException("external_command_failed"), tool, result);
         return result;
     }
     private IReadOnlyDictionary<string, string> RequireClusterEnvironment() =>
