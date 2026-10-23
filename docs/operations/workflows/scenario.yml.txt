@@ -159,6 +159,20 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Enable renewable serialized Azure CLI session
+        id: azure_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          real_az="$(command -v az)"
+          test -x "$real_az"
+          session_dir="$(mktemp -d "$RUNNER_TEMP/a01-oidc.XXXXXX")"
+          chmod 700 "$session_dir"
+          test -x "$GITHUB_WORKSPACE/scripts/azure-cli-session/az"
+          printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
+          printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
       - name: Publish full-SHA worker images and record registry digests
         id: images
         shell: bash
@@ -190,12 +204,12 @@ jobs:
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
       - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success'
+        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
       - name: Always attempt generation-checked destroy
-        if: always() && steps.prepare.outcome == 'success'
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
@@ -372,6 +386,20 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Enable renewable serialized Azure CLI session
+        id: azure_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          real_az="$(command -v az)"
+          test -x "$real_az"
+          session_dir="$(mktemp -d "$RUNNER_TEMP/a01-oidc.XXXXXX")"
+          chmod 700 "$session_dir"
+          test -x "$GITHUB_WORKSPACE/scripts/azure-cli-session/az"
+          printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
+          printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
       - name: Use immutable receipts from the probe publication
         env:
           LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
@@ -405,12 +433,12 @@ jobs:
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
       - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success'
+        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
       - name: Always attempt generation-checked destroy
-        if: always() && steps.prepare.outcome == 'success'
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1
@@ -575,6 +603,20 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Enable renewable serialized Azure CLI session
+        id: azure_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          real_az="$(command -v az)"
+          test -x "$real_az"
+          session_dir="$(mktemp -d "$RUNNER_TEMP/a01-oidc.XXXXXX")"
+          chmod 700 "$session_dir"
+          test -x "$GITHUB_WORKSPACE/scripts/azure-cli-session/az"
+          printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
+          printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
       - name: Use immutable receipts from the probe publication
         env:
           LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
@@ -608,12 +650,12 @@ jobs:
       # forcibly terminates remaining work five minutes after cancellation, so a destroy
       # that needs longer is cut off and the sweeper finishes it after expiry.
       - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success'
+        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1
       - name: Always attempt generation-checked destroy
-        if: always() && steps.prepare.outcome == 'success'
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
         run: |
           timeout 900 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1

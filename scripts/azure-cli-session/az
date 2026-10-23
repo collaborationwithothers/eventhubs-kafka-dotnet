@@ -1,0 +1,309 @@
+#!/usr/bin/env python3
+"""Serialize and renew the job's Azure CLI session; see the A01 runbook."""
+
+import base64
+import contextlib
+import fcntl
+import json
+import math
+import os
+from pathlib import Path
+import re
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+import urllib.request
+
+
+INVOCATION_SECONDS = 60
+MAX_AGE_SECONDS = 120
+MIN_LIFE_SECONDS = 90
+RESPONSE_LIMIT = 1_048_576
+LOCK_POLL_SECONDS = 0.05
+AUDIENCE = "api://AzureADTokenExchange"
+
+
+class SessionFailure(Exception):
+    pass
+
+
+class SessionInterrupted(BaseException):
+    def __init__(self, signum):
+        self.signum = signum
+
+
+@contextlib.contextmanager
+def signal_handlers():
+    def interrupted(signum, _frame):
+        raise SessionInterrupted(signum)
+
+    previous = {number: signal.signal(number, interrupted)
+                for number in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        yield
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
+
+
+@contextlib.contextmanager
+def request_timeout(seconds):
+    def expired(_signum, _frame):
+        raise TimeoutError()
+
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def stop_process(process):
+    # Keep the lock until the direct child is reaped and its group is stopped,
+    # even when another cancellation arrives during the one-second grace period.
+    previous = {number: signal.signal(number, signal.SIG_IGN)
+                for number in (signal.SIGINT, signal.SIGTERM, signal.SIGALRM)}
+    try:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGTERM)
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass
+        # The parent can exit before a grandchild that ignores SIGTERM.
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
+
+
+def run_process(argv, timeout, quiet):
+    started = time.monotonic()
+    stream = subprocess.DEVNULL if quiet else None
+    pending = []
+    previous = {number: signal.signal(number, lambda number, _frame: pending.append(number))
+                for number in (signal.SIGINT, signal.SIGTERM)}
+    process = None
+    try:
+        # A signal during Popen must not lose the child before we can reap it.
+        process = subprocess.Popen(argv, stdout=stream, stderr=stream,
+                                   start_new_session=True, close_fds=True)
+        for number, handler in previous.items():
+            signal.signal(number, handler)
+        if pending:
+            raise SessionInterrupted(pending[0])
+        remaining = timeout - (time.monotonic() - started)
+        if remaining <= 0:
+            raise TimeoutError()
+        returncode = process.wait(timeout=remaining)
+        return returncode if returncode >= 0 else 128 - returncode
+    except BaseException:
+        if process is not None:
+            stop_process(process)
+        raise
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_response(url, headers, timeout):
+    opener = urllib.request.build_opener(NoRedirect())
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    with opener.open(request, timeout=timeout) as response:
+        if not 200 <= response.status < 300:
+            raise SessionFailure("azure_cli_session_authentication_failed")
+        return response.read(RESPONSE_LIMIT + 1)
+
+
+def is_fresh(state, monotonic_now, utc_now):
+    if not isinstance(state, dict) or set(state) != {
+            "request_started_monotonic", "assertion_exp"}:
+        return False
+    started = state["request_started_monotonic"]
+    expiry = state["assertion_exp"]
+    try:
+        return (type(started) in (int, float) and math.isfinite(started)
+                and type(expiry) is int
+                and 0 <= monotonic_now - started < MAX_AGE_SECONDS
+                and expiry - utc_now >= MIN_LIFE_SECONDS)
+    except (OverflowError, ValueError):
+        return False
+
+
+def load_state(path):
+    try:
+        with path.open() as source:
+            os.fchmod(source.fileno(), 0o600)
+            return json.load(source)
+    except (OSError, ValueError):
+        return None
+
+
+def write_state(path, state):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent,
+                                         prefix="freshness-", delete=False) as output:
+            temporary = Path(output.name)
+            os.fchmod(output.fileno(), 0o600)
+            json.dump(state, output, separators=(",", ":"))
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def configuration(argv, environ):
+    try:
+        real_az = environ["PARCHWELL_REAL_AZ"]
+        session = Path(environ["PARCHWELL_AZ_SESSION_DIRECTORY"])
+        valid = (argv and environ.get("GITHUB_ACTIONS") == "true"
+                 and environ.get("GITHUB_REF") == "refs/heads/main"
+                 and os.path.isabs(real_az) and os.path.isfile(real_az)
+                 and os.access(real_az, os.X_OK)
+                 and not os.path.samefile(real_az, __file__)
+                 and session.is_dir()
+                 and stat.S_IMODE(session.stat().st_mode) == 0o700)
+        identifier = r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
+        valid = valid and all(re.fullmatch(identifier, environ[name]) for name in (
+            "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID"))
+        if not valid:
+            raise ValueError()
+        return real_az, session
+    except (KeyError, OSError, TypeError, ValueError):
+        raise SessionFailure("azure_cli_session_configuration_invalid") from None
+
+
+def refresh(state_path, environ, real_az, remaining, monotonic, utc, fetch, launch):
+    state_path.unlink(missing_ok=True)
+    committed = False
+    try:
+        endpoint = environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+        bearer = environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+        parsed = urllib.parse.urlsplit(endpoint)
+        if parsed.scheme != "https" or not parsed.hostname or not bearer:
+            raise ValueError()
+        query = [(key, value) for key, value in
+                 urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+                 if key != "audience"]
+        query.append(("audience", AUDIENCE))
+        url = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+        timeout = min(10, remaining())
+        started = monotonic()
+        with request_timeout(timeout):
+            body = fetch(url, {"Authorization": "Bearer " + bearer}, timeout)
+        remaining()
+        if len(body) > RESPONSE_LIMIT:
+            raise ValueError()
+        response = json.loads(body)
+        assertion = response.get("value") if isinstance(response, dict) else None
+        if not isinstance(assertion, str) or not assertion:
+            raise ValueError()
+        parts = assertion.split(".")
+        if len(parts) != 3 or not all(parts):
+            raise ValueError()
+        payload = json.loads(base64.b64decode(
+            parts[1] + "=" * (-len(parts[1]) % 4), altchars=b"-_", validate=True))
+        expiry = payload.get("exp") if isinstance(payload, dict) else None
+        if type(expiry) is not int:
+            raise ValueError()
+        state = {"request_started_monotonic": started, "assertion_exp": expiry}
+        if not is_fresh(state, monotonic(), utc()):
+            raise SessionFailure("azure_cli_session_assertion_expired")
+        login = [real_az, "login", "--service-principal", "--username",
+                 environ["AZURE_CLIENT_ID"], "--tenant", environ["AZURE_TENANT_ID"],
+                 "--federated-token", assertion, "--output", "none", "--only-show-errors"]
+        if launch(login, min(30, remaining()), True) != 0:
+            raise ValueError()
+        if launch([real_az, "account", "set", "--subscription",
+                   environ["AZURE_SUBSCRIPTION_ID"], "--output", "none", "--only-show-errors"],
+                  min(10, remaining()), True) != 0:
+            raise ValueError()
+        remaining()
+        if not is_fresh(state, monotonic(), utc()):
+            raise SessionFailure("azure_cli_session_assertion_expired")
+        write_state(state_path, state)
+        committed = True
+        return state
+    except (SessionFailure, TimeoutError, subprocess.TimeoutExpired):
+        raise
+    except Exception:
+        raise SessionFailure("azure_cli_session_authentication_failed") from None
+    finally:
+        if not committed:
+            state_path.unlink(missing_ok=True)
+
+
+def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
+         sleep=time.sleep, fetch=None, launch=None):
+    environ = os.environ if environ is None else environ
+    fetch = fetch_response if fetch is None else fetch
+    launch = run_process if launch is None else launch
+    deadline = monotonic() + INVOCATION_SECONDS
+
+    def remaining():
+        seconds = deadline - monotonic()
+        if seconds <= 0:
+            raise TimeoutError()
+        return seconds
+
+    try:
+        with signal_handlers():
+            real_az, session = configuration(argv, environ)
+            descriptor = os.open(session / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            with os.fdopen(descriptor, "a") as lock:
+                os.fchmod(lock.fileno(), 0o600)
+                while True:
+                    remaining()
+                    try:
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        sleep(min(LOCK_POLL_SECONDS, remaining()))
+                state_path = session / "freshness.json"
+                if argv == ["account", "clear"]:
+                    state_path.unlink(missing_ok=True)
+                    return launch([real_az] + argv, remaining(), False)
+                control_rejected = (
+                    argv[0] in ("login", "logout")
+                    or argv[:2] == ["account", "set"]
+                    or argv[:2] == ["cloud", "set"]
+                )
+                if control_rejected:
+                    raise SessionFailure("azure_cli_session_control_rejected")
+                state = load_state(state_path)
+                if not is_fresh(state, monotonic(), utc()):
+                    state = refresh(state_path, environ, real_az, remaining,
+                                    monotonic, utc, fetch, launch)
+                if not is_fresh(state, monotonic(), utc()):
+                    state_path.unlink(missing_ok=True)
+                    raise SessionFailure("azure_cli_session_assertion_expired")
+                return launch([real_az] + argv, remaining(), False)
+    except SessionInterrupted as error:
+        return 128 + error.signum
+    except (TimeoutError, subprocess.TimeoutExpired):
+        print("azure_cli_session_timeout", file=sys.stderr)
+        return 124
+    except SessionFailure as error:
+        print(error.args[0], file=sys.stderr)
+        return 1
+    except Exception:
+        print("azure_cli_session_authentication_failed", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
