@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Parchwell.Runner.Run.Contracts;
+using Parchwell.Runner.Run.Execution;
 
 namespace Parchwell.Runner.Run.Cost;
 
@@ -205,7 +206,7 @@ public sealed partial class RunLedger(IArtifactStore store, TimeProvider clock)
                 if (readback is not null && readback.Bytes.AsSpan().SequenceEqual(bytes)) return;
                 if (outcome == ArtifactWriteOutcome.Stored) break;
             }
-            catch (IOException) when (outcome == ArtifactWriteOutcome.Uncertain && attempt < 2) { }
+            catch (IOException exception) when (outcome == ArtifactWriteOutcome.Uncertain && attempt < 2) { FailureDiagnostics.Write(exception, Console.Error); }
         }
         throw new InvalidOperationException("ledger_readback_unconfirmed");
     }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Cost;
+using Parchwell.Runner.Run.Execution;
 
 namespace Parchwell.Runner.Run.Evidence;
 
@@ -64,6 +65,7 @@ public static class PrivateProvenanceCollector
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            FailureDiagnostics.Write(exception, Console.Error);
             // A missing status receipt cannot prevent preservation of the available originals.
             complete = false;
         }
@@ -87,10 +89,10 @@ public static class PrivateProvenanceCollector
                     await file.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (FileNotFoundException) { missing.Add(relative); }
-            catch (DirectoryNotFoundException) { missing.Add(relative); }
+            catch (FileNotFoundException exception) { FailureDiagnostics.Write(exception, Console.Error); missing.Add(relative); }
+            catch (DirectoryNotFoundException exception) { FailureDiagnostics.Write(exception, Console.Error); missing.Add(relative); }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or KeyNotFoundException)
-            { invalid.Add(relative); }
+            { FailureDiagnostics.Write(exception, Console.Error); invalid.Add(relative); }
         }
     }
 

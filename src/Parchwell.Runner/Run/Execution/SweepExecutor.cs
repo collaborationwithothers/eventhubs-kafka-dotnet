@@ -10,6 +10,7 @@ public sealed class SweepExecutor(RunLedger ledger, ITerraformEnvironment enviro
 {
     public async Task<bool> ExecuteAsync(string outputDirectory, CancellationToken cancellationToken)
     {
+        using IDisposable diagnosticScope = FailureDiagnostics.UseStage("sweep");
         EnvironmentGeneration? aged = await environment.ReadGenerationAsync(cancellationToken).ConfigureAwait(false);
         if (aged is null) return await RecoverDestroyedAsync(cancellationToken).ConfigureAwait(false);
         if (clock.GetUtcNow() <= aged.ExpiresAt) return false;
@@ -32,12 +33,20 @@ public sealed class SweepExecutor(RunLedger ledger, ITerraformEnvironment enviro
                 // A recovery snapshot never replaces the immutable original phase manifest or supplies missing watch proof.
                 await ledger.MarkInterruptedAsync(phase, aged.RunId, "recovery_history_unavailable", export.Token).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { exportFailed = true; }
+            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                FailureDiagnostics.Write(exception, Console.Error);
+                exportFailed = true;
+            }
         }
         using var cleanup = new CancellationTokenSource(budgets?.Seconds("destroy_seconds") ?? TimeSpan.FromSeconds(900), clock);
         bool destroyed;
         try { destroyed = await guard.DestroyAsync(aged, true, cleanup.Token).ConfigureAwait(false); }
-        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { destroyed = false; }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            FailureDiagnostics.Write(exception, Console.Error);
+            destroyed = false;
+        }
         var receipt = new DestroyReceipt(aged.RunId, clock.GetUtcNow(), destroyed,
             exportFailed ? "recovery_export_incomplete" : destroyed ? "destroyed" : "destroy_incomplete", RecoveryExport: recovered);
         await PersistReceiptAsync(phase, receipt, cleanup.Token).ConfigureAwait(false);

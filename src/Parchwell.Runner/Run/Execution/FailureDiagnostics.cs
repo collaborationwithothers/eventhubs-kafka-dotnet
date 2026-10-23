@@ -6,10 +6,21 @@ namespace Parchwell.Runner.Run.Execution;
 /// <summary>Formats safe Runner failures and opt-in unredacted command diagnostics.</summary>
 internal static class FailureDiagnostics
 {
-    public static void Write(Exception exception, TextWriter error)
+    private static readonly AsyncLocal<string?> CurrentStage = new();
+
+    internal static IDisposable UseStage(string stage)
     {
+        string? previous = CurrentStage.Value;
+        CurrentStage.Value = stage;
+        return new StageScope(previous);
+    }
+
+    public static void Write(Exception exception, TextWriter error, string? stage = null)
+    {
+        stage ??= CurrentStage.Value;
         bool debug = DebugEnabled();
         var line = new StringBuilder("runner_execution_failed ");
+        if (stage is not null) line.Append(stage).Append(' ');
         bool first = true;
         foreach (Exception entry in Traverse(exception))
         {
@@ -23,6 +34,7 @@ internal static class FailureDiagnostics
         error.WriteLine(line.ToString());
         if (!debug) return;
 
+        if (stage is not null) error.WriteLine($"runner_debug_exception {stage}");
         error.WriteLine(exception.ToString());
         foreach (Exception entry in Traverse(exception))
         {
@@ -33,7 +45,9 @@ internal static class FailureDiagnostics
             void WriteTail(string stream, string key)
             {
                 if (entry.Data[key] is not string { Length: > 0 } tail) return;
-                error.WriteLine($"runner_debug_command {tool} {stream}");
+                error.WriteLine(stage is null
+                    ? $"runner_debug_command {tool} {stream}"
+                    : $"runner_debug_command {stage} {tool} {stream}");
                 error.WriteLine(tail);
             }
         }
@@ -78,6 +92,18 @@ internal static class FailureDiagnostics
                     pending.Push(aggregate.InnerExceptions[index]);
             }
             else if (entry.InnerException is Exception inner) pending.Push(inner);
+        }
+    }
+
+    private sealed class StageScope(string? previous) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            CurrentStage.Value = previous;
+            _disposed = true;
         }
     }
 }

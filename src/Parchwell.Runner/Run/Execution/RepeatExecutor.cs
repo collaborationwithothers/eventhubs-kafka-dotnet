@@ -61,14 +61,14 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         bool observationsIncomplete = false;
         try { await cluster.PreserveObservedWorkersAsync(context, retentionToken).ConfigureAwait(false); }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
-        { observationsIncomplete = true; }
+        { FailureDiagnostics.Write(exception, Console.Error); observationsIncomplete = true; }
         try { await cluster.PreserveAvailableArtifactsAsync(context, cancellationToken).ConfigureAwait(false); }
         finally
         {
             if (admissions.TryGetValue(context.RunId, out PodAdmission? admission))
             {
                 try { await cluster.CompleteProducerWatchAsync(context, admission, cancellationToken).ConfigureAwait(false); }
-                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { }
+                catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException) { FailureDiagnostics.Write(exception, Console.Error); }
                 await File.WriteAllBytesAsync(Path.Combine(context.OutputDirectory, "pod-history.json"),
                     System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(admission.Events), retentionToken).ConfigureAwait(false);
             }

@@ -16,6 +16,15 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        using IDisposable? diagnosticScope = (args.Length == 0 ? null : args[0]) switch
+        {
+            "phase" or "generate" => FailureDiagnostics.UseStage("apply"),
+            "gate" or "rehearse" => FailureDiagnostics.UseStage("repeat"),
+            "export" => FailureDiagnostics.UseStage("export"),
+            "destroy" => FailureDiagnostics.UseStage("destroy"),
+            "sweep" => FailureDiagnostics.UseStage("sweep"),
+            _ => null
+        };
         try
         {
             if (args.Length < 1) throw new InvalidDataException("command_required");
@@ -113,7 +122,7 @@ internal static class Program
                     await ReconcileAvailableCostAsync(runtime, phase, provider.GetRequiredService<ActualCostReconciler>(), cancellation.Token).ConfigureAwait(false);
                     await WriteCandidateAsync(runtime, output, executed.Result, ledger, provider.GetRequiredService<PhaseCandidate>(), cancellation.Token,
                         executions: executed.Repeats).ConfigureAwait(false);
-                    exit = executed.Result is "completed" or "already_completed" ? 0 : 1;
+                    exit = PhaseExitCode(executed);
                     break;
                 case "gate":
                     LedgerDocument document = await ledger.ReadAsync(cancellation.Token).ConfigureAwait(false);
@@ -170,9 +179,12 @@ internal static class Program
         }
     }
 
+    internal static int PhaseExitCode(PhaseExecution execution) => execution.Result is "completed" or "already_completed" ? 0 : 1;
+
     private static async Task<bool> ExportAsync(RunLedger ledger, EvidenceExporter exporter,
         TimeProvider clock, JsonElement runtime, byte[] runtimeBytes, string phase, string env, string output, CancellationToken token)
     {
+        using IDisposable diagnosticScope = FailureDiagnostics.UseStage("export");
         PhaseRecord record = (await ledger.ReadAsync(token).ConfigureAwait(false)).Phases[phase];
         if (record.EnvironmentRunId != env) throw new InvalidDataException("export_generation_mismatch");
         if (record.PrivateExport?.Complete == true) return true;
@@ -190,6 +202,7 @@ internal static class Program
     private static async Task DestroyAsync(RunLedger ledger, TerraformEnvironment environment, GenerationGuard guard,
         EvidenceExporter exporter, TimeProvider clock, string phase, string env, string output, CancellationToken token)
     {
+        using IDisposable diagnosticScope = FailureDiagnostics.UseStage("destroy");
         PhaseRecord record = (await ledger.ReadAsync(token).ConfigureAwait(false)).Phases[phase];
         if (record.EnvironmentRunId != env) throw new InvalidDataException("destroy_generation_mismatch");
         if (record.DestroyReceipt?.Complete == true)
@@ -209,6 +222,7 @@ internal static class Program
     private static async Task WriteCandidateAsync(JsonElement runtime, string output, string? status, RunLedger ledger,
         PhaseCandidate builder, CancellationToken token, string? phaseName = null, IReadOnlyList<RepeatExecution>? executions = null)
     {
+        using IDisposable diagnosticScope = FailureDiagnostics.UseStage("export");
         LedgerDocument document = await ledger.ReadAsync(token).ConfigureAwait(false);
         string selectedPhase = phaseName ?? WorkerIdentity.Text(runtime, "phase");
         byte[] candidate = await builder.CreateAsync(runtime, document, selectedPhase, status ?? PhaseCandidate.DurableStatus(document.Phases[selectedPhase]),

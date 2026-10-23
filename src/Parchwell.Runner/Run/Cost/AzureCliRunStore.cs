@@ -72,8 +72,8 @@ public sealed partial class AzureCliRunStore : IArtifactStore
             else arguments.AddRange(["--overwrite", "true", "--if-match", expectedETag!]);
             ProcessResult result;
             try { result = await ExecuteAsync(arguments, cancellationToken).ConfigureAwait(false); }
-            catch (OperationCanceledException) { return ArtifactWriteOutcome.Uncertain; }
-            catch (IOException) { return ArtifactWriteOutcome.Uncertain; }
+            catch (OperationCanceledException exception) { FailureDiagnostics.Write(exception, Console.Error); return ArtifactWriteOutcome.Uncertain; }
+            catch (IOException exception) { FailureDiagnostics.Write(exception, Console.Error); return ArtifactWriteOutcome.Uncertain; }
             if (result.ExitCode == 0 && !result.TimedOut) return ArtifactWriteOutcome.Stored;
             if (result.StandardError.Contains("ConditionNotMet", StringComparison.Ordinal) ||
                 result.StandardError.Contains("BlobAlreadyExists", StringComparison.Ordinal) ||

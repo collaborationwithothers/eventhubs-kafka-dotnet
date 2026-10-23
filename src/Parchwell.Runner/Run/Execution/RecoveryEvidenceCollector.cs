@@ -38,7 +38,7 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
             await EnsureGenerationAsync(expected, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !cancellationToken.IsCancellationRequested)
-        { reasons.Add("recovery_collection_incomplete"); }
+        { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("recovery_collection_incomplete"); }
         await File.WriteAllBytesAsync(Path.Combine(directory, "collection-receipt.json"), JsonSerializer.SerializeToUtf8Bytes(new
         {
             schema_version = 1, environment_run_id = expected.RunId, phase, observed_at = clock.GetUtcNow(),
@@ -66,7 +66,7 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
                 budgets.Seconds("api_seconds"), token).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !token.IsCancellationRequested)
-        { reasons.Add("recovery_cluster_unavailable"); return; }
+        { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("recovery_cluster_unavailable"); return; }
         await EnsureGenerationAsync(expected, token).ConfigureAwait(false);
         string eventDirectory = Path.Combine(directory, "kubernetes"); Directory.CreateDirectory(eventDirectory);
         await TryCommandAsync("kubectl", ["get", "--raw", "/api/v1/namespaces/parchwell/events?fieldSelector=involvedObject.kind%3DPod&limit=10000"],
@@ -106,7 +106,7 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
             account = uri.Host.Split('.')[0];
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or InvalidDataException)
-        { reasons.Add("recovery_worker_storage_unavailable"); return; }
+        { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("recovery_worker_storage_unavailable"); return; }
         foreach (RepeatRecord repeat in record.Repeats)
         {
             string run = repeat.RunId ?? throw new InvalidDataException("recovery_run_id_missing");
@@ -131,7 +131,7 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
                     _ = Files(directory);
                 }
                 catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !token.IsCancellationRequested)
-                { reasons.Add("recovery_worker_artifact_unavailable"); }
+                { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("recovery_worker_artifact_unavailable"); }
             }
         }
     }
@@ -160,7 +160,7 @@ public sealed partial class RecoveryEvidenceCollector(IProcessRunner process, Te
             }
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException && !token.IsCancellationRequested)
-        { reasons.Add("recovery_cluster_artifact_unavailable"); }
+        { FailureDiagnostics.Write(exception, Console.Error); reasons.Add("recovery_cluster_artifact_unavailable"); }
     }
 
     private async Task EnsureGenerationAsync(EnvironmentGeneration expected, CancellationToken token) =>
