@@ -4,12 +4,14 @@ using Parchwell.Runner.Run.Contracts;
 
 namespace Parchwell.Runner.Run.Execution;
 
-public sealed class BoundedProcessRunner(TimeProvider clock) : IProcessRunner
+public sealed class BoundedProcessRunner(TimeProvider clock, ExecutionBudgets? budgets = null) : IProcessRunner
 {
+    private readonly TimeSpan maximumTimeout = TimeSpan.FromSeconds(Math.Max(900, budgets?.Number("destroy_seconds") ?? 900));
+
     public async Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Timeout <= TimeSpan.Zero || request.Timeout > TimeSpan.FromSeconds(900) || request.MaxOutputBytes is <= 0 or > 16777216)
+        if (request.Timeout <= TimeSpan.Zero || request.Timeout > maximumTimeout || request.MaxOutputBytes is <= 0 or > 16777216)
             throw new ArgumentOutOfRangeException(nameof(request));
         var start = new ProcessStartInfo(request.FileName)
         {

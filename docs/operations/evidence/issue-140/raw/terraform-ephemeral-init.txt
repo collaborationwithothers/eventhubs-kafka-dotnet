@@ -1,0 +1,102 @@
+Command: timeout 600 terraform -chdir=infra/ephemeral init -backend=false -input=false -lockfile=readonly
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+[0m[1mInitializing modules...[0m
+Downloading registry.terraform.io/Azure/avm-res-insights-component/azurerm 0.4.0 for application_insights...
+- application_insights in .terraform/modules/application_insights
+Downloading registry.terraform.io/Azure/avm-res-eventhub-namespace/azurerm 0.1.1 for eventhubs...
+- eventhubs in .terraform/modules/eventhubs
+Downloading registry.terraform.io/Azure/avm-res-containerservice-managedcluster/azurerm 0.8.5 for aks...
+- aks in .terraform/modules/aks
+Downloading registry.terraform.io/Azure/avm-res-storage-storageaccount/azurerm 0.10.0 for storage...
+- storage in .terraform/modules/storage
+- aks.nodepools in .terraform/modules/aks/modules/agentpool
+- aks.default_agent_pool_data in .terraform/modules/aks/modules/agentpool
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.7.0 for eventhubs.private_endpoint_interfaces...
+- eventhubs.private_endpoint_interfaces in .terraform/modules/eventhubs.private_endpoint_interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for application_insights.avm_interfaces...
+- application_insights.avm_interfaces in .terraform/modules/application_insights.avm_interfaces
+- aks.maintenanceconfiguration in .terraform/modules/aks/modules/maintenanceconfiguration
+- aks.namespace in .terraform/modules/aks/modules/namespace
+- aks.alerting in .terraform/modules/aks/modules/alerting
+- aks.monitoring in .terraform/modules/aks/modules/monitoring
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.7.0 for aks.interfaces...
+- aks.interfaces in .terraform/modules/aks.interfaces
+- storage.private_endpoints in .terraform/modules/storage/modules/private_endpoint
+- storage.diagnostic_setting_file in .terraform/modules/storage/modules/diagnostic_setting
+- storage.diagnostic_setting_table in .terraform/modules/storage/modules/diagnostic_setting
+- storage.diagnostic_setting_queue in .terraform/modules/storage/modules/diagnostic_setting
+- storage.data_lake_filesystems in .terraform/modules/storage/modules/data_lake_filesystem
+- storage.table_service in .terraform/modules/storage/modules/table_service
+- storage.blob_service in .terraform/modules/storage/modules/blob_service
+- storage.diagnostic_setting_storage_account in .terraform/modules/storage/modules/diagnostic_setting
+- storage.containers in .terraform/modules/storage/modules/container
+- storage.role_assignments in .terraform/modules/storage/modules/role_assignments
+- storage.queues in .terraform/modules/storage/modules/queue
+- storage.management_policy in .terraform/modules/storage/modules/management_policy
+- storage.queue_service in .terraform/modules/storage/modules/queue_service
+- storage.tables in .terraform/modules/storage/modules/table
+- storage.file_service in .terraform/modules/storage/modules/file_service
+- storage.static_website in .terraform/modules/storage/modules/static_website
+- storage.shares in .terraform/modules/storage/modules/share
+- storage.diagnostic_setting_blob in .terraform/modules/storage/modules/diagnostic_setting
+- storage.local_users in .terraform/modules/storage/modules/local_user
+- storage.private_endpoints.role_assignments in .terraform/modules/storage/modules/role_assignments
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.diagnostic_setting_file.interfaces...
+- storage.diagnostic_setting_file.interfaces in .terraform/modules/storage.diagnostic_setting_file.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.diagnostic_setting_queue.interfaces...
+- storage.diagnostic_setting_queue.interfaces in .terraform/modules/storage.diagnostic_setting_queue.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.diagnostic_setting_table.interfaces...
+- storage.diagnostic_setting_table.interfaces in .terraform/modules/storage.diagnostic_setting_table.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.diagnostic_setting_storage_account.interfaces...
+- storage.diagnostic_setting_storage_account.interfaces in .terraform/modules/storage.diagnostic_setting_storage_account.interfaces
+- storage.containers.role_assignments in .terraform/modules/storage/modules/role_assignments
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.role_assignments.interfaces...
+- storage.role_assignments.interfaces in .terraform/modules/storage.role_assignments.interfaces
+- storage.queues.role_assignments in .terraform/modules/storage/modules/role_assignments
+- storage.tables.role_assignments in .terraform/modules/storage/modules/role_assignments
+- storage.shares.role_assignments in .terraform/modules/storage/modules/role_assignments
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.diagnostic_setting_blob.interfaces...
+- storage.diagnostic_setting_blob.interfaces in .terraform/modules/storage.diagnostic_setting_blob.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.private_endpoints.role_assignments.interfaces...
+- storage.private_endpoints.role_assignments.interfaces in .terraform/modules/storage.private_endpoints.role_assignments.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.containers.role_assignments.interfaces...
+- storage.containers.role_assignments.interfaces in .terraform/modules/storage.containers.role_assignments.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.queues.role_assignments.interfaces...
+- storage.queues.role_assignments.interfaces in .terraform/modules/storage.queues.role_assignments.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.shares.role_assignments.interfaces...
+- storage.shares.role_assignments.interfaces in .terraform/modules/storage.shares.role_assignments.interfaces
+Downloading registry.terraform.io/Azure/avm-utl-interfaces/azure 0.6.0 for storage.tables.role_assignments.interfaces...
+- storage.tables.role_assignments.interfaces in .terraform/modules/storage.tables.role_assignments.interfaces
+
+[0m[1mInitializing provider plugins...[0m
+- terraform.io/builtin/terraform is built in to Terraform
+- Reusing previous version of azure/modtm from the dependency lock file
+- Reusing previous version of hashicorp/time from the dependency lock file
+- Reusing previous version of hashicorp/azurerm from the dependency lock file
+- Reusing previous version of azure/azapi from the dependency lock file
+- Reusing previous version of hashicorp/random from the dependency lock file
+- Installing hashicorp/time v0.13.1...
+- Installed hashicorp/time v0.13.1 (signed by HashiCorp)
+- Installing hashicorp/azurerm v4.81.0...
+- Installed hashicorp/azurerm v4.81.0 (signed by HashiCorp)
+- Installing azure/azapi v2.13.0...
+- Installed azure/azapi v2.13.0 (signed by a HashiCorp partner, key ID [0m[1m6F0B91BDE98478CF[0m)[0m
+- Installing hashicorp/random v3.9.1...
+- Installed hashicorp/random v3.9.1 (signed by HashiCorp)
+- Installing azure/modtm v0.3.5...
+- Installed azure/modtm v0.3.5 (signed by a HashiCorp partner, key ID [0m[1m6F0B91BDE98478CF[0m)[0m
+Partner and community providers are signed by their developers.
+If you'd like to know more about provider signing, you can read about it here:
+https://developer.hashicorp.com/terraform/cli/plugins/signing
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+
+Exit code: 0

@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Execution;
+using Parchwell.Runner.Tests.Deployment;
 using Xunit;
 
 namespace Parchwell.Runner.Tests.Execution;
@@ -107,6 +109,25 @@ public sealed class BoundedProcessRunnerTests : IDisposable
         var runner = new BoundedProcessRunner(TimeProvider.System);
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => runner.RunAsync(
             new("/does-not-exist", [], TimeSpan.FromSeconds(timeoutSeconds), outputBytes), TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(1049, true)]
+    [InlineData(1050, true)]
+    [InlineData(1051, false)]
+    public async Task Given_DeclaredDestroyBudget_When_ProcessTimeoutIsAtBoundary_Then_OnlyWithinBudgetIsAccepted(int timeoutSeconds, bool accepted)
+    {
+        using JsonDocument limits = JsonDocument.Parse(File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "docs/operations/a01-runtime-limits.json")));
+        var runner = new BoundedProcessRunner(TimeProvider.System, ExecutionBudgets.Read(limits.RootElement));
+        if (accepted)
+        {
+            ProcessResult result = await runner.RunAsync(new("/bin/sh", ["-c", "exit 0"], TimeSpan.FromSeconds(timeoutSeconds), 4096),
+                TestContext.Current.CancellationToken);
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(result.TimedOut);
+        }
+        else await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => runner.RunAsync(
+            new("/does-not-exist", [], TimeSpan.FromSeconds(timeoutSeconds), 4096), TestContext.Current.CancellationToken));
     }
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);

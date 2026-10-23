@@ -1,0 +1,6 @@
+Command: timeout 600 terraform -chdir=infra/ephemeral validate -no-color
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+Success! The configuration is valid.
+
+
+Exit code: 0

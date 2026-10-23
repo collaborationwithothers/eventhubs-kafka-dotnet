@@ -1,0 +1,275 @@
+{
+  "files": [
+    {
+      "path": "raw/budget-arithmetic.txt",
+      "producer": {
+        "command": "python3 /tmp/issue140/budget-arithmetic.py",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 483,
+      "sha256": "16727718b9e8cdacd66f7f4f85cc55a576265b9005f72d564822e6ac48320956"
+    },
+    {
+      "path": "raw/check-docs-final.txt",
+      "producer": {
+        "command": "timeout 600 npm run check:docs",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 10297,
+      "sha256": "c83758538e51e11b96f29c1a296b31242fbab981140c13f7d98b031ea67f72ce"
+    },
+    {
+      "path": "raw/check-docs-review-2.txt",
+      "producer": {
+        "command": "timeout 600 npm run check:docs",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 10439,
+      "sha256": "83df2ea58baa2b44aa7d9f4236728253f027a9b45c5a0fa2a5b69b0dc593ddcc"
+    },
+    {
+      "path": "raw/check-docs.txt",
+      "producer": {
+        "command": "timeout 600 npm run check:docs",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 10438,
+      "sha256": "ec5a4e64f22228a6390f93aa1eeee3026b944c60ea8ac2835554650915609dfc"
+    },
+    {
+      "path": "raw/diff-check.txt",
+      "producer": {
+        "command": "git diff --check origin/main",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 108,
+      "sha256": "cf902fb1ffdc1f9f531cd441f69cde7dd3b72eda409b841729c5c3c3ea1651e2"
+    },
+    {
+      "path": "raw/dotnet-build-final.txt",
+      "producer": {
+        "command": "timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 1975,
+      "sha256": "29c3792a2ee7b5633700e011c8bc3a46c809e775730aac5d3cb21d3173b9a2d9"
+    },
+    {
+      "path": "raw/dotnet-build.txt",
+      "producer": {
+        "command": "timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 1,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 2725,
+      "sha256": "a9dcc78ccbeca62efc04631efeadd9b7c851cc0b45489c35dc8f1a3130830534"
+    },
+    {
+      "path": "raw/dotnet-restore.txt",
+      "producer": {
+        "command": "timeout 600 dotnet restore Parchwell.slnx --locked-mode",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 1659,
+      "sha256": "40b8ebe92d801b92f29cae1f5b4d52dc62b98f155eccd3fa25ecb97df7c2037f"
+    },
+    {
+      "path": "raw/runner-tests.txt",
+      "producer": {
+        "command": "timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 626,
+      "sha256": "2ed846f8491af8f9838b4f9c2e0aced52aaaab4fca80ae9c7371a372d5a89dac"
+    },
+    {
+      "path": "raw/sources/azurerm-features.md.txt",
+      "producer": {
+        "command": "curl -fsSL https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.81.0/website/docs/guides/features-block.html.markdown -o /tmp/issue140/sources/azurerm-features.md",
+        "source_commit": "5782a75422c68a0d0804ac16d97dcaf3df5ee2fa",
+        "capture": "Python shutil.copyfile('/tmp/issue140/sources/azurerm-features.md', '/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-140/raw/sources/azurerm-features.md.txt') copied the downloaded bytes unchanged."
+      },
+      "size_bytes": 19608,
+      "sha256": "e9263d923284df16a4af064da7c42ddae37e7cf1d32c88fd623d9554c3463192"
+    },
+    {
+      "path": "raw/sources/kubelogin-azurecli.md.txt",
+      "producer": {
+        "command": "curl -fsSL https://raw.githubusercontent.com/Azure/kubelogin/v0.2.21/docs/book/src/concepts/login-modes/azurecli.md -o /tmp/issue140/sources/kubelogin-azurecli.md",
+        "source_commit": "532826311d3a5458df998a2cf910f5dec2a66e17",
+        "capture": "Python shutil.copyfile('/tmp/issue140/sources/kubelogin-azurecli.md', '/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-140/raw/sources/kubelogin-azurecli.md.txt') copied the downloaded bytes unchanged."
+      },
+      "size_bytes": 1188,
+      "sha256": "5644efbb2fd18e4dab1bf74a4201b8388e3f750e2b621f8f50ffa369454225ce"
+    },
+    {
+      "path": "raw/sources/terraform-azure-client.go.txt",
+      "producer": {
+        "command": "curl -fsSL https://raw.githubusercontent.com/hashicorp/terraform/v1.16.6/internal/backend/remote-state/azure/client.go -o /tmp/issue140/sources/terraform-azure-client.go",
+        "source_commit": "7b8f1669b95119ac6021e05c9d10eae7cf75f60b",
+        "capture": "Python shutil.copyfile('/tmp/issue140/sources/terraform-azure-client.go', '/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-140/raw/sources/terraform-azure-client.go.txt') copied the downloaded bytes unchanged."
+      },
+      "size_bytes": 7410,
+      "sha256": "17f8aeddb927eaef0659509e2e5b25562b0bf3e68926274d535ebf95bf7b8ad1"
+    },
+    {
+      "path": "raw/sources/terraform-unlock.go.txt",
+      "producer": {
+        "command": "curl -fsSL https://raw.githubusercontent.com/hashicorp/terraform/v1.16.6/internal/command/unlock.go -o /tmp/issue140/sources/terraform-unlock.go",
+        "source_commit": "7b8f1669b95119ac6021e05c9d10eae7cf75f60b",
+        "capture": "Python shutil.copyfile('/tmp/issue140/sources/terraform-unlock.go', '/workspace/eventhubs-kafka-dotnet/docs/operations/evidence/issue-140/raw/sources/terraform-unlock.go.txt') copied the downloaded bytes unchanged."
+      },
+      "size_bytes": 3813,
+      "sha256": "ee3d9bdd785abfe57023876ec12b2208dadf866868bf449e1745e5e3da808dc6"
+    },
+    {
+      "path": "raw/terraform-ephemeral-init.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/ephemeral init -backend=false -input=false -lockfile=readonly",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 8092,
+      "sha256": "9f1f6f020419ce188b085e8f53563733ddf044d577d1828e90e7f6c20de84410"
+    },
+    {
+      "path": "raw/terraform-ephemeral-test.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/ephemeral test -test-directory=tests -no-color",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 4374,
+      "sha256": "d413a9b40efa897402b46f33d8974de332fa73ff7894606fc20c30601306e766"
+    },
+    {
+      "path": "raw/terraform-ephemeral-validate.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/ephemeral validate -no-color",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 181,
+      "sha256": "c8354e657ebddda3a0ef63b8dae24874f3c1d0fd942adaa5d9ab5c03fe7d2bda"
+    },
+    {
+      "path": "raw/terraform-fmt-infra.txt",
+      "producer": {
+        "command": "timeout 600 terraform fmt -check -recursive infra",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 129,
+      "sha256": "49693440ac0a3a29083111de67feabcad3c519e466939e39168eefd06d1ed580"
+    },
+    {
+      "path": "raw/terraform-fmt-tests.txt",
+      "producer": {
+        "command": "timeout 600 terraform fmt -check -recursive tests/terraform",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 139,
+      "sha256": "3cc5c9ad5509c2e62f81222a1e35848e749e96738f63a2c4a038a271f077d0d1"
+    },
+    {
+      "path": "raw/terraform-persistent-init.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/persistent init -backend=false -input=false -lockfile=readonly",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 9872,
+      "sha256": "0c77d60e5bfeefcb26273c529e74e950542e1a3ab40d684b22df6d34450f5f41"
+    },
+    {
+      "path": "raw/terraform-persistent-test.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/persistent test -test-directory=tests -no-color",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 1936,
+      "sha256": "f8eb3aa40a4bae6287b9ba29cf98d5ea05eb83d113c3e2b54ae56fedf37ee619"
+    },
+    {
+      "path": "raw/terraform-persistent-validate.txt",
+      "producer": {
+        "command": "timeout 600 terraform -chdir=infra/persistent validate -no-color",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 182,
+      "sha256": "80664a987a243d41ea077d32b2bf334ea559d722a144d034b9de793bfffb44b1"
+    },
+    {
+      "path": "raw/tflint-ephemeral.txt",
+      "producer": {
+        "command": "timeout 600 tflint --chdir=infra/ephemeral --config=\"$PWD/.tflint.hcl\"",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 1,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 237,
+      "sha256": "1f2b182ee2f29aa41e43a23def165eb6984ace9d1456a9edd983a84d478f0f4d"
+    },
+    {
+      "path": "raw/tflint-init.txt",
+      "producer": {
+        "command": "timeout 600 tflint --init --config=\"$PWD/.tflint.hcl\"",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 1,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 342,
+      "sha256": "c78dec50f39ad5d79c389c5984b5a5892e300c0a6dd480c959e5fd3ad050fd33"
+    },
+    {
+      "path": "raw/tflint-persistent.txt",
+      "producer": {
+        "command": "timeout 600 tflint --chdir=infra/persistent --config=\"$PWD/.tflint.hcl\"",
+        "source_commit": "5d5c168cf855134dbdac9128154c38c448887bc8",
+        "exit_code": 1,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 238,
+      "sha256": "573011d7d2930a34357528470958c42ee24364e31c0e8b1fa9b42786a544417f"
+    },
+    {
+      "path": "raw/tool-versions.txt",
+      "producer": {
+        "command": "dotnet --version && terraform version && tflint --version && node --version && npm --version",
+        "source_commit": "a20dad4b736c81956961a2be57abc347a450d0a8",
+        "exit_code": 0,
+        "capture": "stdout/stderr with command, source commit and exit status transcript; PATH prepends pinned tools in /tmp/issue140/dotnet and /tmp/issue140/bin"
+      },
+      "size_bytes": 410,
+      "sha256": "ad8daaf20fae0a9dd6374f57a4de8f376940d4a31bf2b479fd16b2089a3b02ce"
+    }
+  ]
+}

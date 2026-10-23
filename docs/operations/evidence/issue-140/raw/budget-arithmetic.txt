@@ -1,0 +1,9 @@
+Command: python3 /tmp/issue140/budget-arithmetic.py
+Source commit: 5d5c168cf855134dbdac9128154c38c448887bc8
+probe shell 12930 nested 1380 total 14310 cap 14400 remainder 90
+full-C0 shell 12840 nested 120 total 12960 cap 14400 remainder 1440
+full-C3 shell 12840 nested 120 total 12960 cap 14400 remainder 1440
+sweep shell 3090 nested 0 total 3090 cap 3600 remainder 510
+measured_seconds 990 destroy_margin_seconds 60 phase_work_seconds 8400 cleanup_reserve_seconds 2250
+
+Exit code: 0

@@ -53,7 +53,7 @@ internal static class Program
             if (commit != WireFixtures.BuiltSourceCommit()) throw new InvalidDataException("approved_source_commit_mismatch");
             var services = new ServiceCollection();
             services.AddSingleton(TimeProvider.System);
-            services.AddSingleton<IProcessRunner, BoundedProcessRunner>();
+            services.AddSingleton<IProcessRunner>(provider => new BoundedProcessRunner(provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ExecutionBudgets>()));
             string scenarioRoot = WorkerIdentity.Text(runtime, "scenario_root");
             using JsonDocument limits = await ReadDocumentAsync(WorkerIdentity.Text(runtime, "limits_file"), cancellation.Token).ConfigureAwait(false);
             ExecutionBudgets budgets = ExecutionBudgets.Read(limits.RootElement);
@@ -84,7 +84,7 @@ internal static class Program
             services.AddSingleton<RunLedger>(); services.AddSingleton<EvidenceExporter>(); services.AddSingleton<ActualCostReconciler>();
             services.AddSingleton<PhaseCandidate>();
             services.AddSingleton<ITerraformEnvironment>(provider => new TerraformEnvironment(provider.GetRequiredService<IProcessRunner>(),
-                WorkerIdentity.Text(runtime, "ephemeral_root"), WorkerIdentity.Text(runtime, "backend_config"), WorkerIdentity.Text(runtime, "tfvars_file"), Path.Combine(output, "terraform"), provider.GetRequiredService<TimeProvider>()));
+                WorkerIdentity.Text(runtime, "ephemeral_root"), WorkerIdentity.Text(runtime, "backend_config"), WorkerIdentity.Text(runtime, "tfvars_file"), Path.Combine(output, "terraform"), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ExecutionBudgets>()));
             services.AddSingleton(provider => (TerraformEnvironment)provider.GetRequiredService<ITerraformEnvironment>());
             services.AddSingleton(provider => new RecoveryEvidenceCollector(provider.GetRequiredService<IProcessRunner>(),
                 provider.GetRequiredService<TerraformEnvironment>(), provider.GetRequiredService<TimeProvider>(), budgets,

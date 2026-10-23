@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Execution;
+using Parchwell.Runner.Tests.Deployment;
 using Xunit;
 
 namespace Parchwell.Runner.Tests.Execution;
@@ -161,6 +162,35 @@ public sealed class GenerationGuardTests
                 Assert.Equal(new[] { "apply", "-input=false", "-lock=true", savedPath }, apply.Arguments);
                 Assert.Contains("-out=" + savedPath, plan.Arguments);
             }
+        }
+        finally { if (Directory.Exists(output)) Directory.Delete(output, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false, 900)]
+    [InlineData(true, 1050)]
+    public async Task Given_ConfiguredDestroyBudget_When_GuardedDestroyRuns_Then_PlanAndApplyUseDeclaredTimeout(bool configured, int expectedSeconds)
+    {
+        string output = Path.Combine(Path.GetTempPath(), "generation-plan-" + Guid.NewGuid().ToString("N"));
+        var process = new TerraformProcess(false);
+        using JsonDocument limits = JsonDocument.Parse(File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "docs/operations/a01-runtime-limits.json")));
+        ExecutionBudgets? budgets = configured ? ExecutionBudgets.Read(limits.RootElement) : null;
+        var environment = new TerraformEnvironment(process, "/private/ephemeral", "/private/backend.hcl", "/private/runtime.tfvars", output, budgets: budgets);
+        var guard = new GenerationGuard(environment, new FixedClock(Started));
+        try
+        {
+            Assert.True(await guard.DestroyAsync(GenerationA, false, TestContext.Current.CancellationToken));
+            ProcessRequest plan = Assert.Single(process.Requests, request => request.Arguments[0] == "plan");
+            ProcessRequest apply = Assert.Single(process.Requests, request => request.Arguments[0] == "apply");
+            Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), plan.Timeout);
+            Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), apply.Timeout);
+            Assert.All(process.Requests.Where(request => request.Arguments[0] is not ("plan" or "apply")),
+                request => Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout));
+            Assert.Contains("-destroy", plan.Arguments);
+            Assert.Contains("-lock=true", plan.Arguments);
+            string savedPath = Path.Combine(output, "destroy.tfplan");
+            Assert.Equal(new[] { "apply", "-input=false", "-lock=true", savedPath }, apply.Arguments);
+            Assert.Contains("-out=" + savedPath, plan.Arguments);
         }
         finally { if (Directory.Exists(output)) Directory.Delete(output, recursive: true); }
     }
