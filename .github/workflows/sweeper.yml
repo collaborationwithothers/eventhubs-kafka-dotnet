@@ -53,6 +53,23 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Require workflow commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_commands=(az cat chmod dirname dotnet kubectl mkdir mktemp python3 terraform timeout)
+          missing_commands=()
+          for command_name in "${required_commands[@]}"; do
+            if ! command -v "$command_name" > /dev/null 2>&1; then
+              missing_commands+=("$command_name")
+            fi
+          done
+          if ((${#missing_commands[@]} > 0)); then
+            printf 'Missing required commands:' >&2
+            printf ' %s' "${missing_commands[@]}" >&2
+            printf '\n' >&2
+            exit 1
+          fi
       - name: Materialise private inputs from environment secrets
         shell: bash
         env:

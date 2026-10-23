@@ -56,6 +56,23 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Require workflow commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
+          missing_commands=()
+          for command_name in "${required_commands[@]}"; do
+            if ! command -v "$command_name" > /dev/null 2>&1; then
+              missing_commands+=("$command_name")
+            fi
+          done
+          if ((${#missing_commands[@]} > 0)); then
+            printf 'Missing required commands:' >&2
+            printf ' %s' "${missing_commands[@]}" >&2
+            printf '\n' >&2
+            exit 1
+          fi
       - name: Materialise private inputs from environment secrets
         shell: bash
         env:
@@ -143,9 +160,9 @@ jobs:
           timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
           timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
           for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            rg --fixed-strings -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
+            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
           done
-          rg --fixed-strings -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
+          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
           curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
           python3 - <<'PYTHON'
           import hashlib, os, pathlib, re, tarfile
@@ -290,6 +307,23 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Require workflow commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
+          missing_commands=()
+          for command_name in "${required_commands[@]}"; do
+            if ! command -v "$command_name" > /dev/null 2>&1; then
+              missing_commands+=("$command_name")
+            fi
+          done
+          if ((${#missing_commands[@]} > 0)); then
+            printf 'Missing required commands:' >&2
+            printf ' %s' "${missing_commands[@]}" >&2
+            printf '\n' >&2
+            exit 1
+          fi
       - name: Materialise private inputs from environment secrets
         shell: bash
         env:
@@ -377,9 +411,9 @@ jobs:
           timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
           timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
           for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            rg --fixed-strings -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
+            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
           done
-          rg --fixed-strings -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
+          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
           curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
           python3 - <<'PYTHON'
           import hashlib, os, pathlib, re, tarfile
@@ -514,6 +548,23 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Require workflow commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
+          missing_commands=()
+          for command_name in "${required_commands[@]}"; do
+            if ! command -v "$command_name" > /dev/null 2>&1; then
+              missing_commands+=("$command_name")
+            fi
+          done
+          if ((${#missing_commands[@]} > 0)); then
+            printf 'Missing required commands:' >&2
+            printf ' %s' "${missing_commands[@]}" >&2
+            printf '\n' >&2
+            exit 1
+          fi
       - name: Materialise private inputs from environment secrets
         shell: bash
         env:
@@ -601,9 +652,9 @@ jobs:
           timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
           timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
           for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            rg --fixed-strings -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
+            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
           done
-          rg --fixed-strings -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
+          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
           curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
           python3 - <<'PYTHON'
           import hashlib, os, pathlib, re, tarfile
