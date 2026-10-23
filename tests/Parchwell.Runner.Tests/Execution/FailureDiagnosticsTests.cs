@@ -8,7 +8,7 @@ using Xunit;
 namespace Parchwell.Runner.Tests.Execution;
 
 [CollectionDefinition("Failure diagnostics environment", DisableParallelization = true)]
-public sealed class FailureDiagnosticsEnvironmentCollection
+public sealed class FailureDiagnosticsEnvironmentDefinition
 {
 }
 
@@ -19,6 +19,8 @@ public sealed class FailureDiagnosticsTests
     private const string DebugVariable = "PARCHWELL_DEBUG_FAILURES";
     private static readonly string[] CommandDataKeys =
         ["runner_command_stderr_tail", "runner_command_stdout_tail", "runner_command_tool"];
+    private static readonly string[] TerraformInitArguments = ["init", "-input=false", "-backend-config=synthetic-backend.hcl"];
+    private static readonly string[] AzureVersionArguments = ["version", "--output", "json"];
 
     [Fact]
     public void Given_SafeRootReason_When_Written_Then_EmitsExactFailureLine() => WithDebug(null, () =>
@@ -251,7 +253,7 @@ public sealed class FailureDiagnosticsTests
             Assert.Equal("terraform_command_failed", exception.Message);
             ProcessRequest request = Assert.Single(process.Requests);
             Assert.Equal("terraform", request.FileName);
-            Assert.Equal(new[] { "init", "-input=false", "-backend-config=synthetic-backend.hcl" }, request.Arguments);
+            Assert.Equal(TerraformInitArguments, request.Arguments);
             Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout);
             Assert.Null(request.Environment);
             AssertBoundaryData(exception, debug, "terraform");
@@ -274,7 +276,7 @@ public sealed class FailureDiagnosticsTests
             Assert.Equal("private_storage_cli_failed", exception.Message);
             ProcessRequest request = Assert.Single(process.Requests);
             Assert.Equal("az", request.FileName);
-            Assert.Equal(new[] { "version", "--output", "json" }, request.Arguments);
+            Assert.Equal(AzureVersionArguments, request.Arguments);
             Assert.Equal(TimeSpan.FromSeconds(60), request.Timeout);
             Assert.Equal(1_048_576, request.MaxOutputBytes);
             Assert.Null(request.Environment);
