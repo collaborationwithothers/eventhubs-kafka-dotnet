@@ -1,4 +1,4 @@
-# Install only after Hari configures parchwell-sweeper, its FIC and runner allowlist.
+# Installed at .github/workflows/sweeper.yml; committed copy at docs/operations/workflows/sweeper.yml.txt; the two are byte-identical (AGENTS.md hard safety rule 8).
 name: A01 destroy-only sweeper
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
   sweep:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-sweeper
-    timeout-minutes: 50
+    timeout-minutes: 60
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -72,6 +72,15 @@ jobs:
           write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
           write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
           write "$PARCHWELL_A01_RUNTIME_DIRECTORY/sweep.json" S_RUNTIME_SWEEP "$S_RUNTIME_SWEEP"
+      # kubelogin serves only the recovery export; a failed download must not stop the destroy, so this step never fails the job.
+      - name: Install kubelogin for recovery export (non-fatal)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
+          test "$("$RUNNER_TEMP/a01-bin/kubelogin" --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
+          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
       - name: Prepare private destroy-only runtime
         shell: bash
         run: |
@@ -95,10 +104,6 @@ jobs:
           terraform version -json > "$A01_OUTPUT/terraform-version.json"
           timeout 60 az version > "$A01_OUTPUT/azure-cli-version.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/kubectl-version.json"
-          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-bin/kubectl" --install-kubelogin-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version v0.2.21 --only-show-errors
-          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
-          timeout 60 kubelogin --version > "$A01_OUTPUT/kubelogin-version.txt"
-          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
       - name: Existing environment OIDC login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
