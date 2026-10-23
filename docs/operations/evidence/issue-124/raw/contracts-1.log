@@ -1,0 +1,16 @@
+/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0) Zero tests ran
+Exit code: 5
+
+Test run summary: Failed!
+  error: 1
+
+  total: 0
+  failed: 0
+  succeeded: 0
+  skipped: 0
+  duration: 151ms
+Test run completed with non-success exit code: 5 (see: https://aka.ms/testingplatform/exitcodes)
+
+Handshake failures:
+  /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/bin/Release/net10.0/Parchwell.Runner.Tests.dll (net10.0)
+Exit code: 5

@@ -1,0 +1,11 @@
+{
+  "source_commit": "3f08fd3a22d1d0ad0ab5c93a35af1afe554a897d",
+  "command": "timeout 600 dotnet restore Parchwell.slnx --locked-mode",
+  "environment": {
+    "PATH_prefix": "/tmp/issue124-dotnet",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_NOLOGO": "1"
+  },
+  "exit_code": 0,
+  "note": "Dependency restore before implementation commit; project/package/lock files unchanged by this task."
+}
