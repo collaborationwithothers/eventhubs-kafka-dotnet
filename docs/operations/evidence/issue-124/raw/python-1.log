@@ -1,0 +1,26 @@
+test_01_required_context_rejects_before_side_effects (test_azure_cli_session.AzureCliSessionTests.test_01_required_context_rejects_before_side_effects) ... ok
+test_02_initial_refresh_order_and_exact_authentication (test_azure_cli_session.AzureCliSessionTests.test_02_initial_refresh_order_and_exact_authentication) ... ok
+test_03_age_boundary (test_azure_cli_session.AzureCliSessionTests.test_03_age_boundary) ... ok
+test_04_expiry_headroom_boundary (test_azure_cli_session.AzureCliSessionTests.test_04_expiry_headroom_boundary) ... ok
+test_05_invalid_state_cannot_authorize_mutation (test_azure_cli_session.AzureCliSessionTests.test_05_invalid_state_cannot_authorize_mutation) ... ok
+test_06_audience_bearer_and_no_redirect (test_azure_cli_session.AzureCliSessionTests.test_06_audience_bearer_and_no_redirect) ... ok
+test_07_invalid_issuer_responses_never_forward (test_azure_cli_session.AzureCliSessionTests.test_07_invalid_issuer_responses_never_forward) ... ok
+test_08_authentication_failure_timeout_and_secret_suppression (test_azure_cli_session.AzureCliSessionTests.test_08_authentication_failure_timeout_and_secret_suppression) ... ok
+test_09_retrieval_and_login_time_count_toward_freshness (test_azure_cli_session.AzureCliSessionTests.test_09_retrieval_and_login_time_count_toward_freshness) ... ok
+test_10_atomic_private_state_contains_no_credentials (test_azure_cli_session.AzureCliSessionTests.test_10_atomic_private_state_contains_no_credentials) ... ok
+test_11_argument_boundaries_and_no_shell (test_azure_cli_session.AzureCliSessionTests.test_11_argument_boundaries_and_no_shell) ... ok
+test_12_binary_streams_exits_and_nested_path_consumer (test_azure_cli_session.AzureCliSessionTests.test_12_binary_streams_exits_and_nested_path_consumer) ... ok
+test_13_process_shared_lock_serializes_auth_and_forwarding (test_azure_cli_session.AzureCliSessionTests.test_13_process_shared_lock_serializes_auth_and_forwarding) ... ok
+test_14_lock_wait_and_command_share_deadline (test_azure_cli_session.AzureCliSessionTests.test_14_lock_wait_and_command_share_deadline) ... ok
+test_15_signals_timeout_reap_group_before_unlock (test_azure_cli_session.AzureCliSessionTests.test_15_signals_timeout_reap_group_before_unlock) ... azure_cli_session_timeout
+ok
+test_16_independent_fallback_can_refresh_after_failure (test_azure_cli_session.AzureCliSessionTests.test_16_independent_fallback_can_refresh_after_failure) ... ok
+test_17_cleanup_controls_and_acr_login_passthrough (test_azure_cli_session.AzureCliSessionTests.test_17_cleanup_controls_and_acr_login_passthrough) ... ok
+test_18_synthetic_long_phase_renews_distinct_assertions (test_azure_cli_session.AzureCliSessionTests.test_18_synthetic_long_phase_renews_distinct_assertions) ... ok
+test_19_literal_install_failure_blocks_later_workloads (test_azure_cli_session.AzureCliSessionTests.test_19_literal_install_failure_blocks_later_workloads) ... ok
+test_20_successful_setup_fallback_status_matrix (test_azure_cli_session.AzureCliSessionTests.test_20_successful_setup_fallback_status_matrix) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 7.506s
+
+OK

@@ -1,0 +1,290 @@
+{
+  "files": [
+    {
+      "path": "raw/build-1.json",
+      "producer": {
+        "command": "timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 345,
+      "sha256": "f3a54e648a220521fa836e1f9989a8e4c477519a2ce7a7f7ba0afb2741116ecb"
+    },
+    {
+      "path": "raw/build-1.log",
+      "producer": {
+        "command": "timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 1819,
+      "sha256": "7ffe7d04bca0d8df0a016b653258e7a60001592c199add343d64d99724c9be1f"
+    },
+    {
+      "path": "raw/contracts-1.json",
+      "producer": {
+        "command": "timeout 600 dotnet test --project tests/Parchwell.Runner.Tests --configuration Release --no-build -- --filter-class 'Parchwell.Runner.Tests.Contracts.Workflow*ContractTests'",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 442,
+      "sha256": "a67aeb1b7cec63aab9f515aff47b7d8037258414dfa47433c8e09e225dafdf43"
+    },
+    {
+      "path": "raw/contracts-1.log",
+      "producer": {
+        "command": "timeout 600 dotnet test --project tests/Parchwell.Runner.Tests --configuration Release --no-build -- --filter-class 'Parchwell.Runner.Tests.Contracts.Workflow*ContractTests'",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 509,
+      "sha256": "684d4d42f88b66a4d70e58cd2ff42886937fa5aebb578fa0634b956c1af0b116"
+    },
+    {
+      "path": "raw/contracts-2.json",
+      "producer": {
+        "command": "timeout 600 dotnet test --project tests/Parchwell.Runner.Tests --configuration Release --no-build -- --filter-class Parchwell.Runner.Tests.Contracts.WorkflowAuthenticationContractTests --filter-class Parchwell.Runner.Tests.Contracts.WorkflowBudgetContractTests",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 529,
+      "sha256": "5093c8791ea9d2677df5e9c4d8d02195706a1b905ecc61ecfbcce100b870b4e7"
+    },
+    {
+      "path": "raw/contracts-2.log",
+      "producer": {
+        "command": "timeout 600 dotnet test --project tests/Parchwell.Runner.Tests --configuration Release --no-build -- --filter-class Parchwell.Runner.Tests.Contracts.WorkflowAuthenticationContractTests --filter-class Parchwell.Runner.Tests.Contracts.WorkflowBudgetContractTests",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 384,
+      "sha256": "b18fa38d31c3c7394c3f86f96366c40c0c783d5d9b159d04d53f698909c90846"
+    },
+    {
+      "path": "raw/docs-1.json",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 298,
+      "sha256": "59d2eacfe1ddfcd5c447ccf9afe18e67a6df68e1792bbd8c20c70789f06932bc"
+    },
+    {
+      "path": "raw/docs-1.log",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 10142,
+      "sha256": "e509fa8522a8c749179861db0931847ffb8e03df277f735ad50eb9df083c9a37"
+    },
+    {
+      "path": "raw/docs-2.json",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "e9b4cf4a35b01e37a6c9e479f42dfc7fb2af0ee1",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 298,
+      "sha256": "930c14b6af02a7ff9e3954567942f26bcadeda7f33c747697113f5395de0f77d"
+    },
+    {
+      "path": "raw/docs-2.log",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "e9b4cf4a35b01e37a6c9e479f42dfc7fb2af0ee1",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 10001,
+      "sha256": "227dada7f5e1e7da1893fb4cbf69056938274afa66cb98726a458c58bda4fcd8"
+    },
+    {
+      "path": "raw/docs-3.json",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "3d0f324c423fcaf41b71b004845f298d9f706bf8",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 298,
+      "sha256": "83a56aae32698e2165282b3422c3d1a9a03645bf78bd84350408af5d0f0f3165"
+    },
+    {
+      "path": "raw/docs-3.log",
+      "producer": {
+        "command": "timeout 60 npm run check:docs",
+        "source_commit": "3d0f324c423fcaf41b71b004845f298d9f706bf8",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 10001,
+      "sha256": "227dada7f5e1e7da1893fb4cbf69056938274afa66cb98726a458c58bda4fcd8"
+    },
+    {
+      "path": "raw/python-1.json",
+      "producer": {
+        "command": "timeout 60 python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -v",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 357,
+      "sha256": "3b1e9977727eeef924bded30122f149a69c3b07131499d5fe6d8b00a99cc6272"
+    },
+    {
+      "path": "raw/python-1.log",
+      "producer": {
+        "command": "timeout 60 python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -v",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 3147,
+      "sha256": "479c83fa2ec22f50d75473be7a0320ed82dcd208e3ea9676ca9175c90d3a47fd"
+    },
+    {
+      "path": "raw/restore.json",
+      "producer": {
+        "command": "timeout 600 dotnet restore Parchwell.slnx --locked-mode",
+        "source_commit": "3f08fd3a22d1d0ad0ab5c93a35af1afe554a897d",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1"
+        }
+      },
+      "size_bytes": 401,
+      "sha256": "ba538770be553bf448a5520fd3467204073aad451c9345fd32c9ef7a9df83c47"
+    },
+    {
+      "path": "raw/restore.log",
+      "producer": {
+        "command": "timeout 600 dotnet restore Parchwell.slnx --locked-mode",
+        "source_commit": "3f08fd3a22d1d0ad0ab5c93a35af1afe554a897d",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1"
+        }
+      },
+      "size_bytes": 1526,
+      "sha256": "226da3f9c40a36dbec617c25f195075a4bfe2d5f8a750ba8a4ae037bda969448"
+    },
+    {
+      "path": "raw/whitespace-1.json",
+      "producer": {
+        "command": "git diff --check",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "command exit receipt",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 285,
+      "sha256": "72e2f61a7d549c7b1afc81d50270fa54afc25c47cb5fce42405b100972eb04f7"
+    },
+    {
+      "path": "raw/whitespace-1.log",
+      "producer": {
+        "command": "git diff --check",
+        "source_commit": "5da2925425e05cc445adcb1e37f14ee6dbdc8f39",
+        "capture": "combined stdout/stderr",
+        "environment": {
+          "PATH_prefix": "/tmp/issue124-dotnet",
+          "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+          "DOTNET_NOLOGO": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        }
+      },
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

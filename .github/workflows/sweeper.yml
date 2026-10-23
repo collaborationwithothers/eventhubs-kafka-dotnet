@@ -96,6 +96,20 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Enable renewable serialized Azure CLI session
+        id: azure_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          real_az="$(command -v az)"
+          test -x "$real_az"
+          session_dir="$(mktemp -d "$RUNNER_TEMP/a01-oidc.XXXXXX")"
+          chmod 700 "$session_dir"
+          test -x "$GITHUB_WORKSPACE/scripts/azure-cli-session/az"
+          printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
+          printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
       - name: Export aged generation and attempt guarded destroy
         shell: bash
         run: |

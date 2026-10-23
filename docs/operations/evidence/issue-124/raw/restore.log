@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Enrichment/Parchwell.Enrichment.csproj (in 125 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Scenarios.Tests/Parchwell.Scenarios.Tests.csproj (in 5.46 sec).
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Kafka/Parchwell.Kafka.csproj (in 5.47 sec).
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/Parchwell.Verifier.csproj (in 401 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj (in 5.73 sec).
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.LoadGen/Parchwell.LoadGen.csproj (in 5.88 sec).
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Scenarios/Parchwell.Scenarios.csproj (in 5 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/src/Parchwell.Runner/Parchwell.Runner.csproj (in 12 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Enrichment.Tests/Parchwell.Enrichment.Tests.csproj (in 114 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Kafka.Tests/Parchwell.Kafka.Tests.csproj (in 752 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj (in 1.2 sec).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj (in 793 ms).
+  Restored /workspace/eventhubs-kafka-dotnet/tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj (in 687 ms).
