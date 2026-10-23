@@ -10,7 +10,7 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
-Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge. Hard safety rule 10 and "Handoffs" amended in the pull request for issue #85 (2026-10-18).
+Status: approved by Hari on 2026-10-12. Heading, merge rule and hard safety rule 10 amended for ADR-018 in the pull request for issue #40 (2026-10-13). Hari decided on 2026-10-14 that agents may author governance changes (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/40#issuecomment-6159904486). AGENTS.md is a protected path, so each such change reaches `main` only through his merge. Hard safety rule 10 and "Handoffs" amended in the pull request for issue #85 (2026-10-18). Hard safety rule 8 amended on 2026-10-23 (#85): agents change workflows through pull requests; Hari merges.
 
 ### What this repo is
 
@@ -30,7 +30,7 @@ A public portfolio repository under Hari's name. It tests Microsoft's guidance f
 5. At most one ephemeral environment exists at a time.
 6. Every scenario run ends with `terraform destroy`, whether the run passed or failed. A scheduled sweeper destroys any ephemeral environment older than 4 hours.
 7. Never add secrets, keys, connection strings, tenant IDs or subscription IDs to the repository.
-8. Never change files under `.github/workflows/`. The factory's GitHub App has no Workflows permission, so GitHub rejects such pushes; do not try to work around it.
+8. Agents change files under `.github/workflows/` only through a pull request that Hari merges; the path is protected, and the factory's GitHub App holds the Workflows permission since 2026-10-23. A workflow change updates the installed file and its committed copy under `docs/operations/workflows/` in the same pull request, byte for byte. Rule 9 is unchanged. Basis: Hari's decision of 2026-10-23 on #85, after the first live runs showed that installing workflow text by hand added a merge cycle to every runner-tooling fix.
 9. No workflow that reaches Azure may trigger on `pull_request` or `pull_request_target`. The repository is public; fork pull requests must never run inside the network.
 10. Never write `@codex` in an issue comment; Codex's connector replied to each issue comment that contained it (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6235975803, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6245200871, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-6250013487). On a pull request, mention `@codex` only as `@codex review` or `@codex security review`. Any other `@codex` comment starts a Codex cloud chat on the pull request (ADR-018, docs/blueprint.md S32 and S47); review fixes are made by the session that owns the branch, whichever tool it runs.
 11. Never state a number that was not measured. Estimates say "estimate", their basis and the date. Workload data is synthetic and labelled synthetic.

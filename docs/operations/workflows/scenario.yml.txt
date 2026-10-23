@@ -132,6 +132,8 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-bin/kubectl" --install-kubelogin-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version v0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
@@ -362,6 +364,8 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-bin/kubectl" --install-kubelogin-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version v0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
@@ -582,6 +586,8 @@ jobs:
           test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
           timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-bin/kubectl" --install-kubelogin-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version v0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
           timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
           timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
           timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"

@@ -95,6 +95,10 @@ jobs:
           terraform version -json > "$A01_OUTPUT/terraform-version.json"
           timeout 60 az version > "$A01_OUTPUT/azure-cli-version.json"
           timeout 60 kubectl version --client -o json > "$A01_OUTPUT/kubectl-version.json"
+          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-bin/kubectl" --install-kubelogin-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version v0.2.21 --only-show-errors
+          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
+          timeout 60 kubelogin --version > "$A01_OUTPUT/kubelogin-version.txt"
+          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
       - name: Existing environment OIDC login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
