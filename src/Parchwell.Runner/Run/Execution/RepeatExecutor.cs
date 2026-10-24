@@ -35,14 +35,14 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         StartLineExecution start = await cluster.StartLineAsync(context, identity, admissionToken).ConfigureAwait(false);
         await PersistWorkerAsync(context, "start-line", start.Worker, admissionToken).ConfigureAwait(false);
         if (start.Worker.Process.ExitCode != 0 || !WorkerOutcome.HasReceipt(start.Worker.Process, "start-line", identity, context.SourceCommit))
-            throw new InvalidDataException("start_line_execution");
+            throw FailureDiagnostics.WithWorkerOutput(new InvalidDataException("start_line_execution"), "start-line", start.Worker.Process, identity);
         await File.WriteAllBytesAsync(Path.Combine(context.OutputDirectory, "broker-inventory.json"), start.Inventory, admissionToken).ConfigureAwait(false);
         IReadOnlyList<string> brokers = BrokerInventory.Read(start.Inventory, identity, context.SourceCommit);
         await cluster.ReleaseAsync(context, admission.Release(brokers, comparisonHash), admissionToken).ConfigureAwait(false);
         WorkerExecution producer = await cluster.WaitProducerAsync(context, token).ConfigureAwait(false);
         await PersistWorkerAsync(context, "loadgen", producer, token).ConfigureAwait(false);
         if (producer.Process.ExitCode != 0 || !WorkerOutcome.HasReceipt(producer.Process, "loadgen", identity, context.SourceCommit))
-            throw new InvalidDataException("loadgen_execution");
+            throw FailureDiagnostics.WithWorkerOutput(new InvalidDataException("loadgen_execution"), "loadgen", producer.Process, identity);
         ProducerPublication publication = await cluster.DownloadPublicationAsync(context, token).ConfigureAwait(false);
         PublicationAcceptance.Validate(publication, identity);
         foreach ((string name, byte[] bytes) in publication.Objects)

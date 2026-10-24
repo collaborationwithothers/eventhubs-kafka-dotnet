@@ -19,6 +19,9 @@ public sealed class LoadGenWorker : BackgroundService
     private static readonly Action<ILogger, string, string, Exception?> WorkerFailed =
         LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(2, nameof(WorkerFailed)),
             "Load generator worker failed for scenario {ScenarioId} run {RunId}");
+    private static readonly Action<ILogger, string, string, long, long, string, Exception?> WorkerIncomplete =
+        LoggerMessage.Define<string, string, long, long, string>(LogLevel.Error, new EventId(3, nameof(WorkerIncomplete)),
+            "Load generator run incomplete for scenario {ScenarioId} run {RunId}: attempted {AttemptCount} of {PlannedAttemptCount}; diagnostics {Diagnostics}");
     private readonly LoadGenHostOptions _hostOptions;
     private readonly ScenarioLoader _loader;
     private readonly ScenarioResolver _resolver;
@@ -103,7 +106,12 @@ public sealed class LoadGenWorker : BackgroundService
         await using RunSession session = await _runSessionFactory.CreateAsync(identity, role, producerConfig,
             requiresStatistics, requiresRequests, cancellationToken);
         RunExecutionResult result = await session.ExecuteAsync(resolved.Profile, cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode != 0) throw new InvalidOperationException("worker_run_incomplete");
+        if (result.ExitCode != 0)
+        {
+            WorkerIncomplete(_logger, identity.ScenarioId, identity.RunId, result.Manifest.AttemptCount,
+                result.Manifest.PlannedAttemptCount, string.Join(';', result.Manifest.Diagnostics), null);
+            throw new InvalidOperationException("worker_run_incomplete");
+        }
         cancellationToken.ThrowIfCancellationRequested();
         await _publisher.PublishAsync(result, new RunPublicationOptions(options.BlobEndpoint,
             options.BlobContainer, options.UploadTimeout, options.MaxArtifactBytes,

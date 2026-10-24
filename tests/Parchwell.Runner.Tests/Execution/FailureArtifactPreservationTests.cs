@@ -22,6 +22,65 @@ namespace Parchwell.Runner.Tests.Execution;
 public sealed class FailureArtifactPreservationTests
 {
     [Theory]
+    [InlineData("start_line_exit", false)]
+    [InlineData("start_line_exit", true)]
+    [InlineData("start_line_receipt", false)]
+    [InlineData("start_line_receipt", true)]
+    [InlineData("loadgen_exit", false)]
+    [InlineData("loadgen_exit", true)]
+    [InlineData("loadgen_receipt", false)]
+    [InlineData("loadgen_receipt", true)]
+    public async Task Given_PreVerifierWorkerRejection_When_RepeatFails_Then_DebugIncludesCapturedWorkerLogsAndIdentityWithoutChangingTheReason(string failure, bool debug)
+    {
+        string? previous = Environment.GetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES");
+        Environment.SetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES", debug ? "true" : null);
+        try
+        {
+            using var deployment = new DeploymentFixture();
+            var context = new RepeatContext("probe", 1, "failure-phase-r1", new string('a', 40), deployment.Directory);
+            var process = new ArtifactProcess(failure, []);
+            using var production = new KubernetesRunCluster(process, deployment.Generator(), new ChartRenderer(process),
+                JsonSerializer.SerializeToElement(deployment.Input("C0")), "unused-chart", TimeProvider.System,
+                privateKubeconfigPath: Path.Combine(deployment.Directory, "credentials", "config"));
+            JsonObject outputs = JsonSerializer.SerializeToNode(deployment.Input("C0"))!["ephemeral_outputs"]!.AsObject();
+            outputs["aks"] = JsonSerializer.SerializeToNode(new
+            {
+                name = "synthetic", id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/synthetic/providers/Microsoft.ContainerService/managedClusters/synthetic"
+            });
+            await production.BindClusterAsync(JsonSerializer.SerializeToElement(outputs), TestContext.Current.CancellationToken);
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            var cluster = new FailingCluster(production, process, failure, cancellation);
+            var repeat = new RepeatExecutor(cluster, TimeProvider.System);
+
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(() => repeat.ExecuteAsync(context,
+                (_, _) => Task.CompletedTask, cancellation.Token));
+
+            bool startLine = failure.StartsWith("start_line", StringComparison.Ordinal);
+            string mode = startLine ? "start-line" : "loadgen";
+            string reason = startLine ? "start_line_execution" : "loadgen_execution";
+            Assert.Equal(reason, exception.Message);
+            Assert.Equal(0, cluster.Verifications);
+            using var error = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+            FailureDiagnostics.Write(exception, error, "repeat");
+            string output = error.ToString();
+            if (debug)
+            {
+                int code = failure.EndsWith("_exit", StringComparison.Ordinal) ? 1 : 0;
+                Assert.Contains($"runner_debug_worker {mode} exit_code={code} timed_out=False scenario_id=A01 run_id={context.RunId}", output, StringComparison.Ordinal);
+                Assert.Contains($"runner_debug_worker {mode} stdout scenario_id=A01 run_id={context.RunId}", output, StringComparison.Ordinal);
+                string retained = await File.ReadAllTextAsync(Path.Combine(context.OutputDirectory, mode + "-stdout.log"), TestContext.Current.CancellationToken);
+                Assert.Contains(retained.TrimEnd('\r', '\n'), output, StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.Equal("runner_execution_failed repeat InvalidDataException " + reason + Environment.NewLine, output);
+                Assert.Empty(exception.Data);
+            }
+        }
+        finally { Environment.SetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES", previous); }
+    }
+
+    [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 0)]
     [InlineData(true, 1)]
