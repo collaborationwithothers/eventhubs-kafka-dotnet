@@ -41,7 +41,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         {
             var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes!.Value,
                 options.MaxTotalInputBytes!.Value, options.MaxRowBytes!.Value, options.MaxRowsPerArtifact!.Value,
-                options.MaxInventoryEntries!.Value, options.MaxDiagnosticBytes!.Value);
+                options.MaxInputEntries!.Value, options.MaxDiagnosticBytes!.Value);
             var budget = new InputBudget(limits);
             var outputLimits = new OutputLimits(options.MaxOutputBytes!.Value,
                 options.MaxDiagnosticsPerCheck!.Value, options.MaxDiagnosticBytes!.Value);
@@ -50,7 +50,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             ParseResult<ArtifactIndex> index = ArtifactIndexReader.Read(await ReadAsync("index.json").ConfigureAwait(false), limits, budget);
             if (index.IsExecutionFailure) throw new InvalidOperationException("The producer artifact index is missing or malformed.");
             ParseResult<IReadOnlyList<LedgerRow>> ledger = LedgerReader.ReadRows(await ReadAsync("ledger.jsonl").ConfigureAwait(false), limits, budget);
-            ParseResult<SealedRunManifest> manifest = ManifestReader.Read(await ReadAsync("manifest.json").ConfigureAwait(false), limits, budget, options.MaxInventoryEntries.Value);
+            ParseResult<SealedRunManifest> manifest = ManifestReader.Read(await ReadAsync("manifest.json").ConfigureAwait(false), limits, budget, options.MaxInventoryEntries!.Value);
             ParseResult<IReadOnlyList<StatisticsEnvelope>> statistics = CapturedEvidenceReader.ReadStatistics(
                 await ReadAsync("statistics.jsonl").ConfigureAwait(false), "statistics.jsonl", limits, budget);
             ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle = CapturedEvidenceReader.ReadLifecycle(

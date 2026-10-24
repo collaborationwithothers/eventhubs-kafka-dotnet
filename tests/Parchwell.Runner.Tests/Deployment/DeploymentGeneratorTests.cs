@@ -14,6 +14,17 @@ namespace Parchwell.Runner.Tests.Deployment;
 
 public sealed class DeploymentGeneratorTests
 {
+    [Fact]
+    public async Task Given_IndependentVerifierInputCapacity_When_Generated_Then_EmitsBothExplicitBoundsUnchanged()
+    {
+        using var fixture = new DeploymentFixture();
+        Dictionary<string, object?> input = fixture.Input("C0");
+        DeploymentFiles files = await fixture.Generator().GenerateAsync(JsonSerializer.SerializeToElement(input), fixture.Directory, TestContext.Current.CancellationToken);
+        JsonElement verifier = files.Runtime.GetProperty("verifier_environment");
+        Assert.Equal("4194304", verifier.GetProperty("Verifier__MaxInputEntries").GetString());
+        Assert.Equal("186000", verifier.GetProperty("Verifier__MaxInventoryEntries").GetString());
+    }
+
     [Theory]
     [InlineData("MaxAttempts", null)]
     [InlineData("MaxAttempts", "\"186000\"")]

@@ -62,6 +62,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequirePositive(options.MaxRowBytes, "Verifier:MaxRowBytes", errors);
                 RequirePositive(options.MaxRowsPerArtifact, "Verifier:MaxRowsPerArtifact", errors);
                 RequirePositive(options.MaxInventoryEntries, "Verifier:MaxInventoryEntries", errors);
+                RequirePositive(options.MaxInputEntries, "Verifier:MaxInputEntries", errors);
                 RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
                 RequirePositive(options.MaxNativeReportBytes, "Verifier:MaxNativeReportBytes", errors);

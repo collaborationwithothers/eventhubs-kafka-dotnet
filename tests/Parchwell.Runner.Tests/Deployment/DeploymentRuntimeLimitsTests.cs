@@ -62,7 +62,7 @@ public sealed class DeploymentRuntimeLimitsTests
         {
             var cases = new TheoryData<string, string, string>();
             string[] longFields = ["MaxLedgerReadbackBytes", "MaxArtifactBytes", "MaxAggregateArtifactBytes", "MaxOutputBytes",
-                "MaxConsumedRecords", "MaxConsumedBytes", "MaxTotalInputBytes", "MaxRowsPerArtifact", "MaxInventoryEntries", "phase_evidence_bytes"];
+                "MaxConsumedRecords", "MaxConsumedBytes", "MaxTotalInputBytes", "MaxRowsPerArtifact", "MaxInventoryEntries", "MaxInputEntries", "phase_evidence_bytes"];
             foreach ((string section, JsonObject fields) in Sections())
                 foreach ((string propertyName, JsonNode? value) in fields)
                     if (value!.GetValueKind() == JsonValueKind.Number && propertyName != "item_limit_gbp")
