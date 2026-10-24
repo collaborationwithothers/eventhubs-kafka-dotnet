@@ -83,6 +83,23 @@ public sealed class LoadGenWorkerHostTests
             Assert.Equal(0, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
             Assert.True(publisher.Called);
             Assert.DoesNotContain(logger.Entries, item => item.EventId == 3);
+            using JsonDocument capabilities = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(publisher.OutputRoot, "capabilities.json"), TestContext.Current.CancellationToken));
+            JsonElement completion = capabilities.RootElement.GetProperty("statistics_completion");
+            Assert.True(completion.GetProperty("is_complete").GetBoolean());
+            long boundary = completion.GetProperty("drain_boundary_microseconds").GetInt64();
+            long firstPostDrain = completion.GetProperty("first_post_drain_timestamp_microseconds").GetInt64();
+            Assert.True(firstPostDrain > boundary);
+            string[] statisticsRows = await File.ReadAllLinesAsync(
+                Path.Combine(publisher.OutputRoot, "statistics.jsonl"), TestContext.Current.CancellationToken);
+            Assert.NotEmpty(statisticsRows);
+            long[] persistedTimestamps = statisticsRows.Select(row =>
+            {
+                using JsonDocument statisticsRow = JsonDocument.Parse(row);
+                return statisticsRow.RootElement.GetProperty("typed_snapshot")
+                    .GetProperty("timestamp_microseconds").GetInt64();
+            }).ToArray();
+            Assert.Contains(firstPostDrain, persistedTimestamps);
         }
         finally { DeleteOutput(publisher); }
     }
@@ -711,7 +728,7 @@ public sealed class LoadGenWorkerHostTests
                         long creation = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
                         for (int index = 0; index < 2; index++)
                         {
-                            await Task.Delay(TimeSpan.FromMilliseconds(20)).ConfigureAwait(false);
+                            await Task.Delay(TimeSpan.FromMilliseconds(index == 0 ? 250 : 20)).ConfigureAwait(false);
                             long timestamp = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
                             long age = timestamp - creation;
                             long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
