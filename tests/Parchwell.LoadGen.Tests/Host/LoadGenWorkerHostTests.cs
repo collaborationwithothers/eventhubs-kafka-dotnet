@@ -6,6 +6,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Parchwell.LoadGen;
 using Parchwell.Kafka.Statistics;
@@ -23,6 +24,66 @@ namespace Parchwell.LoadGen.Tests.Host;
 public sealed class LoadGenWorkerHostTests
 {
     private static readonly string[] AuthenticationMetricTagNames = ["client_id", "phase", "reason", "role", "run", "scenario"];
+
+    [Theory]
+    [InlineData("acquisition")]
+    [InlineData("installation")]
+    public async Task Given_IncompleteRunWithSpecificDiagnostics_When_WorkerRejectsIt_Then_LogsReasonsAndIdentityWithoutPublishing(string failure)
+    {
+        var publisher = new RecordingPublisher();
+        var logger = new RecordingWorkerLogger();
+        Action<KafkaOAuthBearerSession, RunEvidenceSession> fail = failure == "acquisition"
+            ? (session, evidence) => session.Refresh((_, _, _) => { }, error =>
+                evidence.CaptureError(new Error(ErrorCode.Local_Authentication, "OAuth bearer " + error)))
+            : (session, evidence) => session.Refresh((_, _, _) => throw new InvalidOperationException("synthetic-install-secret"), error =>
+                evidence.CaptureError(new Error(ErrorCode.Local_Authentication, "OAuth bearer " + error)));
+        using IHost host = CreateHost(publisher, durationSeconds: 1, authenticationCallback: fail,
+            tokenProvider: failure == "acquisition" ? new ThrowingTokenProvider() : new SyntheticTokenProvider(), workerLogger: logger);
+        try
+        {
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
+            await host.StopAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+            Assert.False(publisher.Called);
+            RecordedWorkerLog entry = Assert.Single(logger.Entries, item => item.EventId == 3);
+            Assert.Equal(LogLevel.Error, entry.Level);
+            Assert.Equal("A01", entry.State["ScenarioId"]);
+            Assert.Equal(publisher.RunId, entry.State["RunId"]);
+            using JsonDocument manifest = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(publisher.OutputRoot, "manifest.json"), TestContext.Current.CancellationToken));
+            Assert.Equal(manifest.RootElement.GetProperty("attempt_count").GetInt64(), entry.State["AttemptCount"]);
+            Assert.Equal(manifest.RootElement.GetProperty("planned_attempt_count").GetInt64(), entry.State["PlannedAttemptCount"]);
+            string diagnostics = Assert.IsType<string>(entry.State["Diagnostics"]);
+            Assert.Contains("oauthbearer_initial_failure:" + failure, diagnostics, StringComparison.Ordinal);
+            Assert.Equal(string.Join(';', manifest.RootElement.GetProperty("diagnostics").EnumerateArray().Select(item => item.GetString())), diagnostics);
+            Assert.DoesNotContain("synthetic-credential-secret", entry.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("synthetic-install-secret", entry.Message, StringComparison.Ordinal);
+            RecordedWorkerLog rejection = Assert.Single(logger.Entries, item => item.EventId == 2);
+            Assert.Equal("worker_run_incomplete", rejection.Exception?.Message);
+        }
+        finally { DeleteOutput(publisher); }
+    }
+
+    [Fact]
+    public async Task Given_CompletedRun_When_WorkerPublishes_Then_NoIncompleteDiagnosticIsLogged()
+    {
+        var publisher = new RecordingPublisher();
+        var logger = new RecordingWorkerLogger();
+        using IHost host = CreateHost(publisher, durationSeconds: 1, workerLogger: logger);
+        try
+        {
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
+            await host.StopAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(0, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
+            Assert.True(publisher.Called);
+            Assert.DoesNotContain(logger.Entries, item => item.EventId == 3);
+        }
+        finally { DeleteOutput(publisher); }
+    }
+
     [Fact]
     public async Task Given_AdmittedLocalWorker_When_RunAndPublicationComplete_Then_HostReturnsSuccessAfterPublisherSeesArtifacts()
     {
@@ -358,7 +419,8 @@ public sealed class LoadGenWorkerHostTests
     private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
         ProducerFactoryTracker? producerFactory = null,
         Action<KafkaOAuthBearerSession, RunEvidenceSession>? authenticationCallback = null,
-        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null, string? generatedValuesSectionFile = null)
+        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null, string? generatedValuesSectionFile = null,
+        ILogger<LoadGenWorker>? workerLogger = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
         if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
@@ -382,6 +444,7 @@ public sealed class LoadGenWorkerHostTests
 
         return Program.BuildHost(args, services =>
         {
+            if (workerLogger is not null) services.AddSingleton(workerLogger);
             services.RemoveAll<IScenarioSource>();
             services.AddSingleton<IScenarioSource>(new ScenarioMemorySource(
                 ("scenarios/A01/scenario.yaml", Scenario()),
@@ -455,6 +518,20 @@ public sealed class LoadGenWorkerHostTests
     private sealed class ProducerFactoryTracker
     {
         public bool Called { get; set; }
+    }
+
+    private sealed record RecordedWorkerLog(int EventId, LogLevel Level, Dictionary<string, object?> State, string Message, Exception? Exception);
+
+    private sealed class RecordingWorkerLogger : ILogger<LoadGenWorker>
+    {
+        public List<RecordedWorkerLog> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var fields = ((IEnumerable<KeyValuePair<string, object?>>)state!).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            Entries.Add(new(eventId.Id, logLevel, fields, formatter(state, exception), exception));
+        }
     }
 
     private sealed class SyntheticTokenProvider : IKafkaTokenProvider
