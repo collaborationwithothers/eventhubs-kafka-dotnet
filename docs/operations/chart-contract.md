@@ -53,3 +53,10 @@ Commands and results (2026-10-24):
 - `git diff --check` passed.
 
 Chart and offline checks used the pinned tool versions; Helm's exact release archive hash remains unverified because its download endpoint returned HTTP 403. The SDK, Python acceptance suite and documentation scan passed locally. No live dispatch is part of C3.
+
+Follow-up validation for the cold-review wording correction used source commit `283be65a173ef786550a9e5d0773b4936190a7ff`:
+
+- `PARCHWELL_TOOLS_DIRECTORY=/workspace/.tools/parchwell-ci python3 infra/scripts/lifecycle/command.py 600 -- bash charts/parchwell/tests/check.sh` passed: 21 positive and 32 negative cases.
+- `PARCHWELL_TOOLS_DIRECTORY=/workspace/.tools/parchwell-ci python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh` passed, including chart acceptance, ShellCheck, actionlint and two smoke renders; kubeconform reported one valid resource for each smoke render.
+- `npm run check:docs` passed. The chart contract had no issues; the repository scan reported 37 advisory warnings.
+- `git diff --check` passed before committing the wording correction.
