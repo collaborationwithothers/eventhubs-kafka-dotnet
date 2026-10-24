@@ -8,11 +8,10 @@ namespace Parchwell.Runner.Tests;
 public sealed class ChartContractTests
 {
     [Fact]
-    public void Given_ChartSchema_When_Read_Then_OnlyV1A01AndClosedRuntimeAreAccepted()
+    public void Given_ChartSchema_When_Read_Then_OnlyA01AndClosedRuntimeAreAccepted()
     {
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "charts/parchwell/values.schema.json")));
         JsonElement properties = schema.RootElement.GetProperty("properties");
-        Assert.Equal(1, properties.GetProperty("contract_version").GetProperty("const").GetInt32());
         Assert.Equal("A01", properties.GetProperty("scenario_id").GetProperty("const").GetString());
         Assert.False(schema.RootElement.GetProperty("additionalProperties").GetBoolean());
         JsonElement runtime = properties.GetProperty("runtime");

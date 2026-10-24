@@ -175,11 +175,6 @@ assert not pod.get('volumes') and not pod.get('serviceAccountName') and not cont
 PYSMOKE
   fi
 }
-for configuration in C0 C3; do
-  for mode in start-line loadgen verify; do
-    case "$mode" in start-line) deadline=150 ;; loadgen) deadline=840 ;; verify) deadline=750 ;; esac
-    render synthetic charts/parchwell --namespace parchwell -f infra/scripts/tests/fixtures/parchwell-values.yaml --set-string "configuration_id=$configuration,runtime.phase=$configuration,runtime.mode=$mode" --set "runtime.job_deadline_seconds=$deadline"
-  done
-done
+run bash charts/parchwell/tests/check.sh
 render parchwell-smoke charts/smoke --namespace parchwell
 render parchwell-smoke charts/smoke --namespace parchwell --set-string jobName=synthetic-alternate-smoke

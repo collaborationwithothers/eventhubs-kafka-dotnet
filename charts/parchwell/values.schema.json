@@ -1,19 +1,13 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "additionalProperties": false,
   "required": [
-    "contract_version",
     "scenario_id",
     "configuration_id",
-    "profile",
-    "kafka",
     "runtime"
   ],
-  "additionalProperties": false,
   "properties": {
-    "contract_version": {
-      "const": 1
-    },
     "scenario_id": {
       "const": "A01"
     },
@@ -23,42 +17,30 @@
         "C3"
       ]
     },
-    "profile": {
-      "type": "object",
-      "minProperties": 1
-    },
-    "kafka": {
-      "type": "object",
-      "minProperties": 2
-    },
     "runtime": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
-        "mode",
         "run_id",
         "phase",
+        "mode",
         "source_commit",
-        "service_accounts",
         "loadgen_image",
         "verifier_image",
-        "loadgen_generated_values",
-        "verifier_generated_values",
-        "loadgen_generated_sha256",
-        "verifier_generated_sha256",
-        "loadgen_environment",
-        "verifier_environment",
+        "service_accounts",
+        "eventhubs",
+        "blob",
         "eventhubs_ip",
         "blob_ip",
-        "admission_name",
-        "job_deadline_seconds",
-        "definition_sha256",
-        "profile_sha256"
+        "application_insights_connection_string",
+        "bounds"
       ],
-      "additionalProperties": false,
       "properties": {
         "run_id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 29
         },
         "phase": {
           "enum": [
@@ -66,6 +48,25 @@
             "C0",
             "C3"
           ]
+        },
+        "mode": {
+          "enum": [
+            "start-line",
+            "loadgen",
+            "verify",
+            "judge"
+          ]
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "loadgen_job_name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 49
         },
         "source_commit": {
           "type": "string",
@@ -79,51 +80,17 @@
           "type": "string",
           "pattern": "^[^/ ]+/parchwell/verifier@sha256:[a-f0-9]{64}$"
         },
-        "loadgen_generated_values": {
-          "type": "string",
-          "minLength": 1
-        },
-        "verifier_generated_values": {
-          "type": "string",
-          "minLength": 1
-        },
-        "loadgen_generated_sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "verifier_generated_sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "eventhubs_ip": {
-          "type": "string",
-          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}$"
-        },
-        "blob_ip": {
-          "type": "string",
-          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}$"
-        },
-        "admission_name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "mode": {
-          "enum": [
-            "loadgen",
-            "start-line",
-            "verify"
-          ]
-        },
         "service_accounts": {
           "type": "object",
+          "additionalProperties": false,
           "required": [
             "loadgen",
             "verifier"
           ],
-          "additionalProperties": false,
           "properties": {
             "loadgen": {
               "type": "object",
+              "additionalProperties": false,
               "required": [
                 "name",
                 "client_id"
@@ -134,15 +101,18 @@
                 },
                 "client_id": {
                   "type": "string",
+                  "pattern": "\\S",
                   "minLength": 1
                 },
                 "subject": {
-                  "type": "string"
+                  "type": "string",
+                  "const": "system:serviceaccount:parchwell:loadgen"
                 }
               }
             },
             "verifier": {
               "type": "object",
+              "additionalProperties": false,
               "required": [
                 "name",
                 "client_id"
@@ -153,45 +123,279 @@
                 },
                 "client_id": {
                   "type": "string",
+                  "pattern": "\\S",
                   "minLength": 1
                 },
                 "subject": {
-                  "type": "string"
+                  "type": "string",
+                  "const": "system:serviceaccount:parchwell:verifier"
                 }
               }
             }
           }
         },
-        "loadgen_environment": {
+        "eventhubs": {
           "type": "object",
-          "minProperties": 1,
-          "additionalProperties": {
-            "type": "string"
+          "additionalProperties": false,
+          "required": [
+            "namespace_name",
+            "bootstrap_servers",
+            "topics"
+          ],
+          "properties": {
+            "namespace_name": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+            },
+            "bootstrap_servers": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?\\.servicebus\\.windows\\.net:9093$"
+            },
+            "topics": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "events",
+                "state",
+                "dlq"
+              ],
+              "properties": {
+                "events": {
+                  "const": "document-events"
+                },
+                "state": {
+                  "const": "document-state"
+                },
+                "dlq": {
+                  "const": "document-events-dlq"
+                }
+              }
+            }
           }
         },
-        "verifier_environment": {
+        "blob": {
           "type": "object",
-          "minProperties": 1,
-          "additionalProperties": {
-            "type": "string"
+          "additionalProperties": false,
+          "required": [
+            "account_url",
+            "containers"
+          ],
+          "properties": {
+            "account_url": {
+              "type": "string",
+              "pattern": "^https://[A-Za-z0-9.-]+/?$"
+            },
+            "containers": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ledger",
+                "verifier",
+                "claim_check"
+              ],
+              "properties": {
+                "ledger": {
+                  "const": "ledger"
+                },
+                "verifier": {
+                  "const": "verifier"
+                },
+                "claim_check": {
+                  "const": "claim-check"
+                }
+              }
+            }
           }
         },
-        "job_deadline_seconds": {
-          "enum": [
-            840,
-            150,
-            750
-          ]
-        },
-        "definition_sha256": {
+        "eventhubs_ip": {
           "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+          "minLength": 1
         },
-        "profile_sha256": {
+        "blob_ip": {
           "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+          "minLength": 1
+        },
+        "application_insights_connection_string": {
+          "type": "string",
+          "pattern": "\\S",
+          "minLength": 1
+        },
+        "bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scenario_parsing",
+            "loadgen",
+            "verifier_shared",
+            "verifier_kafka",
+            "verifier_start_line",
+            "verifier_verify",
+            "verifier_gate",
+            "execution"
+          ],
+          "properties": {
+            "scenario_parsing": {
+              "type": "object",
+              "const": {
+                "MaxDocumentCharacters": 1048576,
+                "MaxNestingDepth": 32,
+                "MaxScalarCharacters": 65536,
+                "MaxParserEvents": 100000
+              }
+            },
+            "loadgen": {
+              "type": "object",
+              "const": {
+                "MaxAttempts": 186000,
+                "MaxPayloadBytes": 900000,
+                "MaxRowBytes": 16384,
+                "MaxManifestBytes": 67108864,
+                "MaxLedgerBytes": 268435456,
+                "MaxLedgerReadbackBytes": 268435456,
+                "LedgerQueueCapacity": 8192,
+                "EvidenceQueueCapacity": 2048,
+                "MaxReportBytes": 1048576,
+                "MaxSnapshotCharacters": 1048576,
+                "MaxEvidenceFileBytes": 134217728,
+                "MaxDiagnostics": 100,
+                "MaxBrokerSeries": 64,
+                "MaxArtifactBytes": 268435456,
+                "MaxAggregateArtifactBytes": 1073741824,
+                "MaxScheduleLateness": "00:00:01",
+                "ProducerDrainTimeout": "00:05:00",
+                "LedgerDrainTimeout": "00:00:10",
+                "EvidenceCompletionTimeout": "00:00:20",
+                "StatisticsCompletionTimeout": "00:00:20",
+                "UploadTimeout": "00:00:30",
+                "CleanupTimeout": "00:00:10",
+                "ProcessLifetimeTimeout": "00:11:00",
+                "RequireStatisticsEvidence": true,
+                "RequireRequestEvidence": false,
+                "ScenarioSourceRoot": "/app",
+                "OutputRoot": "/work/loadgen",
+                "EnrichmentGroupId": "a01-unused-enrichment"
+              }
+            },
+            "verifier_shared": {
+              "type": "object",
+              "const": {
+                "MaxOutputBytes": 16777216,
+                "MaxDiagnosticsPerCheck": 100,
+                "MaxDiagnosticBytes": 2048,
+                "CleanupTimeout": "00:00:10",
+                "IoTimeout": "00:00:10",
+                "MaxInputDepth": 32
+              }
+            },
+            "verifier_kafka": {
+              "type": "object",
+              "const": {
+                "TokenTimeout": "00:00:10",
+                "MetadataTimeout": "00:00:10",
+                "WatermarkTimeout": "00:00:10",
+                "PollSlice": "00:00:00.100",
+                "BlobIoTimeout": "00:00:30",
+                "MaxPartitions": 32,
+                "ScenarioRoot": "/app"
+              }
+            },
+            "verifier_start_line": {
+              "type": "object",
+              "const": {
+                "ProcessLifetime": "00:02:00"
+              }
+            },
+            "verifier_verify": {
+              "type": "object",
+              "const": {
+                "ProcessLifetime": "00:12:00",
+                "SafetyStop": "00:10:00",
+                "MaxConsumedRecords": 372000,
+                "MaxConsumedBytes": 17179869184,
+                "MaxArtifactBytes": 268435456,
+                "MaxTotalInputBytes": 1073741824,
+                "MaxRowBytes": 16777216,
+                "MaxRowsPerArtifact": 372000,
+                "MaxInventoryEntries": 186000,
+                "MaxInputEntries": 4194304,
+                "MaxNativeReportBytes": 1048576,
+                "MaxBrokerEntries": 64
+              }
+            },
+            "verifier_gate": {
+              "type": "object",
+              "const": {
+                "ProcessLifetime": "00:01:00",
+                "MaxArtifactBytes": 16777216,
+                "MaxTotalInputBytes": 83886080,
+                "ScenarioRoot": "/app"
+              }
+            },
+            "execution": {
+              "type": "object",
+              "const": {
+                "loadgen_job_seconds": 840,
+                "verify_job_seconds": 750,
+                "start_line_job_seconds": 150,
+                "gate_job_seconds": 90,
+                "termination_grace_seconds": 30
+              }
+            }
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "judge"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "repeat"
+                  ]
+                },
+                {
+                  "required": [
+                    "loadgen_job_name"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "start-line",
+                  "loadgen",
+                  "verify"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "repeat",
+              "loadgen_job_name"
+            ]
+          }
+        }
+      ]
     }
   }
 }

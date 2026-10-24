@@ -1,10 +1,24 @@
-{{- $mode := .Values.runtime.mode -}}
-{{- $role := ternary "loadgen" "verifier" (eq $mode "loadgen") -}}
-{{- $account := index .Values.runtime.service_accounts $role -}}
+{{- $r := .Values.runtime -}}
+{{- $mode := $r.mode -}}
+{{- $role := include "parchwell.role" . -}}
+{{- $job := include "parchwell.jobName" . -}}
+{{- $account := index $r.service_accounts $role -}}
+{{- $phaseOK := or (and (eq $r.phase "probe") (eq $.Values.configuration_id "C0")) (eq $r.phase $.Values.configuration_id) -}}
+{{- if not $phaseOK }}{{ fail "phase/configuration pair must be probe/C0, C0/C0 or C3/C3" }}{{ end -}}
+{{- if and (ne $mode "judge") (ne $r.loadgen_job_name (printf "%s-%s-r%d-loadgen" $r.run_id (lower $r.phase) (int $r.repeat))) }}{{ fail "loadgen_job_name must equal the derived producer Job name" }}{{ end -}}
+{{- if or (contains " " $r.blob.account_url) (contains "\t" $r.blob.account_url) }}{{ fail "blob account URL must be an HTTPS account-root URI" }}{{ end -}}
+{{- range $ip := list $r.eventhubs_ip $r.blob_ip -}}
+{{- $parts := splitList "." $ip -}}
+{{- if ne (len $parts) 4 }}{{ fail "private endpoint IP must be IPv4" }}{{ end -}}
+{{- range $part := $parts -}}{{- if or (not (regexMatch `^[0-9]{1,3}$` $part)) (lt (int $part) 0) (gt (int $part) 255) }}{{ fail "private endpoint IP must be IPv4" }}{{ end -}}{{- end -}}
+{{- end -}}
+{{- if ne $r.eventhubs.bootstrap_servers (printf "%s.servicebus.windows.net:9093" $r.eventhubs.namespace_name) }}{{ fail "bootstrap_servers must match namespace_name" }}{{ end -}}
+{{- $deadline := int $r.bounds.execution.gate_job_seconds -}}
+{{- if eq $mode "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if eq $mode "verify" }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if eq $mode "start-line" }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ printf "%s-%s" .Values.runtime.run_id $mode | quote }}
+  name: {{ $job | quote }}
   namespace: parchwell
   labels:
     {{- include "parchwell.labels" . | nindent 4 }}
@@ -13,7 +27,10 @@ spec:
   completions: 1
   parallelism: 1
   backoffLimit: 0
-  activeDeadlineSeconds: {{ .Values.runtime.job_deadline_seconds }}
+  {{- if eq $mode "loadgen" }}
+  podReplacementPolicy: Failed
+  {{- end }}
+  activeDeadlineSeconds: {{ $deadline }}
   template:
     metadata:
       labels:
@@ -24,7 +41,7 @@ spec:
       serviceAccountName: {{ $account.name | quote }}
       automountServiceAccountToken: false
       restartPolicy: Never
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: {{ $r.bounds.execution.termination_grace_seconds }}
       nodeSelector:
         workload: {{ ternary "loadgen" "workload" (eq $role "loadgen") | quote }}
       {{- if eq $role "loadgen" }}
@@ -43,7 +60,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: {{ $role }}
-          image: {{ index .Values.runtime (printf "%s_image" $role) | quote }}
+          image: {{ index $r (printf "%s_image" $role) | quote }}
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -58,32 +75,85 @@ spec:
               cpu: "3"
               memory: 12Gi
           env:
-            {{- range $key, $value := index .Values.runtime (printf "%s_environment" $role) }}
-            - name: {{ $key | quote }}
+            - name: PARCHWELL_SOURCE_COMMIT
+              value: {{ $r.source_commit | quote }}
+            - name: PARCHWELL_JOB_NAME
+              value: {{ $job | quote }}
+            - name: PARCHWELL_POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: PARCHWELL_POD_UID
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+            - name: Telemetry__ConnectionString
+              value: {{ $r.application_insights_connection_string | quote }}
+            - name: Telemetry__ServiceName
+              value: {{ ternary "Parchwell.LoadGen" "Parchwell.Verifier" (eq $role "loadgen") | quote }}
+            - name: Telemetry__ServiceInstanceId
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: Telemetry__ScenarioId
+              value: A01
+            - name: Telemetry__RunId
+              value: {{ $r.run_id | quote }}
+            {{- if eq $role "loadgen" }}
+            {{- range $section := list "loadgen" "scenario_parsing" }}{{ range $key, $value := index $r.bounds $section }}
+            - name: {{ printf "LoadGen__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}{{ end }}
+            {{- range $key, $value := dict "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) }}
+            - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
-            - name: PARCHWELL_POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: PARCHWELL_POD_UID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.uid
+            {{- range $key := list "ExpectedInstanceId" "ActualInstanceId" "PodName" "ClientId" }}
+            - name: {{ printf "LoadGen__%s" $key | quote }}
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            {{- end }}
+            {{- else }}
+            {{- range $key, $value := $r.bounds.verifier_shared }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}
+            {{- range $key, $value := $r.bounds.scenario_parsing }}
+            - name: {{ printf "Verifier__ScenarioLoadOptions__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}
+            {{- range $key, $value := dict "Mode" $mode "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: Verifier__VerifierClientId
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            {{- if ne $mode "judge" }}
+            {{- range $key, $value := $r.bounds.verifier_kafka }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}
+            {{- range $key, $value := dict "NamespaceName" $r.eventhubs.namespace_name "Repeat" (printf "%d" (int $r.repeat)) "ExpectedInstanceId" $r.loadgen_job_name "RepeatPrefix" (include "parchwell.repeatPrefix" $) "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) "StartLineOutputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "BrokerInventoryOutputName" (printf "%sbroker-inventory.json" (include "parchwell.repeatPrefix" $)) "StartLineInputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "ResultOutputName" (printf "%sresult.json" (include "parchwell.repeatPrefix" $)) }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if eq $mode "start-line" }}{{ range $key, $value := $r.bounds.verifier_start_line }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}{{ else }}{{ range $key, $value := $r.bounds.verifier_verify }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}{{ end }}
+            {{- else }}
+            {{- range $key, $value := $r.bounds.verifier_gate }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ printf "%v" $value | quote }}
+            {{- end }}
+            {{- range $key, $value := dict "PhasePrefix" (include "parchwell.phasePrefix" $) "CandidateOutputName" (printf "%scandidate.json" (include "parchwell.phasePrefix" $)) "LoadGenImage" $r.loadgen_image "VerifierImage" $r.verifier_image }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}{{ end }}
           volumeMounts:
             - name: work
               mountPath: /work
             - name: tmp
               mountPath: /tmp
-            - name: comparison
-              mountPath: /deployment
-              readOnly: true
       volumes:
         - name: work
-          emptyDir:
-            sizeLimit: 8Gi
+          emptyDir: {sizeLimit: 8Gi}
         - name: tmp
           emptyDir: {}
-        - name: comparison
-          configMap:
-            name: {{ ternary .Values.runtime.admission_name (printf "%s-%s-values" .Values.runtime.run_id $role) (eq $role "loadgen") | quote }}

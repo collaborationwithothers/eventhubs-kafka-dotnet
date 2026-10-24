@@ -1,0 +1,24 @@
+scenario_id: A01
+configuration_id: C0
+runtime:
+  run_id: synthetic-c3
+  phase: C0
+  repeat: 1
+  mode: loadgen
+  loadgen_job_name: synthetic-c3-c0-r1-loadgen
+  source_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  loadgen_image: registry.example.invalid/parchwell/loadgen@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  verifier_image: registry.example.invalid/parchwell/verifier@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  service_accounts:
+    loadgen: {name: loadgen, client_id: synthetic-loadgen}
+    verifier: {name: verifier, client_id: synthetic-verifier}
+  eventhubs:
+    namespace_name: synthetic-ns
+    bootstrap_servers: synthetic-ns.servicebus.windows.net:9093
+    topics: {events: document-events, state: document-state, dlq: document-events-dlq}
+  blob:
+    account_url: https://storage.example.invalid
+    containers: {ledger: ledger, verifier: verifier, claim_check: claim-check}
+  eventhubs_ip: 203.0.113.1
+  blob_ip: 203.0.113.2
+  application_insights_connection_string: InstrumentationKey=00000000-0000-0000-0000-000000000001;IngestionEndpoint=https://telemetry.example.invalid/
