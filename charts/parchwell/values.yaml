@@ -1,2 +1,88 @@
-# Supply the unchanged generated v1 document, then a runtime-only envelope.
-{}
+# Fixed worker bounds; all deployment identity and destination values are explicit.
+runtime:
+  bounds:
+    {
+      "scenario_parsing": {
+        "MaxDocumentCharacters": 1048576,
+        "MaxNestingDepth": 32,
+        "MaxScalarCharacters": 65536,
+        "MaxParserEvents": 100000
+      },
+      "loadgen": {
+        "MaxAttempts": 186000,
+        "MaxPayloadBytes": 900000,
+        "MaxRowBytes": 16384,
+        "MaxManifestBytes": 67108864,
+        "MaxLedgerBytes": 268435456,
+        "MaxLedgerReadbackBytes": 268435456,
+        "LedgerQueueCapacity": 8192,
+        "EvidenceQueueCapacity": 2048,
+        "MaxReportBytes": 1048576,
+        "MaxSnapshotCharacters": 1048576,
+        "MaxEvidenceFileBytes": 134217728,
+        "MaxDiagnostics": 100,
+        "MaxBrokerSeries": 64,
+        "MaxArtifactBytes": 268435456,
+        "MaxAggregateArtifactBytes": 1073741824,
+        "MaxScheduleLateness": "00:00:01",
+        "ProducerDrainTimeout": "00:05:00",
+        "LedgerDrainTimeout": "00:00:10",
+        "EvidenceCompletionTimeout": "00:00:20",
+        "StatisticsCompletionTimeout": "00:00:20",
+        "UploadTimeout": "00:00:30",
+        "CleanupTimeout": "00:00:10",
+        "ProcessLifetimeTimeout": "00:11:00",
+        "RequireStatisticsEvidence": true,
+        "RequireRequestEvidence": false,
+        "ScenarioSourceRoot": "/app",
+        "OutputRoot": "/work/loadgen",
+        "EnrichmentGroupId": "a01-unused-enrichment"
+      },
+      "verifier_shared": {
+        "MaxOutputBytes": 16777216,
+        "MaxDiagnosticsPerCheck": 100,
+        "MaxDiagnosticBytes": 2048,
+        "CleanupTimeout": "00:00:10",
+        "IoTimeout": "00:00:10",
+        "MaxInputDepth": 32
+      },
+      "verifier_kafka": {
+        "TokenTimeout": "00:00:10",
+        "MetadataTimeout": "00:00:10",
+        "WatermarkTimeout": "00:00:10",
+        "PollSlice": "00:00:00.100",
+        "BlobIoTimeout": "00:00:30",
+        "MaxPartitions": 32,
+        "ScenarioRoot": "/app"
+      },
+      "verifier_start_line": {
+        "ProcessLifetime": "00:02:00"
+      },
+      "verifier_verify": {
+        "ProcessLifetime": "00:12:00",
+        "SafetyStop": "00:10:00",
+        "MaxConsumedRecords": 372000,
+        "MaxConsumedBytes": 17179869184,
+        "MaxArtifactBytes": 268435456,
+        "MaxTotalInputBytes": 1073741824,
+        "MaxRowBytes": 16777216,
+        "MaxRowsPerArtifact": 372000,
+        "MaxInventoryEntries": 186000,
+        "MaxInputEntries": 4194304,
+        "MaxNativeReportBytes": 1048576,
+        "MaxBrokerEntries": 64
+      },
+      "verifier_gate": {
+        "ProcessLifetime": "00:01:00",
+        "MaxArtifactBytes": 16777216,
+        "MaxTotalInputBytes": 83886080,
+        "ScenarioRoot": "/app"
+      },
+      "execution": {
+        "loadgen_job_seconds": 840,
+        "verify_job_seconds": 750,
+        "start_line_job_seconds": 150,
+        "gate_job_seconds": 90,
+        "termination_grace_seconds": 30
+      }
+    }

@@ -2,4 +2,4 @@ apiVersion: v2
 name: parchwell
 version: 0.1.0
 type: application
-description: Bounded A01 workers from generated scenario contract v1
+description: Bounded workers with packaged scenario configuration
