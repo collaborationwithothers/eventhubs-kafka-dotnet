@@ -66,6 +66,7 @@
     "MaxRowBytes": 16777216,
     "MaxRowsPerArtifact": 372000,
     "MaxInventoryEntries": 186000,
+    "MaxInputEntries": 4194304,
     "MaxNativeReportBytes": 1048576,
     "MaxBrokerEntries": 64
   },

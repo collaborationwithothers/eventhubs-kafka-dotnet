@@ -23,7 +23,7 @@ internal static class DeploymentRuntimeLimits
             Durations: "TokenTimeout MetadataTimeout WatermarkTimeout PollSlice BlobIoTimeout", Text: "ScenarioRoot"),
         new("verifier_start_line", Durations: "ProcessLifetime"),
         new("verifier_verify", Integers: "MaxRowBytes MaxNativeReportBytes MaxBrokerEntries",
-            LongIntegers: "MaxConsumedRecords MaxConsumedBytes MaxArtifactBytes MaxTotalInputBytes MaxRowsPerArtifact MaxInventoryEntries",
+            LongIntegers: "MaxConsumedRecords MaxConsumedBytes MaxArtifactBytes MaxTotalInputBytes MaxRowsPerArtifact MaxInventoryEntries MaxInputEntries",
             Durations: "ProcessLifetime SafetyStop"),
         new("verifier_gate", LongIntegers: "MaxArtifactBytes MaxTotalInputBytes", Durations: "ProcessLifetime", Text: "ScenarioRoot"),
         new("execution",

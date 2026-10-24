@@ -62,6 +62,7 @@ internal sealed class VerifierHostOptions
     public int? MaxRowBytes { get; set; }
     public long? MaxRowsPerArtifact { get; set; }
     public long? MaxInventoryEntries { get; set; }
+    public long? MaxInputEntries { get; set; }
     public int? MaxNativeReportBytes { get; set; }
     public int? MaxBrokerEntries { get; set; }
     public VerifierScenarioLoadOptions? ScenarioLoadOptions { get; set; }

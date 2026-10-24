@@ -74,7 +74,7 @@ public sealed class VerifierHostTests
             "WorkloadIdentityClientId", "FederatedTokenFilePath", "LedgerContainer", "ArtifactPrefix",
             "StartLineInputName", "ResultOutputName", "ScenarioRoot", "ExpectedBrokerNames", "SafetyStop",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxRowBytes", "MaxRowsPerArtifact",
-            "MaxInventoryEntries", "MaxPartitions", "MaxInputDepth", "MaxNativeReportBytes",
+            "MaxInventoryEntries", "MaxInputEntries", "MaxPartitions", "MaxInputDepth", "MaxNativeReportBytes",
             "MaxBrokerEntries", "MaxConsumedRecords", "MaxConsumedBytes", "ScenarioLoadOptions"))
         .Concat(RequiredOptionsFor("verify",
             "ScenarioLoadOptions.MaxDocumentCharacters", "ScenarioLoadOptions.MaxNestingDepth",
@@ -222,7 +222,7 @@ public sealed class VerifierHostTests
             ("verify", "MaxOutputBytes"), ("verify", "MaxDiagnosticsPerCheck"),
             ("verify", "MaxDiagnosticBytes"), ("verify", "MaxArtifactBytes"),
             ("verify", "MaxTotalInputBytes"), ("verify", "MaxRowBytes"),
-            ("verify", "MaxRowsPerArtifact"), ("verify", "MaxInventoryEntries"),
+            ("verify", "MaxRowsPerArtifact"), ("verify", "MaxInventoryEntries"), ("verify", "MaxInputEntries"),
             ("verify", "MaxPartitions"), ("verify", "MaxInputDepth"), ("verify", "MaxNativeReportBytes"),
             ("verify", "MaxBrokerEntries"), ("verify", "MaxConsumedRecords"), ("verify", "MaxConsumedBytes"),
             ("verify", "ScenarioLoadOptions.MaxDocumentCharacters"),
@@ -230,6 +230,20 @@ public sealed class VerifierHostTests
             ("verify", "ScenarioLoadOptions.MaxScalarCharacters"),
             ("verify", "ScenarioLoadOptions.MaxParserEvents")
         }.SelectMany(item => new[] { 0, -1 }.Select(value => new object[] { item.Item1, item.Item2, value }));
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(-1L, false)]
+    [InlineData(0L, false)]
+    [InlineData(1L, true)]
+    [InlineData(2L, true)]
+    [InlineData(long.MaxValue, true)]
+    public void Given_IndependentInputEntryLimit_When_Validated_Then_RequiresExplicitPositiveInt64(long? entries, bool accepted)
+    {
+        VerifierHostOptions options = ValidOptions("verify");
+        options.MaxInputEntries = entries;
+        Assert.Equal(accepted, new VerifierHostOptionsValidator().Validate(null, options).Succeeded);
+    }
 
     [Theory]
     [MemberData(nameof(RequiredBudgets))]
@@ -828,6 +842,7 @@ public sealed class VerifierHostTests
         MaxRowBytes = 65_536,
         MaxRowsPerArtifact = 1_000,
         MaxInventoryEntries = 1_000,
+        MaxInputEntries = 1_000,
         MaxNativeReportBytes = 65_536,
         MaxBrokerEntries = 16,
         MaxConsumedRecords = 1000,
@@ -975,6 +990,7 @@ public sealed class VerifierHostTests
                 "--Verifier:MaxRowBytes=65536",
                 "--Verifier:MaxRowsPerArtifact=1000",
                 "--Verifier:MaxInventoryEntries=1000",
+                "--Verifier:MaxInputEntries=1000",
                 "--Verifier:MaxPartitions=8",
                 "--Verifier:MaxInputDepth=16",
                 "--Verifier:MaxNativeReportBytes=65536",
