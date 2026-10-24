@@ -42,6 +42,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     private long? _nativeCreationTimestamp;
     private string? _nativeName;
     private long? _completionBoundaryMicroseconds;
+    private long? _firstPostDrainTimestampMicroseconds;
+    private CompletionMode _completionMode;
     private string[] _expectedBrokers = [];
 
     internal KafkaStatisticsSession(
@@ -135,6 +137,19 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         }
     }
 
+    /// <summary>Waits for a retained post-drain report, stops capture, and drains accepted evidence within the configured deadline.</summary>
+    /// <param name="cancellationToken">Cancels the wait while preserving an incomplete session result.</param>
+    /// <returns>The bounded capture status, diagnostics, and first successfully written post-drain native timestamp.</returns>
+    /// <remarks>
+    /// Completion requires a validated nonempty broker snapshot generated strictly after the drain
+    /// boundary and successfully written to the evidence sink. It proves capture completion only,
+    /// not independent broker inventory or the full ADR-013 coverage oracle. MissingBrokers is
+    /// empty because this overload accepts no inventory; workers must not infer an inventory from it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Completion has already been requested for this session.</exception>
+    public Task<KafkaStatisticsCompletion> CompleteAsync(CancellationToken cancellationToken = default) =>
+        CompleteCoreAsync(CompletionMode.CaptureOnly, [], cancellationToken);
+
     /// <summary>Waits for post-drain samples, stops capture, and drains accepted evidence within the configured deadline.</summary>
     /// <param name="expectedBrokerNames">The bounded broker names whose post-drain samples must be observed.</param>
     /// <param name="cancellationToken">Cancels the wait while preserving an incomplete session result.</param>
@@ -153,6 +168,14 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(expectedBrokerNames);
         string[] expected = ValidateExpectedBrokers(expectedBrokerNames);
+        return await CompleteCoreAsync(CompletionMode.CallerInventory, expected, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<KafkaStatisticsCompletion> CompleteCoreAsync(
+        CompletionMode mode,
+        string[] expected,
+        CancellationToken cancellationToken)
+    {
         long completionStartTimestamp = _timeProvider.GetTimestamp();
         using CancellationTokenSource deadline = new(_options.CompletionTimeout, _timeProvider);
         bool wasDisposed;
@@ -164,6 +187,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             }
 
             _completionStarted = true;
+            _completionMode = mode;
             _expectedBrokers = expected;
             _completionBoundaryMicroseconds = _nativeClockCompatible
                 ? ToMicrosecondsCeiling(_timeProvider.GetTimestamp(), _timeProvider.TimestampFrequency)
@@ -184,7 +208,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             _completionState.RecordDeadline);
 
         bool coverageReached = false;
-        if (_nativeClockCompatible && expected.Length > 0 && !wasDisposed)
+        if (_nativeClockCompatible && !wasDisposed)
         {
             lock (_gate)
             {
@@ -316,6 +340,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             KafkaStatisticsParser.Parse(captured.Json, _options.MaxBrokerSeries);
         List<KafkaStatisticsDiagnostic> reportDiagnostics = new(parseDiagnostics);
         List<MetricEmission> emissions = [];
+        bool snapshotValid = false;
         if (!parseDiagnostics.IsEmpty)
         {
             lock (_gate)
@@ -331,14 +356,18 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         {
             lock (_gate)
             {
-                if (!ValidateSnapshot(snapshot, captured.ReceiptTimestamp, reportDiagnostics))
+                snapshotValid = ValidateSnapshot(snapshot, captured.ReceiptTimestamp, reportDiagnostics);
+                if (!snapshotValid)
                 {
                     // Invalid identity, generation order or client lifetime must never emit metrics.
                 }
                 else
                 {
                     UpdateCounterState(snapshot, reportDiagnostics, emissions);
-                    ObservePostDrainCoverage(snapshot);
+                    if (_completionMode == CompletionMode.CallerInventory)
+                    {
+                        ObservePostDrainCoverage(snapshot);
+                    }
                 }
             }
         }
@@ -366,6 +395,22 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         try
         {
             await _sink.WriteAsync(report, _workerCancellation.Token).ConfigureAwait(false);
+            lock (_gate)
+            {
+                if (_completionMode == CompletionMode.CaptureOnly
+                    && !_completionFinished
+                    && snapshotValid
+                    && snapshot is not null
+                    && !snapshot.Brokers.IsEmpty
+                    && _nativeClockCompatible
+                    && _completionBoundaryMicroseconds is long boundary
+                    && snapshot.TimestampMicroseconds > boundary)
+                {
+                    _firstPostDrainTimestampMicroseconds ??= snapshot.TimestampMicroseconds;
+                    _coverageComplete = true;
+                    _coverageReached.TrySetResult();
+                }
+            }
         }
         catch (OperationCanceledException) when (_workerCancellation.IsCancellationRequested)
         {
@@ -603,7 +648,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             _completionFinished = true;
             return new KafkaStatisticsCompletion(complete, diagnostics, missing.ToImmutableArray())
             {
-                DrainBoundaryMicroseconds = _completionBoundaryMicroseconds
+                DrainBoundaryMicroseconds = _completionBoundaryMicroseconds,
+                FirstPostDrainTimestampMicroseconds = _firstPostDrainTimestampMicroseconds
             };
         }
     }
@@ -750,6 +796,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             : converted < long.MinValue ? long.MinValue
             : (long)converted;
     }
+
+    private enum CompletionMode { CallerInventory, CaptureOnly }
 
     private sealed record CapturedReport(string Json, DateTimeOffset ReceivedAt, long ReceiptTimestamp);
     private sealed record MetricEmission(

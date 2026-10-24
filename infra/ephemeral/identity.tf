@@ -1,18 +1,3 @@
-resource "azurerm_federated_identity_credential" "workload" {
-  for_each                  = local.workloads
-  name                      = "fic-${each.key}"
-  user_assigned_identity_id = local.persistent.workload_identities[each.key].id
-  audience                  = ["api://AzureADTokenExchange"]
-  issuer                    = module.aks.oidc_issuer_profile_issuer_url
-  subject                   = "system:serviceaccount:parchwell:${each.key}"
-}
-
-resource "azurerm_role_assignment" "acr_pull" {
-  scope                = local.persistent.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = module.aks.kubelet_identity.objectId
-}
-
 locals {
   workload_roles = {
     loadgen_events_sender              = { workload = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = module.eventhubs.resource_eventhubs["document-events"].id }

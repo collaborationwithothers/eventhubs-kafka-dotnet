@@ -1,21 +1,19 @@
 locals {
   workloads = toset(["loadgen", "enrichment-consumer", "verifier"])
   names = {
-    resource_group            = "rg-parchwell-persist"
-    spoke                     = "vnet-parchwell-${var.naming_suffix}"
-    aks_subnet                = "snet-aks"
-    private_endpoint_subnet   = "snet-private-endpoints"
-    spoke_to_runner           = "peer-parchwell-to-runner"
-    runner_to_spoke           = "peer-runner-to-parchwell-${var.naming_suffix}"
-    spoke_dns_link            = "link-parchwell-${var.naming_suffix}"
-    runner_dns_link           = "link-runner-${var.naming_suffix}"
-    log_analytics             = "law-parchwell-${var.naming_suffix}"
-    run_storage               = "stparchrun${var.naming_suffix}"
-    run_blob_private_endpoint = "pe-run-blob-${var.naming_suffix}"
-    acr                       = "acrparchwell${var.naming_suffix}"
-    budget                    = "budget-parchwell-monthly"
-    aks_identity              = "uami-aks-${var.naming_suffix}"
-    workload_identities       = { for key in local.workloads : key => "uami-${key}-${var.naming_suffix}" }
+    application_insights    = "appi-parchwell-${var.naming_suffix}"
+    resource_group          = "rg-parchwell-persist"
+    spoke                   = "vnet-parchwell-${var.naming_suffix}"
+    aks_subnet              = "snet-aks"
+    private_endpoint_subnet = "snet-private-endpoints"
+    spoke_to_runner         = "peer-parchwell-to-runner"
+    runner_to_spoke         = "peer-runner-to-parchwell-${var.naming_suffix}"
+    spoke_dns_link          = "link-parchwell-${var.naming_suffix}"
+    runner_dns_link         = "link-runner-${var.naming_suffix}"
+    log_analytics           = "law-parchwell-${var.naming_suffix}"
+    acr                     = "acrparchwell${var.naming_suffix}"
+    aks_identity            = "uami-aks-${var.naming_suffix}"
+    workload_identities     = { for key in local.workloads : key => "uami-${key}-${var.naming_suffix}" }
   }
   tags = {
     repo         = "eventhubs-kafka-dotnet"

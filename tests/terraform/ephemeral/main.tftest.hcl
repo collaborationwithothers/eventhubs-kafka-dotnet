@@ -8,11 +8,7 @@ mock_provider "azurerm" {
       "role_definition_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/00000000-0000-0000-0000-000000000031"
     }
   }
-  mock_resource "azurerm_federated_identity_credential" {
-    defaults = {
-      "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-loadgen-offline1/federatedIdentityCredentials/fic-loadgen"
-    }
-  }
+
   mock_resource "azurerm_monitor_diagnostic_setting" {
     defaults = {
       "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1|diag-eventhubs-offline1"
@@ -40,17 +36,12 @@ mock_provider "time" {
 }
 
 variables {
-  naming_suffix            = "offline1"
-  location                 = "uksouth"
-  pod_cidr                 = "10.242.0.0/16"
-  service_cidr             = "10.243.0.0/16"
-  dns_service_ip           = "10.243.0.10"
-  aks_authorized_ip_ranges = ["192.0.2.10/32"]
-  kubernetes_version       = "1.35.0"
-  eventhub_namespace_name  = "eh-parchwell-offline1"
-  scenario_id              = "A01"
-  run_id                   = "offline1"
-  expires_at               = "2026-11-01T04:00:00Z"
+  naming_suffix           = "offline1"
+  location                = "uksouth"
+  eventhub_namespace_name = "eh-parchwell-offline1"
+  scenario_id             = "A01"
+  run_id                  = "offline1"
+  expires_at              = "2026-11-01T04:00:00Z"
   persistent_backend_config = {
     "storage_account_name" = "syntheticstate"
     "container_name"       = "tfstate"
@@ -252,108 +243,6 @@ override_data {
   }
 }
 
-override_resource {
-  target          = module.application_insights.azurerm_application_insights.this
-  override_during = plan
-  values = {
-    "id"                  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Insights/components/appi-parchwell-offline1"
-    "app_id"              = "00000000-0000-0000-0000-000000000021"
-    "instrumentation_key" = "00000000-0000-0000-0000-000000000022"
-    "connection_string"   = "InstrumentationKey=00000000-0000-0000-0000-000000000022;IngestionEndpoint=https://synthetic.example.invalid/"
-  }
-}
-
-override_resource {
-  target          = module.aks.azapi_resource.this
-  override_during = plan
-  values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.ContainerService/managedClusters/aks-parchwell-offline1"
-    "output" = {
-      "properties" = {
-        "currentKubernetesVersion" = "1.35.0"
-        "fqdn"                     = "aks-synthetic.example.invalid"
-        "privateFQDN"              = null
-        "maxAgentPools"            = 100
-        "nodeResourceGroup"        = "rg-synthetic-nodes"
-        "oidcIssuerProfile" = {
-          "issuerURL" = "https://synthetic.example.invalid/issuer/"
-        }
-        "identityProfile" = {
-          "kubeletidentity" = {
-            "clientId"   = "00000000-0000-0000-0000-000000000010"
-            "objectId"   = "00000000-0000-0000-0000-000000000011"
-            "resourceId" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-synthetic-nodes/providers/Microsoft.ManagedIdentity/userAssignedIdentities/kubelet-synthetic"
-          }
-        }
-        "addonProfiles" = {
-          "ingressApplicationGateway" = {
-            "identity" = null
-          }
-          "azureKeyvaultSecretsProvider" = {
-            "identity" = null
-          }
-        }
-        "ingressProfile" = {
-          "applicationLoadBalancer" = {
-            "identity" = {
-
-            }
-          }
-          "webAppRouting" = {
-            "identity" = {
-
-            }
-          }
-        }
-        "networkProfile" = {
-          "loadBalancerProfile" = {
-            "effectiveOutboundIPs" = []
-          }
-          "natGatewayProfile" = {
-            "effectiveOutboundIPs" = []
-          }
-        }
-      }
-    }
-  }
-}
-
-override_resource {
-  target          = module.aks.azapi_resource_action.this_user_kubeconfig[0]
-  override_during = plan
-  values = {
-    "output" = {
-      "kubeconfigs" = [{
-        "name"  = "synthetic"
-        "value" = "YXBpVmVyc2lvbjogdjEKa2luZDogQ29uZmlnCmNsdXN0ZXJzOgotIG5hbWU6IHN5bnRoZXRpYwogIGNsdXN0ZXI6CiAgICBzZXJ2ZXI6IGh0dHBzOi8vYWtzLXN5bnRoZXRpYy5leGFtcGxlLmludmFsaWQKICAgIGNlcnRpZmljYXRlLWF1dGhvcml0eS1kYXRhOiBjM2x1ZEdobGRHbGpMV05oCmNvbnRleHRzOiBbXQp1c2VyczogW10K"
-      }]
-    }
-  }
-}
-
-override_resource {
-  target          = module.aks.module.nodepools["workload"].azapi_resource.this[0]
-  override_during = plan
-  values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.ContainerService/managedClusters/aks-parchwell-offline1/agentPools/workload"
-    "output" = {
-
-    }
-  }
-}
-
-override_resource {
-  target          = module.aks.module.nodepools["loadgen"].azapi_resource.this[0]
-  override_during = plan
-  values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.ContainerService/managedClusters/aks-parchwell-offline1/agentPools/loadgen"
-    "output" = {
-
-    }
-  }
-}
-
-# One positive plan covers the closed configuration contract in plan checks 5-10.
 run "foundation" {
   command = plan
 
@@ -482,130 +371,6 @@ run "foundation" {
   }
 
   assert {
-    condition = jsonencode(local.aks_config) == jsonencode({
-      "name"               = "aks-parchwell-offline1"
-      "location"           = "uksouth"
-      "parent_id"          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph"
-      "dns_prefix"         = "aks-parchwell-offline1"
-      "kubernetes_version" = "1.35.0"
-      "tags" = {
-        "repo"       = "eventhubs-kafka-dotnet"
-        "layer"      = "ephemeral"
-        "scenario"   = "A01"
-        "run-id"     = "offline1"
-        "expires-at" = "2026-11-01T04:00:00Z"
-      }
-      "enable_telemetry" = false
-      "sku" = {
-        "name" = "Base"
-        "tier" = "Free"
-      }
-      "enable_rbac"            = true
-      "disable_local_accounts" = true
-      "aad_profile" = {
-        "managed"           = true
-        "enable_azure_rbac" = true
-      }
-      "managed_identities" = {
-        "system_assigned"            = false
-        "user_assigned_resource_ids" = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-offline1"]
-      }
-      "api_server_access_profile" = {
-        "authorized_ip_ranges"   = ["192.0.2.10/32"]
-        "enable_private_cluster" = false
-      }
-      "public_network_access" = "Enabled"
-      "oidc_issuer_profile" = {
-        "enabled" = true
-      }
-      "security_profile" = {
-        "workload_identity" = {
-          "enabled" = true
-        }
-      }
-      "network_profile" = {
-        "network_plugin"      = "azure"
-        "network_plugin_mode" = "overlay"
-        "network_dataplane"   = "cilium"
-        "network_policy"      = "cilium"
-        "load_balancer_sku"   = "standard"
-        "outbound_type"       = "loadBalancer"
-        "pod_cidr"            = "10.242.0.0/16"
-        "service_cidr"        = "10.243.0.0/16"
-        "dns_service_ip"      = "10.243.0.10"
-      }
-      "default_agent_pool" = {
-        "name"                  = "system"
-        "count_of"              = 1
-        "vm_size"               = "Standard_D4ds_v5"
-        "enable_auto_scaling"   = false
-        "enable_node_public_ip" = false
-        "scale_set_priority"    = "Regular"
-        "type"                  = "VirtualMachineScaleSets"
-        "vnet_subnet_id"        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-aks"
-        "node_taints"           = ["CriticalAddonsOnly=true:NoSchedule"]
-        "node_labels" = {
-          "workload" = "system"
-        }
-      }
-      "agent_pools" = {
-        "workload" = {
-          "name"                  = "workload"
-          "count_of"              = 1
-          "mode"                  = "User"
-          "os_type"               = "Linux"
-          "vm_size"               = "Standard_D4ds_v5"
-          "enable_auto_scaling"   = false
-          "enable_node_public_ip" = false
-          "scale_set_priority"    = "Regular"
-          "type"                  = "VirtualMachineScaleSets"
-          "vnet_subnet_id"        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-aks"
-          "node_taints"           = []
-          "node_labels" = {
-            "workload" = "workload"
-          }
-          "tags" = {
-            "repo"       = "eventhubs-kafka-dotnet"
-            "layer"      = "ephemeral"
-            "scenario"   = "A01"
-            "run-id"     = "offline1"
-            "expires-at" = "2026-11-01T04:00:00Z"
-          }
-        }
-        "loadgen" = {
-          "name"                  = "loadgen"
-          "count_of"              = 1
-          "mode"                  = "User"
-          "os_type"               = "Linux"
-          "vm_size"               = "Standard_D4ds_v5"
-          "enable_auto_scaling"   = false
-          "enable_node_public_ip" = false
-          "scale_set_priority"    = "Regular"
-          "type"                  = "VirtualMachineScaleSets"
-          "vnet_subnet_id"        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-aks"
-          "node_taints"           = ["workload=loadgen:NoSchedule"]
-          "node_labels" = {
-            "workload" = "loadgen"
-          }
-          "tags" = {
-            "repo"       = "eventhubs-kafka-dotnet"
-            "layer"      = "ephemeral"
-            "scenario"   = "A01"
-            "run-id"     = "offline1"
-            "expires-at" = "2026-11-01T04:00:00Z"
-          }
-        }
-      }
-    })
-    error_message = "AKS module inputs must preserve the exact identity/network/security contract and three isolated fixed pools."
-  }
-
-  assert {
-    condition     = module.aks.resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.ContainerService/managedClusters/aks-parchwell-offline1" && module.aks.kubelet_identity.objectId == "00000000-0000-0000-0000-000000000011" && module.aks.oidc_issuer_profile_issuer_url == "https://synthetic.example.invalid/issuer/"
-    error_message = "AKS supported outputs must use the synthetic actual producer paths."
-  }
-
-  assert {
     condition = jsonencode(local.eventhubs_config) == jsonencode({
       "name"                = "eh-parchwell-offline1"
       "location"            = "uksouth"
@@ -667,42 +432,8 @@ run "foundation" {
   }
 
   assert {
-    condition = jsonencode({ for key, credential in azurerm_federated_identity_credential.workload : key => { subject = credential.subject, audience = credential.audience, issuer = credential.issuer, user_assigned_identity_id = credential.user_assigned_identity_id } }) == jsonencode({
-      "loadgen" = {
-        "subject"                   = "system:serviceaccount:parchwell:loadgen"
-        "audience"                  = ["api://AzureADTokenExchange"]
-        "issuer"                    = "https://synthetic.example.invalid/issuer/"
-        "user_assigned_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-loadgen-offline1"
-      }
-      "enrichment-consumer" = {
-        "subject"                   = "system:serviceaccount:parchwell:enrichment-consumer"
-        "audience"                  = ["api://AzureADTokenExchange"]
-        "issuer"                    = "https://synthetic.example.invalid/issuer/"
-        "user_assigned_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-enrichment-consumer-offline1"
-      }
-      "verifier" = {
-        "subject"                   = "system:serviceaccount:parchwell:verifier"
-        "audience"                  = ["api://AzureADTokenExchange"]
-        "issuer"                    = "https://synthetic.example.invalid/issuer/"
-        "user_assigned_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-verifier-offline1"
-      }
-    })
-    error_message = "Federation must bind exactly the three workload subjects to their corresponding persistent identities."
-  }
-
-  assert {
     condition     = toset([for role in azurerm_role_assignment.workload : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([jsonencode(["00000000-0000-0000-0000-000000000004", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier"])]) && length(azurerm_role_assignment.workload) == 9 && alltrue([for role in azurerm_role_assignment.workload : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
     error_message = "The complete workload role set must equal the nine approved topic/container grants, with no broader data role."
-  }
-
-  assert {
-    condition     = azurerm_role_assignment.acr_pull.scope == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ContainerRegistry/registries/acrparchwelloffline1" && azurerm_role_assignment.acr_pull.role_definition_name == "AcrPull" && azurerm_role_assignment.acr_pull.principal_id == "00000000-0000-0000-0000-000000000011"
-    error_message = "Only the AKS kubelet identity receives registry pull access."
-  }
-
-  assert {
-    condition     = module.application_insights.resource.workspace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1" && module.application_insights.resource.application_type == "other" && module.application_insights.resource.internet_ingestion_enabled && module.application_insights.resource.internet_query_enabled
-    error_message = "Application Insights must use the persistent workspace and selected public Azure Monitor topology."
   }
 
   assert {
@@ -711,7 +442,7 @@ run "foundation" {
   }
 
   assert {
-    condition = alltrue([for actual in [azurerm_resource_group.ephemeral.tags, module.eventhubs.resource.tags, module.storage.resource.tags, module.application_insights.resource.tags, module.eventhubs.private_endpoints.eventhubs.tags] : jsonencode(actual) == jsonencode({
+    condition = alltrue([for actual in [azurerm_resource_group.ephemeral.tags, module.eventhubs.resource.tags, module.storage.resource.tags, module.eventhubs.private_endpoints.eventhubs.tags] : jsonencode(actual) == jsonencode({
       "repo"       = "eventhubs-kafka-dotnet"
       "layer"      = "ephemeral"
       "scenario"   = "A01"
@@ -719,15 +450,6 @@ run "foundation" {
       "expires-at" = "2026-11-01T04:00:00Z"
     })])
     error_message = "All supporting exposed resources must carry exactly the five ephemeral fixture tags."
-  }
-
-  assert {
-    condition = jsonencode(output.aks) == jsonencode({
-      "id"         = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.ContainerService/managedClusters/aks-parchwell-offline1"
-      "name"       = "aks-parchwell-offline1"
-      "node_pools" = ["system", "workload", "loadgen"]
-    })
-    error_message = "AKS output must expose exactly the identity, name and fixed pool list."
   }
 
   assert {
@@ -764,35 +486,6 @@ run "foundation" {
   }
 
   assert {
-    condition = jsonencode(output.workload_identity) == jsonencode({
-      "namespace" = "parchwell"
-      "service_accounts" = {
-        "loadgen" = {
-          "name"      = "loadgen"
-          "client_id" = "00000000-0000-0000-0000-000000000001"
-          "subject"   = "system:serviceaccount:parchwell:loadgen"
-        }
-        "enrichment-consumer" = {
-          "name"      = "enrichment-consumer"
-          "client_id" = "00000000-0000-0000-0000-000000000002"
-          "subject"   = "system:serviceaccount:parchwell:enrichment-consumer"
-        }
-        "verifier" = {
-          "name"      = "verifier"
-          "client_id" = "00000000-0000-0000-0000-000000000003"
-          "subject"   = "system:serviceaccount:parchwell:verifier"
-        }
-      }
-    })
-    error_message = "Worker deployment output must expose exactly the namespace and three service-account contracts."
-  }
-
-  assert {
-    condition     = issensitive(output.application_insights_connection_string) && output.application_insights_connection_string == "InstrumentationKey=00000000-0000-0000-0000-000000000022;IngestionEndpoint=https://synthetic.example.invalid/"
-    error_message = "Sensitive Application Insights output must preserve the exact synthetic connection string."
-  }
-
-  assert {
     condition = jsonencode(data.terraform_remote_state.persistent.config) == jsonencode({
       "storage_account_name" = "syntheticstate"
       "container_name"       = "tfstate"
@@ -803,10 +496,27 @@ run "foundation" {
     })
     error_message = "Remote state must use exactly the supplied backend location and Entra/OIDC authentication flags."
   }
-
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
+run "remote_state_cli" {
+  command = plan
+  variables {
+    persistent_backend_use_oidc = false
+  }
+
+  assert {
+    condition = jsonencode(data.terraform_remote_state.persistent.config) == jsonencode({
+      "storage_account_name" = "syntheticstate"
+      "container_name"       = "tfstate"
+      "key"                  = "persistent.tfstate"
+      "resource_group_name"  = "rg-synthetic-backend"
+      "use_azuread_auth"     = true
+      "use_oidc"             = false
+    })
+    error_message = "Remote state must use exactly the supplied backend location and Entra/non-OIDC authentication flags."
+  }
+}
+
 run "reject_suffix" {
   command = plan
   variables {
@@ -815,7 +525,6 @@ run "reject_suffix" {
   expect_failures = [var.naming_suffix]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_location" {
   command = plan
   variables {
@@ -824,7 +533,6 @@ run "reject_location" {
   expect_failures = [var.location]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_backend" {
   command = plan
   variables {
@@ -838,61 +546,6 @@ run "reject_backend" {
   expect_failures = [var.persistent_backend_config]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_pod_cidr" {
-  command = plan
-  variables {
-    pod_cidr = "not-cidr"
-  }
-  expect_failures = [var.pod_cidr]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_service_cidr" {
-  command = plan
-  variables {
-    service_cidr = "not-cidr"
-  }
-  expect_failures = [var.service_cidr]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_dns_ip" {
-  command = plan
-  variables {
-    dns_service_ip = "not-ip"
-  }
-  expect_failures = [var.dns_service_ip]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_empty_ranges" {
-  command = plan
-  variables {
-    aks_authorized_ip_ranges = []
-  }
-  expect_failures = [var.aks_authorized_ip_ranges]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_bad_ranges" {
-  command = plan
-  variables {
-    aks_authorized_ip_ranges = ["not-cidr"]
-  }
-  expect_failures = [var.aks_authorized_ip_ranges]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
-run "reject_version" {
-  command = plan
-  variables {
-    kubernetes_version = "latest"
-  }
-  expect_failures = [var.kubernetes_version]
-}
-
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_azure_namespace" {
   command = plan
   variables {
@@ -901,7 +554,6 @@ run "reject_azure_namespace" {
   expect_failures = [var.eventhub_namespace_name]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_namespace_shape" {
   command = plan
   variables {
@@ -910,7 +562,6 @@ run "reject_namespace_shape" {
   expect_failures = [var.eventhub_namespace_name]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_scenario" {
   command = plan
   variables {
@@ -919,7 +570,6 @@ run "reject_scenario" {
   expect_failures = [var.scenario_id]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_run" {
   command = plan
   variables {
@@ -928,7 +578,6 @@ run "reject_run" {
   expect_failures = [var.run_id]
 }
 
-# Reject only the named variable; unrelated provider errors must fail this run.
 run "reject_expiry" {
   command = plan
   variables {

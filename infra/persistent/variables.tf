@@ -69,24 +69,6 @@ variable "create_private_dns_zones" {
   default     = false
 }
 
-variable "budget_contact_emails" {
-  type        = list(string)
-  description = "Email recipients for the subscription budget notifications."
-  validation {
-    condition     = try(length(var.budget_contact_emails) > 0 && alltrue([for email in var.budget_contact_emails : can(regex("^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$", email))]), false)
-    error_message = "budget_contact_emails: invalid value."
-  }
-}
-
-variable "budget_start_date" {
-  type        = string
-  description = "First day of the month in UTC at which the subscription budget starts."
-  validation {
-    condition     = try(can(formatdate("YYYY-MM-DD", var.budget_start_date)) && can(regex("^[0-9]{4}-[0-9]{2}-01T00:00:00Z$", var.budget_start_date)), false)
-    error_message = "budget_start_date: invalid value."
-  }
-}
-
 variable "workflow_principal_id" {
   type        = string
   description = "Existing workflow principal receiving registry push permission."
