@@ -1,0 +1,43 @@
+{
+  "Properties": {
+    "ContainerWorkingDirectory": "/app/"
+  },
+  "Items": {
+    "ContainerAppCommand": [
+      {
+        "Identity": "dotnet",
+        "FullPath": "/workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/dotnet",
+        "RootDir": "/",
+        "Filename": "dotnet",
+        "Extension": "",
+        "RelativeDir": "",
+        "Directory": "workspace/eventhubs-kafka-dotnet/src/Parchwell.Verifier/",
+        "RecursiveDir": "",
+        "ModifiedTime": "",
+        "CreatedTime": "",
+        "AccessedTime": "",
+        "DefiningProjectFullPath": "/tmp/a01-dotnet/sdk/10.0.402/Containers/build/Microsoft.NET.Build.Containers.targets",
+        "DefiningProjectDirectory": "/tmp/a01-dotnet/sdk/10.0.402/Containers/build/",
+        "DefiningProjectName": "Microsoft.NET.Build.Containers",
+        "DefiningProjectExtension": ".targets"
+      },
+      {
+        "Identity": "/app/Parchwell.Verifier.dll",
+        "FullPath": "/app/Parchwell.Verifier.dll",
+        "RootDir": "/",
+        "Filename": "Parchwell.Verifier",
+        "Extension": ".dll",
+        "RelativeDir": "/app/",
+        "Directory": "app/",
+        "RecursiveDir": "",
+        "ModifiedTime": "",
+        "CreatedTime": "",
+        "AccessedTime": "",
+        "DefiningProjectFullPath": "/tmp/a01-dotnet/sdk/10.0.402/Containers/build/Microsoft.NET.Build.Containers.targets",
+        "DefiningProjectDirectory": "/tmp/a01-dotnet/sdk/10.0.402/Containers/build/",
+        "DefiningProjectName": "Microsoft.NET.Build.Containers",
+        "DefiningProjectExtension": ".targets"
+      }
+    ]
+  }
+}

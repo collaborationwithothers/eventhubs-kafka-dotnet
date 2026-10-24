@@ -1,0 +1,87 @@
+{
+  "source_base_commit": "9dd43b575292ff562efad6040d0cdac301ffd8e4",
+  "source_inputs": [
+    {
+      "path": "src/Parchwell.LoadGen/Parchwell.LoadGen.csproj",
+      "sha256": "50f825c3b8b9d2011f4d19cf2d46f5bd1e6411a2faecbe6b6444ab5707ef8ac4"
+    },
+    {
+      "path": "src/Parchwell.Verifier/Parchwell.Verifier.csproj",
+      "sha256": "485a16fe8ecfaec34fbc914610b1dedfa79bddaa49fb076e985c2fb5ebf19eeb"
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-144/raw/check-docs.txt",
+      "producer": "npm run check:docs; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 10453,
+      "sha256": "9e09d1b7bbc44aa486c8c5480d559b4dcb91a096d4ebb503be781b989e02b96c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/diff-check.txt",
+      "producer": "git diff --check; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/dotnet-build.txt",
+      "producer": "timeout 600 /tmp/a01-dotnet/dotnet build Parchwell.slnx --configuration Release --no-restore; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 1819,
+      "sha256": "b99cd2f9eebe0fc873feb9c152959db610a3d3578a91088992e99611c04b154f"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/dotnet-restore.txt",
+      "producer": "timeout 600 /tmp/a01-dotnet/dotnet restore Parchwell.slnx --locked-mode; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 2579,
+      "sha256": "fcd78a10142ecaa35f86e1d4f91922117c17fd8f04068c6073f17a4da74ea3ac"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/loadgen-before-command.json",
+      "producer": "/tmp/a01-dotnet/dotnet msbuild src/Parchwell.LoadGen/Parchwell.LoadGen.csproj -t:ComputeContainerConfig -p:RuntimeIdentifier=linux-x64 -p:SelfContained=false -getItem:ContainerAppCommand -getProperty:ContainerWorkingDirectory -p:ContainerWorkingDirectory=/app; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 1566,
+      "sha256": "04680d8be437c31b527045d2ca53a77effbbaeaa0654ec74114dd937aa6407ac"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/loadgen-fixed-command.json",
+      "producer": "/tmp/a01-dotnet/dotnet msbuild src/Parchwell.LoadGen/Parchwell.LoadGen.csproj -t:ComputeContainerConfig -p:RuntimeIdentifier=linux-x64 -p:SelfContained=false -getItem:ContainerAppCommand -getProperty:ContainerWorkingDirectory; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 1574,
+      "sha256": "85edd324271efd92966db8fd5bf181e055d9ed9c907849b36dfe0d3b67dbd322"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/loadgen-smoke-tests.txt",
+      "producer": "timeout 180 /tmp/a01-dotnet/dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --filter-class '*DeploymentAdmissionTests'; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 384,
+      "sha256": "bb5577cb988a152a0c1c5c1db601cca963a75fcf17234b046d734c84dee57f88"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/sdk-container-targets.xml",
+      "producer": "curl --fail --silent --show-error --max-time 30 https://raw.githubusercontent.com/dotnet/sdk/v10.0.402/src/Containers/packaging/build/Microsoft.NET.Build.Containers.targets -o docs/operations/evidence/issue-144/raw/sdk-container-targets.xml; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 33328,
+      "sha256": "adb3452951768ef6f279fbb118d089c3d302715c4c7bcbb449785c5d11192df0"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/verifier-before-command.json",
+      "producer": "/tmp/a01-dotnet/dotnet msbuild src/Parchwell.Verifier/Parchwell.Verifier.csproj -t:ComputeContainerConfig -p:RuntimeIdentifier=linux-x64 -p:SelfContained=false -getItem:ContainerAppCommand -getProperty:ContainerWorkingDirectory -p:ContainerWorkingDirectory=/app; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 1571,
+      "sha256": "1b98d268c9f7b33a6a80ff62e7946dc67c8af5d3bf6658d6ba5bc1090167829b"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/verifier-before-publish.txt",
+      "producer": "/tmp/a01-dotnet/dotnet publish src/Parchwell.Verifier/Parchwell.Verifier.csproj --configuration Release -r linux-x64 --self-contained false -t:PublishContainer -p:RestoreLockedMode=true -p:NuGetLockFilePath=packages.linux-x64.lock.json -p:ContainerImageTag=issue144-before -p:ContainerArchiveOutputPath=/tmp/a01-images-144/verifier-before.tar.gz -p:ContainerWorkingDirectory=/app; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 9309,
+      "sha256": "4bc09e0e6711a8e43cc2273a1ff0750d666412f435cbb3ead621b8ca0a3e6371"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/verifier-fixed-command.json",
+      "producer": "/tmp/a01-dotnet/dotnet msbuild src/Parchwell.Verifier/Parchwell.Verifier.csproj -t:ComputeContainerConfig -p:RuntimeIdentifier=linux-x64 -p:SelfContained=false -getItem:ContainerAppCommand -getProperty:ContainerWorkingDirectory; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 1579,
+      "sha256": "f2f6d67d2f8195ec2411ce1df2dff030d10164f8e91b94c3a1320582adc24c2e"
+    },
+    {
+      "path": "docs/operations/evidence/issue-144/raw/verifier-smoke-tests.txt",
+      "producer": "timeout 180 /tmp/a01-dotnet/dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 -- --filter-class '*ImageSmokeTests'; source base commit 9dd43b575292ff562efad6040d0cdac301ffd8e4, with the project-file edits recorded in source_inputs",
+      "size_bytes": 389,
+      "sha256": "3c32113e902e31e7ff414c2d3f24ae793acabd3af728f274711861e6d27ffaa4"
+    }
+  ]
+}
