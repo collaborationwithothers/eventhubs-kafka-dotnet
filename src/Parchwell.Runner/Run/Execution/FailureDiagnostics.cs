@@ -31,6 +31,15 @@ internal static class FailureDiagnostics
             if (message.Length > 0 && message.All(character => character is >= 'a' and <= 'z' or '_' or ':'))
                 line.Append(' ').Append(message);
         }
+        foreach (Exception entry in Traverse(exception))
+            if (entry.Data["runner_terraform_command"] is string command && command is "init" or "plan" or "apply"
+                && entry.Data["runner_terraform_cancellation"] is string reason
+                && reason is "caller_cancellation" or "apply_deadline" or "command_deadline" or "cancellation_unknown")
+            {
+                line.Append(" terraform_command=").Append(command).Append(" cancellation=").Append(reason);
+                if (entry.Data["runner_terraform_cancellation_evidence"] is string evidence && evidence is "saved" or "unavailable")
+                    line.Append(" cancellation_evidence=").Append(evidence);
+            }
         error.WriteLine(line.ToString());
         if (!debug) return;
 

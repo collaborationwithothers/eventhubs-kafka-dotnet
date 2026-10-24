@@ -59,12 +59,46 @@ public sealed class TerraformEnvironment(IProcessRunner process, string root, st
         if (expiresAt != startedAt.AddHours(4)) throw new InvalidDataException("expiry_mismatch");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(900), clock);
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        await InitializeAsync(operation.Token).ConfigureAwait(false);
-        Directory.CreateDirectory(outputDirectory);
-        string plan = Path.GetFullPath(Path.Combine(outputDirectory, "apply.tfplan"));
-        await RunAsync(["plan", "-input=false", "-lock=true", "-var-file=" + tfvars,
-            "-var=run_id=" + environmentRunId, "-var=expires_at=" + TerraformTimestamp(expiresAt), "-out=" + plan], 900, operation.Token).ConfigureAwait(false);
-        await RunAsync(["apply", "-input=false", "-lock=true", plan], 900, operation.Token).ConfigureAwait(false);
+        string command = "init";
+        try
+        {
+            await InitializeAsync(operation.Token).ConfigureAwait(false);
+            Directory.CreateDirectory(outputDirectory);
+            string plan = Path.GetFullPath(Path.Combine(outputDirectory, "apply.tfplan"));
+            command = "plan";
+            await RunAsync(["plan", "-input=false", "-lock=true", "-var-file=" + tfvars,
+                "-var=run_id=" + environmentRunId, "-var=expires_at=" + TerraformTimestamp(expiresAt), "-out=" + plan], 900, operation.Token).ConfigureAwait(false);
+            command = "apply";
+            await RunAsync(["apply", "-input=false", "-lock=true", plan], 900, operation.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException exception)
+        {
+            var capture = exception.Data["runner_process_cancellation"] as ProcessCancellationCapture;
+            if (capture is not null)
+                FailureDiagnostics.WithCommandOutput(exception, "terraform", new(-1, capture.StandardOutput, capture.StandardError));
+            string reason = cancellationToken.IsCancellationRequested ? "caller_cancellation"
+                : deadline.IsCancellationRequested ? "apply_deadline" : capture?.Reason ?? "cancellation_unknown";
+            exception.Data["runner_terraform_command"] = command;
+            exception.Data["runner_terraform_cancellation"] = reason;
+            using var evidenceDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(5), clock);
+            try
+            {
+                Directory.CreateDirectory(outputDirectory);
+                await File.WriteAllTextAsync(Path.Combine(outputDirectory, "terraform-apply-cancellation.private.json"),
+                    JsonSerializer.Serialize(new
+                    {
+                        scenario_id = "A01", run_id = environmentRunId, command, reason,
+                        stdout = capture?.StandardOutput ?? string.Empty, stderr = capture?.StandardError ?? string.Empty,
+                        capture_available = capture is not null
+                    }), evidenceDeadline.Token).ConfigureAwait(false);
+                exception.Data["runner_terraform_cancellation_evidence"] = "saved";
+            }
+            catch (Exception writeException) when (writeException is not StackOverflowException and not OutOfMemoryException)
+            {
+                exception.Data["runner_terraform_cancellation_evidence"] = "unavailable";
+            }
+            throw;
+        }
     }
 
     public async Task<JsonElement> ReadOutputsAsync(CancellationToken cancellationToken)
