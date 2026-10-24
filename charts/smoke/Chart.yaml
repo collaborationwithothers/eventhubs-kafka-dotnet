@@ -1,0 +1,5 @@
+apiVersion: v2
+name: parchwell-smoke
+version: 0.1.0
+type: application
+description: Disposable infrastructure smoke probe

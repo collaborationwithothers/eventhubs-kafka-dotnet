@@ -556,7 +556,7 @@ jobs:
           if-no-files-found: error
   full-C3:
     needs: [probe, full-C0]
-    if: needs.probe.outputs.full_allowed == 'true' && needs['full-C0'].result == 'success'
+    if: needs.probe.outputs.full_allowed == 'true' && needs.full-C0.result == 'success'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 240
