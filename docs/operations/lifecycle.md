@@ -139,7 +139,7 @@ While idle, ephemeral cleanup is immediate. Stopping additionally requires a pro
 
 ## Offline acceptance and authored receipt
 
-Source baseline: `e7ebd3dd7508b8735820f45704304ea0801606dd`. Validation below was executed on the authored C2 working tree on 2026-10-24. No live smoke, C1 output or Azure cleanup outcome for the new design is claimed. The work has not been pushed or cold-reviewed at this receipt's creation.
+Source baseline: `e7ebd3dd7508b8735820f45704304ea0801606dd`. Initial validation below was executed on the authored C2 working tree on 2026-10-24, before its first cold review. Later disposition and decision sections retain that history and state the current status. No live smoke, C1 output or Azure cleanup outcome for the new design is claimed.
 
 Commands used `/tmp/c2-tools` for verified binaries and `/tmp/c2-tools/venv/bin` for the pinned PyYAML environment. The tested versions were Terraform 1.16.6, actionlint 1.7.12, ShellCheck 0.11.0, kubeconform 0.8.0, TFLint 0.65.0 and PyYAML 6.0.3. A separately verified kubelogin 0.2.21 binary reported its version through `git hash: v0.2.21/<commit>`; the installer validates that actual format. No Azure command was used for acceptance.
 
@@ -189,3 +189,37 @@ The [first cold review](https://github.com/collaborationwithothers/eventhubs-kaf
 The implementing session needs Hari's decision on an amendment covering the scenario expression and on the assertion-migration conflict. [Factory "Item lifecycle" step 3](../agents/factory.md#item-lifecycle) states, "A plan revised after it is approved is an amendment and needs Hari's approval." No plan amendment, separate pull request, relaxed check or governance change is adopted by this receipt. The approved entry decision remains satisfied. Helm rendering, full check-offline, verified TFLint, .NET acceptance, C1 interfaces and live gate 1 remain unestablished as recorded above; unchanged acceptance commands were not rerun to manufacture a new result.
 
 Disposition validation on 2026-10-24: `npm run check:docs` initially reported four new link warnings in this addition. Correcting the two relative link targets removed them; the final run exits 0 with the same 36 previously recorded advisory warnings and none for lifecycle.md. `git diff --check` passes. This is documentation validation only, not the separately orchestrated next cold review.
+
+### Decision implementation after cold-review round 2
+
+[Hari's decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/158#issuecomment-6386279393) amends the checked plan for the two findings carried by [round 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/158#issuecomment-6386235805). This section supersedes their unresolved disposition above. The source is `ec9b5862d5f5913aa5f66484c95ce64d06ec0754` plus the expression-only workflow and mirror edits in this commit; validation ran on 2026-10-24.
+
+1. **actionlint finding fixed.** Only `needs['full-C0'].result` changes to `needs.full-C0.result` in scenario.yml and its byte-identical mirror. GitHub's current [context expression access documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#available-contexts), read 2026-10-24, documents index and property-dereference syntax as access methods and explicitly permits a property name starting with a letter or underscore and containing alphanumeric characters, hyphens or underscores. Applying that rule, `full-C0` is a legal property name and both expressions select the same job's `result`. This is a documented-syntax conclusion, not a live dispatch result. Pinned actionlint 1.7.12 now accepts the actual workflow without an extra suppression. A byte comparison against the source commit confirms exactly this replacement in each file and no other scenario change.
+2. **Assertion-removal P1 retained under the decision.** The old sweeper SweepStep equality and Runner wrapper-target assertions remain removed because the same change removes their tested behaviour. The replacement authentication, independent-cleanup and mirror assertions remain. This is still a P1 under Code Review Rules, not a `Not valid:` finding or a clean-review claim. The pull request description must list it and link Hari's decision; Hari merges. That decision excludes only these accepted removals from the named churn and review-round limits. No other assertion change is authorized.
+
+The approved entry prerequisite remains satisfied. No trigger, checker suppression, package, unrelated assertion or lifecycle implementation changes in this decision round. The following reruns use the previously recorded pinned tools; all output remains outside git.
+
+| Command | Observed result after the decision |
+|---|---|
+| `PYTHONDONTWRITEBYTECODE=1 PATH=/tmp/c2-tools:/tmp/c2-tools/venv/bin:$PATH python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | Passed: 40 tests, no skips; no additional cases |
+| `PATH=/tmp/c2-tools:$PATH actionlint .github/workflows/dotnet-verification.yml .github/workflows/scenario.yml .github/workflows/docs-advisory.yml` | Passed with ShellCheck on PATH and no ignored diagnostic |
+| `PATH=/tmp/c2-tools:$PATH actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml` | Passed with only the approved queue exception |
+| `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt` and the corresponding sweeper comparison | Passed |
+| `bash infra/scripts/lifecycle/install-tools.sh /tmp/c2-tools ci` | Failed: Terraform verified; the exact pinned Helm URL still returns HTTP 403 |
+| `PARCHWELL_TOOLS_DIRECTORY=/tmp/c2-tools bash infra/scripts/lifecycle/check-offline.sh` | Failed: Helm unavailable; existing-root test-path and structural checks passed before the missing-tool check |
+| `PATH=/tmp/c2-tools:$PATH python3 infra/scripts/lifecycle/command.py 600 -- tflint --chdir=infra/persistent --config=/workspace/c2-158/.tflint.hcl --init` | Failed: signature metadata at `https://tuf-repo-cdn.sigstore.dev/15.root.json` remains Forbidden; no signature bypass |
+
+The exact .NET SDK 10.0.402 was installed under `/tmp/c2-158-dotnet-10.0.402` after checking the tarball SHA-512 against Microsoft's [10.0 release metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json). The unfiltered Runner project run against the existing Release build passed: 1171 tests, no failures or skips. Its xUnit XML contains three passing tests in `WorkflowAuthenticationContractTests` and six in `WorkflowBudgetContractTests`. These counts were computed from the XML; both migrated classes are discovered and pass. This is local evidence, not an executed CI job.
+
+The .NET invocations from `/workspace/c2-158` were:
+
+```sh
+env PATH="/tmp/c2-158-dotnet-10.0.402:$PATH" DOTNET_ROOT=/tmp/c2-158-dotnet-10.0.402 DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 timeout 600 ./scripts/verify-dotnet.sh > /tmp/c2-158-verify-dotnet-acceptance.log 2>&1
+env PATH="/tmp/c2-158-dotnet-10.0.402:$PATH" DOTNET_ROOT=/tmp/c2-158-dotnet-10.0.402 DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 PARCHWELL_REPOSITORY_ROOT=/workspace/c2-158 timeout 600 dotnet test --project tests/Parchwell.Runner.Tests/Parchwell.Runner.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory /tmp/c2-158-runner-acceptance -- --report-xunit-xml --report-xunit-xml-filename results.xml > /tmp/c2-158-runner-acceptance/test.log 2>&1
+```
+
+Full local `verify-dotnet.sh` also exited 0 within that invocation bound. Restore, Release build, Kafka documentation inventory, effective project settings, report checks and the warning-as-error control all passed. The six xUnit reports contain 4204 passed tests with no failures, skips, not-run tests or errors: Architecture 8, Kafka 306, LoadGen 312, Runner 1171, Scenarios 96 and Verifier 2311. The full-script Runner report independently includes the same three authentication and six budget contract passes. Enrichment remains an empty scaffold, with no unit-test coverage claimed. The existing containerized tests completed and cleaned up; their experiment output is not a live Event Hubs result. Temporary bytecode generated by those tests was removed; no generated evidence is committed. The required CI execution is still pending.
+
+Final documentation validation exits 0 with the same 36 historical advisory warnings and none for lifecycle.md; `git diff --check` passes. The previously recorded warning dispositions and inspection cap remain unchanged.
+
+Strict chart rendering, full check-offline and verified TFLint remain incomplete. The environment's enforced HTTP allowlist does not include `get.helm.sh` or `tuf-repo-cdn.sigstore.dev`; acceptance needs an environment that permits these official sources. No alternative download route or verification bypass was used. The unchanged Terraform results and the exhausted test-case/warning-inspection caps above remain the evidence for work not changed in this round. The next cold review is separately orchestrated; C1 interfaces, protected merge and live gate 1 remain later prerequisites.
