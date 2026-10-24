@@ -26,6 +26,7 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
     {
         ValidateOptions(options);
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(CreateRecord(context, completion: true));
+        ValidateLifecycleRecordSize(bytes);
         await UploadBytesAsync(options, context.CompletionPath, bytes, options.CleanupTimeout, cancellationToken).ConfigureAwait(false);
     }
 
@@ -35,29 +36,52 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
     {
         ValidateOptions(options);
         var snapshots = new List<(string Name, byte[] Bytes)>();
+        var gaps = new List<string>();
         long aggregate = 0;
+        bool aggregateLimitReached = false;
         foreach (string name in PayloadNames)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (aggregateLimitReached)
+            {
+                gaps.Add($"{name}:aggregate_limit");
+                continue;
+            }
             string path = Path.Combine(options.OutputRoot, name);
             if (result is not null)
             {
                 if (result.ArtifactPaths.TryGetValue(name, out string? artifactPath) ||
                     result.ArtifactPaths.TryGetValue(Path.GetFileNameWithoutExtension(name), out artifactPath))
                 {
-                    if (artifactPath is null) continue;
+                    if (artifactPath is null)
+                    {
+                        gaps.Add($"{name}:missing");
+                        continue;
+                    }
                     path = artifactPath;
                 }
-                else continue;
+                else
+                {
+                    gaps.Add($"{name}:missing");
+                    continue;
+                }
             }
+            long sourceLength;
+            DateTime sourceWriteTime;
             try
             {
                 using var deadline = new CancellationTokenSource(options.CleanupTimeout, _clock);
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
                 await using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
-                if (input.Length > options.MaxArtifactBytes || input.Length > int.MaxValue) continue;
-                byte[] bytes = new byte[(int)input.Length];
+                sourceLength = input.Length;
+                sourceWriteTime = File.GetLastWriteTimeUtc(path);
+                if (sourceLength > options.MaxArtifactBytes || sourceLength > int.MaxValue)
+                {
+                    gaps.Add($"{name}:oversized");
+                    continue;
+                }
+                byte[] bytes = new byte[(int)sourceLength];
                 int offset = 0;
                 while (offset < bytes.Length)
                 {
@@ -66,12 +90,37 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
                     offset += read;
                 }
                 byte[] extra = new byte[1];
-                if (input.Length != bytes.LongLength || await input.ReadAsync(extra, linked.Token).ConfigureAwait(false) != 0) continue;
+                if (input.Length != bytes.LongLength || await input.ReadAsync(extra, linked.Token).ConfigureAwait(false) != 0 ||
+                    File.GetLastWriteTimeUtc(path) != sourceWriteTime)
+                {
+                    gaps.Add($"{name}:changed");
+                    continue;
+                }
                 aggregate = checked(aggregate + bytes.LongLength);
-                if (aggregate > options.MaxAggregateArtifactBytes) break;
+                if (aggregate > options.MaxAggregateArtifactBytes)
+                {
+                    gaps.Add($"{name}:aggregate_limit");
+                    aggregateLimitReached = true;
+                    continue;
+                }
                 snapshots.Add((name, bytes));
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OperationCanceledException) { }
+            catch (FileNotFoundException)
+            {
+                gaps.Add($"{name}:missing");
+            }
+            catch (DirectoryNotFoundException)
+            {
+                gaps.Add($"{name}:missing");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                gaps.Add($"{name}:snapshot_timeout");
+            }
+            catch (Exception)
+            {
+                gaps.Add($"{name}:snapshot_failed");
+            }
         }
 
         using var uploadDeadline = new CancellationTokenSource(options.UploadTimeout, _clock);
@@ -79,14 +128,30 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
         foreach ((string name, byte[] bytes) in snapshots)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (uploadDeadline.IsCancellationRequested) break;
+            if (uploadDeadline.IsCancellationRequested)
+            {
+                gaps.Add($"{name}:upload_deadline");
+                continue;
+            }
             try
             {
                 await UploadBytesAsync(options, context.DiagnosticsPrefix + name, bytes,
                     options.UploadTimeout, uploadToken.Token).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested) { }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                gaps.Add($"{name}:upload_deadline");
+            }
+            catch (TimeoutException)
+            {
+                gaps.Add($"{name}:upload_timeout");
+            }
+            catch (Exception)
+            {
+                gaps.Add($"{name}:upload_failed");
+            }
         }
+        if (gaps.Count > 0) throw new DiagnosticPublicationException(gaps);
     }
 
     private async Task UploadRecordAsync(ProducerRunContext context, ProducerLifecycleOptions options, string path,
@@ -95,6 +160,7 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
         ValidateOptions(options);
         context.Validate();
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        ValidateLifecycleRecordSize(bytes);
         await UploadBytesAsync(options, path, bytes, timeout, cancellationToken).ConfigureAwait(false);
     }
 
@@ -120,7 +186,6 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
     private async Task UploadBytesAsync(ProducerLifecycleOptions options, string path, byte[] bytes,
         TimeSpan timeout, CancellationToken cancellationToken)
     {
-        if (bytes.Length > 65536) throw new InvalidDataException("producer_lifecycle_record_too_large");
         using var deadline = new CancellationTokenSource(timeout, _clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         BlobClient blob = _client.GetBlobContainerClient(options.Container).GetBlobClient(path);
@@ -134,6 +199,17 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
         {
             throw new TimeoutException("producer_lifecycle_upload_timeout");
         }
+    }
+
+    private static void ValidateLifecycleRecordSize(byte[] bytes)
+    {
+        if (bytes.Length > 65536) throw new InvalidDataException("producer_lifecycle_record_too_large");
+    }
+
+    internal sealed class DiagnosticPublicationException(IReadOnlyCollection<string> gaps)
+        : IOException("producer_diagnostics_incomplete:" + string.Join(',', gaps))
+    {
+        public IReadOnlyCollection<string> Gaps { get; } = gaps;
     }
 
     private static object CreateRecord(ProducerRunContext context, bool completion)

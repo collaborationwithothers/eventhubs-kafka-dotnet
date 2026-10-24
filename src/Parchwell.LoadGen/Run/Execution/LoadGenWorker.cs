@@ -24,9 +24,9 @@ public sealed class LoadGenWorker : BackgroundService
     private static readonly Action<ILogger, string, string, long, long, string, Exception?> WorkerIncomplete =
         LoggerMessage.Define<string, string, long, long, string>(LogLevel.Error, new EventId(3, nameof(WorkerIncomplete)),
             "Load generator run incomplete for scenario {ScenarioId} run {RunId}: attempted {AttemptCount} of {PlannedAttemptCount}; diagnostics {Diagnostics}");
-    private static readonly Action<ILogger, string, string, Exception?> DiagnosticPublicationFailed =
-        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(4, nameof(DiagnosticPublicationFailed)),
-            "LoadGen diagnostic publication failed for scenario {ScenarioId} run {RunId}");
+    private static readonly Action<ILogger, string, string, string, Exception?> DiagnosticPublicationFailed =
+        LoggerMessage.Define<string, string, string>(LogLevel.Error, new EventId(4, nameof(DiagnosticPublicationFailed)),
+            "LoadGen diagnostic publication failed for scenario {ScenarioId} run {RunId}: {Failure}");
     private readonly LoadGenHostOptions _hostOptions;
     private readonly ScenarioLoader _loader;
     private readonly ScenarioResolver _resolver;
@@ -170,17 +170,19 @@ public sealed class LoadGenWorker : BackgroundService
         }
         catch
         {
-            using var diagnosticsDeadline = new CancellationTokenSource(options.UploadTimeout, _clock);
             using var diagnosticsActivity = LoadGenTelemetry.Begin(_clock, identity.ScenarioId, identity.RunId, identity.ClientId, "diagnostics");
             try
             {
                 await _lifecycle.PublishDiagnosticsAsync(runContext, result, lifecycleOptions,
-                    diagnosticsDeadline.Token).ConfigureAwait(false);
+                    CancellationToken.None).ConfigureAwait(false);
                 diagnosticsActivity.Succeed();
             }
             catch (Exception exception)
             {
-                DiagnosticPublicationFailed(_logger, identity.ScenarioId, identity.RunId, exception);
+                string failure = exception is BlobProducerRunLifecycle.DiagnosticPublicationException diagnostic
+                    ? diagnostic.Message
+                    : "producer_diagnostics_failed";
+                DiagnosticPublicationFailed(_logger, identity.ScenarioId, identity.RunId, failure, null);
             }
             throw;
         }

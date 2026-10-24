@@ -70,20 +70,20 @@ public sealed class ProducerRunLifecycleTests
     public async Task Given_FailedRunArtifacts_When_PublishingDiagnostics_Then_UploadsOnlyKnownPayloadsUnderDiagnosticPrefix()
     {
         string directory = NewDirectory();
-        await File.WriteAllTextAsync(Path.Combine(directory, "ledger.jsonl"), "ledger-row\n", TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(directory, "manifest.json"), "failed-manifest\n", TestContext.Current.CancellationToken);
+        foreach (string name in new[] { "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
+            await File.WriteAllTextAsync(Path.Combine(directory, name), name, TestContext.Current.CancellationToken);
         using var handler = new RecordingHandler();
         var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
 
         await lifecycle.PublishDiagnosticsAsync(Context(), result: null, Options(directory), TestContext.Current.CancellationToken);
 
         CapturedRequest[] requests = handler.Requests;
-        Assert.Equal(["ledger.jsonl", "manifest.json"], requests.Select(request => request.Name));
+        Assert.Equal(["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"], requests.Select(request => request.Name));
         Assert.All(requests, request => Assert.Contains("/diagnostics/", request.Uri.AbsolutePath, StringComparison.Ordinal));
         Assert.DoesNotContain(requests, request => request.Uri.AbsolutePath.EndsWith("/index.json", StringComparison.Ordinal));
         Assert.DoesNotContain(requests, request => request.Uri.AbsolutePath.EndsWith("/completion.json", StringComparison.Ordinal));
-        Assert.Equal("ledger-row\n", Encoding.UTF8.GetString(requests[0].Body));
-        Assert.Equal("failed-manifest\n", Encoding.UTF8.GetString(requests[1].Body));
+        Assert.Equal("ledger.jsonl", Encoding.UTF8.GetString(requests[0].Body));
+        Assert.Equal("manifest.json", Encoding.UTF8.GetString(requests[1].Body));
     }
 
     [Fact]
@@ -93,14 +93,17 @@ public sealed class ProducerRunLifecycleTests
         await File.WriteAllTextAsync(Path.Combine(directory, "ledger.jsonl"), "ledger", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(directory, "manifest.json"), "manifest", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(directory, "statistics.jsonl"), "statistics", TestContext.Current.CancellationToken);
-        using var handler = new RecordingHandler(failName: "ledger.jsonl");
+        using var handler = new RecordingHandler(failName: "ledger.jsonl", failureBody: "<Message>sig=secret-sas-token</Message>");
         var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
 
-        await lifecycle.PublishDiagnosticsAsync(Context(), result: null, Options(directory), TestContext.Current.CancellationToken);
+        BlobProducerRunLifecycle.DiagnosticPublicationException failure = await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(
+            () => lifecycle.PublishDiagnosticsAsync(Context(), result: null, Options(directory), TestContext.Current.CancellationToken));
 
         Assert.Equal(["ledger.jsonl", "manifest.json", "statistics.jsonl"], handler.Requests.Select(request => request.Name));
         Assert.All(handler.Requests, request => Assert.Contains("/diagnostics/", request.Uri.AbsolutePath, StringComparison.Ordinal));
         Assert.DoesNotContain(handler.Requests, request => request.Uri.AbsolutePath.Contains("publication/index.json", StringComparison.Ordinal));
+        Assert.Contains("ledger.jsonl:upload_failed", failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-sas-token", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,10 +116,30 @@ public sealed class ProducerRunLifecycleTests
         var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
         ProducerLifecycleOptions options = Options(directory) with { MaxArtifactBytes = 32, MaxAggregateArtifactBytes = 32 };
 
-        await lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken);
+        BlobProducerRunLifecycle.DiagnosticPublicationException failure = await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(
+            () => lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken));
 
         Assert.Equal(["manifest.json"], handler.Requests.Select(request => request.Name));
         Assert.Equal("small", Encoding.UTF8.GetString(Assert.Single(handler.Requests).Body));
+        Assert.Contains("ledger.jsonl:oversized", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_DiagnosticArtifactExceedsLifecycleRecordCeiling_When_Publishing_Then_UploadsWithinArtifactBudgets()
+    {
+        string directory = NewDirectory();
+        string payload = new string('x', 65_537);
+        await File.WriteAllTextAsync(Path.Combine(directory, "statistics.jsonl"), payload, TestContext.Current.CancellationToken);
+        using var handler = new RecordingHandler();
+        var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
+
+        await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(() => lifecycle.PublishDiagnosticsAsync(Context(), result: null,
+            Options(directory) with { MaxArtifactBytes = 70_000, MaxAggregateArtifactBytes = 70_000 },
+            TestContext.Current.CancellationToken));
+
+        CapturedRequest request = Assert.Single(handler.Requests);
+        Assert.Equal("statistics.jsonl", request.Name);
+        Assert.Equal(65_537, request.Body.Length);
     }
 
     [Fact]
@@ -129,10 +152,12 @@ public sealed class ProducerRunLifecycleTests
         var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
         ProducerLifecycleOptions options = Options(directory) with { MaxArtifactBytes = 32, MaxAggregateArtifactBytes = 8 };
 
-        await lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken);
+        BlobProducerRunLifecycle.DiagnosticPublicationException failure = await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(
+            () => lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken));
 
         Assert.Equal(["ledger.jsonl"], handler.Requests.Select(request => request.Name));
         Assert.Equal(8, Assert.Single(handler.Requests).Body.Length);
+        Assert.Contains("manifest.json:aggregate_limit", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,14 +166,38 @@ public sealed class ProducerRunLifecycleTests
         string directory = NewDirectory();
         await File.WriteAllTextAsync(Path.Combine(directory, "ledger.jsonl"), "ledger", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(directory, "manifest.json"), "manifest", TestContext.Current.CancellationToken);
-        using var handler = new RecordingHandler(blockName: "ledger.jsonl");
-        var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
+        var timeProvider = new ManualTimeProvider();
+        var requestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = new RecordingHandler(blockName: "ledger.jsonl", blockStarted: requestStarted);
+        var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), timeProvider);
         ProducerLifecycleOptions options = Options(directory) with { UploadTimeout = TimeSpan.FromMilliseconds(50) };
 
-        await lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken);
+        Task publishing = lifecycle.PublishDiagnosticsAsync(Context(), result: null, options, TestContext.Current.CancellationToken);
+        await requestStarted.Task;
+        timeProvider.AdvanceBy(options.UploadTimeout);
+        BlobProducerRunLifecycle.DiagnosticPublicationException failure = await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(() => publishing);
 
         Assert.Equal(["ledger.jsonl"], handler.Requests.Select(request => request.Name));
         Assert.All(handler.Requests, request => Assert.Contains("/diagnostics/", request.Uri.AbsolutePath, StringComparison.Ordinal));
+        Assert.Contains("ledger.jsonl:upload_deadline", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_MissingDiagnosticCandidates_When_PublishingDiagnostics_Then_RecordsGapsWithoutUploadingAnIncompleteSetAsSuccess()
+    {
+        string directory = NewDirectory();
+        await File.WriteAllTextAsync(Path.Combine(directory, "manifest.json"), "manifest", TestContext.Current.CancellationToken);
+        using var handler = new RecordingHandler();
+        var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
+
+        BlobProducerRunLifecycle.DiagnosticPublicationException failure = await Assert.ThrowsAsync<BlobProducerRunLifecycle.DiagnosticPublicationException>(
+            () => lifecycle.PublishDiagnosticsAsync(Context(), result: null, Options(directory), TestContext.Current.CancellationToken));
+
+        Assert.Equal(["manifest.json"], handler.Requests.Select(request => request.Name));
+        Assert.Contains("ledger.jsonl:missing", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("statistics.jsonl:missing", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("request-lifecycle.jsonl:missing", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("capabilities.json:missing", failure.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -219,7 +268,59 @@ public sealed class ProducerRunLifecycleTests
         }
     }
 
-    private sealed class RecordingHandler(string? failName = null, string? blockName = null) : HttpMessageHandler
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private long _timestamp;
+        private readonly List<ManualTimer> _timers = [];
+        private readonly object _gate = new();
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref _timestamp);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(callback, state, GetTimestamp);
+            if (dueTime != Timeout.InfiniteTimeSpan) timer.Schedule(GetTimestamp() + dueTime.Ticks, period);
+            lock (_gate) _timers.Add(timer);
+            return timer;
+        }
+
+        public void AdvanceBy(TimeSpan elapsed)
+        {
+            long timestamp = Interlocked.Add(ref _timestamp, elapsed.Ticks);
+            ManualTimer[] timers;
+            lock (_gate) timers = [.. _timers];
+            foreach (ManualTimer timer in timers) timer.FireIfDue(timestamp);
+        }
+    }
+
+    private sealed class ManualTimer(TimerCallback callback, object? state, Func<long> getTimestamp) : ITimer
+    {
+        private int _disposed;
+        private int _fired;
+        private long _dueTimestamp = long.MaxValue;
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return false;
+            Schedule(dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : checked(getTimestamp() + dueTime.Ticks), period);
+            return true;
+        }
+        public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
+        public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        public void Schedule(long dueTimestamp, TimeSpan period) => _dueTimestamp = dueTimestamp;
+        public void FireIfDue(long timestamp)
+        {
+            if (timestamp >= Interlocked.Read(ref _dueTimestamp) && Volatile.Read(ref _disposed) == 0 &&
+                Interlocked.Exchange(ref _fired, 1) == 0)
+            {
+                Interlocked.Exchange(ref _dueTimestamp, long.MaxValue);
+                callback(state);
+            }
+        }
+    }
+
+    private sealed class RecordingHandler(string? failName = null, string? blockName = null,
+        TaskCompletionSource? blockStarted = null, string? failureBody = null) : HttpMessageHandler
     {
         private readonly List<CapturedRequest> requests = [];
         public CapturedRequest[] Requests => requests.ToArray();
@@ -230,11 +331,14 @@ public sealed class ProducerRunLifecycleTests
             string? condition = request.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values) ? values.Single() : null;
             requests.Add(new CapturedRequest(request.Method, request.RequestUri!, Uri.UnescapeDataString(request.RequestUri!.AbsolutePath.Split('/').Last()), body, condition));
             if (blockName == requests[^1].Name)
+            {
+                blockStarted?.TrySetResult();
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            }
             if (failName == requests[^1].Name)
                 return new HttpResponseMessage(HttpStatusCode.InternalServerError)
                 {
-                    Content = new StringContent("<Error><Code>InternalError</Code></Error>", Encoding.UTF8, "application/xml")
+                    Content = new StringContent(failureBody ?? "<Error><Code>InternalError</Code></Error>", Encoding.UTF8, "application/xml")
                 };
             var response = new HttpResponseMessage(HttpStatusCode.Created);
             response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"lifecycle-etag\"");

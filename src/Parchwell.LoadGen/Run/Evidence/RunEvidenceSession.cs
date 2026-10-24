@@ -39,6 +39,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     private readonly ImmutableArray<string> _artifactNames;
     private readonly bool _requestCapabilitySupported;
     private readonly RunEvidenceExpectations? _expectations;
+    private readonly Func<Task>? _beforeWriterDrain;
     private readonly ConcurrentQueue<string> _diagnostics = new();
     private readonly Task _writerTask;
     private long _receiptSequence;
@@ -53,6 +54,12 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     /// <summary>Creates files with create-only semantics and starts the bounded background writer.</summary>
     public RunEvidenceSession(RunIdentity identity, RunEvidenceOptions options, TimeProvider timeProvider,
         RunEvidenceExpectations? expectations = null)
+        : this(identity, options, timeProvider, expectations, beforeWriterDrain: null)
+    {
+    }
+
+    internal RunEvidenceSession(RunIdentity identity, RunEvidenceOptions options, TimeProvider timeProvider,
+        RunEvidenceExpectations? expectations, Func<Task>? beforeWriterDrain)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(options);
@@ -63,6 +70,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         _options = options;
         _timeProvider = timeProvider;
         _expectations = expectations;
+        _beforeWriterDrain = beforeWriterDrain;
         _directory = Path.GetFullPath(options.DirectoryPath);
         _artifactNames = [StatisticsFileName, LifecycleFileName, CapabilitiesFileName];
         _requestCapabilitySupported = false;
@@ -85,6 +93,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         }
         _writerTask = Task.Run(WriterAsync);
     }
+
+    internal Task WriterTask => _writerTask;
 
     /// <summary>Gets the artifact names owned by this session.</summary>
     public ImmutableArray<string> ArtifactNames => _artifactNames;
@@ -320,6 +330,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         try
         {
             await _writerTask.WaitAsync(writerDeadline.Token).ConfigureAwait(false);
+            writerDeadline.Token.ThrowIfCancellationRequested();
             writerClosed = true;
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
@@ -402,6 +413,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             await using var lifecycle = new FileStream(lifecyclePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
             long statisticsBytes = 0;
             long lifecycleBytes = 0;
+            if (_beforeWriterDrain is not null)
+                await _beforeWriterDrain().ConfigureAwait(false);
             await foreach (EvidenceItem item in _queue.Reader.ReadAllAsync().ConfigureAwait(false))
             {
                 byte[] bytes;

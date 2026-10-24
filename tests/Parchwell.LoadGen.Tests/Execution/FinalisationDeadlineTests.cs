@@ -43,8 +43,18 @@ public sealed class FinalisationDeadlineTests
         bool requireStatistics = operation == "statistics-completion";
         RunEvidenceExpectations captureOnly = RunEvidenceExpectations.CaptureOnly(baseline.ResolvedConfiguration,
             requireStatisticsEvidence: requireStatistics);
+        bool holdEvidenceWriter = operation == "evidence-drain";
+        var evidenceWriterStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseEvidenceWriter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var evidence = new RunEvidenceSession(identity,
-            new RunEvidenceOptions(directory, 8, 4096, 64 * 1024, 16, TimeSpan.FromSeconds(2)), clock, captureOnly);
+            new RunEvidenceOptions(directory, 8, 4096, 64 * 1024, 16, TimeSpan.FromSeconds(2)), clock, captureOnly,
+            holdEvidenceWriter
+                ? async () =>
+                {
+                    evidenceWriterStarted.TrySetResult();
+                    await releaseEvidenceWriter.Task.ConfigureAwait(false);
+                }
+                : null);
         KafkaStatisticsMetrics? statisticsMetrics = requireStatistics ? new KafkaStatisticsMetrics() : null;
         KafkaStatisticsSession? statistics = requireStatistics
             ? new KafkaStatisticsSession(new KafkaStatisticsIdentity(identity.ScenarioId, identity.RunId,
@@ -61,6 +71,8 @@ public sealed class FinalisationDeadlineTests
 
         try
         {
+            if (holdEvidenceWriter)
+                await evidenceWriterStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
             RunExecutionResult result = await executor.ExecuteAsync(Profile(), identity, Options(directory, requireStatistics),
                 TestContext.Current.CancellationToken);
 
@@ -91,9 +103,11 @@ public sealed class FinalisationDeadlineTests
         }
         finally
         {
+            releaseEvidenceWriter.TrySetResult();
             if (statistics is not null) await statistics.DisposeAsync();
             statisticsMetrics?.Dispose();
             await evidence.DisposeAsync();
+            await evidence.WriterTask.WaitAsync(TestContext.Current.CancellationToken);
             await ledger.DisposeAsync();
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
         }
@@ -114,6 +128,41 @@ public sealed class FinalisationDeadlineTests
         Assert.True(File.Exists(Path.Combine(path, "capabilities.json")));
         Assert.DoesNotContain("capabilities_write_timeout", session.Diagnostics);
         Assert.True(new FileInfo(Path.Combine(path, "capabilities.json")).Length > 0);
+    }
+
+    [Fact]
+    public async Task Given_NativeProducerDisposeStalls_When_Finalising_Then_UsesOneAttemptAndKeepsFailureSticky()
+    {
+        string directory = NewDirectory();
+        RunIdentity identity = Identity();
+        var ledger = new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(directory, "ledger.jsonl"),
+            Path.Combine(directory, "manifest.json"), 8, 4096, 64 * 1024, 64 * 1024, TimeSpan.FromSeconds(1)));
+        var evidence = new RunEvidenceSession(identity, EvidenceOptions(directory), TimeProvider.System);
+        var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, StalledDisposeProducer>();
+        StalledDisposeProducer tracker = (StalledDisposeProducer)(object)producer;
+        var executor = new RunExecutor(() => producer, ledger, TimeProvider.System, statistics: null, evidence);
+
+        try
+        {
+            RunExecutionResult result = await executor.ExecuteAsync(Profile(), identity,
+                Options(directory, requireStatistics: false) with { CleanupTimeout = TimeSpan.FromMilliseconds(50) },
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("producer_dispose_timeout", result.Manifest.Diagnostics);
+            Assert.Equal(1, tracker.DisposeAttempts);
+            tracker.Release.TrySetResult();
+            await tracker.DisposeFinished.Task.WaitAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(1, tracker.DisposeAttempts);
+            Assert.Contains("producer_dispose_timeout", result.Manifest.Diagnostics);
+        }
+        finally
+        {
+            tracker.Release.TrySetResult();
+            await evidence.DisposeAsync();
+            await ledger.DisposeAsync();
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]
@@ -266,6 +315,33 @@ public sealed class FinalisationDeadlineTests
             }
             if (targetMethod?.Name == "Flush") return KeepQueueNonempty ? 1 : 0;
             if (targetMethod?.Name == "Dispose") return null;
+            throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    public class StalledDisposeProducer : DispatchProxy
+    {
+        private int _disposeAttempts;
+        public int DisposeAttempts => Volatile.Read(ref _disposeAttempts);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource DisposeFinished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod?.Name == "Produce" && args is { Length: 3 })
+            {
+                ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new DeliveryReport<byte[], byte[]>
+                { Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted });
+                return null;
+            }
+            if (targetMethod?.Name == "Flush") return 0;
+            if (targetMethod?.Name == "Dispose")
+            {
+                Interlocked.Increment(ref _disposeAttempts);
+                try { Release.Task.GetAwaiter().GetResult(); }
+                finally { DisposeFinished.TrySetResult(); }
+                return null;
+            }
             throw new NotSupportedException(targetMethod?.Name);
         }
     }

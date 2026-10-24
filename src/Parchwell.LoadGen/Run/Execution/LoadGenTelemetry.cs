@@ -13,6 +13,7 @@ internal static class LoadGenTelemetry
     internal static OperationScope Begin(TimeProvider clock, string scenario, string run, string clientId, string operation) =>
         new OperationScope(clock, scenario, run, clientId, operation);
 
+
     internal sealed class OperationScope : IDisposable
     {
         private readonly TimeProvider _clock;

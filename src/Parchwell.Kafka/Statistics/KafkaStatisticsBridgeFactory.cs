@@ -10,14 +10,16 @@ public sealed class KafkaStatisticsBridgeFactory
     private readonly IKafkaStatisticsEvidenceSink _sink;
     private readonly KafkaStatisticsMetrics _metrics;
     private readonly bool _nativeClockCompatible;
+    private readonly Action? _completionBoundaryObserver;
 
     internal KafkaStatisticsBridgeFactory(
         IOptions<KafkaStatisticsOptions> options,
         TimeProvider timeProvider,
         IKafkaStatisticsEvidenceSink sink,
         KafkaStatisticsMetrics metrics,
-        bool nativeClockCompatible)
-        : this(options.Value, timeProvider, sink, metrics, nativeClockCompatible)
+        bool nativeClockCompatible,
+        Action? completionBoundaryObserver = null)
+        : this(options.Value, timeProvider, sink, metrics, nativeClockCompatible, completionBoundaryObserver)
     {
     }
 
@@ -26,7 +28,8 @@ public sealed class KafkaStatisticsBridgeFactory
         TimeProvider timeProvider,
         IKafkaStatisticsEvidenceSink sink,
         KafkaStatisticsMetrics metrics,
-        bool nativeClockCompatible)
+        bool nativeClockCompatible,
+        Action? completionBoundaryObserver = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = CopyOptions(options);
@@ -40,6 +43,7 @@ public sealed class KafkaStatisticsBridgeFactory
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _nativeClockCompatible = nativeClockCompatible;
+        _completionBoundaryObserver = completionBoundaryObserver;
     }
 
     /// <summary>Creates a new session and its counter state for the supplied client identity.</summary>
@@ -64,7 +68,8 @@ public sealed class KafkaStatisticsBridgeFactory
                 Options.DefaultName, typeof(KafkaStatisticsOptions), [failure!]);
         }
 
-        return new KafkaStatisticsSession(identity, CopyOptions(_options), _timeProvider, _sink, _metrics, _nativeClockCompatible);
+        return new KafkaStatisticsSession(identity, CopyOptions(_options), _timeProvider, _sink, _metrics,
+            _nativeClockCompatible, _completionBoundaryObserver);
     }
 
     private static bool IsIdentifier(string value) =>

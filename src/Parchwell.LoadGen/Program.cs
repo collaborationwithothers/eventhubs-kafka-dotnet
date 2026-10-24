@@ -46,7 +46,6 @@ internal static class Program
         ProducerLifecycleOptions? lifecycleOptions = null;
         ProducerRunContext? runContext = null;
         TimeProvider? clock = null;
-        CancellationTokenSource? hostCleanupDeadline = null;
         bool readyForCompletion = false;
         int exitCode = 1;
         try
@@ -79,9 +78,9 @@ internal static class Program
             }, null, options.ProcessLifetimeTimeout, Timeout.InfiniteTimeSpan);
             await host.StartAsync().ConfigureAwait(false);
             LoadGenWorker worker = host.Services.GetRequiredService<LoadGenWorker>();
-            await host.WaitForShutdownAsync().ConfigureAwait(false);
-            hostCleanupDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
-            await host.StopAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
+            CancellationToken applicationStopping = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, applicationStopping).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested) { }
             exitCode = worker.ExitCode;
             readyForCompletion = exitCode == 0;
         }
@@ -96,15 +95,37 @@ internal static class Program
             {
                 if (host is not null)
                 {
-                    hostCleanupDeadline ??= new CancellationTokenSource(runOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10),
-                        clock ?? TimeProvider.System);
-                    await Task.Run(host.Dispose).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
+                    TimeSpan cleanupTimeout = runOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10);
+                    using var hostCleanupDeadline = new CancellationTokenSource(cleanupTimeout, clock ?? TimeProvider.System);
+                    try
+                    {
+                        await host.StopAsync(hostCleanupDeadline.Token).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        ReportHostFailure(new TimeoutException("loadgen_host_stop_timeout"), runOptions, logger, alwaysWriteIdentityFallback: true);
+                        exitCode = 1;
+                    }
+                    catch (Exception exception)
+                    {
+                        ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                        exitCode = 1;
+                    }
+                    try
+                    {
+                        await Task.Run(host.Dispose).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        ReportHostFailure(new TimeoutException("loadgen_host_dispose_timeout"), runOptions, logger, alwaysWriteIdentityFallback: true);
+                        exitCode = 1;
+                    }
+                    catch (Exception exception)
+                    {
+                        ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                        exitCode = 1;
+                    }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                ReportHostFailure(new TimeoutException("loadgen_host_dispose_timeout"), runOptions, logger, alwaysWriteIdentityFallback: true);
-                exitCode = 1;
             }
             catch (Exception exception)
             {
@@ -120,7 +141,6 @@ internal static class Program
                 ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                 exitCode = 1;
             }
-            hostCleanupDeadline?.Dispose();
         }
         if (readyForCompletion && exitCode == 0 && lifecycle is not null && lifecycleOptions is not null && runContext is not null && clock is not null)
         {

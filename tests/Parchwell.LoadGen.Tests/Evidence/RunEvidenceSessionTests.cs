@@ -282,16 +282,34 @@ public sealed class RunEvidenceSessionTests
     {
         string path = NewDirectory();
         RunEvidenceOptions options = Options(path);
-        var timeProvider = new DeadlineAdvancingTimeProvider();
-        await using var session = new RunEvidenceSession(Identity(), options, timeProvider);
+        var timeProvider = new ManualTimeProvider();
+        var writerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWriter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var session = new RunEvidenceSession(Identity(), options, timeProvider, expectations: null, async () =>
+        {
+            writerStarted.TrySetResult();
+            await releaseWriter.Task.ConfigureAwait(false);
+        });
 
-        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        try
+        {
+            Task completion = session.CompleteAsync(null, TestContext.Current.CancellationToken);
+            await writerStarted.Task;
+            Assert.Equal(options.CompletionTimeout, timeProvider.ScheduledDueTime);
+            timeProvider.AdvanceBy(options.CompletionTimeout);
+            await completion;
 
-        Assert.Equal(options.CompletionTimeout, timeProvider.ScheduledDueTime);
-        Assert.Equal(options.CompletionTimeout.Ticks, timeProvider.GetTimestamp());
-        Assert.Equal(2, timeProvider.TimerCount);
-        Assert.DoesNotContain("capabilities_write_timeout", session.Diagnostics);
-        Assert.True(File.Exists(Path.Combine(path, "capabilities.json")));
+            Assert.Equal(options.CompletionTimeout.Ticks, timeProvider.GetTimestamp());
+            Assert.Equal(2, timeProvider.TimerCount);
+            Assert.Contains("evidence_writer_completion_timeout", session.Diagnostics);
+            Assert.DoesNotContain("capabilities_write_timeout", session.Diagnostics);
+            Assert.True(File.Exists(Path.Combine(path, "capabilities.json")));
+        }
+        finally
+        {
+            releaseWriter.TrySetResult();
+            await session.WriterTask;
+        }
     }
 
     [Fact]
@@ -517,10 +535,12 @@ public sealed class RunEvidenceSessionTests
         [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, requestTimeouts, 0, 0, 0, 0,
             new KafkaWindowStatistics(count, count == 0 ? null : throttle), new KafkaWindowStatistics(0, null))]);
 
-    private sealed class DeadlineAdvancingTimeProvider : TimeProvider
+    private sealed class ManualTimeProvider : TimeProvider
     {
         private long _timestamp;
         private int _timerCount;
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
 
         public TimeSpan? ScheduledDueTime { get; private set; }
         public int TimerCount => Volatile.Read(ref _timerCount);
@@ -531,31 +551,39 @@ public sealed class RunEvidenceSessionTests
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            var timer = new ManualTimer(callback, state);
-            int timerNumber = dueTime == Timeout.InfiniteTimeSpan ? 0 : Interlocked.Increment(ref _timerCount);
+            var timer = new ManualTimer(callback, state, GetTimestamp);
+            if (dueTime != Timeout.InfiniteTimeSpan) Interlocked.Increment(ref _timerCount);
             if (dueTime != Timeout.InfiniteTimeSpan)
             {
                 ScheduledDueTime = dueTime;
-                timer.Schedule(checked(GetTimestamp() + dueTime.Ticks));
-                if (timerNumber == 1)
-                {
-                    AdvanceBy(dueTime);
-                    timer.FireIfDue(GetTimestamp());
-                }
+                timer.Schedule(checked(GetTimestamp() + dueTime.Ticks), period);
             }
+            lock (_gate) _timers.Add(timer);
             return timer;
         }
 
-        private void AdvanceBy(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, elapsed.Ticks);
+        public void AdvanceBy(TimeSpan elapsed)
+        {
+            long timestamp = Interlocked.Add(ref _timestamp, elapsed.Ticks);
+            ManualTimer[] timers;
+            lock (_gate) timers = [.. _timers];
+            foreach (ManualTimer timer in timers) timer.FireIfDue(timestamp);
+        }
     }
 
-    private sealed class ManualTimer(TimerCallback callback, object? state) : ITimer
+    private sealed class ManualTimer(TimerCallback callback, object? state, Func<long> getTimestamp) : ITimer
     {
         private int _disposed;
         private int _fired;
-        private long _dueTimestamp;
+        private long _dueTimestamp = long.MaxValue;
+        private long _periodTicks;
 
-        public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _disposed) == 0;
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return false;
+            Schedule(dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : checked(getTimestamp() + dueTime.Ticks), period);
+            return true;
+        }
 
         public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
 
@@ -565,13 +593,25 @@ public sealed class RunEvidenceSessionTests
             return ValueTask.CompletedTask;
         }
 
-        public void Schedule(long dueTimestamp) => _dueTimestamp = dueTimestamp;
+        public void Schedule(long dueTimestamp, TimeSpan period)
+        {
+            _dueTimestamp = dueTimestamp;
+            _periodTicks = period == Timeout.InfiniteTimeSpan ? 0 : period.Ticks;
+        }
 
         public void FireIfDue(long timestamp)
         {
-            if (timestamp >= Interlocked.Read(ref _dueTimestamp) &&
-                Volatile.Read(ref _disposed) == 0 && Interlocked.Exchange(ref _fired, 1) == 0)
+            while (timestamp >= Interlocked.Read(ref _dueTimestamp) && Volatile.Read(ref _disposed) == 0)
+            {
+                if (Interlocked.Exchange(ref _fired, 1) != 0) return;
+                if (_periodTicks == 0) Interlocked.Exchange(ref _dueTimestamp, long.MaxValue);
+                else
+                {
+                    Interlocked.Exchange(ref _fired, 0);
+                    Interlocked.Add(ref _dueTimestamp, _periodTicks);
+                }
                 callback(state);
+            }
         }
     }
 }

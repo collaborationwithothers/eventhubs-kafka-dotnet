@@ -22,11 +22,22 @@ public sealed class RunSessionFactory
     private readonly TimeProvider _timeProvider;
     private readonly KafkaAuthenticationFactory _authenticationFactory;
     private readonly Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> _producerFactory;
+    private readonly Func<Task>? _beforeEvidenceWriterDrain;
 
     public RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
         KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
         TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
         Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory)
+        : this(options, sinkRouter, statisticsFactory, configurationFactory, timeProvider, authenticationFactory,
+            producerFactory, beforeEvidenceWriterDrain: null)
+    {
+    }
+
+    internal RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
+        KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
+        TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
+        Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory,
+        Func<Task>? beforeEvidenceWriterDrain)
     {
         _options = options.Value;
         _sinkRouter = sinkRouter;
@@ -35,6 +46,7 @@ public sealed class RunSessionFactory
         _timeProvider = timeProvider;
         _authenticationFactory = authenticationFactory;
         _producerFactory = producerFactory;
+        _beforeEvidenceWriterDrain = beforeEvidenceWriterDrain;
     }
 
     /// <summary>Creates output writers, statistics capture, and executor after admission has passed.</summary>
@@ -59,7 +71,7 @@ public sealed class RunSessionFactory
             requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
         RunEvidenceSession? evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(options.OutputRoot,
             options.EvidenceQueueCapacity, options.MaxReportBytes, options.MaxEvidenceFileBytes,
-            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations);
+            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations, _beforeEvidenceWriterDrain);
         LocalLedgerStore? ledger = null;
         KafkaStatisticsSession? statistics = null;
         try

@@ -15,6 +15,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     private readonly IKafkaStatisticsEvidenceSink _sink;
     private readonly KafkaStatisticsMetrics _metrics;
     private readonly bool _nativeClockCompatible;
+    private readonly Action? _completionBoundaryObserver;
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private readonly long _sessionStartTimestamp;
     private readonly Channel<CapturedReport> _queue;
@@ -52,7 +53,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         TimeProvider timeProvider,
         IKafkaStatisticsEvidenceSink sink,
         KafkaStatisticsMetrics metrics,
-        bool nativeClockCompatible)
+        bool nativeClockCompatible,
+        Action? completionBoundaryObserver = null)
     {
         _identity = identity ?? throw new ArgumentNullException(nameof(identity));
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -65,6 +67,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _nativeClockCompatible = nativeClockCompatible;
+        _completionBoundaryObserver = completionBoundaryObserver;
         _sessionStartTimestamp = _timeProvider.GetTimestamp();
         if (!_nativeClockCompatible)
         {
@@ -199,6 +202,11 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
 
             wasDisposed = _disposed;
         }
+
+        // The observer is an internal deterministic fixture seam. Invoke it only after the
+        // completion boundary is visible and the capture gate is released; any exception leaves
+        // completion failed closed through the caller's normal exception path.
+        _completionBoundaryObserver?.Invoke();
 
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, deadline.Token);

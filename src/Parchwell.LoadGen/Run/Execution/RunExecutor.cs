@@ -257,17 +257,25 @@ public sealed class RunExecutor
         AddFlagDiagnostic(guardFlags, LedgerFailure, "ledger_capture_failure", AddDiagnostic);
         AddFlagDiagnostic(guardFlags, NativeProducerException, "native_produce_exception_observed", AddDiagnostic);
 
-        try
+        using (var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "ledger_drain"))
+        using (var ledgerDrainDeadline = new CancellationTokenSource(options.LedgerDrainTimeout ?? options.CleanupTimeout, clock))
         {
-            using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "ledger_drain");
-            using var ledgerDrainDeadline = new CancellationTokenSource(options.LedgerDrainTimeout ?? options.CleanupTimeout, clock);
-            await ledger.DrainAsync(ledgerDrainDeadline.Token).ConfigureAwait(false);
-            activity.Succeed();
-        }
-        catch (Exception exception)
-        {
-            workerFailed = true;
-            AddDiagnostic("ledger_drain_failed:" + exception.GetType().Name);
+            try
+            {
+                await ledger.DrainAsync(ledgerDrainDeadline.Token).ConfigureAwait(false);
+                ledgerDrainDeadline.Token.ThrowIfCancellationRequested();
+                activity.Succeed();
+            }
+            catch (OperationCanceledException) when (ledgerDrainDeadline.IsCancellationRequested)
+            {
+                workerFailed = true;
+                AddDiagnostic("ledger_drain_failed:TaskCanceledException");
+            }
+            catch (Exception exception)
+            {
+                workerFailed = true;
+                AddDiagnostic("ledger_drain_failed:" + exception.GetType().Name);
+            }
         }
 
         if (statistics is not null)
@@ -356,6 +364,7 @@ public sealed class RunExecutor
                 workerFailed = true;
                 AddDiagnostic("evidence_completion_failed:" + exception.GetType().Name);
             }
+            foreach (var item in evidence.Diagnostics) AddDiagnostic("evidence:" + item);
             try
             {
                 using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "evidence_readback");
@@ -367,7 +376,6 @@ public sealed class RunExecutor
                     workerFailed = true;
                     AddDiagnostic("evidence_capture_faulted");
                 }
-                foreach (var item in evidence.Diagnostics) AddDiagnostic("evidence:" + item);
             }
             catch (Exception exception)
             {
