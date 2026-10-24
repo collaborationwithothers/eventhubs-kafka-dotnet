@@ -96,7 +96,7 @@ spec:
             {{- if eq $role "loadgen" }}
             {{- range $section := list "loadgen" "scenario_parsing" }}{{ range $key, $value := index $r.bounds $section }}
             - name: {{ printf "LoadGen__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ end }}
             {{- range $key, $value := dict "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) }}
             - name: {{ printf "LoadGen__%s" $key | quote }}
@@ -109,11 +109,11 @@ spec:
             {{- else }}
             {{- range $key, $value := $r.bounds.verifier_shared }}
             - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
             {{- range $key, $value := $r.bounds.scenario_parsing }}
             - name: {{ printf "Verifier__ScenarioLoadOptions__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
             {{- range $key, $value := dict "Mode" $mode "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
             - name: {{ printf "Verifier__%s" $key | quote }}
@@ -124,7 +124,7 @@ spec:
             {{- if ne $mode "judge" }}
             {{- range $key, $value := $r.bounds.verifier_kafka }}
             - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
             {{- range $key, $value := dict "NamespaceName" $r.eventhubs.namespace_name "Repeat" (printf "%d" (int $r.repeat)) "ExpectedInstanceId" $r.loadgen_job_name "RepeatPrefix" (include "parchwell.repeatPrefix" $) "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) "StartLineOutputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "BrokerInventoryOutputName" (printf "%sbroker-inventory.json" (include "parchwell.repeatPrefix" $)) "StartLineInputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "ResultOutputName" (printf "%sresult.json" (include "parchwell.repeatPrefix" $)) }}
             - name: {{ printf "Verifier__%s" $key | quote }}
@@ -132,15 +132,15 @@ spec:
             {{- end }}
             {{- if eq $mode "start-line" }}{{ range $key, $value := $r.bounds.verifier_start_line }}
             - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ else }}{{ range $key, $value := $r.bounds.verifier_verify }}
             - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ end }}
             {{- else }}
             {{- range $key, $value := $r.bounds.verifier_gate }}
             - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ printf "%v" $value | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
             {{- range $key, $value := dict "PhasePrefix" (include "parchwell.phasePrefix" $) "CandidateOutputName" (printf "%scandidate.json" (include "parchwell.phasePrefix" $)) "LoadGenImage" $r.loadgen_image "VerifierImage" $r.verifier_image }}
             - name: {{ printf "Verifier__%s" $key | quote }}

@@ -25,8 +25,8 @@ def positive_cases():
     for phase,config in [('probe','C0'),('C0','C0'),('C3','C3')]:
       for mode in ('start-line','loadgen','verify'):
        for repeat in (1,5):
-        d=deepcopy(FIXTURE); d['configuration_id']=config;r=d['runtime'];r.update(phase=phase,mode=mode,repeat=repeat,loadgen_job_name=f"{r['run_id']}-{phase.lower()}-r{repeat}-loadgen");yield d
-      d=deepcopy(FIXTURE);d['configuration_id']=config;r=d['runtime'];r.update(phase=phase,mode='judge');r.pop('repeat',None);r.pop('loadgen_job_name',None);yield d
+        d=deepcopy(FIXTURE); d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode=mode,repeat=repeat,loadgen_job_name=f"{r['run_id']}-{phase.lower()}-r{repeat}-loadgen");yield d
+      d=deepcopy(FIXTURE);d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode='judge');r.pop('repeat',None);r.pop('loadgen_job_name',None);yield d
 
 def scalar(value):
     if isinstance(value, bool): return str(value).lower()
@@ -96,7 +96,7 @@ def verify(doc,d):
     for entry in env:
       kind,value=expected[entry['name']]
       if kind=='field': assert entry['valueFrom']['fieldRef']['fieldPath']==value
-      else: assert entry['value']==value
+      else: assert entry['value']==value, (entry['name'],entry['value'],value)
     assert {'PARCHWELL_SOURCE_COMMIT','PARCHWELL_JOB_NAME','PARCHWELL_POD_NAME','PARCHWELL_POD_UID','Telemetry__ConnectionString','Telemetry__ServiceName','Telemetry__ServiceInstanceId','Telemetry__ScenarioId','Telemetry__RunId'} <= set(names)
     assert all(e.get('valueFrom',{}).get('fieldRef',{}).get('fieldPath') in ('metadata.name','metadata.uid') for e in env if 'valueFrom' in e)
     assert job['spec']['template']['metadata']['labels']['azure.workload.identity/use']=='true'
