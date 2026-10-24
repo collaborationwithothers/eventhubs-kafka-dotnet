@@ -123,8 +123,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual([], json.loads(self.queue.read_text()))
         self.assertTrue(all(call["tool"] in ("az", "terraform", "kubectl", "helm", "kubelogin") for call in self.calls()))
 
-    def aks(self, power, provisioning="Succeeded"):
-        return response("az", "show", stdout=json.dumps({"id": RESOURCE, "powerState": {"code": power}, "provisioningState": provisioning}))
+    def aks(self, power, provisioning="Succeeded", resource=RESOURCE):
+        return response("az", "show", stdout=json.dumps({"id": resource, "powerState": {"code": power}, "provisioningState": provisioning}))
 
     def collect(self, marker):
         self.script(response("kubectl", "get", "pods", stdout=json.dumps({"items": [pod()]})),
@@ -172,12 +172,12 @@ class LifecycleTests(unittest.TestCase):
         self.assert_consumed()
 
     def test_terraform_full_sequence_partial_failure_and_independent_destroy(self):
-        cluster_output = json.dumps({"aks": {"value": {"id": RESOURCE}}, "workload_identity": {"value": {}}})
+        cluster_output = json.dumps({"aks": {"value": {"id": RESOURCE.lower()}}, "workload_identity": {"value": {}}})
         self.script(response("terraform", "init"), response("az", "show", code=3, stderr="ERROR: (ResourceGroupNotFound) synthetic group absent\n"),
             response("az", "show", code=3, stderr="ERROR: (ResourceNotFound) synthetic cluster absent\n"), response("terraform", "plan"), response("terraform", "apply"),
             response("terraform", "output", stdout=cluster_output), response("terraform", "init"), response("terraform", "plan"),
             response("terraform", "apply", code=9), response("terraform", "init"), response("terraform", "destroy"),
-            response("terraform", "state", "list"), self.aks("Running"), response("az", "stop", "--no-wait"), self.aks("Stopped"))
+            response("terraform", "state", "list"), self.aks("Running", resource=RESOURCE.lower()), response("az", "stop", "--no-wait"), self.aks("Stopped", resource=RESOURCE.lower()))
         # Exercise the Bash entry and common.sh root resolution once as well.
         result = subprocess.run(["bash", str(self.scripts / "lifecycle.sh"), "init-cluster"], env=os.environ, capture_output=True)
         self.assertEqual(0, result.returncode, result.stderr)
@@ -205,12 +205,16 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(2, self.run_lifecycle("apply-ephemeral"))
         self.assertEqual([], self.calls())
 
-    def test_existing_cluster_output_mismatch_fails_before_apply(self):
+    def test_cluster_resource_id_mismatch_fails_closed(self):
         self.private.mkdir()
         (self.private / "cluster.tfplan").write_text("synthetic")
         (self.private / "cluster-output.json").write_text(json.dumps({"aks": {"value": {"id": RESOURCE + "-wrong"}}, "workload_identity": {"value": {}}}))
         self.assertEqual(2, self.run_lifecycle("apply-cluster"))
         self.assertEqual([], self.calls())
+        self.script(response("az", "show", stdout=json.dumps({"id": RESOURCE + "-wrong", "powerState": {"code": "Running"}, "provisioningState": "Succeeded"})))
+        self.assertEqual(2, self.run_lifecycle("start-cluster"))
+        self.assertEqual(1, len(self.calls()))
+        self.assert_consumed()
 
     def test_aks_authorization_error_does_not_mean_absent(self):
         self.script(response("az", "show", code=4, stderr="ERROR: (AuthorizationFailed) 403\n"))

@@ -32,6 +32,10 @@ def require(name):
     return value
 
 
+def same_resource_id(actual, expected):
+    return isinstance(actual, str) and isinstance(expected, str) and actual.casefold() == expected.casefold()
+
+
 def label(value, maximum=63):
     if len(value) > maximum or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", value):
         raise Failure("invalid DNS label")
@@ -164,7 +168,7 @@ class Lifecycle:
         names = ("aks", "workload_identity") if root == "cluster" else ("eventhubs", "blob", "private_endpoint_ips")
         if not isinstance(data, dict) or any(not isinstance(data.get(name), dict) or not isinstance(data[name].get("value"), dict) for name in names):
             raise Failure("Terraform output shape mismatch")
-        if root == "cluster" and data["aks"]["value"].get("id") != require("PARCHWELL_CLUSTER_RESOURCE_ID"):
+        if root == "cluster" and not same_resource_id(data["aks"]["value"].get("id"), require("PARCHWELL_CLUSTER_RESOURCE_ID")):
             raise Failure("AKS output does not match supplied resource ID")
 
     def cluster_args(self):
@@ -183,7 +187,7 @@ class Lifecycle:
                 return None
             raise Failure("AKS read failed", status)
         data = self.read_json(output)
-        if not isinstance(data, dict) or data.get("id") != require("PARCHWELL_CLUSTER_RESOURCE_ID"):
+        if not isinstance(data, dict) or not same_resource_id(data.get("id"), require("PARCHWELL_CLUSTER_RESOURCE_ID")):
             raise Failure("AKS read ID mismatch")
         power = data.get("powerState", {}).get("code")
         provisioning = data.get("provisioningState")
