@@ -69,25 +69,26 @@ flowchart LR
     RUN[GitHub runner with Azure private networking]
   end
   subgraph PERSIST[Persistent layer - rg-parchwell-persist]
-    BUD[Budget alert]
     VNET[Spoke VNet + subnets]
     DNS[Private DNS zones]
     LAW[Log Analytics workspace]
+    AI[Application Insights]
     UAMI[User-assigned identities]
     ACR[ACR Standard - public Entra-only]
   end
   TFS[Existing external Terraform state storage]
-  subgraph EPH[Ephemeral layer - rg-parchwell-eph]
+  subgraph CLUSTER[Reusable cluster layer]
     subgraph AKS[AKS cluster]
       LG[loadgen pods - tainted pool]
       EC[enrichment-consumer pods]
       VER[verifier pods]
     end
+  end
+  subgraph EPH[Ephemeral layer - rg-parchwell-eph]
     EHN[Event Hubs Premium namespace, 1 PU]
     PE1[Private endpoint - Event Hubs]
-    BLOB[Storage account - claim-check and ledger]
+    BLOB[Storage account - run data and claim-check]
     PE2[Private endpoint - Blob]
-    AI[Application Insights]
   end
   WF --> RUN
   RVN <-->|VNet peering, no firewall| VNET
@@ -106,9 +107,7 @@ flowchart LR
 
 ### Persistent layer
 
-Holds everything that costs little or nothing while idle, or that must survive teardown. The Azure budget alert (rule 5, applied before any other resource). A spoke VNet with subnets for AKS nodes and private endpoints, peered directly to Hari's existing runner VNet, which hosts the GitHub runner with Azure private networking. There is no hub and no firewall in the path. The runner VNet is not managed by this repo. Private DNS for `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net` must resolve from both the spoke and the runner VNet. Both zones are platform prerequisites created outside this repo by `scripts/prerequisites.ps1` (ADR-010); this repo links them to the spoke and writes records into them. Teams that run behind a hub firewall: see [docs/networking/hub-firewall.md](networking/hub-firewall.md). The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state uses Hari's existing external storage account, with Entra authentication, shared keys disabled and private access. This repo consumes supplied backend configuration and does not own that account or its networking ([decision on #112](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318488448)). The persistent layer also holds an ACR Standard registry with public access and Entra-only pulls and pushes ([registry decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552)). The spoke VNet is persistent because recreating it would mean recreating both sides of the peering every session, and the runner side lives outside this repo. Spoke address space must not overlap the runner VNet or anything else peered to it.
-
-A separate persistent Entra-only run-storage account holds the reservation/completion ledger and private raw evidence in containers `ledger` and `evidence`; shared keys and public access are disabled, with a Blob private endpoint on the existing zone ([decision #114/6332413257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257)).
+Holds everything that costs little or nothing while idle, or that must survive teardown. A spoke VNet with subnets for AKS nodes and private endpoints, peered directly to Hari's existing runner VNet, which hosts the GitHub runner with Azure private networking. There is no hub and no firewall in the path. The runner VNet is not managed by this repo. Private DNS for `privatelink.servicebus.windows.net` and `privatelink.blob.core.windows.net` must resolve from both the spoke and the runner VNet. Both zones are platform prerequisites created outside this repo by `scripts/prerequisites.ps1` (ADR-010); this repo links them to the spoke and writes records into them. Teams that run behind a hub firewall: see [docs/networking/hub-firewall.md](networking/hub-firewall.md). The Log Analytics workspace, so run history survives teardown. User-assigned managed identities for each workload. Terraform state uses Hari's existing external storage account, with Entra authentication, shared keys disabled and private access. This repo consumes supplied backend configuration and does not own that account or its networking ([decision on #112](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318488448)). The persistent layer also holds an ACR Standard registry with public access and Entra-only pulls and pushes ([registry decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552)). The spoke VNet is persistent because recreating it would mean recreating both sides of the peering every session, and the runner side lives outside this repo. Spoke address space must not overlap the runner VNet or anything else peered to it. Workspace-based Application Insights is persistent; lifecycle and retention follow ADR-020.
 
 ### Event Hubs Premium namespace
 
@@ -128,7 +127,7 @@ One private endpoint for the Event Hubs namespace and one for Blob, both in the 
 
 ### AKS cluster
 
-Free tier control plane at build scale (no SLA; acceptable for a test harness). OIDC issuer and workload identity enabled. Azure CNI overlay. Entra integration with local accounts disabled and Azure RBAC for Kubernetes authorisation. Kubernetes version: latest GA minor at apply time, pinned in Terraform. Three node pools on normal (not spot) capacity, all `Standard_D4ds_v5`:
+Free tier control plane at build scale (no SLA; acceptable for a test harness). OIDC issuer and workload identity enabled. Azure CNI overlay. Entra integration with local accounts disabled and Azure RBAC for Kubernetes authorisation. AKS belongs to infra/cluster and is reused under ADR-020. C1's plan pins the supported Kubernetes version; the adopted minimum is 1.34. Three node pools on normal (not spot) capacity, all `Standard_D4ds_v5`:
 
 | Pool | Nodes | Purpose |
 |---|---|---|
@@ -149,11 +148,11 @@ Fact: Confluent.Kafka 2.16.0 was released 2026-10-07, targets net8.0 and net10.0
 
 ### Scenario runner
 
-A GitHub Actions workflow on Hari's existing GitHub-hosted runner with Azure private networking, which sits in the existing runner VNet and reaches the spoke over peering. The workflow triggers only on `workflow_dispatch` and `schedule`, never on pull requests, because the repo is public and fork pull requests must never run on a runner inside the network. Per scenario: `terraform apply` for the ephemeral layer, deploy the Helm values the runner generates from the scenario definition, profile and baseline (ADR-014), run, collect KQL results, write `results/<scenario-id>/<utc-date>.json`, `terraform destroy`. Authentication to Azure through GitHub OIDC federation; no stored secrets.
+The scenario workflow owns infrastructure commands and runs the worker and judge Jobs described in ADR-020. It uses the existing private-network runner and GitHub OIDC identity. AGENTS.md hard safety rules 8 and 9 own trigger and dispatch restrictions. The approved candidate is proposed for publication through a verdict pull request; the workflow does not directly authorize a result.
 
 ### Observability
 
-Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights receives OpenTelemetry from every workload through the Azure Monitor exporter. Event Hubs diagnostic settings send resource logs to resource-specific tables (Fact: tables include `AZMSKafkaCoordinatorLogs`, `AZMSKafkaUserErrorLogs`, `AZMSApplicationMetricLogs`, `AZMSRunTimeAuditLogs`, `AZMSDiagnosticErrorLogs`; runtime audit logs are Premium-only; S10) and platform metrics to `AzureMetrics`.
+Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights receives OpenTelemetry from every workload through the Azure Monitor exporter. Event Hubs diagnostic settings send resource logs to resource-specific tables (Fact: tables include `AZMSKafkaCoordinatorLogs`, `AZMSKafkaUserErrorLogs`, `AZMSApplicationMetricLogs`, `AZMSRunTimeAuditLogs`, `AZMSDiagnosticErrorLogs`; runtime audit logs are Premium-only; S10) and platform metrics to `AzureMetrics`. Application Insights, Container Insights, exporter participation and retention follow ADR-020. Automated KQL collection is removed; section 10 queries remain unvalidated operator examples.
 
 ---
 
@@ -207,7 +206,7 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 **Consequences.**
 - No secrets anywhere in the cluster or the repo.
 - The refresh handler is the repo's own code, so its failure modes are the repo's responsibility (F03, FM-06).
-- Federated credentials must be recreated per cluster, because the OIDC issuer URL changes when the cluster is recreated. Identities live in the persistent layer; federated credentials in the ephemeral layer.
+- Federated credentials must be recreated per cluster, because the OIDC issuer URL changes when the cluster is recreated. Identities remain persistent; cluster-specific federated credentials belong to infra/cluster under ADR-020.
 - SAS scenarios are out of scope (F05 only tests that SAS is rejected).
 
 ### ADR-004: Premium with private endpoint only; persistent network layer
@@ -268,10 +267,10 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 2. Managed Prometheus and Managed Grafana.
 3. Both.
 
-**Decision.** Option 1. `statistics.interval.ms = 15000` as a starting point; statistics are flattened to OpenTelemetry metrics with low-cardinality dimensions.
+**Decision.** Option 1. `statistics.interval.ms = 15000` as a starting point; statistics are flattened to OpenTelemetry metrics with low-cardinality dimensions. Amended by ADR-020: telemetry placement and fixed settings follow that decision; KQL joins remain operator examples and are not collected evidence.
 
 **Consequences.**
-- One KQL query can join client-observed throttling with platform metrics; that join is the evidence for several inventory items.
+- One KQL query can join client-observed throttling with platform metrics; that join is an operator correlation example; verdict evidence still follows each item's decision rules.
 - KQL detection rules are directly reusable by Azure-centric operations teams.
 - Log Analytics charges per GB ingested (Fact: GBP 2.173667 per GB after the first 5 units in UK South; S9). High-cardinality per-partition metrics are the cost risk; ingestion per run hour becomes a measured number.
 - Managed Prometheus is deferred, recorded in section 6.
@@ -337,13 +336,14 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 | Spoke VNet, subnets, both peerings | `Azure/avm-res-network-virtualnetwork/azurerm` | 0.22.2 | `create_reverse_peering = true` creates the runner-side peering; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-network-virtualnetwork/tree/c08763d616fc9f1932075a70d53fa826dfbdc72f) |
 | Existing-zone links and optional standalone zones | `Azure/avm-res-network-privatednszone/azurerm`, link submodule | 0.5.0 | The link takes the existing zone's `parent_id`; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-network-privatednszone/tree/da8b7599c740d344de310ffa8cbe32c61322a809) |
 | Event Hubs namespace, delete topics, endpoint | `Azure/avm-res-eventhub-namespace/azurerm` | 0.1.1 | Sets TLS 1.2 and passes capacity to AzureRM; its topic input lacks cleanup policy, so only `document-state` falls back to `azurerm_eventhub` with Compact retention; [module source](https://github.com/Azure/terraform-azurerm-avm-res-eventhub-namespace/tree/b72cbf565e698f3443803fef13831c0d35f91cea), [provider support](https://github.com/hashicorp/terraform-provider-azurerm/blob/5782a75422c68a0d0804ac16d97dcaf3df5ee2fa/internal/services/eventhub/eventhub_resource.go) |
-| Ephemeral and persistent run Blob storage and endpoints | `Azure/avm-res-storage-storageaccount/azurerm` | 0.10.0 | Owns ephemeral ledger, verifier and claim-check containers and persistent run ledger and evidence containers; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-storage-storageaccount/tree/5695e5ec21744a3765051677d9e82bfba16b5d98) |
+| Ephemeral Blob storage and endpoints | `Azure/avm-res-storage-storageaccount/azurerm` | 0.10.0 | Owns ephemeral ledger, verifier and claim-check containers; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-storage-storageaccount/tree/5695e5ec21744a3765051677d9e82bfba16b5d98) |
 | AKS cluster | `Azure/avm-res-containerservice-managedcluster/azurerm` | 0.8.5 | Fixed pool and workload-identity inputs; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-containerservice-managedcluster/tree/4bc0128b057d10d5ed146a53d8c77933fd00ead8) |
-| Workload and control-plane identities | `Azure/avm-res-managedidentity-userassignedidentity/azurerm` | 0.5.3 | Persistent identities; cluster-specific federation uses plain `azurerm_federated_identity_credential` in the ephemeral root because the AVM attaches federation to the identity it creates; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-managedidentity-userassignedidentity/tree/ccb48fc77306879fecd04bd2a8a74b035acdc01d) |
+| Workload and control-plane identities | `Azure/avm-res-managedidentity-userassignedidentity/azurerm` | 0.5.3 | Persistent identities; cluster-specific federation uses plain `azurerm_federated_identity_credential` in the cluster root because the AVM attaches federation to the identity it creates; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-managedidentity-userassignedidentity/tree/ccb48fc77306879fecd04bd2a8a74b035acdc01d) |
 | Log Analytics workspace | `Azure/avm-res-operationalinsights-workspace/azurerm` | 0.5.1 | Persistent workspace; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-operationalinsights-workspace/tree/b4ffa3ff87ac09ff6de3b7014c44b4d213aa302b) |
-| Application Insights | `Azure/avm-res-insights-component/azurerm` | 0.4.0 | Ephemeral workspace-based component; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-insights-component/tree/848161e9cb89f4ef5a73d363e984e8dcdad0151d) |
+| Application Insights | `Azure/avm-res-insights-component/azurerm` | 0.4.0 | Persistent workspace-based component; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-insights-component/tree/848161e9cb89f4ef5a73d363e984e8dcdad0151d) |
 | Container registry | `Azure/avm-res-containerregistry-registry/azurerm` | 0.8.0 | Standard, public, no anonymous or admin access; [pinned source](https://github.com/Azure/terraform-azurerm-avm-res-containerregistry-registry/tree/4a032f5cf4607536008c217efdc3f06dda45f33c), [approved exception](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552) |
-| Budget alert | Plain `azurerm_consumption_budget_subscription` | Provider pinned in each root | Retains the original plain-AzureRM fallback; no budget AVM was selected in the S17 index check |
+
+Resource placement is amended by ADR-020; existing module pins are unchanged by this documentation PR.
 
 The additional AKS control-plane identity receives Network Contributor only on the AKS subnet. The kubelet identity receives AcrPull only on the persistent registry; the deploying workflow identity receives AcrPush there. These infrastructure roles are separate from the three workload identities and their data roles ([approved implementation contract](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/112#issuecomment-6318201099)). Shared tag and external-backend rules are owned by [Terraform engineering standards](engineering/terraform.md).
 
@@ -371,13 +371,13 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - Before upload, the load generator reads the persisted ledger back and requires its attempt IDs to match the sealed inventory exactly, with matching keys and sequence numbers and one final row per attempt. The manifest includes the inventory and its independently computed attempt count. The verifier downloads both files and repeats the set, count and row checks; a dropped failed row therefore invalidates the run even if no corresponding message was consumed.
 - The row is recorded inside the delivery handler passed to `Produce`, not after awaiting `ProduceAsync` (reason under ADR-013). The handler only appends the row to an in-memory buffer; a background writer moves rows to the local file, and the load generator drains that buffer before the upload. The handler runs on the client's poll path, which also serves token refresh (amendment 1, F01), so it must not wait on file I/O (inference).
 - `Produce` can also throw `ProduceException` synchronously, for example on `Local_QueueFull` (Fact: S19). The caller catches it and records a failed row for that attempt through the same buffer. The v2.16.0 implementation frees the callback handle on enqueue failure and throws before any delivery callback for that attempt (Fact: S19). Application-logic errors invalidate the run rather than becoming measured delivery failures.
-- Every message carries the load generator's instance ID and attempt ID in headers. The runner records the single expected instance ID before allowing production. Any additional worker instance invalidates the run, even if it produces no messages.
+- Every message carries the load generator's instance ID and attempt ID in headers. Producer registration and expected Job identity follow ADR-020. Any additional registered producer instance invalidates the repeat even if it produced no messages; a pod that fails before registration is outside that guarantee.
 - The ledger sits behind `ILedgerStore`, a seam at our own boundary, not around Confluent.Kafka (docs/engineering/dotnet.md).
 - During the run the ledger is written to a local file. The validated ledger and sealed run manifest are uploaded at the end to a single `ledger` container in the claim-check storage account (ADR-006). Either upload failing fails the load generator Job.
 - Ledger roles, decided by Hari on 2026-10-13, both scoped to the `ledger` container: the load generator's identity gets Storage Blob Data Contributor; the verifier's identity gets Storage Blob Data Reader. Contributor grants read, write and delete, and Reader grants read and list (Fact: S26). No role on that page grants blob write without blob read (inference from S26, which does not state it). A custom role granting only blob write on the container was considered; Hari chose the built-in Contributor role on 2026-10-13, accepting that the load generator can also read and delete blobs in the `ledger` container, and, because the role also carries container write and delete actions (S26), most likely delete the container itself (inference), to avoid defining and maintaining a custom role. These are additions to the role list in ADR-003.
 - A separate verifier-only container in the same ephemeral storage account holds the start-line notes and verifier results. The verifier identity has Storage Blob Data Contributor scoped to that container only and retains Storage Blob Data Reader scoped to `ledger`. The load generator receives no access to the verifier-only container. These are additions to ADR-003's workload role list. Contributor includes read, write and delete permissions (Fact: [pinned Storage Blob Data Contributor definition](https://github.com/MicrosoftDocs/azure-docs/blob/c2cc198a3d464afe137f93060257ef06049e0151/articles/role-based-access-control/built-in-roles/storage.md#storage-blob-data-contributor)); create-only writes are an application contract, not a restriction supplied by that role. The verifier does not overwrite or delete notes, results or ledger artifacts. The container and its scoped role assignment are provisioned with the ephemeral layer, separately from the verifier implementation (#80, revision 4).
 - The oracle covers `document-events`, the topic the load generator writes. The oracles for `document-state` and `document-events-dlq`, which `enrichment-consumer` writes, are decided when an inventory item first needs them.
-- The verifier checks every manifest entry, ledger row and consumed message against the runner's expected instance ID. It joins them on instance ID and attempt ID, and checks that their key and sequence number agree. The classes describe produce attempts only after the run passes the validity and completion gates in ADR-013:
+- The verifier checks every manifest entry, ledger row and consumed message against the single registered instance bound to the expected producer Job. It joins them on instance ID and attempt ID, and checks that their key and sequence number agree. The classes describe produce attempts only after the run passes the validity and completion gates in ADR-013:
 
 | Class | Ledger says | Consumed |
 |---|---|---|
@@ -389,7 +389,7 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - The verifier also counts duplicates (one key and sequence number consumed more than once) and reorders (a key's sequence numbers consumed out of order).
 - A run is invalid, and produces no classification, if any of these hold:
   - the ledger or sealed run manifest is missing;
-  - the runner detects more than one worker instance, or a ledger row or consumed message has an instance ID other than the expected one;
+  - the verifier finds other than exactly one registered producer instance, or a ledger row or consumed message has an instance ID other than the expected one;
   - a consumed message has no ledger row, or its key and sequence number disagree with that row;
   - the inventory, independently recorded attempt count and persisted ledger do not agree, an attempt ID has more than one row, or the buffer or local writer loses a row;
   - the late-write guard in ADR-013 cannot establish eligibility for a completed classification.
@@ -399,9 +399,9 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - The classes do not judge. "Reported failure" is a count; whether it is acceptable is decided by the scenario's `expected.yaml` (ADR-014). The word "expected" is reserved for those hypotheses.
 - Section 7's loss target now means the loss class. A reported failure is not loss: the application was told.
 - The ledger and manifest uploads can fail. A missing file invalidates the run.
-- The claim-check storage account is in the ephemeral layer, so the ledger is deleted at `terraform destroy`. The verifier's counts are what reach `results/`. Whether the ledger itself is kept with the evidence is decided with the verifier (#9, PR 7).
+- The claim-check storage account is in the ephemeral layer, so the ledger is deleted at `terraform destroy`. The verifier's counts are what reach `results/`. Retention follows ADR-020.
 - When the claim-check role for `enrichment-consumer` is added, it must be scoped to its separate claim-check container, without access to the `ledger` container (#44, item 2).
-- One load generator per run. H07's saturation profile plans several, so the duplicate-run rule must change before H07 runs: for example, to accept exactly the instance IDs the runner started.
+- A01 keeps one producer per repeat. Any future multi-producer scenario needs an approved oracle amendment before execution; #155 owns the parked throttling question.
 
 ### ADR-013: A run is the window between high watermarks recorded before and after the load generator
 
@@ -415,8 +415,7 @@ The additional AKS control-plane identity receives Network Contributor only on t
 **Decision.** Option 3, with a start line recorded the same way.
 - Before the load generator starts, a start step records the high watermark of every `document-events` partition. This is the run's start line. The step runs the verifier's image with the verifier's identity.
 - The load generator calls `Flush` until librdkafka's out queue (messages produced but not yet given a delivery report) is empty, then exits. `Flush` waits for all outstanding produce requests and delivery report callbacks; its timeout overload returns the out queue length; `message.timeout.ms` also affects the maximum time a call to `Flush` may block (Fact: S19).
-- The runner starts the verifier only after the load generator Job has completed.
-- Job completion alone is insufficient: the runner requires successful load generator exit, the sealed manifest, and validated ledger/inventory agreement before starting verification (ADR-012, ADR-017).
+- The workflow sequences verification after the load generator Job has terminated. The verifier and phase judge enforce required receipts, sealed manifest and ledger/inventory agreement under ADR-020; Job termination alone is not success.
 - As its first step, before consuming, the verifier records the high watermark of every `document-events` partition again. This is the run's end line.
 - For D02, a partition present at the end but absent at the start gets a start offset of 0, the initial partition offset (Fact: S19). If that offset is no longer available, the out-of-range rule below invalidates the run. A partition recorded at the start but missing at the end also invalidates the run.
 - Both lookups use the verifier's identity and Data Receiver role (ADR-003). That Data Receiver permits this offset lookup is an inference: Microsoft's built-in roles page describes the role as allowing "receive access to Azure Event Hubs resources", with the single data action `receive/action` (Fact: S27); it does not map that action to Kafka operations. The first live run confirms it, and if it fails, the fix is a decision for Hari, not a wider role.
@@ -425,7 +424,7 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - Late-write guard: the initial oracle invalidates a run if an accepted `Produce` call ends in an asynchronous delivery failure, a producer request times out or is retried, or a transport failure makes persistence uncertain, even if a later retry succeeds. Synchronous pre-enqueue rejections still enter the ledger as failed attempts (ADR-012). This deliberately conservative rule avoids converting an unseen late append into a reported failure, or missing a late duplicate after a successful retry.
 - The producer records these guard conditions independently of the ledger writer and retains them in the sealed manifest. It preserves delivery persistence status; `PossiblyPersisted` means transmitted without acknowledgement, while `Persisted` means written and acknowledged (Fact: S29). A missing status or `PossiblyPersisted` invalidates the run. The status field must remain enabled; Confluent.Kafka substitutes `PossiblyPersisted` when it is disabled (Fact: S29). This harness requirement is tagged A01/B10.
 - Guard evidence includes producer broker counters `req_timeouts`, `txretries`, `txerrs` and `rxerrs`, which are documented as cumulative counts of request timeouts, retries, transmission errors and receive errors (Fact: S29). Any observed non-zero counter invalidates the run. The harness retains broker error evidence throughout production and statistics through the post-drain sample. For the initial oracle, coverage of "every broker instance used" is assessed by a stable set of broker names whose native `source` is `learned`, `configured` or `logical`, from the first persisted report through the first post-drain report, together with the expected-broker and post-drain coverage checks in #80 revision 4. A change in that set invalidates the run. Missing broker coverage, missing required fields, counter resets and the named incomplete-evidence cases in that plan invalidate the run; absent evidence cannot be treated as zero. This is an accepted sampled-coverage criterion, not proof of every broker lifetime. A broker handle created and destroyed entirely between two reports may be unobserved even when the sampled name set is stable; that residual risk is accepted for this oracle. Statistics are asynchronous and may be inconsistent across totals (Fact: S29), so a zero aggregate or an idle waiting period is not proof that a timed-out write cannot still arrive. If the harness cannot establish the plan's coverage criterion, it rejects the run rather than inferring finality.
-- For an invalid or incomplete run, the verifier records the status and reason, retains raw records for diagnosis, leaves authoritative outcome counts absent, and exits non-zero (ADR-017). The runner cannot accept a completed verdict from that run. A01, B09, H07 and H01 may therefore retain timing/throttling observations while the oracle is untestable for outcome totals; an improved oracle requires a reviewed plan before those totals can be accepted. Hypotheses are not changed to conceal this limitation.
+- For an invalid or incomplete run, the verifier records the status and reason, retains raw records for diagnosis, leaves authoritative outcome counts absent, and exits non-zero (ADR-017). The judge cannot accept authoritative message totals from that run. A01, B09, H07 and H01 may therefore retain timing/throttling observations while the oracle is untestable for outcome totals; an improved oracle requires a reviewed plan before those totals can be accepted. Hypotheses are not changed to conceal this limitation.
 
 **Consequences.**
 - Each repeat sees only its own messages, except for the late writes below, so the duplicate-run rule (ADR-012) applies to one repeat's window.
@@ -434,9 +433,9 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - Why the guard rejects ambiguous runs: under throttling, Event Hubs delays produce requests (Fact: S2). A ProduceRequest times out after the lesser of `socket.timeout.ms` and the remaining `message.timeout.ms` for the first message in the batch (Fact: S25). The client-side timeout `RD_KAFKA_RESP_ERR__TIMED_OUT` is retryable and possibly persisted (Fact: S28). Retries are bounded by the retry count and `message.timeout.ms`; `retries` defaults to 2147483647 (Fact: S25). A late append after the recorded end line could otherwise be missed by this repeat and, if it precedes the next start line, by both repeats (inference). The guard prevents accepting outcome totals for that ambiguous run; it does not claim to prevent the append. If an old-instance message nevertheless appears in a later window, that later run is also invalid (ADR-012). Whether Event Hubs appends after returning Policy Violation is not documented; asynchronous failures are rejected without assuming it cannot.
 - Under `read_committed` (Decision), a message from an aborted transaction would then be classed as loss, and an open transaction may hold the verifier short of the high watermark until the safety stop (both inference; neither is stated by a cited source). B05's transaction configurations therefore need their own oracle rule, decided in B05's plan.
 - This rule is for topics with the delete cleanup policy. On a compacted topic, compaction removes earlier values per key, so "not consumed" means something else there. A01 does not use one.
-- Invalid and incomplete statuses, reasons and worker exit outcomes must be preserved in the evidence pack (docs/agents/factory.md, "Evidence pack"). They cannot be replaced with zero outcome counts.
+- Invalid and incomplete statuses, reasons and worker exit outcomes must be preserved in the evidence pack (docs/agents/factory.md, "Evidence pack"). They cannot be replaced with zero outcome counts. Run-scoped diagnostics and post-run retention follow ADR-020.
 
-### ADR-014: Scenarios are a definition file and an expected-outcome file per item; Helm values are generated
+### ADR-014: Scenarios are a definition file and an expected-outcome file per item; workers resolve deployment settings in-process
 
 **Context.** Scenarios are data, run by one harness (AGENTS.md, "Scope"). The definition must say what runs and, separately, what is predicted, so the prediction can be protected. Deployments must match the definition exactly.
 
@@ -445,17 +444,18 @@ The additional AKS control-plane identity receives Network Contributor only on t
 2. One file holding both the run definition and the hypotheses. The hypotheses cannot then be protected as a path of their own.
 3. Hand-written Helm values per scenario. Two sources of truth that can drift: a reviewer approves the definition while a different deployment runs.
 4. A definition file and an expected-outcome file per item, with Helm values generated from them.
+5. Separate definition and expected-outcome files, with workers resolving packaged definitions and profiles in-process.
 
-**Decision.** Option 4.
+**Decision.** Option 5, superseding generated Helm values under ADR-020.
 - `scenarios/<ID>/scenario.yaml` is the definition: the profile, the configurations as deltas from the baseline (ADR-015), the fault, the repeat count and the measures.
 - `scenarios/<ID>/expected.yaml` holds the hypotheses. It is a protected path: the `main-protection` ruleset requires Hari's review for it, and `.github/CODEOWNERS` mirrors the list. It is approved with the item's plan.
 - Workload profiles shared by several items live in `scenarios/profiles/`.
-- The runner generates each run's Helm values only from `scenario.yaml`, its referenced workload profile and the baseline. `expected.yaml` is used only to compare results with hypotheses after the run; it cannot affect the deployment. Nobody writes Helm values by hand.
+- Workers resolve scenario.yaml, its referenced workload profile and the baseline inside their own image. The chart receives the identifiers and infrastructure values defined in ADR-020. expected.yaml is used only to assess results after the run and cannot affect deployment.
 
 **Consequences.**
 - Every deviation from the baseline is visible as a delta in one file.
 - Changing a prediction needs Hari, so a run cannot be made to pass by editing what was expected (AGENTS.md, "Verdict integrity").
-- The generator is harness code with its own tests, in `Parchwell.Scenarios`.
+- The scenario loader and resolver remain in Parchwell.Scenarios; the values generator is removed by C7.
 
 ### ADR-015: The baseline is Microsoft's guidance, every setting the harness depends on explicit and tagged; preview features never enter it
 
@@ -503,7 +503,7 @@ The additional AKS control-plane identity receives Network Contributor only on t
 
 ### ADR-017: Workers are Generic Host apps run as Kubernetes Jobs, and set a non-zero exit code on failure
 
-**Context.** The load generator and verifier run once per run and end. The runner must know whether each one succeeded. On .NET 6 and later, an unhandled exception in a `BackgroundService` is logged and stops the host by default (Fact: S22). Microsoft documents that before .NET 11 the task returned by `RunAsync` completed successfully in that case, which usually meant the application exited with code 0, and that .NET 11 changes this (Fact: S23). That .NET 10 has the previous behaviour is inferred from the change being introduced in .NET 11. On .NET 10 a failed worker can therefore look successful.
+**Context.** The load generator and verifier run once per run and end. The experiment must record whether each one succeeded. On .NET 6 and later, an unhandled exception in a `BackgroundService` is logged and stops the host by default (Fact: S22). Microsoft documents that before .NET 11 the task returned by `RunAsync` completed successfully in that case, which usually meant the application exited with code 0, and that .NET 11 changes this (Fact: S23). That .NET 10 has the previous behaviour is inferred from the change being introduced in .NET 11. On .NET 10 a failed worker can therefore look successful.
 
 **Options considered.**
 1. Deployments. They are for processes that keep running, not for a run that completes.
@@ -513,12 +513,12 @@ The additional AKS control-plane identity receives Network Contributor only on t
 **Decision.** Option 3.
 - The load generator and verifier are Generic Host apps, each with its own container image, run as Kubernetes Jobs. The start-line step uses the verifier image in a separate Job and follows the same exit-code and retry rules (#44, item 3).
 - Each worker sets an explicit non-zero exit code whenever it fails. The verifier must also exit non-zero for an invalid run, an incomplete run or a safety stop, after recording the status and reason. These are failures of experimental completion even when no exception was thrown.
-- Each Job sets `backoffLimit: 0` and `restartPolicy: Never`. The default `backoffLimit` is 6 (Fact: S24), so a default Job retries a failed pod.
+- Each Job sets `backoffLimit: 0` and `restartPolicy: Never`. The default `backoffLimit` is 6 (Fact: S24), so a default Job retries a failed pod. The load generator also uses the ADR-020 pod replacement policy.
 
 **Consequences.**
-- The runner requires successful worker exits and an explicit complete, valid verifier result with all outcome counts before accepting a completed experiment. It preserves diagnostic evidence and runs the scenario workflow's required teardown on every failure path (AGENTS.md safety rule 6).
-- A retried load generator would be a second instance, which ADR-012 treats as an invalid run. `backoffLimit: 0` prevents retries, but Kubernetes documents that even a Job with parallelism 1 and completions 1 may sometimes start the same program twice (Fact: S24). ADR-012's duplicate-run check, not the retry setting, is what catches that.
-- A missing verifier result, invalid status or incomplete status fails the runner's completion gate even if a worker incorrectly exits zero. The workflow may preserve an untestable diagnostic report, but cannot publish accepted outcome totals or a completed verdict for that run.
+- Completion authority and post-run evidence follow ADR-020's last-action receipts and verifier judge. Invalid or incomplete evidence never authorizes outcome counts, regardless of process exit.
+- A retried load generator would be a second instance. `backoffLimit: 0` prevents retries, but Kubernetes documents that even a Job with parallelism 1 and completions 1 may sometimes start the same program twice (Fact: S24). ADR-020's registered-instance rule rejects additional registered producers; an instance that fails before registration is outside that guarantee.
+- The workflow collects pod exits for people; the accepted absence of a post-receipt process-exit rejection is recorded in ADR-020.
 - On .NET 11, `RunAsync` fails when a `BackgroundService` fails, and the application typically exits non-zero (S23). That covers `BackgroundService` exceptions only, so the explicit exit code stays.
 
 
@@ -561,16 +561,16 @@ What the tools offer, verified 2026-10-13 (S47 on 2026-10-14):
 
 **Decision.** Option 2.
 - Bookkeeping evidence is the ledger, the sealed inventory, the run manifest, run identity and worker status. Captured evidence is the client statistics, request lifecycle and capability evidence, including the resolved settings (`statistics.jsonl`, `request-lifecycle.jsonl` and `capabilities.json`).
-- The load generator keeps every check on bookkeeping evidence that docs/operations/loadgen-contract.md defines in "Identity and final rows", "Independent manifest and read-back" and "Worker inputs and completion", including ADR-012's ledger read-back. That includes envelope parsing of every file (the paragraph starting "Local evidence uses schema version 1"). The index checks in "Publication and reader acceptance" also stay: name set, byte lengths, SHA-256 hashes, budgets, run identity, completion flags, and the agreement between the manifest's guard observations and the ledger rows (`RunArtifactIndex.cs`; the contract does not yet describe it). The worker exit-code check stays with the runner or downstream reader that calls `RunArtifactIndexReader.ValidateArtifactSetAsync`, because only that caller observes the exit code.
+- The load generator keeps every check on bookkeeping evidence that docs/operations/loadgen-contract.md defines in "Identity and final rows", "Independent manifest and read-back" and "Worker inputs and completion", including ADR-012's ledger read-back. That includes envelope parsing of every file (the paragraph starting "Local evidence uses schema version 1"). The index checks in "Publication and reader acceptance" also stay: name set, byte lengths, SHA-256 hashes, budgets, run identity, completion flags, and the agreement between the manifest's guard observations and the ledger rows (`RunArtifactIndex.cs`; the contract does not yet describe it). Completion authority is amended by ADR-020: the judge reads last-action receipts, and pod exit records are diagnostic.
 - A check on the content of captured evidence beyond envelope parsing is a content check. The checks in "Statistics and request capability evidence" are content checks, and so is their repeat at publication. They include the A01 probe evaluator (`PureProbeEvaluator`), the parsing of native statistics JSON stored inside an envelope, and publication's check that the manifest holds the guard observations captured evidence requires. Capture-time controls are not content checks and stay: the size ceilings on captured reports and files, writer and queue faults, and the failed final exit when a required capture file cannot be written. Statistics whose envelopes parse but whose content is malformed, incomplete or missing broker coverage do not fail the load generator's exit. The load generator publishes them with a diagnostic, and the verifier judges them under ADR-013, so their raw records reach the verifier for diagnosis. Where the section rule above and this subject rule disagree, this subject rule decides. From this ADR's merge, no new content check is added to `Parchwell.LoadGen`.
-- Once the removal pull request below merges, the verifier is the only component that judges whether a live run's captured evidence is valid and complete. Until then, the load generator's existing content checks are a temporary second gate. The verifier also judges a probe run's captured evidence for a scenario's probe gate. For bookkeeping evidence it repeats ADR-012's set, count and row checks and enforces the invalid-run conditions in ADR-012 and ADR-013; the load generator's other bookkeeping checks have no second judge. This ADR does not change the runner's checks in ADR-012, ADR-013 and ADR-017, nor a gate or a component-environment evaluator that an item's approved plan defines with its own "Enforced checks", such as A01's H2/H3 component evaluator (#14).
-- The verifier's checks are a closed list with four sources: the invalid-run conditions in ADR-012 and ADR-013 that the verifier can observe after it starts; the item-independent checks below; the checks that the item's approved "Decision rules" (docs/agents/factory.md, plan template) and expected.yaml need for the evidence they read, including the evidence of a "recorded only" hypothesis; and the probe gate predicate in scenario.yaml. The probe check is derived from that predicate; expected.yaml only assesses its result, because ADR-014 does not let expected.yaml affect deployment. For a plan approved before the "Decision rules" field existed, its rules are those its text and its expected.yaml state. Where neither defines when that evidence is complete, for example a bare "recorded only", the verifier plan names the completeness check in its "Enforced checks" and Hari approves it with that plan; the verifier does not add checks beyond that list. The runner keeps the pre-start conditions ADR-013 gives it: a missing manifest or ledger, failed ledger and inventory agreement, or an unsuccessful load generator exit stop the run before the verifier starts, and the runner records that status. The probe's aggregation rule across repeats (for A01, `aggregation: any_observation_across_all_five_usable_repeats` with `required_usable_repeats: 5`, in the expected outcome block of revision 4, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6229628298, approved in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6230419686) is not in the scenario.yaml predicate; until scenario.yaml or docs/operations/scenario-contract.md carries it, the verifier plan states it in its "Enforced checks", taken from the approved plan text, not read from expected.yaml at run time. The verifier plan writes that list in its "Enforced checks" field. A check none of these four sources needs is dropped, not moved.
+- Once the removal pull request below merges, the verifier is the only component that judges whether a live run's captured evidence is valid and complete. Until then, the load generator's existing content checks are a temporary second gate. The verifier also judges a probe run's captured evidence for a scenario's probe gate. For bookkeeping evidence it repeats ADR-012's set, count and row checks and enforces the invalid-run conditions in ADR-012 and ADR-013; the load generator's other bookkeeping checks have no second judge. ADR-020 moves the former Runner completion checks to the verifier judge. This does not change a gate or a component-environment evaluator that an item's approved plan defines with its own "Enforced checks", such as A01's H2/H3 component evaluator (#14).
+- The verifier's checks are a closed list with four sources: the invalid-run conditions in ADR-012 and ADR-013 that the verifier can observe after it starts; the item-independent checks below; the checks that the item's approved "Decision rules" (docs/agents/factory.md, plan template) and expected.yaml need for the evidence they read, including the evidence of a "recorded only" hypothesis; and the probe gate predicate in scenario.yaml. The probe check is derived from that predicate; expected.yaml only assesses its result, because ADR-014 does not let expected.yaml affect deployment. For a plan approved before the "Decision rules" field existed, its rules are those its text and its expected.yaml state. Where neither defines when that evidence is complete, for example a bare "recorded only", the verifier plan names the completeness check in its "Enforced checks" and Hari approves it with that plan; the verifier does not add checks beyond that list. The verifier and judge enforce the required publication, identity and completion evidence under ADR-020; a missing manifest, ledger or successful completion receipt cannot authorize a complete repeat. A01's aggregation policy across repeats is recorded in [scenario-contract.md](operations/scenario-contract.md); [expected.yaml](../scenarios/A01/expected.yaml) remains assessment-only under ADR-014. The verifier plan writes that list in its "Enforced checks" field. A check none of these four sources needs is dropped, not moved.
 - The verifier makes two checks for every item, whatever its decision rules:
   1. Configuration fidelity. The effective producer settings in the captured evidence match the scenario's selected configuration and the baseline (ADR-014, ADR-015). A mismatch invalidates the run.
   2. Broker count. The verifier records the broker connection count for each Kafka client whose statistics the run captures, and every evidence pack publishes it (Inventory amendment 1, row D04, "Broker connections per client"). The verifier plan defines which statistics entries count, citing the pinned librdkafka statistics documentation, and when a missing count invalidates the run.
 
   Adding a check to this list needs a change to this ADR.
-- A verdict pull request carries the contents that docs/agents/factory.md "Evidence pack" lists. Beyond those and the outputs of the two item-independent checks, captured evidence is published only where a decision rule reads it and the verifier checks it. For a complete, valid run this applies within the Evidence pack's "raw results per repeat" too: they carry verifier outputs and only the captured fields a decision rule reads, not whole captured files. This does not change ADR-013: for an invalid or incomplete run, the verifier retains raw records for diagnosis, and the Evidence pack's diagnostic records stay. Retention of captured evidence for a complete, valid run is decided with the verifier, as ADR-012 leaves the ledger's retention.
+- A verdict pull request carries the contents that docs/agents/factory.md "Evidence pack" lists. Beyond those and the outputs of the two item-independent checks, captured evidence is published only where a decision rule reads it and the verifier checks it. For a complete, valid run this applies within the Evidence pack's "candidate-derived results per repeat" too: they carry verifier outputs and only the captured fields a decision rule reads, not whole captured files. This does not change ADR-013: for an invalid or incomplete run, the verifier retains raw records for diagnosis, and the Evidence pack's diagnostic records stay. Run-scoped evidence and post-run retention follow ADR-020.
 
 **Consequences.**
 - The verifier plan's "Enforced checks" field carries the verifier's list, so AGENTS.md "Before opening a pull request" rule 10 applies to findings against it as to any plan.
@@ -582,6 +582,39 @@ What the tools offer, verified 2026-10-13 (S47 on 2026-10-14):
 - docs/agents/factory.md "Evidence pack" does not yet list the broker count that D04 requires; it should gain it in a later governance pull request.
 - ADR-012's duplicate ledger check stays. It is small and fully specified, so the two copies are unlikely to drift (opinion); the verifier's repeat is the authoritative one.
 - ADR-013 counts "incomplete evidence" among its invalid-run conditions without listing what is incomplete. The verifier plan's "Enforced checks" must name each case, or that open term reopens the list.
+
+### ADR-020: The workflow owns the infrastructure lifecycle; no .NET code orchestrates
+
+**Context.** The #138 requirements replace Runner-owned infrastructure orchestration with workflow steps. The adopted entry decision accepts the failed A01 run and source diagnosis as redesign input; they do not validate the new design.
+
+**Options considered.**
+
+1. Keep infrastructure commands and their orchestration in Parchwell.Runner.
+2. Retain Runner reserve, generation-check and record commands around workflow-owned commands.
+3. Remove Parchwell.Runner and let workflows own infrastructure, with workers and a verifier judge communicating through run-scoped Blob artifacts.
+
+**Decision.** Option 3, under the adopted [#138 requirements](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6382769026) and [A1-A19](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383206899), [adopted by Hari](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383731545), as amended by its later [probe](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6384660536) and [entry](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6384675649) decisions.
+
+- No production .NET code in this repository starts a CLI tool or uses the Kubernetes API in any form. There is no in-cluster orchestrator. Tests may start only this repository's own built workers as processes.
+- Workflows own Terraform, AKS credentials, Helm, Kubernetes Job execution, pod logs and pod JSON. Their scripts live under infra/scripts and support both macOS and the Ubuntu runner. Hari may run a whole phase by hand as subscription owner; his manual destroy needs no generation guard. Agent-session infrastructure restrictions remain in AGENTS.md.
+- There are three Terraform roots. Hari applies infra/persistent. The workflow applies infra/cluster in its own resource group and state key, starts the reused AKS cluster before applying that root when the cluster exists, and never destroys that root. On the first dispatch there is no cluster to start; applying the root creates it. Each job applies and destroys infra/ephemeral. There is no state migration and no cluster replacement guard. Cleanup timing and sweeper policy are owned by AGENTS.md hard safety rule 6.
+- The shared parchwell-ephemeral workflow concurrency group replaces the generation guard. There is no check-generation command. Each run deletes and recreates its parchwell namespace. Kubernetes version selection is specified in C1's approved plan; the adopted minimum is 1.34.
+- Workers read scenario.yaml and its referenced profile from their image and resolve Kafka settings in-process. The chart receives scenario/configuration selection, Terraform outputs, run and Job identities, image references and explicit worker bounds. It receives no generated profile or Kafka comparison document. expected.yaml remains assessment-only under ADR-014.
+- Each executed A01 phase attempts all five repeat slots, with zero replacements, before judgement. Each repeat runs the start-line, load generator and verifier Jobs in that order, with bounded workflow waits and pod log/JSON collection. A probe that does not pass prevents the gated full phases under the approved scenario policy; it does not cause a higher load or an extra producer.
+- Live admission and the release blob are removed ([requirement 17](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6382769026)). The load generator Job uses backoffLimit: 0, restartPolicy: Never and podReplacementPolicy: Failed, with one completion and one parallel pod. Start-line binds to the expected load generator Job name. Every load generator writes a registration marker under its instance prefix before constructing a Kafka producer, records its pod name and instance ID, and exits non-zero without constructing a producer if registration fails. The verifier enumerates registered instances and rejects any repeat with other than exactly one, under its own reason code. An instance that fails before registering is not detected; it never constructed a producer ([A6 and A19](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383206899)).
+- Start-line retains its independent broker inventory. The verifier compares that inventory with captured producer statistics after the run: every inventory broker must appear; statistics may name additional brokers. Sampled coverage and late-write safeguards remain in ADR-013 ([A7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383206899)).
+- The phase judge is a mode of the verifier, runs as the final Job and writes candidate.json to the verifier-owned Blob container. The workflow downloads it. Worker success for judgement comes from completion receipts written as the worker's last action, after Kafka cleanup and Blob writes. A process that fails after its receipt is no longer rejected by an independent Runner exit-code check; pod JSON records exits for people. This is an accepted loss, not proof that late process failures cannot happen.
+- The judge requires the expected five repeat identities and the approved publication, identity and result checks. Phase message counts are published only when every repeat is complete_valid. Missing or invalid message evidence never becomes zero. Probe usability is separate from authorization of message counts; the approved probe policy is in [scenario-contract.md](operations/scenario-contract.md) and [expected.yaml](../scenarios/A01/expected.yaml).
+- The cost ledger, reservation, reconciliation, budget alert and result cost field are removed. The ADR-012 message ledger remains during the run. KQL collection and persistent raw-evidence export are removed; Event Hubs diagnostics remain enabled.
+- After a run, retain the candidate result, Actions log and per-repeat pod logs and pod JSON as public Actions artifacts, using the approved 90-day artifact retention policy. Experiment data, including the message ledger, manifests, start-line and verifier results, remains in ephemeral Blob storage only for the run. Raw run evidence has no additional archive prerequisite before persistent run storage is removed. Existing historical reservations are not retroactively settled by this change.
+- Application Insights belongs to infra/persistent, Container Insights is enabled on AKS, and load generator/verifier OpenTelemetry goes to Application Insights. Microsoft.OpenTelemetry is the adopted package choice; telemetry settings are fixed in the chart for every scenario. The exporter is part of the measured system. Log Analytics retention remains 30 days. Telemetry is not a new source of verdict authority.
+
+**Consequences.**
+
+- Infrastructure changes no longer require a .NET orchestration change. Actions logs expose infrastructure step and command failures.
+- The worker, chart, lifecycle and judge implementation lands in the #138 children. This ADR records the target design before that cutover; it does not claim those implementations or live gates have passed.
+- Gate 1 precedes planning worker/Job code against the new cluster. Gate 2 and the full A01 protocol are required for #138 completion. An approved untestable_at_build_scale probe outcome is an acceptable final live result; inconclusive evidence is not promoted to complete.
+- Protected merges and expected-outcome approval remain Hari's responsibility. No higher probe peak, additional producer, altered threshold or adaptive stage control is authorized.
 
 ---
 
@@ -724,7 +757,7 @@ Open measurement: H07, the PU saturation point for this workload shape. Producti
 
 ## 8. Cost
 
-All prices are UK South retail list prices in GBP from the Azure Retail Prices API on 2026-10-11 (S8, S9). Estimates, not actuals.
+The unit prices and planning envelopes below are historical estimates dated 2026-10-11, not current limits or actuals. Prices are UK South retail list prices in GBP from the Azure Retail Prices API on that date (S8, S9).
 
 ### Unit prices
 
@@ -742,9 +775,8 @@ All prices are UK South retail list prices in GBP from the Azure Retail Prices A
 
 Harness running cost (1 PU, 3 nodes): about GBP 1.56 per hour, plus Log Analytics ingestion and private endpoints.
 
-- Always-on would be about GBP 1,140 per month. Teardown is mandatory.
+- Always-on would be about GBP 1,140 per month. Lifecycle cleanup follows AGENTS.md hard safety rule 6.
 - Estimate for the v1 build: about 330 harness hours (about 175 scenario-run hours plus about 150 hours of development and debugging), about GBP 520 compute, plus saturation runs on more PUs and nodes, geo-replication runs at double PUs, and Log Analytics. Planning envelope: GBP 800 to 1,200 across the whole v1 build. Low confidence.
-- Budget alert (decided 2026-10-11): GBP 150 per month, notifications at 50, 80, and 100 percent of actual spend.
 
 ### Re-validation (decided 2026-10-11)
 
@@ -759,7 +791,7 @@ Not estimable honestly until H07 measures the PU saturation point. Structure: PU
 
 ### Actuals
 
-Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource group.
+ADR-020 removes cost from results and removes reservation/reconciliation; the historical estimates above are not spending caps.
 
 ---
 
@@ -769,7 +801,7 @@ Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource
 - **Least privilege.** Role assignments at event hub scope, not namespace, per identity. No identity can create or delete topics. Assignments live in Terraform. The two ledger roles are scoped to the `ledger` container, not the storage account (ADR-012).
 - **Workload identity.** One user-assigned identity per workload, federated to a single Kubernetes service account in a single namespace. Federated credentials recreated per cluster.
 - **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform apply runs through the protected scenario environment requiring Hari's approval. Destroy-only recovery also trusts the main-only `parchwell-sweeper` environment without required reviewers, using a second federated credential on the same app. Hari creates both external prerequisites; no new identity or role assignment is introduced ([decision #114/6332413257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257)).
-- **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). The private runner group admits only this repository's `scenario.yml` and `sweeper.yml` workflows.
+- **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). Workflow access and dispatch restrictions are owned by AGENTS.md hard safety rules 8 and 9.
 - **Audit.** Premium runtime audit logs (`AZMSRunTimeAuditLogs`) record data-plane access per identity.
 - **Storage.** The ephemeral account is configured with shared keys disabled and Entra-only access. The existing external state backend must meet the same authentication and private-access prerequisites before deployment; its settings are not managed or established by these Terraform mocks ([backend rule](engineering/terraform.md#checks-ci-required)).
 - **Deploying identity.** Terraform runs as an app registration created and permissioned by Hari, federated to GitHub OIDC as above. Its role assignments, including those on `rg-platform-privatedns` and the runner VNet, are outside this repo.
@@ -781,14 +813,11 @@ Recorded per session in `docs/cost-actuals.md` from Cost Management, by resource
 
 ### Deploy
 
-1. Persistent layer (once): `terraform -chdir=infra/persistent apply`. The budget alert is the first resource in this layer.
-2. Ephemeral layer (per session): `terraform -chdir=infra/ephemeral apply`.
-3. Workloads: `helm upgrade --install parchwell charts/parchwell -f <values file generated by the runner from scenarios/<id>/>` (ADR-014).
-4. Or run the whole cycle through the `scenario` workflow with `scenario_id` as input.
+Deployment follows ADR-020's three roots and workflow-owned lifecycle. Hari applies infra/persistent; workflows apply infra/cluster and apply/destroy infra/ephemeral. Worker settings are resolved in-process under ADR-014. The #138 lifecycle and phase children provide the executable workflow and macOS instructions.
 
 ### Observe
 
-Every query below is unvalidated until the first run. Metric names are the ones `Parchwell.Kafka` will emit. Application Insights OpenTelemetry metrics land in `AppMetrics`, with dimensions in `Properties`.
+Every query below is unvalidated until the first run. Collection is not part of workflow evidence under ADR-020. Metric names are the ones `Parchwell.Kafka` will emit. Application Insights OpenTelemetry metrics land in `AppMetrics`, with dimensions in `Properties`.
 
 **Q1: Client-observed throttling versus platform throttling metric (FM-01).**
 ```kusto
@@ -866,13 +895,11 @@ Missed scheduled runs are detected by GitHub Actions workflow failure notificati
 
 ### Tear down
 
-1. `terraform -chdir=infra/ephemeral destroy`.
-2. Verify: `az resource list -g rg-parchwell-eph -o table` returns nothing.
-3. Record the session's spend in `docs/cost-actuals.md`.
+Cleanup ownership and timing follow AGENTS.md hard safety rules 2 and 6. The workflow destroys the ephemeral layer and stops the reused cluster; infra/cluster is not destroyed by the workflow.
 
 ### Recover
 
-- Failed apply: destroy and re-apply; nothing in the ephemeral layer is stateful by design.
+- Failed ephemeral apply: recover through the authorized workflow cleanup path; no agent-session apply or destroy. Cluster recovery follows the lifecycle implementation.
 - Stuck consumer group: delete pods, confirm rebalance in Q3, confirm lag recovering in Q2.
 - Lost state in `document-state` consumers: rebuild from the beginning of the compacted topic.
 - Promotion (if geo-replication is enabled): customer-initiated; procedure written from G01 results.
@@ -1117,7 +1144,7 @@ This is larger than the earlier estimate of 250 to 500 hours. The cause is the i
 
 Planning envelope GBP 800 to 1,200, as in section 8. Recorded actuals replace this as the build proceeds.
 
-Amendment 1 adds at most GBP 65 of live runs under the per-item cost limits (4 M at GBP 15, 1 S at GBP 5; traced items run nothing). These are caps, not a forecast; the envelope is unchanged until actuals say otherwise.
+ADR-020 removes per-item cost caps; these historical estimates are not limits.
 
 ---
 

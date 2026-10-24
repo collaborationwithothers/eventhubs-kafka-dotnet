@@ -10,11 +10,10 @@ These rules exist because the earlier portfolio repo's code was hard to test and
 src/
   Parchwell.Kafka/            shared library: Event Hubs client configuration, Entra token refresh,
                               statistics bridge, graceful shutdown
-  Parchwell.Scenarios/        scenario definition model, loader and Helm values generator (ADR-014)
+  Parchwell.Scenarios/        scenario definition model, loader and resolver (ADR-014)
   Parchwell.LoadGen/          service, vertical slices
   Parchwell.Enrichment/       service, vertical slices
   Parchwell.Verifier/         service, vertical slices; the oracle (protected path)
-  Parchwell.Runner/           bounded A01 orchestration, deployment and evidence export
 tests/
   <Project>.Tests/            one test project per source project
   Parchwell.ArchitectureTests/
@@ -29,6 +28,8 @@ scenarios/profiles/           workload profiles shared by several items (ADR-014
 - `Parchwell.Kafka` is not a slice. It is a library with a small public surface, and stricter rules: every public member documented, full unit-test coverage of configuration mapping, no dependency on any service project.
 
 ## Seams and dependencies
+
+Process and Kubernetes API boundaries, including the test-only worker-process exception, are owned by [docs/blueprint.md ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates).
 
 - Put interfaces at our own boundaries: clock, blob store, metrics sink, scenario source, token provider. Not around types we own that have one implementation and no test need.
 - Do not wrap Confluent.Kafka in our own abstraction. It is the thing under test. Use its `IProducer<TKey, TValue>` and `IConsumer<TKey, TValue>` interfaces directly where a seam is needed.
@@ -79,6 +80,8 @@ Style the analyzers enforce. Duplication that exists in only two places and is n
 
 ## Kubernetes workers
 
-The [#109 deployment decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313658165) and [registry amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6313841552) own these deployment rules. Use SDK container publishing without Dockerfiles, full source-commit image tags, and recorded immutable digests for deployment. Package regular scenario/profile files; generate each worker's comparison document through the existing resolver and compare every generated profile/Kafka value byte-for-byte before native client construction. Keep the generated contract version unchanged.
+The #138 deployment boundary is owned by [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). Use SDK container publishing without Dockerfiles, full source-commit image tags and recorded immutable digests. Package the scenario and profile files; each worker resolves its selected configuration in-process through Parchwell.Scenarios. There is no generated comparison document.
 
-Workers use Jobs with `restartPolicy: Never`, `backoffLimit: 0`, one completion and one parallel pod. Preserve scoped workload identities and the declared LoadGen/Verifier node placement. A01 runs without default-deny NetworkPolicies or service-tag policy inputs under the [removal decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6358477325). Its private-endpoint IP outputs remain deployment data. The [A01 runtime contract](../operations/a01-runner.md) owns finite deadlines, admission and receipts; these execution failures do not change scientific verdict rules.
+Job settings, producer registration and last-action completion receipts follow [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). Preserve scoped workload identities and the declared LoadGen/Verifier node placement. A01 runs without default-deny NetworkPolicies or service-tag policy inputs under the existing [#109 removal decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/109#issuecomment-6358477325). Private-endpoint IP outputs remain deployment data. Child plans state finite worker and Job bounds; these execution bounds do not change scientific verdict rules.
+
+Telemetry placement, fixed chart configuration and exporter participation follow [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). Required CI combines unit tests, rendered Helm validation with kubeconform, actionlint and shellcheck under the adopted [#138 requirement 22](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6382769026); the live smoke gates establish infrastructure behavior.

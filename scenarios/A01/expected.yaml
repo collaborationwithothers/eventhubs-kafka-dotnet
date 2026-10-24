@@ -11,6 +11,13 @@ assessment_rules:
   changed_expectations_require_human_approval: true
 
 probe:
+  # Approved policy: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6384660536
+  usability:
+    required_statistics_coverage: complete_attributed_including_post_drain
+    no_positive_throttle_sample: usable_nonqualifying
+    absent_throttle_sample: not_a_measured_zero
+    absent_sample_references: omitted
+    missing_or_incomplete_coverage: inconclusive
   required_usable_repeats: 5
   pass:
     measurement: stats.broker.throttle.max
