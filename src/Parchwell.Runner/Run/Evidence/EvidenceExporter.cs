@@ -165,6 +165,7 @@ public sealed class EvidenceExporter(IArtifactStore store, TimeProvider clock)
     private async Task<EvidenceObjectReceipt> PutVerifiedAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
         var outcome = await store.WriteAsync("evidence", path, bytes, null, true, cancellationToken).ConfigureAwait(false);
+        string? actualSha256 = null;
         for (var attempt = 0; attempt < 3; attempt++)
         {
             if (attempt > 0) await Task.Delay(TimeSpan.FromSeconds(attempt), clock, cancellationToken).ConfigureAwait(false);
@@ -173,11 +174,13 @@ public sealed class EvidenceExporter(IArtifactStore store, TimeProvider clock)
                 var readback = await store.ReadAsync("evidence", path, bytes.Length, cancellationToken).ConfigureAwait(false);
                 if (readback is not null && readback.Bytes.AsSpan().SequenceEqual(bytes))
                     return new EvidenceObjectReceipt(path, Convert.ToHexStringLower(SHA256.HashData(bytes)), bytes.LongLength);
+                actualSha256 = readback is null ? null : Convert.ToHexStringLower(SHA256.HashData(readback.Bytes));
                 if (outcome != ArtifactWriteOutcome.Uncertain) break;
             }
             catch (IOException exception) when (outcome == ArtifactWriteOutcome.Uncertain && attempt < 2) { FailureDiagnostics.Write(exception, Console.Error); }
         }
-        throw new InvalidDataException("private_export_readback_conflict");
+        throw FailureDiagnostics.WithExportConflict(new InvalidDataException("private_export_readback_conflict"), path, outcome,
+            Convert.ToHexStringLower(SHA256.HashData(bytes)), actualSha256);
     }
 
     private static string Prefix(string runId) => "A01/" + runId + "/";
