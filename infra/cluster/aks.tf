@@ -1,12 +1,21 @@
 locals {
   aks_config = {
-    name                      = local.names.aks
-    location                  = var.location
-    parent_id                 = azurerm_resource_group.ephemeral.id
-    dns_prefix                = local.names.aks
-    kubernetes_version        = var.kubernetes_version
-    tags                      = local.tags
-    enable_telemetry          = false
+    name               = local.names.aks
+    location           = var.location
+    parent_id          = azurerm_resource_group.cluster.id
+    dns_prefix         = local.names.aks
+    kubernetes_version = var.kubernetes_version
+    tags               = local.tags
+    enable_telemetry   = false
+    onboard_monitoring = false
+    onboard_alerts     = false
+    addon_profile_oms_agent = {
+      enabled = true
+      config = {
+        log_analytics_workspace_resource_id = local.persistent.log_analytics_workspace_id
+        use_aad_auth                        = true
+      }
+    }
     sku                       = { name = "Base", tier = "Free" }
     enable_rbac               = true
     disable_local_accounts    = true
@@ -60,6 +69,9 @@ module "aks" {
   kubernetes_version        = local.aks_config.kubernetes_version
   tags                      = local.aks_config.tags
   enable_telemetry          = local.aks_config.enable_telemetry
+  onboard_monitoring        = local.aks_config.onboard_monitoring
+  onboard_alerts            = local.aks_config.onboard_alerts
+  addon_profile_oms_agent   = local.aks_config.addon_profile_oms_agent
   sku                       = local.aks_config.sku
   enable_rbac               = local.aks_config.enable_rbac
   disable_local_accounts    = local.aks_config.disable_local_accounts
@@ -72,4 +84,6 @@ module "aks" {
   network_profile           = local.aks_config.network_profile
   default_agent_pool        = local.aks_config.default_agent_pool
   agent_pools               = local.aks_config.agent_pools
+
+  depends_on = [azurerm_role_assignment.aks_network]
 }

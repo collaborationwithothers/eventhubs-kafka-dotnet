@@ -26,51 +26,6 @@ variable "persistent_backend_config" {
   }
 }
 
-variable "pod_cidr" {
-  type        = string
-  description = "IPv4 address range for AKS overlay pods."
-  validation {
-    condition     = can(cidrnetmask(var.pod_cidr))
-    error_message = "pod_cidr: invalid value."
-  }
-}
-
-variable "service_cidr" {
-  type        = string
-  description = "IPv4 address range for Kubernetes services."
-  validation {
-    condition     = can(cidrnetmask(var.service_cidr))
-    error_message = "service_cidr: invalid value."
-  }
-}
-
-variable "dns_service_ip" {
-  type        = string
-  description = "Kubernetes DNS service address."
-  validation {
-    condition     = can(cidrhost("${var.dns_service_ip}/32", 0))
-    error_message = "dns_service_ip: invalid value."
-  }
-}
-
-variable "aks_authorized_ip_ranges" {
-  type        = list(string)
-  description = "IPv4 CIDRs allowed to reach the AKS API server."
-  validation {
-    condition     = try(length(var.aks_authorized_ip_ranges) > 0 && alltrue([for value in var.aks_authorized_ip_ranges : can(cidrnetmask(value))]), false)
-    error_message = "aks_authorized_ip_ranges: invalid value."
-  }
-}
-
-variable "kubernetes_version" {
-  type        = string
-  description = "Explicit Kubernetes patch version selected before deployment."
-  validation {
-    condition     = can(regex("^[0-9]+[.][0-9]+[.][0-9]+$", var.kubernetes_version))
-    error_message = "kubernetes_version: invalid value."
-  }
-}
-
 variable "eventhub_namespace_name" {
   type        = string
   description = "Globally unique Event Hubs namespace name."
@@ -106,4 +61,10 @@ variable "expires_at" {
     condition     = try(can(formatdate("YYYY-MM-DD", var.expires_at)) && can(regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$", var.expires_at)), false)
     error_message = "expires_at: invalid value."
   }
+}
+
+variable "persistent_backend_use_oidc" {
+  type        = bool
+  default     = true
+  description = "Use workload OIDC for the persistent backend; false selects the operator's configured non-OIDC authentication."
 }

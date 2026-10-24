@@ -38,14 +38,8 @@ output "acr" {
   value       = { id = module.acr.resource_id, name = module.acr.name, login_server = module.acr.login_server }
 }
 
-output "run_storage" {
-  description = "Persistent private reservation ledger and raw evidence account; grants remain external prerequisites."
-  value = {
-    id          = module.run_storage.resource_id
-    account_url = "https://${module.run_storage.fqdn.blob}"
-    containers = {
-      ledger   = module.run_storage.containers["ledger"].name
-      evidence = module.run_storage.containers["evidence"].name
-    }
-  }
+output "application_insights_connection_string" {
+  description = "Application Insights exporter configuration for scenario deployment."
+  sensitive   = true
+  value       = module.application_insights.connection_string
 }
