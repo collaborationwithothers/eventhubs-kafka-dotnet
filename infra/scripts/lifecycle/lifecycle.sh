@@ -179,7 +179,7 @@ class Lifecycle:
         output = self.private / "aks-show.json"
         status, errors = self.run(["az", "aks", "show", *self.cluster_args(), "-o", "json"], 60, output=output, end=end, errors=True)
         if status:
-            if status not in (124, 125) and re.search(rb"(?m)^ERROR: \(ResourceNotFound\) ", errors):
+            if status not in (124, 125) and re.search(rb"(?m)^ERROR: \((?:ResourceNotFound|ResourceGroupNotFound)\) ", errors):
                 return None
             raise Failure("AKS read failed", status)
         data = self.read_json(output)

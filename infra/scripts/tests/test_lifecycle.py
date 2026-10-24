@@ -173,14 +173,15 @@ class LifecycleTests(unittest.TestCase):
 
     def test_terraform_full_sequence_partial_failure_and_independent_destroy(self):
         cluster_output = json.dumps({"aks": {"value": {"id": RESOURCE}}, "workload_identity": {"value": {}}})
-        self.script(response("terraform", "init"), response("az", "show", code=3, stderr="ERROR: (ResourceNotFound) synthetic absent\n"), response("terraform", "plan"), response("terraform", "apply"),
+        self.script(response("terraform", "init"), response("az", "show", code=3, stderr="ERROR: (ResourceGroupNotFound) synthetic group absent\n"),
+            response("az", "show", code=3, stderr="ERROR: (ResourceNotFound) synthetic cluster absent\n"), response("terraform", "plan"), response("terraform", "apply"),
             response("terraform", "output", stdout=cluster_output), response("terraform", "init"), response("terraform", "plan"),
             response("terraform", "apply", code=9), response("terraform", "init"), response("terraform", "destroy"),
             response("terraform", "state", "list"), self.aks("Running"), response("az", "stop", "--no-wait"), self.aks("Stopped"))
         # Exercise the Bash entry and common.sh root resolution once as well.
         result = subprocess.run(["bash", str(self.scripts / "lifecycle.sh"), "init-cluster"], env=os.environ, capture_output=True)
         self.assertEqual(0, result.returncode, result.stderr)
-        for command in ("start-cluster", "plan-cluster", "apply-cluster", "init-ephemeral", "plan-ephemeral"):
+        for command in ("start-cluster", "start-cluster", "plan-cluster", "apply-cluster", "init-ephemeral", "plan-ephemeral"):
             self.assertEqual(0, self.run_lifecycle(command))
         self.assertEqual(9, self.run_lifecycle("apply-ephemeral"))
         del os.environ["PARCHWELL_CLUSTER_BACKEND_CONFIG"]
@@ -192,9 +193,9 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(1, sum(c["tool"] == "az" and "stop" in c["args"] for c in calls))
         self.assertTrue(all("-chdir=infra/persistent" not in c["args"] for c in calls))
         self.assertTrue(all("destroy" not in c["args"] or "-chdir=infra/ephemeral" in c["args"] for c in calls))
-        self.assertIn("-var=run_id=synthetic-c2", calls[6]["args"])
+        self.assertIn("-var=run_id=synthetic-c2", calls[7]["args"])
         self.assertEqual(str(self.private / "tfdata-cluster"), calls[0]["data"])
-        self.assertEqual(str(self.private / "tfdata-ephemeral"), calls[5]["data"])
+        self.assertEqual(str(self.private / "tfdata-ephemeral"), calls[6]["data"])
         self.assertEqual(0o600, (self.private / "cluster-output.json").stat().st_mode & 0o777)
         self.assertFalse(self.artifacts.exists())
         self.assert_consumed()
