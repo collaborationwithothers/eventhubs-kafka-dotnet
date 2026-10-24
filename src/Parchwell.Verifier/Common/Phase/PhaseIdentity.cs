@@ -53,6 +53,6 @@ internal static partial class PhaseIdentity
         if (!IsRunId(value)) throw new ArgumentException("Run ID is not a DNS-safe identifier.", nameof(value));
     }
 
-    [GeneratedRegex("^[a-z0-9](?:[a-z0-9-]{0,27}[a-z0-9])?$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("\\A[a-z0-9](?:[a-z0-9-]{0,27}[a-z0-9])?\\z", RegexOptions.CultureInvariant)]
     private static partial Regex RunIdPattern();
 }

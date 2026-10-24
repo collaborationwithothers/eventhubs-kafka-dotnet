@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Parchwell.Verifier;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Judge;
@@ -24,12 +25,19 @@ public sealed class TelemetryWiringTests
         Assert.Throws<InvalidOperationException>(()=>Program.BuildHost(Arguments("Other.Service")));
     }
 
+    [Fact]
+    public void GivenJudgeWithoutPodIdentity_WhenHostIsBuilt_ThenFailsBeforeWritingCandidate()
+    {
+        string[] args=Arguments("Parchwell.Verifier").Where(x=>!x.StartsWith("--PARCHWELL_POD_NAME=",StringComparison.Ordinal)).ToArray();
+        Assert.Throws<OptionsValidationException>(()=>Program.BuildHost(args));
+    }
+
     private static string[] Arguments(string serviceName)=>[
         "--Verifier:Mode=judge","--Verifier:ScenarioId=A01","--Verifier:VerifierCommit="+new string('a',40),
         "--Verifier:SourceCommit="+new string('a',40),"--Verifier:ProcessLifetime=00:05:00","--Verifier:CleanupTimeout=00:00:10",
         "--Verifier:MaxOutputBytes=16777216","--Verifier:MaxDiagnosticsPerCheck=100","--Verifier:MaxDiagnosticBytes=65536",
         "--Verifier:ConfigurationId=C0","--Verifier:RunId=synthetic-c5","--Verifier:Phase=C0","--Verifier:JobName=synthetic-c5-c0-judge",
-        "--Verifier:CandidateOutputName=synthetic-c5/C0/candidate.json","--Verifier:TenantId=tenant","--Verifier:WorkloadIdentityClientId=client",
+        "--Verifier:CandidateOutputName=synthetic-c5/C0/candidate.json","--PARCHWELL_POD_NAME=worker-pod","--Verifier:TenantId=tenant","--Verifier:WorkloadIdentityClientId=client",
         "--Verifier:FederatedTokenFilePath=/tmp/token","--Verifier:BlobServiceUri=https://account.blob.core.windows.net/",
         "--Verifier:VerifierContainer=verifier","--Verifier:LedgerContainer=ledger","--Verifier:IoTimeout=00:00:10",
         "--Verifier:LoadGenImage=loadgen:tag@sha256:"+new string('b',64),"--Verifier:VerifierImage=verifier:tag@sha256:"+new string('c',64),

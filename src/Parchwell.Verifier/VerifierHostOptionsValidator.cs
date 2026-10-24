@@ -58,6 +58,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             }
             if (mode == VerifierMode.Judge)
             {
+                RequireText(options.PodName, "PARCHWELL_POD_NAME", errors);
                 RequireText(options.CandidateOutputName, "Verifier:CandidateOutputName", errors);
                 if(options.RunId is not null&&(options.Phase is "probe" or "C0" or "C3")&&Common.Phase.PhaseIdentity.IsRunId(options.RunId)&&
                     options.CandidateOutputName!=Common.Phase.PhasePaths.Candidate(options.RunId,options.Phase))

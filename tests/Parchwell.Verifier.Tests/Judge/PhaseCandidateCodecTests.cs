@@ -28,6 +28,20 @@ public sealed class PhaseCandidateCodecTests
         Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
     }
 
+    [Fact]
+    public void GivenCandidateWithoutAuthorizedCounts_WhenWritten_ThenOmitsCountProperties()
+    {
+        PhaseCandidate candidate=Candidate() with
+        {
+            Counts=null,
+            Repeats=[Candidate().Repeats[0] with { Counts=null }]
+        };
+        byte[] bytes=PhaseCandidateCodec.Write(candidate);
+        using JsonDocument document=PhaseCandidateCodec.Read(bytes);
+        Assert.False(document.RootElement.TryGetProperty("counts",out _));
+        Assert.False(Assert.Single(document.RootElement.GetProperty("repeats").EnumerateArray()).TryGetProperty("counts",out _));
+    }
+
     private static PhaseCandidate Candidate()
     {
         var checks=new PhaseRepeatChecks(true,true,true,true,true,true,true);

@@ -96,6 +96,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     string resultName=PhasePaths.Result(options.RunId!,options.Phase!,i);
                     ArtifactReference resultRef=r.Artifacts.SingleOrDefault()??throw new FormatException("Verify receipt must name one result.");
                     byte[]? resultBytes=await Bounded(ct=>verifier.ReadAsync(resultName,ct),options,clock,cancellationToken).ConfigureAwait(false);
+                    if(resultBytes is not null)inputBudget.ConsumeBytes(resultBytes.LongLength);
                     ProducerCompletionReceipt? producerReceipt=null;
                     byte[]? producerReceiptBytes=null;
                     if(registration is not null)
@@ -124,7 +125,6 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
                     if(receiptValid&&resultBytes is not null)
                     {
-                        inputBudget.ConsumeBytes(resultBytes.LongLength);
                         var parsed=VerifierResultCodec.Read(resultBytes,resultName,limits,options.MaxDiagnosticsPerCheck!.Value);
                         if(parsed.IsSuccess&&parsed.Value is VerifierResult result)
                         {
@@ -159,7 +159,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             }
                             identity=result.Identity.InstanceId;
                         }
-                        else trustedIncomplete=true;
+                        else { receiptValid=false; trustedIncomplete=true; }
                     }
                     else trustedIncomplete=true;
                 }

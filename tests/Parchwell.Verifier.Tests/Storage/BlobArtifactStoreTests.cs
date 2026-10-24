@@ -172,6 +172,64 @@ public sealed class BlobArtifactStoreTests
         Assert.True(stream.IsDisposed);
     }
 
+    [Fact]
+    public async Task GivenSecondRegisteredProducerOnLastSdkListingPage_WhenListing_ThenRetainsBothMarkers()
+    {
+        int call=0;
+        using var transport=new RecordingHandler(()=>++call==1
+            ?ListPage(["runs/C0/r1/producer/pod-a/registration.json"],"next")
+            :ListPage(["runs/C0/r1/producer/pod-b/registration.json"],null));
+        using var http=new HttpClient(transport);
+        var store=new BlobVerifierArtifactStore(Container("verifier",http),1024,1024);
+
+        BlobListing listing=await store.ListAsync("runs/C0/r1/producer/",TestContext.Current.CancellationToken);
+
+        Assert.True(listing.IsComplete);
+        Assert.Equal(2,listing.Pages);
+        Assert.Equal(2,listing.Names.Count);
+        Assert.Equal(2,transport.Requests.Count);
+        Assert.Contains("marker=next",transport.Requests[1].Query,StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(16,true)]
+    [InlineData(17,false)]
+    public async Task GivenSdkListingAtPageBoundary_WhenListing_ThenReportsExactCompletion(int pageCount,bool complete)
+    {
+        int call=0;
+        using var transport=new RecordingHandler(()=>
+        {
+            int page=++call;
+            return ListPage([$"runs/C0/r1/object-{page}.json"],page<pageCount?$"marker-{page}":null);
+        });
+        using var http=new HttpClient(transport);
+        var store=new BlobVerifierArtifactStore(Container("verifier",http),1024,1024);
+
+        BlobListing listing=await store.ListAsync("runs/C0/r1/",TestContext.Current.CancellationToken);
+
+        Assert.Equal(complete,listing.IsComplete);
+        Assert.Equal(pageCount,listing.Pages);
+        Assert.Equal(pageCount,transport.Requests.Count);
+        Assert.Equal(complete?null:"listing_incomplete",listing.FailureCode);
+    }
+
+    [Theory]
+    [InlineData(1024,true)]
+    [InlineData(1025,false)]
+    public async Task GivenSdkListingAtEntryBoundary_WhenListing_ThenRetainsOnlyBoundedNames(int entryCount,bool complete)
+    {
+        string[] names=Enumerable.Range(0,entryCount).Select(i=>$"runs/C0/r1/object-{i}.json").ToArray();
+        using var transport=new RecordingHandler(()=>ListPage(names,null));
+        using var http=new HttpClient(transport);
+        var store=new BlobVerifierArtifactStore(Container("verifier",http),1024,1024);
+
+        BlobListing listing=await store.ListAsync("runs/C0/r1/",TestContext.Current.CancellationToken);
+
+        Assert.Equal(complete,listing.IsComplete);
+        Assert.Equal(complete?1024:1024,listing.Names.Count);
+        Assert.Equal(complete?null:"listing_incomplete",listing.FailureCode);
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(0)]
@@ -236,6 +294,16 @@ public sealed class BlobArtifactStoreTests
         };
         response.Headers.TryAddWithoutValidation("x-ms-error-code", code);
         return response;
+    }
+
+    private static HttpResponseMessage ListPage(string[] names,string? nextMarker)
+    {
+        string blobs=string.Concat(names.Select(name=>$"<Blob><Name>{System.Security.SecurityElement.Escape(name)}</Name><Properties><Last-Modified>Mon, 19 Oct 2026 00:00:00 GMT</Last-Modified><Etag>\"synthetic\"</Etag><Content-Length>1</Content-Length><BlobType>BlockBlob</BlobType></Properties></Blob>"));
+        string marker=nextMarker is null?"<NextMarker />":$"<NextMarker>{System.Security.SecurityElement.Escape(nextMarker)}</NextMarker>";
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content=new StringContent($"<?xml version=\"1.0\" encoding=\"utf-8\"?><EnumerationResults ServiceEndpoint=\"https://synthetic.example/\" ContainerName=\"verifier\"><Prefix>runs/C0/r1/producer/</Prefix><Blobs>{blobs}</Blobs>{marker}</EnumerationResults>",Encoding.UTF8,"application/xml")
+        };
     }
 
     private sealed class SyntheticCredential : TokenCredential

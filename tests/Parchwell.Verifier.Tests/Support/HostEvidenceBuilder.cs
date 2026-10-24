@@ -29,8 +29,10 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     private bool fixtureIdentityInitialized;
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public HostEvidenceBuilder()
+    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier")
     {
+        Options.InstanceId=instanceId;Options.ExpectedInstanceId=PhaseIdentity.JobName(Options.RunId!,Options.Phase!,Options.Repeat!.Value);
+        Options.ClientId=clientId;Options.VerifierClientId=verifierClientId;
         Kafka.ReadMetadata = () =>
         {
             Metadata source = KafkaSessionTestSupport.Metadata(0);
@@ -171,6 +173,8 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public int Creates { get; private set; }
     public List<string> CreateNames { get; } = [];
     public Dictionary<string, byte[]> CreatedObjects { get; } = new(StringComparer.Ordinal);
+    public IReadOnlyDictionary<string,byte[]> VerifierObjects=>verifierObjects;
+    public IReadOnlyDictionary<string,byte[]> LedgerObjects=>ledgerObjects;
     public Dictionary<string, byte[]> DiagnosticInputs { get; } = new(StringComparer.Ordinal);
     public Action<string, CancellationToken>? BeforeRead { get; set; }
     public Action<CancellationToken>? BeforeScenarioRead { get; set; }
@@ -182,14 +186,54 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
 
     public StartLineHandler StartLine() => new(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
         new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this);
-    public VerifyRunHandler Verify()
+    public VerifyRunHandler Verify(VerifierCompletionState? completion = null)
     {
         if (!PreservePublicationReferences) RebuildPublicationReferences();
         return new VerifyRunHandler(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
             new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this, this, Loader,
-            new Parchwell.Verifier.VerifyRun.Configuration.RegisteredProducerConfigurationResolver(Microsoft.Extensions.Options.Options.Create(Options)));
+            new Parchwell.Verifier.VerifyRun.Configuration.RegisteredProducerConfigurationResolver(Microsoft.Extensions.Options.Options.Create(Options)),completion);
     }
     public bool PreservePublicationReferences { get; set; }
+    public void ConfigureRepeat(int repeat,string phase)
+    {
+        PhaseIdentity.ValidatePhase(phase);
+        PhaseIdentity.ValidateRepeat(repeat);
+        string loadgen=PhaseIdentity.JobName(Options.RunId!,phase,repeat);
+        Options.Phase=phase;Options.ConfigurationId=PhaseIdentity.ConfigurationFor(phase);Options.Repeat=repeat;
+        Options.VerifierContainer="verifier";Options.LedgerContainer="ledger";
+        Options.ExpectedInstanceId=loadgen;Options.JobName=PhaseIdentity.VerifyJobName(Options.RunId!,phase,repeat);
+        Options.RepeatPrefix=PhaseIdentity.RepeatPrefix(Options.RunId!,phase,repeat);Options.PhasePrefix=PhaseIdentity.PhasePrefix(Options.RunId!,phase);
+        Options.ArtifactPrefix=PhasePaths.ProducersPrefix(Options.RunId!,phase,repeat);
+        Options.StartLineInputName=PhasePaths.StartLine(Options.RunId!,phase,repeat);
+        Options.StartLineOutputName=Options.StartLineInputName;Options.BrokerInventoryOutputName=PhasePaths.BrokerInventory(Options.RunId!,phase,repeat);
+        Options.ResultOutputName=PhasePaths.Result(Options.RunId!,phase,repeat);
+        Note=null;RebuildPublicationReferences();
+    }
+
+    public void SetThrottleWindow(long maximum)
+    {
+        string[] rows=Encoding.UTF8.GetString(Inputs["statistics.jsonl"]!).TrimEnd('\n').Split('\n');
+        for(int i=0;i<rows.Length;i++)
+        {
+            JsonObject envelope=JsonNode.Parse(rows[i])!.AsObject();
+            JsonObject native=JsonNode.Parse(envelope["raw_json"]!.GetValue<string>())!.AsObject();
+            JsonObject broker=native["brokers"]!["sasl_ssl://broker-a:9093/1"]!.AsObject();
+            broker["throttle"]!["cnt"]=1;broker["throttle"]!["max"]=maximum;
+            broker["rtt"]!["cnt"]=1;broker["rtt"]!["p99"]=99327;
+            envelope["raw_json"]=native.ToJsonString();rows[i]=envelope.ToJsonString();
+        }
+        Inputs["statistics.jsonl"]=Encoding.UTF8.GetBytes(string.Join('\n',rows)+"\n");
+        RebuildPublicationReferences();
+    }
+
+    public void SetCapturedClientId(string clientId)
+    {
+        JsonObject capabilities=Json("capabilities.json");
+        capabilities["resolved_configuration"]!["settings"]!["client.id"]!["value"]=clientId;
+        Set("capabilities.json",capabilities);
+        RebuildPublicationReferences();
+    }
+
     public long ChargedInputBytes => ledgerObjects.Values.Sum(bytes => (long)bytes.Length)
         + verifierObjects.Values.Sum(bytes => (long)bytes.Length);
 
@@ -221,7 +265,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     }
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)
     {
-        string[] names = ledgerObjects.Keys.Concat(DiagnosticInputs.Keys.Select(name =>
+        string[] names = verifierObjects.Keys.Concat(ledgerObjects.Keys).Concat(DiagnosticInputs.Keys.Select(name =>
                 PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat!.Value, Options.InstanceId!) + "diagnostics/" + name))
             .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
         return Task.FromResult(new BlobListing(names, 1, true));

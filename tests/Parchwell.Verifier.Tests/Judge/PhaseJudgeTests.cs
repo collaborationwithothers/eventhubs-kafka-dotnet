@@ -55,6 +55,21 @@ public sealed class PhaseJudgeTests
         Assert.Null(result.Counts);
     }
 
+    [Fact]
+    public void GivenPhaseCountSumOverflowsInt64_WhenJudged_ThenOmitsAllTotals()
+    {
+        PhaseRepeatEvidence[] repeats=Enumerable.Range(1,5).Select(i=>Complete(i,null) with
+        {
+            Counts=new(long.MaxValue,2,3,4,5,6)
+        }).ToArray();
+
+        PhaseJudgement result=PhaseJudge.Evaluate("C0",repeats);
+
+        Assert.Null(result.Counts);
+        Assert.Equal("incomplete",result.Status);
+        Assert.Contains("j7_counts_unavailable",result.Reasons);
+    }
+
     private static PhaseRepeatEvidence Complete(int repeat,ProbeRepeatObservation? probe)=>new(repeat,true,true,true,true,true,true,true,false,false,new(1,2,3,4,5,6),probe);
 }
 #pragma warning restore CA1707

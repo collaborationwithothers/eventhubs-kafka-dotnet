@@ -1,7 +1,10 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.StartLine;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
@@ -119,6 +122,30 @@ public sealed class BrokerInventoryTests
         Assert.Throws<InputLimitExceededException>(() => BrokerInventoryCodec.Write(
             new RunIdentity("A01", "C0", "run", "pod", "pod", "pod"),
             [new BrokerMetadata(0, "broker.example.invalid", 9093)], "synthetic", 1));
+    }
+
+    [Theory]
+    [InlineData(0,false)]
+    [InlineData(1,true)]
+    [InlineData(64,true)]
+    [InlineData(65,false)]
+    public void Given_ReadInventoryBrokerCountBoundary_When_Parsed_Then_EnforcesOneThrough64(int count,bool succeeds)
+    {
+        RunIdentity identity=new("A01","C0","synthetic-c5","synthetic-c5-c0-r1-loadgen","synthetic-c5-c0-r1-loadgen","synthetic-c5-c0-r1-loadgen");
+        BrokerMetadata[] brokers=Enumerable.Range(0,Math.Max(1,Math.Min(count,64))).Select(i=>new BrokerMetadata(i,$"broker-{i}.example.invalid",9093)).ToArray();
+        byte[] bytes=BrokerInventoryCodec.Write(identity,brokers,new string('a',40),1_048_576);
+        if(count is 0 or 65)
+        {
+            JsonObject json=JsonNode.Parse(bytes)!.AsObject();
+            if(count==0)json["brokers"]!.AsArray().Clear();
+            else json["brokers"]!.AsArray().Add(json["brokers"]![0]!.DeepClone());
+            bytes=Encoding.UTF8.GetBytes(json.ToJsonString());
+        }
+
+        ParseResult<BrokerInventory> result=BrokerInventoryReader.Read(bytes,"inventory.json",identity,new string('a',40),new(32,1_048_576,1_048_576,1_048_576,100_000,1_000_000,65_536));
+
+        Assert.Equal(succeeds,result.IsSuccess);
+        if(succeeds)Assert.Equal(count,result.Value!.Brokers.Count);
     }
 
     [Theory]

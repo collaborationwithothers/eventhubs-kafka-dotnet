@@ -348,12 +348,13 @@ internal static class CapturedEvidenceReader
         {
             if (value.ValueKind != JsonValueKind.Object) return null;
             ValidateRequiredAndAllowed(value, path, ["is_complete", "diagnostics", "missing_brokers"],
-                ["is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers"]);
+                ["is_complete", "drain_boundary_microseconds", "first_post_drain_timestamp_microseconds", "diagnostics", "missing_brokers"]);
             bool? complete = Boolean(value, "is_complete", path + ".is_complete");
             ParsedField<long> boundary = NullableInt64(value, "drain_boundary_microseconds", path + ".drain_boundary_microseconds", allowMissing: true);
+            ParsedField<long> firstPostDrain = NullableInt64(value, "first_post_drain_timestamp_microseconds", path + ".first_post_drain_timestamp_microseconds", allowMissing: true);
             List<CapturedDiagnostic>? diagnostics = ReadArray(value, "diagnostics", path + ".diagnostics", ReadDiagnostic);
             List<string>? brokers = StringArray(value, "missing_brokers", path + ".missing_brokers");
-            return complete is null || diagnostics is null || brokers is null ? null : new Completion(complete.Value, boundary, diagnostics, brokers);
+            return complete is null || diagnostics is null || brokers is null ? null : new Completion(complete.Value, boundary, firstPostDrain, diagnostics, brokers);
         }
 
         private List<T>? ReadArray<T>(JsonElement parent, string property, string path, Func<JsonElement, string, T?> read) where T : class

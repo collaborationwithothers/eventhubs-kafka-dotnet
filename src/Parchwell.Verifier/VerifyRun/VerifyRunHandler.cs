@@ -193,7 +193,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 RunJudgementResult judgement=diagnosticsSelected||index.IsExecutionFailure
                     ?RunJudgement.EvaluateDiagnostic(request)
                     :RunJudgement.Evaluate(request);
-                if(!diagnosticsSelected)judgement=ApplyPublicationOutcome(judgement,accepted);
+                judgement=ApplyPublicationOutcome(judgement,accepted);
                 A01EvidenceRecording a01=options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
                 if(!accepted.Accepted)
                     a01=a01 with{ProbeObservation=new ProbeRepeatObservation(false,false,null,null,null,null)};
@@ -227,7 +227,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             return status==VerifierResultStatus.CompleteValid?0:1;
         }
 
-        ReadOnlyMemory<byte>? Memory(string name)=>raw[name] is byte[] bytes?new ReadOnlyMemory<byte>(bytes):null;
+        ReadOnlyMemory<byte>? Memory(string name)=>raw[name] is byte[] bytes?(ReadOnlyMemory<byte>?)new ReadOnlyMemory<byte>(bytes):null;
         async Task<BlobListing> ReadLedgerListing(string prefix,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);var value=await producerStore.ListAsync(prefix,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
         async Task<byte[]?> ReadLedgerOptional(string name,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);byte[]? value=await producerStore.ReadAsync(name,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
         async Task<byte[]> ReadLedgerRequired(string name,CancellationToken ct)=>await ReadLedgerOptional(name,ct).ConfigureAwait(false)??throw new InvalidOperationException("required_ledger_object_missing:"+name);
