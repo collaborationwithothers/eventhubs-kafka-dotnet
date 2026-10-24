@@ -12,6 +12,7 @@ using System.Text.Json;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Statistics;
+using Parchwell.Kafka.Telemetry;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
@@ -37,24 +38,30 @@ internal static class Program
     {
         if (args.Length == 1 && args[0] == "--image-smoke") return ImageSmoke();
         completionOutput ??= Console.Out;
-        string? completion = null;
         ITimer? processWatchdog = null;
         IHost? host = null;
         LoadGenHostOptions? runOptions = null;
         ILogger? logger = null;
+        IProducerRunLifecycle? lifecycle = null;
+        ProducerLifecycleOptions? lifecycleOptions = null;
+        ProducerRunContext? runContext = null;
+        TimeProvider? clock = null;
+        CancellationTokenSource? hostCleanupDeadline = null;
+        bool readyForCompletion = false;
         int exitCode = 1;
         try
         {
-            IConfiguration configuration = new ConfigurationBuilder().AddEnvironmentVariables().AddCommandLine(args).Build();
-            IReadOnlyDictionary<string, string?>? admitted = await DeploymentAdmission.WaitAsync(configuration, TimeProvider.System).ConfigureAwait(false);
-            host = hostFactory?.Invoke() ?? BuildHost(args, configureTestServices, admitted);
+            host = hostFactory?.Invoke() ?? BuildHost(args, configureTestServices);
             LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            runOptions = options;
+            clock = host.Services.GetRequiredService<TimeProvider>();
+            lifecycle = host.Services.GetRequiredService<IProducerRunLifecycle>();
+            IConfiguration configuration = host.Services.GetRequiredService<IConfiguration>();
+            string sourceCommit = configuration["PARCHWELL_SOURCE_COMMIT"] ?? string.Empty;
+            runContext = CreateRunContext(options, sourceCommit);
+            lifecycleOptions = CreateLifecycleOptions(options);
             ILogger processLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Parchwell.LoadGen.Process");
-            if (IsValid(options))
-            {
-                runOptions = options;
-                logger = processLogger;
-            }
+            logger = processLogger;
             processWatchdog = host.Services.GetRequiredService<TimeProvider>().CreateTimer(_ =>
             {
                 try
@@ -73,15 +80,10 @@ internal static class Program
             await host.StartAsync().ConfigureAwait(false);
             LoadGenWorker worker = host.Services.GetRequiredService<LoadGenWorker>();
             await host.WaitForShutdownAsync().ConfigureAwait(false);
-            await host.StopAsync().ConfigureAwait(false);
+            hostCleanupDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
+            await host.StopAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
             exitCode = worker.ExitCode;
-            if (exitCode == 0)
-            {
-                string sourceCommit = host.Services.GetRequiredService<IConfiguration>()["PARCHWELL_SOURCE_COMMIT"] ??
-                    typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+').Last() ?? string.Empty;
-                completion = CreateCompletionReceipt(new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId,
-                    options.ActualInstanceId, options.ExpectedInstanceId, options.ClientId), sourceCommit);
-            }
+            readyForCompletion = exitCode == 0;
         }
         catch (Exception exception)
         {
@@ -92,24 +94,22 @@ internal static class Program
         {
             try
             {
-                host?.Dispose();
+                if (host is not null)
+                {
+                    hostCleanupDeadline ??= new CancellationTokenSource(runOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10),
+                        clock ?? TimeProvider.System);
+                    await Task.Run(host.Dispose).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                ReportHostFailure(new TimeoutException("loadgen_host_dispose_timeout"), runOptions, logger, alwaysWriteIdentityFallback: true);
+                exitCode = 1;
             }
             catch (Exception exception)
             {
                 ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                 exitCode = 1;
-            }
-            if (exitCode == 0 && completion is not null)
-            {
-                try
-                {
-                    await WriteCompletionAsync(completionOutput, completion).ConfigureAwait(false);
-                }
-                catch (Exception exception)
-                {
-                    ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
-                    exitCode = 1;
-                }
             }
             try
             {
@@ -120,10 +120,25 @@ internal static class Program
                 ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                 exitCode = 1;
             }
+            hostCleanupDeadline?.Dispose();
+        }
+        if (readyForCompletion && exitCode == 0 && lifecycle is not null && lifecycleOptions is not null && runContext is not null && clock is not null)
+        {
+            try
+            {
+                using var receiptDeadline = new CancellationTokenSource(lifecycleOptions.CleanupTimeout, clock);
+                await lifecycle.WriteCompletionAsync(runContext, lifecycleOptions, receiptDeadline.Token).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
+                exitCode = 1;
+            }
         }
         return exitCode;
     }
 
+    // Retained for the Runner's wire-contract fixtures; deployed completion uses BlobProducerRunLifecycle.
     internal static string CreateCompletionReceipt(RunIdentity identity, string sourceCommit) => JsonSerializer.Serialize(new
     {
         schema_version = 1, mode = "loadgen",
@@ -135,6 +150,7 @@ internal static class Program
         source_commit = sourceCommit, handler_exit_code = 0, cleanup_completed = true
     });
 
+    // This helper is not part of RunAsync; it preserves the existing Runner fixture format only.
     internal static async Task WriteCompletionAsync(TextWriter output, string completion)
     {
         if (System.Text.Encoding.UTF8.GetByteCount(completion) > 65536)
@@ -159,9 +175,11 @@ internal static class Program
             }
         }
 
-        if (options is not null && alwaysWriteIdentityFallback)
+        if (options is not null && (alwaysWriteIdentityFallback || logger is null))
         {
-            Console.Error.WriteLine($"loadgen_startup_or_host_failure:{exception.GetType().Name} scenario_id={options.ScenarioId} run_id={options.RunId}");
+            Console.Error.WriteLine($"loadgen_startup_or_host_failure:{exception.GetType().Name} for scenario {options.ScenarioId} run {options.RunId}");
+            if (exception is OptionsValidationException validation && validation.OptionsType == typeof(KafkaWorkloadIdentityOptions))
+                foreach (string failure in validation.Failures) Console.Error.WriteLine(failure);
             return;
         }
 
@@ -197,12 +215,58 @@ internal static class Program
         }
     }
 
-    internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null,
-        IReadOnlyDictionary<string, string?>? deploymentInputs = null)
+    internal static IHost BuildHost(string[] args, Action<IServiceCollection>? configureTestServices = null) =>
+        BuildHostCore(args, configureTestServices, registerTelemetry: null);
+
+    internal static IHost BuildHostCore(string[] args, Action<IServiceCollection>? configureTestServices,
+        Action<IServiceCollection, Action<ParchwellTelemetryOptions>>? registerTelemetry)
     {
+        LoadGenHostOptions? validatedBootstrapOptions = null;
+        try
+        {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
-        if (deploymentInputs is not null) builder.Configuration.AddInMemoryCollection(deploymentInputs);
         builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
+        LoadGenHostOptions bootstrapOptions = ReadOptions(builder.Configuration);
+        if (!IsValid(bootstrapOptions))
+            throw new OptionsValidationException(Options.DefaultName, typeof(LoadGenHostOptions), ["LoadGen host inputs or finite budgets are invalid."]);
+        validatedBootstrapOptions = bootstrapOptions;
+        builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = bootstrapOptions.CleanupTimeout);
+        string sourceCommit = builder.Configuration["PARCHWELL_SOURCE_COMMIT"] ?? string.Empty;
+        if (sourceCommit.Length != 40 || sourceCommit.Any(character => character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f')))
+            throw new InvalidOperationException("source_commit_must_be_40_lowercase_hex");
+        var authentication = new KafkaWorkloadIdentityOptions
+        {
+            TenantId = builder.Configuration["AZURE_TENANT_ID"],
+            ClientId = builder.Configuration["AZURE_CLIENT_ID"],
+            TokenFilePath = builder.Configuration["AZURE_FEDERATED_TOKEN_FILE"]
+        };
+        List<string> authenticationFailures = [];
+        if (string.IsNullOrWhiteSpace(authentication.TenantId)) authenticationFailures.Add("TenantId is required.");
+        if (string.IsNullOrWhiteSpace(authentication.ClientId)) authenticationFailures.Add("ClientId is required.");
+        if (string.IsNullOrWhiteSpace(authentication.TokenFilePath)) authenticationFailures.Add("TokenFilePath is required.");
+        if (authenticationFailures.Count != 0)
+            throw new OptionsValidationException(Options.DefaultName, typeof(KafkaWorkloadIdentityOptions), authenticationFailures);
+
+        Action<ParchwellTelemetryOptions> configureTelemetry = options =>
+        {
+            options.ConnectionString = bootstrapOptions.ApplicationInsightsConnectionString;
+            options.ServiceName = "Parchwell.LoadGen";
+            options.ServiceInstanceId = bootstrapOptions.ActualInstanceId;
+            options.ScenarioId = bootstrapOptions.ScenarioId;
+            options.RunId = bootstrapOptions.RunId;
+        };
+        if (registerTelemetry is null)
+        {
+            var credential = new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
+            {
+                TenantId = authentication.TenantId,
+                ClientId = authentication.ClientId,
+                TokenFilePath = authentication.TokenFilePath
+            });
+            builder.Services.AddParchwellTelemetry(credential, configureTelemetry);
+        }
+        else registerTelemetry(builder.Services, configureTelemetry);
+
         builder.Services.AddOptions<LoadGenHostOptions>()
             .Configure(options => BindOptions(options, builder.Configuration))
             .Validate(options => IsValid(options), "LoadGen host inputs or finite budgets are invalid.")
@@ -235,9 +299,9 @@ internal static class Program
 
         builder.Services.AddParchwellKafkaAuthentication(options =>
         {
-            options.TenantId = builder.Configuration["AZURE_TENANT_ID"];
-            options.ClientId = builder.Configuration["AZURE_CLIENT_ID"];
-            options.TokenFilePath = builder.Configuration["AZURE_FEDERATED_TOKEN_FILE"];
+            options.TenantId = authentication.TenantId;
+            options.ClientId = authentication.ClientId;
+            options.TokenFilePath = authentication.TokenFilePath;
         });
 
         builder.Services.AddParchwellKafkaStatistics(statisticsOptions =>
@@ -263,6 +327,13 @@ internal static class Program
                 new WorkloadIdentityCredential(), new BlobClientOptions());
             return new BlobRunArtifactPublisher(client, provider.GetRequiredService<TimeProvider>());
         });
+        builder.Services.AddSingleton<IProducerRunLifecycle>(provider =>
+        {
+            LoadGenHostOptions hostOptions = provider.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            var client = new BlobServiceClient(new Uri(hostOptions.BlobEndpoint, UriKind.Absolute),
+                new WorkloadIdentityCredential(), new BlobClientOptions());
+            return new BlobProducerRunLifecycle(client, provider.GetRequiredService<TimeProvider>());
+        });
         builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
             provider => (configuration, statistics, evidence, authentication) => provider
                 .GetRequiredService<KafkaAuthenticationFactory>()
@@ -276,7 +347,22 @@ internal static class Program
         builder.Services.AddHostedService(provider => provider.GetRequiredService<LoadGenWorker>());
         configureTestServices?.Invoke(builder.Services);
         return builder.Build();
+        }
+        catch (Exception exception)
+        {
+            ReportHostFailure(exception, validatedBootstrapOptions, logger: null, alwaysWriteIdentityFallback: true);
+            throw;
+        }
     }
+
+    private static ProducerRunContext CreateRunContext(LoadGenHostOptions options, string sourceCommit) => new(
+        new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.ActualInstanceId,
+            options.ExpectedInstanceId, options.ClientId), options.Phase, options.RepeatNumber, options.JobName,
+        options.PodName, options.PodUid, sourceCommit);
+
+    private static ProducerLifecycleOptions CreateLifecycleOptions(LoadGenHostOptions options) => new(
+        options.BlobEndpoint, options.BlobContainer, options.CleanupTimeout, options.UploadTimeout,
+        options.MaxArtifactBytes, options.MaxAggregateArtifactBytes, options.OutputRoot);
 
     private static bool IsValid(LoadGenHostOptions options)
     {
@@ -304,11 +390,6 @@ internal static class Program
         foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!property.CanWrite) continue;
-            if (property.Name == nameof(LoadGenHostOptions.GeneratedValuesFile))
-            {
-                options.GeneratedValuesFile = configuration["PARCHWELL_GENERATED_VALUES_FILE"] ?? section[property.Name];
-                continue;
-            }
             string? raw = section[property.Name];
             if (raw is null) throw new InvalidOperationException("required_loadgen_setting_missing:" + property.Name);
             Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;

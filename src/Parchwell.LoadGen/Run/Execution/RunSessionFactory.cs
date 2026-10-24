@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
@@ -56,9 +55,8 @@ public sealed class RunSessionFactory
             identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer,
             producerConfig.ClientId!), cancellationToken);
         Directory.CreateDirectory(options.OutputRoot);
-        var expectations = new RunEvidenceExpectations(configuration,
-            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
-            options.GetExpectedBrokerNames().ToImmutableArray());
+        var expectations = RunEvidenceExpectations.CaptureOnly(configuration,
+            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
         RunEvidenceSession? evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(options.OutputRoot,
             options.EvidenceQueueCapacity, options.MaxReportBytes, options.MaxEvidenceFileBytes,
             options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations);
@@ -76,9 +74,10 @@ public sealed class RunSessionFactory
             var executionOptions = new RunExecutionOptions(options.MaxAttempts, options.MaxPayloadBytes,
                 options.MaxScheduleLateness, options.ProducerDrainTimeout, options.CleanupTimeout,
                 options.MaxRowBytes, options.MaxManifestBytes, options.MaxLedgerReadbackBytes,
-                options.OutputRoot, "document-events", options.GetExpectedBrokerNames(),
+                options.OutputRoot, "document-events", [],
                 requiresRequestEvidence || options.RequireRequestEvidence!.Value,
-                requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
+                requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
+                options.LedgerDrainTimeout, options.StatisticsCompletionTimeout, options.EvidenceCompletionTimeout);
             var executor = new RunExecutor(() => _producerFactory(
                 producerConfig, statistics, evidence, authentication), ledger, _timeProvider, statistics, evidence, authentication);
             return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions);

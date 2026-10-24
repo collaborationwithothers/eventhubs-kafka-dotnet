@@ -112,7 +112,7 @@ public sealed class DeploymentGeneratorTests
             Assert.Equal("203.0.113.1", runtime.GetProperty("eventhubs_ip").GetString());
             Assert.Equal("203.0.113.2", runtime.GetProperty("blob_ip").GetString());
         }
-        foreach (string role in new[] { "loadgen", "verifier" })
+        foreach (string role in new[] { "verifier" })
         {
             Dictionary<string, string> env = result.Runtime.GetProperty(role + "_environment").Deserialize<Dictionary<string, string>>()!;
             env[(role == "loadgen" ? "LoadGen__ScenarioSourceRoot" : "Verifier__ScenarioRoot")] = DeploymentFixture.RepositoryRoot;
@@ -138,16 +138,6 @@ public sealed class DeploymentGeneratorTests
                 role == "loadgen" ? result.VerifierValuesPath : result.LoadGenValuesPath));
             Assert.Equal(role == "loadgen" ? loadgen : verifier, expected);
         }
-    }
-
-    [Fact]
-    public async Task Given_AllLoadGenOptions_When_Generated_Then_EveryWritablePropertyHasAnExplicitInput()
-    {
-        using var fixture = new DeploymentFixture();
-        DeploymentFiles files = await fixture.GenerateAsync("C0");
-        JsonElement env = files.Runtime.GetProperty("loadgen_environment");
-        foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties().Where(property => property.CanWrite))
-            Assert.True(env.TryGetProperty("LoadGen__" + property.Name, out _), "Missing LoadGen option: " + property.Name);
     }
 
     [Theory]

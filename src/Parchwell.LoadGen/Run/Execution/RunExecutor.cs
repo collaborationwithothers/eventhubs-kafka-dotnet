@@ -92,7 +92,7 @@ public sealed class RunExecutor
             _ = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken).GetEnumerator();
             if (options.RequireRequestEvidence && (evidence is null || !evidence.RequestCapabilitySupported))
                 throw new InvalidOperationException("required_request_evidence_unavailable");
-            if (options.RequireStatisticsEvidence && (statistics is null || expectedBrokerNames.Length == 0))
+            if (options.RequireStatisticsEvidence && statistics is null)
                 throw new InvalidOperationException("required_statistics_evidence_unavailable");
             if (ledger.IsFaulted) throw new InvalidOperationException("ledger_capture_faulted_before_run");
 
@@ -224,16 +224,17 @@ public sealed class RunExecutor
             workerFailed = true;
             AddDiagnostic("admission_inventory_count_mismatch");
         }
-        using var cleanupDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
         try
         {
             if (producer is not null)
             {
-                if (!await DrainProducerAsync(producer, options.ProducerDrainTimeout, cleanupDeadline.Token).ConfigureAwait(false))
+                using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "producer_drain");
+                if (!await DrainProducerAsync(producer, options.ProducerDrainTimeout, CancellationToken.None).ConfigureAwait(false))
                 {
                     workerFailed = true;
                     AddDiagnostic("producer_drain_timeout");
                 }
+                else activity.Succeed();
             }
         }
         catch (Exception exception)
@@ -258,7 +259,10 @@ public sealed class RunExecutor
 
         try
         {
-            await ledger.DrainAsync(cleanupDeadline.Token).ConfigureAwait(false);
+            using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "ledger_drain");
+            using var ledgerDrainDeadline = new CancellationTokenSource(options.LedgerDrainTimeout ?? options.CleanupTimeout, clock);
+            await ledger.DrainAsync(ledgerDrainDeadline.Token).ConfigureAwait(false);
+            activity.Succeed();
         }
         catch (Exception exception)
         {
@@ -270,34 +274,46 @@ public sealed class RunExecutor
         {
             if (expectedBrokerNames.Length == 0)
             {
-                AddDiagnostic("statistics_expected_broker_inventory_unavailable");
-                if (options.RequireStatisticsEvidence) workerFailed = true;
                 try
                 {
-                    await statistics.DisposeAsync().AsTask().WaitAsync(cleanupDeadline.Token).ConfigureAwait(false);
+                    using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "statistics_completion");
+                    using var statisticsDeadline = new CancellationTokenSource(options.StatisticsCompletionTimeout ?? options.CleanupTimeout, clock);
+                    statisticsCompletion = await statistics.CompleteAsync(statisticsDeadline.Token).ConfigureAwait(false);
+                    if (statisticsCompletion.IsComplete) activity.Succeed();
+                    if (!statisticsCompletion.IsComplete)
+                    {
+                        workerFailed = true;
+                        AddDiagnostic("statistics_completion_incomplete");
+                    }
                 }
                 catch (Exception exception)
                 {
-                    if (options.RequireStatisticsEvidence) workerFailed = true;
-                    AddDiagnostic("statistics_dispose_failed:" + exception.GetType().Name);
+                    workerFailed = true;
+                    AddDiagnostic("statistics_completion_failed:" + exception.GetType().Name);
                 }
             }
             else
             {
                 try
                 {
-                    statisticsCompletion = await statistics.CompleteAsync(expectedBrokerNames, cleanupDeadline.Token)
-                        .ConfigureAwait(false);
+                    using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "statistics_completion");
+                    using var statisticsDeadline = new CancellationTokenSource(options.StatisticsCompletionTimeout ?? options.CleanupTimeout, clock);
+                    statisticsCompletion = await statistics.CompleteAsync(expectedBrokerNames, statisticsDeadline.Token).ConfigureAwait(false);
+                    if (statisticsCompletion.IsComplete) activity.Succeed();
                     if (!statisticsCompletion.IsComplete && options.RequireStatisticsEvidence)
                     {
                         workerFailed = true;
                         AddDiagnostic("statistics_completion_incomplete");
                     }
-                    else if (!statisticsCompletion.IsComplete) AddDiagnostic("statistics_completion_incomplete");
+                    else if (!statisticsCompletion.IsComplete)
+                    {
+                        workerFailed = true;
+                        AddDiagnostic("statistics_completion_incomplete");
+                    }
                 }
                 catch (Exception exception)
                 {
-                    if (options.RequireStatisticsEvidence) workerFailed = true;
+                    workerFailed = true;
                     AddDiagnostic("statistics_completion_failed:" + exception.GetType().Name);
                 }
             }
@@ -310,7 +326,19 @@ public sealed class RunExecutor
 
         if (producer is not null)
         {
-            try { producer.Dispose(); }
+            try
+            {
+                using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "producer_dispose");
+                Task disposeAttempt = Task.Run(producer.Dispose, CancellationToken.None);
+                using var disposeDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
+                await disposeAttempt.WaitAsync(disposeDeadline.Token).ConfigureAwait(false);
+                activity.Succeed();
+            }
+            catch (OperationCanceledException)
+            {
+                workerFailed = true;
+                AddDiagnostic("producer_dispose_timeout");
+            }
             catch (Exception exception) { workerFailed = true; AddDiagnostic("producer_dispose_failed:" + exception.GetType().Name); }
         }
         _ = ObserveInitialAuthenticationFailure();
@@ -319,8 +347,21 @@ public sealed class RunExecutor
         {
             try
             {
-                await evidence.CompleteAsync(statisticsCompletion, cleanupDeadline.Token).ConfigureAwait(false);
-                await evidence.ValidatePersistedAsync(cleanupDeadline.Token).ConfigureAwait(false);
+                using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "evidence_completion");
+                await evidence.CompleteAsync(statisticsCompletion, CancellationToken.None).ConfigureAwait(false);
+                if (!evidence.IsFaulted) activity.Succeed();
+            }
+            catch (Exception exception)
+            {
+                workerFailed = true;
+                AddDiagnostic("evidence_completion_failed:" + exception.GetType().Name);
+            }
+            try
+            {
+                using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "evidence_readback");
+                using var evidenceReadbackDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
+                await evidence.ValidatePersistedAsync(evidenceReadbackDeadline.Token).ConfigureAwait(false);
+                activity.Succeed();
                 if (evidence.IsFaulted)
                 {
                     workerFailed = true;
@@ -331,7 +372,7 @@ public sealed class RunExecutor
             catch (Exception exception)
             {
                 workerFailed = true;
-                AddDiagnostic("evidence_completion_failed:" + exception.GetType().Name);
+                AddDiagnostic("evidence_readback_failed:" + exception.GetType().Name);
             }
         }
 
@@ -354,10 +395,13 @@ public sealed class RunExecutor
             evidenceFiles, guardObservations, workerFailed, readbackComplete, clock.TimestampFrequency);
         try
         {
+            using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "ledger_readback");
+            using var ledgerReadbackDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
             var rows = await ReadLedgerRowsAsync(artifactPaths["ledger"], options.MaxAttempts,
-                options.MaxRowBytes, options.MaxLedgerReadbackBytes, cleanupDeadline.Token).ConfigureAwait(false);
+                options.MaxRowBytes, options.MaxLedgerReadbackBytes, ledgerReadbackDeadline.Token).ConfigureAwait(false);
             _ = LedgerValidator.Validate(rows, candidate, identity);
             readbackComplete = true;
+            activity.Succeed();
         }
         catch (Exception exception)
         {
@@ -379,8 +423,11 @@ public sealed class RunExecutor
             evidenceFiles, guardObservations, workerFailed, bookkeepingComplete, clock.TimestampFrequency);
         try
         {
+            using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "manifest_save");
             _ = LedgerValidator.SerializeManifest(manifest, options.MaxManifestBytes);
-            await ledger.SaveManifestAsync(manifest, cleanupDeadline.Token).ConfigureAwait(false);
+            using var manifestDeadline = new CancellationTokenSource(options.CleanupTimeout, clock);
+            await ledger.SaveManifestAsync(manifest, manifestDeadline.Token).ConfigureAwait(false);
+            activity.Succeed();
         }
         catch (Exception exception)
         {

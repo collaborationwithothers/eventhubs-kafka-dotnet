@@ -98,7 +98,8 @@ public static class RunEvidenceReader
         RejectDuplicatePropertiesRecursively(rootElement, cancellationToken);
         ValidateCapabilityReport(rootElement, expectedIdentity, expectations, statisticsCount, maximumRows, maximumDiagnostics,
             statisticsAttribution.ObservedBrokerNames, statisticsAttribution.HasReportDiagnostics,
-            statisticsAttribution.HasUnparsedReports, statisticsAttribution.PositiveGuardValues,
+            statisticsAttribution.HasUnparsedReports, statisticsAttribution.NativeTimestamps,
+            statisticsAttribution.PositiveGuardValues,
             statisticsAttribution.HasNonIncreasingTimestamp, statisticsAttribution.HasNativeCreationChanged,
             statisticsAttribution.HasDecreasingCounter, statisticsAttribution.HasDuplicateBrokerName,
             lifecycleAttribution.HasErrorCallback,
@@ -263,6 +264,7 @@ public static class RunEvidenceReader
         {
             attribution.LastNativeTimestamp = timestamp;
             attribution.NativeCreationTimestamp ??= creationTimestamp;
+            attribution.NativeTimestamps.Add(timestamp);
         }
         JsonElement brokers = Get(snapshot, "brokers");
         RequireArray(brokers, "typed_snapshot.brokers", maximumRows);
@@ -389,6 +391,7 @@ public static class RunEvidenceReader
         RunEvidenceExpectations expectations, int statisticsRecordCount,
         int maximumRows, int maximumDiagnostics,
         HashSet<string> statisticsBrokerNames, bool hasStatisticsReportDiagnostics, bool hasUnparsedReports,
+        HashSet<long> statisticsNativeTimestamps,
         HashSet<(string Broker, string Counter, long Value)> positiveGuardValues,
         bool hasNonIncreasingTimestamp, bool hasNativeCreationChanged, bool hasDecreasingCounter,
         bool hasDuplicateBrokerName,
@@ -446,25 +449,42 @@ public static class RunEvidenceReader
         statisticsComplete = null;
         if (completion.ValueKind != JsonValueKind.Null)
         {
-            RequireObject(completion, "is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers");
+            if (expectations.RequiresIndependentBrokerCoverage)
+                RequireObject(completion, "is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers");
+            else
+                RequireObject(completion, "is_complete", "drain_boundary_microseconds", "first_post_drain_timestamp_microseconds", "diagnostics", "missing_brokers");
             statisticsComplete = RequireBoolean(Get(completion, "is_complete"), "statistics_completion.is_complete");
-            RequireNullableInt64(Get(completion, "drain_boundary_microseconds"), "statistics_completion.drain_boundary_microseconds");
+            long? boundary = RequireNullableInt64(Get(completion, "drain_boundary_microseconds"), "statistics_completion.drain_boundary_microseconds");
             if (statisticsComplete.Value && statisticsRecordCount == 0)
                 throw Invalid("statistics_completion_without_records");
             JsonElement completionDiagnostics = Get(completion, "diagnostics");
             ValidateStatisticsDiagnostics(completionDiagnostics, maximumDiagnostics, cancellationToken);
             ImmutableArray<string> missingBrokers = RequireStringArray(Get(completion, "missing_brokers"), "statistics_completion.missing_brokers", maximumRows, allowEmpty: true, cancellationToken);
+            if (!expectations.RequiresIndependentBrokerCoverage && !missingBrokers.IsEmpty)
+                throw Invalid("capture_only_statistics_missing_brokers_must_be_empty");
             if (statisticsComplete.Value &&
                 (completionDiagnostics.GetArrayLength() != 0 || !missingBrokers.IsEmpty || hasStatisticsReportDiagnostics || hasUnparsedReports ||
                  hasNonIncreasingTimestamp || hasNativeCreationChanged || hasDecreasingCounter || hasDuplicateBrokerName))
                 throw Invalid("statistics_completion_contradicts_diagnostics_or_missing_brokers");
+            if (!expectations.RequiresIndependentBrokerCoverage)
+            {
+                long? firstPostDrain = RequireNullableInt64(Get(completion, "first_post_drain_timestamp_microseconds"),
+                    "statistics_completion.first_post_drain_timestamp_microseconds");
+                if (statisticsComplete.Value && (boundary is null || firstPostDrain is null || firstPostDrain.Value <= boundary.Value ||
+                    !statisticsNativeTimestamps.Contains(firstPostDrain.Value) || statisticsBrokerNames.Count == 0 || !missingBrokers.IsEmpty))
+                    throw Invalid("capture_only_statistics_freshness_invalid");
+                if (!statisticsComplete.Value && firstPostDrain is long observed && boundary is long observedBoundary && observed > observedBoundary &&
+                    !statisticsNativeTimestamps.Contains(observed))
+                    throw Invalid("capture_only_first_post_drain_timestamp_not_persisted");
+            }
             HashSet<string> expectedBrokerNames = expectations.ExpectedBrokerNames.ToHashSet(StringComparer.Ordinal);
             HashSet<string> missingBrokerSet = missingBrokers.ToHashSet(StringComparer.Ordinal);
-            if (missingBrokerSet.Count != missingBrokers.Length || missingBrokerSet.Any(name => !expectedBrokerNames.Contains(name)))
+            if (expectations.RequiresIndependentBrokerCoverage &&
+                (missingBrokerSet.Count != missingBrokers.Length || missingBrokerSet.Any(name => !expectedBrokerNames.Contains(name))))
                 throw Invalid("statistics_missing_brokers_outside_expected_inventory");
-            if (expectedBrokerNames.Except(statisticsBrokerNames, StringComparer.Ordinal).Any(name => !missingBrokerSet.Contains(name)))
+            if (expectations.RequiresIndependentBrokerCoverage && expectedBrokerNames.Except(statisticsBrokerNames, StringComparer.Ordinal).Any(name => !missingBrokerSet.Contains(name)))
                 throw Invalid("statistics_expected_unobserved_broker_missing_from_completion");
-            if (statisticsComplete.Value &&
+            if (expectations.RequiresIndependentBrokerCoverage && statisticsComplete.Value &&
                 (expectedBrokerNames.Count == 0 || !expectedBrokerNames.IsSubsetOf(statisticsBrokerNames)))
                 throw Invalid("statistics_complete_expected_broker_inventory_not_covered");
         }
@@ -947,6 +967,8 @@ public static class RunEvidenceReader
         public HashSet<(string Broker, string Counter, long Value)> PositiveGuardValues { get; } = [];
 
         public HashSet<string> ObservedBrokerNames { get; } = new(StringComparer.Ordinal);
+
+        public HashSet<long> NativeTimestamps { get; } = [];
 
         public bool HasReportDiagnostics { get; set; }
 

@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Globalization;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Parchwell.LoadGen;
+using Parchwell.Kafka.Telemetry;
 using Parchwell.Kafka.Statistics;
 using Parchwell.Kafka.Authentication;
 using Parchwell.LoadGen.Run.Evidence;
@@ -277,76 +280,79 @@ public sealed class LoadGenWorkerHostTests
     }
 
     [Theory]
-    [InlineData(null, null, null)]
-    [InlineData("generated-alias.yaml", null, "generated-alias.yaml")]
-    [InlineData(null, "generated-section.yaml", "generated-section.yaml")]
-    [InlineData("generated-alias.yaml", "generated-section.yaml", "generated-alias.yaml")]
-    public void Given_OptionalComparisonSettings_When_BindingHostOptions_Then_AliasOverridesSectionAndAbsenceRemainsOptional(
-        string? aliasPath, string? sectionPath, string? expectedPath)
+    [InlineData("probe", "C0", 1)]
+    [InlineData("probe", "C0", 5)]
+    [InlineData("C0", "C0", 1)]
+    [InlineData("C0", "C0", 5)]
+    [InlineData("C3", "C3", 1)]
+    [InlineData("C3", "C3", 5)]
+    public void Given_RequiredRegisteredWorkerInputs_When_BindingHostOptions_Then_PreservesExactIdentityAndPrefixes(
+        string phase, string configurationId, int repeatNumber)
     {
         var publisher = new RecordingPublisher();
-        using IHost host = CreateHost(publisher, durationSeconds: 1,
-            generatedValuesFile: aliasPath, generatedValuesSectionFile: sectionPath);
+        var telemetry = new RecordingTelemetryRegistration();
+        using IHost host = CreateHost(publisher, durationSeconds: 1, phase: phase,
+            configurationId: configurationId, repeatNumber: repeatNumber, telemetryRegistration: telemetry);
+        LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+        Assert.Equal(1, telemetry.RegistrationCount);
+        ParchwellTelemetryOptions configuredTelemetry = Assert.IsType<ParchwellTelemetryOptions>(telemetry.ConfiguredOptions);
+        Assert.Same(configuredTelemetry, host.Services.GetRequiredService<IOptions<ParchwellTelemetryOptions>>().Value);
+        Assert.Equal(options.ApplicationInsightsConnectionString, configuredTelemetry.ConnectionString);
+        Assert.Equal("Parchwell.LoadGen", configuredTelemetry.ServiceName);
+        Assert.Equal("worker-pod", configuredTelemetry.ServiceInstanceId);
+        Assert.Equal("A01", configuredTelemetry.ScenarioId);
+        Assert.Equal(options.RunId, configuredTelemetry.RunId);
+        var context = new ProducerRunContext(new Parchwell.LoadGen.Run.Contracts.RunIdentity(options.ScenarioId,
+            options.ConfigurationId, options.RunId, options.ActualInstanceId, options.ExpectedInstanceId, options.ClientId),
+            options.Phase, options.RepeatNumber, options.JobName, options.PodName, options.PodUid,
+            new string('a', 40));
 
-        Assert.Equal(expectedPath, host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.GeneratedValuesFile);
+        Assert.Equal(phase, options.Phase);
+        Assert.Equal(configurationId, options.ConfigurationId);
+        Assert.Equal(repeatNumber, options.RepeatNumber);
+        Assert.Equal($"{options.RunId}-{phase.ToLowerInvariant()}-r{repeatNumber}-loadgen", options.JobName);
+        Assert.Equal("worker-pod", options.ActualInstanceId);
+        Assert.Equal("worker-pod", options.ExpectedInstanceId);
+        Assert.Equal("worker-pod", options.PodName);
+        Assert.Equal("worker-pod", options.ClientId);
+        Assert.Equal("synthetic-pod-uid", options.PodUid);
+        Assert.Equal("InstrumentationKey=synthetic;IngestionEndpoint=https://example.invalid",
+            options.ApplicationInsightsConnectionString);
+        Assert.Equal($"{options.RunId}/{phase}/r{repeatNumber}/", context.RepeatPrefix);
+        Assert.Equal($"{options.RunId}/{phase}/r{repeatNumber}/producer/worker-pod/", context.InstancePrefix);
+        Assert.Equal(context.InstancePrefix + "registration.json", context.RegistrationPath);
+        Assert.Equal(context.InstancePrefix + "publication/", context.PublicationPrefix);
+        Assert.Equal(context.InstancePrefix + "diagnostics/", context.DiagnosticsPrefix);
+        Assert.Equal(context.InstancePrefix + "completion.json", context.CompletionPath);
         Assert.False(Directory.Exists(publisher.OutputRoot));
     }
 
     [Theory]
-    [InlineData(false, "")]
-    [InlineData(true, "")]
-    [InlineData(false, " ")]
-    [InlineData(true, " ")]
-    [InlineData(false, "generated\nvalues.yaml")]
-    [InlineData(true, "generated\nvalues.yaml")]
-    [InlineData(false, "generated\0values.yaml")]
-    [InlineData(true, "generated\0values.yaml")]
-    public async Task Given_InvalidOptionalComparisonPath_When_StartingHost_Then_ValidationPrecedesProducerPublicationAndArtifacts(
-        bool useSection, string path)
+    [InlineData("LoadGen__Phase", "C3")]
+    [InlineData("LoadGen__RepeatNumber", "6")]
+    [InlineData("LoadGen__JobName", "wrong-job")]
+    [InlineData("LoadGen__RunId", "Uppercase")]
+    [InlineData("LoadGen__PodUid", "bad uid")]
+    [InlineData("LoadGen__ApplicationInsightsConnectionString", "")]
+    [InlineData("LoadGen__ApplicationInsightsConnectionString", "<missing>")]
+    [InlineData("PARCHWELL_SOURCE_COMMIT", "unknown")]
+    public void Given_InvalidRegisteredWorkerInputs_When_StartingHost_Then_FailsBeforeRegistrationProducerAndArtifacts(
+        string key, string value)
     {
-        var publisher = new RecordingPublisher();
-        var tracker = new ProducerFactoryTracker();
-        using IHost host = CreateHost(publisher, durationSeconds: 1, tracker,
-            generatedValuesFile: useSection ? null : path, generatedValuesSectionFile: useSection ? path : null);
+        string output = Path.Combine(Path.GetTempPath(), "invalid-registered-worker-" + Guid.NewGuid().ToString("N"));
+        Dictionary<string, string> inputs = LoadGenHostProcessTests.CreateInputs(output);
+        if (value == "<missing>") inputs.Remove(key);
+        else inputs[key] = value;
+        string[] args = inputs.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+        var telemetry = new RecordingTelemetryRegistration();
+        int serviceConfigurationCalls = 0;
 
-        await Assert.ThrowsAsync<OptionsValidationException>(() => host.StartAsync(TestContext.Current.CancellationToken));
-        Assert.False(tracker.Called);
-        Assert.False(publisher.Called);
-        Assert.False(Directory.Exists(publisher.OutputRoot));
-    }
+        Assert.ThrowsAny<Exception>(() => Program.BuildHostCore(args, _ => serviceConfigurationCalls++,
+            telemetry.Register));
 
-    [Theory]
-    [InlineData("matching")]
-    [InlineData("mismatching")]
-    [InlineData("missing")]
-    public async Task Given_OptionalComparisonFile_When_WorkerResolvesItsActualInputs_Then_FidelityFailurePrecedesNativeProducerAndArtifacts(string state)
-    {
-        string path = Path.Combine(Path.GetTempPath(), "worker-values-" + Guid.NewGuid().ToString("N"));
-        var publisher = new RecordingPublisher();
-        var tracker = new ProducerFactoryTracker();
-        using IHost host = CreateHost(publisher, durationSeconds: 1, tracker, generatedValuesFile: path);
-        try
-        {
-            if (state == "matching")
-            {
-                LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("A01", TestContext.Current.CancellationToken);
-                ResolvedScenario resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded);
-                File.WriteAllText(path, new HelmValuesGenerator().Generate(resolved, "C0"), new System.Text.UTF8Encoding(false));
-            }
-            else if (state == "mismatching") File.WriteAllText(path, "profile: changed\n");
-            await host.StartAsync(TestContext.Current.CancellationToken);
-            await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
-            await host.StopAsync(TestContext.Current.CancellationToken);
-            Assert.Equal(state == "matching" ? 0 : 1, host.Services.GetRequiredService<LoadGenWorker>().ExitCode);
-            Assert.Equal(state == "matching", tracker.Called);
-            Assert.Equal(state == "matching", publisher.Called);
-            Assert.Equal(state == "matching", Directory.Exists(publisher.OutputRoot));
-        }
-        finally
-        {
-            File.Delete(path);
-            DeleteOutput(publisher);
-        }
+        Assert.Equal(0, telemetry.RegistrationCount);
+        Assert.Equal(0, serviceConfigurationCalls);
+        Assert.False(Directory.Exists(output));
     }
 
     [Theory]
@@ -354,31 +360,31 @@ public sealed class LoadGenWorkerHostTests
     [InlineData("publication")]
     [InlineData("stop")]
     [InlineData("dispose")]
-    [InlineData("write")]
+    [InlineData("receipt")]
+    [InlineData("receipt-timeout")]
+    [InlineData("watchdog-dispose")]
     [InlineData("cancel")]
     [InlineData("start")]
-    public async Task Given_ProcessLifecycle_When_Completing_Then_ReceiptRequiresPublicationStopDisposalAndWritableOutput(string outcome)
+    public async Task Given_ProcessLifecycle_When_Completing_Then_BlobReceiptRequiresPublicationStopDisposalAndWatchdogCleanup(string outcome)
     {
         var publisher = new RecordingPublisher(throwOnPublish: outcome == "publication");
-        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1), outcome);
-        using var output = new CompletionWriter(host, publisher, failWrite: outcome == "write");
+        var lifecycle = new RecordingLifecycle(throwOnCompletion: outcome is "receipt" or "receipt-timeout");
+        var clock = new TrackingTimeProvider(throwOnWatchdogDispose: outcome == "watchdog-dispose");
+        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome);
+        using var output = new StringWriter();
+        lifecycle.OnCompletion = context =>
+        {
+            Assert.True(host.Disposed);
+            Assert.True(publisher.Called);
+            Assert.True(clock.AllTimersDisposed);
+            Assert.Equal(publisher.RunId, context.Identity.RunId);
+        };
         int exitCode = await Program.RunAsync([], completionOutput: output, hostFactory: () => host);
         Assert.Equal(outcome is not ("start" or "cancel"), publisher.Called);
         Assert.True(host.Disposed);
         Assert.Equal(outcome == "success" ? 0 : 1, exitCode);
-        if (outcome == "success")
-        {
-            string line = output.ToString();
-            Assert.StartsWith("PARCHWELL_COMPLETION ", line, StringComparison.Ordinal);
-            using JsonDocument receipt = JsonDocument.Parse(line["PARCHWELL_COMPLETION ".Length..]);
-            Assert.Equal(1, receipt.RootElement.GetProperty("schema_version").GetInt32());
-            Assert.Equal("loadgen", receipt.RootElement.GetProperty("mode").GetString());
-            Assert.Equal("A01", receipt.RootElement.GetProperty("identity").GetProperty("scenario_id").GetString());
-            Assert.Equal(publisher.RunId, receipt.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
-            Assert.Equal(0, receipt.RootElement.GetProperty("handler_exit_code").GetInt32());
-            Assert.True(receipt.RootElement.GetProperty("cleanup_completed").GetBoolean());
-        }
-        else Assert.Equal(string.Empty, output.ToString());
+        Assert.Equal(outcome is "success" or "receipt" or "receipt-timeout", lifecycle.CompletionAttempted);
+        Assert.Equal(string.Empty, output.ToString());
         DeleteOutput(publisher);
     }
 
@@ -405,31 +411,27 @@ public sealed class LoadGenWorkerHostTests
         }
     }
 
-    private sealed class CompletionWriter(LifecycleHost host, RecordingPublisher publisher, bool failWrite) : StringWriter
-    {
-        public override Task WriteLineAsync(string? value)
-        {
-            Assert.True(host.Disposed);
-            Assert.True(publisher.Called);
-            if (failWrite) throw new IOException("synthetic_receipt_write_failure");
-            return base.WriteLineAsync(value);
-        }
-    }
-
     private static IHost CreateHost(IRunArtifactPublisher publisher, int durationSeconds,
         ProducerFactoryTracker? producerFactory = null,
         Action<KafkaOAuthBearerSession, RunEvidenceSession>? authenticationCallback = null,
-        IKafkaTokenProvider? tokenProvider = null, string? generatedValuesFile = null, string? generatedValuesSectionFile = null,
+        IKafkaTokenProvider? tokenProvider = null, string phase = "C0", string configurationId = "C0",
+        int repeatNumber = 1, IProducerRunLifecycle? lifecycle = null,
+        TimeProvider? timeProvider = null,
+        RecordingTelemetryRegistration? telemetryRegistration = null,
         ILogger<LoadGenWorker>? workerLogger = null)
     {
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
         if (publisher is RecordingPublisher recording) recording.OutputRoot = output;
         if (publisher is BlockingPublisher blocking) blocking.OutputRoot = output;
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
-        values["LoadGen__RunId"] = "host-run-" + Guid.NewGuid().ToString("N");
+        values["LoadGen__RunId"] = "host-run-" + Guid.NewGuid().ToString("N")[..20];
+        values["LoadGen__ConfigurationId"] = configurationId;
+        values["LoadGen__Phase"] = phase;
+        values["LoadGen__RepeatNumber"] = repeatNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        values["LoadGen__JobName"] = $"{values["LoadGen__RunId"]}-{phase.ToLowerInvariant()}-r{repeatNumber}-loadgen";
         if (publisher is RecordingPublisher runPublisher) runPublisher.RunId = values["LoadGen__RunId"];
         values["LoadGen__ProcessLifetimeTimeout"] = "00:00:15";
-        values["LoadGen__StatisticsCompletionTimeout"] = "00:00:00.050";
+        values["LoadGen__StatisticsCompletionTimeout"] = "00:00:01";
         values["LoadGen__CleanupTimeout"] = "00:00:01";
         values["LoadGen__ProducerDrainTimeout"] = "00:00:01";
         values["LoadGen__EvidenceCompletionTimeout"] = "00:00:01";
@@ -438,11 +440,10 @@ public sealed class LoadGenWorkerHostTests
         values["AZURE_TENANT_ID"] = "synthetic-tenant";
         values["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         values["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
-        if (generatedValuesFile is not null) values["PARCHWELL_GENERATED_VALUES_FILE"] = generatedValuesFile;
-        if (generatedValuesSectionFile is not null) values["LoadGen__GeneratedValuesFile"] = generatedValuesSectionFile;
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+        telemetryRegistration ??= new RecordingTelemetryRegistration();
 
-        return Program.BuildHost(args, services =>
+        return Program.BuildHostCore(args, services =>
         {
             if (workerLogger is not null) services.AddSingleton(workerLogger);
             services.RemoveAll<IScenarioSource>();
@@ -453,6 +454,24 @@ public sealed class LoadGenWorkerHostTests
             services.AddSingleton<IKafkaTokenProvider>(tokenProvider ?? new SyntheticTokenProvider());
             services.RemoveAll<IRunArtifactPublisher>();
             services.AddSingleton<IRunArtifactPublisher>(publisher);
+            services.RemoveAll<IProducerRunLifecycle>();
+            services.AddSingleton(lifecycle ?? new RecordingLifecycle());
+            if (timeProvider is not null)
+            {
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton(timeProvider);
+                if (timeProvider is TrackingTimeProvider)
+                {
+                    // This wrapper delegates both timestamp APIs to TimeProvider.System; keep the
+                    // production monotonic-clock capability enabled for this lifecycle fixture.
+                    services.RemoveAll<KafkaStatisticsBridgeFactory>();
+                    services.AddSingleton(provider => new KafkaStatisticsBridgeFactory(
+                        provider.GetRequiredService<IOptions<KafkaStatisticsOptions>>().Value,
+                        provider.GetRequiredService<TimeProvider>(),
+                        provider.GetRequiredService<IKafkaStatisticsEvidenceSink>(),
+                        provider.GetRequiredService<KafkaStatisticsMetrics>(), nativeClockCompatible: true));
+                }
+            }
             services.RemoveAll<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>();
             services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
                 _ => (configuration, statistics, evidence, authentication) =>
@@ -460,9 +479,11 @@ public sealed class LoadGenWorkerHostTests
                     if (producerFactory is not null) producerFactory.Called = true;
                     if (authenticationCallback is not null)
                         authenticationCallback(authentication, evidence);
-                    return DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
+                    IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SuccessfulProducer>();
+                    ((SuccessfulProducer)(object)producer).Statistics = statistics;
+                    return producer;
                 });
-        });
+        }, telemetryRegistration.Register);
     }
 
     private static string Scenario() => """
@@ -571,6 +592,75 @@ public sealed class LoadGenWorkerHostTests
         public DateTimeOffset? InstalledExpiry { get; set; }
     }
 
+    private sealed class RecordingLifecycle(bool throwOnCompletion = false) : IProducerRunLifecycle
+    {
+        public bool Registered { get; private set; }
+        public bool CompletionAttempted { get; private set; }
+        public ProducerRunContext? CompletionContext { get; private set; }
+        public Action<ProducerRunContext>? OnCompletion { get; set; }
+
+        public Task RegisterAsync(ProducerRunContext context, ProducerLifecycleOptions options,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Registered = true;
+            return Task.CompletedTask;
+        }
+
+        public Task PublishDiagnosticsAsync(ProducerRunContext context, RunExecutionResult? result,
+            ProducerLifecycleOptions options, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task WriteCompletionAsync(ProducerRunContext context, ProducerLifecycleOptions options,
+            CancellationToken cancellationToken)
+        {
+            CompletionAttempted = true;
+            CompletionContext = context;
+            OnCompletion?.Invoke(context);
+            if (throwOnCompletion) throw new IOException("synthetic_blob_receipt_failure");
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class TrackingTimeProvider(bool throwOnWatchdogDispose = false) : TimeProvider
+    {
+        private readonly List<TrackingTimer> _timers = [];
+        public bool AllTimersDisposed => _timers.Count > 0 && _timers.All(timer => timer.Disposed);
+        public override DateTimeOffset GetUtcNow() => TimeProvider.System.GetUtcNow();
+        public override long GetTimestamp() => TimeProvider.System.GetTimestamp();
+        public override long TimestampFrequency => TimeProvider.System.TimestampFrequency;
+        public override TimeZoneInfo LocalTimeZone => TimeProvider.System.LocalTimeZone;
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new TrackingTimer(TimeProvider.System.CreateTimer(callback, state, dueTime, period),
+                throwOnWatchdogDispose && dueTime == TimeSpan.FromSeconds(15));
+            _timers.Add(timer);
+            return timer;
+        }
+    }
+
+    private sealed class TrackingTimer(ITimer inner, bool throwOnDispose) : ITimer
+    {
+        private int _disposed;
+        public bool Disposed => Volatile.Read(ref _disposed) != 0;
+        public bool Change(TimeSpan dueTime, TimeSpan period) => inner.Change(dueTime, period);
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _disposed, 1);
+            inner.Dispose();
+            if (throwOnDispose) throw new InvalidOperationException("synthetic_watchdog_dispose_failure");
+        }
+        public async ValueTask DisposeAsync()
+        {
+            Interlocked.Exchange(ref _disposed, 1);
+            await inner.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
     private sealed class RecordingPublisher(bool throwOnPublish = false, bool available = true) : IRunArtifactPublisher
     {
         public bool IsAvailable => available;
@@ -596,6 +686,9 @@ public sealed class LoadGenWorkerHostTests
 
     public class SuccessfulProducer : DispatchProxy
     {
+        public KafkaStatisticsSession? Statistics { get; set; }
+        private int _statisticsScheduled;
+
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             if (targetMethod?.Name == "Produce" && args is { Length: 3 })
@@ -608,7 +701,30 @@ public sealed class LoadGenWorkerHostTests
                 });
                 return null;
             }
-            if (targetMethod?.Name == "Flush") return 0;
+            if (targetMethod?.Name == "Flush")
+            {
+                if (Statistics is not null && Interlocked.Exchange(ref _statisticsScheduled, 1) == 0)
+                {
+                    KafkaStatisticsSession statistics = Statistics!;
+                    _ = Task.Run(async () =>
+                    {
+                        long creation = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
+                        for (int index = 0; index < 2; index++)
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(20)).ConfigureAwait(false);
+                            long timestamp = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
+                            long age = timestamp - creation;
+                            long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            string report = "{\"name\":\"worker-producer\",\"client_id\":\"worker-pod\",\"type\":\"producer\",\"ts\":" +
+                                timestamp.ToString(CultureInfo.InvariantCulture) + ",\"time\":" + time.ToString(CultureInfo.InvariantCulture) +
+                                ",\"age\":" + age.ToString(CultureInfo.InvariantCulture) + ",\"brokers\":{\"broker-1\":{\"name\":\"broker-1\",\"nodeid\":1,\"state\":\"UP\",\"stateage\":1," +
+                                "\"req_timeouts\":0,\"disconnects\":0,\"txretries\":0,\"txerrs\":0,\"rxerrs\":0,\"throttle\":{\"cnt\":1,\"max\":0},\"rtt\":{\"cnt\":0,\"p99\":0}}}}";
+                            statistics.Capture(report);
+                        }
+                    });
+                }
+                return 0;
+            }
             if (targetMethod?.Name == "Dispose") return null;
             throw new NotSupportedException(targetMethod?.Name);
         }
