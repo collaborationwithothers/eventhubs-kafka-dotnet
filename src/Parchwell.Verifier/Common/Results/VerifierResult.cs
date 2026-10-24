@@ -32,7 +32,8 @@ internal sealed record VerifierResult(
     ProbeRepeatObservation? ProbeObservation,
     A01RecordedEvidence? A01RecordedEvidence,
     IReadOnlyList<JudgedFileHash> JudgedFileHashes,
-    IReadOnlyList<ResultDiagnostic> Diagnostics);
+    IReadOnlyList<ResultDiagnostic> Diagnostics,
+    WorkloadObservation? WorkloadObservation = null);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);
@@ -97,3 +98,11 @@ internal sealed record ResultDiagnostic(
     long? Row,
     string? Field,
     string? Snippet);
+
+/// <summary>Record-only synthetic workload totals; never an input to validity or gate decisions.</summary>
+internal sealed record WorkloadObservation(bool Synthetic, long? PlannedAttempts, long? InvokedAttempts,
+    long? TerminalObservations, bool? FixedProfileComplete, long? FirstUnexecutedOrdinal,
+    IReadOnlyList<WorkloadStageObservation>? Stages);
+
+internal sealed record WorkloadStageObservation(string Id, long OfferedAttemptsPerSecond, long DurationSeconds,
+    long? InvokedAttempts, long? DeliveredObservations, long? FailedObservations);

@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
@@ -11,7 +12,10 @@ namespace Parchwell.Verifier.Tests.Host;
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class VerifyRunHandlerTests
 {
-    private static readonly string[] ExpectedDuplicateHashes = ["ledger.jsonl:a", "manifest.json:b", "ledger.jsonl:c"];
+    public static IEnumerable<object[]> InvalidIndexCases =>
+    [
+        ["empty"], ["duplicate"], ["extra"], ["nested"], ["reordered"], ["negative-length"], ["unchecked-hash"], ["wrong-hash"]
+    ];
 
     [Fact]
     public async Task Given_CoherentRawSingleDeliveredAttempt_When_Verifying_Then_PublishesSixExactCountsAfterAllCleanupAndReturnsZero()
@@ -26,12 +30,12 @@ public sealed class VerifyRunHandlerTests
         Assert.Equal(1, result.GetProperty("ok").GetInt64());
         foreach (string count in new[] { "loss", "phantom", "reported_failure", "duplicate", "reorder" }) Assert.Equal(0, result.GetProperty(count).GetInt64());
         Assert.Equal(1, fixture.Creates);
-        Assert.Equal("results/custom.json", fixture.OutputName);
+        Assert.Equal("synthetic-c5/C0/r1/result.json", fixture.OutputName);
         Assert.Equal("synthetic-producer", result.GetProperty("generator_version").GetString());
         Assert.Equal("synthetic-native", result.GetProperty("runtime_versions").GetProperty("Confluent.Kafka").GetString());
         Assert.Equal(typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), result.GetProperty("verifier_confluent_kafka_version").GetString());
         Assert.Equal(Library.VersionString, result.GetProperty("verifier_librdkafka_version").GetString());
-        AssertUnusableProbe(result);
+        AssertUsableNoSampleProbe(result);
         AssertRecordedWindows(result, null);
     }
 
@@ -58,7 +62,7 @@ public sealed class VerifyRunHandlerTests
             capabilities["guard_observations_complete"] = false;
             fixture.Set("capabilities.json", capabilities);
         }
-        if (check == 15) ChangeNativeReports(fixture, (native, _) => native["brokers"]!["broker-a/1"]!["req_timeouts"] = 1);
+        if (check == 15) ChangeNativeReports(fixture, (native, _) => native["brokers"]!["sasl_ssl://broker-a:9093/1"]!["req_timeouts"] = 1);
         if (check == 16)
         {
             var error = new JsonObject
@@ -105,7 +109,7 @@ public sealed class VerifyRunHandlerTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Given_MissingOrMalformedLedgerAndCompleteStatistics_When_Verifying_Then_OmitsCodesAndKeepsRecordedWindows(bool malformed)
+    public async Task Given_MissingOrMalformedLedgerAndCompleteStatistics_When_Verifying_Then_ReportsTheOwningFailure(bool malformed)
     {
         using var fixture = new HostEvidenceBuilder();
         SetNonemptyWindows(fixture, 20001);
@@ -113,9 +117,8 @@ public sealed class VerifyRunHandlerTests
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         JsonElement result = output.RootElement;
-        AssertFailure(result, "invalid", 1);
+        AssertFailure(result, "invalid", malformed ? 1 : 3);
         AssertUnusableProbe(result);
-        AssertRecordedWindows(result, 20001, includeCodes: false);
         Assert.Equal(1, fixture.Creates);
     }
 
@@ -139,18 +142,18 @@ public sealed class VerifyRunHandlerTests
             JsonObject capabilities = fixture.Json("capabilities.json");
             if (check == 17) capabilities["is_faulted"] = true;
             if (check == 19) capabilities["statistics_completion"]!["is_complete"] = false;
-            if (check == 24) capabilities["statistics_completion"]!["missing_brokers"] = new JsonArray("broker-a/1");
+            if (check == 24) capabilities["statistics_completion"]!["missing_brokers"] = new JsonArray("sasl_ssl://broker-a:9093/1");
             fixture.Set("capabilities.json", capabilities);
         }
         if (check == 18) fixture.Inputs["statistics.jsonl"] = [];
         if (check is >= 20 and <= 23 or 25 or 26) ChangeNativeReports(fixture, (native, index) =>
         {
             if (check == 20 && index == 1) native["ts"] = "malformed-native-time";
-            if (check == 21 && index == 1) native["brokers"]!["broker-a/1"]!.AsObject().Remove("nodeid");
+            if (check == 21 && index == 1) native["brokers"]!["sasl_ssl://broker-a:9093/1"]!.AsObject().Remove("nodeid");
             if (check == 22 && index == 1) { native["ts"] = 90; native["age"] = 40; }
-            if (check == 23 && index == 0) native["brokers"]!["broker-a/1"]!["disconnects"] = 1;
+            if (check == 23 && index == 0) native["brokers"]!["sasl_ssl://broker-a:9093/1"]!["disconnects"] = 1;
             if (check == 25 && index == 1) native["brokers"] = new JsonObject();
-            if (check == 26 && index == 0) native["brokers"]!["broker-a/1"]!["source"] = "internal";
+            if (check == 26 && index == 0) native["brokers"]!["sasl_ssl://broker-a:9093/1"]!["source"] = "internal";
         });
 
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
@@ -173,10 +176,30 @@ public sealed class VerifyRunHandlerTests
         fixture.Inputs["index.json"] = malformed ? Encoding.UTF8.GetBytes("{}") : null;
         InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Contains("index", error.Message, StringComparison.Ordinal);
-        Assert.Equal(["index.json"], fixture.Reads);
+        Assert.Equal(ExpectedReads(fixture), fixture.Reads);
         Assert.Empty(fixture.Events);
         Assert.Equal(0, fixture.Creates);
         Assert.Null(fixture.Output);
+    }
+
+    [Fact]
+    public async Task Given_MissingPublicationIndexAndFailedEvidencePayloads_When_Verifying_Then_PublishesDiagnosticResultWithoutAcceptedCounts()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.Inputs["index.json"] = null;
+        foreach (string name in new[] { "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
+            fixture.DiagnosticInputs[name] = fixture.Inputs[name]!;
+
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = output.RootElement;
+        Assert.Equal("incomplete", result.GetProperty("status").GetString());
+        Assert.False(result.TryGetProperty("ok", out _));
+        Assert.Empty(FailedChecks(result));
+        Assert.Contains(fixture.Reads, name => name.EndsWith("/diagnostics/ledger.jsonl", StringComparison.Ordinal));
+        Assert.DoesNotContain(fixture.Reads, name => name.EndsWith("/diagnostics/index.json", StringComparison.Ordinal));
+        Assert.Equal(1, fixture.Creates);
     }
 
     [Theory]
@@ -280,22 +303,61 @@ public sealed class VerifyRunHandlerTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Given_OrderedDuplicateOrEmptyIndexDeclarations_When_Verifying_Then_ProjectsOnlyDeclaredPayloadDigestsAndStillReadsAllFixedFiles(bool empty)
+    [MemberData(nameof(InvalidIndexCases))]
+    public async Task Given_InvalidPublicationDescriptor_When_Verifying_Then_RejectsThePublicationWithoutHashesOrCounts(string mutation)
     {
         using var fixture = new HostEvidenceBuilder();
         JsonObject index = fixture.Json("index.json");
-        index["artifacts"] = empty ? new JsonArray() : new JsonArray(
-            Descriptor("ledger.jsonl", "a"), Descriptor("extra.bin", "x"), Descriptor("manifest.json", "b"), Descriptor("ledger.jsonl", "c"));
+        JsonArray artifacts = index["artifacts"]!.AsArray();
+        JsonObject first = artifacts[0]!.DeepClone().AsObject();
+        switch (mutation)
+        {
+            case "empty": index["artifacts"] = new JsonArray(); break;
+            case "duplicate": artifacts.Add(first.DeepClone()); break;
+            case "extra": artifacts.Add(new JsonObject { ["name"] = "extra.bin", ["length"] = 0, ["sha256"] = new string('0', 64) }); break;
+            case "nested": first["name"] = "nested/ledger.jsonl"; artifacts[0] = first; break;
+            case "reordered":
+                var reordered = new JsonArray();
+                foreach (JsonNode? item in artifacts.Reverse()) reordered.Add(item!.DeepClone());
+                index["artifacts"] = reordered;
+                break;
+            case "negative-length": first["length"] = -1; artifacts[0] = first; break;
+            case "unchecked-hash": first["sha256"] = ""; artifacts[0] = first; break;
+            case "wrong-hash": first["sha256"] = new string('0', 64); artifacts[0] = first; break;
+        }
         fixture.Set("index.json", index);
+        fixture.PreservePublicationReferences = true;
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.Equal("invalid", output.RootElement.GetProperty("status").GetString());
+        Assert.False(output.RootElement.TryGetProperty("ok", out _));
+        Assert.Empty(output.RootElement.GetProperty("judged_file_hashes").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Given_CompletePublication_When_Verifying_Then_HashesTheFiveActualPayloadsInFixedOrder()
+    {
+        using var fixture = new HostEvidenceBuilder();
         Assert.Equal(0, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        string[] names = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
         string[] hashes = output.RootElement.GetProperty("judged_file_hashes").EnumerateArray()
             .Select(item => item.GetProperty("name").GetString() + ":" + item.GetProperty("sha256").GetString()).ToArray();
-        Assert.Equal(empty ? [] : ExpectedDuplicateHashes, hashes);
-        Assert.Equal(["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "notes/custom.json"], fixture.Reads);
-        static JsonObject Descriptor(string name, string digest) => new() { ["name"] = name, ["length"] = -1, ["sha256"] = digest };
+        Assert.Equal(names.Select(name => name + ":" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(fixture.Inputs[name]!))), hashes);
+    }
+
+    [Fact]
+    public async Task Given_SameLengthPayloadChangeWithoutRebuildingReferences_When_Verifying_Then_RejectsIt()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        byte[] changed = fixture.Inputs["statistics.jsonl"]!.ToArray();
+        changed[0] = changed[0] == (byte)'{' ? (byte)'[' : (byte)'{';
+        fixture.Inputs["statistics.jsonl"] = changed;
+        fixture.PreservePublicationReferences = true;
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.Equal("invalid", output.RootElement.GetProperty("status").GetString());
+        Assert.Empty(output.RootElement.GetProperty("judged_file_hashes").EnumerateArray());
     }
 
     [Theory]
@@ -305,7 +367,7 @@ public sealed class VerifyRunHandlerTests
     public async Task Given_TotalInputLimitAtRawByteBoundary_When_Verifying_Then_ChargesEachArtifactOnceAndDoesNotRechargeNestedRawJson(int adjustment, bool succeeds)
     {
         using var fixture = new HostEvidenceBuilder();
-        fixture.Options.MaxTotalInputBytes = fixture.Inputs.Values.Sum(value => (long)value!.Length) + fixture.Note!.Length + adjustment;
+        fixture.Options.MaxTotalInputBytes = fixture.ChargedInputBytes + adjustment;
         if (succeeds) Assert.Equal(0, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         else await Assert.ThrowsAsync<InputLimitExceededException>(() => fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal(succeeds ? 1 : 0, fixture.Creates);
@@ -321,7 +383,7 @@ public sealed class VerifyRunHandlerTests
     public async Task Given_InputOperationNearDeadline_When_Verifying_Then_ExpiryIsExecutionFailureWithZeroOutputCalls(string phase, int elapsed, bool succeeds)
     {
         using var fixture = new HostEvidenceBuilder();
-        if (phase == "blob") fixture.BeforeRead = (name, _) => { if (name == "index.json") fixture.Kafka.Clock.Advance(elapsed); };
+        if (phase == "blob") fixture.BeforeRead = (name, _) => { if (name.EndsWith("/publication/index.json", StringComparison.Ordinal)) fixture.Kafka.Clock.Advance(elapsed); };
         else
         {
             int calls = 0;
@@ -486,7 +548,7 @@ public sealed class VerifyRunHandlerTests
         fixture.DelayHandlerTimerCallbacks();
         if (phase is "blob" or "note") fixture.BeforeRead = (name, _) =>
         {
-            if (name == (phase == "blob" ? "index.json" : "notes/custom.json")) fixture.Kafka.Clock.Advance(elapsed);
+            if (name.EndsWith(phase == "blob" ? "/publication/index.json" : "/start-line.json", StringComparison.Ordinal)) fixture.Kafka.Clock.Advance(elapsed);
         };
         if (phase == "local")
         {
@@ -552,7 +614,7 @@ public sealed class VerifyRunHandlerTests
 
     private static void SetNonemptyWindows(HostEvidenceBuilder fixture, long maximum) => ChangeNativeReports(fixture, (native, _) =>
     {
-        JsonNode broker = native["brokers"]!["broker-a/1"]!;
+        JsonNode broker = native["brokers"]!["sasl_ssl://broker-a:9093/1"]!;
         broker["throttle"]!["cnt"] = 1;
         broker["throttle"]!["max"] = maximum;
         broker["rtt"]!["cnt"] = 1;
@@ -581,12 +643,20 @@ public sealed class VerifyRunHandlerTests
         AssertPropertyNames(probe, "usable", "qualifying");
     }
 
+    private static void AssertUsableNoSampleProbe(JsonElement result)
+    {
+        JsonElement probe = result.GetProperty("probe_observation");
+        Assert.True(probe.GetProperty("usable").GetBoolean());
+        Assert.False(probe.GetProperty("qualifying").GetBoolean());
+        AssertPropertyNames(probe, "usable", "qualifying");
+    }
+
     private static void AssertUsableProbe(JsonElement result, long maximum, bool qualifying)
     {
         JsonElement probe = result.GetProperty("probe_observation");
         Assert.True(probe.GetProperty("usable").GetBoolean());
         Assert.Equal(qualifying, probe.GetProperty("qualifying").GetBoolean());
-        Assert.Equal("broker-a/1", probe.GetProperty("broker").GetString());
+        Assert.Equal("sasl_ssl://broker-a:9093/1", probe.GetProperty("broker").GetString());
         Assert.Equal(0, probe.GetProperty("report_index").GetInt64());
         Assert.Equal(1, probe.GetProperty("window_count").GetInt64());
         Assert.Equal(maximum, probe.GetProperty("window_maximum").GetInt64());
@@ -603,7 +673,7 @@ public sealed class VerifyRunHandlerTests
         for (int index = 0; index < windows.Length; index++)
         {
             JsonElement window = windows[index];
-            Assert.Equal("broker-a/1", window.GetProperty("broker").GetString());
+            Assert.Equal("sasl_ssl://broker-a:9093/1", window.GetProperty("broker").GetString());
             Assert.Equal(index, window.GetProperty("report_index").GetInt64());
             Assert.Equal(90 + index * 10, window.GetProperty("native_timestamp").GetInt64());
             Assert.Equal(index == 0 ? firstTimeoutIncrement : 0, window.GetProperty("request_timeouts_increment").GetInt64());
@@ -636,6 +706,26 @@ public sealed class VerifyRunHandlerTests
         foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" }) Assert.False(result.TryGetProperty(count, out _));
     }
     private static int[] FailedChecks(JsonElement result) => result.GetProperty("failed_checks").EnumerateArray().Select(item => item.GetInt32()).ToArray();
+    private static string[] ExpectedReads(HostEvidenceBuilder fixture)
+    {
+        string run = fixture.Options.RunId!, phase = fixture.Options.Phase!;
+        int repeat = fixture.Options.Repeat!.Value;
+        string instance = fixture.Options.InstanceId!;
+        return
+        [
+            PhasePaths.Registration(run, phase, repeat, instance),
+            PhasePaths.StartLineCompletion(run, phase, repeat),
+            PhasePaths.StartLine(run, phase, repeat),
+            PhasePaths.BrokerInventory(run, phase, repeat),
+            PhasePaths.ProducerCompletion(run, phase, repeat, instance),
+            PhasePaths.Publication(run, phase, repeat, instance, "index.json"),
+            PhasePaths.Publication(run, phase, repeat, instance, "ledger.jsonl"),
+            PhasePaths.Publication(run, phase, repeat, instance, "manifest.json"),
+            PhasePaths.Publication(run, phase, repeat, instance, "statistics.jsonl"),
+            PhasePaths.Publication(run, phase, repeat, instance, "request-lifecycle.jsonl"),
+            PhasePaths.Publication(run, phase, repeat, instance, "capabilities.json")
+        ];
+    }
     private static void AssertNoDurations(JsonElement result)
     {
         Assert.False(result.TryGetProperty("drain_time", out _));

@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Parchwell.Kafka.Telemetry;
 
 namespace Parchwell.Verifier;
 
@@ -8,6 +11,10 @@ namespace Parchwell.Verifier;
 /// <remarks>A successful host exit requires a selected handler to finish successfully (ADR-017).</remarks>
 internal sealed partial class VerifierWorker : BackgroundService
 {
+    private static readonly ActivitySource ActivitySource=new(ParchwellTelemetrySources.WorkerActivitySourceName);
+    private static readonly Meter Meter=new(ParchwellTelemetrySources.WorkerMeterName);
+    private static readonly Histogram<double> Duration=Meter.CreateHistogram<double>("parchwell.worker.duration_ms","ms");
+    private static readonly Counter<long> Completed=Meter.CreateCounter<long>("parchwell.worker.completed");
     [LoggerMessage(EventId = 1, Level = LogLevel.Error, Message = "Verifier mode {Mode} is unavailable for scenario {ScenarioId} run {RunId}.")]
     private static partial void LogUnavailable(ILogger logger, string? mode, string? scenarioId, string? runId);
 
@@ -59,7 +66,16 @@ internal sealed partial class VerifierWorker : BackgroundService
                 var handler = _handlers.SingleOrDefault(candidate => candidate.Mode == mode);
                 if (handler is not null)
                 {
+                    var options=_options.Value;
+                    using IDisposable? scope=_logger.BeginScope(new Dictionary<string,object?>
+                    {
+                        ["scenario_id"]=options.ScenarioId!,["run_id"]=options.RunId!,["phase"]=options.Phase??"local",
+                        ["repeat"]=options.Repeat??0,["mode"]=configuredMode!
+                    });
+                    using Activity? activity=ActivitySource.StartActivity("parchwell.worker."+configuredMode,ActivityKind.Internal);
+                    long origin=Stopwatch.GetTimestamp();
                     int exitCode = await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
+                    RecordCompletion(Stopwatch.GetElapsedTime(origin).TotalMilliseconds,exitCode==0?"success":"error");
                     _completionState.MarkReturned(_options.Value, exitCode, stoppingToken, applicationStopping);
                     if (exitCode == 0)
                     {
@@ -82,6 +98,8 @@ internal sealed partial class VerifierWorker : BackgroundService
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+            _completionState.MarkFailed();
+            RecordCompletion(0,"error");
             // A host stop before successful work leaves the explicit failure outcome in place.
             LogStopped(
                 _logger,
@@ -91,6 +109,8 @@ internal sealed partial class VerifierWorker : BackgroundService
         }
         catch (Exception exception)
         {
+            _completionState.MarkFailed();
+            RecordCompletion(0,"error");
             // Worker exceptions do not become successful merely because the Generic Host stops.
             LogFailed(
                 _logger,
@@ -103,6 +123,16 @@ internal sealed partial class VerifierWorker : BackgroundService
         {
             _applicationLifetime.StopApplication();
         }
+    }
+
+    private static void RecordCompletion(double elapsed,string outcome)
+    {
+        try
+        {
+            var tags=new TagList{ {"outcome",outcome} };
+            Duration.Record(elapsed,tags);Completed.Add(1,tags);
+        }
+        catch(Exception){/* Telemetry has no authority over worker output or exit state. */}
     }
 }
 

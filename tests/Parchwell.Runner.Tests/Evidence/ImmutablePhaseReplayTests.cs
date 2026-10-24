@@ -43,7 +43,7 @@ public sealed class ImmutablePhaseReplayTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Given_DestroyedExportedProbe_When_GateDispatchHasFreshOrTamperedWorkspace_Then_RehydratesOriginalsAndAcceptsRealGateReceipt(bool tamperedLocal)
+    public async Task Given_DestroyedExportedProbe_When_GateDispatchHasFreshOrTamperedWorkspace_Then_RehydratesOriginalsAndAcceptsLegacyGateReceipt(bool tamperedLocal)
     {
         await using Fixture fixture = await Fixture.CreateAsync("probe");
         Assert.Empty(Directory.EnumerateFileSystemEntries(fixture.Output));

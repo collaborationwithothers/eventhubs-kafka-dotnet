@@ -22,10 +22,16 @@ internal sealed class BlobVerifierArtifactStore : IVerifierArtifactStore
     }
 
     public Task<byte[]?> ReadStartLineAsync(string name, CancellationToken cancellationToken)
+        => ReadAsync(name, cancellationToken);
+
+    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return BoundedBlobReader.ReadAsync(_container.GetBlobClient(name), _maxInputBytes, cancellationToken);
     }
+
+    public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>
+        BoundedBlobListing.ListAsync(_container, prefix, cancellationToken);
 
     public async Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
@@ -39,6 +45,43 @@ internal sealed class BlobVerifierArtifactStore : IVerifierArtifactStore
         // sends If-None-Match:* when overwrite is false. Native retry is disabled at composition.
         await _container.GetBlobClient(name).UploadAsync(stream, overwrite: false, cancellationToken)
             .ConfigureAwait(false);
+    }
+}
+
+/// <summary>A bounded, complete or explicitly incomplete blob-name listing.</summary>
+internal sealed record BlobListing(IReadOnlyList<string> Names, int Pages, bool IsComplete, string? FailureCode = null);
+
+/// <summary>Retains a bounded blob listing and never treats a truncated listing as complete.</summary>
+internal static class BoundedBlobListing
+{
+    internal const int MaximumPages = 16;
+    internal const int MaximumEntries = 1024;
+    internal const int MaximumNameBytes = 1_048_576;
+
+    internal static async Task<BlobListing> ListAsync(BlobContainerClient container, string prefix, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+        var names = new List<string>();
+        long nameBytes = 0;
+        int pages = 0;
+        await foreach (var page in container.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix, cancellationToken)
+            .AsPages(pageSizeHint: 64).WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            pages++;
+            foreach (var item in page.Values)
+            {
+                if (!item.Name.StartsWith(prefix, StringComparison.Ordinal))
+                    return new(names, pages, false, "listing_prefix_escape");
+                int bytes = System.Text.Encoding.UTF8.GetByteCount(item.Name);
+                nameBytes = checked(nameBytes + bytes);
+                if (names.Count == MaximumEntries || nameBytes > MaximumNameBytes || pages > MaximumPages)
+                    return new(names, pages, false, "listing_incomplete");
+                names.Add(item.Name);
+            }
+            if (pages > MaximumPages) return new(names, pages, false, "listing_incomplete");
+        }
+        return new(names, pages, true);
     }
 }
 

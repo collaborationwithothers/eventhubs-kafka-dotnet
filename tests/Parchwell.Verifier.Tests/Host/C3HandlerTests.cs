@@ -16,15 +16,27 @@ public sealed class C3HandlerTests
     {
         using var fixture = new HostEvidenceBuilder();
         fixture.Options.ConfigurationId = "C3";
+        fixture.Options.Phase = "C3";
+        fixture.Options.ExpectedInstanceId = "synthetic-c5-c3-r1-loadgen";
+        fixture.Options.JobName = "synthetic-c5-c3-r1-verify";
+        fixture.Options.RepeatPrefix = "synthetic-c5/C3/r1/";
+        fixture.Options.PhasePrefix = "synthetic-c5/C3/";
+        fixture.Options.StartLineInputName = "synthetic-c5/C3/r1/start-line.json";
+        fixture.Options.StartLineOutputName = fixture.Options.StartLineInputName;
+        fixture.Options.BrokerInventoryOutputName = "synthetic-c5/C3/r1/broker-inventory.json";
+        fixture.Options.ResultOutputName = "synthetic-c5/C3/r1/result.json";
+        fixture.Options.ArtifactPrefix = "synthetic-c5/C3/r1/producer/";
         foreach (string name in fixture.Inputs.Keys.ToArray())
             fixture.Inputs[name] = C3Bytes(fixture.Inputs[name]!);
-        fixture.Note = C3Bytes(fixture.Note!);
+        fixture.Note = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(C3Bytes(fixture.Note!))
+            .Replace("synthetic-c5-c0-r1-loadgen", "synthetic-c5-c3-r1-loadgen", StringComparison.Ordinal));
         var capabilities = fixture.Json("capabilities.json");
         var loaded = await fixture.Loader.LoadAsync("A01", TestContext.Current.CancellationToken);
         capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(
             fixture.Resolver.Resolve(loaded).Configurations["C3"].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
         fixture.Set("capabilities.json", capabilities);
-        Assert.Equal(0, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        int exitCode = await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken);
+        Assert.True(exitCode == 0, Encoding.UTF8.GetString(fixture.Output ?? []));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         JsonElement result = output.RootElement;
         Assert.Equal("C3", result.GetProperty("identity").GetProperty("configuration_id").GetString());

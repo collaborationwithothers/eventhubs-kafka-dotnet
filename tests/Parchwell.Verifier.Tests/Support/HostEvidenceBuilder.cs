@@ -7,7 +7,11 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.StartLine;
 using Parchwell.Verifier.VerifyRun;
 using Parchwell.Verifier.VerifyRun.Storage;
@@ -15,15 +19,23 @@ using Parchwell.Verifier.VerifyRun.Storage;
 namespace Parchwell.Verifier.Tests.Support;
 
 /// <summary>Builds coherent synthetic raw inputs independently of verifier readers and codecs.</summary>
-internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, IVerifierArtifactStore, IScenarioSource
+internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, IVerifierArtifactStore, IProducerArtifactStore, IScenarioSource
 {
     private readonly ServiceProvider services;
     private readonly Dictionary<string, string> scenarioDocuments;
     private readonly JsonObject identity;
+    private readonly Dictionary<string, byte[]> ledgerObjects = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> verifierObjects = new(StringComparer.Ordinal);
+    private bool fixtureIdentityInitialized;
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     public HostEvidenceBuilder()
     {
+        Kafka.ReadMetadata = () =>
+        {
+            Metadata source = KafkaSessionTestSupport.Metadata(0);
+            return new Metadata([new BrokerMetadata(1, "broker-a", 9093)], source.Topics, 0, "synthetic-broker");
+        };
         var registrations = new ServiceCollection();
         registrations.AddParchwellKafka(KafkaClientRole.LoadGenProducer, baseline =>
         {
@@ -52,7 +64,8 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         {
             MaxDocumentCharacters = 131072, MaxNestingDepth = 32, MaxScalarCharacters = 32768, MaxParserEvents = 16384
         }));
-        identity = JsonNode.Parse(ReadGolden("index.json"))!["identity"]!.DeepClone().AsObject();
+        identity = IdentityJson(new RunIdentity("A01", "C0", Options.RunId!, Options.InstanceId!,
+            Options.InstanceId!, Options.ClientId!));
         foreach (string name in new[] { "index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
             Inputs[name] = ReadGolden(name);
         JsonObject manifest = JsonNode.Parse(Inputs["manifest.json"]!)!.AsObject();
@@ -73,9 +86,9 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
                 ["ts"] = timestamp, ["age"] = timestamp - 50,
                 ["brokers"] = new JsonObject
                 {
-                    ["broker-a/1"] = new JsonObject
+                    ["sasl_ssl://broker-a:9093/1"] = new JsonObject
                     {
-                        ["name"] = "broker-a/1", ["nodeid"] = 1, ["source"] = "learned", ["state"] = "UP",
+                        ["name"] = "sasl_ssl://broker-a:9093/1", ["nodeid"] = 1, ["source"] = "learned", ["state"] = "UP",
                         ["req_timeouts"] = 0, ["disconnects"] = 0, ["txretries"] = 0, ["txerrs"] = 0, ["rxerrs"] = 0,
                         ["throttle"] = new JsonObject { ["cnt"] = 0, ["max"] = 0 },
                         ["rtt"] = new JsonObject { ["cnt"] = 0, ["p99"] = 0 }
@@ -96,6 +109,9 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         }
         Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(statistics.ToString());
         JsonObject capabilities = JsonNode.Parse(Inputs["capabilities.json"]!)!.AsObject();
+        capabilities["identity"] = IdentityJson(new RunIdentity("A01", "C0", Options.RunId!, Options.InstanceId!,
+            Options.InstanceId!, Options.ClientId!));
+        capabilities["observed_broker_names"] = new JsonArray("sasl_ssl://broker-a:9093/1");
         capabilities["statistics_completion"] = new JsonObject
         {
             ["is_complete"] = true, ["drain_boundary_microseconds"] = 100,
@@ -107,12 +123,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             Resolver.Resolve(loaded).Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
         Set("capabilities.json", capabilities);
         Events.Clear();
-        Note = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            schema_version = 1, identity, topic = "document-events",
-            partition_highs = new[] { new { partition = 0, high = 0 } }, captured_at = "synthetic",
-            verifier_commit = "synthetic-start", confluent_kafka_version = "synthetic-managed", librdkafka_version = "synthetic-native"
-        });
+        RebuildPublicationReferences();
         Kafka.Poll = Kafka.Refresh;
         Kafka.Query = _ => new WatermarkOffsets(0, 1);
         long position = 0;
@@ -132,17 +143,21 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public KafkaSessionTestSupport Kafka { get; } = new();
     public VerifierHostOptions Options { get; } = new()
     {
-        Mode = "verify", ScenarioId = "A01", ConfigurationId = "C0", RunId = "golden-run-001",
-        InstanceId = "golden-instance-001", ExpectedInstanceId = "golden-instance-001", ClientId = "golden-loadgen-client",
-        VerifierClientId = "synthetic-verifier", NamespaceName = "synthetic-namespace", VerifierCommit = "synthetic-verifier-commit",
+        Mode = "verify", ScenarioId = "A01", ConfigurationId = "C0", RunId = "synthetic-c5", Phase = "C0", Repeat = 1,
+        InstanceId = "pod-c5", ExpectedInstanceId = "synthetic-c5-c0-r1-loadgen", ClientId = "pod-c5", PodName = "pod-c5", PodUid = "pod-c5",
+        JobName = "synthetic-c5-c0-r1-verify", RepeatPrefix = "synthetic-c5/C0/r1/", PhasePrefix = "synthetic-c5/C0/",
+        SourceCommit = new string('a', 40),
+        VerifierClientId = "synthetic-verifier", NamespaceName = "synthetic-namespace", VerifierCommit = new string('a', 40),
         MaxInputDepth = 64, MaxArtifactBytes = 131072, MaxTotalInputBytes = 1048576, MaxRowBytes = 32768,
         MaxRowsPerArtifact = 100, MaxInventoryEntries = 8192, MaxInputEntries = 8192, MaxDiagnosticBytes = 256, MaxDiagnosticsPerCheck = 16,
         MaxNativeReportBytes = 32768, MaxBrokerEntries = 16, MaxPartitions = 2, MaxOutputBytes = 65536,
         MaxConsumedRecords = 16, MaxConsumedBytes = 4096, CleanupTimeout = TimeSpan.FromMilliseconds(100),
         IoTimeout = TimeSpan.FromMilliseconds(100), BlobIoTimeout = TimeSpan.FromMilliseconds(100),
         PollSlice = TimeSpan.FromMilliseconds(100), SafetyStop = TimeSpan.FromMilliseconds(1000),
-        ExpectedBrokerNames = ["broker-a/1"], StartLineInputName = "notes/custom.json", ResultOutputName = "results/custom.json",
-        StartLineOutputName = "notes/new.json"
+        ExpectedBrokerNames = null, StartLineInputName = "synthetic-c5/C0/r1/start-line.json",
+        ResultOutputName = "synthetic-c5/C0/r1/result.json", ArtifactPrefix = "synthetic-c5/C0/r1/producer/",
+        StartLineOutputName = "synthetic-c5/C0/r1/start-line.json",
+        BrokerInventoryOutputName = "synthetic-c5/C0/r1/broker-inventory.json"
     };
     public ScenarioLoader Loader { get; }
     public ScenarioResolver Resolver { get; }
@@ -150,9 +165,13 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public List<string> Reads { get; } = [];
     public List<string> Events { get; } = [];
     public byte[]? Note { get; set; }
+    public bool OmitStartLineNote { get; set; }
     public byte[]? Output { get; private set; }
     public string? OutputName { get; private set; }
     public int Creates { get; private set; }
+    public List<string> CreateNames { get; } = [];
+    public Dictionary<string, byte[]> CreatedObjects { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, byte[]> DiagnosticInputs { get; } = new(StringComparer.Ordinal);
     public Action<string, CancellationToken>? BeforeRead { get; set; }
     public Action<CancellationToken>? BeforeScenarioRead { get; set; }
     public Action? InputDispose { get; set; }
@@ -163,26 +182,58 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
 
     public StartLineHandler StartLine() => new(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
         new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this);
-    public VerifyRunHandler Verify() => new(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
-        new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this, this, Loader, Resolver, new HelmValuesGenerator());
-
-    public Task<byte[]?> ReadAsync(string logicalFixedName, CancellationToken cancellationToken)
+    public VerifyRunHandler Verify()
     {
-        Reads.Add(logicalFixedName);
-        BeforeRead?.Invoke(logicalFixedName, cancellationToken);
-        return Task.FromResult(Inputs.GetValueOrDefault(logicalFixedName));
+        if (!PreservePublicationReferences) RebuildPublicationReferences();
+        return new VerifyRunHandler(Microsoft.Extensions.Options.Options.Create(Options), HandlerClock ?? Kafka.Clock,
+            new VerifierKafkaSessionFactory(token => { SessionCreated?.Invoke(token); return Kafka.Session; }), this, this, Loader,
+            new Parchwell.Verifier.VerifyRun.Configuration.RegisteredProducerConfigurationResolver(Microsoft.Extensions.Options.Options.Create(Options)));
+    }
+    public bool PreservePublicationReferences { get; set; }
+    public long ChargedInputBytes => ledgerObjects.Values.Sum(bytes => (long)bytes.Length)
+        + verifierObjects.Values.Sum(bytes => (long)bytes.Length);
+
+    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken)
+    {
+        Reads.Add(name);
+        BeforeRead?.Invoke(name, cancellationToken);
+        if (verifierObjects.TryGetValue(name, out byte[]? verifierBytes)) return Task.FromResult<byte[]?>(verifierBytes);
+        string publicationPrefix = PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat!.Value, Options.InstanceId!) + "publication/";
+        if (name.StartsWith(publicationPrefix, StringComparison.Ordinal))
+        {
+            string logical = name[(name.LastIndexOf('/') + 1)..];
+            return Task.FromResult(Inputs.GetValueOrDefault(logical));
+        }
+        string diagnosticPrefix = PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat!.Value, Options.InstanceId!) + "diagnostics/";
+        if (name.StartsWith(diagnosticPrefix, StringComparison.Ordinal))
+        {
+            string logical = name[diagnosticPrefix.Length..];
+            return Task.FromResult(DiagnosticInputs.TryGetValue(logical, out byte[]? bytes) ? bytes : null);
+        }
+        if (ledgerObjects.TryGetValue(name, out byte[]? ledgerBytes)) return Task.FromResult<byte[]?>(ledgerBytes);
+        return Task.FromResult<byte[]?>(null);
     }
     public Task<byte[]?> ReadStartLineAsync(string name, CancellationToken cancellationToken)
     {
         Reads.Add(name);
         BeforeRead?.Invoke(name, cancellationToken);
-        return Task.FromResult(Note);
+        return Task.FromResult<byte[]?>(verifierObjects.GetValueOrDefault(name));
+    }
+    public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)
+    {
+        string[] names = ledgerObjects.Keys.Concat(DiagnosticInputs.Keys.Select(name =>
+                PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat!.Value, Options.InstanceId!) + "diagnostics/" + name))
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
+        return Task.FromResult(new BlobListing(names, 1, true));
     }
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
         Creates++;
+        CreateNames.Add(name);
+        CreatedObjects[name] = content;
         OutputName = name;
         Output = content;
+        verifierObjects[name] = content;
         Events.Add("create");
         AfterCreate?.Invoke(cancellationToken);
         return Task.CompletedTask;
@@ -198,6 +249,138 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     }
     public void Set(string name, JsonNode value) => Inputs[name] = Encoding.UTF8.GetBytes(value.ToJsonString());
     public JsonObject Json(string name) => JsonNode.Parse(Inputs[name]!)!.AsObject();
+    public void RebuildPublicationReferences()
+    {
+        linesBuilder.Clear();
+        RunIdentity producerIdentity = new(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!, Options.InstanceId!,
+            Options.InstanceId!, Options.ClientId!);
+        string[] descriptors = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+        if (!fixtureIdentityInitialized)
+        {
+            UpdateObject("index.json", value => value["identity"] = IdentityJson(producerIdentity));
+            UpdateObject("manifest.json", value =>
+            {
+                value["identity"] = IdentityJson(producerIdentity);
+                if (value["inventory"] is JsonArray rows)
+                    foreach (JsonNode? row in rows)
+                        if (row is JsonObject attempt) attempt["instance_id"] = producerIdentity.InstanceId;
+            });
+            UpdateObject("capabilities.json", value =>
+            {
+                value["identity"] = IdentityJson(producerIdentity);
+                value["observed_broker_names"] = new JsonArray("sasl_ssl://broker-a:9093/1");
+            });
+            foreach (string line in (Inputs["statistics.jsonl"] is byte[] statisticsBytes
+                ? Encoding.UTF8.GetString(statisticsBytes).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                : Array.Empty<string>()))
+            {
+                JsonObject envelope;
+                try { envelope = JsonNode.Parse(line)!.AsObject(); }
+                catch (System.Text.Json.JsonException) { linesBuilder.Append(line).Append('\n'); continue; }
+                envelope["identity"] = IdentityJson(producerIdentity);
+                JsonObject statisticsIdentity = envelope["statistics_identity"]!.AsObject();
+                statisticsIdentity["scenario_id"] = producerIdentity.ScenarioId;
+                statisticsIdentity["run_id"] = producerIdentity.RunId;
+                statisticsIdentity["client_id"] = producerIdentity.ClientId;
+                JsonObject raw = JsonNode.Parse(envelope["raw_json"]!.GetValue<string>())!.AsObject();
+                raw["client_id"] = producerIdentity.ClientId;
+                raw["name"] = "synthetic-client#" + producerIdentity.ClientId;
+                envelope["raw_json"] = raw.ToJsonString();
+                linesBuilder.Append(envelope.ToJsonString()).Append('\n');
+            }
+            if (Inputs["statistics.jsonl"] is byte[]) Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(linesBuilder.ToString());
+            linesBuilder.Clear();
+            foreach (string line in (Inputs["ledger.jsonl"] is byte[] ledgerBytes
+                ? Encoding.UTF8.GetString(ledgerBytes).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                : Array.Empty<string>()))
+            {
+                JsonObject row;
+                try { row = JsonNode.Parse(line)!.AsObject(); }
+                catch (System.Text.Json.JsonException) { linesBuilder.Append(line).Append('\n'); continue; }
+                row["identity"] = IdentityJson(producerIdentity);
+                if (row["attempt"] is JsonObject attempt) attempt["instance_id"] = producerIdentity.InstanceId;
+                linesBuilder.Append(row.ToJsonString()).Append('\n');
+            }
+            if (Inputs["ledger.jsonl"] is byte[]) Inputs["ledger.jsonl"] = Encoding.UTF8.GetBytes(linesBuilder.ToString());
+            fixtureIdentityInitialized = true;
+        }
+        UpdateObject("index.json", index =>
+        {
+            var items = new JsonArray();
+            foreach (string name in descriptors)
+            {
+                if (Inputs[name] is byte[] bytes)
+                {
+                    items.Add(new JsonObject
+                    {
+                        ["name"] = name, ["length"] = bytes.LongLength,
+                        ["sha256"] = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes))
+                    });
+                }
+                else if (index["artifacts"] is JsonArray old)
+                {
+                    JsonNode? retained = old.FirstOrDefault(item => item?["name"]?.GetValue<string>() == name);
+                    if (retained is not null) items.Add(retained.DeepClone());
+                }
+            }
+            index["artifacts"] = items;
+        });
+        var startIdentity = new RunIdentity(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!,
+            PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat!.Value),
+            PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat!.Value),
+            PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat!.Value));
+        var limits = new OutputLimits(Options.MaxOutputBytes!.Value, Options.MaxDiagnosticsPerCheck!.Value, Options.MaxDiagnosticBytes!.Value);
+        if (!OmitStartLineNote)
+            Note ??= StartLineNoteCodec.Write(new StartLineNote(1, startIdentity, VerifierKafkaSession.Topic,
+                [new PartitionHigh(0, 0)], "2026-10-24T00:00:00.0000000+00:00", Options.SourceCommit!,
+                "synthetic-managed", "synthetic-native"), limits);
+        if (!verifierObjects.TryGetValue(Options.BrokerInventoryOutputName!, out byte[]? inventory))
+        {
+            inventory = BrokerInventoryCodec.Write(startIdentity, [new BrokerMetadata(1, "broker-a", 9093)],
+                Options.SourceCommit!, Options.MaxOutputBytes.Value);
+            verifierObjects[Options.BrokerInventoryOutputName!] = inventory;
+        }
+        if (Note is null) verifierObjects.Remove(Options.StartLineInputName!);
+        else verifierObjects[Options.StartLineInputName!] = Note;
+        ArtifactReference Ref(string container, string name, byte[] bytes) =>
+            new(container, name, bytes.LongLength, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+        string startJob = PhaseIdentity.StartLineJobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);
+        var startReceipt = new WorkerReceipt(1, "start-line", Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!,
+            Options.Phase!, Options.Repeat, startJob, "start-line-pod", startIdentity, Options.SourceCommit!, 0, true,
+            "2026-10-24T00:00:00.0000000+00:00", "2026-10-24T00:00:01.0000000+00:00",
+            [Ref("verifier", Options.StartLineInputName!, Note ?? []), Ref("verifier", Options.BrokerInventoryOutputName!, inventory)], null, null);
+        verifierObjects[PhasePaths.StartLineCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value)] = PhaseWireCodec.WriteReceipt(startReceipt);
+        ledgerObjects.Clear();
+        string producerPrefix = PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!);
+        string jobName = PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);
+        var registration = new ProducerRegistration(1, producerIdentity, Options.Phase!, Options.Repeat.Value, jobName,
+            Options.PodName!, Options.PodUid!, Options.SourceCommit!);
+        ledgerObjects[PhasePaths.Registration(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!)] =
+            PhaseWireCodec.WriteRegistration(registration);
+        ledgerObjects[PhasePaths.ProducerCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!)] =
+            PhaseWireCodec.WriteProducerCompletion(new ProducerCompletionReceipt(1, producerIdentity, Options.Phase!,
+                Options.Repeat.Value, jobName, Options.PodName!, Options.PodUid!, Options.SourceCommit!, "loadgen", 0, true));
+        foreach (string name in PublicationNames)
+            if (Inputs[name] is byte[] bytes) ledgerObjects[PhasePaths.Publication(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!, name)] = bytes;
+    }
+    private static readonly string[] PublicationNames = ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+    private readonly StringBuilder linesBuilder = new();
+    private static JsonObject IdentityJson(RunIdentity value) => new()
+    {
+        ["scenario_id"] = value.ScenarioId, ["configuration_id"] = value.ConfigurationId, ["run_id"] = value.RunId,
+        ["instance_id"] = value.InstanceId, ["expected_instance_id"] = value.ExpectedInstanceId, ["client_id"] = value.ClientId
+    };
+    private void UpdateObject(string name, Action<JsonObject> update)
+    {
+        if (Inputs[name] is not byte[] bytes) return;
+        try
+        {
+            JsonObject value = JsonNode.Parse(bytes)!.AsObject();
+            update(value);
+            Set(name, value);
+        }
+        catch (System.Text.Json.JsonException) { }
+    }
     public static ConsumeResult<byte[], byte[]> Record() => new()
     {
         Topic = "document-events", Partition = 0, Offset = 0,
@@ -206,7 +389,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             Key = Encoding.UTF8.GetBytes("tenant-golden-d0"), Value = [],
             Headers = new Headers
             {
-                { "instance-id", Encoding.UTF8.GetBytes("golden-instance-001") },
+                { "instance-id", Encoding.UTF8.GetBytes("pod-c5") },
                 { "attempt-id", Encoding.UTF8.GetBytes("golden-attempt-000") },
                 { "sequence", Encoding.UTF8.GetBytes("0") }
             }

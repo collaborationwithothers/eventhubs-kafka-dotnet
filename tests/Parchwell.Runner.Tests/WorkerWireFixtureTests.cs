@@ -19,7 +19,7 @@ public sealed class WorkerWireFixtureTests
 {
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     [Fact]
-    public async Task Given_RealPublishersAndCodecs_When_ProducingFixtures_Then_AllBytesComeFromActualWorkerWriters()
+    public async Task Given_ActualPublishersAndCodecsWithLegacyReceipts_When_ProducingFixtures_Then_AllFixturesAreReadable()
     {
         string? supplied = Environment.GetEnvironmentVariable("PARCHWELL_WIRE_FIXTURE_DIRECTORY");
         string root = supplied ?? Path.Combine(Path.GetTempPath(), "parchwell-wire-" + Guid.NewGuid().ToString("N"));

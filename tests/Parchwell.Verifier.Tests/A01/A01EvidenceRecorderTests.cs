@@ -91,11 +91,21 @@ public sealed class A01EvidenceRecorderTests
     }
 
     [Fact]
-    public void Given_EmptyStreamOrWindows_When_Recorded_Then_ObservationIsUnusable()
+    public void Given_EmptyStatisticsWithUnavailablePrerequisite_When_Recorded_Then_ObservationIsUnusable()
     {
-        AssertUnusable(Record([]).ProbeObservation!);
-        AssertUnusable(Record([Report(90), Report(100, Broker(count: 0)), Report(110, Broker(count: -1))]).ProbeObservation!);
+        CheckAssessment[] unavailable=Assessments().Where(a=>a.CheckNumber!=17).ToArray();
+        AssertUnusable(Record([],Judgement(unavailable)).ProbeObservation!);
+        AssertUnusable(Record([Report(90), Report(100, Broker(count: 0)), Report(110, Broker(count: -1))],Judgement(unavailable)).ProbeObservation!);
         Assert.Empty(Record([]).RecordedEvidence!.Windows!);
+    }
+
+    [Fact]
+    public void Given_CompleteCoverageWithNoPositiveThrottleSample_When_Recorded_Then_UsableNonqualifyingFieldsAreAbsent()
+    {
+        ProbeRepeatObservation observation=Record([Report(90,Broker(count:0))]).ProbeObservation!;
+        Assert.True(observation.Usable); Assert.False(observation.Qualifying);
+        Assert.Null(observation.Broker); Assert.Null(observation.ReportIndex);
+        Assert.Null(observation.WindowCount); Assert.Null(observation.WindowMaximum);
     }
 
     [Theory]
@@ -179,7 +189,8 @@ public sealed class A01EvidenceRecorderTests
         Assert.NotNull(recording.RecordedEvidence);
         Assert.Null(recording.RecordedEvidence.DeliveryErrorCodes);
         Assert.Empty(recording.RecordedEvidence.Windows!);
-        AssertUnusable(recording.ProbeObservation!);
+        Assert.True(recording.ProbeObservation!.Usable);
+        Assert.False(recording.ProbeObservation.Qualifying);
         Assert.Empty(recording.Diagnostics);
     }
 
@@ -240,7 +251,7 @@ public sealed class A01EvidenceRecorderTests
     private static CheckAssessment[] Assessments() => Enumerable.Range(1, 27).Select(RecordedEvidence.WindowPass).ToArray();
     private static RunJudgementResult Judgement(IReadOnlyList<CheckAssessment>? assessments = null) =>
         new(VerifierResultStatus.CompleteValid, [], assessments ?? Assessments(), new(1, 0, 0, 0, 0, 0), null, new(RecordedEvidence.WindowPass(27), []), []);
-    private static A01EvidenceRecording Record(IReadOnlyList<ReportAssociation> reports) => A01EvidenceRecorder.Record(Request(reports), Judgement());
+    private static A01EvidenceRecording Record(IReadOnlyList<ReportAssociation> reports,RunJudgementResult? judgement=null) => A01EvidenceRecorder.Record(Request(reports), judgement??Judgement());
     internal static RunJudgementRequest Request(IReadOnlyList<ReportAssociation> reports) => RecordedEvidence.SyntheticRequest() with
     { Reports = reports, Statistics = ParseResult<IReadOnlyList<StatisticsEnvelope>>.Success(reports.Select(r => r.Envelope).ToArray()) };
     internal static NativeBrokerReport Broker(string key = "broker-a", long timeouts = 0, long disconnects = 0, long count = 1, long maximum = 0, long rttCount = 1, long p99 = 0) =>

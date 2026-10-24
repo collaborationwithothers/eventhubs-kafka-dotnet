@@ -8,9 +8,12 @@ using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun;
 using Parchwell.Verifier.VerifyRun.Storage;
+using Parchwell.Verifier.VerifyRun.Configuration;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
@@ -20,9 +23,9 @@ public sealed class GeneratedValuesCompatibilityTests
 {
     [Theory]
     [InlineData(null, null, null)]
-    [InlineData("generated-values.yaml", null, "generated-values.yaml")]
+    [InlineData("generated-values.yaml", null, null)]
     [InlineData(null, "/deployment/generated-values.yaml", "/deployment/generated-values.yaml")]
-    [InlineData("alias.yaml", "section.yaml", "alias.yaml")]
+    [InlineData("alias.yaml", "section.yaml", "section.yaml")]
     public void Given_OptionalComparisonSettings_When_BindingHostOptions_Then_ValidPathsAndOmissionRemainAccepted(
         string? aliasPath, string? sectionPath, string? expectedPath)
     {
@@ -44,49 +47,19 @@ public sealed class GeneratedValuesCompatibilityTests
     }
 
     [Theory]
-    [InlineData(false, "")]
-    [InlineData(true, "")]
-    [InlineData(false, " ")]
-    [InlineData(true, " ")]
-    [InlineData(false, "generated\nvalues.yaml")]
-    [InlineData(true, "generated\nvalues.yaml")]
-    [InlineData(false, "generated\0values.yaml")]
-    [InlineData(true, "generated\0values.yaml")]
-    public async Task Given_InvalidOptionalComparisonPath_When_StartingHost_Then_ValidationPrecedesHandlerBlobAndNativeCalls(
-        bool useSection, string path)
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("generated\nvalues.yaml")]
+    [InlineData("generated\0values.yaml")]
+    public void Given_InvalidConfiguredComparisonPath_When_Validated_Then_RejectsThePath(string path)
     {
-        using var fixture = new HostEvidenceBuilder();
-        int handlerCalls = 0;
-        int nativeSessions = 0;
-        string key = useSection ? "Verifier:GeneratedValuesFile" : "PARCHWELL_GENERATED_VALUES_FILE";
-        string[] arguments = VerifierHostTests.ArgumentsFor("verify", "unused").Append("--" + key + "=" + path).ToArray();
-        using IHost host = Program.BuildHost(arguments, services =>
-        {
-            services.RemoveAll<ILedgerArtifactSource>();
-            services.AddSingleton<ILedgerArtifactSource>(fixture);
-            services.RemoveAll<IVerifierArtifactStore>();
-            services.AddSingleton<IVerifierArtifactStore>(fixture);
-            services.RemoveAll<IScenarioSource>();
-            services.AddSingleton<IScenarioSource>(fixture);
-            services.RemoveAll<VerifierKafkaSessionFactory>();
-            services.AddSingleton(new VerifierKafkaSessionFactory(_ =>
-            {
-                nativeSessions++;
-                return fixture.Kafka.Session;
-            }));
-            services.RemoveAll<IVerifierModeHandler>();
-            services.AddSingleton<IVerifierModeHandler>(provider => new CountingVerifyHandler(
-                ActivatorUtilities.CreateInstance<VerifyRunHandler>(provider), () => handlerCalls++));
-        });
+        VerifierHostOptions options = VerifierHostTests.ValidOptions("verify");
+        options.GeneratedValuesFile = path;
 
-        OptionsValidationException exception = await Assert.ThrowsAsync<OptionsValidationException>(
-            () => host.StartAsync(TestContext.Current.CancellationToken));
+        var result = new VerifierHostOptionsValidator().Validate(null, options);
 
-        Assert.Contains(exception.Failures, failure => failure.Contains("Verifier:GeneratedValuesFile", StringComparison.Ordinal));
-        Assert.Equal(0, handlerCalls);
-        Assert.Empty(fixture.Reads);
-        Assert.Equal(0, fixture.Creates);
-        Assert.Equal(0, nativeSessions);
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Failures ?? [], failure => failure.Contains("GeneratedValuesFile", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -109,7 +82,14 @@ public sealed class GeneratedValuesCompatibilityTests
             .Append("--Verifier:ScenarioRoot=" + AppContext.BaseDirectory).ToArray());
         LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>()
             .LoadAsync("A01", TestContext.Current.CancellationToken);
-        ResolvedScenario resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded);
+        VerifierHostOptions options = host.Services.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+        string instance = "synthetic-loadgen-instance";
+        string job = PhaseIdentity.JobName(options.RunId!, "C0", 1);
+        var registration = new ProducerRegistration(1,
+            new RunIdentity("A01", "C0", options.RunId!, instance, instance, "loadgen-producer"),
+            "C0", 1, job, "loadgen-pod", "synthetic-loadgen-uid", options.SourceCommit!);
+        ResolvedScenario resolved = new RegisteredProducerConfigurationResolver(
+            Microsoft.Extensions.Options.Options.Create(options)).Resolve(loaded, registration);
         var roles = resolved.Configurations[configuration].Roles;
         Assert.Equal("loadgen-producer", roles[KafkaClientRole.LoadGenProducer].Settings["client.id"].Value);
         Assert.Equal("verifier-client", roles[KafkaClientRole.VerifierConsumer].Settings["client.id"].Value);
@@ -130,7 +110,7 @@ public sealed class GeneratedValuesCompatibilityTests
     [Theory]
     [InlineData("missing")]
     [InlineData("different")]
-    public async Task Given_PresentComparisonPathWithBadBytes_When_Verifying_Then_FailsBeforeNativeSession(string failure)
+    public async Task Given_LegacyGeneratedValuesSidecar_When_Verifying_Then_UsesRegisteredProducerConfiguration(string failure)
     {
         using var fixture = new HostEvidenceBuilder();
         string path = Path.Combine(Path.GetTempPath(), "verifier-values-" + Guid.NewGuid().ToString("N"));
@@ -140,9 +120,9 @@ public sealed class GeneratedValuesCompatibilityTests
         try
         {
             if (failure == "different") await File.WriteAllTextAsync(path, "different", TestContext.Current.CancellationToken);
-            await Assert.ThrowsAnyAsync<Exception>(() => fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
-            Assert.Equal(0, nativeSessions);
-            Assert.Equal(0, fixture.Creates);
+            Assert.Equal(0, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+            Assert.Equal(1, nativeSessions);
+            Assert.Equal(1, fixture.Creates);
         }
         finally { File.Delete(path); }
     }
@@ -158,7 +138,7 @@ public sealed class GeneratedValuesCompatibilityTests
         }).Build();
         var options = new VerifierHostOptions();
         new VerifierHostOptionsSetup(config).Configure(options);
-        Assert.Equal("/deployment/generated-values.yaml", options.GeneratedValuesFile);
+        Assert.Null(options.GeneratedValuesFile);
         Assert.Equal("synthetic-tenant", options.TenantId);
         Assert.Equal("synthetic-identity", options.WorkloadIdentityClientId);
         Assert.Equal("/synthetic/token", options.FederatedTokenFilePath);

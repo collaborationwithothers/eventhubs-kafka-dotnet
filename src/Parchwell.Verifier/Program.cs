@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Telemetry;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Scenario;
@@ -10,6 +11,8 @@ using Parchwell.Verifier.StartLine;
 using Parchwell.Verifier.ProbeGate;
 using Parchwell.Verifier.VerifyRun;
 using Parchwell.Verifier.VerifyRun.Storage;
+using Parchwell.Verifier.VerifyRun.Configuration;
+using Parchwell.Verifier.Judge;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -59,6 +62,7 @@ internal static partial class Program
         builder.Services.AddSingleton(timeProvider ?? TimeProvider.System);
         builder.Services.AddSingleton<VerifierExecutionState>();
         builder.Services.AddSingleton<VerifierCompletionState>();
+        builder.Services.AddSingleton<ICompletionReceiptPublisher, BlobCompletionReceiptPublisher>();
 
         RegisterSelectedMode(builder.Services, builder.Configuration);
         configureForTests?.Invoke(builder.Services);
@@ -85,20 +89,29 @@ internal static partial class Program
             services.AddSingleton<IVerifierModeHandler, ProbeGateHandler>();
             return;
         }
-        if (mode is not ("start-line" or "verify")) return;
+        if (mode is not ("start-line" or "verify" or "judge")) return;
 
-        services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
+        var preflight=new VerifierHostOptions();
+        new VerifierHostOptionsSetup(configuration).Configure(preflight);
+        ValidateOptionsResult preflightResult=new VerifierHostOptionsValidator().Validate(null,preflight);
+        if(!preflightResult.Succeeded)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),preflightResult.Failures??[]);
+        RegisterTelemetry(services,configuration);
+
+        if (mode is "start-line" or "verify")
         {
-            options.NamespaceName = configuration["Verifier:NamespaceName"]!;
-            options.ClientId = configuration["Verifier:VerifierClientId"]!;
-        });
-        services.AddParchwellKafkaAuthentication(options =>
-        {
-            options.TenantId = configuration["Verifier:TenantId"] ?? configuration["AZURE_TENANT_ID"];
-            options.ClientId = configuration["Verifier:WorkloadIdentityClientId"] ?? configuration["AZURE_CLIENT_ID"];
-            options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"] ?? configuration["AZURE_FEDERATED_TOKEN_FILE"];
-        });
-        services.AddSingleton<VerifierKafkaSessionFactory>();
+            services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
+            {
+                options.NamespaceName = configuration["Verifier:NamespaceName"]!;
+                options.ClientId = configuration["Verifier:VerifierClientId"]!;
+            });
+            services.AddParchwellKafkaAuthentication(options =>
+            {
+                options.TenantId = configuration["Verifier:TenantId"] ?? configuration["AZURE_TENANT_ID"];
+                options.ClientId = configuration["Verifier:WorkloadIdentityClientId"] ?? configuration["AZURE_CLIENT_ID"];
+                options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"] ?? configuration["AZURE_FEDERATED_TOKEN_FILE"];
+            });
+            services.AddSingleton<VerifierKafkaSessionFactory>();
+        }
         services.AddSingleton<IVerifierArtifactStore>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
@@ -112,16 +125,20 @@ internal static partial class Program
             services.AddSingleton<IVerifierModeHandler, StartLineHandler>();
             return;
         }
-
-        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
-        {
-            options.NamespaceName = configuration["Verifier:NamespaceName"]!;
-            options.ClientId = configuration["Verifier:ClientId"]!;
-        });
         services.AddParchwellScenarios(options =>
             configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
         services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
-            provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
+            AppContext.BaseDirectory));
+        if (mode == "judge")
+        {
+            services.AddSingleton<IProducerArtifactStore>(provider =>
+            {
+                var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+                return new BlobProducerArtifactStore(CreateBlobContainer(options, options.LedgerContainer!), options.MaxArtifactBytes!.Value);
+            });
+            services.AddSingleton<IVerifierModeHandler, JudgeHandler>();
+            return;
+        }
         services.AddSingleton<ILedgerArtifactSource>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
@@ -129,10 +146,38 @@ internal static partial class Program
                 CreateBlobContainer(options, options.LedgerContainer!),
                 options.ArtifactPrefix!, options.MaxArtifactBytes!.Value);
         });
+        services.AddSingleton<IProducerArtifactStore>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+            return new BlobProducerArtifactStore(CreateBlobContainer(options, options.LedgerContainer!), options.MaxArtifactBytes!.Value);
+        });
+        services.AddSingleton<RegisteredProducerConfigurationResolver>();
         services.AddSingleton<IVerifierModeHandler, VerifyRunHandler>();
     }
 
-    private static BlobContainerClient CreateBlobContainer(VerifierHostOptions options, string container)
+    private static void RegisterTelemetry(IServiceCollection services,ConfigurationManager configuration)
+    {
+        var credential=new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
+        {
+            TenantId=configuration["Verifier:TenantId"]??configuration["AZURE_TENANT_ID"],
+            ClientId=configuration["Verifier:WorkloadIdentityClientId"]??configuration["AZURE_CLIENT_ID"],
+            TokenFilePath=configuration["Verifier:FederatedTokenFilePath"]??configuration["AZURE_FEDERATED_TOKEN_FILE"]
+        });
+        string? mode=configuration["Verifier:Mode"];
+        services.AddParchwellTelemetry(credential,options=>
+        {
+            options.ConnectionString=configuration["Telemetry:ConnectionString"]??string.Empty;
+            options.ServiceName=configuration["Telemetry:ServiceName"]??string.Empty;
+            options.ServiceInstanceId=configuration["Telemetry:ServiceInstanceId"]??configuration["PARCHWELL_POD_NAME"]??string.Empty;
+            options.ScenarioId=configuration["Telemetry:ScenarioId"]??string.Empty;
+            options.RunId=configuration["Telemetry:RunId"]??string.Empty;
+        });
+        if(configuration["Telemetry:ServiceName"]!="Parchwell.Verifier"||configuration["Telemetry:ScenarioId"]!="A01"||
+            configuration["Telemetry:RunId"]!=configuration["Verifier:RunId"]||string.IsNullOrWhiteSpace(configuration["Telemetry:ServiceInstanceId"]))
+            throw new InvalidOperationException($"Telemetry identity is invalid for mode {mode}.");
+    }
+
+    internal static BlobContainerClient CreateBlobContainer(VerifierHostOptions options, string container)
     {
         var runnerWorkloadIdentityCredential = new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
         {
@@ -158,6 +203,8 @@ internal static partial class Program
         ILogger? logger = null;
         IConfiguration? configuration = null;
         VerifierCompletionState? completion = null;
+        ICompletionReceiptPublisher? receiptPublisher=null;
+        VerifierHostOptions? hostOptions=null;
         bool cleanupCompleted = true;
         try
         {
@@ -165,6 +212,8 @@ internal static partial class Program
             var clock = timeProvider ?? TimeProvider.System;
             state = host.Services.GetRequiredService<VerifierExecutionState>();
             completion = host.Services.GetRequiredService<VerifierCompletionState>();
+            receiptPublisher=host.Services.GetRequiredService<ICompletionReceiptPublisher>();
+            hostOptions=host.Services.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
             logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
             configuration = host.Services.GetRequiredService<IConfiguration>();
             watchdog = TryStartWatchdog(host, clock);
@@ -257,16 +306,24 @@ internal static partial class Program
 
         try
         {
-            if (cleanupCompleted && completion is not null)
+            if(cleanupCompleted&&completion is not null&&receiptPublisher is not null&&hostOptions is not null&&
+                completion.TryGetBlobReceipt(out string receiptContainer,out string receiptName,out byte[] receiptBytes))
             {
                 try
                 {
-                    await completion.WriteReceiptAsync(completionOutputForTests ?? Console.Out).ConfigureAwait(false);
+                    using var receiptDeadline=new CancellationTokenSource(hostOptions.IoTimeout??TimeSpan.FromSeconds(10),timeProvider??TimeProvider.System);
+                    await receiptPublisher.PublishAsync(hostOptions,receiptContainer,receiptName,receiptBytes,receiptDeadline.Token).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
+                    completion.MarkFailed();state?.MarkFailed();
                     return 1;
                 }
+            }
+            else if(cleanupCompleted&&completion is not null&&hostOptions?.Mode=="probe-gate")
+            {
+                try { await completion.WriteReceiptAsync(completionOutputForTests??Console.Out).ConfigureAwait(false); }
+                catch (Exception) { completion.MarkFailed(); state?.MarkFailed(); return 1; }
             }
             return state?.ExitCode ?? 1;
         }
@@ -344,7 +401,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
             usedBudgets.UnionWith(KafkaBudgets);
         }
 
-        if (mode is "probe-gate" or "verify")
+        if (mode is "probe-gate" or "verify" or "judge")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.IoTimeout));
         }
@@ -365,7 +422,10 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
             .AddInMemoryCollection(values)
             .Build();
         filtered.Bind(options);
-        options.GeneratedValuesFile = _configuration["PARCHWELL_GENERATED_VALUES_FILE"] ?? options.GeneratedValuesFile;
+        options.JobName ??= _configuration["PARCHWELL_JOB_NAME"];
+        options.PodName ??= _configuration["PARCHWELL_POD_NAME"];
+        options.PodUid ??= _configuration["PARCHWELL_POD_UID"];
+        options.SourceCommit ??= _configuration["PARCHWELL_SOURCE_COMMIT"];
         options.TenantId ??= _configuration["AZURE_TENANT_ID"];
         options.WorkloadIdentityClientId ??= _configuration["AZURE_CLIENT_ID"];
         options.FederatedTokenFilePath ??= _configuration["AZURE_FEDERATED_TOKEN_FILE"];

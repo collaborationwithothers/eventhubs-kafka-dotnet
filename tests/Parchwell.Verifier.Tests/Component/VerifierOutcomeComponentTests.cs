@@ -193,8 +193,8 @@ public sealed class VerifierOutcomeComponentTests
             var handlerDirectory = Path.Combine(directory, "synthetic-handler-inputs");
             Directory.CreateDirectory(handlerDirectory);
             foreach (var input in fullRun.Inputs)
-                await File.WriteAllBytesAsync(Path.Combine(handlerDirectory, input.Key), input.Value, linked.Token);
-            await File.WriteAllBytesAsync(Path.Combine(handlerDirectory, fullRun.Options.StartLineInputName!),
+                await WriteEvidenceAsync(handlerDirectory, input.Key, input.Value);
+            await WriteEvidenceAsync(handlerDirectory, fullRun.Options.StartLineInputName!,
                 fullRun.Outputs[fullRun.Options.StartLineInputName!], linked.Token);
             await File.WriteAllBytesAsync(Path.Combine(directory, "full-handler-result.json"), fullResult, linked.Token);
             success = recipe switch
@@ -247,6 +247,13 @@ public sealed class VerifierOutcomeComponentTests
         Assert.False(workDeadline.IsCancellationRequested, $"Work budget expired; no subsequent trial is permitted. Evidence: {directory}");
         Assert.True(cleanupSucceeded, $"Cleanup failed or was unknown; no subsequent trial is permitted. Evidence: {directory}");
         return success;
+
+        async Task WriteEvidenceAsync(string rootDirectory, string name, byte[] bytes, CancellationToken token = default)
+        {
+            string path = Path.Combine(rootDirectory, name);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllBytesAsync(path, bytes, token);
+        }
     }
 
     private static bool Matches(ConsumedObservation record, AttemptMessage target) =>

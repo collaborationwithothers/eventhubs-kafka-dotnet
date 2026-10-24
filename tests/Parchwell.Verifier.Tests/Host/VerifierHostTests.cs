@@ -26,7 +26,7 @@ public sealed class VerifierHostTests
     private static readonly string[] AllModes = ["start-line", "verify", "probe-gate"];
     private static readonly string[] SharedRequiredOptions =
     [
-        "ScenarioId", "VerifierCommit", "ProcessLifetime", "CleanupTimeout", "MaxOutputBytes",
+        "ScenarioId", "VerifierCommit", "SourceCommit", "ProcessLifetime", "CleanupTimeout", "MaxOutputBytes",
         "MaxDiagnosticsPerCheck", "MaxDiagnosticBytes"
     ];
     private static readonly string[] DuplicateRepeatPaths = ["same.json", "same.json"];
@@ -63,16 +63,18 @@ public sealed class VerifierHostTests
             "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
             "ExpectedRepeats.0.InstanceId", "ExpectedRepeats.0.ExpectedInstanceId", "ExpectedRepeats.0.ClientId"))
         .Concat(RequiredOptionsFor("start-line",
-            "ConfigurationId", "RunId", "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId",
+            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix", "PhasePrefix",
+            "ExpectedInstanceId", "PodName", "VerifierClientId",
             "NamespaceName", "BlobServiceUri", "VerifierContainer", "TokenTimeout", "MetadataTimeout",
             "WatermarkTimeout", "PollSlice", "BlobIoTimeout", "TenantId", "WorkloadIdentityClientId",
-            "FederatedTokenFilePath", "StartLineOutputName", "MaxPartitions", "MaxInputDepth"))
+            "FederatedTokenFilePath", "StartLineOutputName", "BrokerInventoryOutputName", "MaxPartitions", "MaxInputDepth"))
         .Concat(RequiredOptionsFor("verify",
-            "ConfigurationId", "RunId", "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId",
+            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix", "PhasePrefix",
+            "ExpectedInstanceId", "PodName", "VerifierClientId",
             "NamespaceName", "BlobServiceUri", "VerifierContainer", "TokenTimeout", "MetadataTimeout",
             "WatermarkTimeout", "PollSlice", "IoTimeout", "BlobIoTimeout", "TenantId",
             "WorkloadIdentityClientId", "FederatedTokenFilePath", "LedgerContainer", "ArtifactPrefix",
-            "StartLineInputName", "ResultOutputName", "ScenarioRoot", "ExpectedBrokerNames", "SafetyStop",
+            "StartLineInputName", "ResultOutputName", "ScenarioRoot", "SafetyStop",
             "MaxArtifactBytes", "MaxTotalInputBytes", "MaxRowBytes", "MaxRowsPerArtifact",
             "MaxInventoryEntries", "MaxInputEntries", "MaxPartitions", "MaxInputDepth", "MaxNativeReportBytes",
             "MaxBrokerEntries", "MaxConsumedRecords", "MaxConsumedBytes", "ScenarioLoadOptions"))
@@ -198,11 +200,11 @@ public sealed class VerifierHostTests
             "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
             "ExpectedRepeats.0.InstanceId", "ExpectedRepeats.0.ExpectedInstanceId", "ExpectedRepeats.0.ClientId")
         .Concat(RequiredOptionsFor("start-line", "ScenarioId", "VerifierCommit", "ConfigurationId", "RunId",
-            "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId", "NamespaceName",
+            "ExpectedInstanceId", "PodName", "VerifierClientId", "NamespaceName",
             "VerifierContainer", "TenantId", "WorkloadIdentityClientId", "FederatedTokenFilePath",
-            "StartLineOutputName"))
+            "StartLineOutputName", "BrokerInventoryOutputName"))
         .Concat(RequiredOptionsFor("verify", "ScenarioId", "VerifierCommit", "ConfigurationId", "RunId",
-            "InstanceId", "ExpectedInstanceId", "ClientId", "VerifierClientId", "NamespaceName",
+            "ExpectedInstanceId", "PodName", "VerifierClientId", "NamespaceName",
             "VerifierContainer", "TenantId", "WorkloadIdentityClientId", "FederatedTokenFilePath",
             "LedgerContainer", "ArtifactPrefix", "StartLineInputName", "ResultOutputName", "ScenarioRoot"));
 
@@ -526,15 +528,14 @@ public sealed class VerifierHostTests
         Assert.Single(registrations, service => service.ServiceType == typeof(IVerifierModeHandler));
         var factory = host.Services.GetRequiredService<KafkaConfigurationFactory>();
         Assert.Equal("verifier-client", factory.CreateVerifierConsumer().Configuration.ClientId);
+        Assert.Throws<InvalidOperationException>(() => factory.CreateLoadGenProducer());
         if (hasProducer)
         {
-            Assert.Equal("loadgen-producer", factory.CreateLoadGenProducer().Configuration.ClientId);
             Assert.NotNull(host.Services.GetRequiredService<ScenarioLoader>());
             Assert.NotNull(host.Services.GetRequiredService<ScenarioResolver>());
         }
         else
         {
-            Assert.Throws<InvalidOperationException>(() => factory.CreateLoadGenProducer());
             Assert.Null(host.Services.GetService<ScenarioLoader>());
         }
         Assert.DoesNotContain(registrations, service =>
@@ -803,7 +804,8 @@ public sealed class VerifierHostTests
     {
         Mode = mode,
         ScenarioId = "A01",
-        VerifierCommit = "test-commit",
+        VerifierCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        SourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         ProcessLifetime = TimeSpan.FromSeconds(10),
         CleanupTimeout = TimeSpan.FromSeconds(1),
         IoTimeout = TimeSpan.FromSeconds(1),
@@ -812,9 +814,16 @@ public sealed class VerifierHostTests
         MaxDiagnosticBytes = 512,
         ConfigurationId = "C0",
         RunId = "run-1",
-        InstanceId = "instance-1",
-        ExpectedInstanceId = "instance-1",
-        ClientId = "loadgen-producer",
+        Phase = "C0",
+        Repeat = 1,
+        JobName = mode switch { "start-line" => "run-1-c0-r1-start-line", "verify" => "run-1-c0-r1-verify", _ => null },
+        RepeatPrefix = "run-1/C0/r1/",
+        PhasePrefix = "run-1/C0/",
+        InstanceId = "run-1-c0-r1-loadgen",
+        ExpectedInstanceId = "run-1-c0-r1-loadgen",
+        ClientId = "run-1-c0-r1-loadgen",
+        PodName = "verifier-pod",
+        PodUid = "verifier-uid",
         VerifierClientId = "verifier-client",
         NamespaceName = "namespace-example",
         BlobServiceUri = "https://storage.example/",
@@ -827,15 +836,16 @@ public sealed class VerifierHostTests
         TenantId = "tenant-id",
         WorkloadIdentityClientId = "workload-client-id",
         FederatedTokenFilePath = "/tmp/token",
-        StartLineOutputName = "start-line.json",
+        StartLineOutputName = "run-1/C0/r1/start-line.json",
+        BrokerInventoryOutputName = "run-1/C0/r1/broker-inventory.json",
         MaxPartitions = 8,
         MaxInputDepth = 16,
         LedgerContainer = "ledger",
-        ArtifactPrefix = "run-1/",
-        StartLineInputName = "start-line.json",
-        ResultOutputName = "result.json",
+        ArtifactPrefix = "run-1/C0/r1/producer/",
+        StartLineInputName = "run-1/C0/r1/start-line.json",
+        ResultOutputName = "run-1/C0/r1/result.json",
         ScenarioRoot = "/tmp/scenarios",
-        ExpectedBrokerNames = ["broker-0"],
+        ExpectedBrokerNames = null,
         SafetyStop = TimeSpan.FromSeconds(2),
         MaxArtifactBytes = 1_048_576,
         MaxTotalInputBytes = 4_194_304,
@@ -933,9 +943,16 @@ public sealed class VerifierHostTests
     {
         var args = new List<string>
         {
+            $"--PARCHWELL_SOURCE_COMMIT={(mode == "probe-gate" ? "test-commit" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}",
             $"--Verifier:Mode={mode}",
             "--Verifier:ScenarioId=A01",
-            "--Verifier:VerifierCommit=test-commit",
+            $"--Verifier:VerifierCommit={(mode == "probe-gate" ? "test-commit" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}",
+            "--Verifier:LedgerContainer=ledger",
+            "--Telemetry:ConnectionString=InstrumentationKey=synthetic-key",
+            "--Telemetry:ServiceName=Parchwell.Verifier",
+            "--Telemetry:ServiceInstanceId=verifier-pod",
+            "--Telemetry:ScenarioId=A01",
+            "--Telemetry:RunId=run-1",
             "--Verifier:ProcessLifetime=00:00:10",
             "--Verifier:CleanupTimeout=00:00:01",
             "--Verifier:IoTimeout=00:00:01",
@@ -950,9 +967,16 @@ public sealed class VerifierHostTests
             [
                 "--Verifier:ConfigurationId=C0",
                 "--Verifier:RunId=run-1",
-                "--Verifier:InstanceId=instance-1",
-                "--Verifier:ExpectedInstanceId=instance-1",
-                "--Verifier:ClientId=loadgen-producer",
+                "--Verifier:Phase=C0",
+                "--Verifier:Repeat=1",
+                $"--Verifier:JobName={(mode == "start-line" ? "run-1-c0-r1-start-line" : "run-1-c0-r1-verify")}",
+                "--Verifier:RepeatPrefix=run-1/C0/r1/",
+                "--Verifier:PhasePrefix=run-1/C0/",
+                "--Verifier:InstanceId=run-1-c0-r1-loadgen",
+                "--Verifier:ExpectedInstanceId=run-1-c0-r1-loadgen",
+                "--Verifier:ClientId=run-1-c0-r1-loadgen",
+                "--Verifier:PodName=verifier-pod",
+                "--Verifier:PodUid=verifier-uid",
                 "--Verifier:VerifierClientId=verifier-client",
                 "--Verifier:NamespaceName=namespace-example",
                 "--Verifier:BlobServiceUri=https://storage.example/",
@@ -970,7 +994,8 @@ public sealed class VerifierHostTests
 
         if (mode == "start-line")
         {
-            args.Add("--Verifier:StartLineOutputName=start-line.json");
+            args.Add("--Verifier:StartLineOutputName=run-1/C0/r1/start-line.json");
+            args.Add("--Verifier:BrokerInventoryOutputName=run-1/C0/r1/broker-inventory.json");
             args.Add("--Verifier:MaxPartitions=8");
             args.Add("--Verifier:MaxInputDepth=16");
         }
@@ -979,11 +1004,10 @@ public sealed class VerifierHostTests
             args.AddRange(
             [
                 "--Verifier:LedgerContainer=ledger",
-                "--Verifier:ArtifactPrefix=run-1/",
-                "--Verifier:StartLineInputName=start-line.json",
-                "--Verifier:ResultOutputName=result.json",
+                "--Verifier:ArtifactPrefix=run-1/C0/r1/producer/",
+                "--Verifier:StartLineInputName=run-1/C0/r1/start-line.json",
+                "--Verifier:ResultOutputName=run-1/C0/r1/result.json",
                 "--Verifier:ScenarioRoot=/tmp/scenarios",
-                "--Verifier:ExpectedBrokerNames:0=broker-0",
                 "--Verifier:SafetyStop=00:00:02",
                 "--Verifier:MaxArtifactBytes=1048576",
                 "--Verifier:MaxTotalInputBytes=4194304",

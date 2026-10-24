@@ -6,18 +6,21 @@ using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Window;
+using Parchwell.Verifier.Common.Phase;
+using System.Security.Cryptography;
 
 namespace Parchwell.Verifier.StartLine;
 
 /// <summary>Captures and publishes a starting boundary after native cleanup completes.</summary>
 internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
-    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore artifacts) : IVerifierModeHandler
+    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore artifacts, VerifierCompletionState? completion = null) : IVerifierModeHandler
 {
     public VerifierMode Mode => VerifierMode.StartLine;
 
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         VerifierHostOptions options = configured.Value;
+        DateTimeOffset started=clock.GetUtcNow();
         VerifierKafkaSession? session = null;
         byte[] bytes;
         byte[]? inventory = null;
@@ -26,8 +29,9 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
             session = sessions.Create(cancellationToken);
             session.InstallToken(cancellationToken);
             IReadOnlyDictionary<int, long> highs = session.ReadHighWatermarks(cancellationToken: cancellationToken);
+            string expectedLoadGenJob = PhaseIdentity.JobName(options.RunId!, options.Phase!, options.Repeat!.Value);
             var identity = new RunIdentity(options.ScenarioId!, options.ConfigurationId!, options.RunId!,
-                options.InstanceId!, options.ExpectedInstanceId!, options.ClientId!);
+                expectedLoadGenJob, expectedLoadGenJob, expectedLoadGenJob);
             var note = new StartLineNote(1, identity, VerifierKafkaSession.Topic,
                 highs.OrderBy(p => p.Key).Select(p => new PartitionHigh(p.Key, p.Value)).ToArray(),
                 clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture), options.VerifierCommit!,
@@ -57,6 +61,13 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
             await artifacts.CreateAsync(options.BrokerInventoryOutputName!, inventory, publication.Token).ConfigureAwait(false);
             CheckDeadline(publicationOrigin, options.BlobIoTimeout.Value, publication.Token);
         }
+        var receiptIdentity=new RunIdentity(options.ScenarioId!,options.ConfigurationId!,options.RunId!,
+            options.ExpectedInstanceId!,options.ExpectedInstanceId!,options.ExpectedInstanceId!);
+        ArtifactReference Reference(string name,byte[] content)=>new("verifier",name,content.LongLength,Convert.ToHexStringLower(SHA256.HashData(content)));
+        var receipt=new WorkerReceipt(1,"start-line",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.Repeat,
+            options.JobName!,options.PodName!,receiptIdentity,options.SourceCommit!,0,true,started.ToString("O",CultureInfo.InvariantCulture),
+            clock.GetUtcNow().ToString("O",CultureInfo.InvariantCulture),[Reference(options.StartLineOutputName!,bytes),Reference(options.BrokerInventoryOutputName!,inventory!)],null,null);
+        completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat!.Value),PhaseWireCodec.WriteReceipt(receipt));
         return 0;
     }
 

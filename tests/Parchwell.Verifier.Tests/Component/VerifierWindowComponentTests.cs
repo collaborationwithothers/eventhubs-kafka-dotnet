@@ -16,7 +16,8 @@ public sealed class VerifierWindowComponentTests
         using var run = new ComponentRunHarness(fixture.ObserverBootstrapServers);
         await run.SetAttemptsAsync();
         Assert.Equal(0, await run.StartAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(0, await run.VerifyAsync(TestContext.Current.CancellationToken));
+        int verifyExit = await run.VerifyAsync(TestContext.Current.CancellationToken);
+        Assert.True(verifyExit == 0, string.Join("\n", run.Outputs.Select(pair => pair.Key + ": " + Encoding.UTF8.GetString(pair.Value))));
         var result = Result(run);
         Assert.Equal("complete_valid", result["status"]!.GetValue<string>());
         foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })

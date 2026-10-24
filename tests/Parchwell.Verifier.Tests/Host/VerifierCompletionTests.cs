@@ -30,6 +30,11 @@ public sealed class VerifierCompletionTests
         Assert.Equal(code, exit);
         Assert.True(cleanup.Stopped);
         Assert.True(cleanup.Disposed);
+        if (mode != "probe-gate")
+        {
+            Assert.Equal("", output.ToString());
+            return;
+        }
         string line = Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.StartsWith("PARCHWELL_COMPLETION ", line, StringComparison.Ordinal);
         using JsonDocument json = JsonDocument.Parse(line["PARCHWELL_COMPLETION ".Length..]);
@@ -80,18 +85,6 @@ public sealed class VerifierCompletionTests
             services.AddSingleton<IVerifierModeHandler>(new Handler(VerifierMode.ProbeGate, _ => Task.FromResult(0)));
         }, completionOutputForTests: writer);
         Assert.Equal(1, exit);
-    }
-
-    [Fact]
-    public async Task Given_OversizedIdentity_When_ReceiptWritten_Then_BoundsBytes()
-    {
-        var state = new VerifierCompletionState();
-        var options = VerifierHostTests.ValidOptions("verify");
-        options.RunId = new string('r', 65_536);
-        state.MarkReturned(options, 0, CancellationToken.None, CancellationToken.None);
-        using var output = new StringWriter(CultureInfo.InvariantCulture);
-        await Assert.ThrowsAsync<InputLimitExceededException>(() => state.WriteReceiptAsync(output));
-        Assert.Equal("", output.ToString());
     }
 
     private static VerifierMode Parse(string mode) => mode switch

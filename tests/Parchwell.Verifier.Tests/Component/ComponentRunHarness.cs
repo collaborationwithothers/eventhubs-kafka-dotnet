@@ -8,6 +8,8 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Scenario;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Tests.Support;
@@ -18,7 +20,7 @@ using Parchwell.Verifier.VerifyRun.Storage;
 namespace Parchwell.Verifier.Tests.Component;
 
 /// <summary>Runs production handlers against local Kafka and explicitly synthetic serialized run artifacts.</summary>
-internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, IVerifierArtifactStore
+internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, IVerifierArtifactStore, IProducerArtifactStore
 {
     private readonly ServiceProvider services;
     private readonly KafkaSessionTestSupport authentication = new();
@@ -28,14 +30,19 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     internal Dictionary<string, byte[]> Inputs { get; } = new(StringComparer.Ordinal);
     internal Dictionary<string, byte[]> Outputs { get; } = new(StringComparer.Ordinal);
+    private Dictionary<string, byte[]> ProducerObjects { get; } = new(StringComparer.Ordinal);
     internal Action? AfterEndQuery { get; set; }
     internal Action? AfterAssign { get; set; }
     internal List<ErrorCode> NativeErrors { get; } = [];
     internal VerifierHostOptions Options { get; } = new()
     {
-        ScenarioId = "A01", ConfigurationId = "C0", RunId = "synthetic-component-run",
-        InstanceId = "synthetic-component-instance", ExpectedInstanceId = "synthetic-component-instance",
-        ClientId = "golden-loadgen-client", VerifierClientId = "synthetic-verifier", VerifierCommit = "synthetic-component",
+        ScenarioId = "A01", ConfigurationId = "C0", RunId = "synthetic-component-run", Phase = "C0", Repeat = 1,
+        JobName = "synthetic-component-run-c0-r1-verify", RepeatPrefix = "synthetic-component-run/C0/r1/",
+        PhasePrefix = "synthetic-component-run/C0/", SourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        PodName = "synthetic-component-pod", PodUid = "synthetic-component-pod-uid", NamespaceName = "syntheticns",
+        VerifierContainer = "verifier-data", LedgerContainer = "ledger-data",
+        InstanceId = "synthetic-component-instance", ExpectedInstanceId = "synthetic-component-run-c0-r1-loadgen",
+        ClientId = "golden-loadgen-client", VerifierClientId = "synthetic-verifier", VerifierCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         TokenTimeout = TimeSpan.FromSeconds(10), MetadataTimeout = TimeSpan.FromSeconds(10),
         WatermarkTimeout = TimeSpan.FromSeconds(10), PollSlice = TimeSpan.FromMilliseconds(100),
         SafetyStop = TimeSpan.FromSeconds(10), IoTimeout = TimeSpan.FromSeconds(10),
@@ -44,20 +51,23 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         MaxRowBytes = 1_000_000, MaxRowsPerArtifact = 100, MaxInventoryEntries = 10000, MaxInputEntries = 10000,
         MaxNativeReportBytes = 1_000_000, MaxBrokerEntries = 100, MaxConsumedRecords = 100, MaxConsumedBytes = 1_000_000,
         MaxOutputBytes = 1_000_000, MaxDiagnosticsPerCheck = 32, MaxDiagnosticBytes = 4096,
-        ExpectedBrokerNames = ["broker-a/1"], StartLineOutputName = "synthetic-note.json",
-        StartLineInputName = "synthetic-note.json", ResultOutputName = "synthetic-result.json"
+        ExpectedBrokerNames = null, StartLineOutputName = "synthetic-component-run/C0/r1/start-line.json",
+        BrokerInventoryOutputName = "synthetic-component-run/C0/r1/broker-inventory.json",
+        StartLineInputName = "synthetic-component-run/C0/r1/start-line.json",
+        ResultOutputName = "synthetic-component-run/C0/r1/result.json",
+        ArtifactPrefix = "synthetic-component-run/C0/r1/producer/"
     };
 
     internal ComponentRunHarness(string bootstrap, string? instance = null)
     {
         this.bootstrap = bootstrap;
-        if (instance is not null) Options.InstanceId = Options.ExpectedInstanceId = instance;
+        if (instance is not null) Options.InstanceId = instance;
         authentication.Refresh();
         var registrations = new ServiceCollection();
         foreach (KafkaClientRole role in new[] { KafkaClientRole.LoadGenProducer, KafkaClientRole.VerifierConsumer })
             registrations.AddParchwellKafka(role, options =>
             {
-                options.NamespaceName = "golden-synthetic-namespace";
+                options.NamespaceName = "syntheticns";
                 options.ClientId = role == KafkaClientRole.LoadGenProducer ? "golden-loadgen-client" : "synthetic-verifier";
             });
         services = registrations.BuildServiceProvider();
@@ -134,10 +144,85 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         return row;
     }
 
-    internal Task<int> StartAsync(CancellationToken token) => new StartLineHandler(
-        Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(false), this).ExecuteAsync(token);
-    internal Task<int> VerifyAsync(CancellationToken token) => new VerifyRunHandler(
-        Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(true), this, this, loader, resolver, new HelmValuesGenerator()).ExecuteAsync(token);
+    internal async Task<int> StartAsync(CancellationToken token)
+    {
+        Options.JobName = PhaseIdentity.StartLineJobName(Options.RunId!, Options.Phase!, Options.Repeat!.Value);
+        int result = await new StartLineHandler(
+            Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(false), this).ExecuteAsync(token);
+        string noteName = Options.StartLineOutputName!;
+        string inventoryName = Options.BrokerInventoryOutputName!;
+        byte[] note = Outputs[noteName];
+        byte[] inventory = Outputs[inventoryName];
+        JsonArray discovered = JsonNode.Parse(inventory)!["brokers"]!.AsArray();
+        string[] brokerNames = discovered.Select(item => item!["name"]!.GetValue<string>()).ToArray();
+        string[] reports = Encoding.UTF8.GetString(Inputs["statistics.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < reports.Length; i++)
+        {
+            JsonObject envelope = JsonNode.Parse(reports[i])!.AsObject();
+            JsonObject native = JsonNode.Parse(envelope["raw_json"]!.GetValue<string>())!.AsObject();
+            JsonObject oldBrokers = native["brokers"]!.AsObject();
+            JsonObject remapped = new();
+            foreach ((string brokerName, JsonNode? broker) in oldBrokers)
+                remapped[brokerNames[0]] = broker!.DeepClone();
+            native["brokers"] = remapped;
+            envelope["raw_json"] = native.ToJsonString();
+            reports[i] = envelope.ToJsonString();
+        }
+        Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(string.Join('\n', reports) + (reports.Length == 0 ? "" : "\n"));
+        JsonObject capabilities = JsonNode.Parse(Inputs["capabilities.json"])!.AsObject();
+        capabilities["observed_broker_names"] = new JsonArray(brokerNames.Select(name => JsonValue.Create(name)).ToArray());
+        Inputs["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capabilities);
+        string loadgenJob = PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);
+        var identity = new RunIdentity(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!, loadgenJob, loadgenJob, loadgenJob);
+        ArtifactReference Ref(string name, byte[] bytes) =>
+            new("verifier", name, bytes.LongLength, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+        string timestamp = DateTimeOffset.UtcNow.ToString("O");
+        var receipt = new WorkerReceipt(1, "start-line", Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!,
+            Options.Phase!, Options.Repeat, Options.JobName!, Options.PodName!, identity, Options.SourceCommit!, 0, true,
+            timestamp, timestamp, [Ref(noteName, note), Ref(inventoryName, inventory)], null, null);
+        Outputs[PhasePaths.StartLineCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value)] = PhaseWireCodec.WriteReceipt(receipt);
+        Options.JobName = PhaseIdentity.VerifyJobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);
+        return result;
+    }
+
+    internal Task<int> VerifyAsync(CancellationToken token)
+    {
+        PrepareProducerArtifacts();
+        return new VerifyRunHandler(
+            Microsoft.Extensions.Options.Options.Create(Options), TimeProvider.System, Factory(true), this, this, loader,
+            new Parchwell.Verifier.VerifyRun.Configuration.RegisteredProducerConfigurationResolver(Microsoft.Extensions.Options.Options.Create(Options))).ExecuteAsync(token);
+    }
+
+    private void PrepareProducerArtifacts()
+    {
+        ProducerObjects.Clear();
+        string producerPrefix = PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat!.Value, Options.InstanceId!);
+        string loadgenJob = PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);
+        var identity = new RunIdentity(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!,
+            Options.InstanceId!, Options.InstanceId!, Options.ClientId!);
+        var registration = new ProducerRegistration(1, identity, Options.Phase!, Options.Repeat.Value,
+            loadgenJob, Options.PodName!, Options.PodUid!, Options.SourceCommit!);
+        ProducerObjects[PhasePaths.Registration(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!)] =
+            PhaseWireCodec.WriteRegistration(registration);
+        ProducerObjects[PhasePaths.ProducerCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!)] =
+            PhaseWireCodec.WriteProducerCompletion(new ProducerCompletionReceipt(1, identity, Options.Phase!, Options.Repeat.Value,
+                loadgenJob, Options.PodName!, Options.PodUid!, Options.SourceCommit!, "loadgen", 0, true));
+        string[] descriptors = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+        JsonObject index = JsonNode.Parse(Inputs["index.json"])!.AsObject();
+        index["artifacts"] = new JsonArray(descriptors.Select(name =>
+        {
+            byte[] content = Inputs[name];
+            return (JsonNode)new JsonObject
+            {
+                ["name"] = name,
+                ["length"] = content.LongLength,
+                ["sha256"] = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(content))
+            };
+        }).ToArray());
+        Inputs["index.json"] = JsonSerializer.SerializeToUtf8Bytes(index);
+        foreach ((string name, byte[] content) in Inputs)
+            ProducerObjects[producerPrefix + "publication/" + name] = content;
+    }
 
     private VerifierKafkaSessionFactory Factory(bool end) => new(_ =>
     {
@@ -177,10 +262,16 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         IsolationLevel = IsolationLevel.ReadCommitted, AllowAutoCreateTopics = false
     }).Build();
 
-    public Task<byte[]?> ReadAsync(string logicalFixedName, CancellationToken cancellationToken) =>
-        Task.FromResult(Inputs.GetValueOrDefault(logicalFixedName));
+    public Task<byte[]?> ReadAsync(string logicalFixedName, CancellationToken cancellationToken)
+    {
+        if (Outputs.TryGetValue(logicalFixedName, out byte[]? verifierBytes))
+            return Task.FromResult<byte[]?>(verifierBytes);
+        return Task.FromResult(ProducerObjects.GetValueOrDefault(logicalFixedName));
+    }
     public Task<byte[]?> ReadStartLineAsync(string name, CancellationToken cancellationToken) =>
         Task.FromResult(Outputs.GetValueOrDefault(name));
+    public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>
+        Task.FromResult(new BlobListing(ProducerObjects.Keys.Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToArray(), 1, true));
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

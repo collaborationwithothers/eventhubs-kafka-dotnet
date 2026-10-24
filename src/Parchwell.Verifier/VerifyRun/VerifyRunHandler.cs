@@ -1,171 +1,238 @@
+using System.Security.Cryptography;
 using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
+using Parchwell.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Window;
+using Parchwell.Verifier.VerifyRun.A01;
+using Parchwell.Verifier.VerifyRun.Configuration;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Judgement;
-using Parchwell.Verifier.VerifyRun.A01;
-using Parchwell.Verifier.VerifyRun.Storage;
+using Parchwell.Verifier.VerifyRun.Publication;
 using Parchwell.Verifier.VerifyRun.Window;
 
 namespace Parchwell.Verifier.VerifyRun;
 
-/// <summary>Judges fixed producer inputs and one fixed Kafka window before publishing once.</summary>
+/// <summary>Discovers one producer and independently accepts its fixed publication before judging a Kafka window.</summary>
 internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
-    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore artifacts, ILedgerArtifactSource ledgerSource,
-    ScenarioLoader scenarioLoader, ScenarioResolver scenarioResolver, HelmValuesGenerator valuesGenerator) : IVerifierModeHandler
+    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore,
+    ScenarioLoader scenarioLoader, RegisteredProducerConfigurationResolver configurationResolver,
+    VerifierCompletionState? completion = null) : IVerifierModeHandler
 {
-    private static readonly HashSet<string> JudgedPayloads = new(StringComparer.Ordinal)
-    {
-        "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"
-    };
-
     public VerifierMode Mode => VerifierMode.Verify;
 
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        VerifierHostOptions options = configured.Value;
-        VerifierKafkaSession? session = null;
-        using var kafkaWork = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        ITimer? safetyTimer = null;
-        byte[] bytes;
-        VerifierResultStatus status;
-        try
+        VerifierHostOptions options=configured.Value;
+        DateTimeOffset started=clock.GetUtcNow();
+        string repeatPrefix=PhaseIdentity.RepeatPrefix(options.RunId!,options.Phase!,options.Repeat!.Value);
+        string producerRoot=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,options.Repeat.Value);
+        var inputLimits=new InputLimits(options.MaxInputDepth!.Value,options.MaxArtifactBytes!.Value,options.MaxTotalInputBytes!.Value,
+            options.MaxRowBytes!.Value,options.MaxRowsPerArtifact!.Value,options.MaxInputEntries!.Value,options.MaxDiagnosticBytes!.Value);
+        var budget=new InputBudget(inputLimits);
+        var outputLimits=new OutputLimits(options.MaxOutputBytes!.Value,options.MaxDiagnosticsPerCheck!.Value,options.MaxDiagnosticBytes!.Value);
+
+        BlobListing registrations=await ReadLedgerListing(producerRoot,cancellationToken).ConfigureAwait(false);
+        if(!registrations.IsComplete)throw new InvalidOperationException(registrations.FailureCode??"listing_incomplete");
+        string[] registrationNames=registrations.Names.Where(n=>n.EndsWith("/registration.json",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
+        if(registrationNames.Length!=1)throw new InvalidOperationException(registrationNames.Length==0?"producer_registration_missing":"producer_registration_not_singleton");
+        string registrationName=registrationNames[0];
+        string instance=RegistrationInstance(producerRoot,registrationName);
+        byte[] registrationBytes=await ReadLedgerRequired(registrationName,cancellationToken).ConfigureAwait(false);
+        budget.ConsumeBytes(registrationBytes.Length);
+        ProducerRegistration registration=PhaseWireCodec.ReadRegistration(registrationBytes);
+        if(registration.Identity.InstanceId!=instance||registration.Identity.ExpectedInstanceId!=instance||registration.JobName!=options.ExpectedInstanceId||
+            registration.Identity.RunId!=options.RunId||registration.Phase!=options.Phase||registration.RepeatNumber!=options.Repeat||registration.SourceCommit!=options.SourceCommit)
+            throw new InvalidOperationException("producer_registration_binding_invalid");
+
+        byte[] startReceiptBytes=await ReadVerifierRequired(PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat.Value),cancellationToken).ConfigureAwait(false);
+        budget.ConsumeBytes(startReceiptBytes.Length);
+        WorkerReceipt startReceipt=PhaseWireCodec.ReadReceipt(startReceiptBytes);
+        string startJob=PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,options.Repeat.Value);
+        if(startReceipt.Mode!="start-line"||startReceipt.JobName!=startJob||startReceipt.RunId!=options.RunId||startReceipt.Phase!=options.Phase||startReceipt.Repeat!=options.Repeat||startReceipt.SourceCommit!=options.SourceCommit)
+            throw new InvalidOperationException("start_line_receipt_invalid");
+        string startName=PhasePaths.StartLine(options.RunId!,options.Phase!,options.Repeat.Value);
+        string inventoryName=PhasePaths.BrokerInventory(options.RunId!,options.Phase!,options.Repeat.Value);
+        ValidateReference(startReceipt.Artifacts[0],"verifier",startName);
+        ValidateReference(startReceipt.Artifacts[1],"verifier",inventoryName);
+        byte[]? noteBytes=await ReadVerifier(startName,cancellationToken).ConfigureAwait(false);
+        byte[] inventoryBytes=await ReadVerifierRequired(inventoryName,cancellationToken).ConfigureAwait(false);
+        if(noteBytes is not null)budget.ConsumeBytes(noteBytes.Length);budget.ConsumeBytes(inventoryBytes.Length);
+        if(noteBytes is not null)VerifyHashAndLength(startReceipt.Artifacts[0],noteBytes);
+        VerifyHashAndLength(startReceipt.Artifacts[1],inventoryBytes);
+        RunIdentity expectedStartIdentity=ExpectedStartIdentity(options);
+        ParseResult<StartLineNote> start=noteBytes is null
+            ?ParseResult<StartLineNote>.Failure(new StructuralProblem(7,"missing_input",startName,null,null,null))
+            :StartLineNoteCodec.Read(noteBytes,startName,inputLimits,options.MaxPartitions!.Value);
+        ParseResult<BrokerInventory> inventory=BrokerInventoryReader.Read(inventoryBytes,inventoryName,expectedStartIdentity,options.SourceCommit!,inputLimits);
+
+        string producerCompletionName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,options.Repeat.Value,instance);
+        byte[] completionBytes=await ReadLedgerRequired(producerCompletionName,cancellationToken).ConfigureAwait(false);
+        budget.ConsumeBytes(completionBytes.Length);
+        ProducerCompletionReceipt producerReceipt=PhaseWireCodec.ReadProducerCompletion(completionBytes);
+        string producerPrefix=PhasePaths.ProducerPrefix(options.RunId!,options.Phase!,options.Repeat.Value,instance);
+        BlobListing publicationListing=await ReadLedgerListing(producerPrefix+"publication/",cancellationToken).ConfigureAwait(false);
+        string[] readNames=["index.json","ledger.jsonl","manifest.json","statistics.jsonl","request-lifecycle.jsonl","capabilities.json"];
+        var raw=new Dictionary<string,byte[]?>(StringComparer.Ordinal);
+        foreach(string name in readNames)
+            raw[name]=await ReadLedgerOptional(PhasePaths.Publication(options.RunId!,options.Phase!,options.Repeat.Value,instance,name),cancellationToken).ConfigureAwait(false);
+
+        ParseResult<ArtifactIndex> index=ArtifactIndexReader.Read(raw["index.json"],inputLimits,budget);
+        ParseResult<IReadOnlyList<LedgerRow>> ledger=LedgerReader.ReadRows(Memory("ledger.jsonl"),inputLimits,budget);
+        ParseResult<SealedRunManifest> manifest=ManifestReader.Read(Memory("manifest.json"),inputLimits,budget,options.MaxInventoryEntries!.Value);
+        ParseResult<IReadOnlyList<StatisticsEnvelope>> statistics=CapturedEvidenceReader.ReadStatistics(Memory("statistics.jsonl"),"statistics.jsonl",inputLimits,budget);
+        ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle=CapturedEvidenceReader.ReadLifecycle(Memory("request-lifecycle.jsonl"),"request-lifecycle.jsonl",inputLimits,budget);
+        ParseResult<CapturedCapabilities> capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget);
+        ReportAssociation[] reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
+            NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
+        ArtifactReference Ref(string container,string name,byte[] bytes)=>new(container,name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
+        PublicationReadOutcome accepted=start.Value is null
+            ?new(null,raw,["start_line_invalid"],start.IsExecutionFailure)
+            :PublicationAcceptance.Evaluate(publicationListing,producerPrefix,raw,registration,producerReceipt,
+                index.Value,manifest.Value,start.Value,inventory.Value,options.SourceCommit!,Ref("verifier",startName,noteBytes??[]),Ref("verifier",inventoryName,inventoryBytes),Ref("ledger",producerCompletionName,completionBytes),
+                options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes));
+        bool diagnosticsSelected=false;
+        if(!accepted.Accepted)
         {
-            var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes!.Value,
-                options.MaxTotalInputBytes!.Value, options.MaxRowBytes!.Value, options.MaxRowsPerArtifact!.Value,
-                options.MaxInputEntries!.Value, options.MaxDiagnosticBytes!.Value);
-            var budget = new InputBudget(limits);
-            var outputLimits = new OutputLimits(options.MaxOutputBytes!.Value,
-                options.MaxDiagnosticsPerCheck!.Value, options.MaxDiagnosticBytes!.Value);
-            var identity = new RunIdentity(options.ScenarioId!, options.ConfigurationId!, options.RunId!,
-                options.InstanceId!, options.ExpectedInstanceId!, options.ClientId!);
-            ParseResult<ArtifactIndex> index = ArtifactIndexReader.Read(await ReadAsync("index.json").ConfigureAwait(false), limits, budget);
-            if (index.IsExecutionFailure) throw new InvalidOperationException("The producer artifact index is missing or malformed.");
-            ParseResult<IReadOnlyList<LedgerRow>> ledger = LedgerReader.ReadRows(await ReadAsync("ledger.jsonl").ConfigureAwait(false), limits, budget);
-            ParseResult<SealedRunManifest> manifest = ManifestReader.Read(await ReadAsync("manifest.json").ConfigureAwait(false), limits, budget, options.MaxInventoryEntries!.Value);
-            ParseResult<IReadOnlyList<StatisticsEnvelope>> statistics = CapturedEvidenceReader.ReadStatistics(
-                await ReadAsync("statistics.jsonl").ConfigureAwait(false), "statistics.jsonl", limits, budget);
-            ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle = CapturedEvidenceReader.ReadLifecycle(
-                await ReadAsync("request-lifecycle.jsonl").ConfigureAwait(false), "request-lifecycle.jsonl", limits, budget);
-            ParseResult<CapturedCapabilities> capabilities = CapturedEvidenceReader.ReadCapabilities(
-                await ReadAsync("capabilities.json").ConfigureAwait(false), "capabilities.json", limits, budget);
-            ReportAssociation[] reports = statistics.Value?.Select(envelope => new ReportAssociation(envelope,
-                NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson), "statistics.jsonl", limits,
-                    budget, options.MaxNativeReportBytes!.Value, options.MaxBrokerEntries!.Value))).ToArray() ?? [];
-            ResolvedRoleConfiguration producer;
-            long localOrigin = clock.GetTimestamp();
-            using (var deadline = new CancellationTokenSource(options.IoTimeout!.Value, clock))
-            using (var local = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token))
+            string diagnosticPrefix=producerPrefix+"diagnostics/";
+            BlobListing diagnosticListing=await ReadLedgerListing(diagnosticPrefix,cancellationToken).ConfigureAwait(false);
+            DiagnosticPublicationReadOutcome diagnostic=await DiagnosticPublicationReader.ReadAsync(diagnosticListing,diagnosticPrefix,
+                ReadLedgerOptional,options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes),cancellationToken).ConfigureAwait(false);
+            if(diagnostic.HasPayload)
             {
-                LoadedScenario scenario = await scenarioLoader.LoadAsync(options.ScenarioId!, local.Token).ConfigureAwait(false);
-                CheckDeadline(localOrigin, options.IoTimeout.Value, local.Token);
-                ResolvedScenario resolved = scenarioResolver.Resolve(scenario);
-                if (options.GeneratedValuesFile is not null)
-                    GeneratedValuesCompatibility.Validate(valuesGenerator, resolved, options.ConfigurationId!, options.GeneratedValuesFile);
-                producer = resolved.Configurations[options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
-                CheckDeadline(localOrigin, options.IoTimeout.Value, local.Token);
+                diagnosticsSelected=true;
+                foreach(string name in PublicationAcceptance.PublicationNames)raw[name]=null;
+                foreach((string name,byte[]? bytes) in diagnostic.Payloads)raw[name]=bytes;
+                // The failed-evidence protocol intentionally has no index. Keep its normal
+                // unowned execution failure so check 3 cannot infer identity from registration.
+                index=ArtifactIndexReader.Read(null,inputLimits,budget);
+                ledger=LedgerReader.ReadRows(Memory("ledger.jsonl"),inputLimits,budget);
+                manifest=ManifestReader.Read(Memory("manifest.json"),inputLimits,budget,options.MaxInventoryEntries.Value);
+                statistics=CapturedEvidenceReader.ReadStatistics(Memory("statistics.jsonl"),"statistics.jsonl",inputLimits,budget);
+                lifecycle=CapturedEvidenceReader.ReadLifecycle(Memory("request-lifecycle.jsonl"),"request-lifecycle.jsonl",inputLimits,budget);
+                capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget);
+                reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
+                    NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
             }
-            ReadOnlyMemory<byte>? noteBytes;
-            long noteOrigin = clock.GetTimestamp();
-            using (var deadline = new CancellationTokenSource(options.BlobIoTimeout!.Value, clock))
-            using (var read = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token))
+            else if(index.IsExecutionFailure||index.Value is null)
             {
-                byte[]? raw = await artifacts.ReadStartLineAsync(options.StartLineInputName!, read.Token).ConfigureAwait(false);
-                CheckDeadline(noteOrigin, options.BlobIoTimeout.Value, read.Token);
-                noteBytes = raw is null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(raw);
+                throw new InvalidOperationException("publication_index_unavailable_without_diagnostics");
             }
-            if (noteBytes is not null) budget.ConsumeBytes(noteBytes.Value.Length);
-            ParseResult<StartLineNote> start = noteBytes is null
-                ? ParseResult<StartLineNote>.Failure(new StructuralProblem(7, "missing_input", options.StartLineInputName!, null, null, null))
-                : StartLineNoteCodec.Read(noteBytes.Value, options.StartLineInputName!, limits, options.MaxPartitions!.Value);
-            IReadOnlyDictionary<int, long>? ends = null;
-            var assessments = new List<CheckAssessment>();
-            long origin = 0;
+        }
+        long scenarioOrigin=clock.GetTimestamp();
+        using(var deadline=new CancellationTokenSource(options.IoTimeout!.Value,clock))
+        using(var local=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,deadline.Token))
+        {
+            LoadedScenario scenario=await scenarioLoader.LoadAsync("A01",local.Token).ConfigureAwait(false);
+            CheckDeadline(scenarioOrigin,options.IoTimeout.Value,local.Token);
+            ResolvedScenario resolved=configurationResolver.Resolve(scenario,registration);
+            ResolvedRoleConfiguration producer=resolved.Configurations[options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
+            IReadOnlyList<string> expectedBrokers=inventory.Value?.Brokers.Select(b=>b.Name).Order(StringComparer.Ordinal).ToArray()??[];
+
+            VerifierKafkaSession? session=null;ITimer? safetyTimer=null;using var kafkaWork=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            byte[]? resultBytes=null;VerifierResultStatus status=VerifierResultStatus.Incomplete;string coverage="unavailable";
             try
             {
-                session = sessions.Create(kafkaWork.Token);
-                session.InstallToken(cancellationToken);
-                ends = session.ReadHighWatermarks(() =>
+                var assessments=new List<CheckAssessment>();IReadOnlyDictionary<int,long>? ends=null;long origin=0;
+                try
                 {
-                    origin = clock.GetTimestamp();
-                    safetyTimer = clock.CreateTimer(_ => kafkaWork.Cancel(), null, options.SafetyStop!.Value, Timeout.InfiniteTimeSpan);
-                }, () => options.SafetyStop!.Value - clock.GetElapsedTime(origin), kafkaWork.Token);
-                assessments.Add(RunWindow.Pass(11));
+                    session=sessions.Create(kafkaWork.Token);session.InstallToken(cancellationToken);
+                    ends=session.ReadHighWatermarks(()=>{origin=clock.GetTimestamp();safetyTimer=clock.CreateTimer(_=>kafkaWork.Cancel(),null,options.SafetyStop!.Value,Timeout.InfiniteTimeSpan);},()=>options.SafetyStop!.Value-clock.GetElapsedTime(origin),kafkaWork.Token);
+                    assessments.Add(RunWindow.Pass(11));
+                }
+                catch(VerifierKafkaOperationException){cancellationToken.ThrowIfCancellationRequested();assessments.Add(RunWindow.Failure(11));}
+                RunWindow window=RunWindow.Create(start,registration.Identity,expectedStartIdentity,ends);assessments.AddRange(window.Assessments);
+                WindowDrainResult? drain=null;if(window.CanAssign){drain=WindowConsumer.Drain(session!.Consumer,window,clock,origin,options.SafetyStop!.Value,options.PollSlice!.Value,
+                    new ConsumedRecordBudget(options.MaxConsumedRecords!.Value,options.MaxConsumedBytes!.Value),cancellationToken,kafkaWork.Token);assessments.AddRange(drain.Assessments);}
+                var request=new RunJudgementRequest(registration.Identity,index,ledger,manifest,statistics,lifecycle,capabilities,reports,expectedBrokers,producer,drain?.Records??[],assessments,outputLimits,inventory.Value is not null);
+                // A readable but unaccepted publication remains diagnostic evidence. It may
+                // produce an incomplete/invalid result, but only the accepted snapshot below
+                // can authorize phase-level J2.
+                RunJudgementResult judgement=diagnosticsSelected||index.IsExecutionFailure
+                    ?RunJudgement.EvaluateDiagnostic(request)
+                    :RunJudgement.Evaluate(request);
+                if(!diagnosticsSelected)judgement=ApplyPublicationOutcome(judgement,accepted);
+                A01EvidenceRecording a01=options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
+                status=judgement.Status??VerifierResultStatus.Incomplete;
+                var hashes=accepted.AcceptedSnapshot is null?[]:PublicationAcceptance.DescriptorNames
+                    .Select(n=>{byte[] bytes=raw[n]!;return new JudgedFileHash(n,Convert.ToHexStringLower(SHA256.HashData(bytes)));}).ToArray();
+                var result=new VerifierResult(1,registration.Identity,manifest.Value?.GeneratorVersion,manifest.Value?.RuntimeVersions,options.VerifierCommit!,typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(),Library.VersionString,
+                    status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray()??[],ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),
+                    Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
+                    judgement.Diagnostics.Concat(a01.Diagnostics).ToArray(),a01.WorkloadObservation);
+                resultBytes=VerifierResultCodec.Write(result,outputLimits);
+                coverage=judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
+                    judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";
             }
-            catch (VerifierKafkaOperationException)
+            finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                assessments.Add(RunWindow.Failure(11));
+                safetyTimer?.Dispose();long cleanup=clock.GetTimestamp();using var cleanupDeadline=new CancellationTokenSource(options.CleanupTimeout!.Value,clock);session?.Cleanup(cleanupDeadline.Token);CheckDeadline(cleanup,options.CleanupTimeout.Value,cleanupDeadline.Token);
             }
-            RunWindow window = RunWindow.Create(start, identity, ends);
-            assessments.AddRange(window.Assessments);
-            WindowDrainResult? drain = null;
-            if (window.CanAssign)
-            {
-                drain = WindowConsumer.Drain(session!.Consumer, window, clock, origin, options.SafetyStop!.Value,
-                    options.PollSlice!.Value, new ConsumedRecordBudget(options.MaxConsumedRecords!.Value,
-                        options.MaxConsumedBytes!.Value), cancellationToken, kafkaWork.Token);
-                assessments.AddRange(drain.Assessments);
-            }
-            var request = new RunJudgementRequest(identity, index, ledger,
-                manifest, statistics, lifecycle, capabilities, reports, options.ExpectedBrokerNames!, producer,
-                drain?.Records ?? [], assessments, outputLimits);
-            RunJudgementResult judgement = RunJudgement.Evaluate(request);
-            A01EvidenceRecording a01 = options.ConfigurationId == "C3"
-                ? A01EvidenceRecorder.RecordC3(request, judgement)
-                : A01EvidenceRecorder.Record(request, judgement);
-            status = judgement.Status ?? throw new InvalidOperationException("The available evidence does not establish a verifier result status.");
-            var result = new VerifierResult(1, identity, manifest.Value?.GeneratorVersion, manifest.Value?.RuntimeVersions,
-                options.VerifierCommit!, typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString,
-                status, judgement.FailedChecks,
-                start.Value?.PartitionHighs.Select(p => new WatermarkOffset(p.Partition, p.High)).ToArray(),
-                ends?.OrderBy(p => p.Key).Select(p => new WatermarkOffset(p.Key, p.Value)).ToArray(),
-                Milliseconds(drain?.DrainDuration), Milliseconds(drain?.StopDuration), judgement.Counts, judgement.BrokerCount,
-                judgement.ConfigurationFidelity, a01.ProbeObservation, a01.RecordedEvidence,
-                index.Value!.Artifacts.Where(a => JudgedPayloads.Contains(a.Name)).Select(a => new JudgedFileHash(a.Name, a.Sha256)).ToArray(),
-                judgement.Diagnostics.Concat(a01.Diagnostics).ToArray());
-            bytes = VerifierResultCodec.Write(result, outputLimits);
+            if(resultBytes is null)throw new InvalidOperationException("verifier_result_not_built");
+            // Publish only after native cleanup has completed successfully.
+            cancellationToken.ThrowIfCancellationRequested();
+            string resultName=PhasePaths.Result(options.RunId!,options.Phase!,options.Repeat.Value);
+            long resultOrigin=clock.GetTimestamp();using var writeBudget=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var write=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,writeBudget.Token);
+            await verifierStore.CreateAsync(resultName,resultBytes,write.Token).ConfigureAwait(false);CheckDeadline(resultOrigin,options.BlobIoTimeout.Value,write.Token);
+            var resultReference=new ArtifactReference("verifier",resultName,resultBytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(resultBytes)));
+            var verifyReceipt=new WorkerReceipt(1,"verify",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.Repeat,
+                options.JobName!,options.PodName!,registration.Identity,options.SourceCommit!,status==VerifierResultStatus.CompleteValid?0:1,true,
+                started.ToString("O",System.Globalization.CultureInfo.InvariantCulture),clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),
+                [resultReference],accepted.AcceptedSnapshot,new RepeatChecks("pass","pass",inventory.Value is null?"unavailable":coverage));
+            completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.VerifyCompletion(options.RunId!,options.Phase!,options.Repeat.Value),PhaseWireCodec.WriteReceipt(verifyReceipt));
+            return status==VerifierResultStatus.CompleteValid?0:1;
+        }
 
-            async Task<ReadOnlyMemory<byte>?> ReadAsync(string name)
-            {
-                long readOrigin = clock.GetTimestamp();
-                using var deadline = new CancellationTokenSource(options.BlobIoTimeout!.Value, clock);
-                using var read = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-                byte[]? raw = await ledgerSource.ReadAsync(name, read.Token).ConfigureAwait(false);
-                CheckDeadline(readOrigin, options.BlobIoTimeout.Value, read.Token);
-                return raw is null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(raw);
-            }
-        }
-        finally
-        {
-            safetyTimer?.Dispose();
-            long cleanupOrigin = clock.GetTimestamp();
-            using var deadline = new CancellationTokenSource(options.CleanupTimeout!.Value, clock);
-            session?.Cleanup(deadline.Token);
-            CheckDeadline(cleanupOrigin, options.CleanupTimeout.Value, deadline.Token);
-        }
-        cancellationToken.ThrowIfCancellationRequested();
-        long publicationOrigin = clock.GetTimestamp();
-        using var publicationDeadline = new CancellationTokenSource(options.BlobIoTimeout!.Value, clock);
-        using var publication = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, publicationDeadline.Token);
-        await artifacts.CreateAsync(options.ResultOutputName!, bytes, publication.Token).ConfigureAwait(false);
-        CheckDeadline(publicationOrigin, options.BlobIoTimeout.Value, publication.Token);
-        return status == VerifierResultStatus.CompleteValid ? 0 : 1;
+        ReadOnlyMemory<byte>? Memory(string name)=>raw[name] is byte[] bytes?new ReadOnlyMemory<byte>(bytes):null;
+        async Task<BlobListing> ReadLedgerListing(string prefix,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);var value=await producerStore.ListAsync(prefix,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
+        async Task<byte[]?> ReadLedgerOptional(string name,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);byte[]? value=await producerStore.ReadAsync(name,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
+        async Task<byte[]> ReadLedgerRequired(string name,CancellationToken ct)=>await ReadLedgerOptional(name,ct).ConfigureAwait(false)??throw new InvalidOperationException("required_ledger_object_missing:"+name);
+        async Task<byte[]?> ReadVerifier(string name,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);byte[]? value=await verifierStore.ReadAsync(name,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
+        async Task<byte[]> ReadVerifierRequired(string name,CancellationToken ct)=>await ReadVerifier(name,ct).ConfigureAwait(false)??throw new InvalidOperationException("required_verifier_object_missing:"+name);
     }
 
-    private void CheckDeadline(long origin, TimeSpan budget, CancellationToken cancellationToken)
+    private static string RegistrationInstance(string root,string name)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (clock.GetElapsedTime(origin) >= budget) throw new TimeoutException("The verifier operation budget expired.");
+        if(!name.StartsWith(root,StringComparison.Ordinal))throw new InvalidOperationException("registration_prefix_escape");
+        string tail=name[root.Length..];string[] parts=tail.Split('/');
+        if(parts.Length!=2||parts[1]!="registration.json"||parts[0].Length is 0 or >128||parts[0].Any(c=>!(char.IsAsciiLetterOrDigit(c)||c is '-' or '_')))throw new InvalidOperationException("registration_path_invalid");
+        return parts[0];
     }
-
-    private static decimal? Milliseconds(TimeSpan? duration) => duration is null ? null : duration.Value.Ticks / (decimal)TimeSpan.TicksPerMillisecond;
+    private static RunIdentity ExpectedStartIdentity(VerifierHostOptions o){string loadgen=PhaseIdentity.JobName(o.RunId!,o.Phase!,o.Repeat!.Value);return new(o.ScenarioId!,o.ConfigurationId!,o.RunId!,loadgen,loadgen,loadgen);}
+    private static RunJudgementResult ApplyPublicationOutcome(RunJudgementResult judgement,PublicationReadOutcome accepted)
+    {
+        if(accepted.Accepted)return judgement;
+        CheckAssessment? prior=judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==3);
+        AssessmentClassification classification=accepted.Incomplete?AssessmentClassification.Incomplete:AssessmentClassification.Invalid;
+        if(prior is { Disposition:AssessmentDisposition.Fail,Classification:AssessmentClassification.Invalid })
+            classification=AssessmentClassification.Invalid;
+        var assessment=new CheckAssessment(3,AssessmentEvaluation.Evaluated,AssessmentDisposition.Fail,classification,
+            "index.json",null,"artifacts","publication_unaccepted",null);
+        CheckAssessment[] assessments=judgement.Assessments.Where(a=>a.CheckNumber!=3).Append(assessment)
+            .OrderBy(a=>a.CheckNumber).ToArray();
+        int[] failed=judgement.FailedChecks.Append(3).Distinct().Order().ToArray();
+        VerifierResultStatus status=classification==AssessmentClassification.Invalid
+            ?VerifierResultStatus.Invalid
+            :judgement.Status==VerifierResultStatus.Invalid?VerifierResultStatus.Invalid:VerifierResultStatus.Incomplete;
+        return judgement with
+        {
+            Status=status,
+            FailedChecks=failed,
+            Assessments=assessments,
+            Counts=null,
+            Diagnostics=judgement.Diagnostics.Append(new ResultDiagnostic(3,"publication_unaccepted","index.json",null,"artifacts",null)).ToArray()
+        };
+    }
+    private static void ValidateReference(ArtifactReference r,string container,string name){if(r.Container!=container||r.Name!=name||r.Length<0)throw new InvalidOperationException("artifact_reference_invalid");}
+    private static void VerifyHashAndLength(ArtifactReference reference,byte[] bytes){if(reference.Length!=bytes.LongLength||reference.Sha256!=Convert.ToHexStringLower(SHA256.HashData(bytes)))throw new InvalidOperationException("artifact_reference_hash_mismatch");}
+    private void CheckDeadline(long origin,TimeSpan budget,CancellationToken ct){ct.ThrowIfCancellationRequested();if(clock.GetElapsedTime(origin)>=budget)throw new TimeoutException("The verifier operation budget expired.");}
+    private static decimal? Milliseconds(TimeSpan? duration)=>duration is null?null:duration.Value.Ticks/(decimal)TimeSpan.TicksPerMillisecond;
 }

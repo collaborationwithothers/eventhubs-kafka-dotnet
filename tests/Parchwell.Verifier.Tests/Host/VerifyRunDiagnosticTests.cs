@@ -25,7 +25,7 @@ public sealed class VerifyRunDiagnosticTests
         JsonObject note = Note(fixture);
         note["identity"]![field] = "synthetic-foreign";
         fixture.Note = Encoding.UTF8.GetBytes(note.ToJsonString());
-        await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", "identity");
+        await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", "identity", publicationRejected: true);
     }
 
     [Theory]
@@ -62,7 +62,8 @@ public sealed class VerifyRunDiagnosticTests
             "malformed" => Encoding.UTF8.GetBytes("{synthetic malformed note"),
             _ => Encoding.UTF8.GetBytes(note.ToJsonString())
         };
-        await AssertPublishedFailure(fixture, "invalid", 7, code, "notes/custom.json", field);
+        fixture.OmitStartLineNote = kind == "missing";
+        await AssertPublishedFailure(fixture, "invalid", 7, code, fixture.Options.StartLineInputName!, field, publicationRejected: true);
     }
 
     [Theory]
@@ -127,18 +128,20 @@ public sealed class VerifyRunDiagnosticTests
     private static JsonObject Note(HostEvidenceBuilder fixture) => JsonNode.Parse(fixture.Note!)!.AsObject();
 
     private static async Task AssertPublishedFailure(HostEvidenceBuilder fixture, string status, int check,
-        string code, string artifact, string? field)
+        string code, string artifact, string? field, bool publicationRejected = false)
     {
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal(1, fixture.Creates);
-        Assert.Equal("results/custom.json", fixture.OutputName);
+        Assert.Equal(fixture.Options.ResultOutputName, fixture.OutputName);
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         JsonElement root = output.RootElement;
         Assert.Equal(status, root.GetProperty("status").GetString());
-        Assert.Equal([check], root.GetProperty("failed_checks").EnumerateArray().Select(item => item.GetInt32()));
+        int[] expectedChecks = publicationRejected ? new[] { 3, check }.Distinct().Order().ToArray() : [check];
+        Assert.Equal(expectedChecks, root.GetProperty("failed_checks").EnumerateArray().Select(item => item.GetInt32()));
         foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
             Assert.False(root.TryGetProperty(count, out _));
-        JsonElement diagnostic = Assert.Single(root.GetProperty("diagnostics").EnumerateArray());
+        JsonElement diagnostic = Assert.Single(root.GetProperty("diagnostics").EnumerateArray(),
+            item => item.GetProperty("check").GetInt32() == check);
         Assert.Equal(6, diagnostic.EnumerateObject().Count());
         Assert.Equal(check, diagnostic.GetProperty("check").GetInt32());
         Assert.Equal(code, diagnostic.GetProperty("code").GetString());

@@ -25,9 +25,9 @@ public sealed class BrokerInventoryTests
         using JsonDocument json = JsonDocument.Parse(fixture.Output!);
         Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
         Assert.Equal("kafka_metadata", json.RootElement.GetProperty("source").GetString());
-        Assert.Equal("synthetic-verifier-commit", json.RootElement.GetProperty("source_commit").GetString());
+        Assert.Equal(fixture.Options.SourceCommit, json.RootElement.GetProperty("source_commit").GetString());
         Assert.Equal(6, json.RootElement.GetProperty("identity").EnumerateObject().Count());
-        Assert.Equal("golden-run-001", json.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
+        Assert.Equal(fixture.Options.RunId, json.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
         JsonElement brokers = json.RootElement.GetProperty("brokers");
         Assert.Equal([2, 9], brokers.EnumerateArray().Select(b => b.GetProperty("id").GetInt32()));
         Assert.Equal(["sasl_ssl://broker.example.invalid:9093/2", "sasl_ssl://[2001:db8::1]:9093/9"],

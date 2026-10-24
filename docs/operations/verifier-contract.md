@@ -1,6 +1,42 @@
 # Verifier contract
 
-The verifier reads recorded producer artifacts and a fixed Kafka window, then judges them with the approved checks. Start-line and verify use the authenticated Kafka factory and scoped Blob stores; probe-gate reads local repeat results and writes a local gate outcome. A successful output write alone does not authorize outcome counts or a successful process exit.
+The C5 worker has three blob-backed modes: `start-line`, `verify`, and `judge`. A successful object write alone never authorizes outcome counts or a successful process exit. Start-line captures the Kafka boundary and an independent broker inventory; verify discovers the registered producer, accepts its immutable publication, and judges one fixed window; judge independently re-lists all five repeat slots and aggregates bounded receipts/results into a phase candidate. The C5 contract below supersedes this file's earlier local `probe-gate` and stdout completion descriptions; those paragraphs remain historical until fully reconciled.
+
+## C5 phase, blob and receipt contract
+
+The run ID `U` is 1-29 lowercase ASCII alphanumerics/hyphens with alphanumeric ends. Phase is exactly `probe`, `C0`, or `C3`; configuration is respectively `C0`, `C0`, or `C3`. Repeat is 1-5. Blob paths retain original phase case while Kubernetes Job names lowercase it. For example, `synthetic-c5`, `C0`, repeat 1 uses Job `synthetic-c5-c0-r1-loadgen` and blob repeat prefix `synthetic-c5/C0/r1/`. Every producer result's `run_id` remains `U`; phase and repeat are separate fields.
+
+The six-field producer identity records the actual registered instance, expected instance and Kafka client ID. `instance_id` equals `expected_instance_id`; it does not have to equal the observed pod name. Producer Job and pod details are separately bound by a closed registration receipt. Start-line identity uses the expected LoadGen Job in all three instance/client fields; it does not claim to know the producer pod. Verification checks the captured start-line identity independently from the registered actual producer identity.
+
+| Container | Fixed path | Content |
+| --- | --- | --- |
+| verifier | `U/phase/rN/start-line.json` | Schema-one start-line note |
+| verifier | `U/phase/rN/broker-inventory.json` | Independent start-time broker metadata |
+| verifier | `U/phase/rN/start-line-completion.json` | Final start-line receipt |
+| ledger | `U/phase/rN/producer/<instance>/registration.json` | Producer registration before Kafka creation |
+| ledger | `U/phase/rN/producer/<instance>/publication/{index.json,ledger.jsonl,manifest.json,statistics.jsonl,request-lifecycle.jsonl,capabilities.json}` | Closed six-object publication |
+| ledger | `U/phase/rN/producer/<instance>/completion.json` | Successful producer cleanup receipt |
+| ledger | `U/phase/rN/producer/<instance>/diagnostics/<fixed-name>` | Bounded diagnostic payloads; never a success index |
+| verifier | `U/phase/rN/result.json` | Schema-one verifier result |
+| verifier | `U/phase/rN/verify-completion.json` | Final verifier receipt and accepted-publication snapshot |
+| verifier | `U/phase/candidate.json` | One phase aggregation candidate |
+| verifier | `U/phase/judge-completion.json` | Final judge receipt |
+
+Registration and completion are outside `publication/`; they do not add members to its closed six-name set. Their strict schema-one JSON uses exact fields, duplicate/unknown-field rejection and 65536-byte maximum size. Artifact references contain only a fixed container, fixed path, nonnegative length and lowercase SHA-256 of exact bytes. Reads verify both length and digest. They are not caller-provided URLs or destinations.
+
+Blob listings request pages of 64 and fail closed after 16 pages, 1024 entries or 1048576 UTF-8 bytes of names. The worker never treats a capped listing as a complete singleton. A completed listing must expose exactly one valid registration for the repeat. Judge lists producer markers again, so a later second marker invalidates J5 even if an earlier verify receipt exists. Registration identity binds A01, phase configuration, U, repeat-derived producer Job, actual instance, pod name/UID and 40-character lowercase source commit.
+
+Receipts are strict, bounded projections with `schema_version`, mode, scenario/configuration/run/phase/repeat, Job/pod, nullable identity, source commit, exit code, cleanup flag, UTC round-trip start/completion, artifact references, publication acceptance, and repeat-check states. Only judge has null repeat and identity. Start-line references note then inventory. Verify references result. Judge references candidate. A normal verify result may return exit 1 and still retain a receipt; exceptions, cancellation, cleanup failure, or failed final publication do not. The final receipt is written after host disposal as the worker's final external write; an uncertain create-only upload is not retried.
+
+Verify independently checks the completed producer listing, exactly one registration marker, its actual identity/Job/source binding, successful producer cleanup receipt, start-line completion and referenced bytes, inventory identity/source, exactly the six publication members, every indexed fixed descriptor, exact byte lengths and SHA-256, fixed completion flags, manifest and index identity, and configured per-object/aggregate byte caps. Publication references are recorded in read order: index, ledger, manifest, statistics, lifecycle, capabilities. Only complete acceptance appears as a non-null `publication_acceptance` snapshot in the verify receipt. A rejected but readable publication remains diagnostic evidence and cannot establish J2 or authorize phase counts.
+
+Judge uses five fixed ordinals and never replaces or averages slots. J1 establishes the exact five repeat slots with no foreign or duplicate phase directory. J2 requires a verifier receipt carrying independently accepted publication. J3 validates the verifier final receipt and referenced result bytes/hash. J4 checks derived producer Job binding. J5 requires a completed singleton registration listing. J6 requires available independent broker inventory coverage from the verifier's check-24 assessment. J7 sums all six outcome totals only when every repeat is `complete_valid`, every J1-J6 passes, and checked Int64 addition succeeds. J8 is a separate probe decision: every repeat must satisfy J1-J6 plus usable probe evidence; any qualifying maximum above 20000 ms gives `pass`, five usable nonqualifying repeats give `untestable_at_build_scale`, and any unavailable/unusable repeat gives `inconclusive`. J9 validates the candidate's closed privacy projection and rejects unrecognized raw/private/cost fields; it is a serialization guard, not a scientific verdict. Workload telemetry is not a validity oracle.
+
+Probe usability requires evaluated/pass checks 3, 27, and every check 17-26, plus at least one throttle window with `cnt > 0`. Thus an otherwise valid captured sample with no positive throttle sample is usable but unqualified; a positive sample with maximum zero is usable and retains observed zero. Thresholds 19999, 20000 and 20001 ms qualify false, false and true. Missing check-24 inventory coverage makes the repeat unusable for J8 even if message validity is unaffected.
+
+The phase candidate is a bounded privacy projection. It records source commit and image digests, statuses/reasons, counts only when J7 authorizes them, and a fixed-profile record-only workload summary. It excludes private environment, raw workload payloads and cost/costs fields. Workload summaries are descriptive only: they do not determine validity, J2, J7 or J8, and incomplete sources remain absent rather than becoming zero.
+
+The current implementation validation receipt is at the end of this document. It records blocked checks and does not claim cloud ingestion or a live experiment.
 
 ## Authority and boundaries
 
@@ -215,3 +251,24 @@ The [approved A01 deployment plan](https://github.com/collaborationwithothers/ev
 The optional `PARCHWELL_GENERATED_VALUES_FILE` supplies the verifier-context version-1 comparison document. Verify checks its bytes against its own resolved scenario before creating its Kafka session, following [the Kubernetes worker rules](../engineering/dotnet.md#kubernetes-workers); start-line does not resolve scenarios. Workload-identity webhook variables populate the existing named options without entering evidence.
 
 Normal handler return, successful host stop/disposal and successful cleanup produce one bounded stdout line prefixed `PARCHWELL_COMPLETION `, schema version 1, selected mode, run identity (scenario only for gate), source commit, handler exit code and `cleanup_completed:true`. Exceptions, cancellation and cleanup/disposal failure produce no receipt; receipt write failure exits 1. The runner requires agreement with the actual process exit and published result. `complete_valid` plus exit 0 and receipt permits counts. Invalid/incomplete results plus exit 1 and receipt retain diagnostics with counts absent. Missing receipt, signal/OOM, exit 124 or disagreement makes the execution incomplete and authorizes no counts. The numbered validity checks and existing exit codes are unchanged. See [the runner outcome contract](a01-runner.md#ten-runner-checks).
+
+## C5 implementation validation receipt
+
+Source baseline: `fbf6737a5e3dd98e24e7e2f5690770f1593f3285`. Validation ran on branch `codex/162-c5-verifier` with GPT-6 Luna (`gpt-6-luna`), high effort. No cloud ingestion or live experiment was performed.
+
+| Command | Result |
+| --- | --- |
+| `./scripts/verify-dotnet.sh` | Passed. Locked solution restore, Release solution build/analyzers, XML inventory, architecture tests, every nonempty project suite/report, and warning-as-error control passed. Verifier: 2348 passed; Kafka: 349; LoadGen: 312; Runner: 1169; Scenarios: 96; Architecture: 8. Verification report directory: `/tmp/parchwell-dotnet-verification.HADfv7Si`; command log: `/tmp/162-full-verification-final.log`. |
+| `dotnet restore src/Parchwell.Verifier/Parchwell.Verifier.csproj --locked-mode --runtime linux-x64` | Failed NU1004 because the default `packages.lock.json` does not declare `linux-x64`. The repository's existing runtime lock selection was then used successfully as recorded below; no lock was edited. |
+| `dotnet restore src/Parchwell.Verifier/Parchwell.Verifier.csproj --locked-mode --runtime linux-x64 -p:NuGetLockFilePath=packages.linux-x64.lock.json` | Passed using the existing Verifier, Kafka and Scenarios runtime lock files. |
+| `dotnet publish src/Parchwell.Verifier/Parchwell.Verifier.csproj --configuration Release --runtime linux-x64 --self-contained false --no-restore --output /tmp/c5-verifier-publish -p:NuGetLockFilePath=packages.linux-x64.lock.json` | Passed. The runtime-selected output includes the packaged scenario and profile files. |
+| `dotnet /tmp/c5-verifier-publish/Parchwell.Verifier.dll --image-smoke` | Passed: `native_loaded:true`, `scenario_files:2`, `uid_expected:1654`. This proves local packaged startup, not image pull or cloud ingestion. |
+| Release Verifier.Tests build with `--no-restore -m:1` | Passed with zero warnings/errors. |
+| Focused host, generated-values, C3, broker inventory, diagnostic and input-capacity tests | Passed after C5 fixture/path migration. |
+| C5 outcome component proof recipes (one authorized trial each) | Passed for phantom, reported failure and duplicate; each produced successful proof evidence with expected verifier exit 1. The full component suite also passed in the full verification run. |
+| `dotnet tool restore` | Passed; Stryker 5.0.0 restored. |
+| `python3 tests/Parchwell.Verifier.Tests/Mutation/run-c5-sample.py` | Two bounded attempts were made, before and after the fixture corrections. Both exited 1 after 14.253s and 14.484s, captured 15755 and 14601 bytes respectively, observed no generated-mutant progress and found no report. The sample remains incomplete; no survivor was reviewed or classified. See [mutation receipt](verifier-mutation.md#c5-selected-sample-and-execution-receipt). |
+| `npm run check:docs` | Completed with 37 advisory warnings, all reported as existing missing-file/link warnings; no new C5 warning group was identified. |
+| `git diff --check` | Passed before the final receipt edit; rerun after this edit. |
+
+Cold review is pending. This receipt records the completed implementation and remaining mutation-sampling gap; it does not certify the C5 sample as measured or reviewed.

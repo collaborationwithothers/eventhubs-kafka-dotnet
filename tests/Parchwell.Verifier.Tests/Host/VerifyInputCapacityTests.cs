@@ -14,6 +14,9 @@ namespace Parchwell.Verifier.Tests.Host;
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class VerifyInputCapacityTests
 {
+    private static readonly string[] PublicationReadOrder =
+        ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+
     [Fact]
     public async Task Given_FullA01AttemptInventory_When_UsingDeployedInputCapacity_Then_PublishesExactCompleteCounts()
     {
@@ -35,7 +38,10 @@ public sealed class VerifyInputCapacityTests
         InputLimitExceededException error = await Assert.ThrowsAsync<InputLimitExceededException>(() =>
             fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal("The combined verifier inputs exceed the configured entry limit.", error.Message);
-        Assert.Equal(["index.json", "ledger.jsonl"], fixture.Reads);
+        Assert.Contains("synthetic-c5/C0/r1/producer/pod-c5/registration.json", fixture.Reads);
+        Assert.Equal(PublicationReadOrder,
+            fixture.Reads.Where(name => name.Contains("/publication/", StringComparison.Ordinal))
+                .Select(name => name[(name.LastIndexOf('/') + 1)..]));
         Assert.Equal(0, fixture.Creates);
         Assert.Null(fixture.Output);
 

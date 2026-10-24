@@ -12,7 +12,7 @@ namespace Parchwell.Runner.Tests;
 
 #pragma warning disable CA1707 // Repository test naming convention.
 
-/// <summary>Exercises actual worker codec bytes against the Runner's evidence admission boundary.</summary>
+/// <summary>Exercises actual result codecs and legacy receipt fixtures against the Runner's evidence admission boundary.</summary>
 public sealed class WorkerWireCompatibilityTests
 {
     private static readonly VerifierIdentity Identity = new("A01", "C0", "synthetic-wire-run", "synthetic-pod", "synthetic-pod", "synthetic-pod");
@@ -159,7 +159,7 @@ public sealed class WorkerWireCompatibilityTests
     [InlineData("loadgen")]
     [InlineData("start-line")]
     [InlineData("probe-gate")]
-    public async Task Given_RealModeReceipt_When_ExitAndSourceMatch_Then_RecognizesMode(string mode)
+    public async Task Given_LegacyModeReceipt_When_ExitAndSourceMatch_Then_RecognizesMode(string mode)
     {
         byte[] bytes = await WorkerReceipts.WriteAsync(mode, mode == "probe-gate" ? null : Identity, Commit);
         var process = new ProcessResult(0, Encoding.UTF8.GetString(bytes), "");
