@@ -128,7 +128,7 @@ for tool in shellcheck actionlint helm kubeconform; do
 done
 run() { python3 "$script_directory/command.py" 600 -- "$@"; }
 while IFS= read -r -d '' script; do
-  run shellcheck "$script"
+  run shellcheck -x "$script"
 done < <(find infra/scripts -type f -name '*.sh' -print0)
 run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
 run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml
