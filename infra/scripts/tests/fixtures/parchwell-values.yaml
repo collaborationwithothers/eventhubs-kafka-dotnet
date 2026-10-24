@@ -1,0 +1,28 @@
+# Synthetic rendering inputs only; these are not cryptographic publication receipts.
+contract_version: 1
+scenario_id: A01
+configuration_id: C0
+profile: {synthetic: true}
+kafka: {synthetic: true, fixture: true}
+runtime:
+  mode: start-line
+  run_id: synthetic-c2
+  phase: C0
+  source_commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  loadgen_image: registry.example.invalid/parchwell/loadgen@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  verifier_image: registry.example.invalid/parchwell/verifier@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  loadgen_generated_values: 'synthetic: true\\n'
+  verifier_generated_values: 'synthetic: true\\n'
+  loadgen_generated_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  verifier_generated_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  definition_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  profile_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  loadgen_environment: {SYNTHETIC: "true"}
+  verifier_environment: {SYNTHETIC: "true"}
+  service_accounts:
+    loadgen: {name: loadgen, client_id: synthetic-loadgen}
+    verifier: {name: verifier, client_id: synthetic-verifier}
+  eventhubs_ip: 203.0.113.1
+  blob_ip: 203.0.113.2
+  admission_name: synthetic-c2-admission
+  job_deadline_seconds: 150

@@ -33,13 +33,27 @@ public sealed class WorkflowBudgetContractTests
     }
 
     [Fact]
+    public void Given_LifecycleSweeper_When_Replaced_Then_MirrorAndBoundedCleanupContractRemain()
+    {
+        string installed = Path.Combine(DeploymentFixture.RepositoryRoot, ".github/workflows/sweeper.yml");
+        string copy = Path.Combine(DeploymentFixture.RepositoryRoot, "docs/operations/workflows/sweeper.yml.txt");
+        Assert.Equal(File.ReadAllBytes(installed), File.ReadAllBytes(copy));
+        string[] lines = File.ReadAllLines(installed);
+        Assert.Single(lines, line => line.Trim() == "timeout-minutes: 120");
+        Assert.Single(lines, line => line.Trim() == "run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral");
+        Assert.Single(lines, line => line.Trim() == "run: bash infra/scripts/lifecycle/lifecycle.sh stop-cluster");
+        string workflow = File.ReadAllText(installed);
+        foreach (string obsolete in new[] { "Parchwell.Runner.dll", "dotnet ", "PARCHWELL_DEBUG_FAILURES", "A01_OUTPUT", "start-cluster", "apply-cluster", "apply-ephemeral" })
+            Assert.DoesNotContain(obsolete, workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Given_RunnerWorkflowFailures_When_Forwarded_Then_ExactDiagnosticBlocksPreserveCommandsAndCopies()
     {
         (string File, string[] Jobs, (string Command, int Seconds, int Count)[] Wrappers)[] workflows =
         [
             ("scenario.yml", ["probe", "full-C0", "full-C3"],
-                [("phase", 9750, 3), ("export", 300, 3), ("destroy", 1050, 3), ("gate", 90, 1)]),
-            ("sweeper.yml", ["sweep"], [("sweep", 1650, 1)])
+                [("phase", 9750, 3), ("export", 300, 3), ("destroy", 1050, 3), ("gate", 90, 1)])
         ];
         foreach ((string file, string[] jobs, (string Command, int Seconds, int Count)[] wrappers) in workflows)
         {
@@ -55,7 +69,7 @@ public sealed class WorkflowBudgetContractTests
                 int[] starts = Enumerable.Range(0, lines.Length)
                     .Where(index => lines[index].Contains("Parchwell.Runner.dll " + command + " --", StringComparison.Ordinal)).ToArray();
                 Assert.Equal(count, starts.Length);
-                string outputDirectory = command == "sweep" ? "recovery" : "phase";
+                string outputDirectory = "phase";
                 string expected = $$"""
                     timeout {{seconds.ToString(CultureInfo.InvariantCulture)}} dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll {{command}} --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/{{outputDirectory}}" > "$A01_OUTPUT/{{command}}.log" 2>&1 || {
                       if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then

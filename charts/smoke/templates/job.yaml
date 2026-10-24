@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.jobName | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  podReplacementPolicy: Failed
+  activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector:
+        workload: workload
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: smoke
+          image: {{ .Values.image | quote }}
+          command: ["/bin/sh", "-c", "printf '%s\\n' parchwell-cluster-smoke-ok"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

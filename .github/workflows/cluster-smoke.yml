@@ -1,0 +1,225 @@
+name: Cluster smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: parchwell-ephemeral
+  queue: max
+  cancel-in-progress: false
+jobs:
+  smoke:
+    runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
+    environment: parchwell-scenarios
+    timeout-minutes: 300
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
+      PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+    steps:
+      - name: Require the main branch before login
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
+            [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+            echo "::add-mask::$value"
+          done
+      - name: Check out the main head this run started from
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install the pinned Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+      - name: Install and verify pinned lifecycle tools
+        id: tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import sys; assert sys.version_info >= (3, 10)'
+          bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-lifecycle-tools" live
+          printf '%s\n' "$RUNNER_TEMP/parchwell-lifecycle-tools" >> "$GITHUB_PATH"
+      - name: Materialise private inputs and require lifecycle prerequisites
+        id: prepare
+        shell: bash
+        env:
+          S_CLUSTER_BACKEND: ${{ secrets.PARCHWELL_CLUSTER_BACKEND }}
+          S_CLUSTER_TFVARS: ${{ secrets.PARCHWELL_CLUSTER_TFVARS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PYTHON'
+          import os, pathlib, re, tempfile
+          resource_id = os.environ['PARCHWELL_CLUSTER_RESOURCE_ID']
+          assert re.fullmatch(r'/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[^/\r\n]+/providers/Microsoft.ContainerService/managedClusters/[^/\r\n]+', resource_id), 'Missing or invalid AKS resource ID'
+          private = pathlib.Path(tempfile.mkdtemp(prefix='parchwell-private-', dir=os.environ['RUNNER_TEMP']))
+          settings = {'PARCHWELL_PRIVATE_DIRECTORY': str(private)}
+          value = os.environ['S_CLUSTER_BACKEND']
+          assert value, 'Missing CLUSTER_BACKEND secret'
+          path = private / 'cluster_backend.hcl'
+          path.write_text(value + '\n')
+          path.chmod(0o600)
+          settings['PARCHWELL_CLUSTER_BACKEND_CONFIG'] = str(path)
+          value = os.environ['S_CLUSTER_TFVARS']
+          assert value, 'Missing CLUSTER_TFVARS secret'
+          path = private / 'cluster_tfvars.tfvars.json'
+          path.write_text(value + '\n')
+          path.chmod(0o600)
+          settings['PARCHWELL_CLUSTER_TFVARS_PATH'] = str(path)
+          value = os.environ['S_EPHEMERAL_BACKEND']
+          assert value, 'Missing EPHEMERAL_BACKEND secret'
+          path = private / 'ephemeral_backend.hcl'
+          path.write_text(value + '\n')
+          path.chmod(0o600)
+          settings['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'] = str(path)
+          value = os.environ['S_EPHEMERAL_TFVARS']
+          assert value, 'Missing EPHEMERAL_TFVARS secret'
+          path = private / 'ephemeral_tfvars.tfvars.json'
+          path.write_text(value + '\n')
+          path.chmod(0o600)
+          settings['PARCHWELL_EPHEMERAL_TFVARS_PATH'] = str(path)
+          run_id = 'smoke-' + os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT']
+          assert len(run_id) <= 29 and re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?', run_id), 'Invalid smoke run ID'
+          artifacts = pathlib.Path(tempfile.mkdtemp(prefix='parchwell-artifacts-', dir=os.environ['RUNNER_TEMP']))
+          settings.update(PARCHWELL_ARTIFACT_DIRECTORY=str(artifacts), PARCHWELL_RUN_ID=run_id, KUBECONFIG=str(private / 'kubeconfig'))
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for key, value in settings.items():
+                  assert '\n' not in value and '\r' not in value
+                  output.write(f'{key}={value}\n')
+          PYTHON
+      - name: Existing environment OIDC login
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Enable renewable serialized Azure CLI session
+        id: azure_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          real_az="$(command -v az)"
+          test -x "$real_az"
+          session_dir="$(mktemp -d "$RUNNER_TEMP/a01-oidc.XXXXXX")"
+          chmod 700 "$session_dir"
+          test -x "$GITHUB_WORKSPACE/scripts/azure-cli-session/az"
+          printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
+          printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
+      - name: Initialize cluster state
+        id: cluster_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-cluster
+      - name: Start the existing cluster
+        id: start
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh start-cluster
+      - name: Plan cluster infrastructure
+        id: cluster_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-cluster
+      - name: Apply the saved cluster plan
+        id: cluster_apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-cluster
+      - name: Initialize ephemeral state
+        id: ephemeral_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-ephemeral
+      - name: Plan ephemeral infrastructure
+        id: ephemeral_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-ephemeral
+      - name: Apply the saved ephemeral plan
+        id: ephemeral_apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-ephemeral
+      - name: Get cluster credentials
+        id: credentials
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh credentials
+      - name: Reset the smoke namespace
+        id: namespace
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh reset-namespace
+      - name: Install the smoke Job
+        id: install
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh install-smoke
+      - name: Wait for the smoke Job
+        id: wait
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh wait-job "$PARCHWELL_RUN_ID-smoke" 120
+      - name: Collect and check smoke evidence
+        id: collect
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh collect-job "$PARCHWELL_RUN_ID-smoke"
+      - name: Upload public smoke pod evidence
+        id: upload
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: cluster-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Uninstall the smoke release
+        id: uninstall
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh uninstall-smoke
+      - name: Destroy ephemeral infrastructure
+        id: destroy
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral
+      - name: Stop the cluster at dispatch end
+        id: stop
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && (steps.start.outputs.attempted == 'true' || steps.cluster_apply.outputs.attempted == 'true')
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh stop-cluster
+      - name: Report the smoke gate and cleanup outcomes
+        if: always()
+        shell: bash
+        env:
+          STEP_RESULTS: ${{ toJSON(steps) }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, sys
+          steps = json.loads(os.environ['STEP_RESULTS'])
+          required = ('tools', 'prepare', 'azure_session', 'cluster_init', 'start', 'cluster_plan', 'cluster_apply', 'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'credentials', 'namespace', 'install', 'wait', 'collect', 'upload', 'uninstall', 'destroy', 'stop')
+          outcomes = [(name, steps.get(name, {}).get('outcome', 'missing')) for name in required]
+          passed = os.environ['JOB_STATUS'] == 'success' and all(outcome == 'success' for _, outcome in outcomes)
+          report = '## Cluster smoke gate: ' + ('passed' if passed else 'failed') + '\n'
+          report += '\n'.join(name + ': ' + outcome for name, outcome in outcomes) + '\n'
+          print(report)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+              output.write(report)
+          sys.exit(0 if passed else 1)
+          PYTHON

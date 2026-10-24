@@ -29,3 +29,73 @@ jobs:
         run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
       - name: Verify Kafka mapping coverage
         run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
+  lifecycle-verification:
+    name: Lifecycle verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install and verify pinned offline tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import sys; assert sys.version_info >= (3, 10); assert sys.version_info[:2] == (3, 12)'
+          export PARCHWELL_TOOLS_DIRECTORY="$RUNNER_TEMP/parchwell-lifecycle-tools"
+          bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci
+          printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
+          printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+      - name: Verify lifecycle with stub commands
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'
+      - name: Verify shell, workflows and rendered Kubernetes schemas
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh
+  terraform-verification:
+    name: Terraform verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install and verify pinned offline tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import sys; assert sys.version_info >= (3, 10); assert sys.version_info[:2] == (3, 12)'
+          export PARCHWELL_TOOLS_DIRECTORY="$RUNNER_TEMP/parchwell-lifecycle-tools"
+          bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci
+          printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
+          printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+      - name: Check Terraform formatting
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 600 -- terraform fmt -check -recursive infra tests/terraform
+      - name: Require canonical nonempty root-local mock tests
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh --terraform-test-paths
+      - name: Validate and test every existing Terraform root without Azure identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="$GITHUB_WORKSPACE"
+          for root in persistent ephemeral cluster; do
+            if [ ! -d "infra/$root" ]; then
+              if [ "$root" = cluster ]; then
+                echo 'C1 prerequisite pending: infra/cluster is absent; no cluster check passed.'
+                continue
+              fi
+              echo "Missing required Terraform root: $root" >&2
+              exit 1
+            fi
+            python3 infra/scripts/lifecycle/command.py 600 -- terraform -chdir="infra/$root" init -backend=false -input=false -lockfile=readonly
+            python3 infra/scripts/lifecycle/command.py 600 -- terraform -chdir="infra/$root" validate
+            python3 infra/scripts/lifecycle/command.py 600 -- tflint --chdir="infra/$root" --config="$repository/.tflint.hcl" --init
+            python3 infra/scripts/lifecycle/command.py 600 -- tflint --chdir="infra/$root" --config="$repository/.tflint.hcl"
+            python3 infra/scripts/lifecycle/command.py 600 -- terraform -chdir="infra/$root" test -test-directory=tests -no-color
+          done

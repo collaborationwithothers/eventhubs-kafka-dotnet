@@ -65,20 +65,6 @@ public sealed class WorkflowAuthenticationContractTests
             }
         """;
 
-    private const string SweepStep = """
-        - name: Export aged generation and attempt guarded destroy
-          shell: bash
-          run: |
-            timeout 1650 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll sweep --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/recovery" > "$A01_OUTPUT/sweep.log" 2>&1 || {
-              if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-                cat "$A01_OUTPUT/sweep.log"
-              else
-                grep '^runner_execution_failed' "$A01_OUTPUT/sweep.log" || true
-              fi
-              exit 1
-            }
-        """;
-
     [Fact]
     public void Given_AuthenticatedWorkflowJobs_When_SessionSetupIsRequired_Then_InstallationAndFallbacksPreserveFailClosedBudgets()
     {
@@ -86,8 +72,7 @@ public sealed class WorkflowAuthenticationContractTests
         [
             ("scenario.yml.txt", "probe", "Publish full-SHA worker images and record registry digests"),
             ("scenario.yml.txt", "full-C0", "Use immutable receipts from the probe publication"),
-            ("scenario.yml.txt", "full-C3", "Use immutable receipts from the probe publication"),
-            ("sweeper.yml.txt", "sweep", "Export aged generation and attempt guarded destroy")
+            ("scenario.yml.txt", "full-C3", "Use immutable receipts from the probe publication")
         ];
         foreach ((string file, string job, string firstWorkload) in jobs)
         {
@@ -104,13 +89,7 @@ public sealed class WorkflowAuthenticationContractTests
             Assert.StartsWith("- name: " + firstWorkload + "\n", steps[setupIndex + 1], StringComparison.Ordinal);
             Assert.DoesNotContain("\n  if:", steps[setupIndex + 1], StringComparison.Ordinal);
             Assert.DoesNotContain("\n  continue-on-error:", steps[setupIndex + 1], StringComparison.Ordinal);
-            Assert.Contains("          export A01_OUTPUT=\"$RUNNER_TEMP/a01-" + (job == "sweep" ? "sweep" : "$A01_PHASE") + "\"", lines);
-
-            if (job == "sweep")
-            {
-                Assert.Equal(SweepStep, steps[setupIndex + 1]);
-                continue;
-            }
+            Assert.Contains("          export A01_OUTPUT=\"$RUNNER_TEMP/a01-" + "$A01_PHASE" + "\"", lines);
 
             string export = Assert.Single(steps, step => step.StartsWith("- name: Export available private evidence unless the run was cancelled\n", StringComparison.Ordinal));
             string destroy = Assert.Single(steps, step => step.StartsWith("- name: Always attempt generation-checked destroy\n", StringComparison.Ordinal));
@@ -123,6 +102,45 @@ public sealed class WorkflowAuthenticationContractTests
         using JsonDocument limits = JsonDocument.Parse(File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "docs/operations/a01-runtime-limits.json")));
         int apiSeconds = limits.RootElement.GetProperty("execution").GetProperty("api_seconds").GetInt32();
         Assert.True(apiSeconds <= 60, "API budget must not exceed the Azure CLI session invocation budget.");
+    }
+
+    [Fact]
+    public void Given_LifecycleSweeper_When_Authenticated_Then_RenewalPrecedesIndependentCleanup()
+    {
+        string[] lines = ReadJob("sweeper.yml.txt", "sweep");
+        string[] steps = ReadSteps(lines);
+        string login = Assert.Single(steps, step => step == LoginStep);
+        string setup = Assert.Single(steps, step => step == InstallationStep);
+        int setupIndex = Array.IndexOf(steps, setup);
+        Assert.Equal(Array.IndexOf(steps, login) + 1, setupIndex);
+        Assert.Single(lines, line => line == "        id: azure_session");
+        Assert.Single(lines, line => line.Contains("PARCHWELL_REAL_AZ", StringComparison.Ordinal));
+        Assert.Single(lines, line => line.Contains("PARCHWELL_AZ_SESSION_DIRECTORY", StringComparison.Ordinal));
+        Assert.Contains("        id: prepare", lines);
+        Assert.Equal("""
+            - name: Read dispatch activity and end time
+              id: history
+              shell: bash
+              env:
+                GITHUB_TOKEN: ${{ github.token }}
+              run: python3 infra/scripts/lifecycle/dispatch-state.py
+            """, steps[setupIndex + 1]);
+        Assert.Equal("""
+            - name: Destroy idle ephemeral infrastructure
+              id: destroy
+              if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.history.outputs.idle == 'true'
+              shell: bash
+              run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral
+            """, steps[setupIndex + 2]);
+        Assert.Equal("""
+            - name: Stop idle AKS cluster
+              id: stop
+              if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.history.outputs.stop_eligible == 'true'
+              shell: bash
+              run: bash infra/scripts/lifecycle/lifecycle.sh stop-cluster
+            """, steps[setupIndex + 3]);
+        Assert.DoesNotContain("steps.destroy", steps[setupIndex + 3], StringComparison.Ordinal);
+        Assert.Contains("\n  if: always()\n", steps[setupIndex + 4], StringComparison.Ordinal);
     }
 
     [Fact]
