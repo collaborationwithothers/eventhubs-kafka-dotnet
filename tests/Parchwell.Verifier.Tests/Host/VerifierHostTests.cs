@@ -63,13 +63,13 @@ public sealed class VerifierHostTests
             "ExpectedRepeats.0.ScenarioId", "ExpectedRepeats.0.ConfigurationId", "ExpectedRepeats.0.RunId",
             "ExpectedRepeats.0.InstanceId", "ExpectedRepeats.0.ExpectedInstanceId", "ExpectedRepeats.0.ClientId"))
         .Concat(RequiredOptionsFor("start-line",
-            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix", "PhasePrefix",
+            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix",
             "ExpectedInstanceId", "PodName", "VerifierClientId",
             "NamespaceName", "BlobServiceUri", "VerifierContainer", "TokenTimeout", "MetadataTimeout",
             "WatermarkTimeout", "PollSlice", "BlobIoTimeout", "TenantId", "WorkloadIdentityClientId",
             "FederatedTokenFilePath", "StartLineOutputName", "BrokerInventoryOutputName", "MaxPartitions", "MaxInputDepth"))
         .Concat(RequiredOptionsFor("verify",
-            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix", "PhasePrefix",
+            "ConfigurationId", "RunId", "Phase", "Repeat", "JobName", "RepeatPrefix",
             "ExpectedInstanceId", "PodName", "VerifierClientId",
             "NamespaceName", "BlobServiceUri", "VerifierContainer", "TokenTimeout", "MetadataTimeout",
             "WatermarkTimeout", "PollSlice", "IoTimeout", "BlobIoTimeout", "TenantId",

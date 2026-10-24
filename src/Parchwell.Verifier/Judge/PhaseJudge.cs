@@ -16,11 +16,12 @@ internal sealed record PhaseRepeatEvidence(
     bool TrustedIncomplete,
     OutcomeCounts? Counts,
     ProbeRepeatObservation? ProbeObservation,
-    string? Identity = null);
+    string? Identity = null,
+    WorkloadObservation? WorkloadObservation = null);
 
 internal sealed record PhaseRepeatChecks(bool J1, bool J2, bool J3, bool J4, bool J5, bool J6, bool J8);
 internal sealed record PhaseRepeatResult(int Repeat, string Status, IReadOnlyList<string> Reasons, PhaseRepeatChecks Checks,
-    OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity);
+    OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null);
 internal sealed record PhaseJudgement(string Status, string? Gate, OutcomeCounts? Counts,
     IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons);
 
@@ -57,7 +58,12 @@ internal static class PhaseJudge
             bool invalid = e?.KnownInvalid == true || (e is not null && (e.JobBindingPass == false || e.RegistrationCountPass == false || e.InventoryCoveragePass == false));
             string status = invalid ? "invalid" : j1 && j2 && j3 && j4 && j5 && j6 && !e!.TrustedIncomplete ? "complete_valid" : "incomplete";
             if (invalid && e?.KnownInvalid == true) rr.Add("trusted_result_invalid");
-            repeats.Add(new(number,status,rr,new(j1,j2,j3,j4,j5,j6,j8),e?.Counts,e?.ProbeObservation,e?.Identity));
+            bool complete=status=="complete_valid";
+            repeats.Add(new(number,status,rr,new(j1,j2,j3,j4,j5,j6,j8),complete?e?.Counts:null,
+                e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.ProbeObservation : null,e?.Identity,
+                e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.WorkloadObservation : null));
             reasons.AddRange(rr);
         }
         if (extra || evidence.GroupBy(x => x.Repeat).Any(g => g.Count() > 1)) reasons.Add("j1_repeat_slots");

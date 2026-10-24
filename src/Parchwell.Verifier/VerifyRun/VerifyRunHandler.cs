@@ -53,37 +53,69 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             registration.Identity.RunId!=options.RunId||registration.Phase!=options.Phase||registration.RepeatNumber!=options.Repeat||registration.SourceCommit!=options.SourceCommit)
             throw new InvalidOperationException("producer_registration_binding_invalid");
 
-        byte[] startReceiptBytes=await ReadVerifierRequired(PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat.Value),cancellationToken).ConfigureAwait(false);
-        budget.ConsumeBytes(startReceiptBytes.Length);
-        WorkerReceipt startReceipt=PhaseWireCodec.ReadReceipt(startReceiptBytes);
+        byte[]? startReceiptBytes=await ReadVerifier(PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat.Value),cancellationToken).ConfigureAwait(false);
+        WorkerReceipt? startReceipt=null;
+        if(startReceiptBytes is not null)
+        {
+            budget.ConsumeBytes(startReceiptBytes.Length);
+            try { startReceipt=PhaseWireCodec.ReadReceipt(startReceiptBytes); }
+            catch(FormatException) { /* retain the missing-evidence path below */ }
+            catch(System.Text.Json.JsonException) { /* malformed completion remains missing evidence */ }
+        }
         string startJob=PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,options.Repeat.Value);
-        if(startReceipt.Mode!="start-line"||startReceipt.JobName!=startJob||startReceipt.RunId!=options.RunId||startReceipt.Phase!=options.Phase||startReceipt.Repeat!=options.Repeat||startReceipt.SourceCommit!=options.SourceCommit)
-            throw new InvalidOperationException("start_line_receipt_invalid");
+        if(startReceipt is not null&&(startReceipt.Mode!="start-line"||startReceipt.JobName!=startJob||startReceipt.RunId!=options.RunId||startReceipt.Phase!=options.Phase||startReceipt.Repeat!=options.Repeat||startReceipt.SourceCommit!=options.SourceCommit))
+            startReceipt=null;
         string startName=PhasePaths.StartLine(options.RunId!,options.Phase!,options.Repeat.Value);
         string inventoryName=PhasePaths.BrokerInventory(options.RunId!,options.Phase!,options.Repeat.Value);
-        ValidateReference(startReceipt.Artifacts[0],"verifier",startName);
-        ValidateReference(startReceipt.Artifacts[1],"verifier",inventoryName);
+        if(startReceipt is { Artifacts.Count: 2 })
+        {
+            try
+            {
+                ValidateReference(startReceipt.Artifacts[0],"verifier",startName);
+                ValidateReference(startReceipt.Artifacts[1],"verifier",inventoryName);
+            }
+            catch(InvalidOperationException) { startReceipt=null; }
+        }
+        else startReceipt=null;
         byte[]? noteBytes=await ReadVerifier(startName,cancellationToken).ConfigureAwait(false);
-        byte[] inventoryBytes=await ReadVerifierRequired(inventoryName,cancellationToken).ConfigureAwait(false);
-        if(noteBytes is not null)budget.ConsumeBytes(noteBytes.Length);budget.ConsumeBytes(inventoryBytes.Length);
-        if(noteBytes is not null)VerifyHashAndLength(startReceipt.Artifacts[0],noteBytes);
-        VerifyHashAndLength(startReceipt.Artifacts[1],inventoryBytes);
+        byte[]? inventoryBytes=await ReadVerifier(inventoryName,cancellationToken).ConfigureAwait(false);
+        if(noteBytes is not null)budget.ConsumeBytes(noteBytes.Length);if(inventoryBytes is not null)budget.ConsumeBytes(inventoryBytes.Length);
+        if(noteBytes is not null&&startReceipt is not null)VerifyHashAndLength(startReceipt.Artifacts[0],noteBytes);
+        if(inventoryBytes is not null&&startReceipt is not null)VerifyHashAndLength(startReceipt.Artifacts[1],inventoryBytes);
         RunIdentity expectedStartIdentity=ExpectedStartIdentity(options);
         ParseResult<StartLineNote> start=noteBytes is null
             ?ParseResult<StartLineNote>.Failure(new StructuralProblem(7,"missing_input",startName,null,null,null))
             :StartLineNoteCodec.Read(noteBytes,startName,inputLimits,options.MaxPartitions!.Value);
-        ParseResult<BrokerInventory> inventory=BrokerInventoryReader.Read(inventoryBytes,inventoryName,expectedStartIdentity,options.SourceCommit!,inputLimits);
+        ParseResult<BrokerInventory> inventory=inventoryBytes is null
+            ?ParseResult<BrokerInventory>.Failure(new StructuralProblem(6,"missing_input",inventoryName,null,null,null))
+            :BrokerInventoryReader.Read(inventoryBytes,inventoryName,expectedStartIdentity,options.SourceCommit!,inputLimits);
 
         string producerCompletionName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,options.Repeat.Value,instance);
-        byte[] completionBytes=await ReadLedgerRequired(producerCompletionName,cancellationToken).ConfigureAwait(false);
-        budget.ConsumeBytes(completionBytes.Length);
-        ProducerCompletionReceipt producerReceipt=PhaseWireCodec.ReadProducerCompletion(completionBytes);
+        byte[]? completionBytes=await ReadLedgerOptional(producerCompletionName,cancellationToken).ConfigureAwait(false);
+        ProducerCompletionReceipt? producerReceipt=null;
+        if(completionBytes is not null)
+        {
+            budget.ConsumeBytes(completionBytes.Length);
+            try { producerReceipt=PhaseWireCodec.ReadProducerCompletion(completionBytes); }
+            catch(FormatException) { /* malformed producer receipt rejects publication; diagnostics remain readable */ }
+            catch(System.Text.Json.JsonException) { /* malformed producer receipt rejects publication; diagnostics remain readable */ }
+        }
         string producerPrefix=PhasePaths.ProducerPrefix(options.RunId!,options.Phase!,options.Repeat.Value,instance);
         BlobListing publicationListing=await ReadLedgerListing(producerPrefix+"publication/",cancellationToken).ConfigureAwait(false);
         string[] readNames=["index.json","ledger.jsonl","manifest.json","statistics.jsonl","request-lifecycle.jsonl","capabilities.json"];
         var raw=new Dictionary<string,byte[]?>(StringComparer.Ordinal);
+        long retainedPublicationBytes=0;
         foreach(string name in readNames)
-            raw[name]=await ReadLedgerOptional(PhasePaths.Publication(options.RunId!,options.Phase!,options.Repeat.Value,instance,name),cancellationToken).ConfigureAwait(false);
+        {
+            byte[]? downloaded=await ReadLedgerOptional(PhasePaths.Publication(options.RunId!,options.Phase!,options.Repeat.Value,instance,name),cancellationToken).ConfigureAwait(false);
+            if(downloaded is not null)
+            {
+                retainedPublicationBytes=checked(retainedPublicationBytes+downloaded.LongLength);
+                if(retainedPublicationBytes>Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes))
+                    throw new InputLimitExceededException("Combined publication buffers exceed the configured retained-input limit.");
+            }
+            raw[name]=downloaded;
+        }
 
         ParseResult<ArtifactIndex> index=ArtifactIndexReader.Read(raw["index.json"],inputLimits,budget);
         ParseResult<IReadOnlyList<LedgerRow>> ledger=LedgerReader.ReadRows(Memory("ledger.jsonl"),inputLimits,budget);
@@ -94,10 +126,12 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         ReportAssociation[] reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
             NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
         ArtifactReference Ref(string container,string name,byte[] bytes)=>new(container,name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
-        PublicationReadOutcome accepted=start.Value is null
+        PublicationReadOutcome accepted=completionBytes is null||producerReceipt is null||startReceipt is null||inventoryBytes is null
+            ?new(null,raw,["producer_completion_unavailable"],true)
+            :start.Value is null
             ?new(null,raw,["start_line_invalid"],start.IsExecutionFailure)
             :PublicationAcceptance.Evaluate(publicationListing,producerPrefix,raw,registration,producerReceipt,
-                index.Value,manifest.Value,start.Value,inventory.Value,options.SourceCommit!,Ref("verifier",startName,noteBytes??[]),Ref("verifier",inventoryName,inventoryBytes),Ref("ledger",producerCompletionName,completionBytes),
+                index.Value,manifest.Value,start.Value,inventory.Value,options.SourceCommit!,Ref("verifier",startName,noteBytes??[]),Ref("verifier",inventoryName,inventoryBytes!),Ref("ledger",producerCompletionName,completionBytes!),
                 options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes));
         bool diagnosticsSelected=false;
         if(!accepted.Accepted)
@@ -105,7 +139,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             string diagnosticPrefix=producerPrefix+"diagnostics/";
             BlobListing diagnosticListing=await ReadLedgerListing(diagnosticPrefix,cancellationToken).ConfigureAwait(false);
             DiagnosticPublicationReadOutcome diagnostic=await DiagnosticPublicationReader.ReadAsync(diagnosticListing,diagnosticPrefix,
-                ReadLedgerOptional,options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes),cancellationToken).ConfigureAwait(false);
+                ReadLedgerOptional,options.MaxArtifactBytes.Value,Math.Max(0,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes)-retainedPublicationBytes),cancellationToken).ConfigureAwait(false);
             if(diagnostic.HasPayload)
             {
                 diagnosticsSelected=true;
@@ -161,6 +195,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     :RunJudgement.Evaluate(request);
                 if(!diagnosticsSelected)judgement=ApplyPublicationOutcome(judgement,accepted);
                 A01EvidenceRecording a01=options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
+                if(!accepted.Accepted)
+                    a01=a01 with{ProbeObservation=new ProbeRepeatObservation(false,false,null,null,null,null)};
                 status=judgement.Status??VerifierResultStatus.Incomplete;
                 var hashes=accepted.AcceptedSnapshot is null?[]:PublicationAcceptance.DescriptorNames
                     .Select(n=>{byte[] bytes=raw[n]!;return new JudgedFileHash(n,Convert.ToHexStringLower(SHA256.HashData(bytes)));}).ToArray();
@@ -196,7 +232,6 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         async Task<byte[]?> ReadLedgerOptional(string name,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);byte[]? value=await producerStore.ReadAsync(name,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
         async Task<byte[]> ReadLedgerRequired(string name,CancellationToken ct)=>await ReadLedgerOptional(name,ct).ConfigureAwait(false)??throw new InvalidOperationException("required_ledger_object_missing:"+name);
         async Task<byte[]?> ReadVerifier(string name,CancellationToken ct){long origin=clock.GetTimestamp();using var deadline=new CancellationTokenSource(options.BlobIoTimeout!.Value,clock);using var linked=CancellationTokenSource.CreateLinkedTokenSource(ct,deadline.Token);byte[]? value=await verifierStore.ReadAsync(name,linked.Token).ConfigureAwait(false);CheckDeadline(origin,options.BlobIoTimeout.Value,linked.Token);return value;}
-        async Task<byte[]> ReadVerifierRequired(string name,CancellationToken ct)=>await ReadVerifier(name,ct).ConfigureAwait(false)??throw new InvalidOperationException("required_verifier_object_missing:"+name);
     }
 
     private static string RegistrationInstance(string root,string name)
@@ -210,25 +245,15 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
     private static RunJudgementResult ApplyPublicationOutcome(RunJudgementResult judgement,PublicationReadOutcome accepted)
     {
         if(accepted.Accepted)return judgement;
-        CheckAssessment? prior=judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==3);
-        AssessmentClassification classification=accepted.Incomplete?AssessmentClassification.Incomplete:AssessmentClassification.Invalid;
-        if(prior is { Disposition:AssessmentDisposition.Fail,Classification:AssessmentClassification.Invalid })
-            classification=AssessmentClassification.Invalid;
-        var assessment=new CheckAssessment(3,AssessmentEvaluation.Evaluated,AssessmentDisposition.Fail,classification,
-            "index.json",null,"artifacts","publication_unaccepted",null);
-        CheckAssessment[] assessments=judgement.Assessments.Where(a=>a.CheckNumber!=3).Append(assessment)
-            .OrderBy(a=>a.CheckNumber).ToArray();
-        int[] failed=judgement.FailedChecks.Append(3).Distinct().Order().ToArray();
-        VerifierResultStatus status=classification==AssessmentClassification.Invalid
-            ?VerifierResultStatus.Invalid
-            :judgement.Status==VerifierResultStatus.Invalid?VerifierResultStatus.Invalid:VerifierResultStatus.Incomplete;
+        // Publication acceptance is an independent phase-level authorization. It
+        // must not replace the numbered check that owns the underlying observation.
+        VerifierResultStatus status=judgement.Status==VerifierResultStatus.Invalid||!accepted.Incomplete
+            ?VerifierResultStatus.Invalid:VerifierResultStatus.Incomplete;
         return judgement with
         {
             Status=status,
-            FailedChecks=failed,
-            Assessments=assessments,
             Counts=null,
-            Diagnostics=judgement.Diagnostics.Append(new ResultDiagnostic(3,"publication_unaccepted","index.json",null,"artifacts",null)).ToArray()
+            Diagnostics=judgement.Diagnostics.Append(new ResultDiagnostic(0,"publication_unaccepted","index.json",null,"artifacts",null)).ToArray()
         };
     }
     private static void ValidateReference(ArtifactReference r,string container,string name){if(r.Container!=container||r.Name!=name||r.Length<0)throw new InvalidOperationException("artifact_reference_invalid");}

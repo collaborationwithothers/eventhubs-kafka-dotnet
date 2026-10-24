@@ -154,7 +154,7 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateRegistration(ProducerRegistration v)
     {
-        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || v.Identity.ScenarioId != "A01" || v.Identity.ConfigurationId != PhaseIdentity.ConfigurationFor(v.Phase) || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || v.RepeatNumber is < 1 or > 5 || v.JobName != PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
+        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || v.Identity.ScenarioId != "A01" || v.Identity.ConfigurationId != PhaseIdentity.ConfigurationFor(v.Phase) || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || v.JobName != PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
     }
 
     private static DateTimeOffset ParseUtc(string value)

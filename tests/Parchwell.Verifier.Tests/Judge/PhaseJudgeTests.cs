@@ -43,6 +43,18 @@ public sealed class PhaseJudgeTests
         Assert.Contains("j1_repeat_slots",result.Reasons);
     }
 
+    [Fact]
+    public void GivenRepeatBecomesInvalidAfterCountsWereRead_WhenJudged_ThenOmitsCountsButKeepsIndependentProbeEvidence()
+    {
+        PhaseRepeatEvidence[] repeats=Enumerable.Range(1,5).Select(i=>Complete(i,new(true,true,"broker",0,1,20_001))).ToArray();
+        repeats[2]=repeats[2] with{KnownInvalid=true};
+        PhaseJudgement result=PhaseJudge.Evaluate("probe",repeats);
+        Assert.Equal("invalid",result.Repeats[2].Status);
+        Assert.Null(result.Repeats[2].Counts);
+        Assert.Equal("broker",result.Repeats[2].ProbeObservation?.Broker);
+        Assert.Null(result.Counts);
+    }
+
     private static PhaseRepeatEvidence Complete(int repeat,ProbeRepeatObservation? probe)=>new(repeat,true,true,true,true,true,true,true,false,false,new(1,2,3,4,5,6),probe);
 }
 #pragma warning restore CA1707

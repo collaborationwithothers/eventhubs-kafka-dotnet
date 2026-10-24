@@ -387,7 +387,7 @@ internal static class VerifierResultCodec
     {
         value=null;problem=null;
         if(!Validate(e,path,Set("synthetic"),Set("synthetic","planned_attempts","invoked_attempts","terminal_observations","fixed_profile_complete","first_unexecuted_ordinal","stages"),artifact,out problem))return false;
-        if(!TryBool(e,"synthetic",out bool synthetic)){problem=Problem(artifact,path+".synthetic","wrong_json_kind");return false;}
+        if(!TryBool(e,"synthetic",out bool synthetic)||!synthetic){problem=Problem(artifact,path+".synthetic","invalid_value");return false;}
         if(!TryOptionalInt64(e,"planned_attempts",artifact,path,out long? planned,out problem)||!TryOptionalInt64(e,"invoked_attempts",artifact,path,out long? invoked,out problem)||!TryOptionalInt64(e,"terminal_observations",artifact,path,out long? terminal,out problem)||!TryOptionalInt64(e,"first_unexecuted_ordinal",artifact,path,out long? first,out problem))return false;
         bool? complete=null;if(e.TryGetProperty("fixed_profile_complete",out var completeElement)){if(completeElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False)){problem=Problem(artifact,path+".fixed_profile_complete","wrong_json_kind");return false;}complete=completeElement.GetBoolean();}
         IReadOnlyList<WorkloadStageObservation>? stages=null;
@@ -403,6 +403,7 @@ internal static class VerifierResultCodec
                 if(!TryString(item,"id",out string? id)||!allowedIds.Contains(id,StringComparer.Ordinal)||!ids.Add(id!)){problem=Problem(artifact,itemPath+".id","invalid_value");return false;}
                 if(!TryInt64(item,"offered_attempts_per_second",out long offered)||offered<0||!TryInt64(item,"duration_seconds",out long duration)||duration<0){problem=Problem(artifact,itemPath,"invalid_value");return false;}
                 if(!TryOptionalInt64(item,"invoked_attempts",artifact,itemPath,out long? si,out problem)||!TryOptionalInt64(item,"delivered_observations",artifact,itemPath,out long? sd,out problem)||!TryOptionalInt64(item,"failed_observations",artifact,itemPath,out long? sf,out problem))return false;
+                if(new[]{si,sd,sf}.Any(x=>x<0)){problem=Problem(artifact,itemPath,"negative_value");return false;}
                 parsed.Add(new(id!,offered,duration,si,sd,sf));
             }
             stages=parsed;

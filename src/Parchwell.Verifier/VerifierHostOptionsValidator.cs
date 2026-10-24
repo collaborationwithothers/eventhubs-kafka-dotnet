@@ -222,7 +222,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             if (Common.Phase.PhaseIdentity.IsRunId(options.RunId) && (options.Phase is "probe" or "C0" or "C3"))
             {
                 if (options.JobName != Common.Phase.PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!)) errors.Add("Verifier:JobName does not match the derived judge Job.");
-                if (options.PhasePrefix != Common.Phase.PhaseIdentity.PhasePrefix(options.RunId!, options.Phase!)) errors.Add("Verifier:PhasePrefix does not match the derived phase path.");
+                // The chart supplies RepeatPrefix for repeat workers. PhasePrefix is
+                // derived from the fixed run/phase identity and is optional input.
             }
             if (options.RepeatPrefix is not null || options.ExpectedInstanceId is not null) errors.Add("Judge mode forbids repeat and producer binding fields.");
         }
@@ -238,7 +239,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             if (expectedJob.Length > 0)
             {
                 if (options.RepeatPrefix != Common.Phase.PhaseIdentity.RepeatPrefix(options.RunId!, options.Phase!, options.Repeat is >= 1 and <= 5 ? options.Repeat.Value : 1)) errors.Add("Verifier:RepeatPrefix does not match the derived repeat path.");
-                if (options.PhasePrefix != Common.Phase.PhaseIdentity.PhasePrefix(options.RunId!, options.Phase!)) errors.Add("Verifier:PhasePrefix does not match the derived phase path.");
+                // The chart supplies RepeatPrefix for repeat workers. PhasePrefix is
+                // derived from the fixed run/phase identity and is optional input.
             }
             string loadgen = (options.Phase is "probe" or "C0" or "C3") && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5
                 ? Common.Phase.PhaseIdentity.JobName(options.RunId!, options.Phase!, options.Repeat.Value) : string.Empty;

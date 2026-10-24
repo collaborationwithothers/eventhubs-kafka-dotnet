@@ -117,8 +117,9 @@ public sealed class VerifyRunHandlerTests
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         JsonElement result = output.RootElement;
-        AssertFailure(result, "invalid", malformed ? 1 : 3);
+        AssertFailure(result, "invalid", malformed ? 1 : 4);
         AssertUnusableProbe(result);
+        if (!malformed) AssertRecordedWindows(result, 20001);
         Assert.Equal(1, fixture.Creates);
     }
 
