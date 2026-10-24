@@ -67,8 +67,8 @@ Run commands from any directory through the repository's `infra/scripts/lifecycl
 | `plan-cluster`, `plan-ephemeral` | Save a private plan, with 120-second lock timeout; 600 seconds |
 | `apply-cluster`, `apply-ephemeral` | Apply that saved plan once; 1800 seconds; private JSON output capped at 4 MiB |
 | `destroy-ephemeral` | Initialize independently, destroy once within 2400 seconds, then require a successful empty state list |
-| `start-cluster` | Exact-ID lookup, absence handling, conservative cooldown and bounded asynchronous start |
-| `stop-cluster` | Exact-ID lookup, at most one stop submission and bounded readback to Stopped |
+| `start-cluster` | Case-insensitive Azure resource ID lookup, absence handling, conservative cooldown and bounded asynchronous start |
+| `stop-cluster` | Case-insensitive Azure resource ID lookup, at most one stop submission and bounded readback to Stopped |
 | `credentials` | Non-admin AKS kubeconfig, then `kubelogin convert-kubeconfig -l azurecli` |
 | `reset-namespace` | Delete, observe deletion and recreate `parchwell`; 360 seconds total |
 | `install-smoke` | Install the smoke chart as `parchwell-smoke` with Job `RUN_ID-smoke` |
@@ -78,7 +78,7 @@ Run commands from any directory through the repository's `infra/scripts/lifecycl
 
 No command selects persistent state or destroys the cluster root. Apply has no automatic retry. Destroy requires only ephemeral backend/tfvars and its private working directory; it does not require a completed apply, saved plan, cluster output, cost reservation or generation record. Failed init or failed state read is a cleanup failure, not empty state.
 
-AKS start/stop follow the [Microsoft start/stop guidance](https://learn.microsoft.com/azure/aks/start-stop-cluster#start-an-aks-cluster). Only a positively identified `ResourceNotFound` or `ResourceGroupNotFound` diagnostic counts as absence. Start waits 1800 seconds after observing fully Stopped/Succeeded, then permits at most seven submissions at least 300 seconds apart, only while still Stopped, within 3600 seconds and 120 reads. It never resubmits while Starting. Stop permits at most one submission, 60 reads and 1800 seconds. Incomplete readback fails and is visible; the next sweep may retry. These chosen bounds do not guarantee Azure completes an operation within them.
+AKS start/stop follow the [Microsoft start/stop guidance](https://learn.microsoft.com/azure/aks/start-stop-cluster#start-an-aks-cluster). Returned ARM resource IDs are compared case-insensitively, as Azure resource IDs are case-insensitive; a different resource path still fails closed. Only a positively identified `ResourceNotFound` or `ResourceGroupNotFound` diagnostic counts as absence. Start waits 1800 seconds after observing fully Stopped/Succeeded, then permits at most seven submissions at least 300 seconds apart, only while still Stopped, within 3600 seconds and 120 reads. It never resubmits while Starting. Stop permits at most one submission, 60 reads and 1800 seconds. Incomplete readback fails and is visible; the next sweep may retry. These chosen bounds do not guarantee Azure completes an operation within them.
 
 Namespace deletion is asynchronous ([Kubernetes namespaces](https://kubernetes.io/docs/tasks/administer-cluster/namespaces/)). A terminating namespace is never reused. Job waiting checks either terminal condition from [Job status](https://kubernetes.io/docs/concepts/workloads/controllers/job/); it does not combine two AND conditions. Polling and sleeps consume the same monotonic deadline.
 
@@ -277,3 +277,20 @@ Validation ran on 2026-10-24 at branch head `fcccdde4c78b06fb8245262d488c95672fd
 | `npm run check:docs` | Passed with 37 previously recorded advisory warnings and none for lifecycle.md |
 
 No Azure operation or dispatch was attempted. The new P1 remains listed until a fresh Codex review clears it; the accepted sweeper assertion-removal P1 remains separately listed for Hari. This receipt records implementation and local acceptance only, not a fresh cold review, new-head CI, merge or live gate result.
+
+### AKS resource ID casing regression
+
+The [gate 1 run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40115777988/job/120936657428) completed the smoke Job and destroyed the ephemeral resources, but its final cluster stop failed when `show_cluster()` compared Azure's returned resource ID with the configured ID using case-sensitive equality. ARM resource IDs are case-insensitive, so the lookup rejected the same AKS resource when the casing differed. The lifecycle code now compares both Terraform's AKS output ID and the `az aks show` ID case-insensitively, while retaining rejection for a different resource path.
+
+The existing capped full-lifecycle test now supplies a lower-case ID from Terraform and both AKS readbacks, exercising the casing behavior through provisioning and `stop-cluster`. Its existing mismatch case now also exercises a foreign AKS ID on the read path and confirms rejection. No test case was added; the suite remains within the existing 40-case cap. Acceptance commands and results for this fix are recorded below after execution. No Azure CLI command or workflow dispatch was run from this session; live cleanup remains in the authorized workflow path.
+
+Acceptance ran on branch `codex/158-stop-id` from current main `e70b6f4e4c55a4a5755a8117300e267d725c408f`:
+
+| Command | Result |
+|---|---|
+| `PYTHONDONTWRITEBYTECODE=1 PATH=/tmp/c2-tools:/tmp/c2-tools/venv/bin:$PATH python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | Passed: 40 tests, zero skips; no case added |
+| `PATH=/tmp/c2-tools:$PATH python3 infra/scripts/lifecycle/command.py 600 -- shellcheck -x infra/scripts/lifecycle/lifecycle.sh` | Passed |
+| `npm run check:docs` | Passed with 37 advisory warnings and none for lifecycle.md |
+| `git diff --check` | Passed |
+
+The first test invocation omitted `/tmp/c2-tools` from `PATH`, so two tool-offline cases could not find `actionlint` and `kubeconform`; the recorded passing rerun used the tools directory. No Azure command, workflow dispatch or live-gate claim is part of this acceptance.
