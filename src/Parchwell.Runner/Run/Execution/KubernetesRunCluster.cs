@@ -201,8 +201,16 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
         DeploymentFiles deployment = await GenerateAsync(context, "verify", identity.InstanceId, brokers, cancellationToken).ConfigureAwait(false);
         await ApplyChartAsync(context, deployment, "verify", cancellationToken).ConfigureAwait(false);
         WorkerExecution worker = await WaitJobAsync(context, "verify", budgets?.Number("verify_job_seconds") ?? 750, cancellationToken).ConfigureAwait(false);
-        byte[] result = await DownloadAsync(context, "verifier", context.Phase + "/" + context.RunId + "/result.json", "result.json", cancellationToken).ConfigureAwait(false);
-        return worker with { Result = result };
+        try
+        {
+            byte[] result = await DownloadAsync(context, "verifier", context.Phase + "/" + context.RunId + "/result.json", "result.json", cancellationToken).ConfigureAwait(false);
+            return worker with { Result = result };
+        }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            FailureDiagnostics.WithWorkerOutput(exception, "verify", worker.Process, identity);
+            throw;
+        }
     }
 
     public async Task PreserveObservedWorkersAsync(RepeatContext context, CancellationToken cancellationToken)

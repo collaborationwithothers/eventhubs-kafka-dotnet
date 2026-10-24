@@ -38,6 +38,19 @@ internal static class FailureDiagnostics
         error.WriteLine(exception.ToString());
         foreach (Exception entry in Traverse(exception))
         {
+            if (entry.Data["runner_worker_mode"] is string mode)
+            {
+                string context = $"scenario_id={entry.Data["runner_worker_scenario_id"]} run_id={entry.Data["runner_worker_run_id"]}";
+                error.WriteLine($"runner_debug_worker {mode} exit_code={entry.Data["runner_worker_exit_code"]} timed_out={entry.Data["runner_worker_timed_out"]} {context}");
+                foreach (string stream in new[] { "stdout", "stderr" })
+                    if (entry.Data["runner_worker_" + stream + "_tail"] is string { Length: > 0 } tail)
+                    {
+                        error.WriteLine($"runner_debug_worker {mode} {stream} {context}");
+                        error.WriteLine(tail);
+                    }
+            }
+            if (entry.Data["runner_export_path"] is string path)
+                error.WriteLine($"runner_debug_export path={path} write_outcome={entry.Data["runner_export_write_outcome"]} expected_sha256={entry.Data["runner_export_expected_sha256"]} actual_sha256={entry.Data["runner_export_actual_sha256"]}");
             if (entry.Data["runner_command_tool"] is not string tool) continue;
             WriteTail("stdout", "runner_command_stdout_tail");
             WriteTail("stderr", "runner_command_stderr_tail");
@@ -60,6 +73,34 @@ internal static class FailureDiagnostics
             exception.Data["runner_command_tool"] = tool;
             exception.Data["runner_command_stdout_tail"] = Tail(result.StandardOutput);
             exception.Data["runner_command_stderr_tail"] = Tail(result.StandardError);
+        }
+        return exception;
+    }
+
+    internal static T WithWorkerOutput<T>(T exception, string mode, ProcessResult result, WorkerIdentity identity) where T : Exception
+    {
+        if (DebugEnabled() && mode is "start-line" or "loadgen" or "verify")
+        {
+            exception.Data["runner_worker_mode"] = mode;
+            exception.Data["runner_worker_scenario_id"] = identity.ScenarioId;
+            exception.Data["runner_worker_run_id"] = identity.RunId;
+            exception.Data["runner_worker_exit_code"] = result.ExitCode;
+            exception.Data["runner_worker_timed_out"] = result.TimedOut;
+            exception.Data["runner_worker_stdout_tail"] = Tail(result.StandardOutput);
+            exception.Data["runner_worker_stderr_tail"] = Tail(result.StandardError);
+        }
+        return exception;
+    }
+
+    internal static T WithExportConflict<T>(T exception, string path, ArtifactWriteOutcome outcome,
+        string expectedSha256, string? actualSha256) where T : Exception
+    {
+        if (DebugEnabled())
+        {
+            exception.Data["runner_export_path"] = path;
+            exception.Data["runner_export_write_outcome"] = outcome;
+            exception.Data["runner_export_expected_sha256"] = expectedSha256;
+            exception.Data["runner_export_actual_sha256"] = actualSha256 ?? "missing";
         }
         return exception;
     }

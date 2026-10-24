@@ -18,8 +18,63 @@ namespace Parchwell.Runner.Tests.Execution;
 
 #pragma warning disable CA1707 // Repository-required Given_When_Then names.
 
+[Collection("Failure diagnostics environment")]
 public sealed class FailureArtifactPreservationTests
 {
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    [InlineData(true, 1)]
+    [InlineData(true, 137)]
+    public async Task Given_VerifierTerminatesWithoutResult_When_DownloadFails_Then_DebugRetainsWorkerExitAndLogsAlongsideBlobError(bool debug, int exitCode)
+    {
+        string? previous = Environment.GetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES");
+        Environment.SetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES", debug ? "true" : null);
+        try
+        {
+            using var deployment = new DeploymentFixture();
+            var context = new RepeatContext("probe", 1, "failure-phase-r1", new string('a', 40), deployment.Directory);
+            var process = new ArtifactProcess("verify_missing_blob", []) { WorkerExitCode = exitCode };
+            process.Initialize(context);
+            using var cluster = new KubernetesRunCluster(process, deployment.Generator(), new ChartRenderer(process),
+                JsonSerializer.SerializeToElement(deployment.Input("C0")), "unused-chart", TimeProvider.System,
+                privateKubeconfigPath: Path.Combine(deployment.Directory, "credentials", "config"));
+            JsonObject outputs = JsonSerializer.SerializeToNode(deployment.Input("C0"))!["ephemeral_outputs"]!.AsObject();
+            outputs["aks"] = JsonSerializer.SerializeToNode(new
+            {
+                name = "synthetic", id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/synthetic/providers/Microsoft.ContainerService/managedClusters/synthetic"
+            });
+            await cluster.BindClusterAsync(JsonSerializer.SerializeToElement(outputs), TestContext.Current.CancellationToken);
+            var identity = new WorkerIdentity("A01", "C0", context.RunId, context.RunId + "-pod", context.RunId + "-pod", context.RunId + "-pod");
+
+            IOException exception = await Assert.ThrowsAsync<IOException>(() => cluster.VerifyAsync(context, identity,
+                ["broker.example.invalid"], TestContext.Current.CancellationToken));
+
+            Assert.Equal("worker_blob_read_failed", exception.Message);
+            using var error = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+            FailureDiagnostics.Write(exception, error, "repeat");
+            string output = error.ToString();
+            if (debug)
+            {
+                Assert.Contains($"runner_debug_worker verify exit_code={exitCode} timed_out=False", output, StringComparison.Ordinal);
+                Assert.Contains("runner_debug_worker verify stdout", output, StringComparison.Ordinal);
+                Assert.Contains($"runner_debug_worker verify exit_code={exitCode} timed_out=False scenario_id=A01 run_id={context.RunId}", output, StringComparison.Ordinal);
+                Assert.Contains($"runner_debug_worker verify stdout scenario_id=A01 run_id={context.RunId}", output, StringComparison.Ordinal);
+                Assert.Contains(process.WorkerStdout!, output, StringComparison.Ordinal);
+                Assert.Contains("runner_debug_command repeat az stderr", output, StringComparison.Ordinal);
+                Assert.Contains("BlobNotFound", output, StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.Equal("runner_execution_failed repeat IOException worker_blob_read_failed" + Environment.NewLine, output);
+                Assert.Empty(exception.Data);
+            }
+            Assert.Single(process.Requests, request => request.FileName == "kubectl" && request.Arguments[0] == "logs");
+            Assert.False(File.Exists(Path.Combine(context.OutputDirectory, "result.json")));
+        }
+        finally { Environment.SetEnvironmentVariable("PARCHWELL_DEBUG_FAILURES", previous); }
+    }
+
     [Theory]
     [InlineData("loadgen_exit")]
     [InlineData("loadgen_receipt")]
@@ -299,6 +354,7 @@ public sealed class FailureArtifactPreservationTests
         internal List<ProcessRequest> Requests { get; } = [];
         internal Action? CancelCapture { get; init; }
         internal Action? CancelRepeat { get; set; }
+        internal int? WorkerExitCode { get; init; }
         internal string? ObservedMode { get; private set; }
         internal string? PodObservation { get; private set; }
         internal string? WorkerStdout { get; private set; }
@@ -346,7 +402,7 @@ public sealed class FailureArtifactPreservationTests
                     {
                         metadata = new { name = context!.RunId + "-" + ObservedMode + "-pod", uid = "original-worker-uid" },
                         status = new { containerStatuses = new[] { new { name = ObservedMode == "loadgen" ? "loadgen" : "verifier", restartCount = 0,
-                            state = new { terminated = new { exitCode = failure == "start_line_oom" ? 137 : failure == "verify_signal" ? 1 : 0,
+                            state = new { terminated = new { exitCode = WorkerExitCode ?? (failure == "start_line_oom" ? 137 : failure == "verify_signal" ? 1 : 0),
                                 reason = failure == "start_line_oom" ? "OOMKilled" : "Completed", signal = failure == "verify_signal" ? 15 : 0 } } } } }
                     } } });
                     if (failure == "start_line_malformed_pods") PodObservation = "original malformed pod API response {\n";

@@ -52,7 +52,8 @@ public sealed class RepeatExecutor(IRunCluster cluster, TimeProvider clock, Exec
         _ = admission.Producer;
         byte[] result = verifier.Result ?? [];
         AcceptedWorkerOutcome outcome = WorkerOutcome.Reconcile(verifier.Process, result, identity, context.SourceCommit);
-        if (!outcome.ExecutionCompleted) throw new InvalidDataException(outcome.Reason);
+        if (!outcome.ExecutionCompleted)
+            throw FailureDiagnostics.WithWorkerOutput(new InvalidDataException(outcome.Reason), "verify", verifier.Process, identity);
         return new(identity, outcome, publication, result, admission.Events.ToArray()) { Admission = admission };
     }
 

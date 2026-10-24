@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using Parchwell.Runner.Run.Contracts;
 using Parchwell.Runner.Run.Cost;
 using Parchwell.Runner.Run.Execution;
+using Parchwell.Runner.Run.Evidence;
+using Parchwell.Runner.Tests.Cost;
 using Xunit;
 
 namespace Parchwell.Runner.Tests.Execution;
@@ -21,6 +23,68 @@ public sealed class FailureDiagnosticsTests
         ["runner_command_stderr_tail", "runner_command_stdout_tail", "runner_command_tool"];
     private static readonly string[] TerraformInitArguments = ["init", "-input=false", "-backend-config=synthetic-backend.hcl"];
     private static readonly string[] AzureVersionArguments = ["version", "--output", "json"];
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Given_ConflictingPrivateObject_When_ExportFails_Then_DebugIdentifiesPathAndHashesWithoutChangingRejection(bool debug) =>
+        WithDebugAsync(debug ? "true" : null, async () =>
+        {
+            string file = Path.GetTempFileName();
+            try
+            {
+                await File.WriteAllBytesAsync(file, new byte[] { 1 }, TestContext.Current.CancellationToken);
+                var store = new PersistentTestStore();
+                const string path = "A01/synthetic-env/worker.bin";
+                store.Objects[("evidence", path)] = new([2], "synthetic-etag");
+                var exporter = new EvidenceExporter(store, TimeProvider.System);
+
+                var exception = await Assert.ThrowsAsync<InvalidDataException>(() => exporter.ExportAsync("synthetic-env",
+                    [new("worker.bin", file)], TestContext.Current.CancellationToken));
+
+                Assert.Equal("private_export_readback_conflict", exception.Message);
+                Assert.DoesNotContain("A01/synthetic-env/manifest.json", store.Writes);
+                Assert.Equal(new byte[] { 2 }, store.Objects[("evidence", path)].Bytes);
+                string output = Write(exception);
+                if (debug)
+                {
+                    string expected = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(new byte[] { 1 }));
+                    string actual = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(new byte[] { 2 }));
+                    Assert.Contains($"runner_debug_export path={path} write_outcome=Conflict expected_sha256={expected} actual_sha256={actual}", output, StringComparison.Ordinal);
+                }
+                else
+                {
+                    Assert.Equal("runner_execution_failed InvalidDataException private_export_readback_conflict" + Environment.NewLine, output);
+                    Assert.Empty(exception.Data);
+                }
+            }
+            finally { File.Delete(file); }
+        });
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("false")]
+    [InlineData("true")]
+    public void Given_LongWorkerLogsAndDependentCommandFailure_When_DiagnosticsAttached_Then_DebugKeepsSeparateBoundedTails(string? debug) => WithDebug(debug, () =>
+    {
+        var exception = FailureDiagnostics.WithCommandOutput(new IOException("worker_blob_read_failed"), "az", new(1, "", "BlobNotFound"));
+        string logs = string.Join('\n', NumberedLines("worker", 51));
+        var identity = new WorkerIdentity("A01", "C0", "synthetic-run", "synthetic-pod", "synthetic-pod", "synthetic-client");
+        Assert.Same(exception, FailureDiagnostics.WithWorkerOutput(exception, "verify", new(137, logs, "synthetic worker stderr"), identity));
+        string output = Write(exception);
+        if (debug == "true")
+        {
+            Assert.DoesNotContain(NumberedLines("worker", 51)[0] + Environment.NewLine, output, StringComparison.Ordinal);
+            Assert.Equal(string.Join('\n', NumberedLines("worker", 51)[1..]), exception.Data["runner_worker_stdout_tail"]);
+            Assert.Contains("runner_debug_worker verify stderr scenario_id=A01 run_id=synthetic-run" + Environment.NewLine + "synthetic worker stderr", output, StringComparison.Ordinal);
+            Assert.Contains("runner_debug_worker verify stdout scenario_id=A01 run_id=synthetic-run", output, StringComparison.Ordinal);
+            Assert.Contains("runner_debug_worker verify exit_code=137 timed_out=False scenario_id=A01 run_id=synthetic-run", output, StringComparison.Ordinal);
+            Assert.Contains("runner_debug_command az stderr" + Environment.NewLine + "BlobNotFound", output, StringComparison.Ordinal);
+            Environment.SetEnvironmentVariable(DebugVariable, "false");
+            Assert.Equal("runner_execution_failed IOException worker_blob_read_failed" + Environment.NewLine, Write(exception));
+        }
+        else Assert.Empty(exception.Data);
+    });
 
     [Fact]
     public void Given_SafeRootReason_When_Written_Then_EmitsExactFailureLine() => WithDebug(null, () =>
