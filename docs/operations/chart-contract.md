@@ -38,17 +38,18 @@ The Job has one completion, parallelism one, no retries, and `restartPolicy: Nev
 
 ## Validation receipt
 
-Source SHA: `e70b6f4` (working tree based on the merge of PR #168).
+Source SHA: `6252484` (the chart fixes were committed before these checks).
 
 Commands and results (2026-10-24):
 
-- `python3 infra/scripts/lifecycle/command.py 600 -- bash charts/parchwell/tests/check.sh` stopped before its matrix because `PARCHWELL_TOOLS_DIRECTORY` is unset.
-- `bash infra/scripts/lifecycle/install-tools.sh /tmp/c3-tools ci` verified Terraform 1.16.6, then stopped when the pinned Helm 4.3.1 download from `get.helm.sh` returned HTTP 403. No alternate artifact was used.
-- `python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh` stopped because the pinned tools directory is unavailable.
-- `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` ran 40 tests; two errored because `actionlint` and `kubeconform` are not installed. The other 38 passed.
-- `python3 infra/scripts/lifecycle/command.py 120 -- shellcheck charts/parchwell/tests/check.sh` could not run because ShellCheck is not installed.
-- `./scripts/verify-dotnet.sh` could not run because .NET SDK 10.0.402 is not installed.
-- `npm ci` completed, then `python3 infra/scripts/lifecycle/command.py 600 -- npm run check:docs` passed with 37 advisory warnings across the repository; `docs/operations/chart-contract.md` had no warning.
-- `python3 -m py_compile charts/parchwell/tests/test_chart.py` and `git diff --check` passed.
+- `bash infra/scripts/lifecycle/install-tools.sh /workspace/.tools/parchwell-ci ci` verified Terraform 1.16.6, then stopped when `get.helm.sh` returned HTTP 403 for the pinned Helm 4.3.1 archive. The remaining CI tools were installed with their repository-pinned checksums. For local acceptance only, the Helm binary was copied from `alpine/helm:4.3.1`, image digest `sha256:e3f8d5c462d75470fbb1fce79ad5c20063657096d1f98c0fcea869e2600e2e5e`; it reports `v4.3.1`. The release archive SHA-256 check could not be completed in this environment.
+- `bash /tmp/dotnet-install.sh --version 10.0.402 --install-dir /workspace/.tools/dotnet-10.0.402 --no-path` installed .NET SDK 10.0.402.
+- With `PARCHWELL_TOOLS_DIRECTORY=/workspace/.tools/parchwell-ci` and that directory on `PATH`, `python3 infra/scripts/lifecycle/command.py 600 -- bash charts/parchwell/tests/check.sh` passed: 21 positive and 32 negative cases, including strict kubeconform validation.
+- With the same pinned tool directory on `PATH`, `python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh` passed. This reran chart acceptance and both smoke renders; kubeconform reported one valid resource for each smoke render.
+- With the same pinned tool directory on `PATH`, `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` passed all 40 tests.
+- With the same pinned tool directory on `PATH`, `python3 infra/scripts/lifecycle/command.py 120 -- shellcheck charts/parchwell/tests/check.sh` passed.
+- With `/workspace/.tools/dotnet-10.0.402` on `PATH`, `./scripts/verify-dotnet.sh` passed. The SDK script verified locked restore, Release build, architecture tests and each populated unit project; the Kafka suite passed with 349 tests.
+- `npm ci --ignore-scripts` and `npm run check:docs` passed. The documentation scan reported 37 advisory warnings across the repository; this file had none.
+- `git diff --check` passed.
 
-The chart's 21 positive and 32 negative render cases, strict kubeconform checks, offline lifecycle check, ShellCheck and .NET verification remain unverified because the exact pinned tools and SDK are unavailable here. No live dispatch is part of C3.
+Chart and offline checks used the pinned tool versions; Helm's exact release archive hash remains unverified because its download endpoint returned HTTP 403. The SDK, Python acceptance suite and documentation scan passed locally. No live dispatch is part of C3.
