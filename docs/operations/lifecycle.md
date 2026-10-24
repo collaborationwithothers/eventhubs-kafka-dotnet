@@ -223,3 +223,42 @@ Full local `verify-dotnet.sh` also exited 0 within that invocation bound. Restor
 Final documentation validation exits 0 with the same 36 historical advisory warnings and none for lifecycle.md; `git diff --check` passes. The previously recorded warning dispositions and inspection cap remain unchanged.
 
 Strict chart rendering, full check-offline and verified TFLint remain incomplete. The environment's enforced HTTP allowlist does not include `get.helm.sh` or `tuf-repo-cdn.sigstore.dev`; acceptance needs an environment that permits these official sources. No alternative download route or verification bypass was used. The unchanged Terraform results and the exhausted test-case/warning-inspection caps above remain the evidence for work not changed in this round. The next cold review is separately orchestrated; C1 interfaces, protected merge and live gate 1 remain later prerequisites.
+
+### Per-file ShellCheck continuation with merged C1
+
+The [first PR CI run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40110360614) exposed SC1091 in the checker's per-file invocation. Source `0a7f2c5c031c17bdb95e2665c2abc4950b81938f` fixes that invocation with `shellcheck -x`, following the existing source directive without suppressing a diagnostic. It includes current main `0e4614d5d33d8549235e88f30164a192aec4c083` through merge `dd103584cc0b644a28d49fbca9053e39d9ad30bc`; C1 and CT are now present. Only the checker invocation and this receipt are newly authored in this continuation.
+
+Validation ran on 2026-10-24 in `/workspace/c2-158`, using the previously verified tool versions above and SDK 10.0.402. The old command, `/tmp/c2-tools/shellcheck infra/scripts/lifecycle/lifecycle.sh`, reproduced SC1091 and exited 1. The exact repaired loop passed on every shell file:
+
+```sh
+PATH=/tmp/c2-tools:$PATH bash -c 'set -euo pipefail; while IFS= read -r -d "" script; do python3 infra/scripts/lifecycle/command.py 600 -- shellcheck -x "$script"; done < <(find infra/scripts -type f -name "*.sh" -print0)'
+PYTHONDONTWRITEBYTECODE=1 PATH=/tmp/c2-tools:/tmp/c2-tools/venv/bin:$PATH python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'
+```
+
+The stub suite passed all 40 tests with no skips. No test case was added; the exhausted case cap and previously recorded coverage gaps remain. Both actionlint commands recorded in the preceding section passed again, retaining only the approved queue exception. Both workflow mirror comparisons, `git diff --check`, `terraform fmt -check -recursive infra tests/terraform`, and `bash infra/scripts/lifecycle/check-offline.sh --terraform-test-paths` exited 0.
+
+For each `ROOT` in `persistent`, `ephemeral`, and `cluster`, the following exact commands were run with `/tmp/c2-tools` prepended to PATH and each prefixed by `python3 infra/scripts/lifecycle/command.py 600 --`:
+
+```sh
+terraform -chdir=infra/ROOT init -backend=false -input=false -lockfile=readonly
+terraform -chdir=infra/ROOT validate
+tflint --chdir=infra/ROOT --config=/workspace/c2-158/.tflint.hcl --init
+tflint --chdir=infra/ROOT --config=/workspace/c2-158/.tflint.hcl
+terraform -chdir=infra/ROOT test -test-directory=tests -no-color
+```
+
+All three init and validate commands passed. The mock-test summaries report persistent 10, ephemeral 10 and cluster 13 passed, zero failed; these counts were extracted from the command logs. Each root's test symlink resolves to its nonempty canonical directory. C1's declarations expose `aks` and `workload_identity` from cluster and `eventhubs`, `blob` and `private_endpoint_ips` from ephemeral, as the lifecycle scripts require. This establishes source-level integration and mock configuration acceptance, not actual Azure outputs or private input compatibility.
+
+All three TFLint initialization commands still fail signature-metadata access at `https://tuf-repo-cdn.sigstore.dev/15.root.json`; the subsequent lint commands fail because the azurerm plugin is absent. `bash infra/scripts/lifecycle/install-tools.sh /tmp/c2-tools ci` again verifies Terraform, then fails at the exact pinned Helm URL with HTTP 403. `PARCHWELL_TOOLS_DIRECTORY=/tmp/c2-tools bash infra/scripts/lifecycle/check-offline.sh` exits 1 for missing Helm after its structural and root-path checks. Therefore the complete checker and strict chart rendering remain unverified locally, despite the repaired ShellCheck loop passing independently. No network or integrity check was bypassed.
+
+The original-head [CI .NET job](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40110360614/job/120920603811) and Terraform job completed successfully. Their source is `7ba21c050ad1c461508b545e1438ad956e15e638`; those results do not validate the merged source above. The existing required .NET command was rerun locally against the merged source:
+
+```sh
+env PATH="/tmp/c2-158-dotnet-10.0.402:$PATH" DOTNET_ROOT=/tmp/c2-158-dotnet-10.0.402 DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 python3 infra/scripts/lifecycle/command.py 600 -- ./scripts/verify-dotnet.sh
+```
+
+The full script exited 0 within its bound: locked restore, Release build, Kafka documentation inventory, effective project settings, report validation and warning-as-error control passed. Scripted XML aggregation found 4247 passing tests, zero failures, skips, not-run tests or errors: Architecture 8, Kafka 349, LoadGen 312, Runner 1171, Scenarios 96 and Verifier 2311. Runner's report includes three passing authentication-contract tests and six passing budget-contract tests. The empty Enrichment scaffold remains explicitly untested. Test-generated Python bytecode was removed; all logs, reports and downloaded tools remain outside git.
+
+Documentation validation exits 0 with 37 warnings and none for lifecycle.md. A script compared the warning records before and after this receipt and found them unchanged. The additional warning relative to the earlier C2 source is already dispositioned in [C1's receipt](evidence/issue-157/README.md#documentation-warnings): the legacy Runner runbook links to deleted persistent storage, and C7 owns that runbook's removal. C2's previous historical-warning dispositions and uninspected remainder remain; the inspection cap was not expanded.
+
+The completed GitHub review of the original head reports only the accepted sweeper assertion-removal P1. Its [thread reply](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/168#discussion_r4367734611) retains that finding under Hari's decision. It remains listed for protected review; neither the source merge nor this fix clears it. Fresh cold review and CI on the new head remain required before completion. No Azure operation, branch dispatch, live-gate result or scientific claim is made.
