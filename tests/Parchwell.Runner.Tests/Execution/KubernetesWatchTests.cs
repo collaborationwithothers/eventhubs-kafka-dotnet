@@ -227,6 +227,11 @@ public sealed partial class KubernetesWatchTests
     {
         private readonly ConcurrentQueue<Step> _steps = new(steps);
         internal ConcurrentQueue<ProcessRequest> WatchRequests { get; } = new();
+        internal ConcurrentQueue<ProcessRequest> InitialListRequests { get; } = new();
+        internal ProcessResult InitialListResult { get; set; } = new(0, JsonSerializer.Serialize(new
+        {
+            apiVersion = "v1", kind = "PodList", metadata = new { resourceVersion = InitialVersion }, items = Array.Empty<object>()
+        }), string.Empty);
         internal int InitialLists { get; private set; }
         internal TaskCompletionSource OtherWorkStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal TaskCompletionSource OtherWorkRelease { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -243,7 +248,16 @@ public sealed partial class KubernetesWatchTests
             if (request.FileName == "kubelogin")
                 return new(0, request.Arguments[0] == "--version" ? "kubelogin synthetic-version" : "--login supports azurecli", string.Empty);
             if (request.FileName == "kubectl" && request.Arguments[0] == "apply") return new(0, string.Empty, string.Empty);
-            if (request.FileName == "kubectl" && request.Arguments[1] == "--raw")
+            if (request.FileName == "kubectl" && request.Arguments[1] == "--raw" &&
+                request.Arguments[2] == "/api/v1/namespaces/parchwell/pods?labelSelector=" +
+                    Uri.EscapeDataString("app.kubernetes.io/instance=" + context.RunId + ",parchwell.io/role=loadgen"))
+            {
+                InitialListRequests.Enqueue(request);
+                InitialLists++;
+                return InitialListResult;
+            }
+            if (request.FileName == "kubectl" && request.Arguments[1] == "--raw" &&
+                request.Arguments[2].StartsWith("/api/v1/namespaces/parchwell/pods?watch=true&", StringComparison.Ordinal))
             {
                 WatchRequests.Enqueue(request);
                 Assert.True(_steps.TryDequeue(out Step? step), "No unplanned watch request is allowed.");
@@ -260,8 +274,6 @@ public sealed partial class KubernetesWatchTests
                         status = new { containerStatuses = new[] { new { name = "loadgen", restartCount = 0, state = new { terminated = new { exitCode = 0 } } } } }
                     } } }), string.Empty);
                 }
-                InitialLists++;
-                return new(0, JsonSerializer.Serialize(new { metadata = new { resourceVersion = InitialVersion }, items = Array.Empty<object>() }), string.Empty);
             }
             if (request.FileName == "kubectl" && request.Arguments[0] == "logs") return new(0, "synthetic worker log", string.Empty);
             if (request.FileName == "az" && request.Arguments[2] == "list")

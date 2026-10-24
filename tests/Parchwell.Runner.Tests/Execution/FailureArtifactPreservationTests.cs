@@ -333,7 +333,9 @@ public sealed class FailureArtifactPreservationTests
             if (request.FileName == "kubectl")
             {
                 if (failure == "release_uncertain" && args[0] == "patch") return new(1, "", "synthetic uncertain response after permit delivery");
-                if (args[1] == "--raw") return new(0, ++watches == 1
+                if (args[1] == "--raw" && args[2].StartsWith("/api/v1/namespaces/parchwell/pods?labelSelector=", StringComparison.Ordinal))
+                    return new(0, "{\"apiVersion\":\"v1\",\"kind\":\"PodList\",\"metadata\":{\"resourceVersion\":\"1\"},\"items\":[]}", "");
+                if (args[1] == "--raw" && args[2].StartsWith("/api/v1/namespaces/parchwell/pods?watch=true&", StringComparison.Ordinal)) return new(0, ++watches == 1
                     ? "{\"type\":\"ADDED\",\"object\":{\"metadata\":{\"resourceVersion\":\"2\",\"name\":\"failure-phase-r1-pod\",\"uid\":\"original-uid\"}}}"
                     : "{\"type\":\"BOOKMARK\",\"object\":{\"metadata\":{\"resourceVersion\":\"3\"}}}", "");
                 if (args[0] == "get" && args.Contains("-l", StringComparer.Ordinal) && args.Single(value => value.StartsWith("job-name=", StringComparison.Ordinal) || value.StartsWith("app.kubernetes.io/instance=", StringComparison.Ordinal)).StartsWith("job-name=", StringComparison.Ordinal))

@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.ArchitectureTests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 6578,
+      "sha256": "8f3ac27060bcf3e91c430a4539c605b4507c37d8b6d1982464751c54873786a1"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.Kafka.Tests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 230977,
+      "sha256": "32ca7147f5005f72854b6534aa1997b53134a3e4f7d2691fefd7e54b6885d6c6"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.LoadGen.Tests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 214683,
+      "sha256": "a53eeb3e95095cb3a91f8a7b6e6569ed0639da101e2d7f2923e3d4bd909a5557"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.Runner.Tests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 805974,
+      "sha256": "b6e87acfe6e315d34e3e7ad4addad8261d51963711ab9578e0b914d3a6084f7c"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.Scenarios.Tests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 72103,
+      "sha256": "93df75be74d177c87920e907122327c057dc960d8bd3d131256869f925d8ce53"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/Parchwell.Verifier.Tests.xml",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 1580841,
+      "sha256": "88b537f3ae6be143eded666b645bfd5f8dd36941ea46509d448b7d500fa86a95"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/build.log",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 1819,
+      "sha256": "e28433be7560d35f38ce037e75d4ef0086100240a4934f4a2d1667e0e4df38e2"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/docs.log",
+      "producer": "timeout 600s npm run check:docs > docs/operations/evidence/issue-142/raw/docs.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; evidence README staged during scan",
+      "size_bytes": 10391,
+      "sha256": "04022ea6940058ff08055ef44c067cbc6abf0e1ec8f0ce0f12a7b6eb6a087334"
+    },
+    {
+      "path": "docs/operations/evidence/issue-142/raw/verification.log",
+      "producer": "PATH=\"/tmp/runner-142-dotnet:$PATH\" timeout 600s ./scripts/verify-dotnet.sh > /tmp/runner-142-verification-clean.log 2>&1; source commit be001c82604cf22c93e6eae66794259b148f5787; report/log copied byte-for-byte from /tmp/parchwell-dotnet-verification.7CLL2zTn or the command output log",
+      "size_bytes": 1665900,
+      "sha256": "22019dceeb0698a7bac13398b34bffb343cd2b5a9f002304f3bd7081d9152a97"
+    }
+  ]
+}

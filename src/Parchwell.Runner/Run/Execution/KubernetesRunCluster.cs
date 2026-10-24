@@ -73,7 +73,11 @@ public sealed class KubernetesRunCluster(IProcessRunner process, DeploymentGener
 
     public async Task<PodAdmission> EstablishProducerWatchAsync(RepeatContext context, CancellationToken cancellationToken)
     {
-        ProcessResult list = await KubectlAsync(["get", "pods", "-n", "parchwell", "-l", Selector(context), "-o", "json"], cancellationToken).ConfigureAwait(false);
+        // The server's PodList metadata supplies the opaque resourceVersion needed to start the watch.
+        // Kubernetes v1.35.0 API: PodList.metadata -> ListMeta.resourceVersion.
+        // https://github.com/kubernetes/kubernetes/blob/v1.35.0/api/openapi-spec/swagger.json
+        string uri = "/api/v1/namespaces/parchwell/pods?labelSelector=" + Uri.EscapeDataString(Selector(context));
+        ProcessResult list = await KubectlAsync(["get", "--raw", uri], cancellationToken).ConfigureAwait(false);
         using JsonDocument document = JsonDocument.Parse(list.StandardOutput);
         string version = WorkerIdentity.Text(document.RootElement.GetProperty("metadata"), "resourceVersion");
         var admission = new PodAdmission(context.RunId, version);
