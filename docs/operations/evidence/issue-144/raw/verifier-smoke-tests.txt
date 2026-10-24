@@ -1,9 +1,0 @@
-Running tests from /workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64)
-/workspace/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/bin/Release/net10.0/Parchwell.Verifier.Tests.dll (net10.0|x64) passed (785ms)
-
-Test run summary: Passed!
-  total: 3
-  failed: 0
-  succeeded: 3
-  skipped: 0
-  duration: 1s 085ms
