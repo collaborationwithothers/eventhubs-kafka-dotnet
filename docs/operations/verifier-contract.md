@@ -254,7 +254,7 @@ Normal handler return, successful host stop/disposal and successful cleanup prod
 
 ## C5 implementation validation receipt
 
-Source baseline: `fbf6737a5e3dd98e24e7e2f5690770f1593f3285`. Validation ran on branch `codex/162-c5-verifier` with GPT-6 Luna (`gpt-6-luna`), high effort. No cloud ingestion or live experiment was performed.
+Source baseline: `fbf6737a5e3dd98e24e7e2f5690770f1593f3285`. Tested implementation commit: `a3da18236c347c8f5980a6e26f77c08d07fa0d69` on branch `codex/162-c5-verifier`. Validation ran with GPT-6 Luna (`gpt-6-luna`), high effort. No cloud ingestion or live experiment was performed.
 
 | Command | Result |
 | --- | --- |
@@ -269,6 +269,6 @@ Source baseline: `fbf6737a5e3dd98e24e7e2f5690770f1593f3285`. Validation ran on b
 | `dotnet tool restore` | Passed; Stryker 5.0.0 restored. |
 | `python3 tests/Parchwell.Verifier.Tests/Mutation/run-c5-sample.py` | Two bounded attempts were made, before and after the fixture corrections. Both exited 1 after 14.253s and 14.484s, captured 15755 and 14601 bytes respectively, observed no generated-mutant progress and found no report. The sample remains incomplete; no survivor was reviewed or classified. See [mutation receipt](verifier-mutation.md#c5-selected-sample-and-execution-receipt). |
 | `npm run check:docs` | Completed with 37 advisory warnings, all reported as existing missing-file/link warnings; no new C5 warning group was identified. |
-| `git diff --check` | Passed before the final receipt edit; rerun after this edit. |
+| `git diff --check HEAD^ HEAD` | Passed on implementation commit `a3da18236c347c8f5980a6e26f77c08d07fa0d69`. The final receipt update was also checked with `git diff --check` before its follow-up commit. |
 
 Cold review is pending. This receipt records the completed implementation and remaining mutation-sampling gap; it does not certify the C5 sample as measured or reviewed.
