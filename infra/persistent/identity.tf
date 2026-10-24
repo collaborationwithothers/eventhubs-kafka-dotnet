@@ -22,9 +22,3 @@ module "aks_identity" {
   federated_identity_credentials = {}
   role_assignments               = {}
 }
-
-resource "azurerm_role_assignment" "aks_network" {
-  scope                = module.spoke.subnets.aks.resource_id
-  role_definition_name = "Network Contributor"
-  principal_id         = module.aks_identity.principal_id
-}
