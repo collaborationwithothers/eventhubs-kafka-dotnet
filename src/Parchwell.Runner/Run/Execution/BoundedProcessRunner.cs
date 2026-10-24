@@ -25,32 +25,41 @@ public sealed class BoundedProcessRunner(TimeProvider clock, ExecutionBudgets? b
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         using var process = new Process { StartInfo = start };
         if (!process.Start()) throw new IOException("process_start_failed");
-        Task<string> stdout = ReadAsync(process.StandardOutput, request.MaxOutputBytes, linked.Token);
-        Task<string> stderr = ReadAsync(process.StandardError, request.MaxOutputBytes, linked.Token);
+        var output = new StringBuilder();
+        var error = new StringBuilder();
+        Task stdout = ReadAsync(process.StandardOutput, output, request.MaxOutputBytes, linked.Token);
+        Task stderr = ReadAsync(process.StandardError, error, request.MaxOutputBytes, linked.Token);
         try
         {
             await Task.WhenAll(process.WaitForExitAsync(linked.Token), stdout, stderr).ConfigureAwait(false);
-            return new(process.ExitCode, await stdout.ConfigureAwait(false), await stderr.ConfigureAwait(false));
+            return new(process.ExitCode, output.ToString(), error.ToString());
         }
-        catch
+        catch (Exception exception)
         {
             if (!process.HasExited) process.Kill(entireProcessTree: true);
             try { await process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1), clock, CancellationToken.None).ConfigureAwait(false); }
-            catch (InvalidOperationException exception) { FailureDiagnostics.Write(exception, Console.Error); }
-            catch (TimeoutException exception) { FailureDiagnostics.Write(exception, Console.Error); }
+            catch (InvalidOperationException reapException) { FailureDiagnostics.Write(reapException, Console.Error); }
+            catch (TimeoutException reapException) { FailureDiagnostics.Write(reapException, Console.Error); }
+            if (exception is OperationCanceledException)
+            {
+                string reason = cancellationToken.IsCancellationRequested ? "caller_cancellation" : "command_deadline";
+                var capture = new ProcessCancellationCapture(reason, output.ToString(), error.ToString());
+                exception.Data["runner_process_cancellation"] = capture;
+                FailureDiagnostics.WithCommandOutput(exception, Path.GetFileName(request.FileName),
+                    new(-1, capture.StandardOutput, capture.StandardError, timeout.IsCancellationRequested));
+            }
             throw;
         }
     }
 
-    private static async Task<string> ReadAsync(StreamReader reader, int maximum, CancellationToken cancellationToken)
+    private static async Task ReadAsync(StreamReader reader, StringBuilder text, int maximum, CancellationToken cancellationToken)
     {
-        var text = new StringBuilder();
         char[] buffer = new char[4096];
         int bytes = 0;
         while (true)
         {
             int read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-            if (read == 0) return text.ToString();
+            if (read == 0) return;
             bytes = checked(bytes + Encoding.UTF8.GetByteCount(buffer, 0, read));
             if (bytes > maximum) throw new InvalidDataException("process_output_limit");
             text.Append(buffer, 0, read);
