@@ -13,6 +13,7 @@ using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Window;
@@ -592,6 +593,34 @@ public sealed class VerifierHostTests
         }
         Assert.DoesNotContain(registrations, service =>
             service.ServiceType.Namespace?.StartsWith("Confluent", StringComparison.Ordinal) == true);
+    }
+
+    [Theory]
+    [InlineData("C0")]
+    [InlineData("C3")]
+    public async Task Given_RealRegisteredProducer_When_Resolved_Then_PreservesSeparateClientIdsAfterProviderDisposal(string configuration)
+    {
+        using IHost host = Program.BuildHost(ArgumentsFor("verify", TempPath())
+            .Append($"--Verifier:ScenarioRoot={AppContext.BaseDirectory}").ToArray());
+        LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>()
+            .LoadAsync("A01", TestContext.Current.CancellationToken);
+        var options = host.Services.GetRequiredService<IOptions<VerifierHostOptions>>();
+        var registration = new ProducerRegistration(
+            1,
+            new RunIdentity("A01", configuration, "run-1", "loadgen-pod", "loadgen-pod", "loadgen-producer"),
+            configuration,
+            1,
+            $"run-1-{configuration.ToLowerInvariant()}-r1-loadgen",
+            "loadgen-pod",
+            "loadgen-uid",
+            new string('a', 40));
+
+        ResolvedScenario resolved = new Parchwell.Verifier.VerifyRun.Configuration.RegisteredProducerConfigurationResolver(options)
+            .Resolve(loaded, registration);
+        var roles = resolved.Configurations[configuration].Roles;
+
+        Assert.Equal("loadgen-producer", roles[KafkaClientRole.LoadGenProducer].Settings["client.id"].Value);
+        Assert.Equal("verifier-client", roles[KafkaClientRole.VerifierConsumer].Settings["client.id"].Value);
     }
 
     [Theory]
