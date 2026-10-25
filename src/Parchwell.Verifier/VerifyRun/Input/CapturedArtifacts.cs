@@ -193,6 +193,7 @@ internal sealed record RequestLifecycleRequirement(
 internal sealed record Completion(
     bool IsComplete,
     ParsedField<long> DrainBoundaryMicroseconds,
+    ParsedField<long> FirstPostDrainTimestampMicroseconds,
     IReadOnlyList<CapturedDiagnostic> Diagnostics,
     IReadOnlyList<string> MissingBrokers);
 

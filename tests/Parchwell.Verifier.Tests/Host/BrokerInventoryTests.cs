@@ -1,7 +1,10 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.StartLine;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
@@ -25,9 +28,9 @@ public sealed class BrokerInventoryTests
         using JsonDocument json = JsonDocument.Parse(fixture.Output!);
         Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
         Assert.Equal("kafka_metadata", json.RootElement.GetProperty("source").GetString());
-        Assert.Equal("synthetic-verifier-commit", json.RootElement.GetProperty("source_commit").GetString());
+        Assert.Equal(fixture.Options.SourceCommit, json.RootElement.GetProperty("source_commit").GetString());
         Assert.Equal(6, json.RootElement.GetProperty("identity").EnumerateObject().Count());
-        Assert.Equal("golden-run-001", json.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
+        Assert.Equal(fixture.Options.RunId, json.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
         JsonElement brokers = json.RootElement.GetProperty("brokers");
         Assert.Equal([2, 9], brokers.EnumerateArray().Select(b => b.GetProperty("id").GetInt32()));
         Assert.Equal(["sasl_ssl://broker.example.invalid:9093/2", "sasl_ssl://[2001:db8::1]:9093/9"],
@@ -122,6 +125,31 @@ public sealed class BrokerInventoryTests
     }
 
     [Theory]
+    [InlineData(0,false)]
+    [InlineData(1,true)]
+    [InlineData(63,true)]
+    [InlineData(64,true)]
+    [InlineData(65,false)]
+    public void Given_ReadInventoryBrokerCountBoundary_When_Parsed_Then_EnforcesOneThrough64(int count,bool succeeds)
+    {
+        RunIdentity identity=new("A01","C0","synthetic-c5","synthetic-c5-c0-r1-loadgen","synthetic-c5-c0-r1-loadgen","synthetic-c5-c0-r1-loadgen");
+        BrokerMetadata[] brokers=Enumerable.Range(0,Math.Max(1,Math.Min(count,64))).Select(i=>new BrokerMetadata(i,$"broker-{i}.example.invalid",9093)).ToArray();
+        byte[] bytes=BrokerInventoryCodec.Write(identity,brokers,new string('a',40),1_048_576);
+        if(count is 0 or 65)
+        {
+            JsonObject json=JsonNode.Parse(bytes)!.AsObject();
+            if(count==0)json["brokers"]!.AsArray().Clear();
+            else json["brokers"]!.AsArray().Add(json["brokers"]![0]!.DeepClone());
+            bytes=Encoding.UTF8.GetBytes(json.ToJsonString());
+        }
+
+        ParseResult<BrokerInventory> result=BrokerInventoryReader.Read(bytes,"inventory.json",identity,new string('a',40),new(32,1_048_576,1_048_576,1_048_576,100_000,1_000_000,65_536));
+
+        Assert.Equal(succeeds,result.IsSuccess);
+        if(succeeds)Assert.Equal(count,result.Value!.Brokers.Count);
+    }
+
+    [Theory]
     [InlineData(252, true)]
     [InlineData(253, true)]
     [InlineData(254, false)]
@@ -137,6 +165,32 @@ public sealed class BrokerInventoryTests
             Assert.Equal(host, json.RootElement.GetProperty("brokers")[0].GetProperty("host").GetString());
         }
         else Assert.Throws<InvalidOperationException>(() => BrokerInventoryCodec.Write(identity, brokers, "synthetic", 1048576));
+    }
+
+    [Theory]
+    [InlineData(252, true)]
+    [InlineData(253, true)]
+    [InlineData(254, false)]
+    public void Given_HostLengthBoundary_When_IndependentReaderReads_Then_EnforcesMaximum(int length, bool succeeds)
+    {
+        string host = string.Join('.', new string('a', 63), new string('b', 63), new string('c', 63), new string('d', length - 192));
+        RunIdentity identity = new("A01", "C0", "synthetic-c5", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen");
+        string json = $"{{\"schema_version\":1,\"identity\":{{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"synthetic-c5\",\"instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"expected_instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"client_id\":\"synthetic-c5-c0-r1-loadgen\"}},\"brokers\":[{{\"id\":0,\"host\":\"{host}\",\"port\":9093,\"name\":\"sasl_ssl://{host}:9093/0\"}}],\"source\":\"kafka_metadata\",\"source_commit\":\"{new string('a', 40)}\"}}";
+        ParseResult<BrokerInventory> result = BrokerInventoryReader.Read(Encoding.UTF8.GetBytes(json), "inventory.json", identity, new string('a', 40), new(32, 1_048_576, 1_048_576, 1_048_576, 100_000, 1_000_000, 65_536));
+        Assert.Equal(succeeds, result.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(65535, true)]
+    [InlineData(65536, false)]
+    public void Given_PortBoundary_When_IndependentReaderReads_Then_EnforcesRange(int port, bool succeeds)
+    {
+        RunIdentity identity = new("A01", "C0", "synthetic-c5", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen");
+        string json = $"{{\"schema_version\":1,\"identity\":{{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"synthetic-c5\",\"instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"expected_instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"client_id\":\"synthetic-c5-c0-r1-loadgen\"}},\"brokers\":[{{\"id\":0,\"host\":\"broker.example.invalid\",\"port\":{port},\"name\":\"sasl_ssl://broker.example.invalid:{port}/0\"}}],\"source\":\"kafka_metadata\",\"source_commit\":\"{new string('a', 40)}\"}}";
+        ParseResult<BrokerInventory> result = BrokerInventoryReader.Read(Encoding.UTF8.GetBytes(json), "inventory.json", identity, new string('a', 40), new(32, 1_048_576, 1_048_576, 1_048_576, 100_000, 1_000_000, 65_536));
+        Assert.Equal(succeeds, result.IsSuccess);
     }
 
     [Theory]

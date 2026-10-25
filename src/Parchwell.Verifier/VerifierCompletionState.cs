@@ -9,15 +9,17 @@ internal sealed class VerifierCompletionState
 {
     private int _state;
     private Completion? _completion;
+    private PendingBlobReceipt? _blobReceipt;
 
     internal void MarkStopped() => Interlocked.CompareExchange(ref _state, 2, 0);
 
     internal void MarkReturned(VerifierHostOptions options, int exitCode,
         CancellationToken stoppingToken, CancellationToken applicationStopping)
     {
-        var identity = options.Mode == "probe-gate" ? null : new RunIdentity(options.ScenarioId!,
-            options.ConfigurationId!, options.RunId!, options.InstanceId!, options.ExpectedInstanceId!, options.ClientId!);
-        _completion = new(options.Mode!, options.ScenarioId!, identity, options.VerifierCommit!, exitCode);
+        if (options.Mode == "probe-gate")
+        {
+            _completion = new(options.Mode, options.ScenarioId!, null, options.VerifierCommit!, exitCode);
+        }
         Interlocked.CompareExchange(ref _state, 1, 0);
         if (stoppingToken.IsCancellationRequested || applicationStopping.IsCancellationRequested)
             Interlocked.Exchange(ref _state, 2);
@@ -25,7 +27,7 @@ internal sealed class VerifierCompletionState
 
     internal async Task WriteReceiptAsync(TextWriter output)
     {
-        if (Volatile.Read(ref _state) != 1 || _completion is not { } completed) return;
+        if (Volatile.Read(ref _state) != 1 || _completion is not { } completed || completed.Mode != "probe-gate") return;
         byte[] bytes = DeploymentJson.Write(65_536, writer =>
         {
             writer.WriteStartObject();
@@ -48,5 +50,24 @@ internal sealed class VerifierCompletionState
         await output.FlushAsync().ConfigureAwait(false);
     }
 
+    internal void SetPendingBlobReceipt(string container, string name, byte[] bytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(container);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (Volatile.Read(ref _state) != 0) throw new InvalidOperationException("Completion has already been decided.");
+        _blobReceipt = new(container,name,bytes);
+    }
+
+    internal bool TryGetBlobReceipt(out string container,out string name,out byte[] bytes)
+    {
+        PendingBlobReceipt? receipt=Volatile.Read(ref _state)==1?_blobReceipt:null;
+        container=receipt?.Container??string.Empty;name=receipt?.Name??string.Empty;bytes=receipt?.Bytes??[];
+        return receipt is not null;
+    }
+
+    internal void MarkFailed(){_blobReceipt=null;Interlocked.Exchange(ref _state,2);}
+
     private sealed record Completion(string Mode, string ScenarioId, RunIdentity? Identity, string SourceCommit, int ExitCode);
+    private sealed record PendingBlobReceipt(string Container,string Name,byte[] Bytes);
 }

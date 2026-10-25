@@ -35,7 +35,7 @@ internal sealed class ProbeGateEvidenceBuilder : IDisposable
         File.Copy(Path.Combine(repository, "scenarios", "profiles", "saturation-ramp.yaml"), Path.Combine(Root, "scenarios", "profiles", "saturation-ramp.yaml"));
         Options = new()
         {
-            Mode = "probe-gate", ScenarioId = "A01", VerifierCommit = "synthetic-gate-commit",
+            Mode = "probe-gate", ScenarioId = "A01", VerifierCommit = "synthetic-gate-commit", SourceCommit = "synthetic-gate-commit",
             ProcessLifetime = TimeSpan.FromSeconds(30), CleanupTimeout = TimeSpan.FromSeconds(1), IoTimeout = TimeSpan.FromSeconds(5),
             MaxOutputBytes = 100_000, MaxDiagnosticsPerCheck = 4, MaxDiagnosticBytes = 512,
             MaxArtifactBytes = 100_000, MaxTotalInputBytes = 1_000_000, MaxInputDepth = 16,

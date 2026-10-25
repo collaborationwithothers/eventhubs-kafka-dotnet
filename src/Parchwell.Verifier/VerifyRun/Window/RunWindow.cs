@@ -17,7 +17,12 @@ internal sealed record RunWindow(
     internal const string Topic = "document-events";
 
     internal static RunWindow Create(ParseResult<StartLineNote> parsedStartNote,
-        RunIdentity expectedIdentity, IReadOnlyDictionary<int, long>? endHighs = null)
+        RunIdentity expectedIdentity, IReadOnlyDictionary<int, long>? endHighs = null) =>
+        Create(parsedStartNote, expectedIdentity, expectedIdentity, endHighs);
+
+    internal static RunWindow Create(ParseResult<StartLineNote> parsedStartNote,
+        RunIdentity expectedProducerIdentity, RunIdentity expectedStartIdentity,
+        IReadOnlyDictionary<int, long>? endHighs = null)
     {
         IReadOnlyDictionary<int, long> recordedEnds = endHighs is null
             ? new Dictionary<int, long>() : new Dictionary<int, long>(endHighs);
@@ -34,7 +39,7 @@ internal sealed record RunWindow(
         }
 
         var assessments = new List<CheckAssessment>();
-        if (note.Identity != expectedIdentity) assessments.Add(Failure(7, "identity"));
+        if (note.Identity != expectedStartIdentity) assessments.Add(Failure(7, "identity"));
         if (!string.Equals(note.Topic, Topic, StringComparison.Ordinal)) assessments.Add(Failure(7, "topic"));
         if (note.PartitionHighs.Count == 0) assessments.Add(Failure(7, "partition_highs"));
         var seen = new HashSet<int>();

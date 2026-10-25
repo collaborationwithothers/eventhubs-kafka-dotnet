@@ -92,7 +92,7 @@ public sealed class DeploymentGeneratorTests
     [Theory]
     [InlineData("C0", "60000")]
     [InlineData("C3", "20000")]
-    public async Task Given_RealScenario_When_Generated_Then_BothActualWorkerResolutionsMatch(string phase, string socket)
+    public async Task Given_RealScenario_When_Generated_Then_ActualLoadGenResolutionMatches(string phase, string socket)
     {
         using var fixture = new DeploymentFixture();
         DeploymentFiles result = await fixture.GenerateAsync(phase);
@@ -112,55 +112,53 @@ public sealed class DeploymentGeneratorTests
             Assert.Equal("203.0.113.1", runtime.GetProperty("eventhubs_ip").GetString());
             Assert.Equal("203.0.113.2", runtime.GetProperty("blob_ip").GetString());
         }
-        foreach (string role in new[] { "verifier" })
+        Dictionary<string, string> env = result.Runtime.GetProperty("loadgen_environment")
+            .Deserialize<Dictionary<string, string>>()!;
+        AddSyntheticWorkerInputs(env, phase);
+        env["LoadGen__ScenarioSourceRoot"] = DeploymentFixture.RepositoryRoot;
+        string[] args = env.SelectMany(pair => new[]
         {
-            Dictionary<string, string> env = result.Runtime.GetProperty(role + "_environment").Deserialize<Dictionary<string, string>>()!;
-            env[(role == "loadgen" ? "LoadGen__ScenarioSourceRoot" : "Verifier__ScenarioRoot")] = DeploymentFixture.RepositoryRoot;
-            env["Verifier__TenantId"] = "synthetic-tenant";
-            env["Verifier__WorkloadIdentityClientId"] = "synthetic-client";
-            env["Verifier__FederatedTokenFilePath"] = "/tmp/synthetic-token";
-            string[] args = env.SelectMany(pair => new[] { "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal), pair.Value }).ToArray();
-            Type program = role == "loadgen" ? typeof(LoadGenHostOptions).Assembly.GetType("Parchwell.LoadGen.Program")! : typeof(Parchwell.Verifier.VerifierHostOptions).Assembly.GetType("Parchwell.Verifier.Program")!;
-            MethodInfo method = program.GetMethod("BuildHost", BindingFlags.NonPublic | BindingFlags.Static)!;
-            object?[] parameters = role == "loadgen" ? [args, null, null] : [args, null];
-            using IHost host = (IHost)method.Invoke(null, parameters)!;
-            if (role == "loadgen") host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.Validate();
-            else Assert.True(new Parchwell.Verifier.VerifierHostOptionsValidator().Validate(null,
-                host.Services.GetRequiredService<IOptions<Parchwell.Verifier.VerifierHostOptions>>().Value).Succeeded);
-            ScenarioLoader workerLoader = host.Services.GetRequiredService<ScenarioLoader>();
-            ScenarioResolver workerResolver = host.Services.GetRequiredService<ScenarioResolver>();
-            LoadedScenario actual = await workerLoader.LoadAsync("A01", TestContext.Current.CancellationToken);
-            ResolvedScenario resolved = workerResolver.Resolve(actual);
-            HelmValuesGenerator workerGenerator = host.Services.GetRequiredService<HelmValuesGenerator>();
-            string expected = workerGenerator.Generate(resolved, phase);
-            GeneratedValuesCompatibility.Validate(workerGenerator, resolved, phase, role == "loadgen" ? result.LoadGenValuesPath : result.VerifierValuesPath);
-            Assert.Throws<InvalidOperationException>(() => GeneratedValuesCompatibility.Validate(workerGenerator, resolved, phase,
-                role == "loadgen" ? result.VerifierValuesPath : result.LoadGenValuesPath));
-            Assert.Equal(role == "loadgen" ? loadgen : verifier, expected);
-        }
+            "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal), pair.Value
+        }).ToArray();
+        Type program = typeof(LoadGenHostOptions).Assembly.GetType("Parchwell.LoadGen.Program")!;
+        MethodInfo method = program.GetMethod("BuildHost", BindingFlags.NonPublic | BindingFlags.Static)!;
+        string[] testArgs=[..args,"--AZURE_TENANT_ID","00000000-0000-0000-0000-000000000001",
+            "--AZURE_CLIENT_ID","00000000-0000-0000-0000-000000000002","--AZURE_FEDERATED_TOKEN_FILE","/tmp/synthetic-token"];
+        using IHost host = (IHost)method.Invoke(null, [testArgs, null])!;
+        host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.Validate();
+        ScenarioLoader workerLoader = host.Services.GetRequiredService<ScenarioLoader>();
+        ScenarioResolver workerResolver = host.Services.GetRequiredService<ScenarioResolver>();
+        LoadedScenario actual = await workerLoader.LoadAsync("A01", TestContext.Current.CancellationToken);
+        ResolvedScenario resolved = workerResolver.Resolve(actual);
+        HelmValuesGenerator workerGenerator = host.Services.GetRequiredService<HelmValuesGenerator>();
+        string expected = workerGenerator.Generate(resolved, phase);
+        GeneratedValuesCompatibility.Validate(workerGenerator, resolved, phase, result.LoadGenValuesPath);
+        Assert.Throws<InvalidOperationException>(() => GeneratedValuesCompatibility.Validate(
+            workerGenerator, resolved, phase, result.VerifierValuesPath));
+        Assert.Equal(loadgen, expected);
     }
 
-    [Theory]
-    [InlineData("start-line")]
-    [InlineData("verify")]
-    public async Task Given_VerifierMode_When_Generated_Then_ActualModeValidatorAcceptsEveryRequiredOption(string mode)
+    [Fact]
+    public async Task Given_AllLoadGenOptions_When_Generated_Then_EveryWritablePropertyHasAnExplicitInput()
     {
         using var fixture = new DeploymentFixture();
-        DeploymentFiles files = await fixture.GenerateAsync("C0", mode);
-        Dictionary<string, string> env = files.Runtime.GetProperty("verifier_environment").Deserialize<Dictionary<string, string>>()!;
-        env["Verifier__TenantId"] = "synthetic-tenant";
-        env["Verifier__WorkloadIdentityClientId"] = "synthetic-client";
-        env["Verifier__FederatedTokenFilePath"] = "/tmp/synthetic-token";
-        foreach (string key in env.Keys.Where(key => key.StartsWith("Verifier__", StringComparison.Ordinal)))
-        {
-            string property = key["Verifier__".Length..].Split("__", StringSplitOptions.None)[0];
-            Assert.NotNull(typeof(Parchwell.Verifier.VerifierHostOptions).GetProperty(property));
-        }
-        string[] args = env.SelectMany(pair => new[] { "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal), pair.Value }).ToArray();
-        using IHost host = Parchwell.Verifier.Program.BuildHost(args);
-        var options = host.Services.GetRequiredService<IOptions<Parchwell.Verifier.VerifierHostOptions>>().Value;
-        var validation = new Parchwell.Verifier.VerifierHostOptionsValidator().Validate(null, options);
-        Assert.True(validation.Succeeded, string.Join(";", validation.Failures ?? []));
+        DeploymentFiles files = await fixture.GenerateAsync("C0");
+        Dictionary<string, string> env = files.Runtime.GetProperty("loadgen_environment")
+            .Deserialize<Dictionary<string, string>>()!;
+        AddSyntheticWorkerInputs(env, "C0");
+        foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties().Where(property => property.CanWrite))
+            Assert.True(env.ContainsKey("LoadGen__" + property.Name), "Missing LoadGen option: " + property.Name);
+    }
+
+    private static void AddSyntheticWorkerInputs(Dictionary<string, string> env, string phase)
+    {
+        env["LoadGen__Phase"] = phase;
+        env["LoadGen__JobName"] = $"synthetic-a01-r1-{phase.ToLowerInvariant()}-r1-loadgen";
+        env["LoadGen__PodUid"] = "synthetic-pod-uid";
+        env["LoadGen__RepeatNumber"] = "1";
+        foreach (string property in new[] { "ExpectedInstanceId", "ActualInstanceId", "PodName", "ClientId" })
+            env["LoadGen__" + property] = "synthetic-producer-pod";
+        env["LoadGen__ApplicationInsightsConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000001";
     }
 
     [Fact]

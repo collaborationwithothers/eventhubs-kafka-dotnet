@@ -9,7 +9,8 @@ namespace Parchwell.Verifier.VerifyRun.A01;
 internal sealed record A01EvidenceRecording(
     ProbeRepeatObservation? ProbeObservation,
     A01RecordedEvidence? RecordedEvidence,
-    IReadOnlyList<ResultDiagnostic> Diagnostics);
+    IReadOnlyList<ResultDiagnostic> Diagnostics,
+    WorkloadObservation? WorkloadObservation = null);
 
 /// <summary>Records the approved A01 measurements without adding run-validity checks.</summary>
 internal static class A01EvidenceRecorder
@@ -39,10 +40,15 @@ internal static class A01EvidenceRecorder
         bool complete = Enumerable.Range(17, 10).All(Passed);
         IReadOnlyList<A01WindowEvidence>? windows = complete ? RecordWindows() : null;
         ProbeRepeatObservation observation = new(false, false, null, null, null, null);
-        if (complete && Passed(3) && Passed(27) && selected is { } chosen)
+        bool usable = complete && Passed(3) && Passed(27);
+        if (usable && selected is { } chosen)
             observation = new(true, chosen.Window.ThrottleMaximumMilliseconds!.Value > 20_000,
                 chosen.Window.Broker, chosen.Window.ReportIndex, chosen.Count, chosen.Window.ThrottleMaximumMilliseconds);
-        return new(includeProbe ? observation : null, new(codes, windows), diagnostics);
+        else if (usable)
+            observation = new(true, false, null, null, null, null);
+        WorkloadRecording workload=WorkloadRecorder.Record(request.Manifest,request.Ledger);
+        diagnostics.AddRange(workload.Diagnostics);
+        return new(includeProbe ? observation : null, new(codes, windows), diagnostics,workload.Observation);
 
         bool Passed(int number) => judgement.Assessments.Any(assessment => assessment.CheckNumber == number &&
             assessment.Evaluation == AssessmentEvaluation.Evaluated && assessment.Disposition == AssessmentDisposition.Pass);

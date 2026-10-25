@@ -136,8 +136,9 @@ internal static class StatisticsChecks
             if (unknown.Count != 0) checks[25].Missing = true;
         }
 
-        if (completion is null) checks[24].Missing = true;
-        foreach (string expected in request.ExpectedBrokerNames)
+        if (!request.ExpectedBrokerInventoryAvailable) checks[24].Missing = true;
+        if (request.ExpectedBrokerInventoryAvailable && completion is null) checks[24].Missing = true;
+        foreach (string expected in request.ExpectedBrokerInventoryAvailable ? request.ExpectedBrokerNames : Array.Empty<string>())
         {
             if (completion?.MissingBrokers.Contains(expected, StringComparer.Ordinal) == true)
                 checks[24].Fail("capabilities.json", null, "statistics_completion.missing_brokers");

@@ -15,6 +15,9 @@
       "break": 60
     },
     "mutate": [
+      "Judge/PhaseJudge.cs",
+      "VerifyRun/Publication/PublicationAcceptance.cs",
+      "VerifyRun/A01/WorkloadRecorder.cs",
       "VerifyRun/Judgement/*.cs",
       "VerifyRun/Window/*.cs",
       "VerifyRun/A01/A01EvidenceRecorder.cs",

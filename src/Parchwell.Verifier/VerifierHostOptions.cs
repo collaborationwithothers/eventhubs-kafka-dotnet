@@ -6,6 +6,7 @@ internal enum VerifierMode
 {
     StartLine,
     Verify,
+    Judge,
     ProbeGate
 }
 
@@ -25,6 +26,17 @@ internal sealed class VerifierHostOptions
 
     public string? ConfigurationId { get; set; }
     public string? RunId { get; set; }
+    public string? Phase { get; set; }
+    public int? Repeat { get; set; }
+    public string? JobName { get; set; }
+    public string? RepeatPrefix { get; set; }
+    public string? PhasePrefix { get; set; }
+    public string? CandidateOutputName { get; set; }
+    public string? LoadGenImage { get; set; }
+    public string? VerifierImage { get; set; }
+    public string? PodName { get; set; }
+    public string? PodUid { get; set; }
+    public string? SourceCommit { get; set; }
     public string? InstanceId { get; set; }
     public string? ExpectedInstanceId { get; set; }
     public string? ClientId { get; set; }
@@ -42,8 +54,6 @@ internal sealed class VerifierHostOptions
     public string? FederatedTokenFilePath { get; set; }
 
     public string? BrokerInventoryOutputName { get; set; }
-    public string? GeneratedValuesFile { get; set; }
-
     public string? StartLineOutputName { get; set; }
     public int? MaxPartitions { get; set; }
     public int? MaxInputDepth { get; set; }
@@ -101,10 +111,11 @@ internal static class VerifierModeParser
         {
             "start-line" => VerifierMode.StartLine,
             "verify" => VerifierMode.Verify,
+            "judge" => VerifierMode.Judge,
             "probe-gate" => VerifierMode.ProbeGate,
             _ => default
         };
 
-        return value is "start-line" or "verify" or "probe-gate";
+        return value is "start-line" or "verify" or "judge" or "probe-gate";
     }
 }

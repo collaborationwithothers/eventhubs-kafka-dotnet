@@ -21,7 +21,9 @@ internal sealed record RunJudgementRequest(
     ResolvedRoleConfiguration ResolvedProducerConfiguration,
     IReadOnlyList<ConsumedRecord> Records,
     IReadOnlyList<CheckAssessment> WindowAssessments,
-    OutputLimits Limits);
+    OutputLimits Limits,
+    bool ExpectedBrokerInventoryAvailable = true,
+    IReadOnlyList<StructuralProblem>? Check6Problems = null);
 
 /// <summary>Retains one check's complete observations before diagnostic retention.</summary>
 internal sealed record CheckResult(CheckAssessment Assessment, IReadOnlyList<ResultDiagnostic> Diagnostics)
@@ -60,8 +62,14 @@ internal sealed record RunJudgementResult(
 internal static class RunJudgement
 {
     internal static RunJudgementResult Evaluate(RunJudgementRequest request)
+        => EvaluateCore(request, allowIndexUnavailable: false);
+
+    internal static RunJudgementResult EvaluateDiagnostic(RunJudgementRequest request)
+        => EvaluateCore(request, allowIndexUnavailable: true);
+
+    private static RunJudgementResult EvaluateCore(RunJudgementRequest request, bool allowIndexUnavailable)
     {
-        ThrowIfExecutionFailure(request.Index.IsExecutionFailure || request.Ledger.IsExecutionFailure ||
+        ThrowIfExecutionFailure((request.Index.IsExecutionFailure && !allowIndexUnavailable) || request.Ledger.IsExecutionFailure ||
             request.Manifest.IsExecutionFailure || request.Statistics.IsExecutionFailure ||
             request.Lifecycle.IsExecutionFailure || request.Capabilities.IsExecutionFailure ||
             request.Reports.Any(r => r.Native.IsExecutionFailure));

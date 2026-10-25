@@ -9,7 +9,7 @@ namespace Parchwell.Runner.Tests;
 public sealed class RehearsalTests
 {
     [Fact]
-    public async Task Given_FreshRealWorkerWireBytes_When_Rehearsing_Then_ThreePhasesAndEveryNegativeTraceAreBounded()
+    public async Task Given_FreshWorkerCodecsAndLegacyReceipts_When_Rehearsing_Then_ThreePhasesAndEveryNegativeTraceAreBounded()
     {
         string root = Path.Combine(Path.GetTempPath(), "runner-rehearsal-" + Guid.NewGuid().ToString("N"));
         try

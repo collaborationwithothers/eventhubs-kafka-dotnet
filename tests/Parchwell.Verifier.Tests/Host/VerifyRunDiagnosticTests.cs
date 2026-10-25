@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
@@ -25,7 +26,7 @@ public sealed class VerifyRunDiagnosticTests
         JsonObject note = Note(fixture);
         note["identity"]![field] = "synthetic-foreign";
         fixture.Note = Encoding.UTF8.GetBytes(note.ToJsonString());
-        await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", "identity");
+        await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", "identity", publicationRejected: true);
     }
 
     [Theory]
@@ -43,6 +44,11 @@ public sealed class VerifyRunDiagnosticTests
         if (kind == "negative") note["partition_highs"]![0]!["high"] = -1;
         fixture.Note = Encoding.UTF8.GetBytes(note.ToJsonString());
         await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", field);
+        if (kind == "empty")
+        {
+            using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+            Assert.Empty(output.RootElement.GetProperty("start_line").EnumerateArray());
+        }
     }
 
     [Theory]
@@ -62,7 +68,66 @@ public sealed class VerifyRunDiagnosticTests
             "malformed" => Encoding.UTF8.GetBytes("{synthetic malformed note"),
             _ => Encoding.UTF8.GetBytes(note.ToJsonString())
         };
-        await AssertPublishedFailure(fixture, "invalid", 7, code, "notes/custom.json", field);
+        fixture.OmitStartLineNote = kind == "missing";
+        await AssertPublishedFailure(fixture, "invalid", 7, code, fixture.Options.StartLineInputName!, field, publicationRejected: true);
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.False(output.RootElement.TryGetProperty("start_line", out _));
+    }
+
+    [Theory]
+    [InlineData("source_commit", "start_line_receipt_binding_invalid", "source_commit")]
+    [InlineData("job_name", "start_line_receipt_binding_invalid", "identity")]
+    [InlineData("sha256", "artifact_reference_hash_mismatch", "reference")]
+    public async Task Given_ReadableStartLineReceiptIntegrityFailure_When_Verifying_Then_PublishesInvalidCheckSeven(string field,
+        string code, string diagnosticField)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptStartLineReceipt(field);
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 7, code, "start-line", diagnosticField, publicationRejected: true);
+    }
+
+    [Fact]
+    public async Task Given_BrokerInventoryReferenceMismatch_When_Verifying_Then_PublishesInvalidCheckSix()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptBrokerInventoryReference();
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "artifact_reference_hash_mismatch", "broker-inventory", "reference", publicationRejected: true);
+    }
+
+    [Fact]
+    public async Task Given_BrokerInventoryIdentityRejection_When_Verifying_Then_PublishesInvalidCheckSix()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptBrokerInventoryIdentity();
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "invalid_broker_inventory", fixture.Options.BrokerInventoryOutputName!, "identity", publicationRejected: true);
+    }
+
+    [Theory]
+    [InlineData("job_name")]
+    [InlineData("scenario_id")]
+    [InlineData("configuration_id")]
+    [InlineData("expected_instance_id")]
+    [InlineData("phase")]
+    public async Task Given_ProducerCompletionIdentityMismatch_When_Verifying_Then_PublishesInvalidCheckSix(string field)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        if(field=="phase")
+        {
+            string name=PhasePaths.ProducerCompletion(fixture.Options.RunId!,fixture.Options.Phase!,fixture.Options.Repeat!.Value,fixture.Options.InstanceId!);
+            JsonObject receipt=JsonNode.Parse(fixture.LedgerObjects[name])!.AsObject();
+            receipt["phase"]="foreign";
+            fixture.AddLedgerObject(name,Encoding.UTF8.GetBytes(receipt.ToJsonString()));
+        }
+        else fixture.CorruptProducerCompletionIdentity(field);
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "producer_completion_invalid", "producer-completion", "identity", publicationRejected: true);
     }
 
     [Theory]
@@ -127,18 +192,32 @@ public sealed class VerifyRunDiagnosticTests
     private static JsonObject Note(HostEvidenceBuilder fixture) => JsonNode.Parse(fixture.Note!)!.AsObject();
 
     private static async Task AssertPublishedFailure(HostEvidenceBuilder fixture, string status, int check,
-        string code, string artifact, string? field)
+        string code, string artifact, string? field, bool publicationRejected = false)
     {
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal(1, fixture.Creates);
-        Assert.Equal("results/custom.json", fixture.OutputName);
+        Assert.Equal(fixture.Options.ResultOutputName, fixture.OutputName);
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         JsonElement root = output.RootElement;
         Assert.Equal(status, root.GetProperty("status").GetString());
-        Assert.Equal([check], root.GetProperty("failed_checks").EnumerateArray().Select(item => item.GetInt32()));
+        Assert.Equal(new[] { check }, root.GetProperty("failed_checks").EnumerateArray().Select(item => item.GetInt32()));
         foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
             Assert.False(root.TryGetProperty(count, out _));
-        JsonElement diagnostic = Assert.Single(root.GetProperty("diagnostics").EnumerateArray());
+        JsonElement[] diagnostics = root.GetProperty("diagnostics").EnumerateArray().ToArray();
+        Assert.Equal(publicationRejected ? new[] { 0, check } : new[] { check },
+            diagnostics.Select(item => item.GetProperty("check").GetInt32()).Order());
+        if (publicationRejected)
+        {
+            JsonElement publication = Assert.Single(diagnostics, item => item.GetProperty("check").GetInt32() == 0);
+            Assert.Equal(6, publication.EnumerateObject().Count());
+            Assert.Equal("publication_unaccepted", publication.GetProperty("code").GetString());
+            Assert.Equal("index.json", publication.GetProperty("artifact").GetString());
+            Assert.Equal("artifacts", publication.GetProperty("field").GetString());
+            Assert.Equal(JsonValueKind.Null, publication.GetProperty("row").ValueKind);
+            Assert.Equal(JsonValueKind.Null, publication.GetProperty("snippet").ValueKind);
+        }
+        JsonElement diagnostic = Assert.Single(diagnostics,
+            item => item.GetProperty("check").GetInt32() == check);
         Assert.Equal(6, diagnostic.EnumerateObject().Count());
         Assert.Equal(check, diagnostic.GetProperty("check").GetInt32());
         Assert.Equal(code, diagnostic.GetProperty("code").GetString());

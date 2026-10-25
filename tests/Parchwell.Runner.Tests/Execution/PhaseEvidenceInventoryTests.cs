@@ -17,7 +17,7 @@ namespace Parchwell.Runner.Tests.Execution;
 public sealed class PhaseEvidenceInventoryTests
 {
     [Fact]
-    public async Task Given_FiveRepeatsWithActualDeploymentAndWorkerWriters_When_ExportingPrivateProvenance_Then_ManifestFitsUnchangedEntryLimit()
+    public async Task Given_FiveRepeatsWithActualDeploymentAndLegacyWorkerFixtures_When_ExportingPrivateProvenance_Then_ManifestFitsUnchangedEntryLimit()
     {
         using var deployment = new DeploymentFixture();
         string fixtureDirectory = Path.Combine(deployment.Directory, "wire");

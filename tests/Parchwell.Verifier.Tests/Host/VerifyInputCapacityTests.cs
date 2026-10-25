@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
@@ -14,6 +15,9 @@ namespace Parchwell.Verifier.Tests.Host;
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class VerifyInputCapacityTests
 {
+    private static readonly string[] PublicationReadOrder =
+        ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
+
     [Fact]
     public async Task Given_FullA01AttemptInventory_When_UsingDeployedInputCapacity_Then_PublishesExactCompleteCounts()
     {
@@ -35,7 +39,19 @@ public sealed class VerifyInputCapacityTests
         InputLimitExceededException error = await Assert.ThrowsAsync<InputLimitExceededException>(() =>
             fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal("The combined verifier inputs exceed the configured entry limit.", error.Message);
-        Assert.Equal(["index.json", "ledger.jsonl"], fixture.Reads);
+        string run = fixture.Options.RunId!, phase = fixture.Options.Phase!;
+        int repeat = fixture.Options.Repeat!.Value;
+        string instance = fixture.Options.InstanceId!;
+        string[] metadataReads =
+        [
+            PhasePaths.Registration(run, phase, repeat, instance),
+            PhasePaths.StartLineCompletion(run, phase, repeat),
+            PhasePaths.StartLine(run, phase, repeat),
+            PhasePaths.BrokerInventory(run, phase, repeat),
+            PhasePaths.ProducerCompletion(run, phase, repeat, instance)
+        ];
+        Assert.Equal(metadataReads.Concat(PublicationReadOrder.Select(name =>
+            PhasePaths.Publication(run, phase, repeat, instance, name))), fixture.Reads);
         Assert.Equal(0, fixture.Creates);
         Assert.Null(fixture.Output);
 

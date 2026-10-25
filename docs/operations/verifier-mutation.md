@@ -1,5 +1,42 @@
 # Verifier mutation record
 
+## C5 selected sample and execution receipt
+
+The C5 sample controller and config are [`Mutation/run-c5-sample.py`](../../tests/Parchwell.Verifier.Tests/Mutation/run-c5-sample.py) and [`Mutation/stryker-c5-config.json`](../../tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json). Both bounded campaigns used Stryker 5.0.0, MTP, Release/net10.0, JSON/HTML/progress reporters, 80/60/60 thresholds, and the four planned targets: `Judge/PhaseJudge.cs`, `VerifyRun/Publication/PublicationAcceptance.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs`, and `VerifyRun/A01/WorkloadRecorder.cs`. The controller set `ParchwellVerifierMutationOnly=true` and enforced 2000 generated mutants, 1800 seconds, and 16777216 captured output bytes.
+
+| Measure | First campaign | After fixture correction |
+| --- | --- | --- |
+| Command | `dotnet stryker --config-file Mutation/stryker-c5-config.json --output <temporary directory>` from `tests/Parchwell.Verifier.Tests` | Same |
+| Environment override | `ParchwellVerifierMutationOnly=true` | Same |
+| Elapsed | 14.253 seconds | 14.484 seconds |
+| Captured output | 15755 bytes; within cap | 14601 bytes; within cap |
+| Generated count | No progress count observed | No progress count observed |
+| Exit | 1 | 1 |
+| Mutation report | None found; hash unavailable | None found; hash unavailable |
+| Source mutation restored | Yes; hashes matched before and after | Yes; hashes matched before and after |
+| Survivor review/replay | None; no serialized report existed | None; no serialized report existed |
+
+Both outputs are incomplete measurements, not scores or passing campaigns. Neither invocation reached a generated-count observation or produced a report; the failure group remains unidentified because the controller does not retain captured command output. No survivor was classified as equivalent, and no threshold conclusion is available. Both campaign slots are exhausted; do not rerun this sample without a new decision. The normal Release build and test acceptance passed separately, as recorded in the [C5 validation receipt](verifier-contract.md#c5-implementation-validation-receipt). This mutation-sampling gap remains for Hari's protected-path review.
+
+The controller recorded identical source hashes before and after both invocations:
+
+| File | SHA-256 |
+| --- | --- |
+| `src/Parchwell.Verifier/Judge/PhaseJudge.cs` | `3183501bd8cedfe231180a45d969b01c263de4d64e144483b3f7a0c37b2bb0a7` |
+| `src/Parchwell.Verifier/VerifyRun/Publication/PublicationAcceptance.cs` | `5e2e87d40867e704b62fea40f87f4465ab0ab724ed2b730bde3f1d646634b93f` |
+| `src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs` | `d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806` |
+| `src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs` | `065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808` |
+| `tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj` | `e293c52fea0ef8b52cf4daa25937ffe1db80550d49447350b0a70d39bb30f32e` |
+| `tests/Parchwell.Verifier.Tests/stryker-config.json` | `717fdb77e46ce51c4bf8f119f1acb59b4a15449a5a24e63fa0861b98c51ae95e` |
+| `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` | `4ecc1d0f8203c21463ee8924d2d060ec5a3bce54ede32e685fb57e0d48a12900` |
+| `tests/Parchwell.Verifier.Tests/Mutation/run-c5-sample.py` | `bc78a37db7087a7f61513b4015da9483dd87a5970c10da3190fa60a36069e6ac` |
+
+Detailed second-campaign JSON receipt: `/tmp/162-mutation-final.json`. No report or raw campaign output is committed.
+
+Round-14 Fix confirmation: both authorized campaigns remain exhausted and incomplete under the approved cap. No mutation command was run, no survivor score is claimed, and no mutation evidence or source hash was changed in this round. The verifier fix and required acceptance are recorded in the [C5 validation receipt](verifier-contract.md#c5-implementation-validation-receipt).
+
+Round-17 Fix confirmation: both authorized campaigns remain exhausted and incomplete under the approved cap. No mutation command was run, no survivor score is claimed, and no mutation evidence or source hash was changed in this round. The verifier fix and full acceptance are recorded in the [C5 validation receipt](verifier-contract.md#c5-implementation-validation-receipt).
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
@@ -6852,3 +6889,5 @@ Replay directories are relative to `.artifacts/verifier-mutation/fresh-replays/`
 | 3818 | VerifyRun/Input/NativeStatisticsReader.cs | 153:63-153:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 3823 | VerifyRun/Input/NativeStatisticsReader.cs | 159:17-159:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 3824 | VerifyRun/Input/NativeStatisticsReader.cs | 164:90-164:114 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
+
+Cold-review round 18 Fix did not run a mutation campaign. The two authorized campaigns remain exhausted and incomplete; no score or survivor disposition is inferred.

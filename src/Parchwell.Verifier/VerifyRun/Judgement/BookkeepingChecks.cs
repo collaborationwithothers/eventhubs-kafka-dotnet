@@ -155,6 +155,8 @@ internal static class BookkeepingChecks
     private static CheckResult ConsumedRecords(RunJudgementRequest request)
     {
         var failures = new List<ResultDiagnostic>();
+        failures.AddRange((request.Check6Problems ?? Array.Empty<StructuralProblem>())
+            .Select(problem => new ResultDiagnostic(6, problem.Code, problem.Artifact, problem.Row, problem.Field, problem.Snippet)));
         var rows = request.Ledger.Value?.ToLookup(r => (r.Attempt.InstanceId, r.Attempt.AttemptId));
         for (int i = 0; i < request.Records.Count; i++)
         {

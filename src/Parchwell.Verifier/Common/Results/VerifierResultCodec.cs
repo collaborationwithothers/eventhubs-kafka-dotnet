@@ -76,6 +76,7 @@ internal static class VerifierResultCodec
             if (result.ConfigurationFidelity is not null) WriteConfigurationFidelity(writer, result.ConfigurationFidelity);
             if (result.ProbeObservation is not null) WriteProbeObservation(writer, result.ProbeObservation);
             if (result.A01RecordedEvidence is not null) WriteA01RecordedEvidence(writer, result.A01RecordedEvidence);
+            if (result.WorkloadObservation is not null) WriteWorkloadObservation(writer, result.WorkloadObservation);
             WriteJudgedHashes(writer, result.JudgedFileHashes);
             WriteDiagnostics(writer, result.Diagnostics);
             writer.WriteEndObject();
@@ -170,6 +171,8 @@ internal static class VerifierResultCodec
             return ParseResult<VerifierResult>.Failure(probeProblem!);
         if (!TryOptionalObject(root, "a01_recorded_evidence", artifact, ParseA01Evidence, out A01RecordedEvidence? a01, out StructuralProblem? a01Problem))
             return ParseResult<VerifierResult>.Failure(a01Problem!);
+        if (!TryOptionalObject(root, "workload_observation", artifact, ParseWorkloadObservation, out WorkloadObservation? workload, out StructuralProblem? workloadProblem))
+            return ParseResult<VerifierResult>.Failure(workloadProblem!);
         if (!TryHashes(root, artifact, out IReadOnlyList<JudgedFileHash>? hashes, out StructuralProblem? hashesProblem))
             return ParseResult<VerifierResult>.Failure(hashesProblem!);
         if (!TryDiagnostics(root, artifact, limits.MaxDiagnosticBytes, out IReadOnlyList<ResultDiagnostic>? diagnostics, out StructuralProblem? diagnosticsProblem))
@@ -178,7 +181,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -366,6 +369,47 @@ internal static class VerifierResultCodec
             writer.WriteEndArray();
         }
         writer.WriteEndObject();
+    }
+
+    private static void WriteWorkloadObservation(Utf8JsonWriter writer, WorkloadObservation value)
+    {
+        writer.WritePropertyName("workload_observation"); writer.WriteStartObject(); writer.WriteBoolean("synthetic", value.Synthetic);
+        if(value.PlannedAttempts is long planned) writer.WriteNumber("planned_attempts",planned);
+        if(value.InvokedAttempts is long invoked) writer.WriteNumber("invoked_attempts",invoked);
+        if(value.TerminalObservations is long terminal) writer.WriteNumber("terminal_observations",terminal);
+        if(value.FixedProfileComplete is bool complete) writer.WriteBoolean("fixed_profile_complete",complete);
+        if(value.FirstUnexecutedOrdinal is long first) writer.WriteNumber("first_unexecuted_ordinal",first);
+        if(value.Stages is not null){writer.WritePropertyName("stages");writer.WriteStartArray();foreach(var stage in value.Stages){writer.WriteStartObject();writer.WriteString("id",stage.Id);writer.WriteNumber("offered_attempts_per_second",stage.OfferedAttemptsPerSecond);writer.WriteNumber("duration_seconds",stage.DurationSeconds);if(stage.InvokedAttempts is long si)writer.WriteNumber("invoked_attempts",si);if(stage.DeliveredObservations is long sd)writer.WriteNumber("delivered_observations",sd);if(stage.FailedObservations is long sf)writer.WriteNumber("failed_observations",sf);writer.WriteEndObject();}writer.WriteEndArray();}
+        writer.WriteEndObject();
+    }
+
+    private static bool ParseWorkloadObservation(JsonElement e,string path,string artifact,out WorkloadObservation? value,out StructuralProblem? problem)
+    {
+        value=null;problem=null;
+        if(!Validate(e,path,Set("synthetic"),Set("synthetic","planned_attempts","invoked_attempts","terminal_observations","fixed_profile_complete","first_unexecuted_ordinal","stages"),artifact,out problem))return false;
+        if(!TryBool(e,"synthetic",out bool synthetic)||!synthetic){problem=Problem(artifact,path+".synthetic","invalid_value");return false;}
+        if(!TryOptionalInt64(e,"planned_attempts",artifact,path,out long? planned,out problem)||!TryOptionalInt64(e,"invoked_attempts",artifact,path,out long? invoked,out problem)||!TryOptionalInt64(e,"terminal_observations",artifact,path,out long? terminal,out problem)||!TryOptionalInt64(e,"first_unexecuted_ordinal",artifact,path,out long? first,out problem))return false;
+        bool? complete=null;if(e.TryGetProperty("fixed_profile_complete",out var completeElement)){if(completeElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False)){problem=Problem(artifact,path+".fixed_profile_complete","wrong_json_kind");return false;}complete=completeElement.GetBoolean();}
+        IReadOnlyList<WorkloadStageObservation>? stages=null;
+        if(e.TryGetProperty("stages",out var array))
+        {
+            if(array.ValueKind!=JsonValueKind.Array||array.GetArrayLength()>4){problem=Problem(artifact,path+".stages","wrong_json_kind");return false;}
+            var parsed=new List<WorkloadStageObservation>();var ids=new HashSet<string>(StringComparer.Ordinal);
+            string[] allowedIds=["ramp100","ramp300","ramp900","ramp1800"];
+            int index=0;foreach(JsonElement item in array.EnumerateArray())
+            {
+                string itemPath=$"{path}.stages[{index++}]";
+                if(!Validate(item,itemPath,Set("id","offered_attempts_per_second","duration_seconds"),Set("id","offered_attempts_per_second","duration_seconds","invoked_attempts","delivered_observations","failed_observations"),artifact,out problem))return false;
+                if(!TryString(item,"id",out string? id)||!allowedIds.Contains(id,StringComparer.Ordinal)||!ids.Add(id!)){problem=Problem(artifact,itemPath+".id","invalid_value");return false;}
+                if(!TryInt64(item,"offered_attempts_per_second",out long offered)||offered<0||!TryInt64(item,"duration_seconds",out long duration)||duration<0){problem=Problem(artifact,itemPath,"invalid_value");return false;}
+                if(!TryOptionalInt64(item,"invoked_attempts",artifact,itemPath,out long? si,out problem)||!TryOptionalInt64(item,"delivered_observations",artifact,itemPath,out long? sd,out problem)||!TryOptionalInt64(item,"failed_observations",artifact,itemPath,out long? sf,out problem))return false;
+                if(new[]{si,sd,sf}.Any(x=>x<0)){problem=Problem(artifact,itemPath,"negative_value");return false;}
+                parsed.Add(new(id!,offered,duration,si,sd,sf));
+            }
+            stages=parsed;
+        }
+        if(new[]{planned,invoked,terminal,first}.Any(x=>x<0)){problem=Problem(artifact,path,"negative_value");return false;}
+        value=new(synthetic,planned,invoked,terminal,complete,first,stages);return true;
     }
 
     private static void WriteJudgedHashes(Utf8JsonWriter writer, IReadOnlyList<JudgedFileHash> values)
@@ -837,7 +881,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation"
         };
         fields.UnionWith(CountFields);
         return fields;

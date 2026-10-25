@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Kafka;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
@@ -18,21 +19,22 @@ public sealed class StartLineHandlerTests
         fixture.Kafka.Query = _ => { fixture.Kafka.Clock.Advance(100); return new WatermarkOffsets(0, 0); };
         Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal([TimeSpan.FromMilliseconds(1000)], fixture.Kafka.QueryTimeouts);
-        Assert.Equal(1, fixture.Creates);
+        Assert.Equal(2, fixture.Creates);
     }
 
     [Fact]
-    public async Task Given_EmptyPartition_When_Capturing_Then_CleansNativeClientsBeforeOneSuccessfulNotePublication()
+    public async Task Given_EmptyPartition_When_Capturing_Then_CleansNativeClientsBeforeNoteAndInventoryPublication()
     {
         using var fixture = new HostEvidenceBuilder();
         fixture.Kafka.Query = _ => new WatermarkOffsets(0, 0);
         Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
         fixture.Events.Add("return");
-        Assert.Equal(["admin-dispose", "consumer-dispose", "create", "return"], fixture.Events);
-        Assert.Equal(1, fixture.Creates);
-        Assert.Equal("notes/new.json", fixture.OutputName);
-        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
-        Assert.Equal("golden-loadgen-client", output.RootElement.GetProperty("identity").GetProperty("client_id").GetString());
+        Assert.Equal(["admin-dispose", "consumer-dispose", "create", "create", "return"], fixture.Events);
+        Assert.Equal(2, fixture.Creates);
+        Assert.Equal([fixture.Options.StartLineOutputName!, fixture.Options.BrokerInventoryOutputName!], fixture.CreateNames);
+        using JsonDocument output = JsonDocument.Parse(fixture.CreatedObjects[fixture.Options.StartLineOutputName!]);
+        Assert.Equal(PhaseIdentity.JobName(fixture.Options.RunId!, fixture.Options.Phase!, fixture.Options.Repeat!.Value),
+            output.RootElement.GetProperty("identity").GetProperty("client_id").GetString());
         Assert.Equal(0, output.RootElement.GetProperty("partition_highs")[0].GetProperty("high").GetInt64());
         Assert.Equal("1970-01-01T00:00:00.0000000+00:00", output.RootElement.GetProperty("captured_at").GetString());
         Assert.Equal(typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), output.RootElement.GetProperty("confluent_kafka_version").GetString());
@@ -67,7 +69,7 @@ public sealed class StartLineHandlerTests
         fixture.Kafka.AdminDispose = () => { fixture.Events.Add("admin-dispose"); fixture.Kafka.Clock.Advance(elapsed); };
         if (succeeds) Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
         else await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(succeeds ? 1 : 0, fixture.Creates);
+        Assert.Equal(succeeds ? 2 : 0, fixture.Creates);
         Assert.Equal(["admin-dispose", "consumer-dispose"], fixture.Events.Take(2));
     }
 
@@ -120,10 +122,19 @@ public sealed class StartLineHandlerTests
         using var fixture = new HostEvidenceBuilder();
         fixture.DelayHandlerTimerCallbacks();
         if (phase == "cleanup") fixture.Kafka.AdminDispose = () => fixture.Kafka.Clock.Advance(elapsed);
-        else fixture.AfterCreate = _ => fixture.Kafka.Clock.Advance(elapsed);
+        else
+        {
+            bool advanced = false;
+            fixture.AfterCreate = _ =>
+            {
+                if (advanced) return;
+                advanced = true;
+                fixture.Kafka.Clock.Advance(elapsed);
+            };
+        }
         if (succeeds) Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
         else await Assert.ThrowsAsync<TimeoutException>(() => fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(succeeds || phase == "upload" ? 1 : 0, fixture.Creates);
+        Assert.Equal(succeeds ? 2 : phase == "upload" ? 1 : 0, fixture.Creates);
     }
 
     [Theory]

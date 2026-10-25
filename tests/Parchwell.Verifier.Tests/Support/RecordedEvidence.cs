@@ -52,7 +52,7 @@ internal static class RecordedEvidence
         var capabilities = new CapturedCapabilities(1, identity, [],
             ParsedField<Parchwell.Verifier.VerifyRun.Input.ResolvedConfiguration>.FromValue(capturedConfiguration),
             [], false, ["broker-a"], [], true,
-            ParsedField<Completion>.FromValue(new(true, ParsedField<long>.FromValue(100), [], [])), [], false);
+            ParsedField<Completion>.FromValue(new(true, ParsedField<long>.FromValue(100), ParsedField<long>.Missing(), [], [])), [], false);
         ReportAssociation[] reports = [Report(90, 40), Report(100, 50), Report(110, 60)];
         return new(identity,
             ParseResult<ArtifactIndex>.Success(new(1, identity, "complete", true, true, true, [])),

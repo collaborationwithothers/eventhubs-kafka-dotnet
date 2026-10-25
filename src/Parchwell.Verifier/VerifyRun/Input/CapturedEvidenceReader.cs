@@ -67,10 +67,10 @@ internal static class CapturedEvidenceReader
     }
 
     /// <summary>Reads the capabilities envelope, preserving completion and boundary presence states.</summary>
-    public static ParseResult<CapturedCapabilities> ReadCapabilities(ReadOnlyMemory<byte>? source, string artifact, InputLimits limits, InputBudget budget) =>
+    public static ParseResult<CapturedCapabilities> ReadCapabilities(ReadOnlyMemory<byte>? source, string artifact, InputLimits limits, InputBudget budget, bool captureOnly = false) =>
         source is null
             ? ParseResult<CapturedCapabilities>.Failure(new StructuralProblem(EnvelopeCheck, "missing_input", artifact, null, null, null))
-            : ReadEnvelope(source.Value, artifact, limits, budget, (root, parser) => parser.Capabilities(root));
+            : ReadEnvelope(source.Value, artifact, limits, budget, (root, parser) => parser.Capabilities(root, captureOnly));
 
     private static ParseResult<T> ReadEnvelope<T>(ReadOnlyMemory<byte> utf8, string artifact, InputLimits limits, InputBudget budget,
         Func<JsonElement, EvidenceParser, T?> read)
@@ -170,7 +170,7 @@ internal static class CapturedEvidenceReader
                 reason, isError.Value, isFatal.Value, provenance);
         }
 
-        public CapturedCapabilities? Capabilities(JsonElement root)
+        public CapturedCapabilities? Capabilities(JsonElement root, bool captureOnly)
         {
             ValidateRequiredAndAllowed(root, "$",
                 ["schema_version", "identity", "artifacts", "resolved_configuration", "request_lifecycle_requirements",
@@ -188,7 +188,8 @@ internal static class CapturedEvidenceReader
             List<string>? brokers = StringArray(root, "observed_broker_names", "observed_broker_names");
             List<string>? guards = StringArray(root, "guard_observations", "guard_observations");
             bool? guardsComplete = Boolean(root, "guard_observations_complete", "guard_observations_complete");
-            ParsedField<Completion> completion = OptionalObject(root, "statistics_completion", "statistics_completion", ReadCompletion, allowMissing: true);
+            ParsedField<Completion> completion = OptionalObject(root, "statistics_completion", "statistics_completion",
+                (value, path) => ReadCompletion(value, path, captureOnly), allowMissing: true);
             List<string>? sessionDiagnostics = StringArray(root, "session_diagnostics", "session_diagnostics");
             bool? faulted = Boolean(root, "is_faulted", "is_faulted");
             return Problems.Count != 0 || schema is null || identity is null || artifacts is null || requirements is null ||
@@ -344,16 +345,22 @@ internal static class CapturedEvidenceReader
                 ? null : new RequestLifecycleRequirement(requirement, status, version, sources, facts, inference, evidence);
         }
 
-        private Completion? ReadCompletion(JsonElement value, string path)
+        private Completion? ReadCompletion(JsonElement value, string path, bool captureOnly)
         {
             if (value.ValueKind != JsonValueKind.Object) return null;
-            ValidateRequiredAndAllowed(value, path, ["is_complete", "diagnostics", "missing_brokers"],
-                ["is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers"]);
+            ValidateRequiredAndAllowed(value, path, captureOnly
+                    ? ["is_complete", "drain_boundary_microseconds", "first_post_drain_timestamp_microseconds", "diagnostics", "missing_brokers"]
+                    : ["is_complete", "diagnostics", "missing_brokers"],
+                captureOnly
+                    ? ["is_complete", "drain_boundary_microseconds", "first_post_drain_timestamp_microseconds", "diagnostics", "missing_brokers"]
+                    : ["is_complete", "drain_boundary_microseconds", "diagnostics", "missing_brokers"]);
             bool? complete = Boolean(value, "is_complete", path + ".is_complete");
             ParsedField<long> boundary = NullableInt64(value, "drain_boundary_microseconds", path + ".drain_boundary_microseconds", allowMissing: true);
+            ParsedField<long> firstPostDrain = NullableInt64(value, "first_post_drain_timestamp_microseconds", path + ".first_post_drain_timestamp_microseconds", allowMissing: true);
+            if (captureOnly && firstPostDrain.Presence == FieldPresence.Value && firstPostDrain.Value < 0) Add("out_of_range", path + ".first_post_drain_timestamp_microseconds");
             List<CapturedDiagnostic>? diagnostics = ReadArray(value, "diagnostics", path + ".diagnostics", ReadDiagnostic);
             List<string>? brokers = StringArray(value, "missing_brokers", path + ".missing_brokers");
-            return complete is null || diagnostics is null || brokers is null ? null : new Completion(complete.Value, boundary, diagnostics, brokers);
+            return complete is null || diagnostics is null || brokers is null ? null : new Completion(complete.Value, boundary, firstPostDrain, diagnostics, brokers);
         }
 
         private List<T>? ReadArray<T>(JsonElement parent, string property, string path, Func<JsonElement, string, T?> read) where T : class
