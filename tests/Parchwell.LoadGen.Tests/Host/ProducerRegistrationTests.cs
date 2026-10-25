@@ -85,6 +85,9 @@ public sealed class ProducerRegistrationTests
         string output = NewDirectory();
         var lifecycle = new RecordingLifecycle("success", diagnosticsFails: true);
         var producer = new ProducerFactoryTracker();
+        // The listener is process-wide and other worker tests emit diagnostics in parallel, so
+        // only this host's run is recorded.
+        string runId = "registration-" + Guid.NewGuid().ToString("N")[..16];
         var diagnosticActivities = new List<ActivityStatusCode>();
         using var activityListener = new ActivityListener
         {
@@ -93,13 +96,14 @@ public sealed class ProducerRegistrationTests
             SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData,
             ActivityStopped = activity =>
             {
-                if (activity.OperationName == "loadgen.diagnostics") diagnosticActivities.Add(activity.Status);
+                if (activity.OperationName == "loadgen.diagnostics" && Equals(activity.GetTagItem("run"), runId))
+                    diagnosticActivities.Add(activity.Status);
             }
         };
         ActivitySource.AddActivityListener(activityListener);
         try
         {
-            using IHost host = CreateHost(output, lifecycle, producer, runSeconds: 1, publisherFails: true);
+            using IHost host = CreateHost(output, lifecycle, producer, runSeconds: 1, publisherFails: true, runId: runId);
 
             await host.StartAsync(TestContext.Current.CancellationToken);
             await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
@@ -204,9 +208,14 @@ public sealed class ProducerRegistrationTests
 
     private static IHost CreateHost(string output, RecordingLifecycle lifecycle, ProducerFactoryTracker producer, int runSeconds,
         bool publisherFails = false, TimeProvider? timeProvider = null, Func<Task>? holdEvidenceWriter = null,
-        Action<Task>? evidenceWriterTaskCaptured = null)
+        Action<Task>? evidenceWriterTaskCaptured = null, string? runId = null)
     {
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
+        if (runId is not null)
+        {
+            values["LoadGen__RunId"] = runId;
+            values["LoadGen__JobName"] = runId + "-c0-r1-loadgen";
+        }
         values["LoadGen__ProcessLifetimeTimeout"] = "00:00:15";
         values["LoadGen__MaxAttempts"] = "2";
         values["LoadGen__MaxScheduleLateness"] = "00:00:05";
@@ -413,10 +422,17 @@ public sealed class ProducerRegistrationTests
             throw new NotSupportedException(targetMethod?.Name);
         }
 
+        private static long MicrosecondsNow() => (long)((Int128)Stopwatch.GetTimestamp() * 1_000_000 / Stopwatch.Frequency);
+
         public void EmitPostDrainStatistics()
         {
             KafkaStatisticsSession statistics = Statistics ?? throw new InvalidOperationException("synthetic_statistics_unavailable");
-            long timestamp = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
+            // KafkaStatisticsSession counts only a report whose ts is strictly after its rounded-up
+            // completion boundary. This runs just after that boundary, and a report in the same
+            // microsecond would be rejected, so wait two microsecond ticks past entry.
+            long earliest = MicrosecondsNow() + 2;
+            long timestamp;
+            while ((timestamp = MicrosecondsNow()) < earliest) Thread.SpinWait(1);
             long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string report = "{\"name\":\"worker-producer\",\"client_id\":\"worker-pod\",\"type\":\"producer\",\"ts\":" +
                 timestamp.ToString(CultureInfo.InvariantCulture) + ",\"time\":" + time.ToString(CultureInfo.InvariantCulture) +
