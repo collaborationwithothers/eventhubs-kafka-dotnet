@@ -89,7 +89,6 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             {
                 RequireText(options.ResultOutputName, "Verifier:ResultOutputName", errors);
                 RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
-                ValidateOptionalPath(options.GeneratedValuesFile, "Verifier:GeneratedValuesFile", errors);
                 RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);
                 RequirePositive(options.MaxConsumedBytes, "Verifier:MaxConsumedBytes", errors);
                 RequirePositive(options.MaxArtifactBytes, "Verifier:MaxArtifactBytes", errors);
@@ -140,7 +139,6 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequireText(options.StartLineInputName, "Verifier:StartLineInputName", errors);
                 RequireText(options.ResultOutputName, "Verifier:ResultOutputName", errors);
                 RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
-                ValidateOptionalPath(options.GeneratedValuesFile, "Verifier:GeneratedValuesFile", errors);
                 RequireCollection(options.ExpectedBrokerNames, "Verifier:ExpectedBrokerNames", errors);
                 AddPositive(options.SafetyStop, "Verifier:SafetyStop", errors, requiredBudgets);
                 RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);

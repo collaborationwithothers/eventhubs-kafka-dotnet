@@ -1,6 +1,10 @@
 using System.Text.Json;
+using System.Diagnostics.Tracing;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Parchwell.Verifier;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Phase;
@@ -27,16 +31,24 @@ public sealed class ChartEnvironmentVerifierHostTests
         fixture.ConfigureRepeat(1,"C0");
         if(mismatch)fixture.SetCapturedClientId("other-client-c5");
         using var environment=new ChartEnvironmentScope(ChartVerifyEnvironment());
+        using var requestGuard=new OfflineRequestGuard();
+        var resourceReset=new OfflineResourceReset();
         var publisher=new FixtureReceiptPublisher(fixture);
 
         int exit=await Program.RunAsync([],services=>
         {
+            services.RemoveAll<IHostedService>();
+            foreach(var descriptor in services.Where(item=>item.ServiceType.Name is "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray())
+                services.Remove(descriptor);
+            services.AddOpenTelemetry().ConfigureResource(resourceReset.Prepare);
             services.RemoveAll<IVerifierArtifactStore>();services.AddSingleton<IVerifierArtifactStore>(fixture);
             services.RemoveAll<IProducerArtifactStore>();services.AddSingleton<IProducerArtifactStore>(fixture);
             services.RemoveAll<VerifierKafkaSessionFactory>();
             services.AddSingleton(new VerifierKafkaSessionFactory(_=>fixture.Kafka.Session));
             services.RemoveAll<ICompletionReceiptPublisher>();services.AddSingleton<ICompletionReceiptPublisher>(publisher);
-        });
+        }).WaitAsync(TimeSpan.FromSeconds(5),TestContext.Current.CancellationToken);
+        Assert.False(requestGuard.UnexpectedRequest,$"The offline chart-host proof attempted an HTTP request: {requestGuard.LastRequest}");
+        Assert.Equal(0,resourceReset.DetectCalls);
 
         Assert.Equal(mismatch?1:0,exit);
         string resultName=PhasePaths.Result("synthetic-c5","C0",1);
@@ -64,7 +76,7 @@ public sealed class ChartEnvironmentVerifierHostTests
         WorkerReceipt receipt=PhaseWireCodec.ReadReceipt(publisher.Receipt!);
         Assert.Equal(mismatch?1:0,receipt.HandlerExitCode);
         Assert.NotNull(receipt.PublicationAcceptance);
-        Assert.DoesNotContain(Environment.GetEnvironmentVariables().Keys.Cast<string>(),key=>key is "Verifier__InstanceId" or "Verifier__ClientId" or "Verifier__ExpectedBrokerNames" or "Verifier__GeneratedValuesFile");
+        Assert.DoesNotContain(Environment.GetEnvironmentVariables().Keys.Cast<string>(),key=>key is "Verifier__InstanceId" or "Verifier__ClientId" or "Verifier__ExpectedBrokerNames");
     }
 
     private static Dictionary<string,string?> ChartVerifyEnvironment()
@@ -112,6 +124,43 @@ public sealed class ChartEnvironmentVerifierHostTests
         public byte[]? Receipt{get;private set;}
         public Task PublishAsync(VerifierHostOptions options,string container,string name,byte[] bytes,CancellationToken token)
         {Receipt=bytes;return fixture.CreateAsync(name,bytes,token);}
+    }
+
+    private sealed class OfflineRequestGuard:EventListener
+    {
+        private int unexpectedRequest;
+        internal string? LastRequest{get;private set;}
+        internal bool UnexpectedRequest=>Volatile.Read(ref unexpectedRequest)!=0;
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            if(eventSource.Name=="System.Net.Http")EnableEvents(eventSource,EventLevel.Informational);
+        }
+        protected override void OnEventWritten(EventWrittenEventArgs eventData)
+        {
+            if(eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
+            {
+                LastRequest=string.Join(";",(eventData.PayloadNames??[]).Zip(eventData.Payload??[],(name,value)=>$"{name}={value}"));
+                if(!(eventData.Payload?.Any(value=>value?.ToString()?.Contains("127.0.0.1",StringComparison.Ordinal)==true)??false))
+                    Interlocked.Exchange(ref unexpectedRequest,1);
+            }
+        }
+    }
+
+    private sealed class OfflineResourceReset:IResourceDetector
+    {
+        private int detectCalls;
+        internal int DetectCalls=>Volatile.Read(ref detectCalls);
+        internal void Prepare(ResourceBuilder resource)
+        {
+            resource.AddDetector(this);
+            resource.Clear();
+            resource.AddAttributes([new KeyValuePair<string,object>("parchwell.test.resource_reset",true)]);
+        }
+        public Resource Detect()
+        {
+            Interlocked.Increment(ref detectCalls);
+            return Resource.Empty;
+        }
     }
 }
 #pragma warning restore CA1707

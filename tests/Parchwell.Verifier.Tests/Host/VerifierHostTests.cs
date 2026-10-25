@@ -31,6 +31,44 @@ public sealed class VerifierHostTests
     ];
     private static readonly string[] DuplicateRepeatPaths = ["same.json", "same.json"];
 
+    [Fact]
+    public void Given_DeploymentIdentityEnvironmentKeys_When_Bound_Then_MapsIdentityWithoutClientAliases()
+    {
+        IConfiguration config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Verifier:Mode"] = "verify",
+            ["AZURE_TENANT_ID"] = "synthetic-tenant",
+            ["AZURE_CLIENT_ID"] = "synthetic-identity",
+            ["AZURE_FEDERATED_TOKEN_FILE"] = "/synthetic/token"
+        }).Build();
+        var options = new VerifierHostOptions();
+        new VerifierHostOptionsSetup(config).Configure(options);
+
+        Assert.Equal("synthetic-tenant", options.TenantId);
+        Assert.Equal("synthetic-identity", options.WorkloadIdentityClientId);
+        Assert.Equal("/synthetic/token", options.FederatedTokenFilePath);
+        Assert.Null(options.ClientId);
+        Assert.Null(options.VerifierClientId);
+    }
+
+    [Fact]
+    public void Given_ConflictingInjectedSourceCommit_When_BindingVerifyOptions_Then_UsesDeploymentCommitAndRejectsMismatch()
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Verifier:SourceCommit"] = new string('a', 40),
+            ["PARCHWELL_SOURCE_COMMIT"] = new string('b', 40)
+        }).Build();
+        VerifierHostOptions options = ValidOptions("verify");
+
+        new VerifierHostOptionsSetup(configuration).Configure(options);
+
+        Assert.Equal(new string('b', 40), options.SourceCommit);
+        var result = new VerifierHostOptionsValidator().Validate(null, options);
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Failures ?? [], failure => failure.Contains("VerifierCommit must equal PARCHWELL_SOURCE_COMMIT", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

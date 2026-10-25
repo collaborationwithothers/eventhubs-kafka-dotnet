@@ -425,7 +425,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         options.JobName ??= _configuration["PARCHWELL_JOB_NAME"];
         options.PodName ??= _configuration["PARCHWELL_POD_NAME"];
         options.PodUid ??= _configuration["PARCHWELL_POD_UID"];
-        options.SourceCommit ??= _configuration["PARCHWELL_SOURCE_COMMIT"];
+        options.SourceCommit = _configuration["PARCHWELL_SOURCE_COMMIT"] ?? options.SourceCommit;
         options.TenantId ??= _configuration["AZURE_TENANT_ID"];
         options.WorkloadIdentityClientId ??= _configuration["AZURE_CLIENT_ID"];
         options.FederatedTokenFilePath ??= _configuration["AZURE_FEDERATED_TOKEN_FILE"];
