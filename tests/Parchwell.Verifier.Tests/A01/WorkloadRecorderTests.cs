@@ -1,4 +1,5 @@
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Tests.Support;
 using Parchwell.Verifier.VerifyRun.A01;
 using Parchwell.Verifier.VerifyRun.Input;
@@ -27,6 +28,71 @@ public sealed class WorkloadRecorderTests
         Assert.Equal(1,result.Observation.Stages![0].InvokedAttempts);
         Assert.Equal(1,result.Observation.Stages[1].InvokedAttempts);
         Assert.Equal(1,result.Observation.Stages[1].FailedObservations);
+    }
+
+    [Fact]
+    public void Given_AttemptsAroundEveryStageBoundary_When_Recorded_Then_UsesHalfOpenStageIntervals()
+    {
+        (long Timestamp, int Stage)[] cases =
+        [
+            (-1, -1), (0, 0), (1, 0),
+            (59_999_999, 0), (60_000_000, 1), (60_000_001, 1),
+            (119_999_999, 1), (120_000_000, 2), (120_000_001, 2),
+            (179_999_999, 2), (180_000_000, 3), (180_000_001, 3),
+            (239_999_999, 3), (240_000_000, -1), (240_000_001, -1)
+        ];
+
+        foreach ((long timestamp, int expectedStage) in cases)
+        {
+            foreach (bool delivered in new[] { true, false })
+            {
+                var request = RecordedEvidence.SyntheticRequest();
+                AttemptEntry attempt = RecordedEvidence.Attempt() with { PlannedMicroseconds = timestamp };
+                request = request with
+                {
+                    Manifest = ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with
+                        { Inventory = [attempt], PlannedAttemptCount = 1, AttemptCount = 1 }),
+                    Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success(
+                        [RecordedEvidence.LedgerRow(attempt, delivered)])
+                };
+
+                IReadOnlyList<WorkloadStageObservation> stages =
+                    WorkloadRecorder.Record(request.Manifest, request.Ledger).Observation!.Stages!;
+                long?[] expectedInvoked = Enumerable.Range(0, 4)
+                    .Select(index => (long?)(index == expectedStage ? 1L : 0L)).ToArray();
+                long?[] expectedDelivered = expectedInvoked
+                    .Select(count => (long?)(delivered ? count : 0L)).ToArray();
+                long?[] expectedFailed = expectedInvoked
+                    .Select(count => (long?)(delivered ? 0L : count)).ToArray();
+
+                Assert.Equal(expectedInvoked, stages.Select(stage => stage.InvokedAttempts).ToArray());
+                Assert.Equal(expectedDelivered, stages.Select(stage => stage.DeliveredObservations).ToArray());
+                Assert.Equal(expectedFailed, stages.Select(stage => stage.FailedObservations).ToArray());
+            }
+        }
+    }
+
+    [Fact]
+    public void Given_EmptyReadableInventoryAndLedger_When_Recorded_Then_ReportsZeroForEveryStage()
+    {
+        var request = RecordedEvidence.SyntheticRequest();
+        request = request with
+        {
+            Manifest = ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with
+                { Inventory = [], PlannedAttemptCount = 0, AttemptCount = 0 }),
+            Ledger = ParseResult<IReadOnlyList<LedgerRow>>.Success([])
+        };
+
+        IReadOnlyList<WorkloadStageObservation> stages =
+            WorkloadRecorder.Record(request.Manifest, request.Ledger).Observation!.Stages!;
+
+        Assert.Equal(4, stages.Count);
+        Assert.All(stages, stage =>
+        {
+            Assert.Equal(0, stage.InvokedAttempts);
+            Assert.Equal(0, stage.DeliveredObservations);
+            Assert.Equal(0, stage.FailedObservations);
+        });
     }
 
     [Fact]
