@@ -73,7 +73,7 @@ def verify(doc,d):
     assert job['metadata']['namespace']=='parchwell'
     pod=job['spec']['template']['spec']; assert len(pod['containers'])==1 and pod['restartPolicy']=='Never'
     assert job['spec']['completions']==job['spec']['parallelism']==1 and job['spec']['backoffLimit']==0
-    mode=d['runtime']['mode']; expected_deadline={'loadgen':840,'verify':750,'start-line':150,'judge':90}[mode]
+    mode=d['runtime']['mode']; expected_deadline={'loadgen':1140,'verify':750,'start-line':150,'judge':90}[mode]
     assert job['spec']['activeDeadlineSeconds']==expected_deadline
     assert pod['terminationGracePeriodSeconds']==30
     assert pod['automountServiceAccountToken'] is False
