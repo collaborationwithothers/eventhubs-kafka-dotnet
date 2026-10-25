@@ -268,7 +268,7 @@
                 "StatisticsCompletionTimeout": "00:00:20",
                 "UploadTimeout": "00:00:30",
                 "CleanupTimeout": "00:00:10",
-                "ProcessLifetimeTimeout": "00:11:00",
+                "ProcessLifetimeTimeout": "00:15:00",
                 "RequireStatisticsEvidence": true,
                 "RequireRequestEvidence": false,
                 "ScenarioSourceRoot": "/app",
@@ -334,7 +334,7 @@
             "execution": {
               "type": "object",
               "const": {
-                "loadgen_job_seconds": 840,
+                "loadgen_job_seconds": 1140,
                 "verify_job_seconds": 750,
                 "start_line_job_seconds": 150,
                 "gate_job_seconds": 90,
