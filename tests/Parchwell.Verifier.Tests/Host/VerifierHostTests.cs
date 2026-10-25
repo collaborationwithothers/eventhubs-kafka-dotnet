@@ -26,7 +26,7 @@ public sealed class VerifierHostTests
 {
     private static readonly string[] AllModes = ["start-line", "verify", "probe-gate"];
     private static readonly string[] C5Modes = ["start-line", "verify", "judge"];
-    private static readonly string[] InvalidPodNameValues = ["bad/name", new string('p', 254), "bad\u0001name"];
+    private static readonly string[] InvalidPodNameValues = ["bad/name", "bad\\name", new string('p', 254), "bad\u0001name"];
     private static readonly string[] SharedRequiredOptions =
     [
         "ScenarioId", "VerifierCommit", "SourceCommit", "ProcessLifetime", "CleanupTimeout", "MaxOutputBytes",

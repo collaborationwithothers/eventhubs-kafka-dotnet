@@ -134,6 +134,26 @@ public sealed class JudgeHandlerTests
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
     }
 
+    [Fact]
+    public async Task GivenRegistrationWithInvalidUnicode_WhenJudged_ThenClassifiesItAsInvalidRegistration()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string name=PhasePaths.Registration("synthetic-c5","C0",5,"pod-c5");
+        string json=Encoding.UTF8.GetString(stores.Ledger[name]).Replace("\"pod_name\":\"pod-c5\"", "\"pod_name\":\"\\uD800\"", StringComparison.Ordinal);
+        stores.Ledger[name]=Encoding.UTF8.GetBytes(json);
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        Assert.Equal("invalid",candidate.RootElement.GetProperty("status").GetString());
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[4];
+        Assert.Equal("invalid",repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j5_registered_producer_count").GetBoolean());
+    }
+
     [Theory]
     [InlineData("second-registration")]
     [InlineData("wrong-job")]

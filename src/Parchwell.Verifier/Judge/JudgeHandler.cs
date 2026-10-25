@@ -60,8 +60,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     {
                         inputBudget.ConsumeBytes(registrationBytes.LongLength);
                         try { registration=PhaseWireCodec.ReadRegistration(registrationBytes); }
-                        catch(FormatException) { registrationCount=false; throw; }
-                        catch(System.Text.Json.JsonException) { registrationCount=false; throw; }
+                        catch(FormatException) { registrationCount=false; }
+                        catch(System.Text.Json.JsonException) { registrationCount=false; }
+                        catch(InvalidOperationException) { registrationCount=false; }
                         catch(ArgumentException) { registrationCount=false; }
                         if(registration is not null)
                         {

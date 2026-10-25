@@ -203,8 +203,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
     private static void ValidatePodName(string? podName, List<string> errors)
     {
         RequireText(podName, "PARCHWELL_POD_NAME", errors);
-        if (podName is { } value && (value.Length > 253 || value.Contains('/') || value.Any(char.IsControl)))
-            errors.Add("PARCHWELL_POD_NAME must be bounded text without slash or control characters.");
+        if (podName is { } value && (value.Length > 253 || value.Contains('/') || value.Contains('\\') || value.Any(char.IsControl)))
+            errors.Add("PARCHWELL_POD_NAME must be bounded text without slash, backslash, or control characters.");
     }
 
     private static void ValidateC5Identity(VerifierHostOptions options, VerifierMode mode, List<string> errors)
