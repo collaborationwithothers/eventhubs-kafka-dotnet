@@ -43,8 +43,10 @@ An earlier A7 attempt, before the Docker daemon was started, failed only in Dock
 - Round 2, first head: one P1, `npm run check:docs` not recorded before the review. Fixed by running it.
 - Round 3, first head: no P0 or P1. Its two P2s, a script header citing a section not yet present and the CI description not listing the new step, are fixed in this code head by C5(a) and C5(b).
 
-Later rounds are recorded in the pull request's self-review section.
+- Round 4, code head: no P0 or P1. Its four P2s are in follow-up issue [#183](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183).
+
+The round on this receipt-only commit is recorded in the pull request's self-review section.
 
 ## Code head A9
 
-Pending: recorded by the receipt-only commit after A9 passes on the code head.
+Code head: `5cb0dc740c3fa369cfa90dddefa2df8c1f255263`. Its `.NET verification` run [40189632676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40189632676) concluded `success`. Job 121157670256 (`.NET verification`) concluded `success` with failed steps exactly `[]`; the `Terraform verification` and `Lifecycle verification` jobs concluded `success`. In the job log, `grep -cF 'LoadGen image smoke: passed'` printed `1` and `grep -cF 'Verifier image smoke: passed'` printed `1`. The matched lines are `LoadGen image smoke: passed` and `Verifier image smoke: passed`.
