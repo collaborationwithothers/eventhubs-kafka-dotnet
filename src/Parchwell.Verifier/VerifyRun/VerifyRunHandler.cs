@@ -60,6 +60,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         {
             budget.ConsumeBytes(startReceiptBytes.Length);
             try { startReceipt=PhaseWireCodec.ReadReceipt(startReceiptBytes); }
+            catch(PhaseWireIdentityException) { startReceiptProblem=new StructuralProblem(7,"start_line_receipt_binding_invalid","start-line",null,"identity",null); }
             catch(FormatException) { /* retain the missing-evidence path below */ }
             catch(System.Text.Json.JsonException) { /* malformed completion remains missing evidence */ }
         }
@@ -116,14 +117,24 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             :BrokerInventoryReader.Read(inventoryBytes,inventoryName,expectedStartIdentity,options.SourceCommit!,inputLimits);
         if(inventoryReferenceProblem is not null)
             inventory=ParseResult<BrokerInventory>.Failure(inventoryReferenceProblem);
+        if(inventory.IsExecutionFailure)
+            throw new InvalidOperationException("Broker inventory parsing ended with an execution failure.");
+        List<StructuralProblem> knownCheck6Problems=inventory.Problems
+            .Where(problem=>problem.Code!="missing_input").ToList();
 
         string producerCompletionName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,options.Repeat.Value,instance);
         byte[]? completionBytes=await ReadLedgerOptional(producerCompletionName,cancellationToken).ConfigureAwait(false);
         ProducerCompletionReceipt? producerReceipt=null;
+        bool producerReceiptIdentityProblem=false;
         if(completionBytes is not null)
         {
             budget.ConsumeBytes(completionBytes.Length);
             try { producerReceipt=PhaseWireCodec.ReadProducerCompletion(completionBytes); }
+            catch(PhaseWireIdentityException)
+            {
+                producerReceiptIdentityProblem=true;
+                knownCheck6Problems.Add(new StructuralProblem(6,"producer_completion_invalid","producer-completion",null,"identity",null));
+            }
             catch(FormatException) { /* malformed producer receipt rejects publication; diagnostics remain readable */ }
             catch(System.Text.Json.JsonException) { /* malformed producer receipt rejects publication; diagnostics remain readable */ }
         }
@@ -159,6 +170,10 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             inventoryBytes is null||startReceipt is null?null:Ref("verifier",inventoryName,inventoryBytes),
             completionBytes is null||producerReceipt is null?null:Ref("ledger",producerCompletionName,completionBytes),
             options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes));
+        if(producerReceiptIdentityProblem)
+            accepted=accepted with{RejectionCodes=accepted.RejectionCodes.Append("producer_completion_invalid").Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),Incomplete=false};
+        if(knownCheck6Problems.Count>0)
+            accepted=accepted with{Incomplete=false};
         bool diagnosticsSelected=false;
         if(!accepted.Accepted)
         {
@@ -212,7 +227,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 RunWindow window=RunWindow.Create(start,registration.Identity,expectedStartIdentity,ends);assessments.AddRange(window.Assessments);
                 WindowDrainResult? drain=null;if(window.CanAssign){drain=WindowConsumer.Drain(session!.Consumer,window,clock,origin,options.SafetyStop!.Value,options.PollSlice!.Value,
                     new ConsumedRecordBudget(options.MaxConsumedRecords!.Value,options.MaxConsumedBytes!.Value),cancellationToken,kafkaWork.Token);assessments.AddRange(drain.Assessments);}
-                var request=new RunJudgementRequest(registration.Identity,index,ledger,manifest,statistics,lifecycle,capabilities,reports,expectedBrokers,producer,drain?.Records??[],assessments,outputLimits,inventory.Value is not null);
+                var request=new RunJudgementRequest(registration.Identity,index,ledger,manifest,statistics,lifecycle,capabilities,reports,expectedBrokers,producer,drain?.Records??[],assessments,outputLimits,inventory.Value is not null,knownCheck6Problems);
                 // A readable but unaccepted publication remains diagnostic evidence. It may
                 // produce an incomplete/invalid result, but only the accepted snapshot below
                 // can authorize phase-level J2.

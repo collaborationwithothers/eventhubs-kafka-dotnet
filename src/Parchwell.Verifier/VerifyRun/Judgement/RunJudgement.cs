@@ -22,7 +22,8 @@ internal sealed record RunJudgementRequest(
     IReadOnlyList<ConsumedRecord> Records,
     IReadOnlyList<CheckAssessment> WindowAssessments,
     OutputLimits Limits,
-    bool ExpectedBrokerInventoryAvailable = true);
+    bool ExpectedBrokerInventoryAvailable = true,
+    IReadOnlyList<StructuralProblem>? Check6Problems = null);
 
 /// <summary>Retains one check's complete observations before diagnostic retention.</summary>
 internal sealed record CheckResult(CheckAssessment Assessment, IReadOnlyList<ResultDiagnostic> Diagnostics)

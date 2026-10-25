@@ -6,6 +6,8 @@ using Parchwell.Verifier.Common.Serialization;
 
 namespace Parchwell.Verifier.Common.Phase;
 
+internal sealed class PhaseWireIdentityException(string message) : FormatException(message);
+
 /// <summary>Closed, bounded codecs for C5 registration and worker receipts.</summary>
 internal static partial class PhaseWireCodec
 {
@@ -46,6 +48,9 @@ internal static partial class PhaseWireCodec
     {
         using JsonDocument document = Parse(bytes); JsonElement root = document.RootElement; Exact(root, ProducerCompletionFields);
         var value = new ProducerCompletionReceipt(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"), Str(root, "mode"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"));
+        if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
+            value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
+            throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");
         ValidateRegistration(new ProducerRegistration(value.SchemaVersion, value.Identity, value.Phase, value.RepeatNumber, value.JobName, value.PodName, value.PodUid, value.SourceCommit));
         if (value.Mode != "loadgen" || value.HandlerExitCode != 0 || !value.CleanupCompleted) throw new FormatException("Producer completion receipt does not establish successful cleanup.");
         return value;
@@ -90,6 +95,10 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateReceipt(WorkerReceipt r)
     {
+        if (r.Mode == "start-line" && (r.Phase is "probe" or "C0" or "C3") && (r.ScenarioId != "A01" || r.ConfigurationId != PhaseIdentity.ConfigurationFor(r.Phase) ||
+            r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
+                startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
+            throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
         if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
         if (r.ConfigurationId != PhaseIdentity.ConfigurationFor(r.Phase) || r.ScenarioId != "A01") throw new FormatException("Receipt scenario or configuration does not match its phase.");
@@ -118,7 +127,9 @@ internal static partial class PhaseWireCodec
             if (r.Mode=="start-line")
             {
                 string job=PhaseIdentity.JobName(r.RunId,r.Phase,repeatNumber);
-                if (r.JobName!=PhaseIdentity.StartLineJobName(r.RunId,r.Phase,repeatNumber) || identity.InstanceId!=job || identity.ExpectedInstanceId!=job || identity.ClientId!=job ||
+                if (r.JobName!=PhaseIdentity.StartLineJobName(r.RunId,r.Phase,repeatNumber) || identity.InstanceId!=job || identity.ExpectedInstanceId!=job || identity.ClientId!=job)
+                    throw new PhaseWireIdentityException("Start-line receipt does not bind to its expected Job identity.");
+                if (
                     r.Artifacts[0].Container!="verifier" || r.Artifacts[0].Name!=PhasePaths.StartLine(r.RunId,r.Phase,repeatNumber) ||
                     r.Artifacts[1].Container!="verifier" || r.Artifacts[1].Name!=PhasePaths.BrokerInventory(r.RunId,r.Phase,repeatNumber))
                     throw new FormatException("Start-line receipt does not bind its expected Job and fixed artifacts.");

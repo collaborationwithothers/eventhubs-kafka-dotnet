@@ -272,9 +272,36 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         string name=PhasePaths.StartLineCompletion(Options.RunId!,Options.Phase!,Options.Repeat!.Value);
         JsonObject receipt=JsonNode.Parse(verifierObjects[name])!.AsObject();
         if(field=="source_commit") receipt[field]=new string('b',40);
+        else if(field=="job_name") receipt[field]="synthetic-c5-c0-r2-start-line";
         else if(field=="sha256") receipt["artifacts"]![0]![field]=new string('b',64);
         else throw new ArgumentOutOfRangeException(nameof(field));
         verifierObjects[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+    }
+    public void CorruptProducerCompletionJob()
+    {
+        string name=PhasePaths.ProducerCompletion(Options.RunId!,Options.Phase!,Options.Repeat!.Value,Options.InstanceId!);
+        JsonObject receipt=JsonNode.Parse(ledgerObjects[name])!.AsObject();
+        receipt["job_name"]="synthetic-c5-c0-r2-loadgen";
+        ledgerObjects[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+    }
+    public void CorruptBrokerInventoryReference()
+    {
+        string name=Options.BrokerInventoryOutputName!;
+        verifierObjects[name]=[..verifierObjects[name], (byte)' '];
+    }
+    public void CorruptBrokerInventoryIdentity()
+    {
+        string name=Options.BrokerInventoryOutputName!;
+        JsonObject inventory=JsonNode.Parse(verifierObjects[name])!.AsObject();
+        inventory["identity"]!["run_id"]="synthetic-foreign";
+        byte[] bytes=Encoding.UTF8.GetBytes(inventory.ToJsonString());
+        verifierObjects[name]=bytes;
+        string receiptName=PhasePaths.StartLineCompletion(Options.RunId!,Options.Phase!,Options.Repeat!.Value);
+        JsonObject receipt=JsonNode.Parse(verifierObjects[receiptName])!.AsObject();
+        JsonObject reference=receipt["artifacts"]![1]!.AsObject();
+        reference["length"]=bytes.LongLength;
+        reference["sha256"]=Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
+        verifierObjects[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
     }
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)
     {

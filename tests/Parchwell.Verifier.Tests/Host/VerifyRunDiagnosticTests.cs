@@ -68,6 +68,7 @@ public sealed class VerifyRunDiagnosticTests
 
     [Theory]
     [InlineData("source_commit", "start_line_receipt_binding_invalid", "source_commit")]
+    [InlineData("job_name", "start_line_receipt_binding_invalid", "identity")]
     [InlineData("sha256", "artifact_reference_hash_mismatch", "reference")]
     public async Task Given_ReadableStartLineReceiptIntegrityFailure_When_Verifying_Then_PublishesInvalidCheckSeven(string field,
         string code, string diagnosticField)
@@ -77,6 +78,36 @@ public sealed class VerifyRunDiagnosticTests
         fixture.PreservePublicationReferences = true;
 
         await AssertPublishedFailure(fixture, "invalid", 7, code, "start-line", diagnosticField);
+    }
+
+    [Fact]
+    public async Task Given_BrokerInventoryReferenceMismatch_When_Verifying_Then_PublishesInvalidCheckSix()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptBrokerInventoryReference();
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "artifact_reference_hash_mismatch", "broker-inventory", "reference");
+    }
+
+    [Fact]
+    public async Task Given_BrokerInventoryIdentityRejection_When_Verifying_Then_PublishesInvalidCheckSix()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptBrokerInventoryIdentity();
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "invalid_broker_inventory", fixture.Options.BrokerInventoryOutputName!, "identity");
+    }
+
+    [Fact]
+    public async Task Given_ProducerCompletionIdentityMismatch_When_Verifying_Then_PublishesInvalidCheckSix()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptProducerCompletionJob();
+        fixture.PreservePublicationReferences = true;
+
+        await AssertPublishedFailure(fixture, "invalid", 6, "producer_completion_invalid", "producer-completion", "identity");
     }
 
     [Theory]
