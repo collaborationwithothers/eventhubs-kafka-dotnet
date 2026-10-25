@@ -114,13 +114,18 @@ else
         tail -n 80 "$warning_fixture/forbidden.log" >&2
         exit "$status"
     fi
+    unexpected_diagnostic=false
     while IFS= read -r diagnostic || [[ -n "$diagnostic" ]]; do
         if [[ "$diagnostic" =~ (^|[[:space:]])[Ee][Rr][Rr][Oo][Rr][[:space:]] && "$diagnostic" != *"$expected_diagnostic"* ]]; then
-            echo "Warning control included an unrelated error (exit $status)." >&2
-            tail -n 80 "$warning_fixture/forbidden.log" >&2
-            exit "$status"
+            unexpected_diagnostic=true
+            break
         fi
     done < "$warning_fixture/forbidden.log"
+    if [[ "$unexpected_diagnostic" == true ]]; then
+        echo "Warning control included an unrelated error (exit $status)." >&2
+        tail -n 80 "$warning_fixture/forbidden.log" >&2
+        exit "$status"
+    fi
 fi
 echo "Warning-as-error control: valid counterpart built; intended CS1030 error rejected."
 echo "Verification passed. Per-project reports identify the tests executed."

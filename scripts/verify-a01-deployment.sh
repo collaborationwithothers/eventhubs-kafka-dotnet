@@ -22,6 +22,7 @@ j['assertions'][sys.argv[2]]=True; p.write_text(json.dumps(j,indent=2)+'\n')
 PYMARK
 }
 stage=wire_fixtures
+status=0
 trap 'status=$?; python3 - "$output/assertions.json" "$stage" "$status" <<'"'"'PY'"'"'
 import json,pathlib,sys
 p=pathlib.Path(sys.argv[1]); j=json.loads(p.read_text()) if p.exists() else {"schema_version":1,"synthetic":True,"azure_calls":0,"assertions":{}}
