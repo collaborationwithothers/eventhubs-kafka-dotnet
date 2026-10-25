@@ -67,6 +67,18 @@ public sealed class VerifyRunDiagnosticTests
     }
 
     [Theory]
+    [InlineData("source_commit", "start_line_receipt_binding_invalid", "source_commit")]
+    [InlineData("sha256", "artifact_reference_hash_mismatch", "reference")]
+    public async Task Given_ReadableStartLineReceiptIntegrityFailure_When_Verifying_Then_PublishesInvalidCheckSeven(string field,
+        string code, string diagnosticField)
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.CorruptStartLineReceipt(field);
+
+        await AssertPublishedFailure(fixture, "invalid", 7, code, "start-line", diagnosticField);
+    }
+
+    [Theory]
     [InlineData(false, 8, "check_8_failed")]
     [InlineData(true, 9, "check_9_failed")]
     public async Task Given_MissingEndPartitionOrRegressingEnd_When_Verifying_Then_PublishesTopicDiagnosticAndNoCounts(bool regression, int check, string code)

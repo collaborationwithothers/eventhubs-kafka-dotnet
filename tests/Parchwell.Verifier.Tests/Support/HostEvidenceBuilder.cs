@@ -266,6 +266,16 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         BeforeRead?.Invoke(name, cancellationToken);
         return Task.FromResult<byte[]?>(verifierObjects.GetValueOrDefault(name));
     }
+
+    public void CorruptStartLineReceipt(string field)
+    {
+        string name=PhasePaths.StartLineCompletion(Options.RunId!,Options.Phase!,Options.Repeat!.Value);
+        JsonObject receipt=JsonNode.Parse(verifierObjects[name])!.AsObject();
+        if(field=="source_commit") receipt[field]=new string('b',40);
+        else if(field=="sha256") receipt["artifacts"]![0]![field]=new string('b',64);
+        else throw new ArgumentOutOfRangeException(nameof(field));
+        verifierObjects[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+    }
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)
     {
         string[] names = verifierObjects.Keys.Concat(ledgerObjects.Keys).Concat(DiagnosticInputs.Keys.Select(name =>

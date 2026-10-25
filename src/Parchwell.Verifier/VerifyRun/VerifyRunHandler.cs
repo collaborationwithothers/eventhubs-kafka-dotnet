@@ -55,6 +55,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
 
         byte[]? startReceiptBytes=await ReadVerifier(PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat.Value),cancellationToken).ConfigureAwait(false);
         WorkerReceipt? startReceipt=null;
+        StructuralProblem? startReceiptProblem=null;
         if(startReceiptBytes is not null)
         {
             budget.ConsumeBytes(startReceiptBytes.Length);
@@ -64,7 +65,11 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         }
         string startJob=PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,options.Repeat.Value);
         if(startReceipt is not null&&(startReceipt.Mode!="start-line"||startReceipt.JobName!=startJob||startReceipt.RunId!=options.RunId||startReceipt.Phase!=options.Phase||startReceipt.Repeat!=options.Repeat||startReceipt.SourceCommit!=options.SourceCommit))
+        {
+            string field=startReceipt.SourceCommit!=options.SourceCommit?"source_commit":"identity";
+            startReceiptProblem=new StructuralProblem(7,"start_line_receipt_binding_invalid","start-line",null,field,null);
             startReceipt=null;
+        }
         string startName=PhasePaths.StartLine(options.RunId!,options.Phase!,options.Repeat.Value);
         string inventoryName=PhasePaths.BrokerInventory(options.RunId!,options.Phase!,options.Repeat.Value);
         if(startReceipt is { Artifacts.Count: 2 })
@@ -74,21 +79,43 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 ValidateReference(startReceipt.Artifacts[0],"verifier",startName);
                 ValidateReference(startReceipt.Artifacts[1],"verifier",inventoryName);
             }
-            catch(InvalidOperationException) { startReceipt=null; }
+            catch(InvalidOperationException)
+            {
+                startReceiptProblem=new StructuralProblem(7,"artifact_reference_invalid","start-line",null,"reference",null);
+                startReceipt=null;
+            }
         }
-        else startReceipt=null;
+        else if(startReceipt is not null)
+        {
+            startReceiptProblem=new StructuralProblem(7,"artifact_reference_invalid","start-line",null,"reference",null);
+            startReceipt=null;
+        }
         byte[]? noteBytes=await ReadVerifier(startName,cancellationToken).ConfigureAwait(false);
         byte[]? inventoryBytes=await ReadVerifier(inventoryName,cancellationToken).ConfigureAwait(false);
         if(noteBytes is not null)budget.ConsumeBytes(noteBytes.Length);if(inventoryBytes is not null)budget.ConsumeBytes(inventoryBytes.Length);
-        if(noteBytes is not null&&startReceipt is not null)VerifyHashAndLength(startReceipt.Artifacts[0],noteBytes);
-        if(inventoryBytes is not null&&startReceipt is not null)VerifyHashAndLength(startReceipt.Artifacts[1],inventoryBytes);
+        StructuralProblem? noteReferenceProblem=null;
+        StructuralProblem? inventoryReferenceProblem=null;
+        if(noteBytes is not null&&startReceipt is not null)
+        {
+            try { VerifyHashAndLength(startReceipt.Artifacts[0],noteBytes); }
+            catch(InvalidOperationException) { noteReferenceProblem=new StructuralProblem(7,"artifact_reference_hash_mismatch","start-line",null,"reference",null); }
+        }
+        if(inventoryBytes is not null&&startReceipt is not null)
+        {
+            try { VerifyHashAndLength(startReceipt.Artifacts[1],inventoryBytes); }
+            catch(InvalidOperationException) { inventoryReferenceProblem=new StructuralProblem(6,"artifact_reference_hash_mismatch","broker-inventory",null,"reference",null); }
+        }
         RunIdentity expectedStartIdentity=ExpectedStartIdentity(options);
         ParseResult<StartLineNote> start=noteBytes is null
             ?ParseResult<StartLineNote>.Failure(new StructuralProblem(7,"missing_input",startName,null,null,null))
             :StartLineNoteCodec.Read(noteBytes,startName,inputLimits,options.MaxPartitions!.Value);
+        if(startReceiptProblem is not null||noteReferenceProblem is not null)
+            start=ParseResult<StartLineNote>.Failure(startReceiptProblem??noteReferenceProblem!);
         ParseResult<BrokerInventory> inventory=inventoryBytes is null
             ?ParseResult<BrokerInventory>.Failure(new StructuralProblem(6,"missing_input",inventoryName,null,null,null))
             :BrokerInventoryReader.Read(inventoryBytes,inventoryName,expectedStartIdentity,options.SourceCommit!,inputLimits);
+        if(inventoryReferenceProblem is not null)
+            inventory=ParseResult<BrokerInventory>.Failure(inventoryReferenceProblem);
 
         string producerCompletionName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,options.Repeat.Value,instance);
         byte[]? completionBytes=await ReadLedgerOptional(producerCompletionName,cancellationToken).ConfigureAwait(false);
