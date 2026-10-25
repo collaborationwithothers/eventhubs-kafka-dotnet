@@ -51,6 +51,10 @@ internal static partial class PhaseWireCodec
         if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
             value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
             throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");
+        if (value.Identity.ScenarioId != "A01" ||
+            value.Identity.ConfigurationId != PhaseIdentity.ConfigurationFor(value.Phase) ||
+            value.Identity.InstanceId != value.Identity.ExpectedInstanceId)
+            throw new PhaseWireIdentityException("Producer completion receipt identity does not match its phase.");
         ValidateRegistration(new ProducerRegistration(value.SchemaVersion, value.Identity, value.Phase, value.RepeatNumber, value.JobName, value.PodName, value.PodUid, value.SourceCommit));
         if (value.Mode != "loadgen" || value.HandlerExitCode != 0 || !value.CleanupCompleted) throw new FormatException("Producer completion receipt does not establish successful cleanup.");
         return value;

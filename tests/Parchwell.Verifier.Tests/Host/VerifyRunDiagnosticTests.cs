@@ -100,11 +100,15 @@ public sealed class VerifyRunDiagnosticTests
         await AssertPublishedFailure(fixture, "invalid", 6, "invalid_broker_inventory", fixture.Options.BrokerInventoryOutputName!, "identity");
     }
 
-    [Fact]
-    public async Task Given_ProducerCompletionIdentityMismatch_When_Verifying_Then_PublishesInvalidCheckSix()
+    [Theory]
+    [InlineData("job_name")]
+    [InlineData("scenario_id")]
+    [InlineData("configuration_id")]
+    [InlineData("expected_instance_id")]
+    public async Task Given_ProducerCompletionIdentityMismatch_When_Verifying_Then_PublishesInvalidCheckSix(string field)
     {
         using var fixture = new HostEvidenceBuilder();
-        fixture.CorruptProducerCompletionJob();
+        fixture.CorruptProducerCompletionIdentity(field);
         fixture.PreservePublicationReferences = true;
 
         await AssertPublishedFailure(fixture, "invalid", 6, "producer_completion_invalid", "producer-completion", "identity");

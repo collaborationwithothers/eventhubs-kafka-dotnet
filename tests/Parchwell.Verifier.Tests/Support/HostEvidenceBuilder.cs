@@ -277,11 +277,13 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         else throw new ArgumentOutOfRangeException(nameof(field));
         verifierObjects[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
     }
-    public void CorruptProducerCompletionJob()
+    public void CorruptProducerCompletionIdentity(string field)
     {
         string name=PhasePaths.ProducerCompletion(Options.RunId!,Options.Phase!,Options.Repeat!.Value,Options.InstanceId!);
         JsonObject receipt=JsonNode.Parse(ledgerObjects[name])!.AsObject();
-        receipt["job_name"]="synthetic-c5-c0-r2-loadgen";
+        if(field is "scenario_id" or "configuration_id" or "expected_instance_id") receipt["identity"]![field]="synthetic-foreign";
+        else if(field=="job_name") receipt[field]="synthetic-c5-c0-r2-loadgen";
+        else throw new ArgumentOutOfRangeException(nameof(field));
         ledgerObjects[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
     }
     public void CorruptBrokerInventoryReference()
