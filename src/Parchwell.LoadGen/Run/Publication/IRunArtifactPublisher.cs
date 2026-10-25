@@ -15,7 +15,11 @@ public interface IRunArtifactPublisher
 
 /// <summary>Required Blob destination and finite upload limits for one publication.</summary>
 public sealed record RunPublicationOptions(string Endpoint, string Container, TimeSpan UploadTimeout,
-    long MaxArtifactBytes, long MaxAggregateArtifactBytes);
+    long MaxArtifactBytes, long MaxAggregateArtifactBytes)
+{
+    /// <summary>Gets the optional production run context that selects the phase/repeat/pod prefix.</summary>
+    public ProducerRunContext? Context { get; init; }
+}
 
 /// <summary>Explicit unavailable fallback for compositions without a publication adapter.</summary>
 public sealed class UnavailableRunArtifactPublisher : IRunArtifactPublisher

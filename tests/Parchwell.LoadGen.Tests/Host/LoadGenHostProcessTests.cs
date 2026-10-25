@@ -216,10 +216,13 @@ public sealed class LoadGenHostProcessTests
         {
             ["ScenarioId"] = "A01", ["ConfigurationId"] = "C0", ["RunId"] = "child-run",
             ["ExpectedInstanceId"] = "worker-pod", ["ActualInstanceId"] = "worker-pod",
-            ["PodName"] = "worker-pod", ["ClientId"] = "worker-pod", ["NamespaceName"] = "unit-test",
+            ["PodName"] = "worker-pod", ["ClientId"] = "worker-pod", ["Phase"] = "C0",
+            ["JobName"] = "child-run-c0-r1-loadgen", ["PodUid"] = "synthetic-pod-uid",
+            ["ApplicationInsightsConnectionString"] = "InstrumentationKey=synthetic;IngestionEndpoint=https://example.invalid",
+            ["RepeatNumber"] = "1", ["NamespaceName"] = "unit-test",
             ["EnrichmentGroupId"] = "worker-group", ["ScenarioSourceRoot"] = root, ["OutputRoot"] = output,
             ["BlobEndpoint"] = "https://example.invalid", ["BlobContainer"] = "ledger",
-            ["ExpectedBrokerNamesCsv"] = "broker-0", ["MaxDocumentCharacters"] = "100000",
+            ["MaxDocumentCharacters"] = "100000",
             ["MaxNestingDepth"] = "32", ["MaxScalarCharacters"] = "10000", ["MaxParserEvents"] = "10000",
             ["MaxAttempts"] = "100", ["MaxPayloadBytes"] = "1024", ["MaxRowBytes"] = "8192",
             ["MaxManifestBytes"] = "65536", ["MaxLedgerBytes"] = "2000000", ["MaxLedgerReadbackBytes"] = "2000000",
@@ -234,6 +237,7 @@ public sealed class LoadGenHostProcessTests
             ["RequireRequestEvidence"] = "false"
         };
         Dictionary<string, string> result = values.ToDictionary(pair => "LoadGen__" + pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        result["PARCHWELL_SOURCE_COMMIT"] = new string('a', 40);
         result["AZURE_TENANT_ID"] = "synthetic-tenant";
         result["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         result["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
