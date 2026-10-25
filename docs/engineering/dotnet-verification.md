@@ -93,9 +93,17 @@ Direct package versions are centralized in `Directory.Packages.props`, and per-p
 
 The exact official [xUnit manifest][xunit-manifest], [ArchUnitNET manifest][archunit-manifest], [Kafka manifest][kafka-manifest], [Testcontainers manifest][containers-manifest], [Options manifest][options-manifest] and [DI manifest][di-manifest] are the sources for these pins. The Kafka additions follow the [spike plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/52#issuecomment-6172812371) and [baseline plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/54#issuecomment-6174869137). There is no separate VSTest adapter/Test SDK or architecture xUnit integration package.
 
+## Worker image smoke
+
+`./scripts/verify-worker-images.sh` publishes the LoadGen and Verifier container images and starts each one, so a base image that lacks a framework the app needs fails before any cloud run. The base image rule is in [.NET engineering standards](dotnet.md#kubernetes-workers). The script needs .NET SDK 10.0.402 and a running Docker daemon, and takes no arguments.
+
+For each worker it runs the repository's locked linux-x64 container publish to a local archive and loads the archive into Docker. It then starts the image with `--image-smoke`, no network, a read-only root file system, user `1654:1654`, all capabilities dropped and `no-new-privileges`. It fails when the SDK version differs, Docker is unreachable, a publish or load fails, a container exits non-zero, or a container prints to stdout anything other than `{"native_loaded":true,"scenario_files":2,"uid_expected":1654}`. It stops at the first failing worker. It removes its containers and images on exit and prints its log directory.
+
+Regression example ([#179](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179)): with the `mcr.microsoft.com/dotnet/runtime` base image that `main` used at `8afef30`, the LoadGen container exits 150 because the `Microsoft.AspNetCore.App` framework is missing, and the script fails. With the `aspnet` base image both containers exit 0 and the script passes. The receipt in `docs/operations/evidence/issue-179/README.md` records the failing run and the passing hosted `.NET verification` run on the pull request's code head, the last commit before the receipt-only commit that completes the receipt.
+
 ## Hosted CI and completion
 
-The [verification workflow][workflow] configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It runs `./scripts/verify-dotnet.sh`, installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage`, then invokes `./scripts/verify-kafka-coverage.sh` with that collector path. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
+The [verification workflow][workflow] configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It runs `./scripts/verify-dotnet.sh`, installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage`, then invokes `./scripts/verify-kafka-coverage.sh` with that collector path, and finally runs the [worker image smoke](#worker-image-smoke). The [Ubuntu 24.04 runner image readme][runner-readme], read at a fixed commit, lists Docker Server 28.0.4 for image version 20261023.334.3; `runs-on: ubuntu-24.04` does not pin that image version. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
 
 The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
 
@@ -114,6 +122,7 @@ Issue #47 stays open until hosted verification passes on the reviewed PR head an
 [checkout-release]: https://github.com/actions/checkout/releases/tag/v7.0.1
 [setup-release]: https://github.com/actions/setup-dotnet/releases/tag/v6.0.0
 [setup-readme]: https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/README.md
+[runner-readme]: https://github.com/actions/runner-images/blob/2deeef005a7e79479c137ef48d6f07f2cca37880/images/ubuntu/Ubuntu2404-Readme.md
 [workflow]: ../../.github/workflows/dotnet-verification.yml
 [getter-naming]: https://github.com/TNG/ArchUnitNET/blob/1ab5943d761d48f86b42f45ef047130dc9aff1c6/ArchUnitNET/Loader/MonoCecilMemberExtensions.cs#L47-L80
 [xml-fields]: https://github.com/xunit/xunit/blob/0c7aa4991fa340689155d52043ce88f52f2f7421/src/xunit.v3.runner.common/Results/Builtin/XmlV2ResultWriterMessageHandler.cs#L292-L308
