@@ -1,0 +1,488 @@
+{
+  "publication": {
+    "proposed_verdict": "untestable",
+    "summary": [
+      "The final A01 probe completed five valid repeats, with complete attributed statistics coverage and no positive throttle sample, so the proposed verdict is untestable at build scale.",
+      "The candidate records 930000 ok outcomes and 35 reorders, with zero loss, phantom, reported failure and duplicate outcomes across these synthetic probe repeats.",
+      "The probe gate prevented the full C0 and C3 workloads, so this result establishes neither an Event Hubs throttling limit nor the C3 timeout and duplicate hypotheses."
+    ],
+    "confluent_kafka_runtime_version": "unavailable",
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred_from_pinned_configuration_and_refreshed_no_change_plan",
+      "sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40227770436/job/121272779931",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fa417d783e833ad222ab5173978433448e4aefbe/infra/cluster/aks.tf"
+      ],
+      "observed_namespace_state_utc": "2026-10-25T20:30:32Z",
+      "refreshed_no_change_plan_utc": "2026-10-25T19:56:55.6047304Z"
+    },
+    "sources": {
+      "workflow_run_id": 40227770436,
+      "run_attempt": 1,
+      "source_commit": "fa417d783e833ad222ab5173978433448e4aefbe",
+      "workflow_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40227770436",
+      "prerequisite_dotnet_run_id": 40227421589,
+      "candidate_artifact_id": 12613440446,
+      "candidate_artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40227770436/artifacts/12613440446",
+      "candidate_member": "candidate.json",
+      "candidate_sha256": "905faa04ef3833308629e66630e25446ba7b280e6b91379a5070ce219cb805da",
+      "pod_artifact_id": 12613590239,
+      "pod_artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40227770436/artifacts/12613590239",
+      "artifact_expires_utc": "2027-01-23T19:48:27Z"
+    },
+    "mutation_requirement": {
+      "complete_measurement": true,
+      "thresholds_break": 60,
+      "four_target_byte_identity": true,
+      "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400987342",
+      "identity_decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6402343589",
+      "measurement_receipt": "../../docs/operations/evidence/issue-196/receipt.md"
+    }
+  },
+  "candidate_projection": {
+    "schema_version": 1,
+    "synthetic": true,
+    "scenario_id": "A01",
+    "configuration_id": "C0",
+    "run_id": "a01-40227770436-1",
+    "phase": "probe",
+    "source_commit": "fa417d783e833ad222ab5173978433448e4aefbe",
+    "status": "complete_valid",
+    "gate": "untestable_at_build_scale",
+    "versions": {
+      "confluent_kafka": null,
+      "dotnet": "10.0.13",
+      "librdkafka": "2.16.0",
+      "verifier": "1.0.0.0",
+      "workload_generator": "1"
+    },
+    "image_digests": {
+      "loadgen": "sha256:75e54e13682b3b6b4d8933b0bf5e13c809a2512008fe4c320d17ed4d1cba5030",
+      "verifier": "sha256:7b233eda1afd3b4bab4958fd3b4b51d6bdcff106c6b85c43d3275a0f12d9c0a4"
+    },
+    "timings": {
+      "duration_seconds": 1739.4319325,
+      "judge_completed_utc": "2026-10-25T20:29:50.0401392+00:00",
+      "worker_started_utc": "2026-10-25T20:00:50.6082204+00:00"
+    },
+    "diagnostics": {
+      "disconnect_increment": 0,
+      "error_codes": [],
+      "max_throttle_ms": null,
+      "request_timeout_increment": 0,
+      "rtt_p99_ms": 511.999
+    },
+    "repeats": [
+      {
+        "repeat": 1,
+        "status": "complete_valid",
+        "reasons": [],
+        "checks": {
+          "j1_repeat_slots": true,
+          "j2_publication_unaccepted": true,
+          "j3_verifier_receipt": true,
+          "j4_producer_job_binding": true,
+          "j5_registered_producer_count": true,
+          "j6_broker_inventory_coverage": true,
+          "j8_probe_inconclusive": true
+        },
+        "identity": "a01-40227770436-1-probe-r1-loadgen-sgl58",
+        "probe_observation": {
+          "usable": true,
+          "qualifying": false,
+          "broker": null,
+          "report_index": null,
+          "window_count": null,
+          "window_maximum": null
+        },
+        "workload_observation": {
+          "synthetic": true,
+          "planned_attempts": 186000,
+          "invoked_attempts": 186000,
+          "terminal_observations": 186000,
+          "fixed_profile_complete": true,
+          "first_unexecuted_ordinal": null,
+          "stages": [
+            {
+              "id": "ramp100",
+              "offered_attempts_per_second": 100,
+              "duration_seconds": 60,
+              "invoked_attempts": 6000,
+              "delivered_observations": 6000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp300",
+              "offered_attempts_per_second": 300,
+              "duration_seconds": 60,
+              "invoked_attempts": 18000,
+              "delivered_observations": 18000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp900",
+              "offered_attempts_per_second": 900,
+              "duration_seconds": 60,
+              "invoked_attempts": 54000,
+              "delivered_observations": 54000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp1800",
+              "offered_attempts_per_second": 1800,
+              "duration_seconds": 60,
+              "invoked_attempts": 108000,
+              "delivered_observations": 108000,
+              "failed_observations": 0
+            }
+          ]
+        },
+        "counts": {
+          "ok": 186000,
+          "loss": 0,
+          "phantom": 0,
+          "reported_failure": 0,
+          "duplicate": 0,
+          "reorder": 20
+        }
+      },
+      {
+        "repeat": 2,
+        "status": "complete_valid",
+        "reasons": [],
+        "checks": {
+          "j1_repeat_slots": true,
+          "j2_publication_unaccepted": true,
+          "j3_verifier_receipt": true,
+          "j4_producer_job_binding": true,
+          "j5_registered_producer_count": true,
+          "j6_broker_inventory_coverage": true,
+          "j8_probe_inconclusive": true
+        },
+        "identity": "a01-40227770436-1-probe-r2-loadgen-d87hw",
+        "probe_observation": {
+          "usable": true,
+          "qualifying": false,
+          "broker": null,
+          "report_index": null,
+          "window_count": null,
+          "window_maximum": null
+        },
+        "workload_observation": {
+          "synthetic": true,
+          "planned_attempts": 186000,
+          "invoked_attempts": 186000,
+          "terminal_observations": 186000,
+          "fixed_profile_complete": true,
+          "first_unexecuted_ordinal": null,
+          "stages": [
+            {
+              "id": "ramp100",
+              "offered_attempts_per_second": 100,
+              "duration_seconds": 60,
+              "invoked_attempts": 6000,
+              "delivered_observations": 6000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp300",
+              "offered_attempts_per_second": 300,
+              "duration_seconds": 60,
+              "invoked_attempts": 18000,
+              "delivered_observations": 18000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp900",
+              "offered_attempts_per_second": 900,
+              "duration_seconds": 60,
+              "invoked_attempts": 54000,
+              "delivered_observations": 54000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp1800",
+              "offered_attempts_per_second": 1800,
+              "duration_seconds": 60,
+              "invoked_attempts": 108000,
+              "delivered_observations": 108000,
+              "failed_observations": 0
+            }
+          ]
+        },
+        "counts": {
+          "ok": 186000,
+          "loss": 0,
+          "phantom": 0,
+          "reported_failure": 0,
+          "duplicate": 0,
+          "reorder": 6
+        }
+      },
+      {
+        "repeat": 3,
+        "status": "complete_valid",
+        "reasons": [],
+        "checks": {
+          "j1_repeat_slots": true,
+          "j2_publication_unaccepted": true,
+          "j3_verifier_receipt": true,
+          "j4_producer_job_binding": true,
+          "j5_registered_producer_count": true,
+          "j6_broker_inventory_coverage": true,
+          "j8_probe_inconclusive": true
+        },
+        "identity": "a01-40227770436-1-probe-r3-loadgen-q9bk9",
+        "probe_observation": {
+          "usable": true,
+          "qualifying": false,
+          "broker": null,
+          "report_index": null,
+          "window_count": null,
+          "window_maximum": null
+        },
+        "workload_observation": {
+          "synthetic": true,
+          "planned_attempts": 186000,
+          "invoked_attempts": 186000,
+          "terminal_observations": 186000,
+          "fixed_profile_complete": true,
+          "first_unexecuted_ordinal": null,
+          "stages": [
+            {
+              "id": "ramp100",
+              "offered_attempts_per_second": 100,
+              "duration_seconds": 60,
+              "invoked_attempts": 6000,
+              "delivered_observations": 6000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp300",
+              "offered_attempts_per_second": 300,
+              "duration_seconds": 60,
+              "invoked_attempts": 18000,
+              "delivered_observations": 18000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp900",
+              "offered_attempts_per_second": 900,
+              "duration_seconds": 60,
+              "invoked_attempts": 54000,
+              "delivered_observations": 54000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp1800",
+              "offered_attempts_per_second": 1800,
+              "duration_seconds": 60,
+              "invoked_attempts": 108000,
+              "delivered_observations": 108000,
+              "failed_observations": 0
+            }
+          ]
+        },
+        "counts": {
+          "ok": 186000,
+          "loss": 0,
+          "phantom": 0,
+          "reported_failure": 0,
+          "duplicate": 0,
+          "reorder": 4
+        }
+      },
+      {
+        "repeat": 4,
+        "status": "complete_valid",
+        "reasons": [],
+        "checks": {
+          "j1_repeat_slots": true,
+          "j2_publication_unaccepted": true,
+          "j3_verifier_receipt": true,
+          "j4_producer_job_binding": true,
+          "j5_registered_producer_count": true,
+          "j6_broker_inventory_coverage": true,
+          "j8_probe_inconclusive": true
+        },
+        "identity": "a01-40227770436-1-probe-r4-loadgen-s4bmc",
+        "probe_observation": {
+          "usable": true,
+          "qualifying": false,
+          "broker": null,
+          "report_index": null,
+          "window_count": null,
+          "window_maximum": null
+        },
+        "workload_observation": {
+          "synthetic": true,
+          "planned_attempts": 186000,
+          "invoked_attempts": 186000,
+          "terminal_observations": 186000,
+          "fixed_profile_complete": true,
+          "first_unexecuted_ordinal": null,
+          "stages": [
+            {
+              "id": "ramp100",
+              "offered_attempts_per_second": 100,
+              "duration_seconds": 60,
+              "invoked_attempts": 6000,
+              "delivered_observations": 6000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp300",
+              "offered_attempts_per_second": 300,
+              "duration_seconds": 60,
+              "invoked_attempts": 18000,
+              "delivered_observations": 18000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp900",
+              "offered_attempts_per_second": 900,
+              "duration_seconds": 60,
+              "invoked_attempts": 54000,
+              "delivered_observations": 54000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp1800",
+              "offered_attempts_per_second": 1800,
+              "duration_seconds": 60,
+              "invoked_attempts": 108000,
+              "delivered_observations": 108000,
+              "failed_observations": 0
+            }
+          ]
+        },
+        "counts": {
+          "ok": 186000,
+          "loss": 0,
+          "phantom": 0,
+          "reported_failure": 0,
+          "duplicate": 0,
+          "reorder": 5
+        }
+      },
+      {
+        "repeat": 5,
+        "status": "complete_valid",
+        "reasons": [],
+        "checks": {
+          "j1_repeat_slots": true,
+          "j2_publication_unaccepted": true,
+          "j3_verifier_receipt": true,
+          "j4_producer_job_binding": true,
+          "j5_registered_producer_count": true,
+          "j6_broker_inventory_coverage": true,
+          "j8_probe_inconclusive": true
+        },
+        "identity": "a01-40227770436-1-probe-r5-loadgen-wzzts",
+        "probe_observation": {
+          "usable": true,
+          "qualifying": false,
+          "broker": null,
+          "report_index": null,
+          "window_count": null,
+          "window_maximum": null
+        },
+        "workload_observation": {
+          "synthetic": true,
+          "planned_attempts": 186000,
+          "invoked_attempts": 186000,
+          "terminal_observations": 186000,
+          "fixed_profile_complete": true,
+          "first_unexecuted_ordinal": null,
+          "stages": [
+            {
+              "id": "ramp100",
+              "offered_attempts_per_second": 100,
+              "duration_seconds": 60,
+              "invoked_attempts": 6000,
+              "delivered_observations": 6000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp300",
+              "offered_attempts_per_second": 300,
+              "duration_seconds": 60,
+              "invoked_attempts": 18000,
+              "delivered_observations": 18000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp900",
+              "offered_attempts_per_second": 900,
+              "duration_seconds": 60,
+              "invoked_attempts": 54000,
+              "delivered_observations": 54000,
+              "failed_observations": 0
+            },
+            {
+              "id": "ramp1800",
+              "offered_attempts_per_second": 1800,
+              "duration_seconds": 60,
+              "invoked_attempts": 108000,
+              "delivered_observations": 108000,
+              "failed_observations": 0
+            }
+          ]
+        },
+        "counts": {
+          "ok": 186000,
+          "loss": 0,
+          "phantom": 0,
+          "reported_failure": 0,
+          "duplicate": 0,
+          "reorder": 0
+        }
+      }
+    ],
+    "counts": {
+      "ok": 930000,
+      "loss": 0,
+      "phantom": 0,
+      "reported_failure": 0,
+      "duplicate": 0,
+      "reorder": 35
+    },
+    "reasons": [
+      "version_unavailable"
+    ]
+  },
+  "broker_count_supplement": {
+    "status": "unavailable",
+    "repeats": [
+      {
+        "repeat": 1,
+        "status": "unavailable",
+        "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
+      },
+      {
+        "repeat": 2,
+        "status": "unavailable",
+        "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
+      },
+      {
+        "repeat": 3,
+        "status": "unavailable",
+        "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
+      },
+      {
+        "repeat": 4,
+        "status": "unavailable",
+        "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
+      },
+      {
+        "repeat": 5,
+        "status": "unavailable",
+        "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
+      }
+    ]
+  }
+}
