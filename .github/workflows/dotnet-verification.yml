@@ -83,6 +83,8 @@ jobs:
         run: python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh --terraform-test-paths
       - name: Validate and test every existing Terraform root without Azure identity
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           repository="$GITHUB_WORKSPACE"
