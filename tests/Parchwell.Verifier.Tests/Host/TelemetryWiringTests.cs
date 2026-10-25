@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
 
+[Collection("VerifierEnvironment")]
 #pragma warning disable CA1707
 public sealed class TelemetryWiringTests
 {
@@ -38,10 +39,14 @@ public sealed class TelemetryWiringTests
 
         int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", "unused"), services =>
         {
+            services.RemoveAll<IHostedService>();
+            foreach (var descriptor in services.Where(item => item.ServiceType.Name is
+                "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray())
+                services.Remove(descriptor);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(provider => new Handler(
                 terminal, clock, provider.GetRequiredService<IHostApplicationLifetime>()));
-        }, clock);
+        }, clock).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         Assert.Equal(terminal == "success" ? 0 : 1, exit);
         Assert.Equal(25d, duration);

@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
 
+[Collection("VerifierEnvironment")]
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class VerifierCompletionTests
 {
@@ -96,11 +97,13 @@ public sealed class VerifierCompletionTests
         var publisher=new RecordingPublisher(events);
         int exit=await Program.RunAsync(JudgeArguments(),services=>
         {
+            services.RemoveAll<IHostedService>();
+            RemoveTelemetryExporters(services);
             services.RemoveAll<IVerifierArtifactStore>();services.AddSingleton<IVerifierArtifactStore>(new EmptyVerifierStore(events));
             services.RemoveAll<IProducerArtifactStore>();services.AddSingleton<IProducerArtifactStore>(new EmptyProducerStore());
             services.RemoveAll<ICompletionReceiptPublisher>();services.AddSingleton<ICompletionReceiptPublisher>(publisher);
             services.AddSingleton<IHostedService>(_=>new OrderedCleanup(events));
-        });
+        }).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(1,exit);
         Assert.Equal(["candidate","stop","dispose","receipt"],events);
         Assert.Equal(1,publisher.Calls);
@@ -118,11 +121,13 @@ public sealed class VerifierCompletionTests
         var publisher=new RecordingPublisher(events,failure=="receipt");
         int exit=await Program.RunAsync(JudgeArguments(),services=>
         {
+            services.RemoveAll<IHostedService>();
+            RemoveTelemetryExporters(services);
             services.RemoveAll<IVerifierArtifactStore>();services.AddSingleton<IVerifierArtifactStore>(new EmptyVerifierStore(events));
             services.RemoveAll<IProducerArtifactStore>();services.AddSingleton<IProducerArtifactStore>(new EmptyProducerStore());
             services.RemoveAll<ICompletionReceiptPublisher>();services.AddSingleton<ICompletionReceiptPublisher>(publisher);
             services.AddSingleton<IHostedService>(_=>new OrderedCleanup(events,failure));
-        });
+        }).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(1,exit);
         Assert.Equal(failure=="receipt"?1:0,publisher.Calls);
     }
@@ -142,6 +147,13 @@ public sealed class VerifierCompletionTests
         "--Telemetry:ConnectionString=InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/",
         "--Telemetry:ServiceName=Parchwell.Verifier","--Telemetry:ServiceInstanceId=judge-pod","--Telemetry:ScenarioId=A01","--Telemetry:RunId=synthetic-c5"
     ];
+
+    private static void RemoveTelemetryExporters(IServiceCollection services)
+    {
+        foreach(var descriptor in services.Where(item=>item.ServiceType.Name is
+            "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray())
+            services.Remove(descriptor);
+    }
 
     private sealed class EmptyVerifierStore(List<string> events):IVerifierArtifactStore
     {
