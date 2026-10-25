@@ -225,6 +225,49 @@ public sealed class JudgeHandlerTests
     }
 
     [Theory]
+    [InlineData("start-line-source", "j4_producer_job_binding")]
+    [InlineData("duplicate-registration", "j5_registered_producer_count")]
+    public async Task GivenUnboundVerifyReceiptAndIndependentViolation_WhenJudged_ThenKeepsIndependentFailure(string violation, string failedCheck)
+    {
+        PhaseStores stores = await BuildFiveRepeats("C0", null);
+        string receiptName = PhasePaths.VerifyCompletion("synthetic-c5", "C0", 1);
+        JsonObject receipt = JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        receipt["source_commit"] = new string('b', 40);
+        receipt["publication_acceptance"]!["source_commit"] = new string('b', 40);
+        receipt["repeat_checks"]!["producer_job_binding"] = "pass";
+        receipt["repeat_checks"]!["registered_producer_count"] = "pass";
+        receipt["repeat_checks"]!["broker_inventory_coverage"] = "pass";
+        stores.Verifier[receiptName] = Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        if (violation == "start-line-source")
+        {
+            string startName = PhasePaths.StartLineCompletion("synthetic-c5", "C0", 1);
+            JsonObject start = JsonNode.Parse(stores.Verifier[startName])!.AsObject();
+            start["source_commit"] = new string('c', 40);
+            stores.Verifier[startName] = Encoding.UTF8.GetBytes(start.ToJsonString());
+        }
+        else
+        {
+            stores.Ledger[PhasePaths.Registration("synthetic-c5", "C0", 1, "pod-c5-extra")] =
+                stores.Ledger[PhasePaths.Registration("synthetic-c5", "C0", 1, "pod-c5")];
+        }
+        var verifier = new MemoryVerifierStore(stores.Verifier);
+        var handler = new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()), verifier,
+            new MemoryProducerStore(stores.Ledger), TimeProvider.System);
+
+        Assert.Equal(1, await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate = JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat = candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("invalid", repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j3_verifier_receipt").GetBoolean());
+        Assert.False(repeat.GetProperty("checks").GetProperty(failedCheck).GetBoolean());
+        string?[] reasons = repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()).ToArray();
+        Assert.Contains(failedCheck, reasons);
+        Assert.DoesNotContain("trusted_result_invalid", reasons);
+        Assert.False(repeat.TryGetProperty("counts", out _));
+    }
+
+    [Theory]
     [InlineData("source")]
     [InlineData("identity")]
     [InlineData("exit-status")]

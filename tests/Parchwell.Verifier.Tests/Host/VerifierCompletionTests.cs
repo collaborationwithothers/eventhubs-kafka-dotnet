@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -130,6 +131,40 @@ public sealed class VerifierCompletionTests
         }).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(1,exit);
         Assert.Equal(failure=="receipt"?1:0,publisher.Calls);
+    }
+
+    [Theory]
+    [InlineData("start-line", 0, 30, 10)]
+    [InlineData("verify", 10, 30, 10)]
+    [InlineData("judge", 10, 0, 10)]
+    public void GivenDeployedModeBudgets_WhenFinalReceiptBudgetIsSelected_ThenUsesApprovedBudget(string mode, int ioSeconds, int blobSeconds, int expectedSeconds)
+    {
+        var options = new VerifierHostOptions
+        {
+            Mode = mode,
+            IoTimeout = ioSeconds == 0 ? null : TimeSpan.FromSeconds(ioSeconds),
+            BlobIoTimeout = blobSeconds == 0 ? null : TimeSpan.FromSeconds(blobSeconds)
+        };
+
+        Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), Program.FinalReceiptBudget(options));
+    }
+
+    [Fact]
+    public void GivenStartLineConfigurationWithIoTimeout_WhenOptionsAreBound_ThenIoTimeoutIsIgnored()
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Verifier:Mode"] = "start-line",
+            ["Verifier:IoTimeout"] = "00:00:10",
+            ["Verifier:BlobIoTimeout"] = "00:00:30"
+        }).Build();
+        var options = new VerifierHostOptions();
+
+        new VerifierHostOptionsSetup(configuration).Configure(options);
+
+        Assert.Null(options.IoTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), options.BlobIoTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(10), Program.FinalReceiptBudget(options));
     }
 
     private static string[] JudgeArguments()=>[
