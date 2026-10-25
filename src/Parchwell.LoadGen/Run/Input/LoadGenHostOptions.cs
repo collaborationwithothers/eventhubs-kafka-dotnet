@@ -14,13 +14,17 @@ public sealed class LoadGenHostOptions
     [Required] public string ActualInstanceId { get; set; } = string.Empty;
     [Required] public string PodName { get; set; } = string.Empty;
     [Required] public string ClientId { get; set; } = string.Empty;
+    [Required] public string Phase { get; set; } = string.Empty;
+    [Required] public string JobName { get; set; } = string.Empty;
+    [Required] public string PodUid { get; set; } = string.Empty;
+    [Required] public string ApplicationInsightsConnectionString { get; set; } = string.Empty;
+    [Range(1, 5)] public int RepeatNumber { get; set; }
     [Required] public string NamespaceName { get; set; } = string.Empty;
     [Required] public string EnrichmentGroupId { get; set; } = string.Empty;
     [Required] public string ScenarioSourceRoot { get; set; } = string.Empty;
     [Required] public string OutputRoot { get; set; } = string.Empty;
     [Required] public string BlobEndpoint { get; set; } = string.Empty;
     [Required] public string BlobContainer { get; set; } = string.Empty;
-    [Required] public string ExpectedBrokerNamesCsv { get; set; } = string.Empty;
 
     [Range(1, int.MaxValue)] public int MaxDocumentCharacters { get; set; }
     [Range(1, int.MaxValue)] public int MaxNestingDepth { get; set; }
@@ -52,19 +56,10 @@ public sealed class LoadGenHostOptions
     public bool? RequireStatisticsEvidence { get; set; }
     public bool? RequireRequestEvidence { get; set; }
 
-    /// <summary>Gets or sets the optional generated-values file compared before native client construction.</summary>
-    public string? GeneratedValuesFile { get; set; }
-
     /// <summary>Validates all required inputs, identities, storage destinations, and finite time limits.</summary>
     public void Validate()
     {
         Validator.ValidateObject(this, new ValidationContext(this), validateAllProperties: true);
-        if (GeneratedValuesFile is not null)
-        {
-            if (string.IsNullOrWhiteSpace(GeneratedValuesFile) || GeneratedValuesFile.Any(char.IsControl))
-                throw new InvalidOperationException("generated_values_file_missing_or_invalid");
-            _ = Path.GetFullPath(GeneratedValuesFile);
-        }
         if (MaxEvidenceFileBytes > int.MaxValue)
             throw new InvalidOperationException("evidence_file_budget_exceeds_reader_limit");
         if (MaxLedgerBytes > int.MaxValue)
@@ -73,7 +68,7 @@ public sealed class LoadGenHostOptions
         {
             ScenarioId, ConfigurationId, RunId, ExpectedInstanceId, ActualInstanceId, PodName,
             ClientId, NamespaceName, EnrichmentGroupId, ScenarioSourceRoot, OutputRoot,
-            BlobEndpoint, BlobContainer, ExpectedBrokerNamesCsv
+            BlobEndpoint, BlobContainer, Phase, JobName, PodUid, ApplicationInsightsConnectionString
         })
         {
             if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
@@ -92,6 +87,24 @@ public sealed class LoadGenHostOptions
             !StringComparer.Ordinal.Equals(ActualInstanceId, PodName) ||
             !StringComparer.Ordinal.Equals(ClientId, PodName))
             throw new InvalidOperationException("worker_and_client_identity_must_match_pod_name");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(RunId, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant) || RunId.Length > 29)
+            throw new InvalidOperationException("run_id_must_be_dns_label");
+        bool validPhaseConfiguration = Phase switch
+        {
+            "probe" => ConfigurationId == "C0",
+            "C0" => ConfigurationId == "C0",
+            "C3" => ConfigurationId == "C3",
+            _ => false
+        };
+        if (!validPhaseConfiguration)
+            throw new InvalidOperationException("phase_configuration_pair_invalid");
+        if (RepeatNumber is < 1 or > 5) throw new InvalidOperationException("repeat_number_out_of_range");
+        string expectedJobName = $"{RunId}-{Phase.ToLowerInvariant()}-r{RepeatNumber}-loadgen";
+        if (!StringComparer.Ordinal.Equals(JobName, expectedJobName))
+            throw new InvalidOperationException("job_name_must_match_run_phase_repeat");
+        if (PodUid.Any(char.IsWhiteSpace) || PodUid.Any(char.IsControl))
+            throw new InvalidOperationException("pod_uid_must_not_contain_whitespace_or_controls");
         if (StringComparer.Ordinal.Equals(ActualInstanceId, "seed"))
             throw new InvalidOperationException("worker_identity_must_not_be_seed");
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps ||
@@ -121,9 +134,6 @@ public sealed class LoadGenHostOptions
         ValidatePositiveFinite(ProcessLifetimeTimeout, nameof(ProcessLifetimeTimeout));
         if (!RequireStatisticsEvidence.HasValue || !RequireRequestEvidence.HasValue)
             throw new InvalidOperationException("evidence_requirements_must_be_explicit");
-        string[] brokerNames = GetExpectedBrokerNames();
-        if (brokerNames.Length == 0 || brokerNames.Length > MaxBrokerSeries)
-            throw new InvalidOperationException("independent_expected_broker_inventory_required");
         if (NamespaceName.Length is < 1 or > 63 || !char.IsAsciiLetterOrDigit(NamespaceName[0]) ||
             !char.IsAsciiLetterOrDigit(NamespaceName[^1]) ||
             NamespaceName.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
@@ -134,14 +144,6 @@ public sealed class LoadGenHostOptions
         _ = Path.GetFullPath(OutputRoot);
         if (StringComparer.Ordinal.Equals(Path.GetFullPath(ScenarioSourceRoot), Path.GetFullPath(OutputRoot)))
             throw new InvalidOperationException("scenario_source_and_output_roots_must_differ");
-    }
-
-    public string[] GetExpectedBrokerNames()
-    {
-        string[] names = ExpectedBrokerNamesCsv.Split(',', StringSplitOptions.TrimEntries);
-        if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.Ordinal).Count() != names.Length)
-            throw new InvalidOperationException("expected_broker_inventory_must_be_unique_and_nonempty");
-        return names;
     }
 
     private static void ValidatePositiveFinite(TimeSpan value, string name)

@@ -39,6 +39,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     private readonly ImmutableArray<string> _artifactNames;
     private readonly bool _requestCapabilitySupported;
     private readonly RunEvidenceExpectations? _expectations;
+    private readonly Func<Task>? _beforeWriterDrain;
     private readonly ConcurrentQueue<string> _diagnostics = new();
     private readonly Task _writerTask;
     private long _receiptSequence;
@@ -53,6 +54,12 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     /// <summary>Creates files with create-only semantics and starts the bounded background writer.</summary>
     public RunEvidenceSession(RunIdentity identity, RunEvidenceOptions options, TimeProvider timeProvider,
         RunEvidenceExpectations? expectations = null)
+        : this(identity, options, timeProvider, expectations, beforeWriterDrain: null)
+    {
+    }
+
+    internal RunEvidenceSession(RunIdentity identity, RunEvidenceOptions options, TimeProvider timeProvider,
+        RunEvidenceExpectations? expectations, Func<Task>? beforeWriterDrain)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(options);
@@ -63,6 +70,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         _options = options;
         _timeProvider = timeProvider;
         _expectations = expectations;
+        _beforeWriterDrain = beforeWriterDrain;
         _directory = Path.GetFullPath(options.DirectoryPath);
         _artifactNames = [StatisticsFileName, LifecycleFileName, CapabilitiesFileName];
         _requestCapabilitySupported = false;
@@ -85,6 +93,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         }
         _writerTask = Task.Run(WriterAsync);
     }
+
+    internal Task WriterTask => _writerTask;
 
     /// <summary>Gets the artifact names owned by this session.</summary>
     public ImmutableArray<string> ArtifactNames => _artifactNames;
@@ -315,10 +325,13 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         _completion = completion;
         _queue.Writer.TryComplete();
         using var timeout = new CancellationTokenSource(_options.CompletionTimeout, _timeProvider);
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        using var writerDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        bool writerClosed = false;
         try
         {
-            await _writerTask.WaitAsync(deadline.Token).ConfigureAwait(false);
+            await _writerTask.WaitAsync(writerDeadline.Token).ConfigureAwait(false);
+            writerDeadline.Token.ThrowIfCancellationRequested();
+            writerClosed = true;
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -335,12 +348,14 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
         try
         {
-            await WriteCapabilitiesAsync(deadline.Token).ConfigureAwait(false);
+            using var capabilitiesTimeout = new CancellationTokenSource(_options.CompletionTimeout, _timeProvider);
+            if (!writerClosed) Latch("evidence_writer_failed");
+            await WriteCapabilitiesAsync(capabilitiesTimeout.Token).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
-            string diagnostic = exception is OperationCanceledException && timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested
-                ? "evidence_writer_completion_timeout"
+            string diagnostic = exception is OperationCanceledException && !cancellationToken.IsCancellationRequested
+                ? "capabilities_write_timeout"
                 : exception is OperationCanceledException ? "capabilities_write_cancelled" : "capabilities_write_failed";
             Latch(diagnostic);
         }
@@ -398,6 +413,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             await using var lifecycle = new FileStream(lifecyclePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
             long statisticsBytes = 0;
             long lifecycleBytes = 0;
+            if (_beforeWriterDrain is not null)
+                await _beforeWriterDrain().ConfigureAwait(false);
             await foreach (EvidenceItem item in _queue.Reader.ReadAllAsync().ConfigureAwait(false))
             {
                 byte[] bytes;
@@ -527,13 +544,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             observed_broker_names = GetObservedBrokerNames(),
             guard_observations = guardState.Observations,
             guard_observations_complete = guardState.Complete,
-            statistics_completion = _completion is null ? null : new
-            {
-                _completion.IsComplete,
-                drain_boundary_microseconds = _completion.DrainBoundaryMicroseconds,
-                diagnostics = _completion.Diagnostics,
-                missing_brokers = _completion.MissingBrokers
-            },
+            statistics_completion = CreateStatisticsCompletion(),
             session_diagnostics = Diagnostics,
             is_faulted = IsFaulted
         };
@@ -543,6 +554,27 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
         await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
         await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private object? CreateStatisticsCompletion()
+    {
+        if (_completion is null) return null;
+        if (_expectations?.RequiresIndependentBrokerCoverage == false)
+            return new
+            {
+                _completion.IsComplete,
+                drain_boundary_microseconds = _completion.DrainBoundaryMicroseconds,
+                first_post_drain_timestamp_microseconds = _completion.FirstPostDrainTimestampMicroseconds,
+                diagnostics = _completion.Diagnostics,
+                missing_brokers = _completion.MissingBrokers
+            };
+        return new
+        {
+            _completion.IsComplete,
+            drain_boundary_microseconds = _completion.DrainBoundaryMicroseconds,
+            diagnostics = _completion.Diagnostics,
+            missing_brokers = _completion.MissingBrokers
+        };
     }
 
     private bool IdentityMatches(KafkaStatisticsIdentity identity) =>

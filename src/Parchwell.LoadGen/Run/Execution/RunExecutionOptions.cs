@@ -14,7 +14,10 @@ public sealed record RunExecutionOptions(
     string Topic,
     IReadOnlyList<string> ExpectedBrokerNames,
     bool RequireRequestEvidence,
-    bool RequireStatisticsEvidence = false)
+    bool RequireStatisticsEvidence = false,
+    TimeSpan? LedgerDrainTimeout = null,
+    TimeSpan? StatisticsCompletionTimeout = null,
+    TimeSpan? EvidenceCompletionTimeout = null)
 {
     /// <summary>Validates every finite budget and the output destination before a producer is constructed.</summary>
     public void Validate()
@@ -24,6 +27,9 @@ public sealed record RunExecutionOptions(
         ValidateFiniteNonNegative(MaxScheduleLateness, nameof(MaxScheduleLateness));
         ValidateFinitePositive(ProducerDrainTimeout, nameof(ProducerDrainTimeout));
         ValidateFinitePositive(CleanupTimeout, nameof(CleanupTimeout));
+        ValidateFinitePositive(LedgerDrainTimeout ?? CleanupTimeout, nameof(LedgerDrainTimeout));
+        ValidateFinitePositive(StatisticsCompletionTimeout ?? CleanupTimeout, nameof(StatisticsCompletionTimeout));
+        ValidateFinitePositive(EvidenceCompletionTimeout ?? CleanupTimeout, nameof(EvidenceCompletionTimeout));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRowBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxManifestBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxLedgerReadbackBytes);

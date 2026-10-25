@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
+using Parchwell.Kafka.Telemetry;
 using Parchwell.LoadGen;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
@@ -32,16 +33,20 @@ public sealed class LoadGenNativeAuthenticationIntegrationTests
     {
         using var outputDirectory = new TestOutputDirectory("loadgen-native-auth-");
         string output = outputDirectory.Path;
-        string runId = "native-run-" + Guid.NewGuid().ToString("N");
+        string runId = "native-run-" + Guid.NewGuid().ToString("N")[..18];
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__RunId"] = runId;
+        values["LoadGen__JobName"] = $"{runId}-c0-r1-loadgen";
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         var tokenProvider = new FailingTokenProvider();
-        using IHost host = Program.BuildHost(args, services =>
+        var telemetry = new RecordingTelemetryRegistration();
+        using IHost host = Program.BuildHostCore(args, services =>
         {
             services.RemoveAll<IKafkaTokenProvider>();
             services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
-        });
+        }, telemetry.Register);
+        AssertTelemetry(telemetry, values["LoadGen__ApplicationInsightsConnectionString"], runId);
+        Assert.Same(telemetry.ConfiguredOptions, host.Services.GetRequiredService<IOptions<ParchwellTelemetryOptions>>().Value);
 
         var measurements = new ConcurrentQueue<(long Value, Dictionary<string, string> Tags)>();
         string? measurementUnit = null;
@@ -148,16 +153,20 @@ public sealed class LoadGenNativeAuthenticationIntegrationTests
     {
         using var outputDirectory = new TestOutputDirectory("loadgen-native-refresh-");
         string output = outputDirectory.Path;
-        string runId = "native-refresh-run-" + Guid.NewGuid().ToString("N");
+        string runId = "native-refresh-run-" + Guid.NewGuid().ToString("N")[..10];
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__RunId"] = runId;
+        values["LoadGen__JobName"] = $"{runId}-c0-r1-loadgen";
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         var tokenProvider = new RefreshFailingTokenProvider(failure);
-        using IHost host = Program.BuildHost(args, services =>
+        var telemetry = new RecordingTelemetryRegistration();
+        using IHost host = Program.BuildHostCore(args, services =>
         {
             services.RemoveAll<IKafkaTokenProvider>();
             services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
-        });
+        }, telemetry.Register);
+        AssertTelemetry(telemetry, values["LoadGen__ApplicationInsightsConnectionString"], runId);
+        Assert.Same(telemetry.ConfiguredOptions, host.Services.GetRequiredService<IOptions<ParchwellTelemetryOptions>>().Value);
         IServiceProvider services = host.Services;
         KafkaConfigurationFactory configurationFactory = services.GetRequiredService<KafkaConfigurationFactory>();
         ProducerConfig configuration = configurationFactory.CreateLoadGenProducer().Configuration;
@@ -228,6 +237,17 @@ public sealed class LoadGenNativeAuthenticationIntegrationTests
             await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
         }
         return condition();
+    }
+
+    private static void AssertTelemetry(RecordingTelemetryRegistration recorder, string connectionString, string runId)
+    {
+        Assert.Equal(1, recorder.RegistrationCount);
+        ParchwellTelemetryOptions options = Assert.IsType<ParchwellTelemetryOptions>(recorder.ConfiguredOptions);
+        Assert.Equal(connectionString, options.ConnectionString);
+        Assert.Equal("Parchwell.LoadGen", options.ServiceName);
+        Assert.Equal("worker-pod", options.ServiceInstanceId);
+        Assert.Equal("A01", options.ScenarioId);
+        Assert.Equal(runId, options.RunId);
     }
 
     private static string FindRepositoryRoot()

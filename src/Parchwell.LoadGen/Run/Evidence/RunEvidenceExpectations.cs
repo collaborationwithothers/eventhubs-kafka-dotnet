@@ -5,8 +5,8 @@ using Parchwell.Scenarios;
 namespace Parchwell.LoadGen.Run.Evidence;
 
 /// <summary>Trusted run context used to validate persisted evidence against the selected scenario.</summary>
-/// <remarks>The selected configuration comes from the in-memory scenario resolver; run requirements and broker inventory
-/// are supplied independently by the host. No expectation is loaded from evidence artifacts.</remarks>
+/// <remarks>The selected configuration comes from the in-memory scenario resolver. Compatibility callers may supply an
+/// independent broker inventory; production LoadGen uses capture-only expectations. No expectation is loaded from evidence artifacts.</remarks>
 public sealed record RunEvidenceExpectations
 {
     public RunEvidenceExpectations(ResolvedRoleConfiguration resolvedConfiguration, bool requireStatisticsEvidence,
@@ -26,7 +26,23 @@ public sealed record RunEvidenceExpectations
         ResolvedConfiguration = resolvedConfiguration;
         RequireStatisticsEvidence = requireStatisticsEvidence;
         ExpectedBrokerNames = expectedBrokerNames;
+        RequiresIndependentBrokerCoverage = true;
     }
+
+    private RunEvidenceExpectations(ResolvedRoleConfiguration resolvedConfiguration, bool requireStatisticsEvidence)
+    {
+        ArgumentNullException.ThrowIfNull(resolvedConfiguration);
+        if (resolvedConfiguration.Role != KafkaClientRole.LoadGenProducer || resolvedConfiguration.Settings.IsEmpty || resolvedConfiguration.Omissions.IsDefault)
+            throw new ArgumentException("evidence_expectations_require_resolved_loadgen_configuration", nameof(resolvedConfiguration));
+        ResolvedConfiguration = resolvedConfiguration;
+        RequireStatisticsEvidence = requireStatisticsEvidence;
+        ExpectedBrokerNames = ImmutableArray<string>.Empty;
+        RequiresIndependentBrokerCoverage = false;
+    }
+
+    /// <summary>Creates production expectations that validate capture freshness without claiming independent broker coverage.</summary>
+    public static RunEvidenceExpectations CaptureOnly(ResolvedRoleConfiguration resolvedConfiguration, bool requireStatisticsEvidence) =>
+        new(resolvedConfiguration, requireStatisticsEvidence);
 
     /// <summary>Gets the immutable producer settings selected by the scenario resolver.</summary>
     public ResolvedRoleConfiguration ResolvedConfiguration { get; }
@@ -36,4 +52,6 @@ public sealed record RunEvidenceExpectations
 
     /// <summary>Gets the immutable independently configured broker inventory for the selected run.</summary>
     public ImmutableArray<string> ExpectedBrokerNames { get; }
+
+    public bool RequiresIndependentBrokerCoverage { get; }
 }

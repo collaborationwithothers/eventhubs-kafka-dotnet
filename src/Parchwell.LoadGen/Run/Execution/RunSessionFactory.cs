@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
@@ -23,11 +22,22 @@ public sealed class RunSessionFactory
     private readonly TimeProvider _timeProvider;
     private readonly KafkaAuthenticationFactory _authenticationFactory;
     private readonly Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> _producerFactory;
+    private readonly Func<Task>? _beforeEvidenceWriterDrain;
 
     public RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
         KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
         TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
         Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory)
+        : this(options, sinkRouter, statisticsFactory, configurationFactory, timeProvider, authenticationFactory,
+            producerFactory, beforeEvidenceWriterDrain: null)
+    {
+    }
+
+    internal RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
+        KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
+        TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
+        Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory,
+        Func<Task>? beforeEvidenceWriterDrain)
     {
         _options = options.Value;
         _sinkRouter = sinkRouter;
@@ -36,6 +46,7 @@ public sealed class RunSessionFactory
         _timeProvider = timeProvider;
         _authenticationFactory = authenticationFactory;
         _producerFactory = producerFactory;
+        _beforeEvidenceWriterDrain = beforeEvidenceWriterDrain;
     }
 
     /// <summary>Creates output writers, statistics capture, and executor after admission has passed.</summary>
@@ -56,12 +67,11 @@ public sealed class RunSessionFactory
             identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer,
             producerConfig.ClientId!), cancellationToken);
         Directory.CreateDirectory(options.OutputRoot);
-        var expectations = new RunEvidenceExpectations(configuration,
-            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
-            options.GetExpectedBrokerNames().ToImmutableArray());
+        var expectations = RunEvidenceExpectations.CaptureOnly(configuration,
+            requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
         RunEvidenceSession? evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(options.OutputRoot,
             options.EvidenceQueueCapacity, options.MaxReportBytes, options.MaxEvidenceFileBytes,
-            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations);
+            options.MaxDiagnostics, options.EvidenceCompletionTimeout), _timeProvider, expectations, _beforeEvidenceWriterDrain);
         LocalLedgerStore? ledger = null;
         KafkaStatisticsSession? statistics = null;
         try
@@ -76,9 +86,10 @@ public sealed class RunSessionFactory
             var executionOptions = new RunExecutionOptions(options.MaxAttempts, options.MaxPayloadBytes,
                 options.MaxScheduleLateness, options.ProducerDrainTimeout, options.CleanupTimeout,
                 options.MaxRowBytes, options.MaxManifestBytes, options.MaxLedgerReadbackBytes,
-                options.OutputRoot, "document-events", options.GetExpectedBrokerNames(),
+                options.OutputRoot, "document-events", [],
                 requiresRequestEvidence || options.RequireRequestEvidence!.Value,
-                requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value);
+                requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
+                options.LedgerDrainTimeout, options.StatisticsCompletionTimeout, options.EvidenceCompletionTimeout);
             var executor = new RunExecutor(() => _producerFactory(
                 producerConfig, statistics, evidence, authentication), ledger, _timeProvider, statistics, evidence, authentication);
             return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions);

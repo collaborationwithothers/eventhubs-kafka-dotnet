@@ -88,7 +88,9 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
             throw new InvalidDataException("publication_aggregate_byte_limit_exceeded");
 
         BlobContainerClient container = _client.GetBlobContainerClient(options.Container);
-        string prefix = GetRunPrefix(result.Manifest.Identity);
+        string prefix = options.Context is { } context
+            ? GetProducerPublicationPrefix(context, result.Manifest.Identity)
+            : GetRunPrefix(result.Manifest.Identity);
         foreach (ArtifactSource source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -157,6 +159,13 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         }
         return string.Join('/', Uri.EscapeDataString(identity.ScenarioId), Uri.EscapeDataString(identity.ConfigurationId),
             Uri.EscapeDataString(identity.RunId), Uri.EscapeDataString(identity.InstanceId));
+    }
+
+    private static string GetProducerPublicationPrefix(ProducerRunContext context, RunIdentity identity)
+    {
+        context.Validate();
+        if (context.Identity != identity) throw new InvalidDataException("publication_context_identity_mismatch");
+        return context.PublicationPrefix.TrimEnd('/');
     }
 
     internal static async Task<ImmutableArray<ArtifactSource>> OpenAndHashSourcesAsync(RunExecutionResult result,

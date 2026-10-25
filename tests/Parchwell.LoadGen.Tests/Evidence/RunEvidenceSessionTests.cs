@@ -114,6 +114,91 @@ public sealed class RunEvidenceSessionTests
     }
 
     [Fact]
+    public async Task Given_CaptureOnlyCompletion_When_ArtifactsAreReadBack_Then_RequiresAndRetainsFirstFreshPostDrainReport()
+    {
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations independent = await RunEvidenceReaderTests.ExpectationsAsync(identity);
+        RunEvidenceExpectations expectations = RunEvidenceExpectations.CaptureOnly(independent.ResolvedConfiguration,
+            requireStatisticsEvidence: true);
+        string path = NewDirectory();
+        await using var session = new RunEvidenceSession(identity, Options(path), TimeProvider.System, expectations);
+        const long boundary = 10_000;
+        const long firstAfterDrain = boundary + 1;
+        KafkaStatisticsSnapshot snapshot = Snapshot(0, 0) with { TimestampMicroseconds = firstAfterDrain };
+        await session.WriteAsync(Report("{}", snapshot), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(new KafkaStatisticsCompletion(true,
+            ImmutableArray<KafkaStatisticsDiagnostic>.Empty, ImmutableArray<string>.Empty)
+        {
+            DrainBoundaryMicroseconds = boundary,
+            FirstPostDrainTimestampMicroseconds = firstAfterDrain
+        }, TestContext.Current.CancellationToken);
+
+        await session.ValidatePersistedAsync(TestContext.Current.CancellationToken);
+        RunEvidenceReadResult result = await RunEvidenceReader.ReadAsync(path, identity, expectations,
+            maximumFileBytes: 1_000_000, maximumRowBytes: 100_000, maximumDiagnostics: 16,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.StatisticsRecordCount);
+        Assert.True(result.StatisticsComplete);
+        using JsonDocument capabilities = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(path, "capabilities.json"), TestContext.Current.CancellationToken));
+        JsonElement completion = capabilities.RootElement.GetProperty("statistics_completion");
+        Assert.Equal(boundary, completion.GetProperty("drain_boundary_microseconds").GetInt64());
+        Assert.Equal(firstAfterDrain, completion.GetProperty("first_post_drain_timestamp_microseconds").GetInt64());
+    }
+
+    [Theory]
+    [InlineData("empty")]
+    [InlineData("stale")]
+    [InlineData("unverified-clock")]
+    [InlineData("missing-boundary")]
+    [InlineData("missing-first-timestamp")]
+    [InlineData("first-timestamp-not-persisted")]
+    [InlineData("capture-diagnostic")]
+    [InlineData("cancelled")]
+    public async Task Given_CaptureOnlyEvidenceLacksFreshVerifiedCompletion_When_ReadBack_Then_RejectsIt(string invalidCase)
+    {
+        RunIdentity identity = Identity();
+        RunEvidenceExpectations independent = await RunEvidenceReaderTests.ExpectationsAsync(identity);
+        RunEvidenceExpectations expectations = RunEvidenceExpectations.CaptureOnly(independent.ResolvedConfiguration,
+            requireStatisticsEvidence: true);
+        string path = NewDirectory();
+        try
+        {
+            await using var session = new RunEvidenceSession(identity, Options(path), TimeProvider.System, expectations);
+            bool includeReport = invalidCase != "empty";
+            long reportTimestamp = invalidCase == "stale" || invalidCase == "first-timestamp-not-persisted" ? 10_000 : 10_001;
+            if (includeReport)
+                await session.WriteAsync(Report("{}", Snapshot(0, 0) with { TimestampMicroseconds = reportTimestamp }),
+                    TestContext.Current.CancellationToken);
+
+            KafkaStatisticsCompletion completion = invalidCase switch
+            {
+                "empty" => new(true, [], []) { DrainBoundaryMicroseconds = 10_000, FirstPostDrainTimestampMicroseconds = 10_001 },
+                "stale" => new(true, [], []) { DrainBoundaryMicroseconds = 10_000, FirstPostDrainTimestampMicroseconds = 10_000 },
+                "unverified-clock" => new(true, [new KafkaStatisticsDiagnostic("clock_unverified")], [])
+                { DrainBoundaryMicroseconds = null, FirstPostDrainTimestampMicroseconds = null },
+                "missing-boundary" => new(true, [], []) { DrainBoundaryMicroseconds = null, FirstPostDrainTimestampMicroseconds = 10_001 },
+                "missing-first-timestamp" => new(true, [], []) { DrainBoundaryMicroseconds = 10_000, FirstPostDrainTimestampMicroseconds = null },
+                "first-timestamp-not-persisted" => new(false, [], []) { DrainBoundaryMicroseconds = 9_999, FirstPostDrainTimestampMicroseconds = 10_001 },
+                "capture-diagnostic" => new(true, [new KafkaStatisticsDiagnostic("capture_loss")], [])
+                { DrainBoundaryMicroseconds = 10_000, FirstPostDrainTimestampMicroseconds = 10_001 },
+                "cancelled" => new(false, [new KafkaStatisticsDiagnostic("completion_cancelled")], [])
+                { DrainBoundaryMicroseconds = 10_000, FirstPostDrainTimestampMicroseconds = 10_001 },
+                _ => throw new ArgumentOutOfRangeException(nameof(invalidCase))
+            };
+            await session.CompleteAsync(completion, TestContext.Current.CancellationToken);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => RunEvidenceReader.ReadAsync(path, identity,
+                expectations, 1_000_000, 100_000, 16, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Given_OverLimitRawReport_When_Writing_Then_FaultsAndDoesNotQueueIt()
     {
         string path = NewDirectory();
@@ -197,14 +282,34 @@ public sealed class RunEvidenceSessionTests
     {
         string path = NewDirectory();
         RunEvidenceOptions options = Options(path);
-        var timeProvider = new DeadlineAdvancingTimeProvider();
-        await using var session = new RunEvidenceSession(Identity(), options, timeProvider);
+        var timeProvider = new ManualTimeProvider();
+        var writerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWriter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var session = new RunEvidenceSession(Identity(), options, timeProvider, expectations: null, async () =>
+        {
+            writerStarted.TrySetResult();
+            await releaseWriter.Task.ConfigureAwait(false);
+        });
 
-        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        try
+        {
+            Task completion = session.CompleteAsync(null, TestContext.Current.CancellationToken);
+            await writerStarted.Task;
+            Assert.Equal(options.CompletionTimeout, timeProvider.ScheduledDueTime);
+            timeProvider.AdvanceBy(options.CompletionTimeout);
+            await completion;
 
-        Assert.Equal(options.CompletionTimeout, timeProvider.ScheduledDueTime);
-        Assert.Equal(options.CompletionTimeout.Ticks, timeProvider.GetTimestamp());
-        Assert.Contains("evidence_writer_completion_timeout", session.Diagnostics);
+            Assert.Equal(options.CompletionTimeout.Ticks, timeProvider.GetTimestamp());
+            Assert.Equal(2, timeProvider.TimerCount);
+            Assert.Contains("evidence_writer_completion_timeout", session.Diagnostics);
+            Assert.DoesNotContain("capabilities_write_timeout", session.Diagnostics);
+            Assert.True(File.Exists(Path.Combine(path, "capabilities.json")));
+        }
+        finally
+        {
+            releaseWriter.TrySetResult();
+            await session.WriterTask;
+        }
     }
 
     [Fact]
@@ -217,8 +322,9 @@ public sealed class RunEvidenceSessionTests
 
         await session.CompleteAsync(null, cancellation.Token);
 
-        Assert.Contains("capabilities_write_cancelled", session.Diagnostics);
+        Assert.DoesNotContain("capabilities_write_cancelled", session.Diagnostics);
         Assert.DoesNotContain("evidence_writer_completion_timeout", session.Diagnostics);
+        Assert.True(File.Exists(Path.Combine(path, "capabilities.json")));
     }
 
     [Fact]
@@ -429,11 +535,15 @@ public sealed class RunEvidenceSessionTests
         [new KafkaBrokerStatistics("broker-1", 1, "UP", 1, requestTimeouts, 0, 0, 0, 0,
             new KafkaWindowStatistics(count, count == 0 ? null : throttle), new KafkaWindowStatistics(0, null))]);
 
-    private sealed class DeadlineAdvancingTimeProvider : TimeProvider
+    private sealed class ManualTimeProvider : TimeProvider
     {
         private long _timestamp;
+        private int _timerCount;
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
 
         public TimeSpan? ScheduledDueTime { get; private set; }
+        public int TimerCount => Volatile.Read(ref _timerCount);
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
 
@@ -441,27 +551,39 @@ public sealed class RunEvidenceSessionTests
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            var timer = new ManualTimer(callback, state);
+            var timer = new ManualTimer(callback, state, GetTimestamp);
+            if (dueTime != Timeout.InfiniteTimeSpan) Interlocked.Increment(ref _timerCount);
             if (dueTime != Timeout.InfiniteTimeSpan)
             {
                 ScheduledDueTime = dueTime;
-                timer.Schedule(checked(GetTimestamp() + dueTime.Ticks));
-                AdvanceBy(dueTime);
-                timer.FireIfDue(GetTimestamp());
+                timer.Schedule(checked(GetTimestamp() + dueTime.Ticks), period);
             }
+            lock (_gate) _timers.Add(timer);
             return timer;
         }
 
-        private void AdvanceBy(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, elapsed.Ticks);
+        public void AdvanceBy(TimeSpan elapsed)
+        {
+            long timestamp = Interlocked.Add(ref _timestamp, elapsed.Ticks);
+            ManualTimer[] timers;
+            lock (_gate) timers = [.. _timers];
+            foreach (ManualTimer timer in timers) timer.FireIfDue(timestamp);
+        }
     }
 
-    private sealed class ManualTimer(TimerCallback callback, object? state) : ITimer
+    private sealed class ManualTimer(TimerCallback callback, object? state, Func<long> getTimestamp) : ITimer
     {
         private int _disposed;
         private int _fired;
-        private long _dueTimestamp;
+        private long _dueTimestamp = long.MaxValue;
+        private long _periodTicks;
 
-        public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _disposed) == 0;
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return false;
+            Schedule(dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : checked(getTimestamp() + dueTime.Ticks), period);
+            return true;
+        }
 
         public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
 
@@ -471,13 +593,25 @@ public sealed class RunEvidenceSessionTests
             return ValueTask.CompletedTask;
         }
 
-        public void Schedule(long dueTimestamp) => _dueTimestamp = dueTimestamp;
+        public void Schedule(long dueTimestamp, TimeSpan period)
+        {
+            _dueTimestamp = dueTimestamp;
+            _periodTicks = period == Timeout.InfiniteTimeSpan ? 0 : period.Ticks;
+        }
 
         public void FireIfDue(long timestamp)
         {
-            if (timestamp >= Interlocked.Read(ref _dueTimestamp) &&
-                Volatile.Read(ref _disposed) == 0 && Interlocked.Exchange(ref _fired, 1) == 0)
+            while (timestamp >= Interlocked.Read(ref _dueTimestamp) && Volatile.Read(ref _disposed) == 0)
+            {
+                if (Interlocked.Exchange(ref _fired, 1) != 0) return;
+                if (_periodTicks == 0) Interlocked.Exchange(ref _dueTimestamp, long.MaxValue);
+                else
+                {
+                    Interlocked.Exchange(ref _fired, 0);
+                    Interlocked.Add(ref _dueTimestamp, _periodTicks);
+                }
                 callback(state);
+            }
         }
     }
 }
