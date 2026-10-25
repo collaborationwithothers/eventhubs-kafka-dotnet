@@ -126,6 +126,24 @@ test('discovery excludes pinned skills and untracked documents, but includes own
   assert.doesNotMatch(result.output, /S888|S887|S884/);
 });
 
+test('discovery excludes raw evidence but scans adjacent authored Markdown', t => {
+  const {run} = fixture(t, {
+    'docs/operations/evidence/raw/root.md': 'S870',
+    'docs/operations/evidence/issue-184/raw/capture.MD': 'S871',
+    'docs/operations/evidence/issue-184/raw/nested/capture.md': 'S872',
+    'docs/operations/evidence/issue-184/authored.md': 'S873',
+    'docs/operations/evidence/issue-184/raw-notes.md': 'S874',
+    'docs/operations/raw/guide.md': 'S875',
+  });
+  const result = run();
+  assert.equal(result.status, 0, result.output);
+  assert.doesNotMatch(result.output, /S870|S871|S872/);
+  for (const id of ['S873', 'S874', 'S875']) {
+    assert.ok(result.output.includes(`Undefined identifier: ${id}`), result.output);
+  }
+  assert.match(result.output, /Documentation scan completed/);
+});
+
 test('broken configuration fails the scan rather than appearing successful', t => {
   const f = fixture(t);
   writeFileSync(join(f.cwd, '.remarkrc.mjs'), 'throw new Error("fixture configuration failure");');

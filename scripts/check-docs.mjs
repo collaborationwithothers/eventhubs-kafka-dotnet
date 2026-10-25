@@ -10,8 +10,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const lock = JSON.parse(readFileSync(resolve(root, 'skills-lock.json'), 'utf8'));
 const excluded = Object.keys(lock.skills).flatMap(name =>
   [`.agents/skills/${name}/`, `.claude/skills/${name}/`]);
+const rawEvidence = /^docs\/operations\/evidence\/(?:[^/]+\/)*raw\//;
 const files = execFileSync('git', ['ls-files', '-z'], {cwd: root, encoding: 'utf8'})
-  .split('\0').filter(path => /\.md$/i.test(path) && !excluded.some(prefix => path.startsWith(prefix)));
+  .split('\0').filter(path => /\.md$/i.test(path)
+    && !excluded.some(prefix => path.startsWith(prefix))
+    && !rawEvidence.test(path));
 if (files.length === 0) throw new Error('No tracked Markdown files found');
 
 engine({

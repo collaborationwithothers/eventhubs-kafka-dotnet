@@ -44,7 +44,7 @@ at lines 121-124. [VerifyRunHandler.cs](../../../../src/Parchwell.Verifier/Verif
 resolves and compares at lines 68-74 before native session creation at line 94.
 The [operational contract](../../verifier-contract.md#optional-deployment-inventory-and-completion)
 states the same boundary. Existing
-[comparison tests](../../../../tests/Parchwell.Verifier.Tests/Host/GeneratedValuesCompatibilityTests.cs)
+[comparison tests](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f79c74cf23f5d0a1d30b399728f265c82208e676/tests/Parchwell.Verifier.Tests/Host/GeneratedValuesCompatibilityTests.cs)
 at lines 92-100 keep the start-line comparison path inactive, while the
 real-resolution and bad-byte verify cases at lines 103-145 cover C0/C3 and
 failure before native construction. Existing
