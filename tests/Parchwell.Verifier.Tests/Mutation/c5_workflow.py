@@ -221,9 +221,10 @@ def report_records(report: dict, target: str) -> list[dict]:
         sentinel = (source.get("language") == "none"
                     and source.get("source") == "File ignored by mutate filter"
                     and source["mutants"] == [])
-        require(sentinel or all(isinstance(row, dict) and row.get("status") == "Ignored"
+        require(sentinel or all(isinstance(row, dict)
+                                and row.get("status") in ("Ignored", "CompileError")
                                 for row in source["mutants"]),
-                "foreign nonignored mutant")
+                "foreign mutant with disallowed status")
     records = []
     seen = set()
     for mutant in assigned["mutants"]:
