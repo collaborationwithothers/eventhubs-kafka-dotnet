@@ -311,7 +311,7 @@ internal static partial class Program
             {
                 try
                 {
-                    using var receiptDeadline=new CancellationTokenSource(hostOptions.IoTimeout??TimeSpan.FromSeconds(10),timeProvider??TimeProvider.System);
+                    using var receiptDeadline=new CancellationTokenSource(FinalReceiptBudget(hostOptions),timeProvider??TimeProvider.System);
                     await receiptPublisher.PublishAsync(hostOptions,receiptContainer,receiptName,receiptBytes,receiptDeadline.Token).ConfigureAwait(false);
                 }
                 catch (Exception)
@@ -332,6 +332,10 @@ internal static partial class Program
             watchdog?.Dispose();
         }
     }
+
+    /// <summary>Selects the publication budget for the final Blob completion receipt.</summary>
+    /// <remarks>Start-line never binds IoTimeout, so it always uses the fixed 10-second budget.</remarks>
+    internal static TimeSpan FinalReceiptBudget(VerifierHostOptions options) => options.IoTimeout ?? TimeSpan.FromSeconds(10);
 
     private static async Task WaitForApplicationStopAsync(IHostApplicationLifetime lifetime)
     {
