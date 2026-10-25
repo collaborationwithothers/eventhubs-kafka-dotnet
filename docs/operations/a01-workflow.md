@@ -18,7 +18,7 @@ Prepare the environment's `PARCHWELL_CLUSTER_BACKEND`, `PARCHWELL_CLUSTER_TFVARS
 
 `PARCHWELL_PERSISTENT_OUTPUTS` must contain the `terraform output -json` text of `infra/persistent`, including `acr` and `application_insights_connection_string`. Hari supplies that output after applying the persistent root; an agent session does not apply it. Preparation validates the private inputs before image or infrastructure commands. Private inputs, Terraform outputs, Helm values and rendered manifests stay outside the candidate and pod artifact directories.
 
-Inferred prerequisite: the workflow identity can read the ephemeral `verifier` container, as the former Runner's [WorkerBlobDownloader](../../src/Parchwell.Runner/Run/Execution/WorkerBlobDownloader.cs) did under the same identity. Offline fixtures do not establish that permission; gate 2 tests it live.
+Inferred prerequisite: the workflow identity can read the ephemeral `verifier` container through [the candidate retrieval implementation](../../infra/scripts/phase/phase.py). Offline fixtures do not establish that permission; gate 2 tests it live.
 
 ## Commands
 

@@ -59,7 +59,7 @@ public sealed class ScenarioDependencyInjectionTests
         Assert.Contains(nameof(KafkaClientRole.VerifierConsumer), exception.Message, StringComparison.Ordinal);
     }
 
-    // AddParchwellScenarios registers the concrete loader, resolver and generator; only the scenario
+    // AddParchwellScenarios registers the concrete loader and resolver; only the scenario
     // source is an interface, because it is a boundary (dotnet.md "Seams and dependencies").
     [Fact]
     public void Given_ValidScenarioModuleRegistrations_When_ResolvingServices_Then_CreatesConcreteServices()
@@ -82,6 +82,5 @@ public sealed class ScenarioDependencyInjectionTests
 
         Assert.NotNull(provider.GetRequiredService<ScenarioLoader>());
         Assert.NotNull(provider.GetRequiredService<ScenarioResolver>());
-        Assert.NotNull(provider.GetRequiredService<HelmValuesGenerator>());
     }
 }

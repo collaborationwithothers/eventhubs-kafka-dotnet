@@ -1,6 +1,4 @@
-using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Scenarios;
 using Xunit;
@@ -151,67 +149,6 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Contains(exception.Diagnostics, item => item.Code == "wrong_role_setting");
     }
 
-    // Helm values are generated from the definition (ADR-014), so the same declared settings must give
-    // the same output whatever order the author wrote them in.
-    [Fact]
-    public async Task Given_ReplacementKeyWithDifferentMappingOrder_When_Generating_Then_ProducesSameValues()
-    {
-        var firstYaml = ScenarioWithLoadGenOverrides("request.timeout.ms: 60001\n      socket.timeout.ms: 60001", "changed");
-        var secondYaml = ScenarioWithLoadGenOverrides("socket.timeout.ms: 60001\n      request.timeout.ms: 60001", "changed");
-        using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer);
-        var generator = new HelmValuesGenerator();
-        var resolver = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>());
-
-        var first = generator.Generate(resolver.Resolve(await Load(firstYaml)), "changed");
-        var second = generator.Generate(resolver.Resolve(await Load(secondYaml)), "changed");
-
-        Assert.Equal(first, second);
-    }
-
-    // Output must be culture-invariant (fr-FR is a non-English culture set on purpose) and carry no
-    // orchestration fields or expected outcomes, which stay out of the deployment (ADR-014).
-    [Fact]
-    public async Task Given_SelectedBaselineConfiguration_When_Generating_Then_ReturnsCompleteInvariantYamlWithoutOrchestratorFields()
-    {
-        var originalCulture = CultureInfo.CurrentCulture;
-        var originalUiCulture = CultureInfo.CurrentUICulture;
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
-            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
-            using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer);
-            var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(await Load(ScenarioForRole(KafkaClientRole.LoadGenProducer)));
-            var generator = new HelmValuesGenerator();
-
-            var actual = generator.Generate(resolved, "baseline");
-
-            Assert.Equal(ExpectedLoadGenBaselineYaml, actual);
-            Assert.Equal(actual, generator.Generate(resolved, "baseline"));
-            Assert.EndsWith("\n", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("expected.yaml", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("fault:", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("measures:", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("gate:", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("repeats:", actual, StringComparison.Ordinal);
-            Assert.DoesNotContain("throttle", actual, StringComparison.Ordinal);
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = originalCulture;
-            CultureInfo.CurrentUICulture = originalUiCulture;
-        }
-    }
-
-    // Asking for a configuration the scenario does not declare is a caller error, not a scenario diagnostic.
-    [Fact]
-    public async Task Given_UnknownConfigurationId_When_Generating_Then_ThrowsArgumentException()
-    {
-        using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer);
-        var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(await Load(ScenarioForRole(KafkaClientRole.LoadGenProducer)));
-
-        Assert.Throws<ArgumentException>(() => new HelmValuesGenerator().Generate(resolved, "absent"));
-    }
-
     private static async Task<LoadedScenario> Load(string? scenario = null) =>
         await ScenarioTestData.Loader(ScenarioTestData.Source(scenario ?? ScenarioTestData.ValidScenario))
             .LoadAsync("A01", TestContext.Current.CancellationToken);
@@ -237,83 +174,4 @@ public sealed class ScenarioResolutionAndGenerationTests
             .Replace("[LoadGenProducer, VerifierConsumer]", $"[{roleName}]", StringComparison.Ordinal)
             .Replace("measures:\n  - {id: verifier.ok, role: VerifierConsumer}", measure, StringComparison.Ordinal);
     }
-
-    // The complete expected output for the synthetic A01 fixture with the LoadGenProducer baseline,
-    // written by hand. The root key order is fixed by the contract; nested keys are in ordinal order,
-    // and every Kafka value is a quoted string.
-    private const string ExpectedLoadGenBaselineYaml = """
-        "contract_version": 1
-        "scenario_id": "A01"
-        "configuration_id": "baseline"
-        "profile":
-          "documents_per_burst": 2
-          "id": "synthetic"
-          "payloads":
-            "classified":
-            - "size_bytes": 80
-              "weight": 1
-            "indexed":
-            - "size_bytes": 40
-              "weight": 1
-            "ocr-finished":
-            - "size_bytes": 96
-              "weight": 1
-            "ocr-started":
-            - "size_bytes": 64
-              "weight": 1
-            "uploaded":
-            - "size_bytes": 128
-              "weight": 1
-            - "size_bytes": 512
-              "weight": 2
-          "schema_version": 1
-          "seed": -17
-          "stages":
-          - "duration_seconds": 3
-            "id": "warmup"
-            "offered_attempts_per_second": 2
-          - "duration_seconds": 4
-            "id": "measure"
-            "offered_attempts_per_second": 5
-          "tenants":
-          - "id": "tenant-a"
-            "weight": 3
-          - "id": "tenant-b"
-            "weight": 1
-        "kafka":
-          "LoadGenProducer":
-            "acks": "-1"
-            "allow.auto.create.topics": "true"
-            "batch.size": "1000000"
-            "bootstrap.servers": "synthetic-namespace.servicebus.windows.net:9093"
-            "broker.address.ttl": "1000"
-            "client.id": "synthetic-client"
-            "compression.type": "none"
-            "connections.max.idle.ms": "0"
-            "dotnet.producer.delivery.report.fields": "all"
-            "dotnet.producer.enable.background.poll": "true"
-            "dotnet.producer.enable.delivery.reports": "true"
-            "enable.idempotence": "false"
-            "enable.sasl.oauthbearer.unsecure.jwt": "false"
-            "enable.ssl.certificate.verification": "true"
-            "linger.ms": "5"
-            "max.in.flight": "1000000"
-            "message.max.bytes": "1000000"
-            "message.send.max.retries": "2147483647"
-            "message.timeout.ms": "300000"
-            "metadata.max.age.ms": "180000"
-            "partitioner": "consistent_random"
-            "queue.buffering.max.kbytes": "1048576"
-            "queue.buffering.max.messages": "100000"
-            "request.timeout.ms": "60000"
-            "sasl.mechanism": "OAUTHBEARER"
-            "sasl.oauthbearer.metadata.authentication.type": "none"
-            "sasl.oauthbearer.method": "default"
-            "security.protocol": "sasl_ssl"
-            "socket.keepalive.enable": "true"
-            "socket.max.fails": "1"
-            "socket.timeout.ms": "60000"
-            "ssl.endpoint.identification.algorithm": "https"
-            "statistics.interval.ms": "15000"
-        """ + "\n";
 }

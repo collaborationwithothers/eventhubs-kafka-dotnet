@@ -10,7 +10,7 @@ C1 must merge its cluster root and private input migration before gate 1. Compar
 
 The one-time entry prerequisite under [factory.md's #138 entry rule](../agents/factory.md#item-lifecycle) is satisfied by [Hari's portal confirmation and workflow evidence](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6386104951), [adopted for C2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/158#issuecomment-6386105123). Children need not re-establish that entry prerequisite. C2's earlier source-based verification is [recorded on the issue](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/158#issuecomment-6386058874). Later gate environments remain subject to their own cleanup rules. Gate 1 runs only after C1 and C2 merge, private inputs are updated, persistent apply is complete and the protected environment approves the dispatch.
 
-Until C6 merges its replacement, **do not dispatch scenario.yml**. Its old Runner path is obsolete against the redesigned infrastructure. C2 does not claim that path implements dispatch-end AKS stopping. The replacement sweeper must be present before the first smoke apply.
+The replacement [scenario workflow](a01-workflow.md) merged in [PR #188](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/188). Its phase and cleanup commands replace the retired Runner path. The [gate 2 record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/163#issuecomment-6401853874) records the live integration result.
 
 ## Tools and private inputs
 

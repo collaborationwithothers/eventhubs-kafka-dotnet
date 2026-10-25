@@ -57,6 +57,9 @@ jobs:
       - name: Verify lifecycle with stub commands
         shell: bash
         run: python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'
+      - name: Verify renewable Azure CLI session
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 60 -- python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -v
       - name: Verify shell, workflows and rendered Kubernetes schemas
         shell: bash
         run: python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh
