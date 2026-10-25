@@ -27,8 +27,7 @@ internal static class ProfileReader
         var version = ReadVersion(validation, map);
         var id = validation.String(map, "id", "") ?? "";
         validation.IsSlug(id, map.Fields.GetValueOrDefault("id"), "id");
-        // The profile id must equal the file name the definition referenced, so the id in generated values
-        // always names the file that was read.
+        // The profile id must equal the filename slug referenced by the scenario definition.
         if (!StringComparer.Ordinal.Equals(id, expectedSlug))
             validation.Error(map.Fields.GetValueOrDefault("id"), "id", "profile_id_mismatch", "Profile id must match the referenced filename slug.");
         var seed = ReadSeed(validation, map.Fields.GetValueOrDefault("seed"));

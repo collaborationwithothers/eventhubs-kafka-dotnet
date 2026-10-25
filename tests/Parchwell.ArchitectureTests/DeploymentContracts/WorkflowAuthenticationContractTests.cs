@@ -1,14 +1,14 @@
 #pragma warning disable CA1707 // Repository-required Given_When_Then names.
-using System.Text.Json;
-using Parchwell.Runner.Run.Contracts;
-using Parchwell.Runner.Run.Execution;
-using Parchwell.Runner.Tests.Deployment;
 using Xunit;
 
-namespace Parchwell.Runner.Tests.Contracts;
+namespace Parchwell.ArchitectureTests.DeploymentContracts;
 
 public sealed class WorkflowAuthenticationContractTests
 {
+    private static string RepositoryRoot =>
+        Environment.GetEnvironmentVariable("PARCHWELL_REPOSITORY_ROOT")
+        ?? throw new InvalidOperationException("Missing repository root. Run ./scripts/verify-dotnet.sh.");
+
     private const string LoginStep = """
         - name: Existing environment OIDC login
           uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
@@ -74,20 +74,9 @@ public sealed class WorkflowAuthenticationContractTests
         Assert.Contains("\n  if: always()\n", steps[setupIndex + 4], StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task Given_AzureCliSessionOfflineSuite_When_ExecutedWithinBoundedProcess_Then_AllAuthenticationCasesPass()
-    {
-        var runner = new BoundedProcessRunner(TimeProvider.System);
-        ProcessResult result = await runner.RunAsync(new("python3",
-            ["-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_azure_cli_session.py", "-v"],
-            TimeSpan.FromSeconds(60), 1048576, DeploymentFixture.RepositoryRoot), TestContext.Current.CancellationToken);
-        Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
-        Assert.False(result.TimedOut);
-    }
-
     private static string[] ReadJob(string file, string job)
     {
-        string[] lines = File.ReadAllLines(Path.Combine(DeploymentFixture.RepositoryRoot, "docs/operations/workflows", file));
+        string[] lines = File.ReadAllLines(Path.Combine(RepositoryRoot, "docs/operations/workflows", file));
         string heading = "  " + job + ":";
         Assert.Single(lines, line => line == heading);
         int start = Array.IndexOf(lines, heading);

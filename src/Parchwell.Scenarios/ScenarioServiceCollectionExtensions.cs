@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Parchwell.Scenarios;
 
-/// <summary>Registers scenario declaration loading and pure resolution/generation.</summary>
+/// <summary>Registers scenario declaration loading and pure resolution.</summary>
 public static class ScenarioServiceCollectionExtensions
 {
     /// <summary>Registers required parsing limits with startup validation. The caller supplies IScenarioSource and Kafka roles.</summary>
@@ -20,7 +20,6 @@ public static class ScenarioServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<ScenarioLoader>();
         services.AddSingleton<ScenarioResolver>();
-        services.AddSingleton<HelmValuesGenerator>();
         return services;
     }
 }
