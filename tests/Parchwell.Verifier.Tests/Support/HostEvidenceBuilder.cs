@@ -21,6 +21,7 @@ namespace Parchwell.Verifier.Tests.Support;
 /// <summary>Builds coherent synthetic raw inputs independently of verifier readers and codecs.</summary>
 internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, IVerifierArtifactStore, IProducerArtifactStore, IScenarioSource
 {
+    public int StartLineHandlerExitCode { get; init; }
     private readonly ServiceProvider services;
     private readonly Dictionary<string, string> scenarioDocuments;
     private readonly JsonObject identity;
@@ -393,7 +394,10 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             Options.Phase!, Options.Repeat, startJob, "start-line-pod", startIdentity, Options.SourceCommit!, 0, true,
             "2026-10-24T00:00:00.0000000+00:00", "2026-10-24T00:00:01.0000000+00:00",
             [Ref("verifier", Options.StartLineInputName!, Note ?? []), Ref("verifier", Options.BrokerInventoryOutputName!, inventory)], null, null);
-        verifierObjects[PhasePaths.StartLineCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value)] = PhaseWireCodec.WriteReceipt(startReceipt);
+        byte[] startReceiptBytes=PhaseWireCodec.WriteReceipt(startReceipt);
+        if (StartLineHandlerExitCode != 0)
+            startReceiptBytes=Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(startReceiptBytes).Replace("\"handler_exit_code\":0", "\"handler_exit_code\":1", StringComparison.Ordinal));
+        verifierObjects[PhasePaths.StartLineCompletion(Options.RunId!, Options.Phase!, Options.Repeat.Value)] = startReceiptBytes;
         ledgerObjects.Clear();
         string producerPrefix = PhasePaths.ProducerPrefix(Options.RunId!, Options.Phase!, Options.Repeat.Value, Options.InstanceId!);
         string jobName = PhaseIdentity.JobName(Options.RunId!, Options.Phase!, Options.Repeat.Value);

@@ -39,6 +39,18 @@ public sealed class VerifyRunHandlerTests
         AssertRecordedWindows(result, null);
     }
 
+    [Fact]
+    public async Task Given_FailedStartLineReceipt_When_Verifying_Then_DoesNotAcceptPublicationOrCounts()
+    {
+        using var fixture = new HostEvidenceBuilder { StartLineHandlerExitCode = 1 };
+
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.Equal("incomplete", output.RootElement.GetProperty("status").GetString());
+        Assert.False(output.RootElement.TryGetProperty("ok", out _));
+    }
+
     [Theory]
     [InlineData(12)]
     [InlineData(13)]

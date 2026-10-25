@@ -20,6 +20,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         }
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
+        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge && options.ScenarioId != "A01")
+            errors.Add("Verifier:ScenarioId must be A01 for C5 modes.");
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         RequireText(options.SourceCommit, "PARCHWELL_SOURCE_COMMIT", errors);
         if (options.SourceCommit is not null && options.VerifierCommit != options.SourceCommit) errors.Add("Verifier:VerifierCommit must equal PARCHWELL_SOURCE_COMMIT.");

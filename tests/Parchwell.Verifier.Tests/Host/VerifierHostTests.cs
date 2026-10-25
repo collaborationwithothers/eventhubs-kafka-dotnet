@@ -120,6 +120,20 @@ public sealed class VerifierHostTests
     }
 
     [Theory]
+    [InlineData("start-line")]
+    [InlineData("verify")]
+    public void Given_UnsupportedScenario_When_C5ModeValidated_Then_RejectsBeforeIo(string mode)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        options.ScenarioId = "B01";
+
+        ValidateOptionsResult result = new VerifierHostOptionsValidator().Validate(null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Failures!, failure => failure.Contains("ScenarioId must be A01", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [MemberData(nameof(RequiredTextOptions))]
     public void Given_BlankRequiredTextOption_When_Validated_Then_ReportsStartupFailure(string mode, string propertyName)
     {

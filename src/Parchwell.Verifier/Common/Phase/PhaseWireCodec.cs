@@ -98,6 +98,7 @@ internal static partial class PhaseWireCodec
         if (!Text(r.JobName,253,true) || !Text(r.PodName,253,true)) throw new FormatException("Receipt Job and pod names must be bounded text.");
         DateTimeOffset started = ParseUtc(r.StartedUtc); DateTimeOffset completed = ParseUtc(r.CompletedUtc);
         if (completed < started || !r.CleanupCompleted || r.HandlerExitCode is not (0 or 1)) throw new FormatException("Receipt timing, exit, or cleanup fields are invalid.");
+        if (r.Mode == "start-line" && r.HandlerExitCode != 0) throw new FormatException("Start-line receipt must record successful handler completion.");
         if (r.Mode == "verify" && (r.RepeatChecks is null || (r.PublicationAcceptance is not null && r.PublicationAcceptance.Objects.Count != 6))) throw new FormatException("Verify receipt acceptance fields are invalid.");
         if (r.Mode != "verify" && (r.PublicationAcceptance is not null || r.RepeatChecks is not null)) throw new FormatException("Only verify receipts can carry acceptance fields.");
         if (r.Mode == "judge" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
