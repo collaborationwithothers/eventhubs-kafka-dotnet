@@ -936,10 +936,17 @@ public sealed class LoadGenWorkerHostTests
             throw new NotSupportedException(targetMethod?.Name);
         }
 
+        private static long MicrosecondsNow() => (long)((Int128)Stopwatch.GetTimestamp() * 1_000_000 / Stopwatch.Frequency);
+
         public void EmitPostDrainStatistics()
         {
             KafkaStatisticsSession statistics = Statistics ?? throw new InvalidOperationException("synthetic_statistics_unavailable");
-            long timestamp = (long)(Stopwatch.GetTimestamp() * 1_000_000d / Stopwatch.Frequency);
+            // KafkaStatisticsSession counts only a report whose ts is strictly after its rounded-up
+            // completion boundary. This runs just after that boundary, and a report in the same
+            // microsecond would be rejected, so wait two microsecond ticks past entry.
+            long earliest = MicrosecondsNow() + 2;
+            long timestamp;
+            while ((timestamp = MicrosecondsNow()) < earliest) Thread.SpinWait(1);
             long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string report = "{\"name\":\"worker-producer\",\"client_id\":\"worker-pod\",\"type\":\"producer\",\"ts\":" +
                 timestamp.ToString(CultureInfo.InvariantCulture) + ",\"time\":" + time.ToString(CultureInfo.InvariantCulture) +
