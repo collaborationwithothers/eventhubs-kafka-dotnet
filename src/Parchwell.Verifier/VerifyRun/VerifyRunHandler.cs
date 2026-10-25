@@ -126,13 +126,12 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         ReportAssociation[] reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
             NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
         ArtifactReference Ref(string container,string name,byte[] bytes)=>new(container,name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
-        PublicationReadOutcome accepted=completionBytes is null||producerReceipt is null||startReceipt is null||inventoryBytes is null
-            ?new(null,raw,["producer_completion_unavailable"],true)
-            :start.Value is null
-            ?new(null,raw,["start_line_invalid"],start.IsExecutionFailure)
-            :PublicationAcceptance.Evaluate(publicationListing,producerPrefix,raw,registration,producerReceipt,
-                index.Value,manifest.Value,start.Value,inventory.Value,options.SourceCommit!,Ref("verifier",startName,noteBytes??[]),Ref("verifier",inventoryName,inventoryBytes!),Ref("ledger",producerCompletionName,completionBytes!),
-                options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes));
+        PublicationReadOutcome accepted=PublicationAcceptance.Evaluate(publicationListing,producerPrefix,raw,registration,producerReceipt,
+            index.Value,manifest.Value,start.Value,inventory.Value,options.SourceCommit!,
+            noteBytes is null||startReceipt is null?null:Ref("verifier",startName,noteBytes),
+            inventoryBytes is null||startReceipt is null?null:Ref("verifier",inventoryName,inventoryBytes),
+            completionBytes is null||producerReceipt is null?null:Ref("ledger",producerCompletionName,completionBytes),
+            options.MaxArtifactBytes.Value,Math.Min(options.MaxTotalInputBytes.Value,PublicationAcceptance.MaximumAggregateBytes));
         bool diagnosticsSelected=false;
         if(!accepted.Accepted)
         {

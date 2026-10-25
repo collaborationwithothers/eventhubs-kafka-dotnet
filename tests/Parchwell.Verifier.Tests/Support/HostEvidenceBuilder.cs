@@ -176,6 +176,8 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public Dictionary<string, byte[]> CreatedObjects { get; } = new(StringComparer.Ordinal);
     public IReadOnlyDictionary<string,byte[]> VerifierObjects=>verifierObjects;
     public IReadOnlyDictionary<string,byte[]> LedgerObjects=>ledgerObjects;
+    public void AddLedgerObject(string name,byte[] bytes)=>ledgerObjects[name]=bytes;
+    public bool RemoveLedgerObject(string name)=>ledgerObjects.Remove(name);
     public Dictionary<string, byte[]> DiagnosticInputs { get; } = new(StringComparer.Ordinal);
     public Action<string, CancellationToken>? BeforeRead { get; set; }
     public Action<CancellationToken>? BeforeScenarioRead { get; set; }

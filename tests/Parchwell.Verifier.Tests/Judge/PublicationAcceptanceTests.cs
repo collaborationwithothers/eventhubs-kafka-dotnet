@@ -53,6 +53,27 @@ public sealed class PublicationAcceptanceTests
         Assert.Contains("listing_incomplete",result.RejectionCodes);
     }
 
+    [Fact]
+    public void Given_KnownExtraPublicationAndMissingCompletion_When_Evaluating_Then_InvalidityTakesPrecedence()
+    {
+        var f=Build();
+        string extra=f.Prefix+"publication/extra.bin";
+        Fixture changed=f with
+        {
+            Listing=new(f.Listing.Names.Append(extra).ToArray(),1,true),
+            ProducerReceipt=null!
+        };
+        PublicationReadOutcome result=PublicationAcceptance.Evaluate(changed.Listing,changed.Prefix,
+            changed.Payloads.ToDictionary(p=>p.Key,p=>(byte[]?)p.Value,StringComparer.Ordinal),ProducerRegistration(),
+            changed.ProducerReceipt,changed.Index,changed.Manifest,changed.StartLine,changed.Inventory,Commit,
+            changed.StartReference,changed.InventoryReference,changed.ProducerReference,1024,1024);
+        Assert.False(result.Accepted);
+        Assert.False(result.Incomplete);
+        Assert.Contains("publication_membership_invalid",result.RejectionCodes);
+        Assert.Contains("producer_completion_unavailable",result.RejectionCodes);
+        Assert.Null(result.AcceptedSnapshot);
+    }
+
     [Theory]
     [InlineData("bookkeeping")]
     [InlineData("worker")]
@@ -119,5 +140,5 @@ public sealed class PublicationAcceptanceTests
     private static string Hash(byte[] bytes)=>Convert.ToHexStringLower(SHA256.HashData(bytes));
     private sealed record Fixture(BlobListing Listing,string Prefix,Dictionary<string,byte[]> Payloads,ArtifactIndex Index,SealedRunManifest Manifest,
         StartLineNote StartLine,BrokerInventory Inventory,ProducerCompletionReceipt ProducerReceipt,ArtifactReference StartReference,
-        ArtifactReference InventoryReference,ArtifactReference ProducerReference);
+        ArtifactReference InventoryReference,ArtifactReference? ProducerReference);
 }

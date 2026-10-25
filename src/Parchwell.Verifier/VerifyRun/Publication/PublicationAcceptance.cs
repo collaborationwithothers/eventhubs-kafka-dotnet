@@ -23,9 +23,9 @@ internal static class PublicationAcceptance
 
     internal static PublicationReadOutcome Evaluate(BlobListing listing,string producerPrefix,
         IReadOnlyDictionary<string,byte[]?> payloads,ProducerRegistration registration,
-        ProducerCompletionReceipt producerReceipt,ArtifactIndex? index,SealedRunManifest? manifest,
+        ProducerCompletionReceipt? producerReceipt,ArtifactIndex? index,SealedRunManifest? manifest,
         StartLineNote? startLine,BrokerInventory? inventory,string sourceCommit,
-        ArtifactReference startReference,ArtifactReference inventoryReference,ArtifactReference producerReference,
+        ArtifactReference? startReference,ArtifactReference? inventoryReference,ArtifactReference? producerReference,
         long configuredObjectLimit,long configuredAggregateLimit)
     {
         var rejected=new List<string>();
@@ -65,14 +65,29 @@ internal static class PublicationAcceptance
         }
         if(manifest is null){rejected.Add("publication_manifest_unavailable");incomplete=true;}
         else if(manifest.Identity!=registration.Identity)rejected.Add("publication_manifest_identity_invalid");
-        if(!Matches(producerReceipt,registration))rejected.Add("producer_completion_invalid");
+        if(producerReceipt is null){rejected.Add("producer_completion_unavailable");incomplete=true;}
+        else if(!Matches(producerReceipt,registration))rejected.Add("producer_completion_invalid");
         RunIdentity expectedStart=new(registration.Identity.ScenarioId,registration.Identity.ConfigurationId,registration.Identity.RunId,
             registration.JobName,registration.JobName,registration.JobName);
-        if(startLine is null||startLine.Identity!=expectedStart||startLine.VerifierCommit!=sourceCommit){rejected.Add("start_line_invalid");incomplete|=startLine is null;}
-        if(inventory is null||inventory.Identity!=expectedStart||inventory.SourceCommit!=sourceCommit){rejected.Add("broker_inventory_invalid");incomplete|=inventory is null;}
-        if(registration.SourceCommit!=sourceCommit||registration.Identity.RunId!=startReference.Name.Split('/')[0])rejected.Add("publication_source_invalid");
+        if(startLine is null){rejected.Add("start_line_unavailable");incomplete=true;}
+        else if(startLine.Identity!=expectedStart||startLine.VerifierCommit!=sourceCommit)rejected.Add("start_line_invalid");
+        if(inventory is null){rejected.Add("broker_inventory_unavailable");incomplete=true;}
+        else if(inventory.Identity!=expectedStart||inventory.SourceCommit!=sourceCommit)rejected.Add("broker_inventory_invalid");
+        if(registration.SourceCommit!=sourceCommit||startReference is not null&&registration.Identity.RunId!=startReference.Name.Split('/')[0])
+            rejected.Add("publication_source_invalid");
 
-        if(rejected.Count!=0)return new(null,payloads,rejected.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),incomplete);
+        if(rejected.Count!=0)
+        {
+            string[] codes=rejected.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            // Missing evidence can make the publication incomplete, but it must not
+            // downgrade an independently observed integrity violation.
+            bool incompleteOnly=incomplete&&codes.All(IsIncompleteCode);
+            return new(null,payloads,codes,incompleteOnly);
+        }
+        // These references are required by the snapshot, but their absence must not
+        // prevent the independent integrity checks above from running.
+        if(startReference is null||inventoryReference is null||producerReference is null)
+            return new(null,payloads,["publication_reference_unavailable"],true);
         var snapshot=new PublicationAcceptanceSnapshot(producerPrefix,registration.Identity,sourceCommit,startReference,inventoryReference,producerReference,objectRefs);
         return new(snapshot,payloads,[],false);
     }
@@ -82,4 +97,9 @@ internal static class PublicationAcceptance
         receipt.RepeatNumber==registration.RepeatNumber&&receipt.JobName==registration.JobName&&receipt.PodName==registration.PodName&&
         receipt.PodUid==registration.PodUid&&receipt.SourceCommit==registration.SourceCommit&&receipt.Mode=="loadgen"&&
         receipt.HandlerExitCode==0&&receipt.CleanupCompleted;
+
+    private static bool IsIncompleteCode(string code)=>code is "listing_incomplete" or "publication_incomplete" or
+        "publication_object_missing" or "publication_index_unavailable" or "publication_manifest_unavailable" or
+        "producer_completion_unavailable" or "start_line_unavailable" or "broker_inventory_unavailable" or
+        "publication_reference_unavailable";
 }

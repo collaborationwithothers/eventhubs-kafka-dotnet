@@ -51,6 +51,23 @@ public sealed class VerifyRunHandlerTests
         Assert.False(output.RootElement.TryGetProperty("ok", out _));
     }
 
+    [Fact]
+    public async Task Given_ExtraPublicationAndMissingProducerCompletion_When_Verifying_Then_KnownIntegrityFailureWins()
+    {
+        using var fixture = new HostEvidenceBuilder();
+        fixture.PreservePublicationReferences = true;
+        fixture.AddLedgerObject("synthetic-c5/C0/r1/producer/pod-c5/publication/extra.bin", []);
+        Assert.True(fixture.RemoveLedgerObject("synthetic-c5/C0/r1/producer/pod-c5/completion.json"));
+
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.Equal("invalid", output.RootElement.GetProperty("status").GetString());
+        Assert.False(output.RootElement.TryGetProperty("ok", out _));
+        Assert.Contains(output.RootElement.GetProperty("diagnostics").EnumerateArray(), diagnostic =>
+            diagnostic.GetProperty("code").GetString() == "publication_unaccepted");
+    }
+
     [Theory]
     [InlineData(12)]
     [InlineData(13)]
