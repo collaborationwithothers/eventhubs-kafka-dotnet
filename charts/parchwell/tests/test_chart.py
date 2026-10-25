@@ -3,6 +3,7 @@
 from copy import deepcopy
 from pathlib import Path
 import json
+import re
 import subprocess
 import tempfile
 import yaml
@@ -14,6 +15,40 @@ LIMITS=json.loads((ROOT/'docs/operations/a01-runtime-limits.json').read_text())
 DEFAULTS=yaml.safe_load((CHART/'values.yaml').read_text())['runtime']['bounds']
 BOUNDS={k:LIMITS[k] for k in ('scenario_parsing','loadgen','verifier_shared','verifier_kafka','verifier_start_line','verifier_verify','verifier_gate')}
 BOUNDS['execution']={k:LIMITS['execution'][k] for k in ('loadgen_job_seconds','verify_job_seconds','start_line_job_seconds','gate_job_seconds','termination_grace_seconds')}
+
+OPTION_PROPERTY=re.compile(r'^\s+(?:\[[^\]\n]*\]\s*)*public\s+[^\s{}()=]+\s+(\w+)\s*\{([^}\n]*)\}',re.M)
+def parse_option_properties(text, header):
+    lines=text.splitlines(); start=lines.index(header); end=lines.index('}',start)
+    found=set()
+    for name,accessors in OPTION_PROPERTY.findall('\n'.join(lines[start:end])):
+        if ' '.join(accessors.split())!='get; set;': raise ValueError(f'unsupported_option_property:{name}')
+        found.add(name)
+    if not found: raise ValueError(f'no_option_properties:{header}')
+    return found
+def option_properties(relative, header): return parse_option_properties((ROOT/relative).read_text(),header)
+LOADGEN_PROPERTIES=option_properties('src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs','public sealed class LoadGenHostOptions')
+VERIFIER_PROPERTIES=option_properties('src/Parchwell.Verifier/VerifierHostOptions.cs','internal sealed class VerifierHostOptions')
+VERIFIER_SCENARIO_PROPERTIES=option_properties('src/Parchwell.Verifier/VerifierHostOptions.cs','internal sealed class VerifierScenarioLoadOptions')
+# Names VerifierHostOptionsValidator requires per mode with no environment fallback (JobName and PodName fall back to PARCHWELL_*).
+VERIFIER_COMMON=('Mode','ScenarioId','VerifierCommit','MaxOutputBytes','MaxDiagnosticsPerCheck','MaxDiagnosticBytes','CleanupTimeout','ProcessLifetime','RunId','Phase','ConfigurationId','BlobServiceUri','VerifierContainer','LedgerContainer')
+VERIFIER_SCENARIO=tuple('ScenarioLoadOptions__'+k for k in ('MaxDocumentCharacters','MaxNestingDepth','MaxScalarCharacters','MaxParserEvents'))
+VERIFIER_REPEAT=('Repeat','RepeatPrefix','ExpectedInstanceId','VerifierClientId','NamespaceName','TokenTimeout','MetadataTimeout','WatermarkTimeout','PollSlice','BlobIoTimeout')
+VERIFIER_REQUIRED={
+  'start-line':VERIFIER_COMMON+VERIFIER_REPEAT+('StartLineOutputName','BrokerInventoryOutputName','MaxPartitions','MaxInputDepth'),
+  'verify':VERIFIER_COMMON+VERIFIER_REPEAT+('IoTimeout','ResultOutputName','ScenarioRoot','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInventoryEntries','MaxInputEntries','MaxPartitions','MaxInputDepth','MaxNativeReportBytes','MaxBrokerEntries','SafetyStop','StartLineInputName','ArtifactPrefix')+VERIFIER_SCENARIO,
+  'judge':VERIFIER_COMMON+('IoTimeout','CandidateOutputName','LoadGenImage','VerifierImage','MaxArtifactBytes','MaxTotalInputBytes')+VERIFIER_SCENARIO}
+def verifier_known(key):
+    nested='ScenarioLoadOptions__'
+    return key[len(nested):] in VERIFIER_SCENARIO_PROPERTIES if key.startswith(nested) else key in VERIFIER_PROPERTIES
+for _mode,_names in VERIFIER_REQUIRED.items():
+    assert len(_names)==len(set(_names)) and all(verifier_known(k) for k in _names), f'stale_verifier_required_setting:{_mode}'
+def worker_setting_errors(mode, names):
+    if mode=='loadgen': prefix,required,known='LoadGen__',set(LOADGEN_PROPERTIES),lambda k:k in LOADGEN_PROPERTIES
+    else: prefix,required,known='Verifier__',set(VERIFIER_REQUIRED[mode]),verifier_known
+    present=set(names)
+    missing=[f'missing_required_setting:{mode}:{prefix}{k}' for k in sorted(required) if prefix+k not in present]
+    unknown=[f'unknown_worker_setting:{mode}:{n}' for n in sorted(present) if n.startswith(prefix) and not known(n[len(prefix):])]
+    return missing+unknown
 
 def run(args, timeout=125):
     return subprocess.run(args,cwd=ROOT,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=timeout)
@@ -44,9 +79,10 @@ def expected_environment(d):
     if mode=='loadgen':
       for section in ('loadgen','scenario_parsing'):
         expected.update({f'LoadGen__{k}':('value',scalar(v)) for k,v in r['bounds'][section].items()})
-      explicit={'ScenarioId':'A01','ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'Repeat':repeat,'JobName':job,'NamespaceName':r['eventhubs']['namespace_name'],'BlobEndpoint':r['blob']['account_url'],'BlobContainer':'ledger','ArtifactPrefix':prefix+'producer/'}
+      explicit={'ScenarioId':'A01','ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'RepeatNumber':repeat,'JobName':job,'NamespaceName':r['eventhubs']['namespace_name'],'BlobEndpoint':r['blob']['account_url'],'BlobContainer':'ledger','ApplicationInsightsConnectionString':r['application_insights_connection_string']}
       expected.update({f'LoadGen__{k}':('value',scalar(v)) for k,v in explicit.items()})
       expected.update({f'LoadGen__{k}':('field','metadata.name') for k in ('ExpectedInstanceId','ActualInstanceId','PodName','ClientId')})
+      expected['LoadGen__PodUid']=('field','metadata.uid')
     else:
       expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_shared'].items()})
       expected.update({f'Verifier__ScenarioLoadOptions__{k}':('value',scalar(v)) for k,v in r['bounds']['scenario_parsing'].items()})
@@ -92,6 +128,7 @@ def verify(doc,d):
     assert pod['securityContext']=={'runAsUser':1654,'runAsGroup':1654,'fsGroup':1654,'runAsNonRoot':True,'seccompProfile':{'type':'RuntimeDefault'}}
     assert {(v['name'],v.get('emptyDir',{}).get('sizeLimit')) for v in pod['volumes']}=={('work','8Gi'),('tmp',None)}
     env=c['env']; names=[e['name'] for e in env]; assert len(names)==len(set(names))
+    setting_errors=worker_setting_errors(mode,names); assert setting_errors==[], setting_errors
     expected=expected_environment(d); assert set(names)==set(expected)
     for entry in env:
       kind,value=expected[entry['name']]
@@ -167,5 +204,12 @@ def main():
       marker=Path(str(out)+'.incomplete')
       assert proc.returncode!=0 and marker.exists() and marker.read_text().strip()=='child_exit_1',f'negative {i} did not fail cleanly: {proc.stderr}'
       if out.exists(): assert not any(o and o.get('kind')=='Job' for o in yaml.safe_load_all(out.read_text()))
-  print('chart acceptance passed: 21 positive, 32 negative')
+  lg=set(expected_environment(positives[2])); sl=set(expected_environment(positives[0])); jd=set(expected_environment(positives[6]))
+  old=(lg-{'LoadGen__PodUid','LoadGen__RepeatNumber','LoadGen__ApplicationInsightsConnectionString'})|{'LoadGen__Repeat','LoadGen__ArtifactPrefix'}
+  assert worker_setting_errors('loadgen',old)==['missing_required_setting:loadgen:LoadGen__ApplicationInsightsConnectionString','missing_required_setting:loadgen:LoadGen__PodUid','missing_required_setting:loadgen:LoadGen__RepeatNumber','unknown_worker_setting:loadgen:LoadGen__ArtifactPrefix','unknown_worker_setting:loadgen:LoadGen__Repeat']
+  assert worker_setting_errors('start-line',sl-{'Verifier__RepeatPrefix'})==['missing_required_setting:start-line:Verifier__RepeatPrefix']
+  assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
+  try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
+  except ValueError as error: assert str(error)=='unsupported_option_property:A'
+  print('chart acceptance passed: 21 positive, 32 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()
