@@ -76,6 +76,13 @@ public sealed class JudgeHandlerTests
     [InlineData("wrong-job")]
     [InlineData("incomplete-listing")]
     [InlineData("unavailable-producer-listing")]
+    [InlineData("missing-registration")]
+    [InlineData("missing-start-first")]
+    [InlineData("missing-start-last")]
+    [InlineData("missing-loadgen-first")]
+    [InlineData("missing-loadgen-last")]
+    [InlineData("missing-verify-first")]
+    [InlineData("missing-verify-last")]
     [InlineData("inventory-coverage")]
     public async Task GivenCurrentJudgeEvidenceInvalidation_WhenJudged_ThenProbeIsInconclusiveAndTotalsAreAbsent(string mutation)
     {
@@ -103,6 +110,15 @@ public sealed class JudgeHandlerTests
             value["repeat_checks"]!["broker_inventory_coverage"]="fail";
             stores.Verifier[name]=Encoding.UTF8.GetBytes(value.ToJsonString());
         }
+        if(mutation=="missing-registration")
+            stores.Ledger.Remove(PhasePaths.Registration("synthetic-c5","probe",5,"pod-c5"));
+        int boundaryRepeat=mutation.EndsWith("first",StringComparison.Ordinal)?1:5;
+        if(mutation.StartsWith("missing-start-",StringComparison.Ordinal))
+            stores.Verifier.Remove(PhasePaths.StartLineCompletion("synthetic-c5","probe",boundaryRepeat));
+        if(mutation.StartsWith("missing-loadgen-",StringComparison.Ordinal))
+            stores.Ledger.Remove(PhasePaths.ProducerCompletion("synthetic-c5","probe",boundaryRepeat,"pod-c5"));
+        if(mutation.StartsWith("missing-verify-",StringComparison.Ordinal))
+            stores.Verifier.Remove(PhasePaths.VerifyCompletion("synthetic-c5","probe",boundaryRepeat));
         var verifier=new MemoryVerifierStore(stores.Verifier){IncompletePrefix=mutation=="incomplete-listing"?"synthetic-c5/probe/":null};
         var producer=new MemoryProducerStore(stores.Ledger){IncompletePrefix=mutation=="unavailable-producer-listing"?PhasePaths.ProducersPrefix("synthetic-c5","probe",5):null};
         var options=Options();options.Phase="probe";options.ConfigurationId="C0";options.JobName="synthetic-c5-probe-judge";options.CandidateOutputName="synthetic-c5/probe/candidate.json";
@@ -113,6 +129,12 @@ public sealed class JudgeHandlerTests
         Assert.Equal(1,exit);
         using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
         Assert.Equal("inconclusive",candidate.RootElement.GetProperty("gate").GetString());
+        if(mutation is "unavailable-producer-listing" or "missing-registration" || mutation.StartsWith("missing-",StringComparison.Ordinal))
+        {
+            Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
+            int slot=mutation.EndsWith("first",StringComparison.Ordinal)?0:4;
+            Assert.Equal("incomplete",candidate.RootElement.GetProperty("repeats")[slot]!.GetProperty("status").GetString());
+        }
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
     }
 

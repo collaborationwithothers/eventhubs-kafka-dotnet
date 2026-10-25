@@ -53,6 +53,44 @@ public sealed class PublicationAcceptanceTests
         Assert.Contains("listing_incomplete",result.RejectionCodes);
     }
 
+    [Theory]
+    [InlineData("bookkeeping")]
+    [InlineData("worker")]
+    [InlineData("publication")]
+    public void GivenFalseCompletionFlag_When_Accepting_Then_RejectsPublication(string flag)
+    {
+        var f=Build();
+        ArtifactIndex changed=flag switch
+        {
+            "bookkeeping"=>f.Index with{BookkeepingComplete=false},
+            "worker"=>f.Index with{WorkerComplete=false},
+            _=>f.Index with{PublicationComplete=false}
+        };
+        PublicationReadOutcome result=Evaluate(f with{Index=changed});
+        Assert.False(result.Accepted);
+        Assert.Contains("publication_completion_invalid",result.RejectionCodes);
+    }
+
+    [Theory]
+    [InlineData("identity")]
+    [InlineData("job")]
+    [InlineData("pod")]
+    [InlineData("commit")]
+    public void GivenProducerCompletionReceiptBindingMismatch_When_Accepting_Then_RejectsPublication(string binding)
+    {
+        var f=Build();
+        ProducerCompletionReceipt changed=binding switch
+        {
+            "identity"=>f.ProducerReceipt with{Identity=ProducerIdentity with{ClientId="foreign-client"}},
+            "job"=>f.ProducerReceipt with{JobName="foreign-job"},
+            "pod"=>f.ProducerReceipt with{PodName="foreign-pod"},
+            _=>f.ProducerReceipt with{SourceCommit=new string('b',40)}
+        };
+        PublicationReadOutcome result=Evaluate(f with{ProducerReceipt=changed});
+        Assert.False(result.Accepted);
+        Assert.Contains("producer_completion_invalid",result.RejectionCodes);
+    }
+
     private static Fixture Build()
     {
         string prefix=PhasePaths.ProducerPrefix(Run,Phase,Repeat,Instance);

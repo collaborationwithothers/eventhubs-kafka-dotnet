@@ -114,6 +114,7 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(string.Join('\n', reports) + "\n");
         var capabilities = JsonNode.Parse(Inputs["capabilities.json"])!;
         capabilities["statistics_completion"]!["drain_boundary_microseconds"] = 100;
+        capabilities["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = 101;
         Inputs["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capabilities);
     }
 

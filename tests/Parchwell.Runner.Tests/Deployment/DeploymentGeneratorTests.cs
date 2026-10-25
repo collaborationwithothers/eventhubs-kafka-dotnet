@@ -121,7 +121,7 @@ public sealed class DeploymentGeneratorTests
         }).ToArray();
         Type program = typeof(LoadGenHostOptions).Assembly.GetType("Parchwell.LoadGen.Program")!;
         MethodInfo method = program.GetMethod("BuildHost", BindingFlags.NonPublic | BindingFlags.Static)!;
-        using IHost host = (IHost)method.Invoke(null, [args, null, null])!;
+        using IHost host = (IHost)method.Invoke(null, [args, null])!;
         host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.Validate();
         ScenarioLoader workerLoader = host.Services.GetRequiredService<ScenarioLoader>();
         ScenarioResolver workerResolver = host.Services.GetRequiredService<ScenarioResolver>();

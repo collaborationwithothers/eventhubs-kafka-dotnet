@@ -44,6 +44,28 @@ public sealed class PhaseJudgeTests
     }
 
     [Fact]
+    public void Given_SixthRepeatSlot_When_Judged_Then_RejectsExtraSlot()
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,6).Select(i=>Complete(i,null)).ToArray();
+        PhaseJudgement result=PhaseJudge.Evaluate("C0",evidence);
+        Assert.Equal("incomplete",result.Status);
+        Assert.All(result.Repeats,repeat=>Assert.False(repeat.Checks.J1));
+        Assert.Contains("j1_repeat_slots",result.Reasons);
+    }
+
+    [Fact]
+    public void Given_ForeignAndDuplicateRepeatSlots_When_Judged_Then_RejectsAffectedSlots()
+    {
+        PhaseRepeatEvidence[] valid=Enumerable.Range(1,5).Select(i=>Complete(i,null)).ToArray();
+        PhaseJudgement foreign=PhaseJudge.Evaluate("C0",valid.Append(Complete(0,null)).ToArray());
+        Assert.All(foreign.Repeats,repeat=>Assert.False(repeat.Checks.J1));
+        PhaseJudgement duplicate=PhaseJudge.Evaluate("C0",valid.Append(Complete(3,null)).ToArray());
+        Assert.Equal("incomplete",duplicate.Repeats[2].Status);
+        Assert.False(duplicate.Repeats[2].Checks.J1);
+        Assert.Contains("j1_repeat_slots",duplicate.Reasons);
+    }
+
+    [Fact]
     public void GivenRepeatBecomesInvalidAfterCountsWereRead_WhenJudged_ThenOmitsCountsButKeepsIndependentProbeEvidence()
     {
         PhaseRepeatEvidence[] repeats=Enumerable.Range(1,5).Select(i=>Complete(i,new(true,true,"broker",0,1,20_001))).ToArray();

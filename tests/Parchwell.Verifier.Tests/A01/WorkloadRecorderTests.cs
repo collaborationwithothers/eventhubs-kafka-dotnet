@@ -39,5 +39,41 @@ public sealed class WorkloadRecorderTests
         Assert.Null(result.Observation.Stages![0].DeliveredObservations);
         Assert.Null(result.Observation.Stages[0].FailedObservations);
     }
+
+    [Fact]
+    public void Given_ManifestInventoryAndLedgerWithDifferentCounts_When_Recorded_Then_PreservesEachMeasuredTotal()
+    {
+        var request=RecordedEvidence.SyntheticRequest();
+        AttemptEntry first=RecordedEvidence.Attempt("a1");
+        AttemptEntry second=RecordedEvidence.Attempt("a2");
+        AttemptEntry third=RecordedEvidence.Attempt("a3");
+        request=request with
+        {
+            Manifest=ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with
+                {Inventory=[first,second,third],PlannedAttemptCount=3,AttemptCount=3}),
+            Ledger=ParseResult<IReadOnlyList<LedgerRow>>.Success([RecordedEvidence.LedgerRow(first,true),RecordedEvidence.LedgerRow(second,false)])
+        };
+        var result=WorkloadRecorder.Record(request.Manifest,request.Ledger).Observation!;
+        Assert.Equal(3,result.PlannedAttempts);
+        Assert.Equal(3,result.InvokedAttempts);
+        Assert.Equal(2,result.TerminalObservations);
+    }
+
+    [Fact]
+    public void GivenIncompleteManifest_When_Recorded_Then_RetainsCountsAndMarksFixedProfileIncomplete()
+    {
+        var request=RecordedEvidence.SyntheticRequest();
+        AttemptEntry attempt=RecordedEvidence.Attempt();
+        request=request with
+        {
+            Manifest=ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with
+                {Inventory=[attempt],PlannedAttemptCount=2,AttemptCount=1,WorkerStatus="incomplete",BookkeepingComplete=false}),
+            Ledger=ParseResult<IReadOnlyList<LedgerRow>>.Success([RecordedEvidence.LedgerRow(attempt,true)])
+        };
+        var result=WorkloadRecorder.Record(request.Manifest,request.Ledger).Observation!;
+        Assert.Equal(2,result.PlannedAttempts);
+        Assert.Equal(1,result.InvokedAttempts);
+        Assert.False(result.FixedProfileComplete);
+    }
 }
 #pragma warning restore CA1707

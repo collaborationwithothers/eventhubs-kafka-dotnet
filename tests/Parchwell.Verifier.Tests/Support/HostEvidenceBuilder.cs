@@ -116,7 +116,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         capabilities["observed_broker_names"] = new JsonArray("sasl_ssl://broker-a:9093/1");
         capabilities["statistics_completion"] = new JsonObject
         {
-            ["is_complete"] = true, ["drain_boundary_microseconds"] = 100,
+            ["is_complete"] = true, ["drain_boundary_microseconds"] = 100, ["first_post_drain_timestamp_microseconds"] = 101,
             ["missing_brokers"] = new JsonArray(), ["diagnostics"] = new JsonArray()
         };
         // The handler resolves the same source itself; no parsed verifier projection is injected.

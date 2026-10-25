@@ -11,8 +11,8 @@ namespace Parchwell.Verifier.Judge;
 internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVerifierArtifactStore verifier,
     IProducerArtifactStore producer, TimeProvider clock, VerifierCompletionState? completion=null) : IVerifierModeHandler
 {
-    // These are the fixed judge-side parser bounds. The judge Job intentionally has
-    // no scenario parsing environment of its own.
+    // These are the fixed judge-side parser bounds. The chart supplies
+    // ScenarioLoadOptions to verifier Jobs, but judge parsing uses this fixed profile.
     private static readonly InputLimits JudgeLimits = new(32, 16_777_216, 83_886_080,
         1_048_576, 100_000, 1_000_000, 65_536);
 
@@ -120,8 +120,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         Matches(snapshot.ProducerReceipt,"ledger",PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,i,registration.Identity.InstanceId),producerReceiptBytes);
                     publicationAccepted=receiptValid&&snapshotReferencesMatch&&snapshot is not null&&r.RepeatChecks is not null&&startAccepted&&producerCompletionValid&&
                         snapshot.ProducerIdentity==registration?.Identity;
-                    jobBinding=jobBinding==true&&r.RepeatChecks?.ProducerJobBinding=="pass";
-                    registrationCount=registrationCount==true&&r.RepeatChecks?.RegisteredProducerCount=="pass";
+                    jobBinding=Combine(jobBinding,r.RepeatChecks?.ProducerJobBinding);
+                    registrationCount=Combine(registrationCount,r.RepeatChecks?.RegisteredProducerCount);
                     inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
                     if(receiptValid&&resultBytes is not null)
                     {
@@ -219,6 +219,13 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
     private static bool Matches(ArtifactReference reference,string container,string name,byte[]? bytes)=>
         bytes is not null&&reference.Container==container&&reference.Name==name&&reference.Length==bytes.LongLength&&
         reference.Sha256==Convert.ToHexStringLower(SHA256.HashData(bytes));
+
+    private static bool? Combine(bool? observed,string? receipt) => observed switch
+    {
+        false => false,
+        null => null,
+        true => receipt switch { "pass" => true, "fail" => false, _ => null }
+    };
 
     private static async Task<T> Bounded<T>(Func<CancellationToken,Task<T>> operation,VerifierHostOptions options,TimeProvider clock,CancellationToken cancellationToken)
     {

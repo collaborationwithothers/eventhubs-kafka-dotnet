@@ -30,6 +30,16 @@ public sealed class PhaseWireCodecTests
     public void Given_RunIdWithTerminalNewline_When_Validating_Then_RejectsTheWholeInput()=>Assert.False(PhaseIdentity.IsRunId("x\n"));
 
     [Fact]
+    public void Given_IdentityBoundaries_When_DerivingNames_Then_AcceptsMaximumAndRejectsRepeatBounds()
+    {
+        string maximum = "a" + new string('b', 27) + "z";
+        Assert.True(PhaseIdentity.IsRunId(maximum));
+        Assert.Equal(29, maximum.Length);
+        Assert.Throws<ArgumentOutOfRangeException>(() => PhaseIdentity.JobName("synthetic-c5", "C0", 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => PhaseIdentity.RepeatPrefix("synthetic-c5", "C0", 6));
+    }
+
+    [Fact]
     public void Given_ProducerRegistration_When_RoundTripped_Then_ClosedIdentityIsRetained()
     {
         var identity=new RunIdentity("A01","C0","synthetic-c5","pod-c5","pod-c5","producer-c5");

@@ -122,7 +122,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         ParseResult<SealedRunManifest> manifest=ManifestReader.Read(Memory("manifest.json"),inputLimits,budget,options.MaxInventoryEntries!.Value);
         ParseResult<IReadOnlyList<StatisticsEnvelope>> statistics=CapturedEvidenceReader.ReadStatistics(Memory("statistics.jsonl"),"statistics.jsonl",inputLimits,budget);
         ParseResult<IReadOnlyList<LifecycleEvent>> lifecycle=CapturedEvidenceReader.ReadLifecycle(Memory("request-lifecycle.jsonl"),"request-lifecycle.jsonl",inputLimits,budget);
-        ParseResult<CapturedCapabilities> capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget);
+        ParseResult<CapturedCapabilities> capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget,captureOnly:true);
         ReportAssociation[] reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
             NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
         ArtifactReference Ref(string container,string name,byte[] bytes)=>new(container,name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
@@ -152,7 +152,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 manifest=ManifestReader.Read(Memory("manifest.json"),inputLimits,budget,options.MaxInventoryEntries.Value);
                 statistics=CapturedEvidenceReader.ReadStatistics(Memory("statistics.jsonl"),"statistics.jsonl",inputLimits,budget);
                 lifecycle=CapturedEvidenceReader.ReadLifecycle(Memory("request-lifecycle.jsonl"),"request-lifecycle.jsonl",inputLimits,budget);
-                capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget);
+                capabilities=CapturedEvidenceReader.ReadCapabilities(Memory("capabilities.json"),"capabilities.json",inputLimits,budget,captureOnly:true);
                 reports=statistics.Value?.Select(envelope=>new ReportAssociation(envelope,
                     NativeStatisticsReader.Read(Encoding.UTF8.GetBytes(envelope.RawJson),"statistics.jsonl",inputLimits,budget,options.MaxNativeReportBytes!.Value,options.MaxBrokerEntries!.Value))).ToArray()??[];
             }

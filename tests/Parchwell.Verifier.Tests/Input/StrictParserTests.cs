@@ -76,6 +76,45 @@ public sealed class StrictParserTests
     }
 
     [Fact]
+    public void Given_ProductionCompletionShape_When_Read_Then_RequiresNullablePostDrainTimestampWithoutChangingLegacyShape()
+    {
+        JsonNode legacy = JsonNode.Parse(ReadGolden("capabilities"))!;
+        ParseResult<CapturedCapabilities> legacyResult = CapturedEvidenceReader.ReadCapabilities(
+            Serialize(legacy), "capabilities.json", Limits(), new InputBudget(Limits()));
+        Assert.True(legacyResult.IsSuccess);
+        legacy["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = 0;
+        Assert.Contains(CapturedEvidenceReader.ReadCapabilities(Serialize(legacy), "capabilities.json", Limits(), new InputBudget(Limits())).Problems,
+            p => p.Field == "statistics_completion.first_post_drain_timestamp_microseconds");
+
+        foreach ((string mode, Action<JsonNode> mutate) in new (string, Action<JsonNode>)[]
+        {
+            ("missing", n => n["statistics_completion"]!.AsObject().Remove("first_post_drain_timestamp_microseconds")),
+            ("wrong-kind", n => n["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = "0"),
+            ("negative", n => n["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = -1L),
+            ("missing-boundary", n => n["statistics_completion"]!.AsObject().Remove("drain_boundary_microseconds")),
+            ("wrong-boundary-kind", n => n["statistics_completion"]!["drain_boundary_microseconds"] = "0")
+        })
+        {
+            JsonNode invalid = JsonNode.Parse(ReadGolden("capabilities"))!;
+            mutate(invalid);
+            ParseResult<CapturedCapabilities> rejected = CapturedEvidenceReader.ReadCapabilities(
+                Serialize(invalid), "capabilities.json", Limits(), new InputBudget(Limits()), captureOnly: true);
+            Assert.False(rejected.IsSuccess);
+        }
+
+        foreach (JsonNode value in new JsonNode[] { JsonValue.Create(0L)!, JsonValue.Create(long.MaxValue)! })
+        {
+            JsonNode valid = JsonNode.Parse(ReadGolden("capabilities"))!;
+            valid["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = value.DeepClone();
+            Assert.True(CapturedEvidenceReader.ReadCapabilities(Serialize(valid), "capabilities.json", Limits(), new InputBudget(Limits()), captureOnly: true).IsSuccess);
+        }
+        JsonNode nullValue = JsonNode.Parse(ReadGolden("capabilities"))!;
+        nullValue["statistics_completion"]!["drain_boundary_microseconds"] = null;
+        nullValue["statistics_completion"]!["first_post_drain_timestamp_microseconds"] = null;
+        Assert.True(CapturedEvidenceReader.ReadCapabilities(Serialize(nullValue), "capabilities.json", Limits(), new InputBudget(Limits()), captureOnly: true).IsSuccess);
+    }
+
+    [Fact]
     public void Given_NullCallbackPersistenceAndNullableLifecycleReason_When_Read_Then_PreservesNullWithoutValidityDecision()
     {
         JsonNode ledger = JsonNode.Parse(FirstJsonLine(ReadGolden("ledger")))!;
