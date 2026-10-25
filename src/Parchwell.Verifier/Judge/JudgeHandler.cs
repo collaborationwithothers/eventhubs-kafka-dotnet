@@ -172,9 +172,6 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         Matches(snapshot.ProducerReceipt,"ledger",PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,i,registration.Identity.InstanceId),producerReceiptBytes);
                     publicationAccepted=receiptValid&&snapshotReferencesMatch&&snapshot is not null&&r.RepeatChecks is not null&&startAccepted&&producerCompletionValid&&
                         snapshot.ProducerIdentity==registration?.Identity;
-                    jobBinding=Combine(jobBinding,r.RepeatChecks?.ProducerJobBinding);
-                    registrationCount=Combine(registrationCount,r.RepeatChecks?.RegisteredProducerCount);
-                    inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
                     if(receiptValid&&resultBytes is not null)
                     {
                         var parsed=VerifierResultCodec.Read(resultBytes,resultName,limits,options.MaxDiagnosticsPerCheck!.Value);
@@ -183,15 +180,20 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             bool semanticReceipt = result.VerifierCommit==r.SourceCommit &&
                                 (r.HandlerExitCode==0 ? result.Status==VerifierResultStatus.CompleteValid : result.Status!=VerifierResultStatus.CompleteValid);
                             receiptValid &= semanticReceipt;
-                            bool same=registration is not null&&result.Identity==registration.Identity;
+                            bool same=registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
                             receiptValid&=same;
-                            publicationAccepted&=same;
+                            publicationAccepted&=receiptValid;
                             // J3 binds the result to the verifier receipt and registered producer.
                             // Once that binding fails, its status and check projections are untrusted.
                             if(receiptValid)
                             {
+                                jobBinding=Combine(jobBinding,r.RepeatChecks?.ProducerJobBinding);
+                                registrationCount=Combine(registrationCount,r.RepeatChecks?.RegisteredProducerCount);
+                                inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
                                 if(result.Status==VerifierResultStatus.Invalid)knownInvalid=true;
                                 if(result.Status==VerifierResultStatus.Incomplete)trustedIncomplete=true;
+                                if(result.Status==VerifierResultStatus.CompleteValid)counts=result.Counts;
+                                identity=result.Identity.InstanceId;
                             }
                             // Probe evidence has an independent authorization path: a
                             // message-only invalid result can still carry a usable,
@@ -207,16 +209,14 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                                 result.RuntimeVersions?.TryGetValue("dotnet",out producerDotnetVersion);
                                 acceptedVersions.Add((result.GeneratorVersion,producerKafkaVersion,producerNativeVersion,producerDotnetVersion));
                             }
-                            if(result.Status==VerifierResultStatus.CompleteValid)counts=result.Counts;
                             bool inventoryFailed=result.FailedChecks.Contains(24);
                             if(receiptValid && ((inventoryCoverage==true&&inventoryFailed)||(inventoryCoverage==false&&!inventoryFailed)))
                             {
                                 knownInvalid=true;
                                 inventoryCoverage=false;
                             }
-                            identity=result.Identity.InstanceId;
                         }
-                        else { receiptValid=false; trustedIncomplete=true; }
+                        else { receiptValid=false; publicationAccepted=false; trustedIncomplete=true; }
                     }
                     else trustedIncomplete=true;
                 }

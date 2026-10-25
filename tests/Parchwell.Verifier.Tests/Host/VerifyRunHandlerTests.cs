@@ -337,6 +337,7 @@ public sealed class VerifyRunHandlerTests
     public async Task Given_InvalidPublicationDescriptor_When_Verifying_Then_RejectsThePublicationWithoutHashesOrCounts(string mutation)
     {
         using var fixture = new HostEvidenceBuilder();
+        fixture.Options.VerifierContainer = "verifier";
         JsonObject index = fixture.Json("index.json");
         JsonArray artifacts = index["artifacts"]!.AsArray();
         JsonObject first = artifacts[0]!.DeepClone().AsObject();
@@ -357,11 +358,18 @@ public sealed class VerifyRunHandlerTests
         }
         fixture.Set("index.json", index);
         fixture.PreservePublicationReferences = true;
-        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        var completion = new VerifierCompletionState();
+        int exit = await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, exit);
+        Assert.Equal(ExpectedReads(fixture), fixture.Reads);
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         Assert.Equal("invalid", output.RootElement.GetProperty("status").GetString());
-        Assert.False(output.RootElement.TryGetProperty("ok", out _));
+        foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
+            Assert.False(output.RootElement.TryGetProperty(count, out _));
         Assert.Empty(output.RootElement.GetProperty("judged_file_hashes").EnumerateArray());
+        completion.MarkReturned(fixture.Options, exit, CancellationToken.None, CancellationToken.None);
+        Assert.True(completion.TryGetBlobReceipt(out _, out _, out byte[] receipt));
+        Assert.Null(PhaseWireCodec.ReadReceipt(receipt).PublicationAcceptance);
     }
 
     [Fact]

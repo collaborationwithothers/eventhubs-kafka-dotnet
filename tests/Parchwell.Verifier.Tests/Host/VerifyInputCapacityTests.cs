@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
@@ -38,10 +39,19 @@ public sealed class VerifyInputCapacityTests
         InputLimitExceededException error = await Assert.ThrowsAsync<InputLimitExceededException>(() =>
             fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         Assert.Equal("The combined verifier inputs exceed the configured entry limit.", error.Message);
-        Assert.Contains("synthetic-c5/C0/r1/producer/pod-c5/registration.json", fixture.Reads);
-        Assert.Equal(PublicationReadOrder,
-            fixture.Reads.Where(name => name.Contains("/publication/", StringComparison.Ordinal))
-                .Select(name => name[(name.LastIndexOf('/') + 1)..]));
+        string run = fixture.Options.RunId!, phase = fixture.Options.Phase!;
+        int repeat = fixture.Options.Repeat!.Value;
+        string instance = fixture.Options.InstanceId!;
+        string[] metadataReads =
+        [
+            PhasePaths.Registration(run, phase, repeat, instance),
+            PhasePaths.StartLineCompletion(run, phase, repeat),
+            PhasePaths.StartLine(run, phase, repeat),
+            PhasePaths.BrokerInventory(run, phase, repeat),
+            PhasePaths.ProducerCompletion(run, phase, repeat, instance)
+        ];
+        Assert.Equal(metadataReads.Concat(PublicationReadOrder.Select(name =>
+            PhasePaths.Publication(run, phase, repeat, instance, name))), fixture.Reads);
         Assert.Equal(0, fixture.Creates);
         Assert.Null(fixture.Output);
 

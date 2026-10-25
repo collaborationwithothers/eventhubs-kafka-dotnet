@@ -146,6 +146,85 @@ public sealed class JudgeHandlerTests
     }
 
     [Theory]
+    [InlineData("receipt-source", "producer_job_binding")]
+    [InlineData("receipt-source", "registered_producer_count")]
+    [InlineData("receipt-source", "broker_inventory_coverage")]
+    [InlineData("result-source", "producer_job_binding")]
+    [InlineData("result-source", "registered_producer_count")]
+    [InlineData("result-source", "broker_inventory_coverage")]
+    [InlineData("receipt-client", "producer_job_binding")]
+    [InlineData("receipt-client", "registered_producer_count")]
+    [InlineData("receipt-client", "broker_inventory_coverage")]
+    public async Task GivenUnboundVerifyReceiptWithFailedProjection_WhenJudged_ThenUsesOnlyIndependentChecks(string mismatch, string failedProjection)
+    {
+        PhaseStores stores = await BuildFiveRepeats("C0", null);
+        string resultName = PhasePaths.Result("synthetic-c5", "C0", 1);
+        string receiptName = PhasePaths.VerifyCompletion("synthetic-c5", "C0", 1);
+        JsonObject receipt = JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        receipt["repeat_checks"]![failedProjection] = "fail";
+        if (mismatch == "receipt-source")
+        {
+            receipt["source_commit"] = new string('b', 40);
+            receipt["publication_acceptance"]!["source_commit"] = new string('b', 40);
+        }
+        else if (mismatch == "result-source")
+        {
+            JsonObject result = JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+            result["verifier_commit"] = new string('b', 40);
+            byte[] bytes = Encoding.UTF8.GetBytes(result.ToJsonString());
+            stores.Verifier[resultName] = bytes;
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(), resultName, bytes);
+        }
+        else
+        {
+            receipt["publication_acceptance"] = null;
+            receipt["identity"]!["client_id"] = "foreign-client";
+        }
+        stores.Verifier[receiptName] = Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier = new MemoryVerifierStore(stores.Verifier);
+        var handler = new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()), verifier,
+            new MemoryProducerStore(stores.Ledger), TimeProvider.System);
+
+        Assert.Equal(1, await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate = JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat = candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete", repeat.GetProperty("status").GetString());
+        JsonElement checks = repeat.GetProperty("checks");
+        Assert.False(checks.GetProperty("j2_publication_unaccepted").GetBoolean());
+        Assert.False(checks.GetProperty("j3_verifier_receipt").GetBoolean());
+        Assert.True(checks.GetProperty("j4_producer_job_binding").GetBoolean());
+        Assert.True(checks.GetProperty("j5_registered_producer_count").GetBoolean());
+        Assert.False(checks.GetProperty("j6_broker_inventory_coverage").GetBoolean());
+        Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+        Assert.False(repeat.TryGetProperty("counts", out _));
+        Assert.False(candidate.RootElement.TryGetProperty("counts", out _));
+    }
+
+    [Fact]
+    public async Task GivenDiagnosticReceiptWithForeignClientIdentity_WhenJudged_ThenDoesNotTrustInvalidResult()
+    {
+        PhaseStores stores = await BuildFiveRepeats("C0", 15);
+        string receiptName = PhasePaths.VerifyCompletion("synthetic-c5", "C0", 1);
+        JsonObject receipt = JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        receipt["publication_acceptance"] = null;
+        receipt["identity"]!["client_id"] = "foreign-client";
+        stores.Verifier[receiptName] = Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier = new MemoryVerifierStore(stores.Verifier);
+        var handler = new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()), verifier,
+            new MemoryProducerStore(stores.Ledger), TimeProvider.System);
+
+        Assert.Equal(1, await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate = JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat = candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete", repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j3_verifier_receipt").GetBoolean());
+        Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+        Assert.False(repeat.TryGetProperty("counts", out _));
+    }
+
+    [Theory]
     [InlineData("source")]
     [InlineData("identity")]
     [InlineData("exit-status")]
