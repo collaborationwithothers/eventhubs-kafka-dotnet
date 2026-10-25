@@ -74,6 +74,7 @@ public sealed class VerifyRunDiagnosticTests
     {
         using var fixture = new HostEvidenceBuilder();
         fixture.CorruptStartLineReceipt(field);
+        fixture.PreservePublicationReferences = true;
 
         await AssertPublishedFailure(fixture, "invalid", 7, code, "start-line", diagnosticField);
     }
