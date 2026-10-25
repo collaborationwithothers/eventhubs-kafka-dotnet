@@ -291,6 +291,42 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(4, summary["denominator"])
         self.assertEqual(0, summary["status_counts"]["Ignored"])
 
+    def test_foreign_compile_errors_do_not_enter_score_population(self):
+        fixture = AggregateFixture(self.directory)
+        for shard in workflow.SHARDS:
+            fixture.reports[shard]["files"]["Foreign.cs"] = {
+                "language": "cs", "source": "true",
+                "mutants": [mutant("foreign-compile", "CompileError"),
+                            mutant("foreign-ignore", "Ignored")],
+            }
+            fixture.save(shard)
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertIs(summary["measurement_complete"], True)
+        self.assertIs(summary["break_passed"], True)
+        self.assertEqual((4, 4), (summary["numerator"], summary["denominator"]))
+        self.assertEqual({"Killed": 4, "Timeout": 0, "Survived": 0, "NoCoverage": 0,
+                          "CompileError": 0, "RuntimeError": 0, "Ignored": 0}, summary["status_counts"])
+        survivors = json.loads((fixture.output / "survivors.json").read_text())
+        self.assertEqual([], survivors["survivors"])
+        self.assertEqual([], survivors["disposition_sample"])
+        self.assertEqual(0, survivors["unreviewed_beyond_cap"])
+
+    def test_foreign_statuses_other_than_ignored_and_compile_error_are_incomplete(self):
+        statuses = ("Killed", "Survived", "Timeout", "NoCoverage", "RuntimeError",
+                    "Pending", "NotRun", "Unknown")
+        for status in statuses:
+            with self.subTest(status=status), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = AggregateFixture(Path(directory))
+                fixture.reports["phase"]["files"]["Foreign.cs"] = {
+                    "language": "cs", "source": "true", "mutants": [mutant("foreign", status)],
+                }
+                fixture.save("phase")
+                self.assert_incomplete(fixture)
+                summary = json.loads((fixture.output / "summary.json").read_text())
+                self.assertNotIn("phase", summary["shards"])
+                self.assertIn("phase: foreign mutant with disallowed status", summary["incomplete_reasons"])
+
     def test_actual_config_is_checked_even_when_hashes_match(self):
         fixture = AggregateFixture(self.directory)
         path = fixture.paths["phase"] / "shard-config.json"
