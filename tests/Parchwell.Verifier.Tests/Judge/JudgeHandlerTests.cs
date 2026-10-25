@@ -112,6 +112,9 @@ public sealed class JudgeHandlerTests
     [InlineData("slot-job")]
     [InlineData("receipt-job")]
     [InlineData("configuration")]
+    [InlineData("unsupported-phase")]
+    [InlineData("repeat-zero")]
+    [InlineData("repeat-six")]
     public async Task GivenKnownStartLineBindingMismatch_WhenJudged_ThenJ4FailsAndRepeatIsInvalid(string mismatch)
     {
         PhaseStores stores=await BuildFiveRepeats("C0",null);
@@ -120,6 +123,9 @@ public sealed class JudgeHandlerTests
         if(mismatch=="source") receipt["source_commit"]=new string('b',40);
         if(mismatch=="receipt-job") receipt["job_name"]="wrong-start-line";
         if(mismatch=="configuration") receipt["configuration_id"]="C3";
+        if(mismatch=="unsupported-phase") receipt["phase"]="foreign";
+        if(mismatch=="repeat-zero") receipt["repeat"]=0;
+        if(mismatch=="repeat-six") receipt["repeat"]=6;
         if(mismatch=="slot-job")
         {
             receipt["repeat"]=2;
@@ -142,6 +148,27 @@ public sealed class JudgeHandlerTests
         JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
         Assert.Equal("invalid",repeat.GetProperty("status").GetString());
         Assert.False(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+    }
+
+    [Fact]
+    public async Task GivenMalformedVerifyReceiptCoordinate_WhenJudged_ThenPreservesSlotAsIncomplete()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string name=PhasePaths.VerifyCompletion("synthetic-c5","C0",1);
+        JsonObject receipt=JsonNode.Parse(stores.Verifier[name])!.AsObject();
+        receipt["phase"]="foreign";
+        stores.Verifier[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,
+            new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete",repeat.GetProperty("status").GetString());
+        Assert.Contains("j3_verifier_receipt",repeat.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
     }
 
     [Fact]

@@ -92,6 +92,15 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         jobBinding=false;
                         throw;
                     }
+                    catch(FormatException ex) when(ex.InnerException is ArgumentException)
+                    {
+                        // An unsupported phase or out-of-range repeat on the
+                        // start-line receipt is a known slot-binding failure.
+                        // Keep J4 false while the slot follows the usual
+                        // malformed-evidence path for its other checks.
+                        jobBinding=false;
+                        throw;
+                    }
                     // J4 is a binding check, not a consequence of accepting the
                     // whole start-line publication under J2. Preserve a known
                     // slot/source/Job mismatch even when the receipt's other

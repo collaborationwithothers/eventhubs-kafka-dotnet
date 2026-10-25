@@ -82,7 +82,18 @@ internal static partial class PhaseWireCodec
         if (artifacts.ValueKind != JsonValueKind.Array) throw new FormatException("Receipt artifacts must be an array.");
         var refs = artifacts.EnumerateArray().Select(ReadReference).ToArray();
         var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks);
-        ValidateReceipt(receipt);
+        try
+        {
+            ValidateReceipt(receipt);
+        }
+        catch (ArgumentException ex)
+        {
+            // The shared identity helpers use argument exceptions for callers
+            // constructing values. At this boundary the values came from an
+            // untrusted receipt, so malformed phase/repeat coordinates are
+            // malformed wire data and must remain inside the evidence path.
+            throw new FormatException("Receipt phase or repeat coordinate is invalid.", ex);
+        }
         return receipt;
     }
 

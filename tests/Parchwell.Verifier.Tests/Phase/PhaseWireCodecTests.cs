@@ -165,6 +165,27 @@ public sealed class PhaseWireCodecTests
         Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
     }
 
+    [Theory]
+    [InlineData("phase", "foreign")]
+    [InlineData("repeat", "0")]
+    [InlineData("repeat", "6")]
+    public void GivenUnsupportedReceiptCoordinate_When_Read_Then_ReportsMalformedWireData(string field, string value)
+    {
+        var identity = new RunIdentity("A01", "C0", "synthetic-c5", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen");
+        var receipt = new WorkerReceipt(1, "start-line", "A01", "C0", "synthetic-c5", "C0", 1,
+            PhaseIdentity.StartLineJobName("synthetic-c5", "C0", 1), "start-pod", identity, new string('a', 40), 0, true,
+            "2026-10-24T00:00:00.0000000+00:00", "2026-10-24T00:00:01.0000000+00:00",
+            [new("verifier", PhasePaths.StartLine("synthetic-c5", "C0", 1), 1, new string('a', 64)),
+             new("verifier", PhasePaths.BrokerInventory("synthetic-c5", "C0", 1), 1, new string('b', 64))], null, null);
+        byte[] valid = PhaseWireCodec.WriteReceipt(receipt);
+        string json = Encoding.UTF8.GetString(valid);
+        json = field == "phase"
+            ? json.Replace("\"phase\":\"C0\"", $"\"phase\":\"{value}\"", StringComparison.Ordinal)
+            : json.Replace("\"repeat\":1", $"\"repeat\":{value}", StringComparison.Ordinal);
+
+        Assert.Throws<FormatException>(() => PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
+    }
+
     private static WorkerReceipt Receipt(ArtifactReference reference)=>new(1,"judge","A01","C0","synthetic-c5","C0",null,
         PhaseIdentity.JudgeJobName("synthetic-c5","C0"),"judge-pod",null,new string('a',40),1,true,
         "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",[reference],null,null);
