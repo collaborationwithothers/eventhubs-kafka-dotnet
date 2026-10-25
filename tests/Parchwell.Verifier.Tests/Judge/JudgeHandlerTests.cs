@@ -110,12 +110,16 @@ public sealed class JudgeHandlerTests
     [Theory]
     [InlineData("source")]
     [InlineData("slot-job")]
+    [InlineData("receipt-job")]
+    [InlineData("configuration")]
     public async Task GivenKnownStartLineBindingMismatch_WhenJudged_ThenJ4FailsAndRepeatIsInvalid(string mismatch)
     {
         PhaseStores stores=await BuildFiveRepeats("C0",null);
         string name=PhasePaths.StartLineCompletion("synthetic-c5","C0",1);
         JsonObject receipt=JsonNode.Parse(stores.Verifier[name])!.AsObject();
         if(mismatch=="source") receipt["source_commit"]=new string('b',40);
+        if(mismatch=="receipt-job") receipt["job_name"]="wrong-start-line";
+        if(mismatch=="configuration") receipt["configuration_id"]="C3";
         if(mismatch=="slot-job")
         {
             receipt["repeat"]=2;

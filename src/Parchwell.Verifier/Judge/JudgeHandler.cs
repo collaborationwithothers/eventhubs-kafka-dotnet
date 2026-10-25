@@ -81,7 +81,17 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                 if(startBytes is not null)
                 {
                     inputBudget.ConsumeBytes(startBytes.LongLength);
-                    WorkerReceipt r=PhaseWireCodec.ReadReceipt(startBytes);
+                    WorkerReceipt r;
+                    try { r=PhaseWireCodec.ReadReceipt(startBytes); }
+                    catch(PhaseWireIdentityException)
+                    {
+                        // The codec rejects a known identity/Job binding before
+                        // the ordinary receipt checks below can run. Preserve J4
+                        // as a failure; the outer malformed-evidence path may
+                        // still mark the remaining evidence incomplete.
+                        jobBinding=false;
+                        throw;
+                    }
                     // J4 is a binding check, not a consequence of accepting the
                     // whole start-line publication under J2. Preserve a known
                     // slot/source/Job mismatch even when the receipt's other
