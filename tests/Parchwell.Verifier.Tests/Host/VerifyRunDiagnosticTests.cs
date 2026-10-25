@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
@@ -105,10 +106,18 @@ public sealed class VerifyRunDiagnosticTests
     [InlineData("scenario_id")]
     [InlineData("configuration_id")]
     [InlineData("expected_instance_id")]
+    [InlineData("phase")]
     public async Task Given_ProducerCompletionIdentityMismatch_When_Verifying_Then_PublishesInvalidCheckSix(string field)
     {
         using var fixture = new HostEvidenceBuilder();
-        fixture.CorruptProducerCompletionIdentity(field);
+        if(field=="phase")
+        {
+            string name=PhasePaths.ProducerCompletion(fixture.Options.RunId!,fixture.Options.Phase!,fixture.Options.Repeat!.Value,fixture.Options.InstanceId!);
+            JsonObject receipt=JsonNode.Parse(fixture.LedgerObjects[name])!.AsObject();
+            receipt["phase"]="foreign";
+            fixture.AddLedgerObject(name,Encoding.UTF8.GetBytes(receipt.ToJsonString()));
+        }
+        else fixture.CorruptProducerCompletionIdentity(field);
         fixture.PreservePublicationReferences = true;
 
         await AssertPublishedFailure(fixture, "invalid", 6, "producer_completion_invalid", "producer-completion", "identity");

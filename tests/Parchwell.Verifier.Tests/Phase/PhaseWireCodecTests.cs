@@ -117,6 +117,17 @@ public sealed class PhaseWireCodecTests
         Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadProducerCompletion(PhaseWireCodec.WriteProducerCompletion(value)));
     }
 
+    [Fact]
+    public void Given_ProducerCompletionWithUnsupportedPhase_When_Read_Then_RejectsAtWireBoundary()
+    {
+        var identity=new RunIdentity("A01","C0","synthetic-c5","pod-c5","pod-c5","producer-c5");
+        var value=new ProducerCompletionReceipt(1,identity,"C0",1,"synthetic-c5-c0-r1-loadgen","pod-c5","uid-c5",new string('a',40),"loadgen",0,true);
+        JsonObject json=JsonNode.Parse(PhaseWireCodec.WriteProducerCompletion(value))!.AsObject();
+        json["phase"]="foreign";
+
+        Assert.Throws<PhaseWireIdentityException>(()=>PhaseWireCodec.ReadProducerCompletion(Encoding.UTF8.GetBytes(json.ToJsonString())));
+    }
+
     [Theory]
     [InlineData(65_535,true)]
     [InlineData(65_536,true)]

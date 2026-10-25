@@ -48,6 +48,13 @@ internal static partial class PhaseWireCodec
     {
         using JsonDocument document = Parse(bytes); JsonElement root = document.RootElement; Exact(root, ProducerCompletionFields);
         var value = new ProducerCompletionReceipt(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"), Str(root, "mode"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"));
+        try { PhaseIdentity.ValidatePhase(value.Phase); }
+        catch (ArgumentException ex)
+        {
+            // This value came from untrusted producer evidence. Keep malformed
+            // coordinates inside the normal evidence rejection path.
+            throw new PhaseWireIdentityException($"Producer completion receipt has an unsupported phase: {ex.Message}");
+        }
         if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
             value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
             throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");

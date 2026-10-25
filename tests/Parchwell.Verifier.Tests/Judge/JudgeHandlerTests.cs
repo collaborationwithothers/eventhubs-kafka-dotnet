@@ -232,6 +232,7 @@ public sealed class JudgeHandlerTests
     [InlineData("missing-verify-first")]
     [InlineData("missing-verify-last")]
     [InlineData("inventory-coverage")]
+    [InlineData("malformed-producer-completion-phase")]
     public async Task GivenCurrentJudgeEvidenceInvalidation_WhenJudged_ThenProbeIsInconclusiveAndTotalsAreAbsent(string mutation)
     {
         PhaseStores stores=await BuildFiveRepeats("probe",null);
@@ -265,6 +266,13 @@ public sealed class JudgeHandlerTests
             value["repeat_checks"]!["broker_inventory_coverage"]="fail";
             stores.Verifier[name]=Encoding.UTF8.GetBytes(value.ToJsonString());
         }
+        if(mutation=="malformed-producer-completion-phase")
+        {
+            string name=PhasePaths.ProducerCompletion("synthetic-c5","probe",1,"pod-c5");
+            JsonObject value=JsonNode.Parse(stores.Ledger[name])!.AsObject();
+            value["phase"]="foreign";
+            stores.Ledger[name]=Encoding.UTF8.GetBytes(value.ToJsonString());
+        }
         if(mutation=="missing-registration")
             stores.Ledger.Remove(PhasePaths.Registration("synthetic-c5","probe",5,"pod-c5"));
         int boundaryRepeat=mutation.EndsWith("first",StringComparison.Ordinal)?1:5;
@@ -284,10 +292,10 @@ public sealed class JudgeHandlerTests
         Assert.Equal(1,exit);
         using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
         Assert.Equal("inconclusive",candidate.RootElement.GetProperty("gate").GetString());
-        if(mutation is "unavailable-producer-listing" or "missing-registration" || mutation.StartsWith("missing-",StringComparison.Ordinal))
+        if(mutation is "unavailable-producer-listing" or "missing-registration" or "malformed-producer-completion-phase" || mutation.StartsWith("missing-",StringComparison.Ordinal))
         {
             Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
-            int slot=mutation.EndsWith("first",StringComparison.Ordinal)?0:4;
+            int slot=mutation.EndsWith("first",StringComparison.Ordinal)||mutation=="malformed-producer-completion-phase"?0:4;
             Assert.Equal("incomplete",candidate.RootElement.GetProperty("repeats")[slot]!.GetProperty("status").GetString());
         }
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
