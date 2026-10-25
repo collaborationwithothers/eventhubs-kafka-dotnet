@@ -6,6 +6,7 @@ using System.Diagnostics.Metrics;
 using Parchwell.Verifier;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Judge;
+using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
@@ -37,7 +38,7 @@ public sealed class TelemetryWiringTests
         });
         listener.Start();
 
-        int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", "unused"), services =>
+        int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor("probe-gate", "unused"), services =>
         {
             services.RemoveAll<IHostedService>();
             foreach (var descriptor in services.Where(item => item.ServiceType.Name is

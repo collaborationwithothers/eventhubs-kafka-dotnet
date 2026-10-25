@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
@@ -25,7 +26,7 @@ public sealed class VerifierCompletionTests
     {
         using var output = new StringWriter(CultureInfo.InvariantCulture);
         var cleanup = new ObservedCleanup(output);
-        int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor(mode, "unused"), services =>
+        int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor(mode, "unused"), services =>
         {
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new Handler(Parse(mode), _ => Task.FromResult(code)));
@@ -62,7 +63,7 @@ public sealed class VerifierCompletionTests
     public async Task Given_ExecutionOrCleanupFailure_When_ProcessEnds_Then_NoReceipt(string failure)
     {
         using var output = new StringWriter(CultureInfo.InvariantCulture);
-        int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", "unused"), services =>
+        int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor("probe-gate", "unused"), services =>
         {
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(provider => new Handler(VerifierMode.ProbeGate, _ =>
@@ -83,7 +84,7 @@ public sealed class VerifierCompletionTests
     public async Task Given_ReceiptWriteOrFlushFailure_When_ProcessEnds_Then_ReturnsOne(bool flush)
     {
         using var writer = new BrokenWriter(flush);
-        int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", "unused"), services =>
+        int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor("probe-gate", "unused"), services =>
         {
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new Handler(VerifierMode.ProbeGate, _ => Task.FromResult(0)));
