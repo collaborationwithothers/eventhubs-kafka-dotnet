@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
+using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
@@ -81,6 +82,18 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                 {
                     inputBudget.ConsumeBytes(startBytes.LongLength);
                     WorkerReceipt r=PhaseWireCodec.ReadReceipt(startBytes);
+                    // J4 is a binding check, not a consequence of accepting the
+                    // whole start-line publication under J2. Preserve a known
+                    // slot/source/Job mismatch even when the receipt's other
+                    // artifacts or the verify publication are unavailable.
+                    RunIdentity? startIdentity=r.Identity;
+                    bool startBinding=r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&
+                        r.SourceCommit==options.SourceCommit&&
+                        r.JobName==PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,i)&&
+                        startIdentity is not null&&startIdentity.RunId==options.RunId&&
+                        startIdentity.InstanceId==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&
+                        startIdentity.ExpectedInstanceId==startIdentity.InstanceId;
+                    if(!startBinding)jobBinding=false;
                     string noteName=PhasePaths.StartLine(options.RunId!,options.Phase!,i);
                     string inventoryName=PhasePaths.BrokerInventory(options.RunId!,options.Phase!,i);
                     note=await Bounded(ct=>verifier.ReadAsync(noteName,ct),options,clock,cancellationToken).ConfigureAwait(false);

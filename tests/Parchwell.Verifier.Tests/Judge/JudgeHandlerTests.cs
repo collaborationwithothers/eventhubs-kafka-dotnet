@@ -107,6 +107,39 @@ public sealed class JudgeHandlerTests
         Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
     }
 
+    [Theory]
+    [InlineData("source")]
+    [InlineData("slot-job")]
+    public async Task GivenKnownStartLineBindingMismatch_WhenJudged_ThenJ4FailsAndRepeatIsInvalid(string mismatch)
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string name=PhasePaths.StartLineCompletion("synthetic-c5","C0",1);
+        JsonObject receipt=JsonNode.Parse(stores.Verifier[name])!.AsObject();
+        if(mismatch=="source") receipt["source_commit"]=new string('b',40);
+        if(mismatch=="slot-job")
+        {
+            receipt["repeat"]=2;
+            receipt["job_name"]="synthetic-c5-c0-r2-start-line";
+            receipt["identity"]!["instance_id"]="synthetic-c5-c0-r2-loadgen";
+            receipt["identity"]!["expected_instance_id"]="synthetic-c5-c0-r2-loadgen";
+            receipt["identity"]!["client_id"]="synthetic-c5-c0-r2-loadgen";
+            receipt["artifacts"]![0]!["name"]=PhasePaths.StartLine("synthetic-c5","C0",2);
+            receipt["artifacts"]![1]!["name"]=PhasePaths.BrokerInventory("synthetic-c5","C0",2);
+        }
+        stores.Verifier[name]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,
+            new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("invalid",repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+    }
+
     [Fact]
     public async Task GivenMalformedInventoryWithMatchingReceipts_WhenJudged_ThenRejectsStartEvidence()
     {
