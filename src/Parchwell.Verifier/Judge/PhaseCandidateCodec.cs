@@ -93,7 +93,7 @@ internal static class PhaseCandidateCodec
                 if(stages.ValueKind==JsonValueKind.Array)foreach(JsonElement stage in stages.EnumerateArray())
                 {
                     Exact(stage,["id","offered_attempts_per_second","duration_seconds","invoked_attempts","delivered_observations","failed_observations"]);
-                    if(stage.GetProperty("id").ValueKind!=JsonValueKind.String||stage.GetProperty("id").GetString()!.Length>256||stage.GetProperty("offered_attempts_per_second").ValueKind!=JsonValueKind.Number||stage.GetProperty("duration_seconds").ValueKind!=JsonValueKind.Number)throw new FormatException("Candidate workload stage has invalid scalar fields.");
+                    if(stage.GetProperty("id").ValueKind!=JsonValueKind.String||stage.GetProperty("id").GetString()!.Length>256||!NonnegativeInt64(stage.GetProperty("offered_attempts_per_second"))||!NonnegativeInt64(stage.GetProperty("duration_seconds")))throw new FormatException("Candidate workload stage has invalid scalar fields.");
                     foreach(string count in new[]{"invoked_attempts","delivered_observations","failed_observations"})if(stage.GetProperty(count).ValueKind is not (JsonValueKind.Null or JsonValueKind.Number)||stage.GetProperty(count).ValueKind==JsonValueKind.Number&&(!stage.GetProperty(count).TryGetInt64(out long n)||n<0))throw new FormatException("Candidate workload count is invalid.");
                 }
                 if(workload.GetProperty("synthetic").ValueKind!=JsonValueKind.True||workload.GetProperty("fixed_profile_complete").ValueKind is not (JsonValueKind.Null or JsonValueKind.True or JsonValueKind.False))throw new FormatException("Candidate workload flags are invalid.");
@@ -113,6 +113,7 @@ internal static class PhaseCandidateCodec
             }
         }
     }
+    private static bool NonnegativeInt64(JsonElement value) => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long number) && number >= 0;
     private static void Exact(JsonElement e,string[] fields,bool nullable=false)
     {
         if(nullable&&e.ValueKind==JsonValueKind.Null)return;

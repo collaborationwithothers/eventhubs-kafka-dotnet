@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Judge;
+using Parchwell.Verifier.Common.Serialization;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Judge;
@@ -40,6 +41,54 @@ public sealed class PhaseCandidateCodecTests
         using JsonDocument document=PhaseCandidateCodec.Read(bytes);
         Assert.False(document.RootElement.TryGetProperty("counts",out _));
         Assert.False(Assert.Single(document.RootElement.GetProperty("repeats").EnumerateArray()).TryGetProperty("counts",out _));
+    }
+
+    [Theory]
+    [InlineData("offered_attempts_per_second", "-1")]
+    [InlineData("offered_attempts_per_second", "1.5")]
+    [InlineData("offered_attempts_per_second", "9223372036854775808")]
+    [InlineData("duration_seconds", "-1")]
+    [InlineData("duration_seconds", "1.5")]
+    [InlineData("duration_seconds", "9223372036854775808")]
+    public void GivenInvalidWorkloadStageInt64_WhenRead_ThenRejects(string field, string invalid)
+    {
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        string valid = field == "offered_attempts_per_second" ? "100" : "60";
+        json = json.Replace($"\"{field}\":{valid}", $"\"{field}\":{invalid}", StringComparison.Ordinal);
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
+    }
+
+    [Theory]
+    [InlineData(16_777_215, true)]
+    [InlineData(16_777_216, true)]
+    [InlineData(16_777_217, false)]
+    public void GivenCandidateByteBoundary_WhenRead_ThenEnforcesMaximum(int length, bool accepted)
+    {
+        byte[] compact = PhaseCandidateCodec.Write(Candidate());
+        byte[] padded = [.. compact, .. System.Text.Encoding.UTF8.GetBytes(new string(' ', length - compact.Length))];
+        if (accepted) using (PhaseCandidateCodec.Read(padded)) { }
+        else Assert.Throws<InputLimitExceededException>(() => PhaseCandidateCodec.Read(padded));
+    }
+
+    [Fact]
+    public void GivenEmptyOrOverDepthCandidate_WhenRead_ThenRejects()
+    {
+        Assert.ThrowsAny<Exception>(() => PhaseCandidateCodec.Read(Array.Empty<byte>()));
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        string deep = json.Replace("\"reasons\":[]", "\"reasons\":[" + new string('[', 32) + "0" + new string(']', 32) + "]", StringComparison.Ordinal);
+        Assert.ThrowsAny<Exception>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(deep)));
+    }
+
+    [Theory]
+    [InlineData(255, true)]
+    [InlineData(256, true)]
+    [InlineData(257, false)]
+    public void GivenCandidateScalarLengthBoundary_WhenRead_ThenEnforcesMaximum(int length, bool accepted)
+    {
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        json = json.Replace("\"verifier\":\"1.0\"", $"\"verifier\":\"{new string('v', length)}\"", StringComparison.Ordinal);
+        if (accepted) using (PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json))) { }
+        else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
     }
 
     private static PhaseCandidate Candidate()

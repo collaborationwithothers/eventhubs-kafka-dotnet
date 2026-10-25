@@ -167,6 +167,32 @@ public sealed class BrokerInventoryTests
     }
 
     [Theory]
+    [InlineData(252, true)]
+    [InlineData(253, true)]
+    [InlineData(254, false)]
+    public void Given_HostLengthBoundary_When_IndependentReaderReads_Then_EnforcesMaximum(int length, bool succeeds)
+    {
+        string host = string.Join('.', new string('a', 63), new string('b', 63), new string('c', 63), new string('d', length - 192));
+        RunIdentity identity = new("A01", "C0", "synthetic-c5", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen");
+        string json = $"{{\"schema_version\":1,\"identity\":{{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"synthetic-c5\",\"instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"expected_instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"client_id\":\"synthetic-c5-c0-r1-loadgen\"}},\"brokers\":[{{\"id\":0,\"host\":\"{host}\",\"port\":9093,\"name\":\"sasl_ssl://{host}:9093/0\"}}],\"source\":\"kafka_metadata\",\"source_commit\":\"{new string('a', 40)}\"}}";
+        ParseResult<BrokerInventory> result = BrokerInventoryReader.Read(Encoding.UTF8.GetBytes(json), "inventory.json", identity, new string('a', 40), new(32, 1_048_576, 1_048_576, 1_048_576, 100_000, 1_000_000, 65_536));
+        Assert.Equal(succeeds, result.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(65535, true)]
+    [InlineData(65536, false)]
+    public void Given_PortBoundary_When_IndependentReaderReads_Then_EnforcesRange(int port, bool succeeds)
+    {
+        RunIdentity identity = new("A01", "C0", "synthetic-c5", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen", "synthetic-c5-c0-r1-loadgen");
+        string json = $"{{\"schema_version\":1,\"identity\":{{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"synthetic-c5\",\"instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"expected_instance_id\":\"synthetic-c5-c0-r1-loadgen\",\"client_id\":\"synthetic-c5-c0-r1-loadgen\"}},\"brokers\":[{{\"id\":0,\"host\":\"broker.example.invalid\",\"port\":{port},\"name\":\"sasl_ssl://broker.example.invalid:{port}/0\"}}],\"source\":\"kafka_metadata\",\"source_commit\":\"{new string('a', 40)}\"}}";
+        ParseResult<BrokerInventory> result = BrokerInventoryReader.Read(Encoding.UTF8.GetBytes(json), "inventory.json", identity, new string('a', 40), new(32, 1_048_576, 1_048_576, 1_048_576, 100_000, 1_000_000, 65_536));
+        Assert.Equal(succeeds, result.IsSuccess);
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(1, true)]
     [InlineData(2, true)]

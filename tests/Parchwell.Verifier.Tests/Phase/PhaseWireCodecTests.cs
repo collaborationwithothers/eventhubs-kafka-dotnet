@@ -40,6 +40,64 @@ public sealed class PhaseWireCodecTests
         Assert.Throws<ArgumentOutOfRangeException>(() => PhaseIdentity.RepeatPrefix("synthetic-c5", "C0", 6));
     }
 
+    [Theory]
+    [InlineData(127, true)]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void Given_PathInstanceSegmentBoundary_When_BuildingRegistrationPath_Then_EnforcesMaximum(int length, bool accepted)
+    {
+        string instance = new('a', length);
+        if (accepted) Assert.EndsWith($"producer/{instance}/registration.json", PhasePaths.Registration("synthetic-c5", "C0", 1, instance));
+        else Assert.Throws<ArgumentException>(() => PhasePaths.Registration("synthetic-c5", "C0", 1, instance));
+    }
+
+    [Theory]
+    [InlineData(252, true)]
+    [InlineData(253, true)]
+    [InlineData(254, false)]
+    public void GivenReceiptPodNameLengthBoundary_When_Read_Then_EnforcesMaximum(int length, bool accepted)
+    {
+        byte[] valid = PhaseWireCodec.WriteReceipt(Receipt(new("verifier", PhasePaths.Candidate("synthetic-c5", "C0"), 1, new string('a', 64))));
+        string json = Encoding.UTF8.GetString(valid).Replace("\"pod_name\":\"judge-pod\"", $"\"pod_name\":\"{new string('p', length)}\"", StringComparison.Ordinal);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        if (accepted) Assert.Equal(length, PhaseWireCodec.ReadReceipt(bytes).PodName.Length);
+        else Assert.Throws<FormatException>(() => PhaseWireCodec.ReadReceipt(bytes));
+    }
+
+    [Theory]
+    [InlineData(127, true)]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void GivenRegistrationIdentitySegmentBoundary_When_Read_Then_EnforcesMaximum(int length, bool accepted)
+    {
+        string instance = new('i', length);
+        string json = $"{{\"schema_version\":1,\"identity\":{{\"scenario_id\":\"A01\",\"configuration_id\":\"C0\",\"run_id\":\"synthetic-c5\",\"instance_id\":\"{instance}\",\"expected_instance_id\":\"{instance}\",\"client_id\":\"producer-c5\"}},\"phase\":\"C0\",\"repeat_number\":1,\"job_name\":\"synthetic-c5-c0-r1-loadgen\",\"pod_name\":\"pod-c5\",\"pod_uid\":\"uid-c5\",\"source_commit\":\"{new string('a', 40)}\"}}";
+        if (accepted) Assert.Equal(instance, PhaseWireCodec.ReadRegistration(Encoding.UTF8.GetBytes(json)).Identity.InstanceId);
+        else Assert.Throws<FormatException>(() => PhaseWireCodec.ReadRegistration(Encoding.UTF8.GetBytes(json)));
+    }
+
+    [Theory]
+    [InlineData("pod_name", 252, true)]
+    [InlineData("pod_name", 253, true)]
+    [InlineData("pod_name", 254, false)]
+    [InlineData("pod_uid", 252, true)]
+    [InlineData("pod_uid", 253, true)]
+    [InlineData("pod_uid", 254, false)]
+    [InlineData("client_id", 252, true)]
+    [InlineData("client_id", 253, true)]
+    [InlineData("client_id", 254, false)]
+    public void GivenRegistrationTextBoundary_When_Read_Then_EnforcesMaximum(string field, int length, bool accepted)
+    {
+        var identity = new RunIdentity("A01", "C0", "synthetic-c5", "producer-c5", "producer-c5", "producer-c5");
+        var registration = new ProducerRegistration(1, identity, "C0", 1, "synthetic-c5-c0-r1-loadgen", "pod-c5", "uid-c5", new string('a', 40));
+        JsonObject json = JsonNode.Parse(PhaseWireCodec.WriteRegistration(registration))!.AsObject();
+        if (field == "client_id") json["identity"]![field] = new string('x', length);
+        else json[field] = new string('x', length);
+        byte[] bytes = Encoding.UTF8.GetBytes(json.ToJsonString());
+        if (accepted) Assert.Equal(length, field == "client_id" ? PhaseWireCodec.ReadRegistration(bytes).Identity.ClientId.Length : field == "pod_name" ? PhaseWireCodec.ReadRegistration(bytes).PodName.Length : PhaseWireCodec.ReadRegistration(bytes).PodUid.Length);
+        else Assert.Throws<FormatException>(() => PhaseWireCodec.ReadRegistration(bytes));
+    }
+
     [Fact]
     public void Given_ProducerRegistration_When_RoundTripped_Then_ClosedIdentityIsRetained()
     {
