@@ -242,7 +242,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 var hashes=accepted.AcceptedSnapshot is null?[]:PublicationAcceptance.DescriptorNames
                     .Select(n=>{byte[] bytes=raw[n]!;return new JudgedFileHash(n,Convert.ToHexStringLower(SHA256.HashData(bytes)));}).ToArray();
                 var result=new VerifierResult(1,registration.Identity,manifest.Value?.GeneratorVersion,manifest.Value?.RuntimeVersions,options.VerifierCommit!,typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(),Library.VersionString,
-                    status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray()??[],ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),
+                    status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray(),ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).ToArray(),a01.WorkloadObservation);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);

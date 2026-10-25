@@ -44,6 +44,11 @@ public sealed class VerifyRunDiagnosticTests
         if (kind == "negative") note["partition_highs"]![0]!["high"] = -1;
         fixture.Note = Encoding.UTF8.GetBytes(note.ToJsonString());
         await AssertPublishedFailure(fixture, "invalid", 7, "check_7_failed", "start-line", field);
+        if (kind == "empty")
+        {
+            using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+            Assert.Empty(output.RootElement.GetProperty("start_line").EnumerateArray());
+        }
     }
 
     [Theory]
@@ -65,6 +70,8 @@ public sealed class VerifyRunDiagnosticTests
         };
         fixture.OmitStartLineNote = kind == "missing";
         await AssertPublishedFailure(fixture, "invalid", 7, code, fixture.Options.StartLineInputName!, field, publicationRejected: true);
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        Assert.False(output.RootElement.TryGetProperty("start_line", out _));
     }
 
     [Theory]
