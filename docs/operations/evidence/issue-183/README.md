@@ -6,7 +6,7 @@ This pull request clarifies the historical worker-image receipt from PR #182. It
 
 The work follows the [implementation-grade plan, Revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6401968926), [Hari's scope decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6402008120), and the [independent plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6402045851). Later approvals add the exact [status initialization](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6402294479) and [warning-control reporting cleanup](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6402317036). The `/scripts/` changes require Hari's merge under AGENTS.md GOVERNANCE "Merge rule".
 
-Baseline: `94a01f41eb8786eb3a9c85db5d2c5320621d1f67`. The initial C1/C2 source was committed as `2dc361953dbc57231bfb0e35188005f0d821e066`; its failing A2 observation was saved to the WIP branch. The candidate source commit for the completed controls is recorded after the local commit below. This receipt records observations, with raw output retained outside the repository.
+Baseline: `94a01f41eb8786eb3a9c85db5d2c5320621d1f67`. The initial C1/C2 source was committed as `2dc361953dbc57231bfb0e35188005f0d821e066`; its failing A2 observation was saved to the WIP branch. Candidate source commit: `48233b694e7d11d23e5b62a49efe76c3886e8de1`. A2 ran the exact script bytes later committed there; A3 exported that commit and A4 ran on that commit. This receipt records observations, with raw output retained outside the repository.
 
 ## Receipt corrections
 
@@ -22,11 +22,11 @@ The enumerated top-level inputs were `scripts/test-kafka-coverage.sh`, `scripts/
 
 | Step | Command | Observation |
 |---|---|---|
-| A1 | `git diff --check` | Exit 0 after both approved script cleanups; final documentation scan recorded below |
+| A1 | `git diff --check`; `npm ci --ignore-scripts`; `npm run check:docs` | All exited 0; documentation scan reported no issues in either changed Markdown file and no warnings |
 | A2, tool and syntax | `shellcheck --version`; `bash -n infra/scripts/lifecycle/check-offline.sh` | ShellCheck 0.11.0; syntax exit 0 |
 | A2, completed offline baseline | `bash infra/scripts/lifecycle/check-offline.sh` | Exit 0; all selected shell inputs, workflow validation and chart checks completed |
-| A3 | `bash infra/scripts/lifecycle/check-offline.sh` in an exported candidate, with the fixed synthetic fixture sequence | Pending integration controls |
-| A4 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | Pending regression suite |
+| A3 | `bash infra/scripts/lifecycle/check-offline.sh` in an exported candidate, with the fixed synthetic fixture sequence | Quoted fixture exit 0; unquoted fixture exit 1 with `SC2086` and its filename; restored fixture exit 0 |
+| A4 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | Exit 0; 76 tests, OK |
 | A5 | Exact-head hosted run and job REST reads specified by the plan | Recorded in the PR description after the PR exists |
 
 The successful A2 run reported chart acceptance with 21 positive, 32 negative and 4 worker-setting regressions. Each of the two smoke-chart renders passed strict Kubernetes 1.35.0 schema validation. These are offline measurements; they establish no live scenario result.
@@ -41,7 +41,7 @@ Before applying that cleanup, the actual original and proposed scan blocks were 
 
 ### A3 synthetic fixture presentation
 
-Pending A3 execution. The planned files, each ending in a newline, are shown below; the quoted file will be restored for the final pass. This presentation applies the independent plan check's P2 without changing an enforced check.
+The synthetic control used these file contents, each ending in a newline. The quoted file was restored for the final pass.
 
 Quoted file:
 
@@ -58,6 +58,8 @@ Unquoted file:
 value=$1
 printf '%s\n' $value
 ```
+
+A3 exported the candidate with `git archive HEAD` into an empty temporary directory. It ran the real offline entry point three times, with the fixture replaced between invocations as specified by the plan. The unquoted attempt reported `SC2086` at line 3 in the synthetic file; it failed in the new ShellCheck loop. Both quoted attempts completed the remaining offline checks. The temporary export was removed afterward.
 
 The fixture is named `scripts/issue183-shellcheck-control.sh` in the temporary exported tree. The real offline entry point performs the checks; the fixture itself is not executed. Temporary files and logs are not committed.
 
