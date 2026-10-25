@@ -41,6 +41,10 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
       - name: Install and verify pinned offline tools
         shell: bash
         run: |
@@ -56,6 +60,9 @@ jobs:
       - name: Verify shell, workflows and rendered Kubernetes schemas
         shell: bash
         run: python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh
+      - name: Verify the load generator accepts the rendered chart environment
+        shell: bash
+        run: python3 infra/scripts/lifecycle/command.py 900 -- bash charts/parchwell/tests/check-loadgen-host.sh
   terraform-verification:
     name: Terraform verification
     runs-on: ubuntu-24.04

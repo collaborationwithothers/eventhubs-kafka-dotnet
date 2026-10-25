@@ -176,7 +176,43 @@ public sealed class LoadGenHostProcessTests
         }
     }
 
-    private static async Task<ChildResult> RunChildAsync(Action<IDictionary<string, string?>>? configure)
+    [Fact]
+    public async Task Given_ValidInputs_When_ValidatingConfiguration_Then_PrintsValidAndExitsZeroWithoutArtifacts()
+    {
+        string output = Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            ChildResult result = await RunChildAsync(environment => ConfigureValidInputs(environment, output), "--validate-configuration");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("{\"loadgen_configuration_valid\":true}", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("loadgen_configuration_invalid", result.Output, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(output));
+        }
+        finally
+        {
+            if (Directory.Exists(output)) Directory.Delete(output, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("PodUid")]
+    [InlineData("RepeatNumber")]
+    [InlineData("ApplicationInsightsConnectionString")]
+    public async Task Given_MissingRequiredSetting_When_ValidatingConfiguration_Then_NamesSettingAndExitsOne(string setting)
+    {
+        ChildResult result = await RunChildAsync(environment =>
+        {
+            ConfigureValidInputs(environment, Path.Combine(Path.GetTempPath(), "loadgen-host-output-" + Guid.NewGuid().ToString("N")));
+            environment.Remove("LoadGen__" + setting);
+        }, "--validate-configuration");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:" + setting, result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("{\"loadgen_configuration_valid\":true}", result.Output, StringComparison.Ordinal);
+    }
+
+    private static async Task<ChildResult> RunChildAsync(Action<IDictionary<string, string?>>? configure, params string[] arguments)
     {
         string assembly = Path.Combine(AppContext.BaseDirectory, "Parchwell.LoadGen.dll");
         Assert.True(File.Exists(assembly), "The load generator child assembly must be copied beside the test assembly.");
@@ -190,6 +226,7 @@ public sealed class LoadGenHostProcessTests
         foreach (string key in start.Environment.Keys.Where(key => key.StartsWith("LoadGen__", StringComparison.OrdinalIgnoreCase)).ToArray())
             start.Environment.Remove(key);
         start.ArgumentList.Add(assembly);
+        foreach (string argument in arguments) start.ArgumentList.Add(argument);
         configure?.Invoke(start.Environment);
         using Process process = Process.Start(start) ?? throw new InvalidOperationException("child_process_failed_to_start");
         Task<string> stdout = process.StandardOutput.ReadToEndAsync();

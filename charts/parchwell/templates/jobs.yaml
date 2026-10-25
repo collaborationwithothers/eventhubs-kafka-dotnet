@@ -98,7 +98,7 @@ spec:
             - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ end }}
-            {{- range $key, $value := dict "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) }}
+            {{- range $key, $value := dict "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "RepeatNumber" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ApplicationInsightsConnectionString" $r.application_insights_connection_string }}
             - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
@@ -106,6 +106,8 @@ spec:
             - name: {{ printf "LoadGen__%s" $key | quote }}
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             {{- end }}
+            - name: "LoadGen__PodUid"
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
             {{- else }}
             {{- range $key, $value := $r.bounds.verifier_shared }}
             - name: {{ printf "Verifier__%s" $key | quote }}
