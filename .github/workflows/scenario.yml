@@ -7,14 +7,15 @@ permissions:
   id-token: write
 concurrency:
   group: parchwell-ephemeral
+  queue: max
   cancel-in-progress: false
 jobs:
   probe:
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 240
+    timeout-minutes: 360
     outputs:
-      full_allowed: ${{ steps.gate.outputs.full_allowed }}
+      full_allowed: ${{ steps.candidate.outputs.full_allowed }}
       loadgen_digest: ${{ steps.images.outputs.loadgen_digest }}
       verifier_digest: ${{ steps.images.outputs.verifier_digest }}
     env:
@@ -25,16 +26,11 @@ jobs:
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
-      PARCHWELL_PERSISTENT_OUTPUTS_PATH: ${{ vars.PARCHWELL_PERSISTENT_OUTPUTS_PATH }}
-      PARCHWELL_EPHEMERAL_BACKEND_CONFIG: ${{ vars.PARCHWELL_EPHEMERAL_BACKEND_CONFIG }}
-      PARCHWELL_EPHEMERAL_TFVARS_PATH: ${{ vars.PARCHWELL_EPHEMERAL_TFVARS_PATH }}
-      PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
-      PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
-      PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
-      A01_PHASE: probe
+      PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_PHASE: probe
     steps:
       - name: Require the main branch before login
+        id: guard
         shell: bash
         run: |
           set -euo pipefail
@@ -44,6 +40,7 @@ jobs:
             echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -53,132 +50,30 @@ jobs:
         with:
           terraform_version: 1.16.6
           terraform_wrapper: false
+      - name: Install and verify pinned lifecycle tools
+        id: tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import sys; assert sys.version_info >= (3, 10)'
+          bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-lifecycle-tools" live
+          printf '%s\n' "$RUNNER_TEMP/parchwell-lifecycle-tools" >> "$GITHUB_PATH"
       - name: Set up pinned SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-      - name: Require workflow commands
-        shell: bash
-        run: |
-          set -euo pipefail
-          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
-          missing_commands=()
-          for command_name in "${required_commands[@]}"; do
-            if ! command -v "$command_name" > /dev/null 2>&1; then
-              missing_commands+=("$command_name")
-            fi
-          done
-          if ((${#missing_commands[@]} > 0)); then
-            printf 'Missing required commands:' >&2
-            printf ' %s' "${missing_commands[@]}" >&2
-            printf '\n' >&2
-            exit 1
-          fi
-      - name: Materialise private inputs from environment secrets
-        shell: bash
-        env:
-          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
-          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
-          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
-          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
-          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
-          S_RUNTIME_PROBE: ${{ secrets.PARCHWELL_RUNTIME_PROBE }}
-        run: |
-          set -euo pipefail
-          umask 077
-          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
-          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
-          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
-          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
-          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
-          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
-          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/probe.json" S_RUNTIME_PROBE "$S_RUNTIME_PROBE"
-      - name: Validate private inputs before image publication or apply
+      - name: Materialise and validate private phase inputs
         id: prepare
         shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          export A01_OUTPUT="$RUNNER_TEMP/a01-$A01_PHASE"
-          mkdir -p "$A01_OUTPUT"
-          echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
-          python3 - <<'PYTHON'
-          import json, os, pathlib, re
-          required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
-          for key in required:
-              assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
-          runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
-          runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1
-          runtime['source_commit'] = os.environ['GITHUB_SHA']
-          assert runtime['phase'] == os.environ['A01_PHASE']
-          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
-          assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
-          assert readiness['schema_version'] == 1
-          for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
-              assert readiness.get(key) is True, 'private_run_storage_not_ready'
-          assert set(readiness['environments']) == {'parchwell-scenarios','parchwell-sweeper'}
-          cost = json.loads(pathlib.Path(os.environ['PARCHWELL_COST_INPUT_PATH']).read_text())
-          assert cost['currency'] == 'GBP' and cost['item'] == 'A01' and cost['baseline_sources'] and cost['sources']
-          assert set(cost['phase_estimates']) == {'probe','C0','C3'}
-          # Runtime performs strict readiness checks, durable cost reservation and readback before apply.
-          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
-              backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
-              cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
-              ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
-              chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
-              helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
-              verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
-          assert isinstance(runtime['initialize_ledger'], bool)
-          assert runtime['phase'] == 'probe' or runtime['initialize_ledger'] is False
-          pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json').write_text(json.dumps(runtime))
-          PYTHON
-      - name: Restore and build reviewed executables
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout 600 dotnet restore Parchwell.slnx --locked-mode > "$A01_OUTPUT/restore.log" 2>&1
-          timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore > "$A01_OUTPUT/build.log" 2>&1
-      - name: Verify tool versions and install checksum-verified Helm
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$A01_OUTPUT/tools" "$RUNNER_TEMP/a01-bin"
-          test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
-          timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
-          timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
-          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
-          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
-          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
-          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
-          timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
-          timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
-          timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
-          terraform version -json > "$A01_OUTPUT/tools/terraform.json"
-          timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
-          timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
-          for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
-          done
-          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
-          curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
-          python3 - <<'PYTHON'
-          import hashlib, os, pathlib, re, tarfile
-          root = pathlib.Path(os.environ['A01_OUTPUT'],'tools')
-          # Official release body: https://api.github.com/repos/helm/helm/releases/tags/v4.3.1
-          digest = '0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b'
-          assert hashlib.sha256(root.joinpath('helm.tar.gz').read_bytes()).hexdigest() == digest
-          with tarfile.open(root/'helm.tar.gz') as archive:
-              binary = archive.extractfile('linux-amd64/helm').read()
-          target = pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm'); target.write_bytes(binary); target.chmod(0o700)
-          root.joinpath('helm.json').write_text(__import__('json').dumps({'version':'v4.3.1','source_url':'https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz','checksum_source':'https://api.github.com/repos/helm/helm/releases/tags/v4.3.1','expected_sha256':digest,'actual_sha256':digest,'verified':True,'binary_sha256':hashlib.sha256(binary).hexdigest()}))
-          PYTHON
-          test "$("$RUNNER_TEMP/a01-bin/helm" version --template '{{.Version}}')" = v4.3.1
-          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
+        env:
+          S_CLUSTER_BACKEND: ${{ secrets.PARCHWELL_CLUSTER_BACKEND }}
+          S_CLUSTER_TFVARS: ${{ secrets.PARCHWELL_CLUSTER_TFVARS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+        run: bash infra/scripts/phase/phase.sh prepare "$PARCHWELL_PHASE"
       - name: Existing environment OIDC login
+        id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -201,102 +96,117 @@ jobs:
       - name: Publish full-SHA worker images and record registry digests
         id: images
         shell: bash
+        run: bash infra/scripts/phase/phase.sh publish-images
+      - name: Initialize cluster state
+        id: cluster_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-cluster
+      - name: Start the existing cluster
+        id: start
+        shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PYTHON'
-          import json, os, pathlib, re, subprocess
-          out=pathlib.Path(os.environ['A01_OUTPUT']); runtime=json.loads((out/'runtime.json').read_text())
-          acr=runtime['persistent_outputs']['acr']; acr=acr.get('value',acr)
-          sha=runtime['source_commit']; registry=acr['login_server']; name=acr['name']
-          assert re.fullmatch('[a-z0-9]+',name) and re.fullmatch('[a-z0-9.-]+',registry)
-          with (out/'image-publication.log').open('wb') as log:
-              subprocess.run(['timeout','60','az','acr','login','--name',name],check=True,stdout=log,stderr=log)
-              for worker,project in [('loadgen','LoadGen'),('verifier','Verifier')]:
-                  subprocess.run(['timeout','600','dotnet','publish',f'src/Parchwell.{project}/Parchwell.{project}.csproj','--configuration','Release','-p:RestoreLockedMode=true','-p:NuGetLockFilePath=packages.linux-x64.lock.json','-r','linux-x64','--self-contained','false','/t:PublishContainer',f'-p:ContainerRegistry={registry}',f'-p:ContainerImageTag={sha}'],check=True,stdout=log,stderr=log)
-                  digest=subprocess.check_output(['timeout','60','az','acr','repository','show','--name',name,'--image',f'parchwell/{worker}:{sha}','--query','digest','--output','tsv'],stderr=log,text=True).strip()
-                  assert re.fullmatch('sha256:[0-9a-f]{64}',digest)
-                  runtime.setdefault('images',{})[worker]={'source_commit':sha,'digest':digest}
-                  with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write(worker+'_digest='+digest+'\n')
-          (out/'runtime.json').write_text(json.dumps(runtime))
-          (out/'image-receipts.json').write_text(json.dumps(runtime['images']))
-          PYTHON
-      - name: Run phase with durable reservation and guarded cleanup
-        id: phase
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh start-cluster
+      - name: Plan cluster infrastructure
+        id: cluster_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-cluster
+      - name: Apply the saved cluster plan
+        id: cluster_apply
         shell: bash
         run: |
-          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/phase.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
-            fi
-            exit 1
-          }
-      # On cancellation the export is skipped so the destroy below starts first. GitHub
-      # forcibly terminates remaining work five minutes after cancellation, so a destroy
-      # that needs longer is cut off and the sweeper finishes it after expiry.
-      - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-cluster
+      - name: Initialize ephemeral state
+        id: ephemeral_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-ephemeral
+      - name: Plan ephemeral infrastructure
+        id: ephemeral_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-ephemeral
+      - name: Apply the saved ephemeral plan
+        id: ephemeral_apply
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/export.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
-            fi
-            exit 1
-          }
-      - name: Always attempt generation-checked destroy
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-ephemeral
+      - name: Require private endpoint DNS answers
+        id: dns
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh check-dns
+      - name: Get cluster credentials
+        id: credentials
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh credentials
+      - name: Reset the parchwell namespace
+        id: namespace
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh reset-namespace
+      - name: Run all five repeat slots
+        id: repeats
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh run-repeats
+      - name: Run the phase judge
+        id: judge
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh judge
+      - name: Retrieve and check the phase candidate
+        id: candidate
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh candidate
+      - name: Upload the phase candidate
+        id: upload_candidate
+        if: always() && steps.candidate.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-probe-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Upload public pod evidence
+        id: upload_pods
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-probe-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Delete this run's worker Jobs
+        id: delete_workload
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh delete-workload
+      - name: Destroy ephemeral infrastructure
+        id: destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
-        run: |
-          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/destroy.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
-            fi
-            exit 1
-          }
-      - name: Gate full phases only after completed probe cleanup
-        id: gate
+        run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral
+      - name: Report the phase and cleanup outcomes
+        id: report
+        if: always()
         shell: bash
-        run: |
-          set -euo pipefail
-          timeout 90 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll gate --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/gate.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/gate.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/gate.log" || true
-            fi
-            exit 1
-          }
-          python3 - <<'PYTHON'
-          import json,os,pathlib
-          receipt=json.loads(pathlib.Path(os.environ['A01_OUTPUT'],'phase','gate.json').read_text())
-          allowed=receipt.get('outcome')=='pass'
-          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('full_allowed='+str(allowed).lower()+'\n')
-          PYTHON
-      - name: Check whether a public candidate was written
-        id: candidate
-        if: always() && steps.prepare.outcome == 'success'
-        shell: bash
-        run: |
-          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Upload only the allowlisted public candidate
-        if: always() && steps.candidate.outputs.exists == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: a01-${{ env.A01_PHASE }}-candidate
-          path: ${{ env.A01_OUTPUT }}/phase/candidate.json
-          if-no-files-found: error
+        env:
+          STEP_RESULTS: ${{ toJSON(steps) }}
+          JOB_STATUS: ${{ job.status }}
+          WORKLOAD: 'true'
+          REQUIRED_STEPS: guard checkout tools prepare azure_session
+          WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
+        run: bash infra/scripts/phase/phase.sh report
   full-C0:
     needs: [probe]
     if: needs.probe.outputs.full_allowed == 'true'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 240
+    timeout-minutes: 360
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -305,16 +215,11 @@ jobs:
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
-      PARCHWELL_PERSISTENT_OUTPUTS_PATH: ${{ vars.PARCHWELL_PERSISTENT_OUTPUTS_PATH }}
-      PARCHWELL_EPHEMERAL_BACKEND_CONFIG: ${{ vars.PARCHWELL_EPHEMERAL_BACKEND_CONFIG }}
-      PARCHWELL_EPHEMERAL_TFVARS_PATH: ${{ vars.PARCHWELL_EPHEMERAL_TFVARS_PATH }}
-      PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
-      PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
-      PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
-      A01_PHASE: C0
+      PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_PHASE: C0
     steps:
       - name: Require the main branch before login
+        id: guard
         shell: bash
         run: |
           set -euo pipefail
@@ -324,6 +229,7 @@ jobs:
             echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -333,132 +239,26 @@ jobs:
         with:
           terraform_version: 1.16.6
           terraform_wrapper: false
-      - name: Set up pinned SDK
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-      - name: Require workflow commands
+      - name: Install and verify pinned lifecycle tools
+        id: tools
         shell: bash
         run: |
           set -euo pipefail
-          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
-          missing_commands=()
-          for command_name in "${required_commands[@]}"; do
-            if ! command -v "$command_name" > /dev/null 2>&1; then
-              missing_commands+=("$command_name")
-            fi
-          done
-          if ((${#missing_commands[@]} > 0)); then
-            printf 'Missing required commands:' >&2
-            printf ' %s' "${missing_commands[@]}" >&2
-            printf '\n' >&2
-            exit 1
-          fi
-      - name: Materialise private inputs from environment secrets
-        shell: bash
-        env:
-          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
-          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
-          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
-          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
-          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
-          S_RUNTIME_C0: ${{ secrets.PARCHWELL_RUNTIME_C0 }}
-        run: |
-          set -euo pipefail
-          umask 077
-          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
-          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
-          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
-          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
-          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
-          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
-          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/C0.json" S_RUNTIME_C0 "$S_RUNTIME_C0"
-      - name: Validate private inputs before image publication or apply
+          python3 -c 'import sys; assert sys.version_info >= (3, 10)'
+          bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-lifecycle-tools" live
+          printf '%s\n' "$RUNNER_TEMP/parchwell-lifecycle-tools" >> "$GITHUB_PATH"
+      - name: Materialise and validate private phase inputs
         id: prepare
         shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          export A01_OUTPUT="$RUNNER_TEMP/a01-$A01_PHASE"
-          mkdir -p "$A01_OUTPUT"
-          echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
-          python3 - <<'PYTHON'
-          import json, os, pathlib, re
-          required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
-          for key in required:
-              assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
-          runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
-          runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1
-          runtime['source_commit'] = os.environ['GITHUB_SHA']
-          assert runtime['phase'] == os.environ['A01_PHASE']
-          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
-          assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
-          assert readiness['schema_version'] == 1
-          for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
-              assert readiness.get(key) is True, 'private_run_storage_not_ready'
-          assert set(readiness['environments']) == {'parchwell-scenarios','parchwell-sweeper'}
-          cost = json.loads(pathlib.Path(os.environ['PARCHWELL_COST_INPUT_PATH']).read_text())
-          assert cost['currency'] == 'GBP' and cost['item'] == 'A01' and cost['baseline_sources'] and cost['sources']
-          assert set(cost['phase_estimates']) == {'probe','C0','C3'}
-          # Runtime performs strict readiness checks, durable cost reservation and readback before apply.
-          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
-              backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
-              cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
-              ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
-              chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
-              helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
-              verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
-          assert isinstance(runtime['initialize_ledger'], bool)
-          assert runtime['phase'] == 'probe' or runtime['initialize_ledger'] is False
-          pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json').write_text(json.dumps(runtime))
-          PYTHON
-      - name: Restore and build reviewed executables
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout 600 dotnet restore Parchwell.slnx --locked-mode > "$A01_OUTPUT/restore.log" 2>&1
-          timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore > "$A01_OUTPUT/build.log" 2>&1
-      - name: Verify tool versions and install checksum-verified Helm
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$A01_OUTPUT/tools" "$RUNNER_TEMP/a01-bin"
-          test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
-          timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
-          timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
-          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
-          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
-          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
-          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
-          timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
-          timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
-          timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
-          terraform version -json > "$A01_OUTPUT/tools/terraform.json"
-          timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
-          timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
-          for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
-          done
-          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
-          curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
-          python3 - <<'PYTHON'
-          import hashlib, os, pathlib, re, tarfile
-          root = pathlib.Path(os.environ['A01_OUTPUT'],'tools')
-          # Official release body: https://api.github.com/repos/helm/helm/releases/tags/v4.3.1
-          digest = '0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b'
-          assert hashlib.sha256(root.joinpath('helm.tar.gz').read_bytes()).hexdigest() == digest
-          with tarfile.open(root/'helm.tar.gz') as archive:
-              binary = archive.extractfile('linux-amd64/helm').read()
-          target = pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm'); target.write_bytes(binary); target.chmod(0o700)
-          root.joinpath('helm.json').write_text(__import__('json').dumps({'version':'v4.3.1','source_url':'https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz','checksum_source':'https://api.github.com/repos/helm/helm/releases/tags/v4.3.1','expected_sha256':digest,'actual_sha256':digest,'verified':True,'binary_sha256':hashlib.sha256(binary).hexdigest()}))
-          PYTHON
-          test "$("$RUNNER_TEMP/a01-bin/helm" version --template '{{.Version}}')" = v4.3.1
-          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
+        env:
+          S_CLUSTER_BACKEND: ${{ secrets.PARCHWELL_CLUSTER_BACKEND }}
+          S_CLUSTER_TFVARS: ${{ secrets.PARCHWELL_CLUSTER_TFVARS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+        run: bash infra/scripts/phase/phase.sh prepare "$PARCHWELL_PHASE"
       - name: Existing environment OIDC login
+        id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -478,88 +278,123 @@ jobs:
           printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
           printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
           printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
-      - name: Use immutable receipts from the probe publication
+      - name: Use the probe's immutable worker images
+        id: images
+        shell: bash
         env:
           LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
           VERIFIER_DIGEST: ${{ needs.probe.outputs.verifier_digest }}
+        run: bash infra/scripts/phase/phase.sh use-images "$LOADGEN_DIGEST" "$VERIFIER_DIGEST"
+      - name: Initialize cluster state
+        id: cluster_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-cluster
+      - name: Start the existing cluster
+        id: start
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PYTHON'
-          import json,os,pathlib,re
-          path=pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json'); runtime=json.loads(path.read_text())
-          for worker in ['loadgen','verifier']:
-              digest=os.environ[worker.upper()+'_DIGEST']; assert re.fullmatch('sha256:[0-9a-f]{64}',digest)
-              runtime.setdefault('images',{})[worker]={'source_commit':runtime['source_commit'],'digest':digest}
-          path.write_text(json.dumps(runtime))
-          (path.parent/'image-receipts.json').write_text(json.dumps(runtime['images']))
-          # Retain each exact registry response privately and reject a changed probe digest.
-          acr=runtime['persistent_outputs']['acr']; acr=acr.get('value',acr)
-          assert re.fullmatch('[a-z0-9]+',acr['name'])
-          with (path.parent/'image-reference-readback.log').open('wb') as log:
-              for worker in ['loadgen','verifier']:
-                  receipt=__import__('subprocess').check_output(['timeout','60','az','acr','repository','show','--name',acr['name'],'--image',f"parchwell/{worker}:{runtime['source_commit']}",'--output','json'],stderr=log)
-                  log.write(receipt); log.flush()
-                  assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
-          PYTHON
-      - name: Run phase with durable reservation and guarded cleanup
-        id: phase
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh start-cluster
+      - name: Plan cluster infrastructure
+        id: cluster_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-cluster
+      - name: Apply the saved cluster plan
+        id: cluster_apply
         shell: bash
         run: |
-          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/phase.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
-            fi
-            exit 1
-          }
-      # On cancellation the export is skipped so the destroy below starts first. GitHub
-      # forcibly terminates remaining work five minutes after cancellation, so a destroy
-      # that needs longer is cut off and the sweeper finishes it after expiry.
-      - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-cluster
+      - name: Initialize ephemeral state
+        id: ephemeral_init
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-ephemeral
+      - name: Plan ephemeral infrastructure
+        id: ephemeral_plan
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-ephemeral
+      - name: Apply the saved ephemeral plan
+        id: ephemeral_apply
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/export.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
-            fi
-            exit 1
-          }
-      - name: Always attempt generation-checked destroy
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-ephemeral
+      - name: Require private endpoint DNS answers
+        id: dns
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh check-dns
+      - name: Get cluster credentials
+        id: credentials
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh credentials
+      - name: Reset the parchwell namespace
+        id: namespace
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh reset-namespace
+      - name: Run all five repeat slots
+        id: repeats
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh run-repeats
+      - name: Run the phase judge
+        id: judge
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh judge
+      - name: Retrieve and check the phase candidate
+        id: candidate
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh candidate
+      - name: Upload the phase candidate
+        id: upload_candidate
+        if: always() && steps.candidate.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-C0-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Upload public pod evidence
+        id: upload_pods
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-C0-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Delete this run's worker Jobs
+        id: delete_workload
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh delete-workload
+      - name: Destroy ephemeral infrastructure
+        id: destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
-        run: |
-          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/destroy.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
-            fi
-            exit 1
-          }
-      - name: Check whether a public candidate was written
-        id: candidate
-        if: always() && steps.prepare.outcome == 'success'
+        run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral
+      - name: Report the phase and cleanup outcomes
+        id: report
+        if: always()
         shell: bash
-        run: |
-          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Upload only the allowlisted public candidate
-        if: always() && steps.candidate.outputs.exists == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: a01-${{ env.A01_PHASE }}-candidate
-          path: ${{ env.A01_OUTPUT }}/phase/candidate.json
-          if-no-files-found: error
+        env:
+          STEP_RESULTS: ${{ toJSON(steps) }}
+          JOB_STATUS: ${{ job.status }}
+          WORKLOAD: 'true'
+          REQUIRED_STEPS: guard checkout tools prepare azure_session
+          WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
+        run: bash infra/scripts/phase/phase.sh report
   full-C3:
     needs: [probe, full-C0]
-    if: needs.probe.outputs.full_allowed == 'true' && needs.full-C0.result == 'success'
+    if: always()
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
-    timeout-minutes: 240
+    timeout-minutes: 360
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -568,16 +403,11 @@ jobs:
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
-      PARCHWELL_PERSISTENT_OUTPUTS_PATH: ${{ vars.PARCHWELL_PERSISTENT_OUTPUTS_PATH }}
-      PARCHWELL_EPHEMERAL_BACKEND_CONFIG: ${{ vars.PARCHWELL_EPHEMERAL_BACKEND_CONFIG }}
-      PARCHWELL_EPHEMERAL_TFVARS_PATH: ${{ vars.PARCHWELL_EPHEMERAL_TFVARS_PATH }}
-      PARCHWELL_COST_INPUT_PATH: ${{ vars.PARCHWELL_COST_INPUT_PATH }}
-      PARCHWELL_RUN_STORAGE_READINESS_PATH: ${{ vars.PARCHWELL_RUN_STORAGE_READINESS_PATH }}
-      PARCHWELL_A01_RUNTIME_DIRECTORY: ${{ vars.PARCHWELL_A01_RUNTIME_DIRECTORY }}
-      PARCHWELL_DEBUG_FAILURES: ${{ vars.PARCHWELL_DEBUG_FAILURES }}
-      A01_PHASE: C3
+      PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_PHASE: C3
     steps:
       - name: Require the main branch before login
+        id: guard
         shell: bash
         run: |
           set -euo pipefail
@@ -587,141 +417,25 @@ jobs:
             echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install the pinned Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: 1.16.6
-          terraform_wrapper: false
-      - name: Set up pinned SDK
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-      - name: Require workflow commands
-        shell: bash
-        run: |
-          set -euo pipefail
-          required_commands=(az cat chmod curl dirname dotnet grep kubectl mkdir mktemp python3 terraform timeout)
-          missing_commands=()
-          for command_name in "${required_commands[@]}"; do
-            if ! command -v "$command_name" > /dev/null 2>&1; then
-              missing_commands+=("$command_name")
-            fi
-          done
-          if ((${#missing_commands[@]} > 0)); then
-            printf 'Missing required commands:' >&2
-            printf ' %s' "${missing_commands[@]}" >&2
-            printf '\n' >&2
-            exit 1
-          fi
-      - name: Materialise private inputs from environment secrets
+      - name: Decide whether the C3 workload runs
+        id: allowed
         shell: bash
         env:
-          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
-          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
-          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
-          S_COST_INPUT: ${{ secrets.PARCHWELL_COST_INPUT }}
-          S_READINESS: ${{ secrets.PARCHWELL_RUN_STORAGE_READINESS }}
-          S_RUNTIME_C3: ${{ secrets.PARCHWELL_RUNTIME_C3 }}
-        run: |
-          set -euo pipefail
-          umask 077
-          write() { test -n "$3" || { echo "secret $2 is empty" >&2; exit 1; }; mkdir -p "$(dirname "$1")"; printf '%s\n' "$3" > "$1"; }
-          write "$PARCHWELL_PERSISTENT_OUTPUTS_PATH" S_PERSISTENT_OUTPUTS "$S_PERSISTENT_OUTPUTS"
-          write "$PARCHWELL_EPHEMERAL_BACKEND_CONFIG" S_EPHEMERAL_BACKEND "$S_EPHEMERAL_BACKEND"
-          write "$PARCHWELL_EPHEMERAL_TFVARS_PATH" S_EPHEMERAL_TFVARS "$S_EPHEMERAL_TFVARS"
-          write "$PARCHWELL_COST_INPUT_PATH" S_COST_INPUT "$S_COST_INPUT"
-          write "$PARCHWELL_RUN_STORAGE_READINESS_PATH" S_READINESS "$S_READINESS"
-          write "$PARCHWELL_A01_RUNTIME_DIRECTORY/C3.json" S_RUNTIME_C3 "$S_RUNTIME_C3"
-      - name: Validate private inputs before image publication or apply
-        id: prepare
+          PROBE_RESULT: ${{ needs.probe.result }}
+          FULL_ALLOWED: ${{ needs.probe.outputs.full_allowed }}
+          FULL_C0_RESULT: ${{ needs.full-C0.result }}
+        run: bash infra/scripts/phase/phase.sh allow-c3
+      - name: Prepare the dispatch-end stop
+        id: stop_prepare
         shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          export A01_OUTPUT="$RUNNER_TEMP/a01-$A01_PHASE"
-          mkdir -p "$A01_OUTPUT"
-          echo "A01_OUTPUT=$A01_OUTPUT" >> "$GITHUB_ENV"
-          python3 - <<'PYTHON'
-          import json, os, pathlib, re
-          required = ['PARCHWELL_PERSISTENT_OUTPUTS_PATH','PARCHWELL_EPHEMERAL_BACKEND_CONFIG','PARCHWELL_EPHEMERAL_TFVARS_PATH','PARCHWELL_COST_INPUT_PATH','PARCHWELL_RUN_STORAGE_READINESS_PATH']
-          for key in required:
-              assert os.environ.get(key) and pathlib.Path(os.environ[key]).is_file(), 'required_private_input_missing'
-          runtime_path = pathlib.Path(os.environ['PARCHWELL_A01_RUNTIME_DIRECTORY']) / (os.environ['A01_PHASE'] + '.json')
-          runtime = json.loads(runtime_path.read_text())
-          assert runtime['schema_version'] == 1
-          runtime['source_commit'] = os.environ['GITHUB_SHA']
-          assert runtime['phase'] == os.environ['A01_PHASE']
-          assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', os.environ['AZURE_SUBSCRIPTION_ID']), 'subscription_redaction_input_invalid'
-          assert pathlib.Path('docs/operations/a01-runtime-limits.json').is_file()
-          readiness = json.loads(pathlib.Path(os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH']).read_text())
-          assert readiness['schema_version'] == 1
-          for key in ['shared_keys_disabled','public_access_disabled','private_endpoint_ready','private_dns_ready','ledger_read_create_conditional_update','evidence_create_read']:
-              assert readiness.get(key) is True, 'private_run_storage_not_ready'
-          assert set(readiness['environments']) == {'parchwell-scenarios','parchwell-sweeper'}
-          cost = json.loads(pathlib.Path(os.environ['PARCHWELL_COST_INPUT_PATH']).read_text())
-          assert cost['currency'] == 'GBP' and cost['item'] == 'A01' and cost['baseline_sources'] and cost['sources']
-          assert set(cost['phase_estimates']) == {'probe','C0','C3'}
-          # Runtime performs strict readiness checks, durable cost reservation and readback before apply.
-          runtime.update(persistent_outputs=json.loads(pathlib.Path(os.environ['PARCHWELL_PERSISTENT_OUTPUTS_PATH']).read_text()),
-              backend_config=os.environ['PARCHWELL_EPHEMERAL_BACKEND_CONFIG'], tfvars_file=os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH'],
-              cost_file=os.environ['PARCHWELL_COST_INPUT_PATH'], readiness_file=os.environ['PARCHWELL_RUN_STORAGE_READINESS_PATH'],
-              subscription_guid=os.environ['AZURE_SUBSCRIPTION_ID'], private_provenance_directory=os.environ['A01_OUTPUT'],
-              ephemeral_root=str(pathlib.Path('infra/ephemeral').resolve()), scenario_root=str(pathlib.Path('.').resolve()),
-              chart_directory=str(pathlib.Path('charts/parchwell').resolve()), limits_file=str(pathlib.Path('docs/operations/a01-runtime-limits.json').resolve()),
-              helm_archive_file=str(pathlib.Path(os.environ['A01_OUTPUT'],'tools','helm.tar.gz')),
-              helm_binary_file=str(pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm')),
-              verifier_executable='dotnet', verifier_arguments=[str(pathlib.Path('src/Parchwell.Verifier/bin/Release/net10.0/Parchwell.Verifier.dll').resolve())])
-          assert isinstance(runtime['initialize_ledger'], bool)
-          assert runtime['phase'] == 'probe' or runtime['initialize_ledger'] is False
-          pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json').write_text(json.dumps(runtime))
-          PYTHON
-      - name: Restore and build reviewed executables
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout 600 dotnet restore Parchwell.slnx --locked-mode > "$A01_OUTPUT/restore.log" 2>&1
-          timeout 600 dotnet build Parchwell.slnx --configuration Release --no-restore > "$A01_OUTPUT/build.log" 2>&1
-      - name: Verify tool versions and install checksum-verified Helm
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$A01_OUTPUT/tools" "$RUNNER_TEMP/a01-bin"
-          test "$(terraform version -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["terraform_version"])')" = "$(cat .terraform-version)"
-          timeout 60 az version > "$A01_OUTPUT/tools/azure-cli.json"
-          timeout 60 kubectl version --client -o json > "$A01_OUTPUT/tools/kubectl.json"
-          # az aks install-cli always downloads kubectl too; it goes to a directory that is never on PATH, so the image kubectl recorded above stays the one in use.
-          timeout 120 az aks install-cli --install-location "$RUNNER_TEMP/a01-unused/kubectl" --kubelogin-install-location "$RUNNER_TEMP/a01-bin/kubelogin" --kubelogin-version 0.2.21 --only-show-errors
-          export PATH="$RUNNER_TEMP/a01-bin:$PATH"
-          test "$(kubelogin --version | python3 -c 'import re,sys; print(re.search(r"v?(\d+\.\d+\.\d+)", sys.stdin.read()).group(1))')" = 0.2.21
-          timeout 60 kubelogin --version > "$A01_OUTPUT/tools/kubelogin-version.txt"
-          timeout 60 kubelogin convert-kubeconfig --help > "$A01_OUTPUT/tools/kubelogin-convert-help.txt"
-          timeout 60 az aks get-credentials --help > "$A01_OUTPUT/tools/aks-get-credentials-help.txt"
-          terraform version -json > "$A01_OUTPUT/tools/terraform.json"
-          timeout 60 az storage blob upload --help > "$A01_OUTPUT/tools/blob-upload-help.txt"
-          timeout 60 az storage blob download --help > "$A01_OUTPUT/tools/blob-download-help.txt"
-          for flag in --auth-mode --if-match --if-none-match --overwrite; do
-            grep -F -- "$flag" "$A01_OUTPUT/tools/blob-upload-help.txt" > /dev/null
-          done
-          grep -F -- --if-match "$A01_OUTPUT/tools/blob-download-help.txt" > /dev/null
-          curl --fail --location --max-time 60 --max-filesize 67108864 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz -o "$A01_OUTPUT/tools/helm.tar.gz"
-          python3 - <<'PYTHON'
-          import hashlib, os, pathlib, re, tarfile
-          root = pathlib.Path(os.environ['A01_OUTPUT'],'tools')
-          # Official release body: https://api.github.com/repos/helm/helm/releases/tags/v4.3.1
-          digest = '0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b'
-          assert hashlib.sha256(root.joinpath('helm.tar.gz').read_bytes()).hexdigest() == digest
-          with tarfile.open(root/'helm.tar.gz') as archive:
-              binary = archive.extractfile('linux-amd64/helm').read()
-          target = pathlib.Path(os.environ['RUNNER_TEMP'],'a01-bin','helm'); target.write_bytes(binary); target.chmod(0o700)
-          root.joinpath('helm.json').write_text(__import__('json').dumps({'version':'v4.3.1','source_url':'https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz','checksum_source':'https://api.github.com/repos/helm/helm/releases/tags/v4.3.1','expected_sha256':digest,'actual_sha256':digest,'verified':True,'binary_sha256':hashlib.sha256(binary).hexdigest()}))
-          PYTHON
-          test "$("$RUNNER_TEMP/a01-bin/helm" version --template '{{.Version}}')" = v4.3.1
-          echo "$RUNNER_TEMP/a01-bin" >> "$GITHUB_PATH"
+        run: bash infra/scripts/phase/phase.sh prepare-stop
       - name: Existing environment OIDC login
+        id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -741,79 +455,159 @@ jobs:
           printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
           printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
           printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
-      - name: Use immutable receipts from the probe publication
-        env:
-          LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
-          VERIFIER_DIGEST: ${{ needs.probe.outputs.verifier_digest }}
+      - name: Install the pinned Terraform
+        if: steps.allowed.outputs.workload == 'true'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+      - name: Install and verify pinned lifecycle tools
+        id: tools
+        if: steps.allowed.outputs.workload == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PYTHON'
-          import json,os,pathlib,re
-          path=pathlib.Path(os.environ['A01_OUTPUT'],'runtime.json'); runtime=json.loads(path.read_text())
-          for worker in ['loadgen','verifier']:
-              digest=os.environ[worker.upper()+'_DIGEST']; assert re.fullmatch('sha256:[0-9a-f]{64}',digest)
-              runtime.setdefault('images',{})[worker]={'source_commit':runtime['source_commit'],'digest':digest}
-          path.write_text(json.dumps(runtime))
-          (path.parent/'image-receipts.json').write_text(json.dumps(runtime['images']))
-          # Retain each exact registry response privately and reject a changed probe digest.
-          acr=runtime['persistent_outputs']['acr']; acr=acr.get('value',acr)
-          assert re.fullmatch('[a-z0-9]+',acr['name'])
-          with (path.parent/'image-reference-readback.log').open('wb') as log:
-              for worker in ['loadgen','verifier']:
-                  receipt=__import__('subprocess').check_output(['timeout','60','az','acr','repository','show','--name',acr['name'],'--image',f"parchwell/{worker}:{runtime['source_commit']}",'--output','json'],stderr=log)
-                  log.write(receipt); log.flush()
-                  assert json.loads(receipt)['digest'] == runtime['images'][worker]['digest']
-          PYTHON
-      - name: Run phase with durable reservation and guarded cleanup
-        id: phase
+          python3 -c 'import sys; assert sys.version_info >= (3, 10)'
+          bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-lifecycle-tools" live
+          printf '%s\n' "$RUNNER_TEMP/parchwell-lifecycle-tools" >> "$GITHUB_PATH"
+      - name: Materialise and validate private phase inputs
+        id: prepare
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        env:
+          S_CLUSTER_BACKEND: ${{ secrets.PARCHWELL_CLUSTER_BACKEND }}
+          S_CLUSTER_TFVARS: ${{ secrets.PARCHWELL_CLUSTER_TFVARS }}
+          S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
+          S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
+          S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+        run: bash infra/scripts/phase/phase.sh prepare "$PARCHWELL_PHASE"
+      - name: Use the probe's immutable worker images
+        id: images
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        env:
+          LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
+          VERIFIER_DIGEST: ${{ needs.probe.outputs.verifier_digest }}
+        run: bash infra/scripts/phase/phase.sh use-images "$LOADGEN_DIGEST" "$VERIFIER_DIGEST"
+      - name: Initialize cluster state
+        id: cluster_init
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-cluster
+      - name: Start the existing cluster
+        id: start
+        if: steps.allowed.outputs.workload == 'true'
         shell: bash
         run: |
-          timeout 9750 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll phase --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/phase.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/phase.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/phase.log" || true
-            fi
-            exit 1
-          }
-      # On cancellation the export is skipped so the destroy below starts first. GitHub
-      # forcibly terminates remaining work five minutes after cancellation, so a destroy
-      # that needs longer is cut off and the sweeper finishes it after expiry.
-      - name: Export available private evidence unless the run was cancelled
-        if: always() && !cancelled() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh start-cluster
+      - name: Plan cluster infrastructure
+        id: cluster_plan
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-cluster
+      - name: Apply the saved cluster plan
+        id: cluster_apply
+        if: steps.allowed.outputs.workload == 'true'
         shell: bash
         run: |
-          timeout 300 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll export --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/export.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/export.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/export.log" || true
-            fi
-            exit 1
-          }
-      - name: Always attempt generation-checked destroy
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-cluster
+      - name: Initialize ephemeral state
+        id: ephemeral_init
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh init-ephemeral
+      - name: Plan ephemeral infrastructure
+        id: ephemeral_plan
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh plan-ephemeral
+      - name: Apply the saved ephemeral plan
+        id: ephemeral_apply
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'attempted=true\n' >> "$GITHUB_OUTPUT"
+          bash infra/scripts/lifecycle/lifecycle.sh apply-ephemeral
+      - name: Require private endpoint DNS answers
+        id: dns
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh check-dns
+      - name: Get cluster credentials
+        id: credentials
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh credentials
+      - name: Reset the parchwell namespace
+        id: namespace
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/lifecycle/lifecycle.sh reset-namespace
+      - name: Run all five repeat slots
+        id: repeats
+        if: steps.allowed.outputs.workload == 'true'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh run-repeats
+      - name: Run the phase judge
+        id: judge
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh judge
+      - name: Retrieve and check the phase candidate
+        id: candidate
+        if: always() && !cancelled() && steps.namespace.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh candidate
+      - name: Upload the phase candidate
+        id: upload_candidate
+        if: always() && steps.candidate.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-C3-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Upload public pod evidence
+        id: upload_pods
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: a01-C3-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Delete this run's worker Jobs
+        id: delete_workload
+        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh delete-workload
+      - name: Destroy ephemeral infrastructure
+        id: destroy
         if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
-        run: |
-          timeout 1050 dotnet src/Parchwell.Runner/bin/Release/net10.0/Parchwell.Runner.dll destroy --input "$A01_OUTPUT/runtime.json" --output "$A01_OUTPUT/phase" > "$A01_OUTPUT/destroy.log" 2>&1 || {
-            if [ "${PARCHWELL_DEBUG_FAILURES:-}" = true ]; then
-              cat "$A01_OUTPUT/destroy.log"
-            else
-              grep '^runner_execution_failed' "$A01_OUTPUT/destroy.log" || true
-            fi
-            exit 1
-          }
-      - name: Check whether a public candidate was written
-        id: candidate
-        if: always() && steps.prepare.outcome == 'success'
+        run: bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral
+      - name: Stop the cluster at dispatch end
+        id: stop
+        if: always() && steps.stop_prepare.outcome == 'success' && steps.azure_session.outcome == 'success'
         shell: bash
-        run: |
-          if test -f "$A01_OUTPUT/phase/candidate.json"; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Upload only the allowlisted public candidate
-        if: always() && steps.candidate.outputs.exists == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: a01-${{ env.A01_PHASE }}-candidate
-          path: ${{ env.A01_OUTPUT }}/phase/candidate.json
-          if-no-files-found: error
+        env:
+          STOP_PRIVATE_DIRECTORY: ${{ steps.stop_prepare.outputs.private_directory }}
+        run: PARCHWELL_PRIVATE_DIRECTORY="$STOP_PRIVATE_DIRECTORY" bash infra/scripts/lifecycle/lifecycle.sh stop-cluster
+      - name: Report the phase and cleanup outcomes
+        id: report
+        if: always()
+        shell: bash
+        env:
+          STEP_RESULTS: ${{ toJSON(steps) }}
+          JOB_STATUS: ${{ job.status }}
+          WORKLOAD: ${{ steps.allowed.outputs.workload }}
+          REQUIRED_STEPS: guard checkout allowed stop_prepare azure_session stop
+          WORKLOAD_STEPS: tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
+        run: bash infra/scripts/phase/phase.sh report
