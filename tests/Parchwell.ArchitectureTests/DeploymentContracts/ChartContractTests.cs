@@ -1,16 +1,19 @@
 #pragma warning disable CA1707 // Repository-required Given/When/Then test names.
 using System.Text.Json;
-using Parchwell.Runner.Tests.Deployment;
 using Xunit;
 
-namespace Parchwell.Runner.Tests;
+namespace Parchwell.ArchitectureTests.DeploymentContracts;
 
 public sealed class ChartContractTests
 {
+    private static string RepositoryRoot =>
+        Environment.GetEnvironmentVariable("PARCHWELL_REPOSITORY_ROOT")
+        ?? throw new InvalidOperationException("Missing repository root. Run ./scripts/verify-dotnet.sh.");
+
     [Fact]
     public void Given_ChartSchema_When_Read_Then_OnlyA01AndClosedRuntimeAreAccepted()
     {
-        using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(DeploymentFixture.RepositoryRoot, "charts/parchwell/values.schema.json")));
+        using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepositoryRoot, "charts/parchwell/values.schema.json")));
         JsonElement properties = schema.RootElement.GetProperty("properties");
         Assert.Equal("A01", properties.GetProperty("scenario_id").GetProperty("const").GetString());
         Assert.False(schema.RootElement.GetProperty("additionalProperties").GetBoolean());

@@ -602,15 +602,6 @@
           "Parchwell.Scenarios": "[1.0.0, )"
         }
       },
-      "parchwell.runner": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.Extensions.Hosting": "[10.0.13, )",
-          "Parchwell.Kafka": "[1.0.0, )",
-          "Parchwell.Scenarios": "[1.0.0, )",
-          "YamlDotNet": "[18.1.0, )"
-        }
-      },
       "parchwell.scenarios": {
         "type": "Project",
         "dependencies": {

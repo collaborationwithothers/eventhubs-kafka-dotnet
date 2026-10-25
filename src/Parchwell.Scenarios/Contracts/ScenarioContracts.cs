@@ -228,13 +228,11 @@ public sealed class ResolvedScenario
 /// <summary>The contract version literals and the repository's minimum repeat count.</summary>
 /// <remarks>
 /// <see cref="ScenarioContract.SchemaVersion"/> is the schema_version that scenario and profile files must declare.
-/// <see cref="ScenarioContract.ValuesVersion"/> is the contract_version written into generated Helm values. Changing
-/// either is a contract change (docs/operations/scenario-contract.md).
+/// Changing it is a contract change (docs/operations/scenario-contract.md).
 /// </remarks>
 public static class ScenarioContract
 {
     public const int SchemaVersion = 1;
-    public const int ValuesVersion = 1;
     // docs/agents/factory.md, Plan template: at least five repeats per configuration.
     public const int MinimumRepeats = 5;
 }
