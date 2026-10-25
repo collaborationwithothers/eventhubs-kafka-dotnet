@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Diagnostics.Metrics;
 using Parchwell.Verifier;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Judge;
@@ -11,6 +13,41 @@ namespace Parchwell.Verifier.Tests.Host;
 #pragma warning disable CA1707
 public sealed class TelemetryWiringTests
 {
+    [Theory]
+    [InlineData("success")]
+    [InlineData("handler-exception")]
+    [InlineData("cancel")]
+    public async Task GivenHandlerRunsForMeasuredTime_WhenWorkerTerminates_ThenDurationUsesInjectedClock(string terminal)
+    {
+        var clock = new AdvancingTimeProvider();
+        double? duration = null;
+        string? outcome = null;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == Parchwell.Kafka.Telemetry.ParchwellTelemetrySources.WorkerMeterName)
+                current.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, _) =>
+        {
+            if (instrument.Name != "parchwell.worker.duration_ms") return;
+            duration = measurement;
+            outcome = tags.ToArray().Single(tag => tag.Key == "outcome").Value?.ToString();
+        });
+        listener.Start();
+
+        int exit = await Program.RunAsync(VerifierHostTests.ArgumentsFor("probe-gate", "unused"), services =>
+        {
+            services.RemoveAll<IVerifierModeHandler>();
+            services.AddSingleton<IVerifierModeHandler>(provider => new Handler(
+                terminal, clock, provider.GetRequiredService<IHostApplicationLifetime>()));
+        }, clock);
+
+        Assert.Equal(terminal == "success" ? 0 : 1, exit);
+        Assert.Equal(25d, duration);
+        Assert.Equal(terminal == "success" ? "success" : "error", outcome);
+    }
+
     [Fact]
     public void GivenValidJudgeTelemetryIdentity_WhenHostIsBuilt_ThenRegistersJudgeWithoutKafkaClient()
     {
@@ -47,5 +84,32 @@ public sealed class TelemetryWiringTests
         "--Telemetry:ConnectionString=InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/",
         "--Telemetry:ServiceName="+serviceName,"--Telemetry:ServiceInstanceId=worker-pod","--Telemetry:ScenarioId=A01","--Telemetry:RunId=synthetic-c5"
     ];
+
+    private sealed class AdvancingTimeProvider : TimeProvider
+    {
+        private long _timestamp;
+        public override long TimestampFrequency => 1000;
+        public override long GetTimestamp() => Volatile.Read(ref _timestamp);
+        public void Advance(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, (long)elapsed.TotalMilliseconds);
+    }
+
+    private sealed class Handler(
+        string terminal,
+        AdvancingTimeProvider clock,
+        IHostApplicationLifetime lifetime) : IVerifierModeHandler
+    {
+        public VerifierMode Mode => VerifierMode.ProbeGate;
+        public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+        {
+            clock.Advance(TimeSpan.FromMilliseconds(25));
+            if (terminal == "handler-exception") throw new IOException("synthetic timed failure");
+            if (terminal == "cancel")
+            {
+                lifetime.StopApplication();
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            return 0;
+        }
+    }
 }
 #pragma warning restore CA1707

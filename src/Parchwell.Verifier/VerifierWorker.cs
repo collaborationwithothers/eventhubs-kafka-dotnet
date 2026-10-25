@@ -30,6 +30,7 @@ internal sealed partial class VerifierWorker : BackgroundService
     private readonly VerifierCompletionState _completionState;
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<VerifierWorker> _logger;
+    private readonly TimeProvider _clock;
 
     public VerifierWorker(
         IOptions<VerifierHostOptions> options,
@@ -37,7 +38,8 @@ internal sealed partial class VerifierWorker : BackgroundService
         VerifierExecutionState executionState,
         VerifierCompletionState completionState,
         IHostApplicationLifetime applicationLifetime,
-        ILogger<VerifierWorker> logger)
+        ILogger<VerifierWorker> logger,
+        TimeProvider clock)
     {
         _options = options;
         _handlers = handlers;
@@ -45,6 +47,7 @@ internal sealed partial class VerifierWorker : BackgroundService
         _completionState = completionState;
         _applicationLifetime = applicationLifetime;
         _logger = logger;
+        _clock = clock;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,6 +61,7 @@ internal sealed partial class VerifierWorker : BackgroundService
             static state => ((VerifierCompletionState)state!).MarkStopped(), _completionState);
         using CancellationTokenRegistration completionWorkerStop = stoppingToken.Register(
             static state => ((VerifierCompletionState)state!).MarkStopped(), _completionState);
+        long? handlerOrigin = null;
         try
         {
             var configuredMode = _options.Value.Mode;
@@ -73,9 +77,10 @@ internal sealed partial class VerifierWorker : BackgroundService
                         ["repeat"]=options.Repeat??0,["mode"]=configuredMode!
                     });
                     using Activity? activity=ActivitySource.StartActivity("parchwell.worker."+configuredMode,ActivityKind.Internal);
-                    long origin=Stopwatch.GetTimestamp();
+                    handlerOrigin = _clock.GetTimestamp();
                     int exitCode = await handler.ExecuteAsync(stoppingToken).ConfigureAwait(false);
-                    RecordCompletion(Stopwatch.GetElapsedTime(origin).TotalMilliseconds,exitCode==0?"success":"error");
+                    RecordHandlerCompletion(handlerOrigin.Value, exitCode == 0 ? "success" : "error");
+                    handlerOrigin = null;
                     _completionState.MarkReturned(_options.Value, exitCode, stoppingToken, applicationStopping);
                     if (exitCode == 0)
                     {
@@ -99,7 +104,7 @@ internal sealed partial class VerifierWorker : BackgroundService
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             _completionState.MarkFailed();
-            RecordCompletion(0,"error");
+            RecordHandlerFailure(handlerOrigin);
             // A host stop before successful work leaves the explicit failure outcome in place.
             LogStopped(
                 _logger,
@@ -110,7 +115,7 @@ internal sealed partial class VerifierWorker : BackgroundService
         catch (Exception exception)
         {
             _completionState.MarkFailed();
-            RecordCompletion(0,"error");
+            RecordHandlerFailure(handlerOrigin);
             // Worker exceptions do not become successful merely because the Generic Host stops.
             LogFailed(
                 _logger,
@@ -122,6 +127,17 @@ internal sealed partial class VerifierWorker : BackgroundService
         finally
         {
             _applicationLifetime.StopApplication();
+        }
+    }
+
+    private void RecordHandlerCompletion(long origin, string outcome) =>
+        RecordCompletion(_clock.GetElapsedTime(origin).TotalMilliseconds, outcome);
+
+    private void RecordHandlerFailure(long? origin)
+    {
+        if (origin is long startedAt)
+        {
+            RecordHandlerCompletion(startedAt, "error");
         }
     }
 
