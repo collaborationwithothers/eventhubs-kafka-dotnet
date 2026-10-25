@@ -127,6 +127,7 @@ public sealed class BrokerInventoryTests
     [Theory]
     [InlineData(0,false)]
     [InlineData(1,true)]
+    [InlineData(63,true)]
     [InlineData(64,true)]
     [InlineData(65,false)]
     public void Given_ReadInventoryBrokerCountBoundary_When_Parsed_Then_EnforcesOneThrough64(int count,bool succeeds)

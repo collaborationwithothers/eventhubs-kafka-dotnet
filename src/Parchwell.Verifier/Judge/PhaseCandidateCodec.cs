@@ -46,6 +46,7 @@ internal static class PhaseCandidateCodec
     }
     private static void ValidateNested(JsonElement root)
     {
+        ValidateStringScalars(root);
         foreach(string name in new[]{"schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status"})
             if(root.GetProperty(name).ValueKind is JsonValueKind.Null or JsonValueKind.Object or JsonValueKind.Array)throw new FormatException("Candidate scalar has the wrong kind.");
         foreach(string name in new[]{"scenario_id","configuration_id","run_id","phase","source_commit","status"})
@@ -112,6 +113,15 @@ internal static class PhaseCandidateCodec
                 foreach(string key in new[]{"report_index","window_count","window_maximum"})if(observation.GetProperty(key).ValueKind is not (JsonValueKind.Null or JsonValueKind.Number)||observation.GetProperty(key).ValueKind==JsonValueKind.Number&&(!observation.GetProperty(key).TryGetInt64(out long n)||n<0))throw new FormatException("Candidate probe observation has invalid numeric values.");
             }
         }
+    }
+    private static void ValidateStringScalars(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.String && value.GetString()!.Length > 256)
+            throw new FormatException("Candidate text scalar exceeds its limit.");
+        if (value.ValueKind == JsonValueKind.Object)
+            foreach (JsonProperty property in value.EnumerateObject()) ValidateStringScalars(property.Value);
+        else if (value.ValueKind == JsonValueKind.Array)
+            foreach (JsonElement item in value.EnumerateArray()) ValidateStringScalars(item);
     }
     private static bool NonnegativeInt64(JsonElement value) => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long number) && number >= 0;
     private static void Exact(JsonElement e,string[] fields,bool nullable=false)

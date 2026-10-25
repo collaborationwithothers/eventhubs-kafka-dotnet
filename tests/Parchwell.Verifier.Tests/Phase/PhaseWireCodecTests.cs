@@ -117,8 +117,11 @@ public sealed class PhaseWireCodecTests
         Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadProducerCompletion(PhaseWireCodec.WriteProducerCompletion(value)));
     }
 
-    [Fact]
-    public void Given_ReceiptAtByteBoundary_When_Read_Then_AcceptsEqualAndRejectsExcess()
+    [Theory]
+    [InlineData(65_535,true)]
+    [InlineData(65_536,true)]
+    [InlineData(65_537,false)]
+    public void Given_ReceiptAtByteBoundary_When_Read_Then_AcceptsEqualAndRejectsExcess(int length,bool accepted)
     {
         string commit=new('a',40);
         var receipt=new WorkerReceipt(1,"judge","A01","C0","synthetic-c5","C0",null,
@@ -126,10 +129,9 @@ public sealed class PhaseWireCodecTests
             "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",
             [new("verifier",PhasePaths.Candidate("synthetic-c5","C0"),1,new string('a',64))],null,null);
         byte[] compact=PhaseWireCodec.WriteReceipt(receipt);
-        byte[] atLimit=[..compact,..Encoding.UTF8.GetBytes(new string(' ',PhaseWireCodec.MaximumBytes-compact.Length))];
-        Assert.Equal(receipt.Mode,PhaseWireCodec.ReadReceipt(atLimit).Mode);
-        byte[] overLimit=[..atLimit,(byte)' '];
-        Assert.Throws<InputLimitExceededException>(()=>PhaseWireCodec.ReadReceipt(overLimit));
+        byte[] padded=[..compact,..Encoding.UTF8.GetBytes(new string(' ',length-compact.Length))];
+        if(accepted)Assert.Equal(receipt.Mode,PhaseWireCodec.ReadReceipt(padded).Mode);
+        else Assert.Throws<InputLimitExceededException>(()=>PhaseWireCodec.ReadReceipt(padded));
     }
 
     [Theory]

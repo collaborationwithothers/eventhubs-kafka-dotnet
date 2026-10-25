@@ -192,6 +192,7 @@ public sealed class BlobArtifactStoreTests
     }
 
     [Theory]
+    [InlineData(15,true)]
     [InlineData(16,true)]
     [InlineData(17,false)]
     public async Task GivenSdkListingAtPageBoundary_WhenListing_ThenReportsExactCompletion(int pageCount,bool complete)
@@ -214,6 +215,7 @@ public sealed class BlobArtifactStoreTests
     }
 
     [Theory]
+    [InlineData(1023,true)]
     [InlineData(1024,true)]
     [InlineData(1025,false)]
     public async Task GivenSdkListingAtEntryBoundary_WhenListing_ThenRetainsOnlyBoundedNames(int entryCount,bool complete)
@@ -226,7 +228,7 @@ public sealed class BlobArtifactStoreTests
         BlobListing listing=await store.ListAsync("runs/C0/r1/",TestContext.Current.CancellationToken);
 
         Assert.Equal(complete,listing.IsComplete);
-        Assert.Equal(complete?1024:1024,listing.Names.Count);
+        Assert.Equal(complete?entryCount:1024,listing.Names.Count);
         Assert.Equal(complete?null:"listing_incomplete",listing.FailureCode);
     }
 

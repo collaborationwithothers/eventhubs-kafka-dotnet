@@ -91,6 +91,35 @@ public sealed class PhaseCandidateCodecTests
         else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
     }
 
+    [Theory]
+    [InlineData("timing", 255, true)]
+    [InlineData("timing", 256, true)]
+    [InlineData("timing", 257, false)]
+    [InlineData("repeat_identity", 255, true)]
+    [InlineData("repeat_identity", 256, true)]
+    [InlineData("repeat_identity", 257, false)]
+    [InlineData("repeat_reason", 255, true)]
+    [InlineData("repeat_reason", 256, true)]
+    [InlineData("repeat_reason", 257, false)]
+    [InlineData("probe_broker", 255, true)]
+    [InlineData("probe_broker", 256, true)]
+    [InlineData("probe_broker", 257, false)]
+    public void GivenNestedCandidateScalarLengthBoundary_WhenRead_ThenEnforcesMaximum(string field, int length, bool accepted)
+    {
+        string scalar = new('v', length);
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        json = field switch
+        {
+            "timing" => json.Replace("\"worker_started_utc\":null", $"\"worker_started_utc\":\"{scalar}\"", StringComparison.Ordinal),
+            "repeat_identity" => json.Replace("\"identity\":\"loadgen\"", $"\"identity\":\"{scalar}\"", StringComparison.Ordinal),
+            "repeat_reason" => json.Replace("\"reasons\":[]", $"\"reasons\":[\"{scalar}\"]", StringComparison.Ordinal),
+            "probe_broker" => System.Text.RegularExpressions.Regex.Replace(json, "\"broker\":\"[^\"]*\"", $"\"broker\":\"{scalar}\"", System.Text.RegularExpressions.RegexOptions.CultureInvariant),
+            _ => throw new ArgumentOutOfRangeException(nameof(field))
+        };
+        if (accepted) using (PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json))) { }
+        else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
+    }
+
     private static PhaseCandidate Candidate()
     {
         var checks=new PhaseRepeatChecks(true,true,true,true,true,true,true);
