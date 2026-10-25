@@ -6889,3 +6889,5 @@ Replay directories are relative to `.artifacts/verifier-mutation/fresh-replays/`
 | 3818 | VerifyRun/Input/NativeStatisticsReader.cs | 153:63-153:81 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 3823 | VerifyRun/Input/NativeStatisticsReader.cs | 159:17-159:34 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 | 3824 | VerifyRun/Input/NativeStatisticsReader.cs | 164:90-164:114 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
+
+Cold-review round 18 Fix did not run a mutation campaign. The two authorized campaigns remain exhausted and incomplete; no score or survivor disposition is inferred.
