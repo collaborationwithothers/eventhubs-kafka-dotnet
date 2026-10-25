@@ -222,19 +222,39 @@ class LifecycleTests(unittest.TestCase):
         self.assertFalse(any("start" in c["args"] for c in self.calls()))
         self.assert_consumed()
 
-    def test_aks_stopped_cooldown_and_bounded_retries(self):
+    def test_aks_immediate_start_and_bounded_retries(self):
         calls = []
         for index in range(120):
             calls.append(self.aks("Stopped") if index < 110 else self.aks("Starting", "Starting"))
-            if 60 <= index < 110 and (index - 60) % 10 == 0:
+            if index <= 60 and index % 10 == 0:
                 calls.append(response("az", "start", "--no-wait", code=1))
         self.script(*calls)
         self.assertEqual(124, self.run_lifecycle("start-cluster"))
         starts = [now for now, args, _, _ in self.times if args[0:3] == ["az", "aks", "start"]]
-        self.assertGreaterEqual(starts[0], 1800)
-        self.assertLessEqual(len(starts), 7)
+        self.assertEqual([0, 300, 600, 900, 1200, 1500, 1800], starts)
+        self.assertEqual(120, sum(args[0:3] == ["az", "aks", "show"] for _, args, _, _ in self.times))
         self.assertTrue(all(b - a >= 300 for a, b in zip(starts, starts[1:])))
         self.assertEqual(3600, self.clock.now)
+        self.assert_consumed()
+
+    def test_aks_start_waits_for_starting_readback(self):
+        self.script(self.aks("Stopped"), response("az", "start", "--no-wait", code=1),
+            *[self.aks("Starting", "Starting") for _ in range(10)],
+            self.aks("Stopped"), response("az", "start", "--no-wait"), self.aks("Running"))
+        self.assertEqual(0, self.run_lifecycle("start-cluster"))
+        starts = [now for now, args, _, _ in self.times if args[0:3] == ["az", "aks", "start"]]
+        self.assertEqual([0, 330], starts)
+        self.assertEqual(360, self.clock.now)
+        self.assert_consumed()
+
+    def test_aks_stop_submits_immediately_and_waits_for_stopped(self):
+        self.script(self.aks("Running"), response("az", "stop", "--no-wait"),
+            self.aks("Stopping", "Stopping"), self.aks("Stopped"))
+        self.assertEqual(0, self.run_lifecycle("stop-cluster"))
+        stops = [now for now, args, _, _ in self.times if args[0:3] == ["az", "aks", "stop"]]
+        self.assertEqual([0], stops)
+        self.assertEqual(60, self.clock.now)
+        self.assertFalse(any(args[0:3] == ["az", "aks", "start"] for _, args, _, _ in self.times))
         self.assert_consumed()
 
     def test_aks_running_zero_starts_and_credentials(self):

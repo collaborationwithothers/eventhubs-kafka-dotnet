@@ -197,7 +197,6 @@ class Lifecycle:
 
     def cluster(self, start):
         end = time.monotonic() + (3600 if start else 1800)
-        stopped_at = None
         last_start = None
         submissions = 0
         try:
@@ -219,9 +218,7 @@ class Lifecycle:
                     raise Failure("unsupported AKS state", 1)
                 now = time.monotonic()
                 if start and state == ("Stopped", "Succeeded"):
-                    if stopped_at is None:
-                        stopped_at = now
-                    if now - stopped_at >= 1800 and submissions < 7 and (last_start is None or now - last_start >= 300):
+                    if submissions < 7 and (last_start is None or now - last_start >= 300):
                         last_start = now
                         submissions += 1
                         status, _ = self.run(["az", "aks", "start", *self.cluster_args(), "--no-wait"], 60, end=end)
@@ -229,8 +226,6 @@ class Lifecycle:
                         # be retried; it never permits a retry while Starting.
                         if status:
                             print("aks_start_submission_failed", file=sys.stderr)
-                elif start:
-                    stopped_at = None
                 elif state == ("Running", "Succeeded") and submissions == 0:
                     submissions += 1
                     self.checked(["az", "aks", "stop", *self.cluster_args(), "--no-wait"], 60, end=end)
