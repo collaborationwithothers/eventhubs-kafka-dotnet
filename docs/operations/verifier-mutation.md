@@ -37,6 +37,44 @@ Round-14 Fix confirmation: both authorized campaigns remain exhausted and incomp
 
 Round-17 Fix confirmation: both authorized campaigns remain exhausted and incomplete under the approved cap. No mutation command was run, no survivor score is claimed, and no mutation evidence or source hash was changed in this round. The verifier fix and full acceptance are recorded in the [C5 validation receipt](verifier-contract.md#c5-implementation-validation-receipt).
 
+## Issue 187 hosted C5 measurement
+
+The [manual hosted workflow](../../.github/workflows/verifier-c5-mutation.yml) provides the next C5 measurement method under [Hari's latest decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400987342). This PR provides tooling and no complete mutation result. The [authored receipt](evidence/issue-187/receipt.md) records the helper repair and local tooling validation.
+
+A mutation result is not required before gate 2 (#163), which publishes no result. Before the first A01 result is published, one complete coverage-off Stryker.NET measurement of the four C5 targets on the final verifier commit must pass break 60. The manual hosted workflow partitions that one scope across four parallel jobs and applies the threshold to their combined raw populations.
+
+The existing full-scope result, 922/934 on e592713 (#93), and the accepted survivors in #108 stand for code outside the four targets. That result predates C5. PR #176 changed other verifier files, and those changes are accepted without remeasurement for the first A01 publication. The A01 evidence pack must state this limitation. docs/engineering/dotnet.md Testing is unchanged; its scope applies to later publications unless Hari decides otherwise.
+
+The historical inputs remain in the [#93 receipt](evidence/issue-93/child-c/receipt.md) and [#108 survivor decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/108). The [coverage-off configuration](../../tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json) selects exactly:
+
+- `Judge/PhaseJudge.cs`
+- `VerifyRun/Publication/PublicationAcceptance.cs`
+- `VerifyRun/A01/A01EvidenceRecorder.cs`
+- `VerifyRun/A01/WorkloadRecorder.cs`
+
+The workflow uses four parallel standard `ubuntu-24.04` hosted jobs, with no Azure identity. Only `workflow_dispatch` triggers it, and its jobs require `main`. After Hari merges this protected-path PR, a later authorized dispatch selects the final verifier commit on main. No agent waits on or polls that run. GitHub documents [hosted job limits](https://docs.github.com/en/actions/reference/limits) and [billing for public repositories and larger runners](https://docs.github.com/en/billing/concepts/product-billing/github-actions); this workflow selects no larger runner.
+
+Each shard uses SDK 10.0.402, Stryker 5.0.0, MTP, Release/net10.0 and the existing mutation-only test population. Coverage off skips coverage capture and assigns all tests to each mutant; bail behavior remains. The [pinned configuration reference](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/docs/configuration.md) and [pre-run lookup](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400504166) explain this method. It can increase test execution work. No incremental baseline, new exclusion or concurrency setting is used.
+
+The [workflow support](../../tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py) has these command interfaces, from the repository root:
+
+```text
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py run-shard --shard ID --output-dir ABSOLUTE_DIRECTORY
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py aggregate --input-dir DIRECTORY --expected-commit SHA --run-id ID --run-attempt ATTEMPT --output-dir DIRECTORY
+```
+
+The shard IDs are `phase`, `publication`, `a01` and `workload`. The runner retains the actual invocation, source/config hashes before and after, commit/tree, timing, child exit, termination, command log and report hash. Its single child has a 16200-second bound, inside a 300-minute hosted job. A timeout records the gap and continues to receipt and artifact upload; it produces an incomplete measurement. These are execution limits, not duration predictions. There is no retry.
+
+Each shard uploads `c5-mutation-RUN_ID-RUN_ATTEMPT-ID`, including `receipt.json`, `shard-config.json`, `command.log` and the native Stryker output. Aggregation downloads those four separate artifact directories from the current run. The summary artifact is `c5-summary-RUN_ID-RUN_ATTEMPT`, containing `summary.json`, `summary.md` and `survivors.json`. Upload retention is 90 days; preserve needed evidence before expiry. These artifacts become downloadable only after an actual dispatch.
+
+Completed child exits 0 and 2 are candidates for aggregation: pinned [Stryker exit codes](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Configuration/ExitCodes.cs) define 2 as a threshold violation. An individual below-threshold file may still contribute to a passing combined score. Missing shards or reports, execution errors, termination, changed inputs and malformed or unfinished populations cannot supply a passing result.
+
+Aggregation sums assigned-target raw populations across the four reports. The numerator is `Killed + Timeout`; the denominator is `Killed + Timeout + Survived + NoCoverage`. `CompileError`, `RuntimeError` and `Ignored` remain visible but outside the denominator, following pinned [ProjectComponent.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs). Break success requires `100 * numerator >= 60 * denominator`, with a positive denominator in every target. Percentages are not averaged. Native [JSON reports](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs) contain high/low thresholds, without break; the committed configuration supplies break 60. Excluded-file placeholders follow pinned [SourceFile.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/SourceFiles/SourceFile.cs).
+
+An incomplete summary has `measurement_complete=false` and `break_passed=null`. A complete below-threshold result remains a complete failing measurement. Neither synthetic tooling tests nor an artifact listing satisfies the publication requirement. The later completed run's survivors are dispositioned under this mutation record: cap 50, then `record the gap and continue`. The automatic first-50 listing is not a human disposition and never changes raw scoring. No survivor review or replay occurs in this PR.
+
+The earlier [diagnostic/helper proof](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400229379), [retained-output diagnosis](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400381734) and [short coverage-off measurement](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400700903) remain historical evidence. All their run allowances remain consumed. The short sample supplies an estimate, not a complete result or a renewed run allowance.
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.

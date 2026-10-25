@@ -15,10 +15,11 @@
       "break": 60
     },
     "mutate": [
-      "../../src/Parchwell.Verifier/Judge/PhaseJudge.cs",
-      "../../src/Parchwell.Verifier/VerifyRun/Publication/PublicationAcceptance.cs",
-      "../../src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs",
-      "../../src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs"
-    ]
+      "Judge/PhaseJudge.cs",
+      "VerifyRun/Publication/PublicationAcceptance.cs",
+      "VerifyRun/A01/A01EvidenceRecorder.cs",
+      "VerifyRun/A01/WorkloadRecorder.cs"
+    ],
+    "coverage-analysis": "off"
   }
 }

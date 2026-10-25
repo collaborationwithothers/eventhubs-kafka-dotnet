@@ -248,7 +248,7 @@ public sealed class BrokerInventoryTests
     [InlineData("start-line.json")]
     public void Given_InvalidOptionalInventoryName_When_Validated_Then_Rejects(string name)
     {
-        VerifierHostOptions options = VerifierHostTests.ValidOptions("start-line");
+        VerifierHostOptions options = VerifierHostTestOptions.ValidOptions("start-line");
         options.StartLineOutputName = "start-line.json";
         options.BrokerInventoryOutputName = name;
         Assert.False(new VerifierHostOptionsValidator().Validate(null, options).Succeeded);

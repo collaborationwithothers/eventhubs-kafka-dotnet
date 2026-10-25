@@ -1,0 +1,90 @@
+name: C5 verifier mutation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: phase
+            target: Judge/PhaseJudge.cs
+          - shard: publication
+            target: VerifyRun/Publication/PublicationAcceptance.cs
+          - shard: a01
+            target: VerifyRun/A01/A01EvidenceRecorder.cs
+          - shard: workload
+            target: VerifyRun/A01/WorkloadRecorder.cs
+    env:
+      C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
+    steps:
+      - name: Check out measured commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: global.json
+      - name: Restore pinned mutation tool
+        run: dotnet tool restore
+      - name: Measure one C5 target
+        env:
+          C5_SHARD: ${{ matrix.shard }}
+        run: python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py run-shard --shard "$C5_SHARD" --output-dir "$C5_OUTPUT"
+      - name: Retain shard evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: ${{ env.C5_OUTPUT }}
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: mutation
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out measured commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download shard evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/c5-input
+          merge-multiple: false
+      - name: Combine raw C5 populations
+        if: always()
+        env:
+          C5_INPUT: ${{ runner.temp }}/c5-input
+          C5_COMMIT: ${{ github.sha }}
+          C5_RUN_ID: ${{ github.run_id }}
+          C5_RUN_ATTEMPT: ${{ github.run_attempt }}
+          C5_SUMMARY: ${{ runner.temp }}/c5-summary
+        run: >-
+          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py aggregate
+          --input-dir "$C5_INPUT" --expected-commit "$C5_COMMIT"
+          --run-id "$C5_RUN_ID" --run-attempt "$C5_RUN_ATTEMPT"
+          --output-dir "$C5_SUMMARY"
+      - name: Retain aggregate evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c5-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/c5-summary
+          if-no-files-found: error
+          retention-days: 90
