@@ -1,0 +1,393 @@
+"""Synthetic command-contract tests; real judge bytes are checked at gate 2."""
+import contextlib
+import importlib.util
+import io
+import json
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+REPO = Path(__file__).resolve().parents[4]
+SPEC = importlib.util.spec_from_file_location('phase', REPO / 'infra/scripts/phase/phase.py')
+phase = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(phase)
+SHA = 'a' * 40
+DIGESTS = {'loadgen': 'sha256:' + 'b' * 64, 'verifier': 'sha256:' + 'c' * 64}
+RESOURCE = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-synthetic/providers/Microsoft.ContainerService/managedClusters/aks-synthetic'
+PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwellacr.azurecr.io'}}, 'application_insights_connection_string': {'value': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'}}
+ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
+EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
+DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
+
+
+class ScriptedCommands:
+    """Fail selected synthetic commands and record every requested process."""
+    def __init__(self):
+        self.calls = []
+        self.responses = {}
+        self.download = b''
+        self.properties = []
+
+    def __call__(self, instance, args, seconds, output=None, maximum=4 * 1024 * 1024):
+        args = list(map(str, args))
+        self.calls.append((args, seconds, output, maximum))
+        key, default = tuple(args), (0, '')
+        if args[0] == 'helm':
+            values = json.loads(Path(args[-1]).read_text())['runtime']
+            name = phase.job_name(values['run_id'], values['phase'], values['mode'], values.get('repeat'))
+            default = (0, f'kind: Job\nmetadata:\n  name: "{name}"\nspec:\n  activeDeadlineSeconds: {DEADLINES[values["mode"]]}\n')
+        elif args[:3] == ['kubectl', 'get', 'pods']:
+            default = (0, '{"items": []}')
+        elif args[:4] == ['az', 'storage', 'blob', 'show']:
+            default = self.properties.pop(0) if self.properties else (0, json.dumps({'etag': 'synthetic-etag', 'contentLength': len(self.download)}))
+        elif args[:4] == ['az', 'storage', 'blob', 'download']:
+            Path(args[args.index('--file') + 1]).write_bytes(self.download)
+        elif args[:4] == ['az', 'acr', 'repository', 'show']:
+            worker = args[args.index('--image') + 1].split('/')[1].split(':')[0].split('@')[0]
+            default = (0, DIGESTS[worker] + '\n')
+        elif len(args) > 2 and args[2] == 'resolve':
+            default = (0, json.dumps(['10.0.0.4' if 'servicebus' in args[3] else '10.0.0.5']))
+        code, content = self.responses.get(key, default)
+        if output is not None:
+            Path(output).write_bytes(content.encode() if isinstance(content, str) else content)
+        return code
+
+
+class PhaseTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.env_file = self.root / 'env'
+        self.output_file = self.root / 'output'
+        self.summary_file = self.root / 'summary'
+        self.env_file.touch()
+        self.output_file.touch()
+        env = {'PATH': os.environ.get('PATH', ''), 'RUNNER_TEMP': str(self.root), 'GITHUB_ENV': str(self.env_file), 'GITHUB_OUTPUT': str(self.output_file), 'GITHUB_STEP_SUMMARY': str(self.summary_file), 'GITHUB_RUN_ID': '40121134428', 'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_SHA': SHA, 'PARCHWELL_REPOSITORY': str(REPO), 'PARCHWELL_CLUSTER_RESOURCE_ID': RESOURCE, 'S_CLUSTER_BACKEND': 'synthetic-backend', 'S_CLUSTER_TFVARS': '{}', 'S_EPHEMERAL_BACKEND': 'synthetic-backend', 'S_EPHEMERAL_TFVARS': '{}', 'S_PERSISTENT_OUTPUTS': json.dumps(PERSISTENT)}
+        self.environment = patch.dict(os.environ, env, clear=True)
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+        self.fake = ScriptedCommands()
+        self.delays = []
+
+    def main(self, *argv):
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return phase.main(list(argv))
+
+    def prepare(self, selected='C0', run=None):
+        self.assertEqual(0, self.main('prepare', selected))
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
+        self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
+        self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
+        self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
+        state = json.loads((self.private / 'phase.json').read_text())
+        if run:
+            state['run_id'] = run
+            os.environ['PARCHWELL_RUN_ID'] = run
+        state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in DIGESTS.items()}
+        (self.private / 'phase.json').write_text(json.dumps(state))
+        (self.private / 'cluster-output.json').write_text(json.dumps({'workload_identity': {'value': {'namespace': 'parchwell', 'service_accounts': ACCOUNTS}}}))
+        (self.private / 'ephemeral-output.json').write_text(json.dumps(EPHEMERAL))
+        self.run_id = state['run_id']
+        self.selected = selected
+
+    def mocked(self):
+        stack = contextlib.ExitStack()
+        stack.enter_context(patch.object(phase.Phase, 'run', autospec=True, side_effect=self.fake))
+        stack.enter_context(patch.object(phase.Phase, 'sleep', side_effect=self.delays.append))
+        return stack
+
+    def records(self):
+        return json.loads((self.artifacts / 'phase-status.json').read_text())['modes']
+
+    def name(self, mode, repeat=1):
+        return phase.job_name(self.run_id, self.selected, mode, repeat)
+
+    def wait(self, mode, repeat=1):
+        return ('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', self.name(mode, repeat), str(DEADLINES[mode]))
+
+    def collect(self, mode, repeat=1):
+        return ('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job', self.name(mode, repeat))
+
+    def delete(self, mode, repeat=1):
+        return ('kubectl', 'delete', 'job', self.name(mode, repeat), '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s')
+
+    def confirm(self, mode, repeat=1):
+        return ('kubectl', 'get', 'pods', '-n', 'parchwell', '-l', f'job-name={self.name(mode, repeat)}', '-o', 'json', '--request-timeout=30s')
+
+    def candidate(self, gate='pass'):
+        return {'schema_version': 1, 'synthetic': True, 'scenario_id': 'A01', 'run_id': self.run_id, 'phase': self.selected, 'configuration_id': 'C3' if self.selected == 'C3' else 'C0', 'source_commit': SHA, 'status': 'complete_valid', 'gate': gate, 'image_digests': dict(DIGESTS), 'repeats': [{'repeat': n, 'status': 'complete_valid'} for n in range(1, 6)]}
+
+    def test_names(self):
+        self.assertEqual('a01-1-1-c0-r1-loadgen', phase.job_name('a01-1-1', 'C0', 'loadgen', 1))
+        self.assertEqual('a01-1-1-probe-r5-verify', phase.job_name('a01-1-1', 'probe', 'verify', 5))
+        self.assertEqual('a01-1-1-c3-judge', phase.job_name('a01-1-1', 'C3', 'judge'))
+        self.assertEqual('a01-1-1/C3/candidate.json', phase.candidate_blob('a01-1-1', 'C3'))
+
+    def test_prepare_probe(self):
+        self.assertEqual(0, self.main('prepare', 'probe'))
+        exported = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())
+        self.assertEqual('a01-40121134428-1', exported['PARCHWELL_RUN_ID'])
+        self.assertEqual({'PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY', 'PARCHWELL_CLUSTER_BACKEND_CONFIG', 'PARCHWELL_CLUSTER_TFVARS_PATH', 'PARCHWELL_EPHEMERAL_BACKEND_CONFIG', 'PARCHWELL_EPHEMERAL_TFVARS_PATH', 'PARCHWELL_RUN_ID', 'KUBECONFIG'}, set(exported))
+        directories = [Path(exported[key]) for key in ('PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY')]
+        self.assertEqual(3, len(set(directories)))
+        for directory in directories:
+            self.assertEqual(0o700, directory.stat().st_mode & 0o777)
+            self.assertFalse(any(directory in other.parents for other in directories))
+        for name in ('cluster_backend.hcl', 'cluster_tfvars.tfvars.json', 'ephemeral_backend.hcl', 'ephemeral_tfvars.tfvars.json', 'persistent-output.json'):
+            self.assertEqual(0o600, (directories[0] / name).stat().st_mode & 0o777)
+        self.assertEqual({'phase': 'probe', 'run_id': 'a01-40121134428-1', 'modes': [], 'candidate': None, 'safety_stop': False}, json.loads((directories[2] / 'phase-status.json').read_text()))
+
+    def test_prepare_rejections(self):
+        cases = [('c0', {}), ('probe', {'S_CLUSTER_BACKEND': ''}), ('probe', {'S_PERSISTENT_OUTPUTS': '{"acr": {}, "acr": {}}'}), ('probe', {'S_PERSISTENT_OUTPUTS': 'x' * 4194305}), ('probe', {'GITHUB_SHA': 'A' * 40}), ('probe', {'GITHUB_RUN_ID': '1' * 30}), ('probe', {'S_PERSISTENT_OUTPUTS': json.dumps({**PERSISTENT, 'acr': {'name': 'Parchwell', 'login_server': 'parchwellacr.azurecr.io'}})})]
+        for selected, overrides in cases:
+            with self.subTest(phase=selected, overrides=list(overrides)), patch.dict(os.environ, overrides):
+                self.assertEqual(2, self.main('prepare', selected))
+                self.assertEqual('', self.env_file.read_text())
+
+    def test_prepare_stop(self):
+        env = {key: os.environ[key] for key in ('RUNNER_TEMP', 'GITHUB_ENV', 'GITHUB_OUTPUT', 'PARCHWELL_CLUSTER_RESOURCE_ID')}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(0, self.main('prepare-stop'))
+            directory = dict(line.split('=', 1) for line in self.output_file.read_text().splitlines())['private_directory']
+            self.assertEqual(0o700, Path(directory).stat().st_mode & 0o777)
+            os.environ['PARCHWELL_CLUSTER_RESOURCE_ID'] = 'invalid'
+            self.assertEqual(2, self.main('prepare-stop'))
+
+    def test_allow_c3(self):
+        for probe, allowed, full, expected in [('success', 'true', 'success', 'true'), ('success', 'false', 'skipped', 'false'), ('failure', '', 'skipped', 'false'), ('success', 'true', 'failure', 'false')]:
+            with self.subTest(probe=probe, allowed=allowed, full=full):
+                self.output_file.write_text('')
+                os.environ.update(PROBE_RESULT=probe, FULL_ALLOWED=allowed, FULL_C0_RESULT=full)
+                self.assertEqual(0, self.main('allow-c3'))
+                self.assertEqual(f'workload={expected}\n', self.output_file.read_text())
+
+    def test_values_exact(self):
+        self.prepare(run='a01-1-1')
+        expected = {'scenario_id': 'A01', 'configuration_id': 'C0', 'runtime': {'run_id': 'a01-1-1', 'phase': 'C0', 'mode': 'loadgen', 'repeat': 1, 'loadgen_job_name': 'a01-1-1-c0-r1-loadgen', 'source_commit': SHA, 'loadgen_image': 'parchwellacr.azurecr.io/parchwell/loadgen@' + DIGESTS['loadgen'], 'verifier_image': 'parchwellacr.azurecr.io/parchwell/verifier@' + DIGESTS['verifier'], 'service_accounts': {'loadgen': ACCOUNTS['loadgen'], 'verifier': ACCOUNTS['verifier']}, 'eventhubs': EPHEMERAL['eventhubs']['value'], 'blob': EPHEMERAL['blob']['value'], 'eventhubs_ip': '10.0.0.4', 'blob_ip': '10.0.0.5', 'application_insights_connection_string': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'}}
+        self.assertEqual(expected, phase.Phase().values('loadgen', 1))
+        judge = phase.Phase().values('judge', None)['runtime']
+        self.assertNotIn('repeat', judge)
+        self.assertNotIn('loadgen_job_name', judge)
+        self.assertNotIn('enrichment-consumer', judge['service_accounts'])
+
+    def test_run_repeats_happy(self):
+        self.prepare()
+        with self.mocked():
+            self.assertEqual(0, self.main('run-repeats'))
+        expected = []
+        for repeat in range(1, 6):
+            for mode in ('start-line', 'loadgen', 'verify'):
+                name = self.name(mode, repeat)
+                expected.extend([['helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(self.private / f'values-{name}.json')], ['kubectl', 'apply', '-f', str(self.private / f'rendered-{name}.yaml'), '--request-timeout=30s'], list(self.wait(mode, repeat)), list(self.collect(mode, repeat))])
+        self.assertEqual(expected, [call[0] for call in self.fake.calls])
+        self.assertEqual([self.name(mode, repeat) for repeat in range(1, 6) for mode in ('start-line', 'loadgen', 'verify')], [record['job'] for record in self.records()])
+        self.assertEqual(['complete'] * 15, [record['outcome'] for record in self.records()])
+
+    def test_failed_mode_continues(self):
+        for mode in ('start-line', 'loadgen', 'verify'):
+            with self.subTest(mode=mode):
+                self.prepare()
+                self.fake = ScriptedCommands()
+                self.fake.responses[self.wait(mode, 2)] = (1, '')
+                with self.mocked():
+                    self.assertEqual(0, self.main('run-repeats'))
+                self.assertEqual(15, len(self.records()))
+                self.assertEqual('failed', next(r for r in self.records() if r['job'] == self.name(mode, 2))['outcome'])
+
+    def test_unknown_wait_deletes_then_continues(self):
+        self.prepare()
+        self.fake.responses[self.wait('loadgen')] = (124, '')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+        calls = [tuple(c[0]) for c in self.fake.calls]
+        index = calls.index(self.delete('loadgen'))
+        self.assertEqual(self.confirm('loadgen'), calls[index + 1])
+        self.assertEqual(15, len(self.records()))
+        self.assertEqual('unknown', self.records()[1]['outcome'])
+
+    def test_safety_stop(self):
+        self.prepare()
+        self.fake.responses[self.wait('loadgen')] = (124, '')
+        self.fake.responses[self.confirm('loadgen')] = (0, '{"items": [{"metadata": {"name": "p"}}]}')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+            before = len(self.fake.calls)
+            self.assertEqual(1, self.main('judge'))
+            self.assertEqual(before, len(self.fake.calls))
+        self.assertEqual(['complete', 'unknown'] + ['not_attempted'] * 14, [r['outcome'] for r in self.records()])
+        self.assertEqual(self.name('judge', None), self.records()[-1]['job'])
+        self.assertEqual(2, sum(c[0][0] == 'helm' for c in self.fake.calls))
+
+    def test_render_failures(self):
+        for code, text in [(1, ''), (0, 'kind: Job\nkind: Job\n  name: "{name}"\n  activeDeadlineSeconds: 750\n'), (0, 'kind: Job\n  activeDeadlineSeconds: 750\n'), (0, 'kind: Job\n  name: "{name}"\n  activeDeadlineSeconds: 0\n')]:
+            with self.subTest(code=code, text=text):
+                self.prepare()
+                self.fake = ScriptedCommands()
+                name = self.name('verify', 3)
+                args = ('helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(self.private / f'values-{name}.json'))
+                self.fake.responses[args] = (code, text.format(name=name))
+                with self.mocked():
+                    self.assertEqual(1, self.main('run-repeats'))
+                self.assertEqual(15, len(self.records()))
+                self.assertEqual('render_failed', self.records()[8]['outcome'])
+                self.assertFalse(any(c[0][:2] == ['kubectl', 'apply'] and name in c[0][3] for c in self.fake.calls))
+
+    def test_apply_failure_deletes(self):
+        self.prepare()
+        args = ('kubectl', 'apply', '-f', str(self.private / f'rendered-{self.name("start-line")}.yaml'), '--request-timeout=30s')
+        self.fake.responses[args] = (1, '')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+        calls = [tuple(c[0]) for c in self.fake.calls]
+        self.assertNotIn(self.wait('start-line'), calls)
+        self.assertIn(self.delete('start-line'), calls)
+        self.assertIn(self.confirm('start-line'), calls)
+        self.assertEqual(15, len(self.records()))
+        self.assertEqual('apply_failed', self.records()[0]['outcome'])
+
+    def test_collect_codes(self):
+        self.prepare()
+        self.fake.responses[self.collect('start-line')] = (1, '')
+        with self.mocked():
+            self.assertEqual(0, self.main('run-repeats'))
+        self.assertTrue(self.records()[0]['collect_gap'])
+        self.prepare()
+        self.fake = ScriptedCommands()
+        self.fake.responses[self.collect('start-line')] = (2, '')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+        self.assertEqual('collect_error', self.records()[0]['outcome'])
+
+    def test_judge_failed_is_recorded(self):
+        self.prepare()
+        self.fake.responses[self.wait('judge', None)] = (1, '')
+        with self.mocked():
+            self.assertEqual(0, self.main('judge'))
+        self.assertEqual('failed', self.records()[0]['outcome'])
+
+    def test_candidate_gates(self):
+        for gate in ('pass', 'untestable_at_build_scale', 'inconclusive'):
+            with self.subTest(gate=gate):
+                self.prepare('probe')
+                self.output_file.write_text('')
+                self.fake.download = (json.dumps(self.candidate(gate), indent=2) + '\n').encode()
+                with self.mocked():
+                    self.assertEqual(0, self.main('candidate'))
+                self.assertEqual(self.fake.download, (self.candidate_dir / 'candidate.json').read_bytes())
+                self.assertEqual(f'full_allowed={str(gate == "pass").lower()}\n', self.output_file.read_text())
+
+    def test_candidate_rejections(self):
+        self.prepare('probe')
+        base = self.candidate()
+        cases = [('duplicate', b'{"a":1,"a":2}'), ('constant', b'{"a": NaN}')]
+        for key, value in [('schema_version', True), ('schema_version', 2), ('synthetic', False), ('run_id', 'wrong'), ('phase', 'C3'), ('configuration_id', 'C3'), ('source_commit', 'f' * 40), ('image_digests', {**DIGESTS, 'loadgen': 'sha256:' + 'd' * 64}), ('image_digests', {**DIGESTS, 'extra': 'x'}), ('repeats', base['repeats'][:4]), ('repeats', [base['repeats'][i] for i in (0, 1, 2, 4, 3)]), ('status', 'complete')]:
+            cases.append((key, json.dumps({**base, key: value}).encode()))
+        cases.extend([('C0 gate', json.dumps({**base, 'phase': 'C0'}).encode()), ('oversize', b' ' * 16777217)])
+        for label, content in cases:
+            with self.subTest(case=label):
+                self.output_file.write_text('')
+                self.fake.download = content
+                self.delays.clear()
+                if label == 'C0 gate':
+                    state = json.loads((self.private / 'phase.json').read_text())
+                    state['phase'] = 'C0'
+                    (self.private / 'phase.json').write_text(json.dumps(state))
+                with self.mocked():
+                    self.assertEqual(1, self.main('candidate'))
+                self.assertEqual('full_allowed=false\n', self.output_file.read_text())
+                self.assertFalse((self.candidate_dir / 'candidate.json').exists())
+                self.assertEqual([], self.delays)
+
+    def test_candidate_retry(self):
+        self.prepare('probe')
+        self.fake.download = json.dumps(self.candidate()).encode()
+        self.fake.properties = [(1, '')]
+        with self.mocked():
+            self.assertEqual(0, self.main('candidate'))
+        self.assertEqual([1], self.delays)
+
+    def test_candidate_exhausted(self):
+        self.prepare('probe')
+        self.fake.download = json.dumps(self.candidate()).encode()
+        self.fake.properties = [(0, json.dumps({'etag': 'synthetic', 'contentLength': len(self.fake.download) + 1}))] * 3
+        with self.mocked():
+            self.assertEqual(1, self.main('candidate'))
+        self.assertEqual([1, 2], self.delays)
+        self.assertFalse((self.candidate_dir / 'candidate.json').exists())
+        self.fake.calls.clear()
+        self.delays.clear()
+        self.fake.properties = [(0, '{"etag": "synthetic", "contentLength": 16777217}')]
+        with self.mocked():
+            self.assertEqual(1, self.main('candidate'))
+        self.assertEqual([], self.delays)
+        self.assertFalse(any(c[0][:4] == ['az', 'storage', 'blob', 'download'] for c in self.fake.calls))
+
+    def test_publish_images_argv(self):
+        self.prepare('probe')
+        with self.mocked():
+            self.assertEqual(0, self.main('publish-images'))
+        expected = [['az', 'acr', 'login', '--name', 'parchwellacr']]
+        for worker, project in [('loadgen', 'LoadGen'), ('verifier', 'Verifier')]:
+            expected.extend([['dotnet', 'publish', f'src/Parchwell.{project}/Parchwell.{project}.csproj', '--configuration', 'Release', '-p:RestoreLockedMode=true', '-p:NuGetLockFilePath=packages.linux-x64.lock.json', '-r', 'linux-x64', '--self-contained', 'false', '/t:PublishContainer', '-p:ContainerRegistry=parchwellacr.azurecr.io', '-p:ContainerImageTag=' + SHA], ['az', 'acr', 'repository', 'show', '--name', 'parchwellacr', '--image', f'parchwell/{worker}:{SHA}', '--query', 'digest', '--output', 'tsv']])
+        self.assertEqual(expected, [c[0] for c in self.fake.calls])
+        self.assertEqual(f'loadgen_digest={DIGESTS["loadgen"]}\nverifier_digest={DIGESTS["verifier"]}\n', self.output_file.read_text())
+        self.fake.responses[tuple(expected[2])] = (0, 'sha256:XYZ\n')
+        with self.mocked():
+            self.assertEqual(1, self.main('publish-images'))
+
+    def test_use_images(self):
+        self.prepare()
+        with self.mocked():
+            self.assertEqual(2, self.main('use-images', 'sha256:' + 'b' * 63, DIGESTS['verifier']))
+            self.assertEqual([], self.fake.calls)
+            self.assertEqual(0, self.main('use-images', DIGESTS['loadgen'], DIGESTS['verifier']))
+        state = json.loads((self.private / 'phase.json').read_text())
+        self.assertEqual('parchwellacr.azurecr.io/parchwell/loadgen@' + DIGESTS['loadgen'], state['images']['loadgen']['reference'])
+        self.assertEqual('parchwellacr.azurecr.io/parchwell/verifier@' + DIGESTS['verifier'], state['images']['verifier']['reference'])
+        self.fake.responses[tuple(self.fake.calls[0][0])] = (0, DIGESTS['verifier'])
+        with self.mocked():
+            self.assertEqual(1, self.main('use-images', DIGESTS['loadgen'], DIGESTS['verifier']))
+
+    def test_check_dns(self):
+        for code, response, expected in [(0, '["10.0.0.4"]', 0), (0, '["10.0.0.4", "20.1.1.1"]', 1), (124, '', 1)]:
+            with self.subTest(code=code, response=response):
+                self.prepare()
+                self.fake = ScriptedCommands()
+                self.fake.responses[(os.sys.executable, 'infra/scripts/phase/phase.py', 'resolve', 'eh-synthetic.servicebus.windows.net')] = (code, response)
+                with self.mocked():
+                    self.assertEqual(expected, self.main('check-dns'))
+
+    def test_delete_workload_argv(self):
+        self.prepare()
+        with self.mocked():
+            self.assertEqual(0, self.main('delete-workload'))
+        self.assertEqual([['kubectl', 'delete', 'jobs', '-n', 'parchwell', '-l', f'app.kubernetes.io/instance={self.run_id}', '--ignore-not-found', '--wait=false', '--request-timeout=30s']], [c[0] for c in self.fake.calls])
+
+    def test_report(self):
+        os.environ.update(STEP_RESULTS=json.dumps({'guard': {'outcome': 'success'}, 'stop': {'outcome': 'success'}}, indent=2), JOB_STATUS='success', REQUIRED_STEPS='guard stop', WORKLOAD_STEPS='destroy', WORKLOAD='false', PARCHWELL_PHASE='C3')
+        self.assertEqual(0, self.main('report'))
+        os.environ.update(STEP_RESULTS=json.dumps({'guard': {'outcome': 'success'}, 'stop': {'outcome': 'success'}, 'destroy': {'outcome': 'failure'}}), WORKLOAD='true')
+        self.assertEqual(1, self.main('report'))
+        self.assertIn('destroy: failure', self.summary_file.read_text())
+
+    def test_real_chart(self):
+        for selected, configuration in [('probe', 'C0'), ('C0', 'C0'), ('C3', 'C3')]:
+            self.prepare(selected, run='synthetic-c6')
+            for mode in ('start-line', 'loadgen', 'verify', 'judge'):
+                with self.subTest(phase=selected, mode=mode):
+                    repeat = None if mode == 'judge' else 1
+                    self.assertEqual(DEADLINES[mode], phase.Phase().render(mode, repeat))
+                    text = (self.private / f'rendered-{self.name(mode, repeat)}.yaml').read_text()
+                    self.assertIn(f'  name: "synthetic-c6-{selected.lower()}-' + ('judge"' if mode == 'judge' else f'r1-{mode}"'), text)
+                    self.assertIn(f'  activeDeadlineSeconds: {DEADLINES[mode]}', text)
+                    if selected == 'C3' and mode == 'judge':
+                        self.assertRegex(text, r'- name: "Verifier__CandidateOutputName"\s+value: "synthetic-c6/C3/candidate.json"')
+                    if selected == 'C0' and mode == 'loadgen':
+                        self.assertRegex(text, r'- name: "LoadGen__ArtifactPrefix"\s+value: "synthetic-c6/C0/r1/producer/"')
+
+
+if __name__ == '__main__':
+    unittest.main()
