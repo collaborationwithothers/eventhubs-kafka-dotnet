@@ -1,10 +1,10 @@
 # Documentation checks
 
-Install dependencies with `npm ci --ignore-scripts`, then run `npm run check:docs` before every cold review as required by AGENTS.md rule 8. Fix each warning or explain in the pull request why it stands; warnings remain advisory in CI. A completed scan does not establish that factual claims are correct or that every possible documentation error was checked.
+Install dependencies with `npm ci --ignore-scripts`, then run `npm run check:docs` before every cold review as required by AGENTS.md rule 8. Handle warning dispositions under AGENTS.md "Before opening a pull request" rule 8; warnings remain advisory in CI. A completed scan does not establish that factual claims are correct or that every possible documentation error was checked.
 
 ## Contract
 
-The command scans tracked files with a `.md` extension, ignoring case, except third-party skill directories listed in `skills-lock.json`. Stage a new document before running the command. Markdown is parsed by remark with its GitHub-flavoured Markdown plugin; we do not maintain a Markdown parser.
+The command scans tracked files with a `.md` extension, ignoring case, except third-party skill directories listed in `skills-lock.json` and paths matching `docs/operations/evidence/**/raw/**`. In that pattern, `**` permits zero or more directory segments; path components are case-sensitive. Raw captures are third-party text kept verbatim as evidence, so they must not be edited to clear warnings. Authored Markdown beside a `raw/` directory remains in the scan. Stage a new document before running the command. Markdown is parsed by remark with its GitHub-flavoured Markdown plugin; we do not maintain a Markdown parser.
 
 | Check | Supported input | Finding |
 |---|---|---|
@@ -31,7 +31,7 @@ The checkout is the input. After installing the locked dependencies, the check n
 
 ## Rollout and review
 
-The `docs-advisory` workflow runs the same command and the regression tests. It is not a required status check. Warnings do not fail the CI job; authors must still fix or explain each warning before the cold review under AGENTS.md rule 8. Installation, test and execution failures remain failures.
+The `docs-advisory` workflow runs the same command and the regression tests. It is not a required status check. Warnings do not fail the CI job; authors must still handle warning dispositions before the cold review under AGENTS.md "Before opening a pull request" rule 8. Installation, test and execution failures remain failures.
 
 Assess findings against this contract. Correct a defect within the supported inputs, record a justified follow-up on the issue, or identify an unsupported input. New capabilities require a scope decision. Do not grow the parser or interpret more prose merely to clear another review comment.
 

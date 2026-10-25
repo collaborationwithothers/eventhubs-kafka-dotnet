@@ -31,6 +31,8 @@ Each finding's location is a line the diff adds, removes or changes; unchanged f
 
 `P0|P1|P2  path:line  rule (document and section)  what is wrong  evidence`
 
-Severity follows AGENTS.md "Code Review Rules". Anything else that breaks a binding rule is P1. Wording or clarity is P2. The diff does not show pull request labels, so raise a rule that depends on a label as if the label were absent; AGENTS.md "Before opening a pull request" rule 8 says how the author handles it.
+Severity follows AGENTS.md "Code Review Rules". Anything else that breaks a binding rule is P1. Apply AGENTS.md "Code Review Rules" for the P2 reporting bar. The diff does not show pull request labels, so raise a rule that depends on a label as if the label were absent; AGENTS.md "Before opening a pull request" rule 8 says how the author handles it.
+
+Apply AGENTS.md "Before opening a pull request" rule 8 for the reporting mode of the additional cold-review round.
 
 After the findings, write exactly one result line: `Findings: none at P0 or P1` or `Findings: <n> at P0 or P1`. Below it, list problems you noticed in unchanged lines under `Pre-existing (not blocking):`.
