@@ -71,6 +71,42 @@ public sealed class JudgeHandlerTests
         Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),reason=>reason.GetString()=="j7_counts_unavailable");
     }
 
+    [Theory]
+    [InlineData("source")]
+    [InlineData("identity")]
+    [InlineData("exit-status")]
+    public async Task GivenResultDoesNotBindToVerifierReceipt_WhenJudged_ThenDoesNotTrustItsStatus(string mismatch)
+    {
+        PhaseStores stores = await BuildFiveRepeats("C0", null);
+        string resultName = PhasePaths.Result("synthetic-c5", "C0", 1);
+        JsonObject result = JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+        string receiptName = PhasePaths.VerifyCompletion("synthetic-c5", "C0", 1);
+        JsonObject receipt = JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        if (mismatch == "source") result["verifier_commit"] = new string('b', 40);
+        if (mismatch == "identity") result["identity"]!["instance_id"] = "foreign-instance";
+        if (mismatch == "exit-status")
+        {
+            result["status"] = "invalid";
+            receipt["handler_exit_code"] = 0;
+        }
+        byte[] resultBytes = Encoding.UTF8.GetBytes(result.ToJsonString());
+        stores.Verifier[resultName] = resultBytes;
+        UpdateReference(receipt["artifacts"]![0]!.AsObject(), resultName, resultBytes);
+        stores.Verifier[receiptName] = Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier = new MemoryVerifierStore(stores.Verifier);
+        var handler = new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()), verifier,
+            new MemoryProducerStore(stores.Ledger), TimeProvider.System);
+
+        int exit = await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, exit);
+        using JsonDocument candidate = JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat = candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete", repeat.GetProperty("status").GetString());
+        Assert.Contains("j3_verifier_receipt", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+        Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+    }
+
     [Fact]
     public async Task GivenMalformedInventoryWithMatchingReceipts_WhenJudged_ThenRejectsStartEvidence()
     {

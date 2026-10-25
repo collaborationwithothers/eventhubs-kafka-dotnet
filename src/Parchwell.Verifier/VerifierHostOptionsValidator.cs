@@ -44,7 +44,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             ValidateContainerName(options.LedgerContainer, "Verifier:LedgerContainer", errors);
             if(mode is VerifierMode.StartLine or VerifierMode.Verify)
             {
-                RequireText(options.PodName, "PARCHWELL_POD_NAME", errors);
+                ValidatePodName(options.PodName, errors);
                 RequireText(options.VerifierClientId, "Verifier:VerifierClientId", errors);
                 RequireText(options.NamespaceName, "Verifier:NamespaceName", errors);
             }
@@ -60,7 +60,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             }
             if (mode == VerifierMode.Judge)
             {
-                RequireText(options.PodName, "PARCHWELL_POD_NAME", errors);
+                ValidatePodName(options.PodName, errors);
                 RequireText(options.CandidateOutputName, "Verifier:CandidateOutputName", errors);
                 if(options.RunId is not null&&(options.Phase is "probe" or "C0" or "C3")&&Common.Phase.PhaseIdentity.IsRunId(options.RunId)&&
                     options.CandidateOutputName!=Common.Phase.PhasePaths.Candidate(options.RunId,options.Phase))
@@ -189,9 +189,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.NamespaceName, "Verifier:NamespaceName", errors);
         RequireAbsoluteUri(options.BlobServiceUri, "Verifier:BlobServiceUri", errors);
         ValidateContainerName(options.VerifierContainer, "Verifier:VerifierContainer", errors);
-        RequireText(options.PodName, "PARCHWELL_POD_NAME", errors);
-        if(options.PodName is { } podName && (podName.Length>253||podName.Contains('/')||podName.Any(char.IsControl)))
-            errors.Add("PARCHWELL_POD_NAME must be bounded text without slash or control characters.");
+        ValidatePodName(options.PodName, errors);
         RequireText(options.TenantId, "Verifier:TenantId", errors);
         RequireText(options.WorkloadIdentityClientId, "Verifier:WorkloadIdentityClientId", errors);
         RequireText(options.FederatedTokenFilePath, "Verifier:FederatedTokenFilePath", errors);
@@ -200,6 +198,13 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         AddPositive(options.WatermarkTimeout, "Verifier:WatermarkTimeout", errors, requiredBudgets);
         AddPositive(options.PollSlice, "Verifier:PollSlice", errors, null);
         AddPositive(options.BlobIoTimeout, "Verifier:BlobIoTimeout", errors, requiredBudgets);
+    }
+
+    private static void ValidatePodName(string? podName, List<string> errors)
+    {
+        RequireText(podName, "PARCHWELL_POD_NAME", errors);
+        if (podName is { } value && (value.Length > 253 || value.Contains('/') || value.Any(char.IsControl)))
+            errors.Add("PARCHWELL_POD_NAME must be bounded text without slash or control characters.");
     }
 
     private static void ValidateC5Identity(VerifierHostOptions options, VerifierMode mode, List<string> errors)

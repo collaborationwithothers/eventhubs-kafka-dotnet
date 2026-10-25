@@ -147,8 +147,13 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             bool same=registration is not null&&result.Identity==registration.Identity;
                             receiptValid&=same;
                             publicationAccepted&=same;
-                            if(result.Status==VerifierResultStatus.Invalid)knownInvalid=true;
-                            if(result.Status==VerifierResultStatus.Incomplete)trustedIncomplete=true;
+                            // J3 binds the result to the verifier receipt and registered producer.
+                            // Once that binding fails, its status and check projections are untrusted.
+                            if(receiptValid)
+                            {
+                                if(result.Status==VerifierResultStatus.Invalid)knownInvalid=true;
+                                if(result.Status==VerifierResultStatus.Incomplete)trustedIncomplete=true;
+                            }
                             // Probe evidence has an independent authorization path: a
                             // message-only invalid result can still carry a usable,
                             // accepted throttle observation. Counts remain status-gated.
@@ -165,7 +170,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             }
                             if(result.Status==VerifierResultStatus.CompleteValid)counts=result.Counts;
                             bool inventoryFailed=result.FailedChecks.Contains(24);
-                            if((inventoryCoverage==true&&inventoryFailed)||(inventoryCoverage==false&&!inventoryFailed))
+                            if(receiptValid && ((inventoryCoverage==true&&inventoryFailed)||(inventoryCoverage==false&&!inventoryFailed)))
                             {
                                 knownInvalid=true;
                                 inventoryCoverage=false;

@@ -25,6 +25,8 @@ namespace Parchwell.Verifier.Tests.Host;
 public sealed class VerifierHostTests
 {
     private static readonly string[] AllModes = ["start-line", "verify", "probe-gate"];
+    private static readonly string[] C5Modes = ["start-line", "verify", "judge"];
+    private static readonly string[] InvalidPodNameValues = ["bad/name", new string('p', 254), "bad\u0001name"];
     private static readonly string[] SharedRequiredOptions =
     [
         "ScenarioId", "VerifierCommit", "SourceCommit", "ProcessLifetime", "CleanupTimeout", "MaxOutputBytes",
@@ -170,6 +172,36 @@ public sealed class VerifierHostTests
 
         Assert.False(result.Succeeded);
         Assert.Contains(result.Failures!, failure => failure.Contains("ScenarioId must be A01", StringComparison.Ordinal));
+    }
+
+    public static IEnumerable<object[]> InvalidPodNames =>
+        InvalidPodNameValues.SelectMany(value => C5Modes.Select(mode => new object[] { mode, value }));
+
+    [Theory]
+    [MemberData(nameof(InvalidPodNames))]
+    public void Given_InvalidPodName_When_C5ModeValidated_Then_RejectsBeforeIo(string mode, string podName)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        options.PodName = podName;
+
+        ValidateOptionsResult result = new VerifierHostOptionsValidator().Validate(null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Failures!, failure => failure.Contains("PARCHWELL_POD_NAME must be bounded text", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("start-line")]
+    [InlineData("verify")]
+    [InlineData("judge")]
+    public void Given_MaximumLengthPodName_When_C5ModeValidated_Then_AcceptsThePodName(string mode)
+    {
+        VerifierHostOptions options = ValidOptions(mode);
+        options.PodName = new string('p', 253);
+
+        ValidateOptionsResult result = new VerifierHostOptionsValidator().Validate(null, options);
+
+        Assert.DoesNotContain(result.Failures ?? [], failure => failure.Contains("PARCHWELL_POD_NAME", StringComparison.Ordinal));
     }
 
     [Theory]
