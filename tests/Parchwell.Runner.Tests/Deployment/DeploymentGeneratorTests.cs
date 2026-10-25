@@ -114,14 +114,7 @@ public sealed class DeploymentGeneratorTests
         }
         Dictionary<string, string> env = result.Runtime.GetProperty("loadgen_environment")
             .Deserialize<Dictionary<string, string>>()!;
-        // The Runner values do not own repeat-specific Job fields. The chart Job sets them.
-        env["LoadGen__Phase"] = phase;
-        env["LoadGen__JobName"] = $"synthetic-a01-r1-{phase.ToLowerInvariant()}-r1-loadgen";
-        env["LoadGen__PodUid"] = "synthetic-pod-uid";
-        env["LoadGen__RepeatNumber"] = "1";
-        foreach (string property in new[] { "ExpectedInstanceId", "ActualInstanceId", "PodName", "ClientId" })
-            env["LoadGen__" + property] = "synthetic-producer-pod";
-        env["LoadGen__ApplicationInsightsConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000001";
+        AddSyntheticWorkerInputs(env, phase);
         env["LoadGen__ScenarioSourceRoot"] = DeploymentFixture.RepositoryRoot;
         string[] args = env.SelectMany(pair => new[]
         {
@@ -150,13 +143,22 @@ public sealed class DeploymentGeneratorTests
     {
         using var fixture = new DeploymentFixture();
         DeploymentFiles files = await fixture.GenerateAsync("C0");
-        JsonElement env = files.Runtime.GetProperty("loadgen_environment");
+        Dictionary<string, string> env = files.Runtime.GetProperty("loadgen_environment")
+            .Deserialize<Dictionary<string, string>>()!;
+        AddSyntheticWorkerInputs(env, "C0");
         foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties().Where(property => property.CanWrite))
-            if (property.Name is not (nameof(LoadGenHostOptions.Phase) or nameof(LoadGenHostOptions.JobName) or nameof(LoadGenHostOptions.PodUid)
-                or nameof(LoadGenHostOptions.ExpectedInstanceId) or nameof(LoadGenHostOptions.ActualInstanceId) or nameof(LoadGenHostOptions.PodName)
-                or nameof(LoadGenHostOptions.ClientId) or nameof(LoadGenHostOptions.ApplicationInsightsConnectionString)
-                or nameof(LoadGenHostOptions.RepeatNumber)))
-                Assert.True(env.TryGetProperty("LoadGen__" + property.Name, out _), "Missing LoadGen option: " + property.Name);
+            Assert.True(env.ContainsKey("LoadGen__" + property.Name), "Missing LoadGen option: " + property.Name);
+    }
+
+    private static void AddSyntheticWorkerInputs(Dictionary<string, string> env, string phase)
+    {
+        env["LoadGen__Phase"] = phase;
+        env["LoadGen__JobName"] = $"synthetic-a01-r1-{phase.ToLowerInvariant()}-r1-loadgen";
+        env["LoadGen__PodUid"] = "synthetic-pod-uid";
+        env["LoadGen__RepeatNumber"] = "1";
+        foreach (string property in new[] { "ExpectedInstanceId", "ActualInstanceId", "PodName", "ClientId" })
+            env["LoadGen__" + property] = "synthetic-producer-pod";
+        env["LoadGen__ApplicationInsightsConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000001";
     }
 
     [Fact]
