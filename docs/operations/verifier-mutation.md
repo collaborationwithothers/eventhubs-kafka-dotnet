@@ -25,7 +25,7 @@ The controller recorded identical source hashes before and after both invocation
 | `src/Parchwell.Verifier/Judge/PhaseJudge.cs` | `3183501bd8cedfe231180a45d969b01c263de4d64e144483b3f7a0c37b2bb0a7` |
 | `src/Parchwell.Verifier/VerifyRun/Publication/PublicationAcceptance.cs` | `5e2e87d40867e704b62fea40f87f4465ab0ab724ed2b730bde3f1d646634b93f` |
 | `src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs` | `d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806` |
-| `src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs` | `065cde4de7cd27b41946b665121589f9e5b333f0d6c481483b3f4d2a4cc082f808` |
+| `src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs` | `065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808` |
 | `tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj` | `e293c52fea0ef8b52cf4daa25937ffe1db80550d49447350b0a70d39bb30f32e` |
 | `tests/Parchwell.Verifier.Tests/stryker-config.json` | `717fdb77e46ce51c4bf8f119f1acb59b4a15449a5a24e63fa0861b98c51ae95e` |
 | `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` | `4ecc1d0f8203c21463ee8924d2d060ec5a3bce54ede32e685fb57e0d48a12900` |
