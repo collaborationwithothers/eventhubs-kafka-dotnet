@@ -32,6 +32,7 @@ internal static partial class PhaseWireCodec
         using JsonDocument document = Parse(bytes);
         JsonElement root = document.RootElement; Exact(root, RegistrationFields);
         var value = new ProducerRegistration(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"));
+        ValidateUntrustedCoordinates(value.Phase, value.RepeatNumber, "Registration");
         ValidateRegistration(value);
         return value;
     }
@@ -48,13 +49,7 @@ internal static partial class PhaseWireCodec
     {
         using JsonDocument document = Parse(bytes); JsonElement root = document.RootElement; Exact(root, ProducerCompletionFields);
         var value = new ProducerCompletionReceipt(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"), Str(root, "mode"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"));
-        try { PhaseIdentity.ValidatePhase(value.Phase); }
-        catch (ArgumentException ex)
-        {
-            // This value came from untrusted producer evidence. Keep malformed
-            // coordinates inside the normal evidence rejection path.
-            throw new PhaseWireIdentityException($"Producer completion receipt has an unsupported phase: {ex.Message}");
-        }
+        ValidateUntrustedCoordinates(value.Phase, value.RepeatNumber, "Producer completion receipt");
         if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
             value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
             throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");
@@ -89,19 +84,25 @@ internal static partial class PhaseWireCodec
         if (artifacts.ValueKind != JsonValueKind.Array) throw new FormatException("Receipt artifacts must be an array.");
         var refs = artifacts.EnumerateArray().Select(ReadReference).ToArray();
         var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks);
+        ValidateUntrustedCoordinates(receipt.Phase, receipt.Repeat, "Receipt");
+        try { ValidateReceipt(receipt); }
+        catch (ArgumentException ex) { throw new PhaseWireIdentityException($"Receipt identity is invalid: {ex.Message}"); }
+        return receipt;
+    }
+
+    private static void ValidateUntrustedCoordinates(string phase, int? repeat, string subject)
+    {
         try
         {
-            ValidateReceipt(receipt);
+            PhaseIdentity.ValidatePhase(phase);
+            if (repeat is int value) PhaseIdentity.ValidateRepeat(value);
         }
         catch (ArgumentException ex)
         {
-            // The shared identity helpers use argument exceptions for callers
-            // constructing values. At this boundary the values came from an
-            // untrusted receipt, so malformed phase/repeat coordinates are
-            // malformed wire data and must remain inside the evidence path.
-            throw new FormatException("Receipt phase or repeat coordinate is invalid.", ex);
+            // Shared identity helpers use argument exceptions for trusted
+            // callers. At this wire boundary the fields are untrusted.
+            throw new PhaseWireIdentityException($"{subject} phase or repeat coordinate is invalid: {ex.Message}");
         }
-        return receipt;
     }
 
     private static void WriteReceiptJson(Utf8JsonWriter w, WorkerReceipt r)

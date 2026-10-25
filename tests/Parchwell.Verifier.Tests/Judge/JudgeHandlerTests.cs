@@ -54,6 +54,59 @@ public sealed class JudgeHandlerTests
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
     }
 
+    [Theory]
+    [InlineData("registration","phase","foreign")]
+    [InlineData("registration","repeat","0")]
+    [InlineData("registration","repeat","6")]
+    [InlineData("producer-completion","phase","foreign")]
+    [InlineData("producer-completion","repeat","0")]
+    [InlineData("producer-completion","repeat","6")]
+    [InlineData("start-line","phase","foreign")]
+    [InlineData("start-line","repeat","0")]
+    [InlineData("start-line","repeat","6")]
+    [InlineData("verify","phase","foreign")]
+    [InlineData("verify","repeat","0")]
+    [InlineData("verify","repeat","6")]
+    public async Task GivenUnsupportedWireCoordinate_WhenJudged_ThenRecordsFailureAndStillWritesCandidate(string reader,string field,string value)
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        const int repeat=1;
+        bool producer=reader is "registration" or "producer-completion";
+        string name=reader switch
+        {
+            "registration"=>PhasePaths.Registration("synthetic-c5","C0",repeat,"pod-c5"),
+            "producer-completion"=>PhasePaths.ProducerCompletion("synthetic-c5","C0",repeat,"pod-c5"),
+            "start-line"=>PhasePaths.StartLineCompletion("synthetic-c5","C0",repeat),
+            _=>PhasePaths.VerifyCompletion("synthetic-c5","C0",repeat)
+        };
+        Dictionary<string,byte[]> objects=producer?stores.Ledger:stores.Verifier;
+        JsonObject malformed=JsonNode.Parse(objects[name])!.AsObject();
+        if(field=="phase") malformed[field]=value;
+        else malformed[reader=="registration"?"repeat_number":"repeat"]=int.Parse(value,System.Globalization.CultureInfo.InvariantCulture);
+        objects[name]=Encoding.UTF8.GetBytes(malformed.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        Assert.NotNull(verifier.Created);
+        Assert.Equal("synthetic-c5/C0/candidate.json",verifier.CreatedName);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement judged=candidate.RootElement.GetProperty("repeats")[repeat-1];
+        string? status=judged.GetProperty("status").GetString();
+        Assert.True(status is "invalid" or "incomplete");
+        string failedCheck=reader switch
+        {
+            "registration"=>"j5_registered_producer_count",
+            "producer-completion"=>"j2_publication_unaccepted",
+            "start-line"=>"j4_producer_job_binding",
+            _=>"j3_verifier_receipt"
+        };
+        Assert.False(judged.GetProperty("checks").GetProperty(failedCheck).GetBoolean());
+        Assert.Contains(failedCheck,judged.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
+    }
+
     [Fact]
     public async Task GivenActualRepeatCountsOverflow_WhenJudged_ThenOmitsPhaseTotals()
     {

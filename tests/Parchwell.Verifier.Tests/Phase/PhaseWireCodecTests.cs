@@ -129,6 +129,32 @@ public sealed class PhaseWireCodecTests
     }
 
     [Theory]
+    [InlineData("phase","foreign")]
+    [InlineData("repeat_number","0")]
+    [InlineData("repeat_number","6")]
+    public void GivenRegistrationWithUnsupportedCoordinate_When_Read_Then_ReportsWireIdentityFailure(string field,string value)
+    {
+        var identity=new RunIdentity("A01","C0","synthetic-c5","pod-c5","pod-c5","producer-c5");
+        byte[] valid=PhaseWireCodec.WriteRegistration(new(1,identity,"C0",1,"synthetic-c5-c0-r1-loadgen","pod-c5","uid-c5",new string('a',40)));
+        JsonObject json=JsonNode.Parse(valid)!.AsObject();
+        json[field]=field=="repeat_number"?JsonValue.Create(int.Parse(value,System.Globalization.CultureInfo.InvariantCulture)):JsonValue.Create(value);
+        Assert.Throws<PhaseWireIdentityException>(()=>PhaseWireCodec.ReadRegistration(Encoding.UTF8.GetBytes(json.ToJsonString())));
+    }
+
+    [Theory]
+    [InlineData("phase","foreign")]
+    [InlineData("repeat_number","0")]
+    [InlineData("repeat_number","6")]
+    public void GivenProducerCompletionWithUnsupportedCoordinate_When_Read_Then_ReportsWireIdentityFailure(string field,string value)
+    {
+        var identity=new RunIdentity("A01","C0","synthetic-c5","pod-c5","pod-c5","producer-c5");
+        byte[] valid=PhaseWireCodec.WriteProducerCompletion(new(1,identity,"C0",1,"synthetic-c5-c0-r1-loadgen","pod-c5","uid-c5",new string('a',40),"loadgen",0,true));
+        JsonObject json=JsonNode.Parse(valid)!.AsObject();
+        json[field]=field=="repeat_number"?JsonValue.Create(int.Parse(value,System.Globalization.CultureInfo.InvariantCulture)):JsonValue.Create(value);
+        Assert.Throws<PhaseWireIdentityException>(()=>PhaseWireCodec.ReadProducerCompletion(Encoding.UTF8.GetBytes(json.ToJsonString())));
+    }
+
+    [Theory]
     [InlineData(65_535,true)]
     [InlineData(65_536,true)]
     [InlineData(65_537,false)]
@@ -194,7 +220,7 @@ public sealed class PhaseWireCodecTests
             ? json.Replace("\"phase\":\"C0\"", $"\"phase\":\"{value}\"", StringComparison.Ordinal)
             : json.Replace("\"repeat\":1", $"\"repeat\":{value}", StringComparison.Ordinal);
 
-        Assert.Throws<FormatException>(() => PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
+        Assert.Throws<PhaseWireIdentityException>(() => PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
     }
 
     private static WorkerReceipt Receipt(ArtifactReference reference)=>new(1,"judge","A01","C0","synthetic-c5","C0",null,
