@@ -54,7 +54,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                 string[] registrationNames=producerListing.Names.Where(n=>n.EndsWith("/registration.json",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
                 registrationCount=producerListing.IsComplete && registrationNames.Length>1 ? false : null;
                 ProducerRegistration? registration=null;
-                if(registrationNames.Length==1)
+                if(registrationNames.Length==1 && TryGetRegistrationInstance(registrationNames[0],producersPrefix,out string? registeredInstance))
                 {
                     byte[]? registrationBytes=await Bounded(ct=>producer.ReadAsync(registrationNames[0],ct),options,clock,cancellationToken).ConfigureAwait(false);
                     if(registrationBytes is not null)
@@ -68,13 +68,19 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         if(registration is not null)
                         {
                             registrationCount=producerListing.IsComplete&&registrationNames.Length==1?true:null;
-                            string instance=registrationNames[0][producersPrefix.Length..^"/registration.json".Length];
+                            string instance=registeredInstance!;
                             jobBinding=registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
                                 registration.JobName==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&registration.Identity.InstanceId==instance&&
                                 registration.Identity.ExpectedInstanceId==instance&&registration.SourceCommit==options.SourceCommit;
                             identity=registration.Identity.InstanceId;
                         }
                     }
+                }
+                else if(registrationNames.Length==1)
+                {
+                    // A suffix match alone is not a registration path. Reject
+                    // malformed coordinates before slicing the instance name.
+                    registrationCount=false;
                 }
                 string startName=PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,i);
                 startBytes=await Bounded(ct=>verifier.ReadAsync(startName,ct),options,clock,cancellationToken).ConfigureAwait(false);
@@ -265,6 +271,20 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         if(image is null)return null;
         int at=image.LastIndexOf('@');
         return at<0?null:image[(at+1)..];
+    }
+
+    private static bool TryGetRegistrationInstance(string name,string producersPrefix,out string? instance)
+    {
+        instance=null;
+        if(!name.StartsWith(producersPrefix,StringComparison.Ordinal))return false;
+        string relative=name[producersPrefix.Length..];
+        const string suffix="/registration.json";
+        if(!relative.EndsWith(suffix,StringComparison.Ordinal))return false;
+        string candidate=relative[..^suffix.Length];
+        if(candidate.Length is 0 or >128||candidate.Contains('/',StringComparison.Ordinal)||
+            candidate.Any(c=>!(char.IsAsciiLetterOrDigit(c)||c is '-' or '_')))return false;
+        instance=candidate;
+        return true;
     }
 
     private static bool Matches(ArtifactReference reference,string container,string name,byte[]? bytes)=>

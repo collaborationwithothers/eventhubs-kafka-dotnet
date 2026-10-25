@@ -82,7 +82,7 @@ public sealed class JudgeHandlerTests
         Dictionary<string,byte[]> objects=producer?stores.Ledger:stores.Verifier;
         JsonObject malformed=JsonNode.Parse(objects[name])!.AsObject();
         if(field=="phase") malformed[field]=value;
-        else malformed[reader=="registration"?"repeat_number":"repeat"]=int.Parse(value,System.Globalization.CultureInfo.InvariantCulture);
+        else malformed[reader is "registration" or "producer-completion"?"repeat_number":"repeat"]=int.Parse(value,System.Globalization.CultureInfo.InvariantCulture);
         objects[name]=Encoding.UTF8.GetBytes(malformed.ToJsonString());
         var verifier=new MemoryVerifierStore(stores.Verifier);
         var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
@@ -105,6 +105,27 @@ public sealed class JudgeHandlerTests
         };
         Assert.False(judged.GetProperty("checks").GetProperty(failedCheck).GetBoolean());
         Assert.Contains(failedCheck,judged.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
+    }
+
+    [Fact]
+    public async Task GivenRegistrationAtMalformedProducerPath_WhenJudged_ThenRecordsJ5FailureAndStillWritesCandidate()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string validName=PhasePaths.Registration("synthetic-c5","C0",1,"pod-c5");
+        string malformedName=PhasePaths.ProducersPrefix("synthetic-c5","C0",1)+"registration.json";
+        stores.Ledger[malformedName]=stores.Ledger[validName];
+        stores.Ledger.Remove(validName);
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        Assert.NotNull(verifier.Created);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement judged=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.False(judged.GetProperty("checks").GetProperty("j5_registered_producer_count").GetBoolean());
+        Assert.Contains("j5_registered_producer_count",judged.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
     }
 
     [Fact]
