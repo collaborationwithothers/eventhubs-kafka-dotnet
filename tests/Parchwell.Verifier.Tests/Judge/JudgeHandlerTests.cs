@@ -71,12 +71,40 @@ public sealed class JudgeHandlerTests
         Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),reason=>reason.GetString()=="j7_counts_unavailable");
     }
 
+    [Fact]
+    public async Task GivenMalformedInventoryWithMatchingReceipts_WhenJudged_ThenRejectsStartEvidence()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        const int repeat=5;
+        string inventoryName=PhasePaths.BrokerInventory("synthetic-c5","C0",repeat);
+        byte[] malformed=Encoding.UTF8.GetBytes("{}");
+        stores.Verifier[inventoryName]=malformed;
+        string startReceiptName=PhasePaths.StartLineCompletion("synthetic-c5","C0",repeat);
+        JsonObject start=JsonNode.Parse(stores.Verifier[startReceiptName])!.AsObject();
+        UpdateReference(start["artifacts"]![1]!.AsObject(),inventoryName,malformed);
+        stores.Verifier[startReceiptName]=Encoding.UTF8.GetBytes(start.ToJsonString());
+        string verifyReceiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",repeat);
+        JsonObject verify=JsonNode.Parse(stores.Verifier[verifyReceiptName])!.AsObject();
+        UpdateReference(verify["publication_acceptance"]!["broker_inventory"]!.AsObject(),inventoryName,malformed);
+        stores.Verifier[verifyReceiptName]=Encoding.UTF8.GetBytes(verify.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
+        Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+    }
+
     [Theory]
     [InlineData("second-registration")]
     [InlineData("wrong-job")]
     [InlineData("incomplete-listing")]
     [InlineData("unavailable-producer-listing")]
     [InlineData("missing-registration")]
+    [InlineData("malformed-registration-phase")]
     [InlineData("missing-start-first")]
     [InlineData("missing-start-last")]
     [InlineData("missing-loadgen-first")]
@@ -101,6 +129,13 @@ public sealed class JudgeHandlerTests
             using JsonDocument original=JsonDocument.Parse(stores.Ledger[name]);
             JsonObject value=JsonNode.Parse(stores.Ledger[name])!.AsObject();
             value["job_name"]="wrong-job";
+            stores.Ledger[name]=Encoding.UTF8.GetBytes(value.ToJsonString());
+        }
+        if(mutation=="malformed-registration-phase")
+        {
+            string name=PhasePaths.Registration("synthetic-c5","probe",5,"pod-c5");
+            JsonObject value=JsonNode.Parse(stores.Ledger[name])!.AsObject();
+            value["phase"]="foreign";
             stores.Ledger[name]=Encoding.UTF8.GetBytes(value.ToJsonString());
         }
         if(mutation=="inventory-coverage")
@@ -212,6 +247,13 @@ public sealed class JudgeHandlerTests
         receipt["artifacts"]![0]!["length"]=bytes.LongLength;
         receipt["artifacts"]![0]!["sha256"]=Convert.ToHexStringLower(SHA256.HashData(bytes));
         stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+    }
+
+    private static void UpdateReference(JsonObject reference,string name,byte[] bytes)
+    {
+        reference["name"]=name;
+        reference["length"]=bytes.LongLength;
+        reference["sha256"]=Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
 
     private sealed record PhaseStores(Dictionary<string,byte[]> Verifier,Dictionary<string,byte[]> Ledger);

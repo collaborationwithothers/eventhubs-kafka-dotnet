@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
@@ -72,5 +73,40 @@ public sealed class PhaseWireCodecTests
         byte[] overLimit=[..atLimit,(byte)' '];
         Assert.Throws<InputLimitExceededException>(()=>PhaseWireCodec.ReadReceipt(overLimit));
     }
+
+    [Theory]
+    [InlineData(0,true)]
+    [InlineData(1,true)]
+    [InlineData(long.MaxValue,true)]
+    [InlineData(-1,false)]
+    public void Given_ArtifactReferenceLengthBoundary_When_Read_Then_EnforcesNonnegativeInt64(long length,bool accepted)
+    {
+        byte[] bytes=PhaseWireCodec.WriteReceipt(Receipt(new("verifier",PhasePaths.Candidate("synthetic-c5","C0"),length,new string('a',64))));
+        if(accepted) Assert.Equal(length,PhaseWireCodec.ReadReceipt(bytes).Artifacts[0].Length);
+        else Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadReceipt(bytes));
+    }
+
+    [Theory]
+    [InlineData(63,false)]
+    [InlineData(64,true)]
+    [InlineData(65,false)]
+    public void Given_ArtifactReferenceDigestLengthBoundary_When_Read_Then_RequiresSha256Width(int length,bool accepted)
+    {
+        byte[] bytes=PhaseWireCodec.WriteReceipt(Receipt(new("verifier",PhasePaths.Candidate("synthetic-c5","C0"),1,new string('a',length))));
+        if(accepted) Assert.Equal(64,PhaseWireCodec.ReadReceipt(bytes).Artifacts[0].Sha256.Length);
+        else Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadReceipt(bytes));
+    }
+
+    [Fact]
+    public void Given_ArtifactReferenceLengthBeyondInt64_When_Read_Then_Rejects()
+    {
+        byte[] valid=PhaseWireCodec.WriteReceipt(Receipt(new("verifier",PhasePaths.Candidate("synthetic-c5","C0"),1,new string('a',64))));
+        string json=Encoding.UTF8.GetString(valid).Replace("\"length\":1", "\"length\":9223372036854775808", StringComparison.Ordinal);
+        Assert.Throws<FormatException>(()=>PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
+    }
+
+    private static WorkerReceipt Receipt(ArtifactReference reference)=>new(1,"judge","A01","C0","synthetic-c5","C0",null,
+        PhaseIdentity.JudgeJobName("synthetic-c5","C0"),"judge-pod",null,new string('a',40),1,true,
+        "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",[reference],null,null);
 }
 #pragma warning restore CA1707

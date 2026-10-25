@@ -18,6 +18,73 @@ public sealed class VerifierResultCodecTests
     private static readonly OutputLimits OutputLimits = new(65_536, 8, 256);
     private static readonly string[] OutcomeCountNames = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
     private static readonly int[] FailedThreeAndEleven = [3, 11];
+
+    [Fact]
+    public void GivenWorkloadCountsMissingOrObservedZero_WhenRoundTripped_ThenPreservesAbsenceAndZero()
+    {
+        var absent=new WorkloadObservation(true,null,null,null,null,null,
+            [new("ramp100",0,0,null,null,null)]);
+        var zero=new WorkloadObservation(true,0,0,0,false,1,
+            [new("ramp100",0,0,0,0,0)]);
+        VerifierResult absentResult=RoundTrip(Result(VerifierResultStatus.Invalid) with { WorkloadObservation=absent });
+        VerifierResult zeroResult=RoundTrip(Result(VerifierResultStatus.Invalid) with { WorkloadObservation=zero });
+        Assert.Null(absentResult.WorkloadObservation!.PlannedAttempts);
+        Assert.Null(absentResult.WorkloadObservation.Stages![0].InvokedAttempts);
+        Assert.Equal(0,zeroResult.WorkloadObservation!.PlannedAttempts);
+        Assert.Equal(0,zeroResult.WorkloadObservation.Stages![0].InvokedAttempts);
+    }
+
+    [Theory]
+    [InlineData("\"planned_attempts\":-1")]
+    [InlineData("\"invoked_attempts\":-1")]
+    [InlineData("\"invoked_attempts\":9223372036854775808")]
+    [InlineData("\"terminal_observations\":-1")]
+    [InlineData("\"first_unexecuted_ordinal\":-1")]
+    public void GivenInvalidWorkloadCounts_WhenRead_ThenRejects(string field)
+    {
+        ParseResult<VerifierResult> parsed=ReadProjection("\"workload_observation\":{\"synthetic\":true,"+field+"}");
+        Assert.False(parsed.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("ramp100",true)]
+    [InlineData("",true)]
+    [InlineData("ramp100,ramp300,ramp900",true)]
+    [InlineData("ramp100,ramp300,ramp900,ramp1800",true)]
+    [InlineData("ramp100,ramp300,ramp900,ramp1800,ramp100",false)]
+    [InlineData("ramp100,ramp100",false)]
+    [InlineData("unknown",false)]
+    public void GivenWorkloadStageIds_WhenRead_ThenEnforcesFourUniqueKnownStages(string ids,bool accepted)
+    {
+        string stages=string.Join(',',ids.Length==0?[]:ids.Split(',').Select(id=>"{\"id\":\""+id+"\",\"offered_attempts_per_second\":0,\"duration_seconds\":0}"));
+        ParseResult<VerifierResult> parsed=ReadProjection("\"workload_observation\":{\"synthetic\":true,\"stages\":["+stages+"]}");
+        Assert.Equal(accepted,parsed.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("\"unexpected\":true")]
+    [InlineData("\"planned_attempts\":\"zero\"")]
+    public void GivenMalformedOrUnknownWorkloadField_WhenRead_ThenRejects(string field)
+    {
+        ParseResult<VerifierResult> parsed=ReadProjection("\"workload_observation\":{\"synthetic\":true,"+field+"}");
+        Assert.False(parsed.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("offered_attempts_per_second",-1)]
+    [InlineData("duration_seconds",-1)]
+    [InlineData("invoked_attempts",-1)]
+    [InlineData("delivered_observations",-1)]
+    [InlineData("failed_observations",-1)]
+    public void GivenNegativeWorkloadStageCount_WhenRead_ThenRejects(string field,long value)
+    {
+        string stage="\"id\":\"ramp100\",\"offered_attempts_per_second\":0,\"duration_seconds\":0";
+        if(field is "offered_attempts_per_second" or "duration_seconds")
+            stage=stage.Replace(field+"\":0",field+"\":"+value.ToString(System.Globalization.CultureInfo.InvariantCulture),StringComparison.Ordinal);
+        else stage+=",\""+field+"\":"+value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ParseResult<VerifierResult> parsed=ReadProjection("\"workload_observation\":{\"synthetic\":true,\"stages\":[{"+stage+"}]}");
+        Assert.False(parsed.IsSuccess);
+    }
     private static readonly int[] FailedOneAndTwo = [1, 2];
     private static readonly int[] FailedTwelve = [12];
     private static readonly int[] FailedTwo = [2];

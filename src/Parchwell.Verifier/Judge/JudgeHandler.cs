@@ -4,6 +4,7 @@ using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.Common.Window;
 
 namespace Parchwell.Verifier.Judge;
 
@@ -61,12 +62,16 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         try { registration=PhaseWireCodec.ReadRegistration(registrationBytes); }
                         catch(FormatException) { registrationCount=false; throw; }
                         catch(System.Text.Json.JsonException) { registrationCount=false; throw; }
-                        registrationCount=producerListing.IsComplete&&registrationNames.Length==1?true:null;
-                        string instance=registrationNames[0][producersPrefix.Length..^"/registration.json".Length];
-                        jobBinding=registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
-                            registration.JobName==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&registration.Identity.InstanceId==instance&&
-                            registration.Identity.ExpectedInstanceId==instance&&registration.SourceCommit==options.SourceCommit;
-                        identity=registration.Identity.InstanceId;
+                        catch(ArgumentException) { registrationCount=false; }
+                        if(registration is not null)
+                        {
+                            registrationCount=producerListing.IsComplete&&registrationNames.Length==1?true:null;
+                            string instance=registrationNames[0][producersPrefix.Length..^"/registration.json".Length];
+                            jobBinding=registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
+                                registration.JobName==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&registration.Identity.InstanceId==instance&&
+                                registration.Identity.ExpectedInstanceId==instance&&registration.SourceCommit==options.SourceCommit;
+                            identity=registration.Identity.InstanceId;
+                        }
                     }
                 }
                 string startName=PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,i);
@@ -81,7 +86,15 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     inventory=await Bounded(ct=>verifier.ReadAsync(inventoryName,ct),options,clock,cancellationToken).ConfigureAwait(false);
                     if(note is not null)inputBudget.ConsumeBytes(note.LongLength);
                     if(inventory is not null)inputBudget.ConsumeBytes(inventory.LongLength);
-                    startAccepted=r.Mode=="start-line"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&
+                    bool startContentsValid=false;
+                    if(note is not null&&inventory is not null&&r.Identity is not null)
+                    {
+                        var parsedNote=StartLineNoteCodec.Read(note,noteName,limits,100_000);
+                        var parsedInventory=BrokerInventoryReader.Read(inventory,inventoryName,r.Identity,options.SourceCommit!,limits);
+                        startContentsValid=parsedNote.IsSuccess&&parsedInventory.IsSuccess&&parsedNote.Value!.Identity==r.Identity&&
+                            parsedNote.Value.VerifierCommit==options.SourceCommit;
+                    }
+                    startAccepted=r.Mode=="start-line"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&startContentsValid&&
                         r.Artifacts[0].Name==noteName&&r.Artifacts[1].Name==inventoryName&&Matches(r.Artifacts[0],"verifier",noteName,note)&&
                         Matches(r.Artifacts[1],"verifier",inventoryName,inventory);
                     if(startAccepted && DateTimeOffset.TryParse(r.StartedUtc,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out var repeatStarted))
@@ -168,7 +181,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             // Exhausting the aggregate phase input budget is an execution failure.
             // It must stop the judge rather than publish a candidate that looks like
             // ordinary unavailable evidence for one slot.
-            catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException or OverflowException or TimeoutException || ex is OperationCanceledException&&!cancellationToken.IsCancellationRequested)
+            catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or OverflowException or TimeoutException || ex is OperationCanceledException&&!cancellationToken.IsCancellationRequested)
             {
                 trustedIncomplete=true;
             }

@@ -231,6 +231,25 @@ public sealed class BlobArtifactStoreTests
     }
 
     [Theory]
+    [InlineData(1_048_575,true)]
+    [InlineData(1_048_576,true)]
+    [InlineData(1_048_577,false)]
+    public async Task GivenSdkListingAtUtf8NameByteBoundary_WhenListing_ThenReportsExactCompletion(int nameBytes,bool complete)
+    {
+        const string prefix="runs/C0/r1/producer/";
+        string name=prefix+new string('a',nameBytes-prefix.Length);
+        using var transport=new RecordingHandler(()=>ListPage([name],null));
+        using var http=new HttpClient(transport);
+        var store=new BlobVerifierArtifactStore(Container("verifier",http),1024,1024);
+
+        BlobListing listing=await store.ListAsync(prefix,TestContext.Current.CancellationToken);
+
+        Assert.Equal(complete,listing.IsComplete);
+        Assert.Equal(complete?1:0,listing.Names.Count);
+        Assert.Equal(complete?null:"listing_incomplete",listing.FailureCode);
+    }
+
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]

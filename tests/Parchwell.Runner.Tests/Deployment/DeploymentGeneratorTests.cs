@@ -114,6 +114,14 @@ public sealed class DeploymentGeneratorTests
         }
         Dictionary<string, string> env = result.Runtime.GetProperty("loadgen_environment")
             .Deserialize<Dictionary<string, string>>()!;
+        // The Runner values do not own repeat-specific Job fields. The chart Job sets them.
+        env["LoadGen__Phase"] = phase;
+        env["LoadGen__JobName"] = $"synthetic-a01-r1-{phase.ToLowerInvariant()}-r1-loadgen";
+        env["LoadGen__PodUid"] = "synthetic-pod-uid";
+        env["LoadGen__RepeatNumber"] = "1";
+        foreach (string property in new[] { "ExpectedInstanceId", "ActualInstanceId", "PodName", "ClientId" })
+            env["LoadGen__" + property] = "synthetic-producer-pod";
+        env["LoadGen__ApplicationInsightsConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000001";
         env["LoadGen__ScenarioSourceRoot"] = DeploymentFixture.RepositoryRoot;
         string[] args = env.SelectMany(pair => new[]
         {
@@ -121,7 +129,9 @@ public sealed class DeploymentGeneratorTests
         }).ToArray();
         Type program = typeof(LoadGenHostOptions).Assembly.GetType("Parchwell.LoadGen.Program")!;
         MethodInfo method = program.GetMethod("BuildHost", BindingFlags.NonPublic | BindingFlags.Static)!;
-        using IHost host = (IHost)method.Invoke(null, [args, null])!;
+        string[] testArgs=[..args,"--AZURE_TENANT_ID","00000000-0000-0000-0000-000000000001",
+            "--AZURE_CLIENT_ID","00000000-0000-0000-0000-000000000002","--AZURE_FEDERATED_TOKEN_FILE","/tmp/synthetic-token"];
+        using IHost host = (IHost)method.Invoke(null, [testArgs, null])!;
         host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.Validate();
         ScenarioLoader workerLoader = host.Services.GetRequiredService<ScenarioLoader>();
         ScenarioResolver workerResolver = host.Services.GetRequiredService<ScenarioResolver>();
@@ -142,7 +152,11 @@ public sealed class DeploymentGeneratorTests
         DeploymentFiles files = await fixture.GenerateAsync("C0");
         JsonElement env = files.Runtime.GetProperty("loadgen_environment");
         foreach (PropertyInfo property in typeof(LoadGenHostOptions).GetProperties().Where(property => property.CanWrite))
-            Assert.True(env.TryGetProperty("LoadGen__" + property.Name, out _), "Missing LoadGen option: " + property.Name);
+            if (property.Name is not (nameof(LoadGenHostOptions.Phase) or nameof(LoadGenHostOptions.JobName) or nameof(LoadGenHostOptions.PodUid)
+                or nameof(LoadGenHostOptions.ExpectedInstanceId) or nameof(LoadGenHostOptions.ActualInstanceId) or nameof(LoadGenHostOptions.PodName)
+                or nameof(LoadGenHostOptions.ClientId) or nameof(LoadGenHostOptions.ApplicationInsightsConnectionString)
+                or nameof(LoadGenHostOptions.RepeatNumber)))
+                Assert.True(env.TryGetProperty("LoadGen__" + property.Name, out _), "Missing LoadGen option: " + property.Name);
     }
 
     [Fact]
