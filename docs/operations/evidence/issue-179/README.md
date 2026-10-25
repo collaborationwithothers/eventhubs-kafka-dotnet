@@ -6,13 +6,13 @@ Both worker images now build on a digest-pinned `mcr.microsoft.com/dotnet/aspnet
 
 The work follows the [implementation-grade plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179#issuecomment-6396335296), approved under standing approval by its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179#issuecomment-6396686909), with the decisions [6396422349](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179#issuecomment-6396422349) and [6396568695](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179#issuecomment-6396568695). The protected paths touched require Hari's merge. Program output stays in the session workspace; the results below are authored observations of that output.
 
-The labels below are the plan's. C1 to C6 are its changes, A0 to A10 its acceptance steps (plan section "Acceptance"), and R1 to R3 its classes of the first A3 result (plan section "Execution order", step 3). Sequence H is the plan's hosted path: a first head with only the script (C2) and the CI step (C3) must fail in CI, then the code head adds the base image change (C1) and the documentation.
+The labels below are the plan's. C1 to C6 are its changes, and A0 to A10 are its acceptance steps (plan section "Acceptance"). A1b is the local ShellCheck step; A3H is the hosted failing-run check on the first head. R1 to R3 are the classes of the first A3 result (plan section "Execution order", step 3). Sequence H is the plan's hosted path: a first head with only the script (C2) and the CI step (C3) must fail in CI, then the code head adds the base image change (C1) and the documentation.
 
 ## Sequence and A3 classification
 
 Sequence H was used. SDK 10.0.402 was installed by A0 under `$HOME/.dotnet-10.0.402`. Local steps ran on `main` at `2dffbc3540316312fd42bbb94a8e7dd4c67f58e6` with the changes staged; the code head SHA is recorded under "Code head A9" by the receipt-only commit.
 
-A3 ran `./scripts/verify-worker-images.sh` before C1, with C2 and C3 applied. It exited 1 with the stderr line `Docker daemon is not reachable.`, and no line containing `image smoke failed:`. That is R2, which selects sequence H. A4 was therefore not run as an acceptance step, with that stderr line as the reason.
+A3 ran `./scripts/verify-worker-images.sh` before C1, with C2 and C3 applied. It exited 1. Only the decisive stderr line, `Docker daemon is not reachable.`, is quoted here; `docker version` also wrote its connection error to stderr. The original full stderr was not retained. No line contained `image smoke failed:`. That is R2, which selects sequence H. A4 was therefore not run as an acceptance step, with the decisive stderr line as the reason.
 
 Extra evidence outside the plan's sequence: the session then started the container's own `dockerd` (Docker 29.9.2). A second run of the script before C1 exited 1 with `LoadGen image smoke failed: exit 150.`, `Framework: 'Microsoft.AspNetCore.App', version '10.0.0' (x64)` and `No frameworks were found.` A run after C1 exited 0 with `LoadGen image smoke: passed` and `Verifier image smoke: passed`. Neither run is A3 or A4.
 
@@ -41,12 +41,12 @@ An earlier A7 attempt, before the Docker daemon was started, failed only in Dock
 
 - Round 1, on an earlier full diff that used sequence L after the second local run: one P1, that the plan selects sequence H from the first A3 result. Fixed by switching to sequence H.
 - Round 2, first head: one P1, `npm run check:docs` not recorded before the review. Fixed by running it.
-- Round 3, first head: no P0 or P1. Its two P2s, a script header citing a section not yet present and the CI description not listing the new step, are fixed in this code head by C5(a) and C5(b).
+- Round 3, first head: no P0 or P1. Its two P2s, a script header citing a section not yet present and the CI description not listing the new step, are fixed in this code head by C5(a) and C5(b). No follow-up issue was opened for those two P2s because C5(a) and C5(b) were approved changes already included in the same pull request ([plan, C5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179#issuecomment-6396335296)).
 
 - Round 4, code head: no P0 or P1. Its four P2s are in follow-up issue [#183](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183).
 
-The round on this receipt-only commit is recorded in the pull request's self-review section.
+- Round 5, receipt-only head `55388a4e45cdb658974cb906867d02d171ec9501`: no P0 or P1. Its two P2s were added to [#183](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/183#issuecomment-6397259593). This historical entry is added by the #183 follow-up; the review result was originally recorded after that commit in [PR #182's self-review section](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/182).
 
 ## Code head A9
 
-Code head: `5cb0dc740c3fa369cfa90dddefa2df8c1f255263`. Its `.NET verification` run [40189632676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40189632676) concluded `success`. Job 121157670256 (`.NET verification`) concluded `success` with failed steps exactly `[]`; the `Terraform verification` and `Lifecycle verification` jobs concluded `success`. In the job log, `grep -cF 'LoadGen image smoke: passed'` printed `1` and `grep -cF 'Verifier image smoke: passed'` printed `1`. The matched lines are `LoadGen image smoke: passed` and `Verifier image smoke: passed`.
+Code head: `5cb0dc740c3fa369cfa90dddefa2df8c1f255263`. Its `.NET verification` run [40189632676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40189632676) concluded `success`. Job 121157670256 (`.NET verification`) concluded `success` with failed steps exactly `[]`; the `Terraform verification` and `Lifecycle verification` jobs concluded `success`. In the job log, `grep -cF 'LoadGen image smoke: passed'` printed `1` and `grep -cF 'Verifier image smoke: passed'` printed `1`. The matched message text, with runner timestamps omitted, is `LoadGen image smoke: passed` and `Verifier image smoke: passed`.
