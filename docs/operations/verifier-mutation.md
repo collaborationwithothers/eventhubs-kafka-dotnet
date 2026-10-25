@@ -33,6 +33,8 @@ The controller recorded identical source hashes before and after both invocation
 
 Detailed second-campaign JSON receipt: `/tmp/162-mutation-final.json`. No report or raw campaign output is committed.
 
+Round-14 Fix confirmation: both authorized campaigns remain exhausted and incomplete under the approved cap. No mutation command was run, no survivor score is claimed, and no mutation evidence or source hash was changed in this round. The verifier fix and required acceptance are recorded in the [C5 validation receipt](verifier-contract.md#c5-implementation-validation-receipt).
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
