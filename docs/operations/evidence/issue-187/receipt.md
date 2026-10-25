@@ -56,3 +56,17 @@ Synthetic child/report fixtures exercise workflow execution and aggregation, not
 The first revision-5 `npm run check:docs` scan exited 0 and reported no issues in either changed Markdown file. Warnings in unchanged files receive the blanket disposition in the PR description under AGENTS.md rule 8. This consumed one of four revision-5 docs executions; no warning in a changed file required a disposition.
 
 The final PR description records its head CI run, cold-review rounds and dispositions. The test/workflow paths are protected and Hari merges. No generated output, additional package, production verifier change or assertion change is part of this PR.
+
+## CI integration follow-up
+
+[Run 40220401445](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40220401445) passed its .NET and Terraform jobs at `2d83fa36466e953be532e19f1f5a271e09b744b1`. Its Lifecycle verification job failed with exit 127 because `charts/parchwell/tests/check-loadgen-host.sh` was absent. PR #193 had added that check to the base workflow after this branch's pinned baseline, while the workflow checks out the PR head explicitly. Rerunning that unchanged head would still omit the script.
+
+The fix merges existing main `403900f0ae476cbfeca4cdecbba3001e38422306` into the PR branch, bringing the already merged workflow, chart, LoadGen code and its check together. It changes none of this PR's C5 implementation or the original pinned comparison baseline. The original verification results above retain their original source identity; they are not promoted to a full verification of the merged source.
+
+On `2d83fa3` plus the staged merge of `403900f`, the existing failing CI command was exercised once with its existing 900-second bound:
+
+```bash
+python3 infra/scripts/lifecycle/command.py 900 -- bash charts/parchwell/tests/check-loadgen-host.sh
+```
+
+Using the existing pinned SDK and tools, it exited 0 and reported six rendered environments and one missing-setting regression passed. Its log is local at `/tmp/issue-194-ci-fix/loadgen-host.log`, outside git. No structural comparison, discovery, diff check, tool installation or mutation campaign was rerun; their earlier allowances remain consumed. New-head CI and the latest cold-review result are recorded in the PR description.

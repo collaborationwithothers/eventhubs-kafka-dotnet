@@ -37,6 +37,7 @@ internal static class Program
         TextWriter? completionOutput = null, Func<IHost>? hostFactory = null)
     {
         if (args.Length == 1 && args[0] == "--image-smoke") return ImageSmoke();
+        if (args.Length == 1 && args[0] == "--validate-configuration") return ValidateConfiguration();
         completionOutput ??= Console.Out;
         ITimer? processWatchdog = null;
         IHost? host = null;
@@ -231,6 +232,25 @@ internal static class Program
         catch
         {
             Console.Error.WriteLine("loadgen_image_smoke_failed");
+            return 1;
+        }
+    }
+
+    // Builds the host from the process environment and resolves the validated host options without starting the
+    // host, so no producer, Blob client or telemetry exporter starts. The chart's worker settings check runs it with
+    // each rendered loadgen environment (docs/operations/chart-contract.md, "Worker settings checks").
+    internal static int ValidateConfiguration()
+    {
+        try
+        {
+            using IHost host = BuildHost([]);
+            _ = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            Console.Out.WriteLine("{\"loadgen_configuration_valid\":true}");
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine("loadgen_configuration_invalid:" + exception.GetType().Name + ":" + exception.Message);
             return 1;
         }
     }

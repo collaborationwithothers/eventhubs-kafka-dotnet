@@ -386,7 +386,8 @@ class PhaseTests(unittest.TestCase):
                     if selected == 'C3' and mode == 'judge':
                         self.assertRegex(text, r'- name: "Verifier__CandidateOutputName"\s+value: "synthetic-c6/C3/candidate.json"')
                     if selected == 'C0' and mode == 'loadgen':
-                        self.assertRegex(text, r'- name: "LoadGen__ArtifactPrefix"\s+value: "synthetic-c6/C0/r1/producer/"')
+                        self.assertRegex(text, r'- name: "LoadGen__RepeatNumber"\s+value: "1"')
+                        self.assertRegex(text, r'- name: "LoadGen__PodUid"\s+valueFrom: \{fieldRef: \{fieldPath: metadata\.uid\}\}')
 
 
 if __name__ == '__main__':
