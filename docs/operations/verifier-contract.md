@@ -38,6 +38,8 @@ The phase candidate is a bounded privacy projection. `versions` records the veri
 
 Each repeat carries its accepted fixed-profile `workload_observation` when available. Candidate diagnostics aggregate only the existing safe A01 projections: error codes, maximum throttle, request-timeout increment, disconnect increment and RTT p99. A missing observation stays null; measured zero stays zero. Counts appear only when J7 authorizes them. The candidate excludes private environment, raw workload payloads, broker hostnames, arbitrary diagnostics, object URLs and cost/costs fields. Workload summaries are descriptive only: they do not determine validity, J2, J7 or J8.
 
+Each repeat also carries an optional `broker_count` object copied from its accepted verifier result. It contains `role` and `client_id`, optional `maximum` and `first_post_drain` measurements, and `lower_bound: true`; the measurement definition and prerequisites are owned by check 28 in [Statistics and configuration](#statistics-and-configuration). The object is authorized by the same accepted-publication, receipt, Job-binding, singleton-registration and inventory-coverage predicates as the independent probe and workload observations, so unrelated message invalidity does not erase a recorded count. Missing objects or measurements stay omitted, and observed zero stays zero. This additive schema-one field does not change repeat validity, the probe gate or outcome-count aggregation.
+
 The current implementation validation receipt is at the end of this document. It records blocked checks and does not claim cloud ingestion or a live experiment.
 
 ## Authority and boundaries

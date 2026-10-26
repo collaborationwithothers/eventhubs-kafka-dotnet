@@ -87,6 +87,7 @@ Every verdict pull request contains:
 - candidate-derived results per repeat in `results/<ID>/<utc-date>.json`;
 - per-repeat run validity and completion status, reasons for any invalid or incomplete result, with links to the workflow's per-repeat pod logs and pod JSON for worker exit outcomes;
 - verifier counts for every complete, valid repeat: `ok`, `loss`, `phantom`, `reported_failure`, `duplicate` and `reorder` (ADR-012); invalid or incomplete repeats retain diagnostic records with these authoritative counts absent, never substituted with zeros;
+- per-repeat broker connection counts for every Kafka client whose statistics the run captures (ADR-019 check 2), using the checked measurements defined in [verifier-contract.md](../operations/verifier-contract.md#statistics-and-configuration); unavailable measurements are not substituted with zeros;
 - Confluent.Kafka and librdkafka versions, PU count, node size, region, run timestamps;
 - the proposed verdict (confirmed, contradicted, undocumented, untestable) and a three-sentence summary.
 

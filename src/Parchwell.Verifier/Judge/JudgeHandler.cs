@@ -45,6 +45,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             bool startAccepted=false,publicationAccepted=false,receiptValid=false,knownInvalid=false,trustedIncomplete=false;
             bool? jobBinding=null,registrationCount=null,inventoryCoverage=null;
             OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
+            BrokerConnectionCount? brokerCount=null;
             byte[]? startBytes=null,note=null,inventory=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
@@ -202,6 +203,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             if(receiptValid&&publicationAccepted)
                             {
                                 workload=result.WorkloadObservation;
+                                brokerCount=result.BrokerCount;
                                 if(result.A01RecordedEvidence is not null)acceptedA01.Add(result.A01RecordedEvidence);
                                 string? producerKafkaVersion=null,producerNativeVersion=null,producerDotnetVersion=null;
                                 result.RuntimeVersions?.TryGetValue("Confluent.Kafka",out producerKafkaVersion);
@@ -229,7 +231,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;
             }
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots);

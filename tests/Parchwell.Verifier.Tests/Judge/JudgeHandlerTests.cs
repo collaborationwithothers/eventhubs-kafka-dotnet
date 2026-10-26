@@ -31,6 +31,11 @@ public sealed class JudgeHandlerTests
         Assert.Equal("complete_valid",candidate.RootElement.GetProperty("status").GetString());
         Assert.Equal(5,candidate.RootElement.GetProperty("repeats").GetArrayLength());
         Assert.Equal(5,candidate.RootElement.GetProperty("counts").GetProperty("ok").GetInt64());
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            using JsonDocument result=JsonDocument.Parse(stores.Verifier[PhasePaths.Result("synthetic-c5","C0",repeat)]);
+            AssertBrokerCountEqual(result.RootElement.GetProperty("broker_count"),candidate.RootElement.GetProperty("repeats")[repeat-1].GetProperty("broker_count"));
+        }
         completion.MarkReturned(options,exit,CancellationToken.None,CancellationToken.None);
         Assert.True(completion.TryGetBlobReceipt(out string container,out string name,out byte[] receipt));
         Assert.Equal("verifier",container);Assert.Equal("synthetic-c5/C0/judge-completion.json",name);
@@ -52,6 +57,87 @@ public sealed class JudgeHandlerTests
         Assert.Equal("invalid",candidate.RootElement.GetProperty("status").GetString());
         Assert.Equal("pass",candidate.RootElement.GetProperty("gate").GetString());
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+        foreach(JsonElement repeat in candidate.RootElement.GetProperty("repeats").EnumerateArray())
+        {
+            JsonElement count=repeat.GetProperty("broker_count");
+            Assert.Equal("LoadGenProducer",count.GetProperty("role").GetString());
+            Assert.Equal(1,count.GetProperty("maximum").GetInt64());
+            Assert.Equal(1,count.GetProperty("first_post_drain").GetInt64());
+            Assert.True(count.GetProperty("lower_bound").GetBoolean());
+        }
+    }
+
+    [Fact]
+    public async Task GivenBoundDistinctBrokerMeasurements_WhenJudged_ThenRetainsEachMeasurementInItsOwnRepeat()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            string resultName=PhasePaths.Result("synthetic-c5","C0",repeat);
+            JsonObject result=JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+            result["broker_count"]!["maximum"]=(long)(repeat+1);
+            result["broker_count"]!["first_post_drain"]=(long)repeat;
+            byte[] bytes=Encoding.UTF8.GetBytes(result.ToJsonString());
+            stores.Verifier[resultName]=bytes;
+            string receiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",repeat);
+            JsonObject receipt=JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(),resultName,bytes);
+            stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        }
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        Assert.Equal(0,await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            JsonElement count=candidate.RootElement.GetProperty("repeats")[repeat-1].GetProperty("broker_count");
+            Assert.Equal("LoadGenProducer",count.GetProperty("role").GetString());
+            Assert.Equal("pod-c5",count.GetProperty("client_id").GetString());
+            Assert.Equal(repeat+1,count.GetProperty("maximum").GetInt64());
+            Assert.Equal(repeat,count.GetProperty("first_post_drain").GetInt64());
+            Assert.True(count.GetProperty("lower_bound").GetBoolean());
+        }
+    }
+
+    [Theory]
+    [InlineData("omitted")]
+    [InlineData("measurements-omitted")]
+    public async Task GivenBoundResultWithOptionalBrokerFieldsOmitted_WhenJudged_ThenPreservesAbsence(string omission)
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string resultName=PhasePaths.Result("synthetic-c5","C0",1);
+        JsonObject result=JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+        if(omission=="omitted") result.Remove("broker_count");
+        else
+        {
+            result["broker_count"]!["maximum"]?.Parent?.AsObject().Remove("maximum");
+            result["broker_count"]!["first_post_drain"]?.Parent?.AsObject().Remove("first_post_drain");
+        }
+        byte[] bytes=Encoding.UTF8.GetBytes(result.ToJsonString());
+        stores.Verifier[resultName]=bytes;
+        string receiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",1);
+        JsonObject receipt=JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        UpdateReference(receipt["artifacts"]![0]!.AsObject(),resultName,bytes);
+        stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        Assert.Equal(0,await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        if(omission=="omitted") Assert.False(repeat.TryGetProperty("broker_count",out _));
+        else
+        {
+            JsonElement count=repeat.GetProperty("broker_count");
+            Assert.False(count.TryGetProperty("maximum",out _));
+            Assert.False(count.TryGetProperty("first_post_drain",out _));
+            Assert.Equal("LoadGenProducer",count.GetProperty("role").GetString());
+            Assert.True(count.GetProperty("lower_bound").GetBoolean());
+        }
+        Assert.Equal("complete_valid",repeat.GetProperty("status").GetString());
     }
 
     [Theory]
@@ -199,6 +285,7 @@ public sealed class JudgeHandlerTests
         Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
         Assert.False(repeat.TryGetProperty("counts", out _));
         Assert.False(candidate.RootElement.TryGetProperty("counts", out _));
+        Assert.False(repeat.TryGetProperty("broker_count",out _));
     }
 
     [Fact]
@@ -265,6 +352,28 @@ public sealed class JudgeHandlerTests
         Assert.Contains(failedCheck, reasons);
         Assert.DoesNotContain("trusted_result_invalid", reasons);
         Assert.False(repeat.TryGetProperty("counts", out _));
+        Assert.False(repeat.TryGetProperty("broker_count",out _));
+    }
+
+    [Fact]
+    public async Task GivenMissingPublicationAcceptanceWithReadableResult_WhenJudged_ThenOmitsBrokerCount()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        string resultName=PhasePaths.Result("synthetic-c5","C0",1);
+        Assert.True(stores.Verifier.ContainsKey(resultName));
+        string receiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",1);
+        JsonObject receipt=JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+        receipt["publication_acceptance"]=null;
+        stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        Assert.Equal(1,await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.False(repeat.GetProperty("checks").GetProperty("j2_publication_unaccepted").GetBoolean());
+        Assert.False(repeat.TryGetProperty("broker_count",out _));
     }
 
     [Theory]
@@ -301,6 +410,7 @@ public sealed class JudgeHandlerTests
         Assert.Equal("incomplete", repeat.GetProperty("status").GetString());
         Assert.Contains("j3_verifier_receipt", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
         Assert.DoesNotContain("trusted_result_invalid", repeat.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+        Assert.False(repeat.TryGetProperty("broker_count",out _));
     }
 
     [Theory]
@@ -344,6 +454,7 @@ public sealed class JudgeHandlerTests
         JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
         Assert.Equal("invalid",repeat.GetProperty("status").GetString());
         Assert.False(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+        Assert.False(repeat.TryGetProperty("broker_count",out _));
     }
 
     [Fact]
@@ -392,6 +503,7 @@ public sealed class JudgeHandlerTests
         using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
         Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+        Assert.False(candidate.RootElement.GetProperty("repeats")[repeat-1]!.TryGetProperty("broker_count",out _));
     }
 
     [Fact]
@@ -494,6 +606,8 @@ public sealed class JudgeHandlerTests
             int slot=mutation.EndsWith("first",StringComparison.Ordinal)||mutation=="malformed-producer-completion-phase"?0:4;
             Assert.Equal("incomplete",candidate.RootElement.GetProperty("repeats")[slot]!.GetProperty("status").GetString());
         }
+        if(mutation=="inventory-coverage")
+            Assert.False(candidate.RootElement.GetProperty("repeats")[4]!.TryGetProperty("broker_count",out _));
         Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
     }
 
@@ -510,6 +624,7 @@ public sealed class JudgeHandlerTests
         using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
         Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
         Assert.Equal(5,candidate.RootElement.GetProperty("repeats").GetArrayLength());
+        Assert.All(candidate.RootElement.GetProperty("repeats").EnumerateArray(),repeat=>Assert.False(repeat.TryGetProperty("broker_count",out _)));
         completion.MarkReturned(options,exit,CancellationToken.None,CancellationToken.None);
         Assert.True(completion.TryGetBlobReceipt(out string container,out string name,out byte[] receiptBytes));
         Assert.Equal("verifier",container);
@@ -578,6 +693,15 @@ public sealed class JudgeHandlerTests
         reference["name"]=name;
         reference["length"]=bytes.LongLength;
         reference["sha256"]=Convert.ToHexStringLower(SHA256.HashData(bytes));
+    }
+
+    private static void AssertBrokerCountEqual(JsonElement expected,JsonElement actual)
+    {
+        Assert.Equal(expected.GetProperty("role").GetString(),actual.GetProperty("role").GetString());
+        Assert.Equal(expected.GetProperty("client_id").GetString(),actual.GetProperty("client_id").GetString());
+        Assert.Equal(expected.GetProperty("maximum").GetInt64(),actual.GetProperty("maximum").GetInt64());
+        Assert.Equal(expected.GetProperty("first_post_drain").GetInt64(),actual.GetProperty("first_post_drain").GetInt64());
+        Assert.Equal(expected.GetProperty("lower_bound").GetBoolean(),actual.GetProperty("lower_bound").GetBoolean());
     }
 
     private sealed record PhaseStores(Dictionary<string,byte[]> Verifier,Dictionary<string,byte[]> Ledger);

@@ -580,7 +580,7 @@ What the tools offer, verified 2026-10-13 (S47 on 2026-10-14):
 - A01's approved plan (#14, revision 4) lists only the H2/H3 component evaluator under "Enforced checks". Its probe gate check and the two item-independent checks must be added to the verifier plan's "Enforced checks" before the probe runs.
 - Today `RunExecutor` turns incomplete statistics into a worker failure before publication when statistics evidence is required (`src/Parchwell.LoadGen/Run/Execution/RunExecutor.cs`). The removal pull request changes that to publish with a diagnostic, as the Decision requires.
 - Configuration fidelity covers producer settings only. Consumer configuration fidelity for C-series items comes from each item's decision rules until this ADR is amended.
-- docs/agents/factory.md "Evidence pack" does not yet list the broker count that D04 requires; it should gain it in a later governance pull request.
+- [docs/agents/factory.md "Evidence pack"](agents/factory.md#evidence-pack) lists the broker counts required by check 2.
 - ADR-012's duplicate ledger check stays. It is small and fully specified, so the two copies are unlikely to drift (opinion); the verifier's repeat is the authoritative one.
 - ADR-013 counts "incomplete evidence" among its invalid-run conditions without listing what is incomplete. The verifier plan's "Enforced checks" must name each case, or that open term reopens the list.
 
