@@ -580,7 +580,12 @@
         }
       },
       "parchwell.enrichment": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Confluent.Kafka": "[2.16.0, )",
+          "Microsoft.Extensions.Hosting": "[10.0.13, )",
+          "Parchwell.Kafka": "[1.0.0, )"
+        }
       },
       "parchwell.kafka": {
         "type": "Project",
