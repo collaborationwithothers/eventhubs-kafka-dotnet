@@ -92,6 +92,128 @@ public sealed class PhaseJudgeTests
         Assert.Contains("j7_counts_unavailable",result.Reasons);
     }
 
+    [Fact]
+    public void Given_FiveAuthorizedBrokerCounts_When_Judged_Then_PreservesEachClientMeasurementWithoutChangingTotals()
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", evidence);
+
+        Assert.Equal("complete_valid", result.Status);
+        Assert.Equal(new OutcomeCounts(5, 10, 15, 20, 25, 30), result.Counts);
+        for (int i = 1; i <= 5; i++)
+            Assert.Equal(new BrokerConnectionCount("LoadGenProducer", $"client-{i}", i + 1, i, true), result.Repeats[i - 1].BrokerCount);
+    }
+
+    [Fact]
+    public void Given_MessageInvalidityWithAuthorizedBrokerCount_When_Judged_Then_RetainsMeasurementAndPassingProbe()
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+        evidence[2] = evidence[2] with { KnownInvalid = true };
+
+        PhaseJudgement result = PhaseJudge.Evaluate("probe", evidence);
+
+        Assert.Equal("invalid", result.Status);
+        Assert.Equal("invalid", result.Repeats[2].Status);
+        Assert.Equal(evidence[2].BrokerCount, result.Repeats[2].BrokerCount);
+        Assert.Null(result.Repeats[2].Counts);
+        Assert.Null(result.Counts);
+        Assert.Equal("pass", result.Gate);
+    }
+
+    [Theory]
+    [InlineData("trusted-incomplete")]
+    [InlineData("missing-slot")]
+    public void Given_IncompleteRepeatWithAuthorizedBrokerCount_When_Judged_Then_RetainsIndependentMeasurement(string condition)
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+        evidence[2] = condition == "trusted-incomplete"
+            ? evidence[2] with { TrustedIncomplete = true }
+            : evidence[2] with { SlotPresent = false };
+
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", evidence);
+
+        Assert.Equal("incomplete", result.Status);
+        Assert.Equal("incomplete", result.Repeats[2].Status);
+        Assert.Equal(evidence[2].BrokerCount, result.Repeats[2].BrokerCount);
+        Assert.Null(result.Repeats[2].Counts);
+        Assert.Null(result.Counts);
+    }
+
+    [Theory]
+    [InlineData("start-line", false, "incomplete")]
+    [InlineData("publication", false, "incomplete")]
+    [InlineData("receipt", false, "incomplete")]
+    [InlineData("job", false, "invalid")]
+    [InlineData("job", null, "incomplete")]
+    [InlineData("registration", false, "invalid")]
+    [InlineData("registration", null, "incomplete")]
+    [InlineData("inventory", false, "invalid")]
+    [InlineData("inventory", null, "incomplete")]
+    public void Given_BrokerCountTrustPredicateNotPassing_When_Judged_Then_SuppressesMeasurement(string predicate, bool? pass, string status)
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+        evidence[2] = predicate switch
+        {
+            "start-line" => evidence[2] with { StartLineAccepted = pass == true },
+            "publication" => evidence[2] with { PublicationAccepted = pass == true },
+            "receipt" => evidence[2] with { VerifierReceiptValid = pass == true },
+            "job" => evidence[2] with { JobBindingPass = pass },
+            "registration" => evidence[2] with { RegistrationCountPass = pass },
+            "inventory" => evidence[2] with { InventoryCoveragePass = pass },
+            _ => throw new ArgumentOutOfRangeException(nameof(predicate))
+        };
+
+        PhaseJudgement result = PhaseJudge.Evaluate("probe", evidence);
+
+        Assert.Null(result.Repeats[2].BrokerCount);
+        Assert.Equal(status, result.Status);
+        Assert.Equal(status, result.Repeats[2].Status);
+        Assert.Null(result.Counts);
+        Assert.Null(result.Repeats[2].Counts);
+        Assert.Equal("inconclusive", result.Gate);
+    }
+
+    [Fact]
+    public void Given_ExtraOrDuplicateSlotsWithBrokerCounts_When_Judged_Then_OnlyUniqueIndependentMeasurementsRemain()
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+
+        PhaseJudgement extra = PhaseJudge.Evaluate("C0", evidence.Append(Complete(6, null)).ToArray());
+        Assert.Equal("incomplete", extra.Status);
+        Assert.All(extra.Repeats, repeat => Assert.False(repeat.Checks.J1));
+        for (int i = 0; i < 5; i++) Assert.Equal(evidence[i].BrokerCount, extra.Repeats[i].BrokerCount);
+        Assert.Null(extra.Counts);
+
+        PhaseJudgement duplicate = PhaseJudge.Evaluate("C0", evidence.Append(evidence[2]).ToArray());
+        Assert.Equal("incomplete", duplicate.Status);
+        Assert.False(duplicate.Repeats[2].Checks.J1);
+        Assert.Null(duplicate.Repeats[2].BrokerCount);
+        Assert.Equal(evidence[1].BrokerCount, duplicate.Repeats[1].BrokerCount);
+        Assert.Null(duplicate.Counts);
+    }
+
+    [Fact]
+    public void Given_AbsentAndZeroBrokerMeasurements_When_Judged_Then_DistinguishesMissingFromMeasuredZero()
+    {
+        PhaseRepeatEvidence[] evidence = MeasuredRepeats();
+        evidence[0] = evidence[0] with { BrokerCount = null };
+        evidence[1] = evidence[1] with { BrokerCount = new("LoadGenProducer", "client-zero", 0, 0, true) };
+
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", evidence);
+
+        Assert.Null(result.Repeats[0].BrokerCount);
+        Assert.Equal(new BrokerConnectionCount("LoadGenProducer", "client-zero", 0, 0, true), result.Repeats[1].BrokerCount);
+        Assert.Equal("complete_valid", result.Status);
+        Assert.Equal(new OutcomeCounts(5, 10, 15, 20, 25, 30), result.Counts);
+    }
+
+    private static PhaseRepeatEvidence[] MeasuredRepeats() => Enumerable.Range(1, 5).Select(i =>
+        Complete(i, new(true, true, "broker", 0, 1, 20_001)) with
+        {
+            BrokerCount = new("LoadGenProducer", $"client-{i}", i + 1, i, true)
+        }).ToArray();
+
     private static PhaseRepeatEvidence Complete(int repeat,ProbeRepeatObservation? probe)=>new(repeat,true,true,true,true,true,true,true,false,false,new(1,2,3,4,5,6),probe);
 }
 #pragma warning restore CA1707

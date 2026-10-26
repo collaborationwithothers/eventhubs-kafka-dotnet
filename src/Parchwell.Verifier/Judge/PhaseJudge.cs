@@ -17,11 +17,13 @@ internal sealed record PhaseRepeatEvidence(
     OutcomeCounts? Counts,
     ProbeRepeatObservation? ProbeObservation,
     string? Identity = null,
-    WorkloadObservation? WorkloadObservation = null);
+    WorkloadObservation? WorkloadObservation = null,
+    BrokerConnectionCount? BrokerCount = null);
 
 internal sealed record PhaseRepeatChecks(bool J1, bool J2, bool J3, bool J4, bool J5, bool J6, bool J8);
 internal sealed record PhaseRepeatResult(int Repeat, string Status, IReadOnlyList<string> Reasons, PhaseRepeatChecks Checks,
-    OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null);
+    OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null,
+    BrokerConnectionCount? BrokerCount = null);
 internal sealed record PhaseJudgement(string Status, string? Gate, OutcomeCounts? Counts,
     IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons);
 
@@ -63,7 +65,9 @@ internal static class PhaseJudge
                 e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.ProbeObservation : null,e?.Identity,
                 e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
-                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.WorkloadObservation : null));
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.WorkloadObservation : null,
+                e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.BrokerCount : null));
             reasons.AddRange(rr);
         }
         if (extra || evidence.GroupBy(x => x.Repeat).Any(g => g.Count() > 1)) reasons.Add("j1_repeat_slots");
