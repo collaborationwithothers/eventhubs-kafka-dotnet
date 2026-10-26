@@ -19,6 +19,8 @@ The publication object, report template, report script and validator were extrac
 - `npm run check:docs`: exited 0; no issue in the three files, and the warnings below.
 - `git diff --check` and `git diff --cached --check`: both exited 0 with no whitespace errors.
 
+Hari's [decision of 2026-10-26](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/215#issuecomment-6423903531) amended the plan after round 3. This pull request also adds a note to `docs/agents/factory.md` "Item lifecycle" step 3 and records the amendment in its status line. Enforced check 7 now expects four changed files. The validator copy `/tmp/issue-215-acceptance-amended.py` differs from the plan's validator only in that `FILES` also lists `docs/agents/factory.md`. With factory.md staged and `git rev-parse HEAD` at `0792ab968a4f2ddcae216df3524cec47c0bc935b`, it exited 0 and printed `b04 publication: pass`. The unamended validator exited 1 on the fourth file, as expected. The three publication files and their pinned hashes are unchanged.
+
 Manual inspection of the three files against AGENTS.md hard safety rule 7 found no secret, key, connection string, tenant ID or subscription ID. This pull request changes no code. In this session, with .NET SDK 10.0.402, `dotnet build Parchwell.slnx -c Release` exited 0 with 0 warnings and 0 errors. `./scripts/verify-dotnet.sh` exited 2 because it stops at the first failing test project. So it ran again against this working tree, using a copy of the script that changed one line: a failing unit-test project is recorded and the loop continues. That run passed locked restore, solution build, Kafka XML inventory consistency, the unit scaffold inventory and the warning-as-error control. Test results by project, from each project's xunit report:
 
 | Project | Total | Passed | Failed |
@@ -85,5 +87,7 @@ Round 1 was not clean, so rule 8's additional P2 round did not follow it. Round 
 - P1, this receipt: it said every check group ran with `HEAD` at the base, but the full test-suite rerun ran at `5849437`. Fixed in "Source and commands", which also now says the modified script ran against this working tree.
 - P2, this receipt: "before any test body ran" was wrong for 5 of the 15 failures, whose test methods started before the Docker lookup failed. Fixed to "before any Kafka container started".
 - P2, this receipt: the record did not say whether the additional P2 round ran. Fixed by the first sentence of this paragraph.
+
+Round 3 reviewed the diff at `0792ab968a4f2ddcae216df3524cec47c0bc935b`. Its only findings were the two kept `results/` P0s, and it raised no P2, so no additional P2 round followed. The factory.md amendment came after round 3. Its review rounds are recorded in the pull request description.
 
 The #184 first-five-pull-request review window does not apply to this pull request. It covered #188, #189, #191, #193 and #194, as recorded in `docs/operations/evidence/issue-196/receipt.md`.
