@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run A01 phase commands while keeping private inputs separate from evidence."""
+"""Run scenario phase commands while keeping private inputs separate from evidence."""
 
 import json
 import os
@@ -13,7 +13,8 @@ import time
 from urllib.parse import urlsplit
 
 MIB = 1024 * 1024
-PHASES = {"probe": "C0", "C0": "C0", "C3": "C3"}
+SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
+             "B04": {"C0": "C0", "C1": "C1"}}
 MODES = ("start-line", "loadgen", "verify")
 SLOTS = (1, 2, 3, 4, 5)
 CANDIDATE_MAXIMUM = 16_777_216  # PhaseCandidateCodec.MaximumBytes
@@ -27,6 +28,13 @@ class Failure(Exception):
     def __init__(self, message, code=2):
         super().__init__(message)
         self.code = code
+
+
+def scenario():
+    selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
+    if selected not in SCENARIOS:
+        raise Failure("unsupported scenario")
+    return selected
 
 
 def require(name):
@@ -124,10 +132,11 @@ class Phase:
             raise Failure("invalid AKS resource ID")
 
     def prepare(self, phase):
-        if phase not in PHASES:
+        selected = scenario()
+        if phase not in SCENARIOS[selected]:
             raise Failure("unsupported phase")
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
-        run = f"a01-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
+        run = f"{selected.lower()}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
         sha = require("GITHUB_SHA")
         if not re.fullmatch(r"[0-9a-f]{40}", sha) or len(run) > 29 or not re.fullmatch(LABEL, run):
             raise Failure("invalid run or source commit")
@@ -161,7 +170,7 @@ class Phase:
         private, candidate, artifacts = directories
         for name, value in secrets.items():
             write_private(private / name, value + "\n")
-        write_json(private / "phase.json", {"phase": phase, "configuration": PHASES[phase],
+        write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": SCENARIOS[selected][phase],
                                            "run_id": run, "source_commit": sha})
         write_json(artifacts / "phase-status.json", {"phase": phase, "run_id": run,
                    "modes": [], "candidate": None, "safety_stop": False})
@@ -270,7 +279,7 @@ class Phase:
                    "application_insights_connection_string": unwrap(persistent["application_insights_connection_string"])}
         if mode != "judge":
             runtime.update(repeat=repeat, loadgen_job_name=job_name(phase["run_id"], phase["phase"], "loadgen", repeat))
-        return {"scenario_id": "A01", "configuration_id": phase["configuration"], "runtime": runtime}
+        return {"scenario_id": phase["scenario"], "configuration_id": phase["configuration"], "runtime": runtime}
 
     def render(self, mode, repeat):
         phase = self.read("phase.json")
@@ -373,7 +382,7 @@ class Phase:
             phase = self.read("phase.json")
             statuses = ("complete_valid", "invalid", "incomplete")
             valid = isinstance(candidate, dict) and type(candidate.get("schema_version")) is int and candidate["schema_version"] == 1
-            valid = valid and candidate.get("synthetic") is True and candidate.get("scenario_id") == "A01"
+            valid = valid and candidate.get("synthetic") is True and candidate.get("scenario_id") == phase["scenario"]
             for key, expected in (("run_id", phase["run_id"]), ("phase", phase["phase"]),
                                   ("configuration_id", phase["configuration"]), ("source_commit", phase["source_commit"])):
                 valid = valid and candidate.get(key) == expected
@@ -462,7 +471,7 @@ class Phase:
         outcomes = [(step, results.get(step, {}).get("outcome", "missing")) for step in required]
         passed = require("JOB_STATUS") == "success" and all(outcome == "success" for _, outcome in outcomes)
         title = os.environ.get("PARCHWELL_PHASE", os.environ.get("GITHUB_JOB", "job"))
-        lines = [f"## A01 {title}: {'passed' if passed else 'failed'}"]
+        lines = [f"## {scenario()} {title}: {'passed' if passed else 'failed'}"]
         lines += [f"{step}: {outcome}" for step, outcome in outcomes]
         artifact = os.environ.get("PARCHWELL_ARTIFACT_DIRECTORY")
         if artifact and (Path(artifact) / "phase-status.json").is_file():
