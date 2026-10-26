@@ -64,6 +64,30 @@ public sealed class SingleActionHandlerTests
         var result=SingleActionCandidateCodec.Read(fixture.Store.Files[fixture.Prefix+"candidate.json"]);Assert.Equal(status,result.Status);
         if(status=="invalid")Assert.All(result.Repeats,r=>Assert.Contains("p1_registration",r.Reasons));
     }
+    [Fact]
+    public async Task Given_LiteralFiveSlotAssignedFixture_When_HandlerRuns_Then_CompleteValidAndSecurityObservation()
+    {
+        var fixture=await HandlerFixture.CreateAsync(item:"F04",configuration:"C2");
+        Assert.Equal(0,await fixture.Handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        var candidate=SingleActionCandidateCodec.Read(fixture.Store.Files[fixture.Prefix+"candidate.json"]);
+        Assert.Equal("complete_valid",candidate.Status);Assert.All(candidate.Repeats,repeat=>Assert.Empty(repeat.Reasons));Assert.True(candidate.SecurityFinding);
+    }
+    [Theory]
+    [MemberData(nameof(SingleActionRepeatJudgementTests.MalformedMatchedFields),MemberType=typeof(SingleActionRepeatJudgementTests))]
+    public async Task Given_RawNullOrWrongKindMatchedField_When_HandlerRuns_Then_P7DiagnosticCandidatePublished(string field,string raw)
+    {
+        var fixture=await HandlerFixture.CreateAsync(item:"F04",configuration:"C2");
+        var capture=System.Text.Json.Nodes.JsonNode.Parse(fixture.Store.Files[fixture.CaptureName])!;
+        capture["repeats"]![0]!["matched"]![field]=System.Text.Json.Nodes.JsonNode.Parse(raw);
+        fixture.Store.Files[fixture.CaptureName]=System.Text.Encoding.UTF8.GetBytes(capture.ToJsonString());
+        Assert.Equal(0,await fixture.Handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        var candidate=SingleActionCandidateCodec.Read(fixture.Store.Files[fixture.Prefix+"candidate.json"]);
+        Assert.Equal("invalid",candidate.Status);Assert.Equal("invalid",candidate.Repeats[0].Status);Assert.Contains("p7_outcome_record",candidate.Repeats[0].Reasons);
+        Assert.DoesNotContain("p3_capture_file",candidate.Repeats[0].Reasons);Assert.Null(candidate.Repeats[0].OutcomeClass);
+        Assert.All(candidate.Repeats[1..],repeat=>Assert.Equal("complete_valid",repeat.Status));
+        fixture.Completion.MarkReturned(fixture.Options,0,CancellationToken.None,CancellationToken.None);Assert.True(fixture.Completion.TryGetBlobReceipt(out _,out _,out _));
+    }
+
     private sealed class IoClock:TimeProvider
     {
         internal long Timestamp {get;set;}
@@ -77,25 +101,45 @@ public sealed class SingleActionHandlerTests
         internal VerifierCompletionState Completion {get;}=new();
         internal VerifierHostOptions Options {get;}=new(){Mode="single-action-judge",RunId="run1",ScenarioId="B01",ConfigurationId="C0",SourceCommit=SingleActionFixture.Source,VerifierCommit=SingleActionFixture.Source,JobName="run1-b01-c0-single-judge",PodName="judge-pod",PodUid="judge-uid",NamespaceName="synthetic-namespace",LoadGenImage="x@sha256:"+new string('1',64),VerifierImage="x@sha256:"+new string('2',64),EnrichmentImage="x@sha256:"+new string('3',64)};
         internal string Prefix=>SingleActionPaths.Prefix(Options.RunId!,Options.ScenarioId!,Options.ConfigurationId!);
-        internal string CaptureName=>Prefix+$"instances/{SingleActionFixture.Pod}/capture.json";
-        internal string CompletionName=>Prefix+$"instances/{SingleActionFixture.Pod}/completion.json";
+        private string CapturePod=>SingleActionPaths.CaptureJob(Options.RunId!,Options.ScenarioId!,Options.ConfigurationId!)+"-abc";
+        internal string CaptureName=>Prefix+$"instances/{CapturePod}/capture.json";
+        internal string CompletionName=>Prefix+$"instances/{CapturePod}/completion.json";
         internal SingleActionHandler Handler {get;private set;}=null!;
-        internal static async Task<HandlerFixture> CreateAsync(TimeProvider? clock=null)
+        internal static async Task<HandlerFixture> CreateAsync(TimeProvider? clock=null,string item="B01",string configuration="C0")
         {
             var fixture=new HandlerFixture();string root=FindRoot();var loader=new ScenarioLoader(new FileSystemScenarioSource(root),Microsoft.Extensions.Options.Options.Create(new ScenarioLoadOptions{MaxDocumentCharacters=65536,MaxNestingDepth=32,MaxScalarCharacters=65536,MaxParserEvents=20000}));
-            var loaded=await loader.LoadAsync("B01",TestContext.Current.CancellationToken);var capture=SingleActionFixture.Capture();
+            fixture.Options.ScenarioId=item;fixture.Options.ConfigurationId=configuration;fixture.Options.JobName=SingleActionPaths.JudgeJob("run1",item,configuration);
+            var loaded=await loader.LoadAsync(item,TestContext.Current.CancellationToken);var declaration=loaded.Definition.SingleAction!.Configurations[configuration];
+            var registration=SingleActionFixture.Registration() with{Identity=new(item,configuration,"run1",fixture.CapturePod),JobName=SingleActionPaths.CaptureJob("run1",item,configuration),PodName=fixture.CapturePod};
+            var capture=SingleActionFixture.Capture() with{Identity=registration.Identity,JobName=registration.JobName,PodName=registration.PodName};
             foreach(var repeat in capture.Repeats)
             {
-                var services=new ServiceCollection();services.AddParchwellKafka(KafkaClientRole.LoadGenProducer,o=>{o.NamespaceName="synthetic-namespace";o.ClientId=repeat.ClientId;});using var provider=services.BuildServiceProvider();
-                var resolved=new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded).Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer];
-                capture.Repeats[repeat.Repeat-1]=repeat with{Settings=resolved.Settings.ToDictionary(p=>p.Key,p=>p.Value.Value,StringComparer.Ordinal),OmittedKeys=resolved.Omissions.Select(o=>o.Key).Order(StringComparer.Ordinal).ToArray()};
+                string client=$"{fixture.CapturePod}-r{repeat.Repeat}";
+                var services=new ServiceCollection();
+                foreach(var role in loaded.Definition.Roles)services.AddParchwellKafka(role,o=>{o.NamespaceName="synthetic-namespace";o.ClientId=client;o.EnrichmentGroupId=$"single-action-run1-{item.ToLowerInvariant()}-{configuration.ToLowerInvariant()}";});
+                using var provider=services.BuildServiceProvider();
+                var resolved=new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded).Configurations[configuration].Roles[declaration.Role];
+                var statistic=SingleActionFixture.Statistic(client,1,1,1);
+                if(declaration.Action is "subscribe" or "assign_consume")statistic=statistic with{RawBase64=Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(statistic.RawBase64)).Replace("producer","consumer",StringComparison.Ordinal)))};
+                capture.Repeats[repeat.Repeat-1]=repeat with{ClientId=client,Action=declaration.Action,Matched=declaration.Action=="assign_consume"?SingleActionFixture.Matched():SingleActionFixture.Json("null"),Statistics=[statistic],Settings=resolved.Settings.ToDictionary(p=>p.Key,p=>p.Value.Value,StringComparer.Ordinal),OmittedKeys=resolved.Omissions.Select(o=>o.Key).Concat(resolved.ScenarioOmissions.Select(o=>o.Key)).Order(StringComparer.Ordinal).ToArray()};
             }
-            string registration=fixture.Prefix+$"registrations/{SingleActionFixture.Pod}.json";fixture.Store.Registrations=[registration];fixture.Store.Files[registration]=SingleActionWire.Write(SingleActionFixture.Registration(),65536);fixture.Store.Files[fixture.CaptureName]=SingleActionWire.Write(capture,134217728);fixture.Store.Files[fixture.CompletionName]=SingleActionWire.Write(SingleActionFixture.Completion(),65536);
-            fixture.Handler=new(Microsoft.Extensions.Options.Options.Create(fixture.Options),fixture.Store,fixture.Store,loader,new EmptySeed(),new SingleActionScenarioResolver(Microsoft.Extensions.Options.Options.Create(fixture.Options)),clock??TimeProvider.System,fixture.Completion);return fixture;
+            var completed=SingleActionFixture.Completion() with{Identity=registration.Identity,JobName=registration.JobName,PodName=registration.PodName};
+            string registrationName=fixture.Prefix+$"registrations/{fixture.CapturePod}.json";fixture.Store.Registrations=[registrationName];fixture.Store.Files[registrationName]=SingleActionWire.Write(registration,65536);fixture.Store.Files[fixture.CaptureName]=SingleActionWire.Write(capture,134217728);fixture.Store.Files[fixture.CompletionName]=SingleActionWire.Write(completed,65536);
+            var seed=new MemorySeed();
+            if(item=="F04")
+            {
+                fixture.Options.SeedReceiptPath="/run/seed/receipt.json";fixture.Options.SeedPodIdentityPath="/run/seed/pod.json";
+                seed.Files[fixture.Options.SeedReceiptPath]=SingleActionWire.Write(SingleActionFixture.Seed(),65536);seed.Files[fixture.Options.SeedPodIdentityPath]=SingleActionWire.Write(SingleActionFixture.SeedPod(),65536);
+            }
+            fixture.Handler=new(Microsoft.Extensions.Options.Options.Create(fixture.Options),fixture.Store,fixture.Store,loader,seed,new SingleActionScenarioResolver(Microsoft.Extensions.Options.Options.Create(fixture.Options)),clock??TimeProvider.System,fixture.Completion);return fixture;
         }
         private static string FindRoot(){DirectoryInfo? directory=new(AppContext.BaseDirectory);while(directory is not null&&!File.Exists(Path.Combine(directory.FullName,"Parchwell.slnx")))directory=directory.Parent;return directory?.FullName??throw new DirectoryNotFoundException();}
     }
-    private sealed class EmptySeed:ISingleActionSeedSource{public Task<byte[]?> ReadAsync(string path,CancellationToken cancellationToken)=>Task.FromResult<byte[]?>(null);}
+    private sealed class MemorySeed:ISingleActionSeedSource
+    {
+        internal Dictionary<string,byte[]> Files {get;}=new(StringComparer.Ordinal);
+        public Task<byte[]?> ReadAsync(string path,CancellationToken cancellationToken)=>Task.FromResult(Files.GetValueOrDefault(path));
+    }
     private sealed class Store:IProducerArtifactStore,IVerifierArtifactStore
     {
         internal Dictionary<string,byte[]> Files {get;}=new(StringComparer.Ordinal);

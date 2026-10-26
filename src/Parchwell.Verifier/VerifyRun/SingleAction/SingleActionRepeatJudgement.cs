@@ -57,14 +57,17 @@ internal static class SingleActionRepeatJudgement
     private static bool Matched(JsonElement value,SingleActionConfiguration declaration,string run)
     {
         if(!Closed(value,"topic","partition","key_base64","value_base64"))return false;
+        JsonElement topic=value.GetProperty("topic"),partition=value.GetProperty("partition"),key=value.GetProperty("key_base64"),payload=value.GetProperty("value_base64");
+        if(!StrictJson.TryGetString(topic,out string matchedTopic)||!StrictJson.TryGetInt32(partition,out int matchedPartition)||
+            !StrictJson.TryGetString(key,out string keyBase64)||!StrictJson.TryGetString(payload,out string valueBase64)||
+            valueBase64.Length>1466668||keyBase64.Length>65536)return false;
         try
         {
-            if(value.GetProperty("value_base64").GetString()!.Length>1466668||value.GetProperty("key_base64").GetString()!.Length>65536)return false;
-            return value.GetProperty("topic").GetString()==declaration.Topic&&value.GetProperty("partition").GetInt32()==declaration.Partition&&
-                Convert.FromBase64String(value.GetProperty("key_base64").GetString()!).AsSpan().SequenceEqual(Encoding.UTF8.GetBytes($"f04-seed:{run}"))&&
-                Convert.FromBase64String(value.GetProperty("value_base64").GetString()!).AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(new string('s',1000)));
+            return matchedTopic==declaration.Topic&&matchedPartition==declaration.Partition&&
+                Convert.FromBase64String(keyBase64).AsSpan().SequenceEqual(Encoding.UTF8.GetBytes($"f04-seed:{run}"))&&
+                Convert.FromBase64String(valueBase64).AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(new string('s',1000)));
         }
-        catch(Exception ex) when(ex is FormatException or InvalidOperationException){return false;}
+        catch(FormatException){return false;}
     }
 
     private static (int Count,SingleActionStatisticsReference Reference)? SelectStatistics(SingleActionRepeat repeat,SingleActionConfiguration declaration)
@@ -88,8 +91,8 @@ internal static class SingleActionRepeatJudgement
                 if(!root.TryGetProperty("name",out var name)||name.ValueKind!=JsonValueKind.String||!name.GetString()!.StartsWith(repeat.ClientId+"#"+kind+"-",StringComparison.Ordinal)||
                     !root.TryGetProperty("client_id",out var client)||client.ValueKind!=JsonValueKind.String||client.GetString()!=repeat.ClientId||
                     !root.TryGetProperty("type",out var type)||type.ValueKind!=JsonValueKind.String||type.GetString()!=kind||
-                    !root.TryGetProperty("time",out var timeValue)||!timeValue.TryGetInt64(out long time)||time<0||
-                    !root.TryGetProperty("ts",out var tsValue)||!tsValue.TryGetInt64(out long ts)||ts<0||
+                    !root.TryGetProperty("time",out var timeValue)||!StrictJson.TryGetInt64(timeValue,out long time)||time<0||
+                    !root.TryGetProperty("ts",out var tsValue)||!StrictJson.TryGetInt64(tsValue,out long ts)||ts<0||
                     !root.TryGetProperty("brokers",out var brokers)||brokers.ValueKind!=JsonValueKind.Object)return null;
                 if(brokers.EnumerateObject().Count()>64)return null;
                 int count=0;

@@ -134,4 +134,43 @@ public sealed class SingleActionRepeatJudgementTests
         Assert.Equal(accepted?"complete_valid":"incomplete",result.Status);if(!accepted)Assert.Null(result.BrokerCount);
     }
 
+    public static TheoryData<string,string> MalformedMatchedFields
+    {
+        get
+        {
+            var cases=new TheoryData<string,string>();
+            foreach(string propertyName in new[]{"topic","key_base64","value_base64"})
+                foreach(string raw in new[]{"null","0","true","[]","{}"})cases.Add(propertyName,raw);
+            foreach(string raw in new[]{"null","\"0\"","true","[]","{}","0.5","-2147483649","2147483648"})cases.Add("partition",raw);
+            cases.Add("key_base64","\"?\"");cases.Add("value_base64","\"?\"");
+            return cases;
+        }
+    }
+    [Theory]
+    [MemberData(nameof(MalformedMatchedFields))]
+    public void Given_NullOrWrongKindMatchedField_When_Judged_Then_P7InvalidWithoutThrowing(string field,string raw)
+    {
+        var repeat=SingleActionFixture.AssignedRepeat();
+        var matched=System.Text.Json.Nodes.JsonNode.Parse(repeat.Matched.GetRawText())!.AsObject();matched[field]=System.Text.Json.Nodes.JsonNode.Parse(raw);
+        var result=SingleActionFixture.Judge(repeat with{Matched=SingleActionFixture.Json(matched.ToJsonString())},SingleActionFixture.AssignedDeclaration);
+        Assert.Equal("invalid",result.Status);Assert.Contains("p7_outcome_record",result.Reasons);Assert.Null(result.OutcomeClass);
+    }
+    [Theory]
+    [InlineData(-1,false)][InlineData(0,true)][InlineData(1,false)][InlineData(int.MinValue,false)][InlineData(int.MaxValue,false)]
+    public void Given_MatchedPartitionBoundary_When_Judged_Then_OnlyDeclaredPartitionPasses(int partition,bool accepted)
+    {
+        var repeat=SingleActionFixture.AssignedRepeat();var matched=System.Text.Json.Nodes.JsonNode.Parse(repeat.Matched.GetRawText())!.AsObject();matched["partition"]=partition;
+        var result=SingleActionFixture.Judge(repeat with{Matched=SingleActionFixture.Json(matched.ToJsonString())},SingleActionFixture.AssignedDeclaration);
+        Assert.Equal(accepted?"complete_valid":"invalid",result.Status);Assert.Equal(!accepted,result.Reasons.Contains("p7_outcome_record",StringComparer.Ordinal));
+    }
+    [Theory]
+    [InlineData("key_base64",65535)][InlineData("key_base64",65536)][InlineData("key_base64",65537)]
+    [InlineData("value_base64",1466667)][InlineData("value_base64",1466668)][InlineData("value_base64",1466669)]
+    public void Given_MatchedBase64LengthBoundary_When_BytesDoNotMatch_Then_P7InvalidWithoutThrowing(string field,int length)
+    {
+        var repeat=SingleActionFixture.AssignedRepeat();var matched=System.Text.Json.Nodes.JsonNode.Parse(repeat.Matched.GetRawText())!.AsObject();matched[field]=new string('a',length);
+        var result=SingleActionFixture.Judge(repeat with{Matched=SingleActionFixture.Json(matched.ToJsonString())},SingleActionFixture.AssignedDeclaration);
+        Assert.Equal("invalid",result.Status);Assert.Contains("p7_outcome_record",result.Reasons);
+    }
+
 }

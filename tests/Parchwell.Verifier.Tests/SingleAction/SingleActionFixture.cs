@@ -20,6 +20,14 @@ internal static class SingleActionFixture
         string client=$"{Pod}-r{ordinal}";
         return new(ordinal,client,"produce_one",true,10,1000,new(StringComparer.Ordinal){["client.id"]=client,["a"]="b"},[],Json("\"success\""),Json("null"),Json("null"),[],[Statistic(client,1,1,1)],[]);
     }
+    internal static readonly SingleActionConfiguration AssignedDeclaration=Declaration with{Action="assign_consume",Topic="document-state",WindowMs=120000};
+    internal static JsonElement Matched()=>Json($$"""{"topic":"document-state","partition":0,"key_base64":"{{Convert.ToBase64String(Encoding.UTF8.GetBytes("f04-seed:run1"))}}","value_base64":"{{Convert.ToBase64String(Encoding.ASCII.GetBytes(new string('s',1000)))}}"}""");
+    internal static SingleActionRepeat AssignedRepeat(int ordinal=1)
+    {
+        var repeat=Repeat(ordinal);
+        string native=Encoding.UTF8.GetString(Convert.FromBase64String(repeat.Statistics[0].RawBase64)).Replace("producer","consumer",StringComparison.Ordinal);
+        return repeat with{Action="assign_consume",Matched=Matched(),Statistics=[repeat.Statistics[0] with{RawBase64=Convert.ToBase64String(Encoding.UTF8.GetBytes(native))}]};
+    }
     internal static SingleActionStatistic Statistic(string client,long time,long ts,int sequence,string brokers="{}",long observed=100)=>new(sequence,observed,Convert.ToBase64String(Encoding.UTF8.GetBytes($$"""{"name":"{{client}}#producer-1","client_id":"{{client}}","type":"producer","time":{{time}},"ts":{{ts}},"brokers":{{brokers}}} """)));
     internal static SingleActionCapture Capture()=>new(1,"single-action",true,Registration().Identity,Registration().JobName,Pod,Uid,Source,"2.16.0","2.16.0",Enumerable.Range(1,5).Select(Repeat).ToArray());
     internal static SingleActionRepeatProjection Judge(SingleActionRepeat repeat,SingleActionConfiguration? declaration=null)=>SingleActionRepeatJudgement.Judge(repeat,declaration??Declaration,new Dictionary<string,string>(StringComparer.Ordinal){["client.id"]=repeat.ClientId,["a"]="b"},[],Run);

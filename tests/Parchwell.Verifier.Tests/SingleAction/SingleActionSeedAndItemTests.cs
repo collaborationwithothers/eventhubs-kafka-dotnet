@@ -96,7 +96,11 @@ public sealed class SingleActionSeedAndItemTests
         var projection=SingleActionFixture.Judge(repeat);
         Assert.Equal("incomplete",projection.Status);Assert.Contains("p4_no_terminal_outcome",projection.Reasons);
         Assert.Equal(new SingleActionOutcome("success",null,null,null),projection.OutcomeClass);
+        var fiveSlots=SingleActionFixture.Candidate("F04","C1","error").Repeats;fiveSlots[0]=projection;
+        var incomplete=SingleActionConfigurationJudgement.ApplyGlobal(true,true,false,true,fiveSlots);
+        Assert.Equal("incomplete",incomplete[0].Status);Assert.Contains("p2_completion",incomplete[0].Reasons);
         Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C1",true,true,[projection]));
+        Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C1",true,true,incomplete));
     }
 
     private static Dictionary<string,SingleActionCandidate> Candidates(string item)=>SingleActionConfigurationJudgement.Configurations(item).ToDictionary(c=>c,c=>SingleActionFixture.Candidate(item,c,item=="B03"&&c!="C1"||item=="C12"&&c=="C2"||item=="F04"&&c is "C1" or "C2" or "C3"?"error":"success"),StringComparer.Ordinal);

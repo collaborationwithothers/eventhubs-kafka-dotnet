@@ -15,6 +15,18 @@ public sealed class SingleActionConfigurationJudgementTests
     private static bool Registration(SingleActionRegistration? value)=>SingleActionConfigurationJudgement.Registration(value,SingleActionFixture.Run,"B01","C0",SingleActionFixture.Source);
 
     [Theory]
+    [InlineData(0,false)][InlineData(252,true)][InlineData(253,true)][InlineData(254,false)]
+    public void Given_MatchingRegistrationIdentityAtPodNameLengthBoundary_When_Checked_Then_ExactP1Acceptance(int length,bool accepted)
+    {
+        var registration=SingleActionFixture.Registration();
+        string prefix=registration.JobName+"-";
+        string pod=length==0?string.Empty:prefix+new string('a',length-prefix.Length);
+        registration=registration with{PodName=pod,Identity=registration.Identity with{InstanceId=pod}};
+        Assert.Equal(length,registration.PodName.Length);
+        Assert.Equal(accepted,Registration(registration));
+    }
+
+    [Theory]
     [InlineData("missing")][InlineData("schema")][InlineData("mode")][InlineData("job")][InlineData("pod")][InlineData("uid")][InlineData("source")][InlineData("run")][InlineData("item")][InlineData("configuration")][InlineData("instance")]
     public void Given_RegistrationMismatch_When_Checked_Then_P1Rejected(string mutation)
     {
