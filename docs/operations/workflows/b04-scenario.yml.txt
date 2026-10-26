@@ -192,7 +192,7 @@ jobs:
       env:
         STEP_RESULTS: ${{ toJSON(steps) }}
         JOB_STATUS: ${{ job.status }}
-          WORKLOAD: 'true'
+        WORKLOAD: 'true'
         REQUIRED_STEPS: guard checkout tools prepare azure_session
         WORKLOAD_STEPS: tools prepare cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace install wait collect upload_pods uninstall destroy
       run: bash infra/scripts/phase/phase.sh report
@@ -392,7 +392,7 @@ jobs:
       env:
         STEP_RESULTS: ${{ toJSON(steps) }}
         JOB_STATUS: ${{ job.status }}
-          WORKLOAD: 'true'
+        WORKLOAD: 'true'
         REQUIRED_STEPS: guard checkout stop_prepare azure_session stop
         WORKLOAD_STEPS: tools prepare cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace install wait collect upload_pods uninstall destroy
       run: bash infra/scripts/phase/phase.sh report
