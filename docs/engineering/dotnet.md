@@ -52,7 +52,7 @@ Process and Kubernetes API boundaries, including the test-only worker-process ex
 | Unit | Slice handlers, configuration mapping, verifier logic, scenario loading | xUnit, no I/O |
 | Component | A service against a local Kafka broker in a container | Testcontainers, with Toxiproxy for faults (ADR-016); tests harness logic only, never Event Hubs behaviour |
 | Architecture | Dependency direction and slice isolation | NetArchTest or ArchUnitNET, in `Parchwell.ArchitectureTests` |
-| Mutation | Verifier judgement logic: checks, join, window and probe gate (#85 decision 4) | Stryker.NET; minimum mutation score to be set with the reference slice |
+| Mutation | Verifier judgement logic in the C5 target files listed by the committed Stryker configuration | Stryker.NET; changes to a path in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json`'s `mutate` list are accepted only by `verifier-c5-mutation.yml` dispatched on `main` after merge; require `measurement_complete: true` and `break_passed: true` against `thresholds.break: 60` |
 | Live | Event Hubs behaviour | Scenario workflow only; never in CI |
 
 Rules:

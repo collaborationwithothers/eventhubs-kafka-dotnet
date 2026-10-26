@@ -91,6 +91,8 @@ Every verdict pull request contains:
 - Confluent.Kafka and librdkafka versions, PU count, node size, region, run timestamps;
 - the proposed verdict (confirmed, contradicted, undocumented, untestable) and a three-sentence summary.
 
+Mutation acceptance for a pull request that changes any path in the `mutate` list of `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` is a passing `verifier-c5-mutation.yml` run dispatched on `main` after the change merges. The run's `summary.json` must identify the commit actually tested, report `measurement_complete: true` and `break_passed: true`, and name a commit on `main` whose history includes the target-changing merge commit. A passing run on a later main commit is acceptable when it includes the target changes under review. If a later main change modifies any configured target, acceptance for that change requires a later passing run whose measured commit includes it. A missing, failed or incomplete latest applicable run blocks evidence-pack publication; if the run fails or is incomplete, open a fix issue. Do not use the deleted local sample as a mutation check.
+
 Retention follows docs/blueprint.md ADR-020. The candidate carries checked results and diagnostics; links to Actions logs and public pod artifacts do not make those logs authoritative outcome counts.
 
 ## Escalation
