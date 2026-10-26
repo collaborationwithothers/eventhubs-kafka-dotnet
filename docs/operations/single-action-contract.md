@@ -46,7 +46,7 @@ Repeat projections have exactly `repeat`, `status`, `reasons`, `outcome_class`, 
 
 The final configuration of each item may carry `item_assessment` with exactly `verdict`, `hypotheses` and `reason`; other configurations carry null. Verdicts use `confirmed`, `contradicted`, `undocumented`, `untestable` or null; hypothesis values use `holds`, `contradicted`, `recorded_only` or `undecided`. These candidates remain proposed assessments for Hari's protected verdict review. The [factory evidence policy](../agents/factory.md#evidence-pack) owns the single-action exception to ledger counts.
 
-Judge completion has exactly `schema_version: 1`, `mode: "single-action-judge"`, `run_id`, `scenario_id`, `configuration_id`, `source_commit`, `job_name`, `pod_name`, `pod_uid`, `candidate_name`, `handler_exit_code: 0` and `cleanup_completed: true`. Candidate name is the derived Blob name. This receipt follows candidate publication and host disposal. Earlier configuration dependencies require matching successful receipts too.
+Successful judge completion has exactly `schema_version: 1`, `mode: "single-action-judge"`, `run_id`, `scenario_id`, `configuration_id`, `source_commit`, `job_name`, `pod_name`, `pod_uid`, `candidate_name`, `handler_exit_code: 0` and `cleanup_completed: true`. Candidate name is the derived Blob name. This receipt follows candidate publication and host disposal. Earlier configuration dependencies require matching successful receipts too. Invalid and incomplete judgement retains an unaccepted diagnostic candidate under the [verifier exit policy](verifier-contract.md#single-action-judgement), without this successful receipt.
 
 ## Fixed bounds
 

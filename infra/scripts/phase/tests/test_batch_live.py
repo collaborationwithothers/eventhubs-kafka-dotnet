@@ -382,6 +382,132 @@ class BatchLiveTests(unittest.TestCase):
                 else:
                     self.assertEqual([], mounts)
 
+    def test_new_transport_parser_has_literal_depth_bound_and_ignores_escaped_string_brackets(self):
+        for depth in (31, 32):
+            with self.subTest(depth=depth):
+                text = '[' * depth + '0' + ']' * depth
+                self.assertIsInstance(phase.single_action_json(text.encode()), list)
+        for depth in (33, 11000):
+            with self.subTest(depth=depth):
+                text = '[' * depth + '0' + ']' * depth
+                self.assertLess(len(text), 65536)
+                with self.assertRaises(phase.Failure):
+                    phase.single_action_json(text)
+        strings = ['[' * 11000 + ']' * 11000, '\\' * 40 + '"quoted [ }"', 'escaped \\" [ \\" ]']
+        for value in strings:
+            text = json.dumps({'literal': value})
+            self.assertEqual({'literal': value}, phase.single_action_json(text))
+        for text in (b'{"invalid":"\xff"}', b'{"duplicate":0,"duplicate":1}', b'{"malformed":', b']'):
+            with self.subTest(text=text), self.assertRaises((phase.Failure, ValueError, UnicodeError)):
+                phase.single_action_json(text)
+        with patch.object(phase, 'strict_json', side_effect=RecursionError), self.assertRaises(phase.Failure):
+            phase.single_action_json('{}')
+        # The legacy parser retains its previous unbounded-nesting semantics.
+        self.assertIsInstance(phase.strict_json('[' * 33 + '0' + ']' * 33), list)
+
+    def test_deep_candidate_and_receipt_failures_preserve_all_thirtytwo_jobs_and_sixteen_gaps(self):
+        cases = [('valid', None, 0), ('escaped-string', None, 0)]
+        cases += [(filename, filename, depth) for filename in ('candidate.json', 'judge-completion.json') for depth in (31, 32, 33, 11000)]
+        cases += [(filename + '-utf8', filename, -1) for filename in ('candidate.json', 'judge-completion.json')]
+        for kind, damaged, depth in cases:
+            with self.subTest(kind=kind, depth=depth):
+                self.prepare_live()
+                self.fake = fixture.ScriptedCommands()
+                def download(_instance, name, target, maximum, _deadline):
+                    _, _, item, config, filename = name.split('/')
+                    value = self.literal_candidate(item, config) if filename == 'candidate.json' else self.literal_receipt(item, config)
+                    if kind == 'escaped-string' and filename == 'candidate.json':
+                        value['diagnostics'] = ['[' * 11000 + '\\"escaped"' + ']' * 11000]
+                    text = json.dumps(value).encode()
+                    if filename == damaged:
+                        payload = b'"\xff"' if depth == -1 else b'[' * (depth - 1) + b'0' + b']' * (depth - 1)
+                        text = text[:-1] + b',"unexpected":' + payload + b'}'
+                    self.assertLess(len(text), maximum)
+                    target.write_bytes(text)
+                    return text
+                with self.mocked(), patch.object(phase.Phase, 'download_blob', autospec=True, side_effect=download):
+                    self.assertEqual(0 if damaged is None else 1, self.main('run-single-action-batch'))
+                self.assertEqual(32, len(self.records()))
+                self.assertEqual(32, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+                candidates = phase.Phase().state()['candidates']
+                self.assertEqual(16, len(candidates))
+                self.assertTrue(all(candidate['accepted'] is (damaged is None) for candidate in candidates))
+                self.assertEqual(0 if damaged is None else 16, len(list(self.candidate_dir.glob('*-gap.json'))))
+
+    def test_deep_seed_receipt_gap_does_not_skip_unrelated_configuration_paths(self):
+        for depth, gap in ((31, False), (32, False), (33, True), (11000, True), (-1, True)):
+            with self.subTest(depth=depth):
+                self.prepare_live()
+                self.fake = fixture.ScriptedCommands()
+                def mutate(_pods, logs):
+                    key = next(name for name in logs if '.containers.' in name)
+                    text = '{"unexpected":' + '[' * (depth - 1) + '0' + ']' * (depth - 1) + '}\n'
+                    logs[key] = phase.SEED_RECEIPT_MARKER + text if depth != -1 else (phase.SEED_RECEIPT_MARKER + '{bad-json}\n')
+                    self.assertLess(len(logs[key].encode()), 65536)
+                self.seed_artifacts(mutate)
+                with self.mocked():
+                    self.assertEqual(0, self.main('single-action-seed'))
+                self.assertIs(gap, phase.Phase().state()['seed_gap'])
+                self.assertEqual(gap, (self.artifacts / 'seed-gap.json').exists())
+                self.fake.artifact_mutator = None
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.candidate_commands()):
+                    self.assertEqual(0, self.main('run-single-action-batch'))
+                self.assertEqual(33, len(self.records()))
+                self.assertEqual(16, len(phase.Phase().state()['candidates']))
+                self.assertTrue(all(candidate['accepted'] for candidate in phase.Phase().state()['candidates']))
+                self.assertEqual(33, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+
+    def test_deep_blob_properties_and_judge_pod_json_are_controlled_transport_gaps(self):
+        for kind in ('properties', 'pods', 'pods-utf8'):
+            with self.subTest(kind=kind):
+                self.prepare_live()
+                self.fake = fixture.ScriptedCommands()
+                original = self.candidate_commands()
+                def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+                    result = original(instance, args, seconds, output, maximum)
+                    if kind == 'properties' and args[:4] == ['az', 'storage', 'blob', 'show']:
+                        Path(output).write_bytes(b'{"unexpected":' + b'[' * 11000 + b'0' + b']' * 11000 + b'}')
+                    if kind.startswith('pods') and len(args) == 4 and args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job'] and args[-1].endswith('single-judge'):
+                        path = self.artifacts / args[-1] / 'pods.json'
+                        content = path.read_bytes()
+                        extra = b'[' * 11000 + b'0' + b']' * 11000 if kind == 'pods' else b'"\xff"'
+                        path.write_bytes(content[:-1] + b',"unexpected":' + extra + b'}')
+                    return result
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=command):
+                    self.assertEqual(1, self.main('run-single-action-batch'))
+                self.assertEqual(32, len(self.records()))
+                self.assertEqual(16, len(phase.Phase().state()['candidates']))
+                self.assertEqual(16, len(list(self.candidate_dir.glob('*-gap.json'))))
+                self.assertTrue(all(not candidate['accepted'] for candidate in phase.Phase().state()['candidates']))
+
+    def test_deep_seed_pod_json_and_wrong_owner_types_record_seed_gap(self):
+        for kind in ('deep', 'utf8', 'receipt-utf8', 'owner-type', 'uid-type'):
+            with self.subTest(kind=kind):
+                self.prepare_live()
+                self.fake = fixture.ScriptedCommands()
+                def mutate(pods, _logs):
+                    if kind == 'owner-type': pods['items'][0]['metadata']['ownerReferences'] = [1]
+                    if kind == 'uid-type': pods['items'][0]['metadata']['uid'] = {'wrong': 'type'}
+                self.seed_artifacts(mutate)
+                original = self.fake
+                def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+                    result = original(instance, args, seconds, output, maximum)
+                    if kind in ('deep', 'utf8') and len(args) == 4 and args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job']:
+                        path = self.artifacts / args[-1] / 'pods.json'
+                        content = path.read_bytes()
+                        extra = b'[' * 11000 + b'0' + b']' * 11000 if kind == 'deep' else b'"\xff"'
+                        path.write_bytes(content[:-1] + b',"unexpected":' + extra + b'}')
+                    if kind == 'receipt-utf8' and len(args) == 4 and args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job']:
+                        directory = self.artifacts / args[-1]
+                        log = next(directory.glob('*.containers.enrichment-consumer.log'))
+                        log.write_bytes(phase.SEED_RECEIPT_MARKER.encode() + b'{"invalid":"\xff"}\n')
+                    return result
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=command):
+                    self.assertEqual(0, self.main('single-action-seed'))
+                self.assertTrue(phase.Phase().state()['seed_gap'])
+                self.assertTrue((self.artifacts / 'seed-gap.json').exists())
+                self.assertFalse(any(call[0][:2] == ['kubectl', 'create'] for call in self.fake.calls))
+
     def test_batch_cleanup_deletes_seed_configmap_and_jobs(self):
         self.prepare_live()
         with self.mocked(): self.assertEqual(0, self.main('delete-workload'))

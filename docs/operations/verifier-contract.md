@@ -1,6 +1,6 @@
 # Verifier contract
 
-The production C5 worker supports `start-line`, `verify`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Each mode publishes a bounded receipt after its work and cleanup complete.
+The production C5 worker supports `start-line`, `verify`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
 
 ## Single-action judgement
 
@@ -24,7 +24,7 @@ For check 6, the [pinned native statistics specification](https://github.com/con
 
 The final configuration of an item combines only accepted configuration candidates with successful matching judge receipts. It applies the approved controls and decision rules, retains nondeterministic/incomplete gaps, and leaves expected.yaml assessment-only. Construction-origin outcomes and failed controls are untestable. F04 success observations in C1-C3 remain security findings when registration, capture, fidelity and outcome checks accept them, even if another repeat lacks statistics; verdict work stops for Hari with the raw evidence.
 
-Candidate publication precedes host stop/disposal; the final judge receipt follows them. The process limit is 90 seconds, with 10-second IO and cleanup budgets inside the 120-second Job deadline. These are approved harness bounds, not a measured completion claim. [Hosted C5 mutation acceptance](verifier-mutation.md#issue-213-single-action-targets) is required after merge before these candidates support publication.
+Candidate publication precedes host stop/disposal. Under [ADR-017](../blueprint.md#adr-017-workers-are-generic-host-apps-run-as-kubernetes-jobs-and-set-a-non-zero-exit-code-on-failure), invalid and incomplete candidates cause a nonzero process exit. They retain their raw diagnostic candidate, including security observations, without queuing a successful judge completion receipt. Complete-valid judgement, including a nondeterministic outcome, returns zero; its successful final receipt follows host disposal. The process limit is 90 seconds, with 10-second IO and cleanup budgets inside the 120-second Job deadline. These are approved harness bounds, not a measured completion claim. [Hosted C5 mutation acceptance](verifier-mutation.md#issue-213-single-action-targets) is required after merge before these candidates support publication.
 
 ## C5 phase, blob and receipt contract
 

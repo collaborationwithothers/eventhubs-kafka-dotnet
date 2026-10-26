@@ -37,6 +37,7 @@ BATCH_START_CAP = 14400
 SEED_DEADLINE = 1050
 PAIR_DEADLINE = 3360
 TERMINATION_RESERVE = 5
+SINGLE_ACTION_INPUT_DEPTH = 32
 SLOTS = (1, 2, 3, 4, 5)
 CANDIDATE_MAXIMUM = 16_777_216  # PhaseCandidateCodec.MaximumBytes
 LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
@@ -80,6 +81,39 @@ def strict_json(value):
     if isinstance(value, bytes):
         value = value.decode("utf-8", errors="strict")
     return json.loads(value, object_pairs_hook=pairs, parse_constant=constant)
+
+
+def single_action_json(value):
+    """Bound new transport nesting before the recursive JSON decoder allocates objects."""
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="strict")
+    if not isinstance(value, str):
+        raise Failure("single-action JSON text required")
+    depth = 0
+    quoted = escaped = False
+    for character in value:
+        if quoted:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                quoted = False
+        elif character == '"':
+            quoted = True
+        elif character in "[{":
+            depth += 1
+            if depth > SINGLE_ACTION_INPUT_DEPTH:
+                raise Failure("single-action JSON depth exceeded")
+        elif character in "]}":
+            depth -= 1
+            if depth < 0:
+                raise Failure("single-action JSON nesting invalid")
+    try:
+        return strict_json(value)
+    except RecursionError as error:
+        # A parser recursion failure is malformed transport, never a batch-wide abort.
+        raise Failure("single-action JSON recursion exceeded") from error
 
 
 def unwrap(value):
@@ -440,7 +474,9 @@ class Phase:
                 empty = False
                 if not confirmed:
                     try:
-                        empty = strict_json(confirmation.read_bytes()).get("items") == []
+                        decode = single_action_json if mode in SINGLE_ACTION_MODES else strict_json
+                        confirmation_data = decode(confirmation.read_bytes())
+                        empty = isinstance(confirmation_data, dict) and confirmation_data.get("items") == []
                     except (Failure, OSError, ValueError, AttributeError):
                         pass
                 if deleted or confirmed or not empty:
@@ -475,8 +511,8 @@ class Phase:
         if record["outcome"] == "complete" and record["collect"] == 0:
             try:
                 directory = self.artifacts / record["job"]
-                collection = strict_json((directory / "collection-status.json").read_bytes())
-                pods = strict_json((directory / "pods.json").read_bytes())["items"]
+                collection = single_action_json((directory / "collection-status.json").read_bytes())
+                pods = single_action_json((directory / "pods.json").read_bytes())["items"]
                 if collection["complete"] is not True or collection["gaps"] != [] or not isinstance(pods, list) or len(pods) != 1:
                     raise ValueError("incomplete collection or pod count")
                 pod = pods[0]
@@ -497,7 +533,7 @@ class Phase:
                 expected_marker = SEED_SMOKE_MARKER if worker == "enrichment" else SMOKE_MARKER
                 for line in (directory / f"{name}.containers.{role}.log").read_text().splitlines():
                     try:
-                        marker = strict_json(line)
+                        marker = single_action_json(line)
                     except (ValueError, UnicodeError, Failure):
                         continue
                     if (marker == expected_marker and isinstance(marker, dict)
@@ -575,7 +611,7 @@ class Phase:
             pods_path = directory / "pods.json"
             if not 0 < pods_path.stat().st_size <= 4 * MIB:
                 raise ValueError("seed pod size")
-            pods = strict_json(pods_path.read_bytes())["items"]
+            pods = single_action_json(pods_path.read_bytes())["items"]
             if not isinstance(pods, list) or len(pods) != 1:
                 raise ValueError("seed pod count")
             pod = pods[0]
@@ -583,12 +619,17 @@ class Phase:
             name = metadata["name"]
             if not isinstance(name, str) or not re.fullmatch(LABEL, name):
                 raise ValueError("seed pod name")
-            owners = [owner for owner in metadata["ownerReferences"] if owner.get("controller") is True]
+            references = metadata["ownerReferences"]
+            if not isinstance(references, list) or any(not isinstance(owner, dict) for owner in references):
+                raise ValueError("seed pod owner schema")
+            owners = [owner for owner in references if owner.get("controller") is True]
             if len(owners) != 1 or owners[0]["kind"] != "Job" or owners[0]["name"] != record["job"]:
                 raise ValueError("seed pod owner")
             envelope = {"schema_version": 1, "job_name": record["job"], "pod_name": name,
                         "pod_uid": metadata["uid"], "service_account": pod["spec"]["serviceAccountName"],
                         "owner_kind": owners[0]["kind"], "owner_name": owners[0]["name"]}
+            if any(not isinstance(value, str) or not value for key, value in envelope.items() if key != "schema_version"):
+                raise ValueError("seed pod identity schema")
             log_path = directory / f"{name}.containers.enrichment-consumer.log"
             if log_path.stat().st_size > 16 * MIB:
                 raise ValueError("seed log size")
@@ -599,7 +640,7 @@ class Phase:
                         if len(line) > 65536:
                             raise ValueError("seed receipt size")
                         receipts.append(line[len(SEED_RECEIPT_MARKER):].rstrip(b"\r\n"))
-            if len(receipts) != 1 or not isinstance(strict_json(receipts[0]), dict):
+            if len(receipts) != 1 or not isinstance(single_action_json(receipts[0]), dict):
                 raise ValueError("seed receipt count or JSON")
             envelope_bytes = json.dumps(envelope).encode()
             if len(envelope_bytes) > 65536:
@@ -676,7 +717,7 @@ class Phase:
                     "--name", name, "--auth-mode", "login", "--query", "properties", "--only-show-errors", "-o", "json"]
             if self.run(args, 60, output=properties, maximum=MIB):
                 return None
-            data = strict_json(properties.read_bytes())
+            data = single_action_json(properties.read_bytes())
             length, etag = data["contentLength"], data["etag"]
             if type(length) is not int or not 0 < length <= maximum or not isinstance(etag, str) or not etag:
                 return None
@@ -749,8 +790,8 @@ class Phase:
         receipt_bytes = self.download_blob(prefix + "judge-completion.json", receipt_target, 65536, deadline)
         accepted = False
         try:
-            candidate = strict_json(candidate_bytes)
-            receipt = strict_json(receipt_bytes)
+            candidate = single_action_json(candidate_bytes)
+            receipt = single_action_json(receipt_bytes)
             candidate_keys = {"schema_version", "mode", "synthetic", "run_id", "scenario_id", "configuration_id",
                 "source_commit", "managed_version", "native_version", "image_digests", "status", "repeats", "deterministic",
                 "outcome_class", "adr012_counts", "diagnostics", "security_finding", "item_assessment"}
@@ -774,7 +815,7 @@ class Phase:
             pods_path = self.artifacts / record["job"] / "pods.json"
             if not 0 < pods_path.stat().st_size <= 4 * MIB:
                 raise ValueError("judge pod size")
-            pods = strict_json(pods_path.read_bytes())["items"]
+            pods = single_action_json(pods_path.read_bytes())["items"]
             if (not isinstance(pods, list) or len(pods) != 1
                     or pods[0]["metadata"]["name"] != receipt["pod_name"]
                     or pods[0]["metadata"]["uid"] != receipt["pod_uid"]):

@@ -122,6 +122,7 @@ internal sealed class SingleActionHandler(IOptions<VerifierHostOptions> configur
         if(final){earlier[configuration]=result;result=result with{ItemAssessment=SingleActionConfigurationJudgement.JudgeItem(item,earlier)};}
         string candidateName=SingleActionPaths.Candidate(run,item,configuration);
         await Bounded(async ct=>{await verifier.CreateAsync(candidateName,SingleActionCandidateCodec.Write(result),ct).ConfigureAwait(false);return true;},cancellationToken).ConfigureAwait(false);
+        if(aggregate.Status!="complete_valid")return 1;
         var judgeReceipt=new SingleActionJudgeReceipt(1,"single-action-judge",run,item,configuration,source,options.JobName!,options.PodName!,options.PodUid!,candidateName,0,true);
         completion.SetPendingBlobReceipt("verifier",SingleActionPaths.JudgeCompletion(run,item,configuration),SingleActionWire.Write(judgeReceipt,65536));
         return 0;
