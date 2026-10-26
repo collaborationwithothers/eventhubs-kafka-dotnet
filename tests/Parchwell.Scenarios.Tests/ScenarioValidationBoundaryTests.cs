@@ -142,7 +142,7 @@ public sealed class ScenarioValidationBoundaryTests
     [Fact]
     public async Task Given_ValidB04BooleanAndIntegerOverrides_When_Resolving_Then_PreservesBaselineAndRecordsOrigin()
     {
-        var yaml = B04WithOverrides("enable.idempotence: true\n      max.in.flight: 5");
+        var yaml = B04WithOverrides("enable.idempotence: true\nmax.in.flight: 5");
         var source = new InMemoryScenarioSource(("scenarios/B04/scenario.yaml", yaml),
             (ScenarioTestData.ProfilePath, ScenarioTestData.ValidProfile));
         var loaded = await ScenarioTestData.Loader(source).LoadAsync("B04", TestContext.Current.CancellationToken);
@@ -162,6 +162,6 @@ public sealed class ScenarioValidationBoundaryTests
     private static string B04WithOverride(string key, string value) => B04WithOverrides($"{key}: {value}");
 
     private static string B04WithOverrides(string entries) =>
-        "schema_version: 1\nid: B04\nbaseline: Parchwell.Kafka\nroles: [LoadGenProducer, VerifierConsumer]\nprofile: profiles/saturation-ramp.yaml\nconfigurations:\n  C0: {}\n  changed:\n    LoadGenProducer:\n      " + entries.Replace("\n", "\n      ", StringComparison.Ordinal) +
+        "schema_version: 1\nid: B04\nbaseline: Parchwell.Kafka\nroles: [LoadGenProducer, VerifierConsumer]\nprofile: profiles/synthetic.yaml\nconfigurations:\n  C0: {}\n  changed:\n    LoadGenProducer:\n      " + entries.Replace("\n", "\n      ", StringComparison.Ordinal) +
         "\n\nfault:\n  live: {kind: none}\n  component: {kind: none}\nrepeats: 5\ngate: {kind: none}\nmeasures:\n  - {id: verifier.ok, role: VerifierConsumer}\n";
 }

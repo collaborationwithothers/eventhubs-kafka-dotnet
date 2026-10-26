@@ -98,9 +98,15 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(smoke_session, steps[login_index + 1])
 
     def test_reports_and_cleanup(self):
+        expected_workload_steps = {
+            'probe': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
+            'full-C0': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
+            'full-C3': 'tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
+        }
         for name, job in self.jobs.items():
             steps = self.steps(job)
             self.assertIn('select', steps['report']['env']['REQUIRED_STEPS'])
+            self.assertEqual(expected_workload_steps[name], steps['report']['env']['WORKLOAD_STEPS'])
             self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'", steps['delete_workload']['if'])
             self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", steps['destroy']['if'])
             required = steps['report']['env']['REQUIRED_STEPS'].split()
@@ -114,6 +120,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual("always() && steps.stop_prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", stops[0][1]['if'])
         self.assertEqual('${{ needs.probe.outputs.loadgen_digest }}', final['allowed']['env']['LOADGEN_DIGEST'])
         self.assertEqual('${{ needs.probe.outputs.verifier_digest }}', final['allowed']['env']['VERIFIER_DIGEST'])
+        self.assertEqual('${{ needs.full-C0.result }}', final['allowed']['env']['FULL_C0_RESULT'])
+        self.assertNotIn("needs['full-C0']", self.text)
         self.assertIn('prepare-stop', final['stop_prepare']['run'])
         self.assertEqual('${{ steps.stop_prepare.outputs.private_directory }}', final['stop']['env']['STOP_PRIVATE_DIRECTORY'])
         self.assertEqual('true', self.steps(self.jobs['full-C0'])['report']['env']['WORKLOAD'])
@@ -168,6 +176,11 @@ esac
         self.assertEqual('Use the initial job\'s immutable worker images', self.steps(self.jobs['full-C3'])['images']['name'])
         self.assertIn('use-images', self.steps(self.jobs['full-C3'])['images']['run'])
         self.assertNotIn('A01_OUTPUT', self.text)
+
+    def test_no_obsolete_text(self):
+        for forbidden in ('Parchwell.Runner', 'A01_OUTPUT', 'PARCHWELL_COST', 'READINESS',
+                          'PARCHWELL_DEBUG_FAILURES', '|| true', 'continue-on-error'):
+            self.assertNotIn(forbidden, self.text)
 
     def test_selector_shell_paths_with_stubbed_commands(self):
         allowed = self.steps(self.jobs['full-C3'])['allowed']['run']

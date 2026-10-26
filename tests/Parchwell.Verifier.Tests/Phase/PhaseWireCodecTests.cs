@@ -143,7 +143,7 @@ public sealed class PhaseWireCodecTests
         {
             Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteReceipt(receipt));
             Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteRegistration( registration));
-            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteProducerCompletion(completion));
+            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.ReadProducerCompletion(PhaseWireCodec.WriteProducerCompletion(completion)));
             Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteReceipt(verifyReceipt));
         }
     }
