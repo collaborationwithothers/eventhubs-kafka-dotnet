@@ -11,6 +11,9 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class PhaseCandidateCodecTests
 {
     private static readonly string[] BrokerCountFields = ["client_id", "first_post_drain", "lower_bound", "maximum", "role"];
+    private static readonly string[] ExpectedB04EvidenceFields = ["delivery_error_codes", "fatal_errors"];
+    private static readonly int[] ExpectedB04DeliveryErrorCodes = [int.MinValue, 0, int.MaxValue];
+    private static readonly string[] ExpectedFatalErrorFields = ["code", "name"];
 
     [Fact]
     public void Given_B04Candidate_When_RoundTripped_Then_ProjectsExactEvidenceAndAllowsAbsence()
@@ -25,7 +28,7 @@ public sealed class PhaseCandidateCodecTests
         using JsonDocument document=PhaseCandidateCodec.Read(bytes);
         JsonElement repeat=Assert.Single(document.RootElement.GetProperty("repeats").EnumerateArray());
         JsonElement evidence=repeat.GetProperty("b04_recorded_evidence");
-        Assert.Equal(new[]{"delivery_error_codes","fatal_errors"},evidence.EnumerateObject().Select(x=>x.Name));
+        Assert.Equal(ExpectedB04EvidenceFields,evidence.EnumerateObject().Select(x=>x.Name));
         Assert.Equal(new[]{-185,7},evidence.GetProperty("delivery_error_codes").EnumerateArray().Select(x=>x.GetInt32()));
         PhaseCandidate noEvidence=b04 with { Repeats=[b04.Repeats[0] with { B04Evidence=null }] };
         using JsonDocument absent=PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(noEvidence));
@@ -56,12 +59,12 @@ public sealed class PhaseCandidateCodecTests
         }
         else
         {
-            Assert.Equal(new[]{"delivery_error_codes","fatal_errors"},actual.EnumerateObject().Select(x=>x.Name));
+            Assert.Equal(ExpectedB04EvidenceFields,actual.EnumerateObject().Select(x=>x.Name));
             if(actual.TryGetProperty("delivery_error_codes",out JsonElement codes))
-                Assert.Equal(new[]{int.MinValue,0,int.MaxValue},codes.EnumerateArray().Select(x=>x.GetInt32()));
+                Assert.Equal(ExpectedB04DeliveryErrorCodes,codes.EnumerateArray().Select(x=>x.GetInt32()));
             if(actual.TryGetProperty("fatal_errors",out JsonElement fatal))
             {
-                Assert.Equal(new[]{"code","name"},fatal[0].EnumerateObject().Select(x=>x.Name));
+                Assert.Equal(ExpectedFatalErrorFields,fatal[0].EnumerateObject().Select(x=>x.Name));
                 Assert.Equal(int.MinValue,fatal[0].GetProperty("code").GetInt32());
                 Assert.Equal(string.Empty,fatal[0].GetProperty("name").GetString());
             }

@@ -12,6 +12,10 @@ namespace Parchwell.Verifier.Tests.B04;
 #pragma warning disable CA1707
 public sealed class B04EvidenceRecorderTests
 {
+    private static readonly int[] ExpectedDeliveryErrorCodes = [3];
+    private static readonly int[] ExpectedOtherDeliveryErrorCodes = [9];
+    private static readonly int[] ExpectedLifecycleFailureDeliveryErrorCodes = [8];
+
     [Fact]
     public void Given_NonB04Request_When_Recording_Then_ReturnsNoEvidence()
     {
@@ -53,7 +57,7 @@ public sealed class B04EvidenceRecorderTests
         };
         IReadOnlyList<B04FatalError>? actual=B04EvidenceRecorder.Record(request).Evidence!.FatalErrors;
         if(retained)Assert.Equal(count,actual!.Count);else Assert.Null(actual);
-        Assert.Equal(new[]{3},B04EvidenceRecorder.Record(request).Evidence!.DeliveryErrorCodes);
+        Assert.Equal(ExpectedDeliveryErrorCodes,B04EvidenceRecorder.Record(request).Evidence!.DeliveryErrorCodes);
     }
 
     [Theory]
@@ -70,7 +74,7 @@ public sealed class B04EvidenceRecorderTests
         };
         IReadOnlyList<B04FatalError>? actual=B04EvidenceRecorder.Record(request).Evidence!.FatalErrors;
         if(retained)Assert.Single(actual!);else Assert.Null(actual);
-        Assert.Equal(new[]{9},B04EvidenceRecorder.Record(request).Evidence!.DeliveryErrorCodes);
+        Assert.Equal(ExpectedOtherDeliveryErrorCodes,B04EvidenceRecorder.Record(request).Evidence!.DeliveryErrorCodes);
     }
 
     [Fact]
@@ -78,8 +82,8 @@ public sealed class B04EvidenceRecorderTests
     {
         var request=B04Request() with
         {
-            Ledger=ParseResult<IReadOnlyList<LedgerRow>>.Failure(new(1,"bad","ledger.jsonl",null,null,null)),
-            Lifecycle=ParseResult<IReadOnlyList<LifecycleEvent>>.Failure(new(1,"bad","request-lifecycle.jsonl",null,null,null))
+            Ledger=ParseResult<IReadOnlyList<LedgerRow>>.Failure(new StructuralProblem(1,"bad","ledger.jsonl",null,null,null)),
+            Lifecycle=ParseResult<IReadOnlyList<LifecycleEvent>>.Failure(new StructuralProblem(1,"bad","request-lifecycle.jsonl",null,null,null))
         };
         B04RecordedEvidence evidence=B04EvidenceRecorder.Record(request).Evidence!;
         Assert.Null(evidence.DeliveryErrorCodes);Assert.Null(evidence.FatalErrors);
@@ -104,7 +108,7 @@ public sealed class B04EvidenceRecorderTests
             Lifecycle=new ParseResult<IReadOnlyList<LifecycleEvent>>([Fatal(2,"fatal")],[problem],ParseFailureKind.Structural)
         };
         B04RecordedEvidence second=B04EvidenceRecorder.Record(lifecycleFailure).Evidence!;
-        Assert.Equal(new[]{8},second.DeliveryErrorCodes);
+        Assert.Equal(ExpectedLifecycleFailureDeliveryErrorCodes,second.DeliveryErrorCodes);
         Assert.Null(second.FatalErrors);
     }
 
