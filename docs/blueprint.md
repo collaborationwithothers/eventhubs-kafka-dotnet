@@ -988,7 +988,7 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 | C08 | `group.protocol = consumer` (KIP-848) support on Event Hubs | S6 | T | S |
 | C09 | Offset commits throttled at 2 per second per partition; commit-per-message | S2 | T | M |
 | C10 | Store-after-process versus default auto offset store: loss and duplicates on crash | S6 | T | M |
-| C11 | Offset metadata over 1,024 bytes | S2 | T | S |
+| C11 | Offset metadata over 1,024 bytes | S2 | D: the pinned client exposes no commit metadata ([managed API](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/TopicPartitionOffset.cs), [native conversion](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs#L1344-L1376)) | S |
 | C12 | `group.id` over 256 characters | S2 | T | S |
 | C13 | 1,000 Kafka consumer groups per namespace | S3 | T | S |
 | C14 | Zombie consumer sharing a `group.id` | S1 | T | M |
