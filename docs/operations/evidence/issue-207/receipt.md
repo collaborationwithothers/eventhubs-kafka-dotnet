@@ -91,3 +91,13 @@ The scope script passes with 66 allowed paths. It reports 25 positive chart case
 The full `./scripts/verify-dotnet.sh` passed with exit 0 on source commit `1cfed1c3a057f754857666b07ab2b60f280ea2dd`; logs are `/tmp/issue207/verify-approved.log` and `/tmp/parchwell-dotnet-verification.IUZnH3C5`. Locked restore and the clean Release build passed. The Kafka XML reported 60 catalog declaration mappings, effective manifest collection passed, and Architecture passed 11 of 11. The independent Kafka, LoadGen, Scenarios and Verifier suites passed 360/360, 371/371, 117/117 and 2746/2746 respectively, with no skips. Enrichment remains an empty scaffold, so no coverage is claimed for it. The valid warning control built and the intended CS1030 control was rejected. The earlier worker-image smoke, Kafka configuration mapping coverage, pinned offline checks, and rendered LoadGen host results above also remain applicable because this amendment changes only an architecture test.
 
 Implementation used GPT-6 Luna at high effort. A fresh cold review and final CI remain pending. After Hari merges, the required mutation run must complete before the evidence pack is finalized.
+
+## Scenario binding repair
+
+Source `f64068b` adds selected `ScenarioId` and `ConfigurationId` equality to the existing judge registration, start-line and verify receipt binding predicates, and adds a regression using five real A01/C0 repeats with B04 options. The test confirms the judge rejects the re-labeled evidence without candidate totals, broker counts or B04 recorded evidence. The valid A01 same-scenario control remains. This adds no oracle check.
+
+Cold-review round 2 is frozen in `/tmp/issue207/review-final.diff`. It reports two P0 findings and one P2: the cross-scenario re-labeling issue was demonstrated with all-A01/C0 stores selected as B04, which previously yielded exit 0, `complete_valid` and `counts.ok` of 5; source `f64068b` fixes it. The `expected.yaml` P0 remains as required by approved plan section C2 and awaits Hari's protected merge. The P2 for the stale receipt opening is deferred until the first clean cold-review round under rule 8.
+
+Full verification on source `f64068b` is running; its log is `/tmp/issue207/verify-binding.log`. Worker image smoke is queued afterward, with output directed to `/tmp/issue207/images-binding.log`. No passing result is claimed for either check on this source. The full pipeline passed previously on `1cfed1c3a057f754857666b07ab2b60f280ea2dd`, before the scenario-binding repair.
+
+The repair used GPT-6 Luna at high effort. The fresh Codex reviewer used high effort. The clean cold-review round, verification and image smoke remain outstanding before CI and the protected merge handoff.

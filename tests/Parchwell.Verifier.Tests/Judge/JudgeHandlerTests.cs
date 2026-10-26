@@ -43,7 +43,7 @@ public sealed class JudgeHandlerTests
     }
 
     [Fact]
-    public async Task GivenB04OptionsWithA01RepeatEvidence_WhenJudged_ThenRejectsCrossScenarioEvidence()
+    public async Task Given_B04OptionsWithA01RepeatEvidence_When_Judged_Then_RejectsCrossScenarioEvidence()
     {
         PhaseStores stores=await BuildFiveRepeats("C0",null);
         var verifier=new MemoryVerifierStore(stores.Verifier);
