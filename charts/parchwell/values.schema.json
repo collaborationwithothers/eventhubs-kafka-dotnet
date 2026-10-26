@@ -11,14 +11,22 @@
     "scenario_id": {
       "enum": [
         "A01",
-        "B04"
+        "B04",
+        "B01",
+        "B03",
+        "B05",
+        "C08",
+        "C12",
+        "F04"
       ]
     },
     "configuration_id": {
       "enum": [
         "C0",
         "C1",
-        "C3"
+        "C2",
+        "C3",
+        "C4"
       ]
     },
     "runtime": {
@@ -51,7 +59,9 @@
             "probe",
             "C0",
             "C1",
-            "C3"
+            "C2",
+            "C3",
+            "C4"
           ]
         },
         "mode": {
@@ -59,7 +69,10 @@
             "start-line",
             "loadgen",
             "verify",
-            "judge"
+            "judge",
+            "single-action",
+            "single-action-judge",
+            "single-action-seed"
           ]
         },
         "repeat": {
@@ -136,6 +149,50 @@
                   "const": "system:serviceaccount:parchwell:verifier"
                 }
               }
+            },
+            "probe": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "client_id"
+              ],
+              "properties": {
+                "name": {
+                  "const": "probe"
+                },
+                "client_id": {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "minLength": 1
+                },
+                "subject": {
+                  "type": "string",
+                  "const": "system:serviceaccount:parchwell:probe"
+                }
+              }
+            },
+            "enrichment-consumer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "client_id"
+              ],
+              "properties": {
+                "name": {
+                  "const": "enrichment-consumer"
+                },
+                "client_id": {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "minLength": 1
+                },
+                "subject": {
+                  "type": "string",
+                  "const": "system:serviceaccount:parchwell:enrichment-consumer"
+                }
+              }
             }
           }
         },
@@ -207,6 +264,9 @@
                 },
                 "claim_check": {
                   "const": "claim-check"
+                },
+                "single_action": {
+                  "const": "single-action"
                 }
               }
             }
@@ -236,7 +296,8 @@
             "verifier_start_line",
             "verifier_verify",
             "verifier_gate",
-            "execution"
+            "execution",
+            "single_action_execution"
           ],
           "properties": {
             "scenario_parsing": {
@@ -345,8 +406,28 @@
                 "gate_job_seconds": 90,
                 "termination_grace_seconds": 30
               }
+            },
+            "single_action_execution": {
+              "type": "object",
+              "const": {
+                "action_job_seconds": 1980,
+                "judge_job_seconds": 120,
+                "termination_grace_seconds": 30
+              }
             }
           }
+        },
+        "action_role": {
+          "enum": [
+            "loadgen",
+            "probe",
+            "enrichment-consumer",
+            "verifier"
+          ]
+        },
+        "image_smoke": {
+          "type": "boolean",
+          "const": true
         }
       },
       "allOf": [
@@ -399,8 +480,165 @@
               "loadgen_job_name"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "single-action",
+                  "single-action-judge",
+                  "single-action-seed"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "action_role",
+              "image_smoke"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "repeat"
+                  ]
+                },
+                {
+                  "required": [
+                    "loadgen_job_name"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "service_accounts": {
+                "required": [
+                  "loadgen",
+                  "verifier",
+                  "probe",
+                  "enrichment-consumer"
+                ]
+              },
+              "blob": {
+                "properties": {
+                  "containers": {
+                    "required": [
+                      "single_action"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "action_role"
+                  ]
+                },
+                {
+                  "required": [
+                    "image_smoke"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "service_accounts": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "probe"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "enrichment-consumer"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
         }
       ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "single-action",
+                  "single-action-judge",
+                  "single-action-seed"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "runtime"
+        ]
+      },
+      "then": {
+        "properties": {
+          "scenario_id": {
+            "enum": [
+              "B01",
+              "B03",
+              "B05",
+              "C08",
+              "C12",
+              "F04"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "scenario_id": {
+            "enum": [
+              "A01",
+              "B04"
+            ]
+          },
+          "configuration_id": {
+            "enum": [
+              "C0",
+              "C1",
+              "C3"
+            ]
+          },
+          "runtime": {
+            "properties": {
+              "phase": {
+                "enum": [
+                  "probe",
+                  "C0",
+                  "C1",
+                  "C3"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

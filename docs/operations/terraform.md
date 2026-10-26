@@ -92,27 +92,31 @@ These output values are deployment data held in private state. They are not publ
 | Persistent | `private_endpoint_subnet_id` | Endpoint subnet |
 | Persistent | `private_dns_zone_ids` | `eventhubs`, `blob` |
 | Persistent | `log_analytics_workspace_id` | Persistent workspace |
-| Persistent | `workload_identities` | `loadgen`, `enrichment-consumer`, `verifier`, each with `id`, `client_id`, `principal_id` |
+| Persistent | `workload_identities` | `loadgen`, `enrichment-consumer`, `verifier`, `probe`, each with `id`, `client_id`, `principal_id` |
 | Persistent | `aks_identity_id` | Separate AKS control-plane identity |
 | Persistent | `acr` | `id`, `name`, `login_server` |
 | Cluster | `aks` | `id`, `name`, `node_pools` |
 | Ephemeral | `eventhubs` | `namespace_name`, `bootstrap_servers`, `topics` keyed `events`, `state`, `dlq` |
-| Ephemeral | `blob` | `account_url`, `containers` keyed `ledger`, `verifier`, `claim_check` |
+| Ephemeral | `blob` | `account_url`, `containers` keyed `ledger`, `verifier`, `claim_check`, `single_action` |
 | Ephemeral | `private_endpoint_ips` | `eventhubs`, `blob` |
 | Cluster | `workload_identity` | `namespace`, `service_accounts`, each with `name`, `client_id`, `subject` |
 | Persistent | `application_insights_connection_string` | Sensitive runtime value |
 
+The [adopted probe batch decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/212#issuecomment-6423299188) adds the probe identity and federation, its component-scoped telemetry grant, and exactly three data grants: probe receives Azure Event Hubs Data Receiver on `document-events` and Storage Blob Data Contributor on `single-action`; verifier receives Storage Blob Data Reader on `single-action`. Existing grants remain.
+
+Before the S1 dispatch, Hari applies the persistent changes and refreshes PARCHWELL_PERSISTENT_OUTPUTS with the new probe identity. The workflow applies cluster federation and ephemeral roles. The image smoke is not an RBAC access test.
+
 ## Worker consumer interface
 
-The namespace is `parchwell`. Service accounts are `loadgen`, `enrichment-consumer` and `verifier`; each federation subject is `system:serviceaccount:parchwell:<service-account-name>`. Workers use the matching client IDs from the cluster root's `workload_identity` output.
+The namespace is `parchwell`. Service accounts are `loadgen`, `enrichment-consumer`, `verifier` and `probe`; each federation subject is `system:serviceaccount:parchwell:<service-account-name>`. Workers use the matching client IDs from the cluster root's `workload_identity` output.
 
 The fixed pools are `system`, `workload` and `loadgen`. Each has one normal-capacity `Standard_D4ds_v5` node with autoscaling disabled for A01. The system taint is `CriticalAddonsOnly=true:NoSchedule`; the loadgen taint is `workload=loadgen:NoSchedule`. Pool labels use `workload=system`, `workload=workload` and `workload=loadgen`. These placement settings and resource sizes are design inputs from the approved plan, not measured capacity.
 
-Kafka bootstrap uses the namespace hostname on port `9093`. Topic names are `document-events`, `document-state` and `document-events-dlq`; Blob containers are `ledger`, `verifier` and `claim-check`. The compacted topic's tombstone retention is a design choice of `168` hours from the approved plan, not a measured safe replay interval. The scoped identity contract is defined in [ADR-003](../blueprint.md#adr-003-entra-only-authentication-with-aks-workload-identity-and-a-custom-oauthbearer-refresh-handler) and [ADR-012](../blueprint.md#adr-012-the-oracle-is-a-per-message-ledger-joined-into-four-outcome-classes).
+Kafka bootstrap uses the namespace hostname on port `9093`. Topic names are `document-events`, `document-state` and `document-events-dlq`; Blob containers are `ledger`, `verifier`, `claim-check` and `single-action`. The compacted topic's tombstone retention is a design choice of `168` hours from the approved plan, not a measured safe replay interval. The scoped identity contract is defined in [ADR-003](../blueprint.md#adr-003-entra-only-authentication-with-aks-workload-identity-and-a-custom-oauthbearer-refresh-handler) and [ADR-012](../blueprint.md#adr-012-the-oracle-is-a-per-message-ledger-joined-into-four-outcome-classes).
 
 ## Monitoring and retention
 
-The persistent Application Insights component disables local authentication. Exactly the loadgen and verifier identities receive Monitoring Metrics Publisher at that component's scope; enrichment receives no telemetry grant. Microsoft's [Entra authentication documentation](https://github.com/MicrosoftDocs/azure-monitor-docs/blob/91be653d05f39bed772fc55c09e2a0b2bcbd5f3b/articles/azure-monitor/app/azure-ad-authentication.md) describes that role's all-telemetry ingestion permission. The [pinned component module](https://github.com/Azure/terraform-azurerm-avm-res-insights-component/tree/848161e9cb89f4ef5a73d363e984e8dcdad0151d) supplies the resource and component-scoped grants; worker exporters arrive in CT.
+The persistent Application Insights component disables local authentication. Exactly the loadgen, verifier and probe identities receive Monitoring Metrics Publisher at that component's scope; enrichment receives no telemetry grant. Microsoft's [Entra authentication documentation](https://github.com/MicrosoftDocs/azure-monitor-docs/blob/91be653d05f39bed772fc55c09e2a0b2bcbd5f3b/articles/azure-monitor/app/azure-ad-authentication.md) describes that role's all-telemetry ingestion permission. The [pinned component module](https://github.com/Azure/terraform-azurerm-avm-res-insights-component/tree/848161e9cb89f4ef5a73d363e984e8dcdad0151d) supplies the resource and component-scoped grants; worker exporters arrive in CT.
 
 The cluster's OMS addon uses Entra authentication and the persistent workspace. The separate Container Insights data collection rule (DCR) uses `Microsoft-ContainerInsights-Group-Default`, a one-minute interval, all namespaces and ContainerLogV2, following the defaults in Microsoft's [collection settings table](https://github.com/MicrosoftDocs/azure-monitor-docs/blob/91be653d05f39bed772fc55c09e2a0b2bcbd5f3b/articles/azure-monitor/containers/kubernetes-monitoring-enable.md#L440). The [Microsoft onboarding template](https://github.com/microsoft/Docker-Provider/blob/46052686001947b2c3afd9f4c38b9c254706e26d/scripts/onboarding/aks/onboarding-msi-terraform/main.tf) shows the addon, DCR and association wiring. [ADR-011](../blueprint.md#adr-011-terraform-with-azure-verified-modules-where-they-cover-the-need) records the DCR AVM and AzureRM association fallback. Bundled AKS monitoring and alerts remain disabled because the bundle also creates deferred Managed Prometheus resources.
 

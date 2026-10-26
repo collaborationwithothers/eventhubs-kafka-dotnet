@@ -1,5 +1,5 @@
 locals {
-  workloads = toset(["loadgen", "enrichment-consumer", "verifier"])
+  workloads = toset(["loadgen", "enrichment-consumer", "verifier", "probe"])
   names = {
     application_insights    = "appi-parchwell-${var.naming_suffix}"
     resource_group          = "rg-parchwell-persist"

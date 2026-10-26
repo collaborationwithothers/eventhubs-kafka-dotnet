@@ -117,6 +117,12 @@ override_resource {
 }
 
 override_resource {
+  target          = module.workload_identities["probe"].azurerm_user_assigned_identity.this
+  override_during = plan
+  values          = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-probe-offline1", "client_id" = "00000000-0000-0000-0000-000000000012", "principal_id" = "00000000-0000-0000-0000-000000000013" }
+}
+
+override_resource {
   target          = module.aks_identity.azurerm_user_assigned_identity.this
   override_during = plan
   values          = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-offline1", "client_id" = "00000000-0000-0000-0000-000000000007", "principal_id" = "00000000-0000-0000-0000-000000000008" }
@@ -183,8 +189,14 @@ run "foundation" {
         principal_type                   = "ServicePrincipal"
         skip_service_principal_aad_check = true
       }
+      probe = {
+        role_definition_id_or_name       = "Monitoring Metrics Publisher"
+        principal_id                     = "00000000-0000-0000-0000-000000000013"
+        principal_type                   = "ServicePrincipal"
+        skip_service_principal_aad_check = true
+      }
     })
-    error_message = "Application Insights must receive only loadgen and verifier telemetry grants through its component-scoped module interface."
+    error_message = "Application Insights must receive only loadgen, verifier and probe telemetry grants through its component-scoped module interface."
   }
 
   assert {
@@ -228,7 +240,7 @@ run "foundation" {
   }
 
   assert {
-    condition     = jsonencode(output.workload_identities) == jsonencode({ "loadgen" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-loadgen-offline1", "client_id" = "00000000-0000-0000-0000-000000000001", "principal_id" = "00000000-0000-0000-0000-000000000004" }, "enrichment-consumer" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-enrichment-consumer-offline1", "client_id" = "00000000-0000-0000-0000-000000000002", "principal_id" = "00000000-0000-0000-0000-000000000005" }, "verifier" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-verifier-offline1", "client_id" = "00000000-0000-0000-0000-000000000003", "principal_id" = "00000000-0000-0000-0000-000000000006" } })
+    condition     = jsonencode(output.workload_identities) == jsonencode({ "loadgen" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-loadgen-offline1", "client_id" = "00000000-0000-0000-0000-000000000001", "principal_id" = "00000000-0000-0000-0000-000000000004" }, "enrichment-consumer" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-enrichment-consumer-offline1", "client_id" = "00000000-0000-0000-0000-000000000002", "principal_id" = "00000000-0000-0000-0000-000000000005" }, "verifier" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-verifier-offline1", "client_id" = "00000000-0000-0000-0000-000000000003", "principal_id" = "00000000-0000-0000-0000-000000000006" }, "probe" = { "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-probe-offline1", "client_id" = "00000000-0000-0000-0000-000000000012", "principal_id" = "00000000-0000-0000-0000-000000000013" } })
     error_message = "workload_identities output must match the complete literal synthetic fixture."
   }
 

@@ -80,6 +80,11 @@ override_data {
           "client_id"    = "00000000-0000-0000-0000-000000000003"
           "principal_id" = "00000000-0000-0000-0000-000000000006"
         }
+        "probe" = {
+          "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-probe-offline1"
+          "client_id"    = "00000000-0000-0000-0000-000000000012"
+          "principal_id" = "00000000-0000-0000-0000-000000000013"
+        }
       }
       "aks_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-offline1"
       "acr" = {
@@ -444,8 +449,14 @@ run "foundation" {
         "issuer"                    = "https://synthetic.example.invalid/issuer/"
         "user_assigned_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-verifier-offline1"
       }
+      "probe" = {
+        "subject"                   = "system:serviceaccount:parchwell:probe"
+        "audience"                  = ["api://AzureADTokenExchange"]
+        "issuer"                    = "https://synthetic.example.invalid/issuer/"
+        "user_assigned_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-probe-offline1"
+      }
     })
-    error_message = "Federation must bind exactly the three workload subjects to their corresponding persistent identities."
+    error_message = "Federation must bind exactly the four workload subjects to their corresponding persistent identities."
   }
 
   assert {
@@ -481,9 +492,14 @@ run "foundation" {
           "client_id" = "00000000-0000-0000-0000-000000000003"
           "subject"   = "system:serviceaccount:parchwell:verifier"
         }
+        "probe" = {
+          "name"      = "probe"
+          "client_id" = "00000000-0000-0000-0000-000000000012"
+          "subject"   = "system:serviceaccount:parchwell:probe"
+        }
       }
     })
-    error_message = "Worker deployment output must expose exactly the namespace and three service-account contracts."
+    error_message = "Worker deployment output must expose exactly the namespace and four service-account contracts."
   }
 
   assert {

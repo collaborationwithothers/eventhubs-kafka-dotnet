@@ -16,6 +16,20 @@ MIB = 1024 * 1024
 SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
              "B04": {"C0": "C0", "C1": "C1"}}
 MODES = ("start-line", "loadgen", "verify")
+SINGLE_ACTION_CONFIGURATIONS = (
+    ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
+    ('B03', 'C1', 'loadgen'), ('B03', 'C2', 'loadgen'),
+    ('B03', 'C3', 'loadgen'), ('B03', 'C4', 'loadgen'),
+    ('B05', 'C1', 'loadgen'),
+    ('C08', 'C0', 'probe'), ('C08', 'C1', 'probe'),
+    ('C12', 'C1', 'probe'), ('C12', 'C2', 'probe'),
+    ('F04', 'C0', 'loadgen'), ('F04', 'C1', 'loadgen'),
+    ('F04', 'C2', 'probe'), ('F04', 'C3', 'loadgen'),
+    ('F04', 'C4', 'probe'),
+)
+SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
+SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
+BATCH_START_CAP = 14400
 SLOTS = (1, 2, 3, 4, 5)
 CANDIDATE_MAXIMUM = 16_777_216  # PhaseCandidateCodec.MaximumBytes
 LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
@@ -32,7 +46,7 @@ class Failure(Exception):
 
 def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
-    if selected not in SCENARIOS:
+    if selected not in (*SCENARIOS, "probe-batch"):
         raise Failure("unsupported scenario")
     return selected
 
@@ -65,7 +79,12 @@ def unwrap(value):
     return value["value"] if isinstance(value, dict) and "value" in value else value
 
 
-def job_name(run, phase, mode, repeat=None):
+def job_name(run, phase, mode, repeat=None, item=None, configuration=None, action_role=None):
+    if mode == "single-action-seed":
+        return f"{run}-f04-seed"
+    if mode in SINGLE_ACTION_MODES:
+        suffix = "single-judge" if mode == "single-action-judge" else "single"
+        return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
     if mode == "judge":
         return f"{run}-{phase.lower()}-judge"
     return f"{run}-{phase.lower()}-r{repeat}-{mode}"
@@ -132,7 +151,15 @@ class Phase:
             raise Failure("invalid AKS resource ID")
 
     def validate_scenario(self):
-        scenario()
+        if scenario() not in SCENARIOS:
+            raise Failure("unsupported scenario")
+        return 0
+
+    def validate_batch(self):
+        if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
+            raise Failure("unsupported probe batch selection")
+        if os.environ["PARCHWELL_RUN_KIND"] == "batch":
+            raise Failure("probe batch actions require S2 (#213); select run_kind=smoke for S1")
         return 0
 
     def allow_images(self):
@@ -145,10 +172,17 @@ class Phase:
 
     def prepare(self, phase):
         selected = scenario()
-        if phase not in SCENARIOS[selected]:
+        if selected not in SCENARIOS or phase not in SCENARIOS[selected]:
             raise Failure("unsupported phase")
+        return self.prepare_shared(selected, phase, SCENARIOS[selected][phase], selected.lower())
+
+    def prepare_batch(self):
+        self.validate_batch()
+        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind="smoke")
+
+    def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
-        run = f"{selected.lower()}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
+        run = f"{prefix}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
         sha = require("GITHUB_SHA")
         if not re.fullmatch(r"[0-9a-f]{40}", sha) or len(run) > 29 or not re.fullmatch(LABEL, run):
             raise Failure("invalid run or source commit")
@@ -182,8 +216,8 @@ class Phase:
         private, candidate, artifacts = directories
         for name, value in secrets.items():
             write_private(private / name, value + "\n")
-        write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": SCENARIOS[selected][phase],
-                                           "run_id": run, "source_commit": sha})
+        write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": configuration,
+                                           "run_id": run, "source_commit": sha, **metadata})
         write_json(artifacts / "phase-status.json", {"phase": phase, "run_id": run,
                    "modes": [], "candidate": None, "safety_stop": False})
         settings = {"PARCHWELL_PRIVATE_DIRECTORY": private, "PARCHWELL_CANDIDATE_DIRECTORY": candidate,
@@ -274,31 +308,35 @@ class Phase:
                 raise Failure("private DNS check failed: " + host, 1)
         return 0
 
-    def values(self, mode, repeat):
+    def values(self, mode, repeat, item=None, configuration=None, action_role=None):
         phase = self.read("phase.json")
         ephemeral = self.read("ephemeral-output.json")
         persistent = self.read("persistent-output.json")
         accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
-        runtime = {"run_id": phase["run_id"], "phase": phase["phase"], "mode": mode,
+        single = mode in SINGLE_ACTION_MODES
+        runtime = {"run_id": phase["run_id"], "phase": configuration if single else phase["phase"], "mode": mode,
                    "source_commit": phase["source_commit"],
                    "loadgen_image": phase["images"]["loadgen"]["reference"],
                    "verifier_image": phase["images"]["verifier"]["reference"],
                    "service_accounts": {role: {key: accounts[role][key] for key in ("name", "client_id", "subject")}
-                                        for role in ("loadgen", "verifier")},
+                                        for role in (("loadgen", "verifier", "probe", "enrichment-consumer") if single else ("loadgen", "verifier"))},
                    "eventhubs": unwrap(ephemeral["eventhubs"]), "blob": unwrap(ephemeral["blob"]),
                    "eventhubs_ip": unwrap(ephemeral["private_endpoint_ips"])["eventhubs"],
                    "blob_ip": unwrap(ephemeral["private_endpoint_ips"])["blob"],
                    "application_insights_connection_string": unwrap(persistent["application_insights_connection_string"])}
-        if mode != "judge":
+        if single:
+            runtime.update(action_role=action_role, image_smoke=True)
+        elif mode != "judge":
             runtime.update(repeat=repeat, loadgen_job_name=job_name(phase["run_id"], phase["phase"], "loadgen", repeat))
-        return {"scenario_id": phase["scenario"], "configuration_id": phase["configuration"], "runtime": runtime}
+        return {"scenario_id": item if single else phase["scenario"],
+                "configuration_id": configuration if single else phase["configuration"], "runtime": runtime}
 
-    def render(self, mode, repeat):
+    def render(self, mode, repeat, item=None, configuration=None, action_role=None):
         phase = self.read("phase.json")
-        job = job_name(phase["run_id"], phase["phase"], mode, repeat)
+        job = job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
         values = self.private / f"values-{job}.json"
         rendered = self.private / f"rendered-{job}.yaml"
-        write_json(values, self.values(mode, repeat))
+        write_json(values, self.values(mode, repeat, item, configuration, action_role))
         self.render_code = self.run(["helm", "template", "parchwell", "charts/parchwell", "--values", str(values)],
                                     120, output=rendered, maximum=4 * MIB)
         if self.render_code:
@@ -309,13 +347,15 @@ class Phase:
             return None
         return int(deadlines[0])
 
-    def run_mode(self, mode, repeat):
+    def run_mode(self, mode, repeat, item=None, configuration=None, action_role=None, skip_reason=None):
         phase = self.read("phase.json")
-        job = job_name(phase["run_id"], phase["phase"], mode, repeat)
+        job = job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
         state = self.state()
         record = {"job": job, "repeat": repeat, "mode": mode,
                   **{step: None for step in ("render", "apply", "wait", "collect", "delete", "confirm")},
                   "deadline": None, "outcome": "not_attempted"}
+        if mode in SINGLE_ACTION_MODES:
+            record.update(item=item, configuration=configuration, role=action_role, image_smoke=True)
         state["modes"].append(record)
 
         def save():
@@ -333,8 +373,15 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
+                if mode in SINGLE_ACTION_MODES:
+                    record["reason"] = "safety_stop"
+                    save()
                 return record
-            deadline = self.render(mode, repeat)
+            if skip_reason:
+                record["reason"] = skip_reason
+                save()
+                return record
+            deadline = self.render(mode, repeat, item, configuration, action_role)
             record["render"] = self.render_code
             record["deadline"] = deadline
             if self.render_code:
@@ -383,6 +430,66 @@ class Phase:
 
     def judge(self):
         return int(self.run_mode("judge", None)["outcome"] in BAD_OUTCOMES)
+
+    def smoke_complete(self, record):
+        """Check worker evidence from collect-job's public artifacts."""
+        valid = False
+        if record["outcome"] == "complete" and record["collect"] == 0:
+            try:
+                directory = self.artifacts / record["job"]
+                collection = strict_json((directory / "collection-status.json").read_bytes())
+                pods = strict_json((directory / "pods.json").read_bytes())["items"]
+                if collection["complete"] is not True or collection["gaps"] != [] or not isinstance(pods, list) or len(pods) != 1:
+                    raise ValueError("incomplete collection or pod count")
+                pod = pods[0]
+                role = record["role"]
+                worker = "verifier" if record["mode"] == "single-action-judge" else "loadgen"
+                expected_image = self.read("phase.json")["images"][worker]["reference"]
+                containers = pod["spec"]["containers"]
+                statuses = [status for status in pod["status"]["containerStatuses"] if status["name"] == role]
+                if (pod["spec"]["serviceAccountName"] != role or containers[0]["image"] != expected_image
+                        or len(statuses) != 1):
+                    raise ValueError("unexpected worker identity or image")
+                exit_code = statuses[0]["state"]["terminated"]["exitCode"]
+                if type(exit_code) is not int or exit_code != 0:
+                    raise ValueError("worker did not exit zero")
+                name = pod["metadata"]["name"]
+                if not isinstance(name, str) or not re.fullmatch(LABEL, name):
+                    raise ValueError("invalid pod name")
+                for line in (directory / f"{name}.containers.{role}.log").read_text().splitlines():
+                    try:
+                        marker = strict_json(line)
+                    except (ValueError, UnicodeError, Failure):
+                        continue
+                    if (marker == SMOKE_MARKER and isinstance(marker, dict)
+                            and all(type(marker[key]) is type(value) for key, value in SMOKE_MARKER.items())):
+                        valid = True
+                        break
+            except (OSError, ValueError, UnicodeError, KeyError, TypeError, IndexError, Failure):
+                pass
+        state = self.state()
+        for saved in state["modes"]:
+            if saved["job"] == record["job"]:
+                saved["smoke_valid"] = valid
+        self.save_state(state)
+        return valid
+
+    def single_action_seed(self):
+        self.validate_batch()
+        record = self.run_mode("single-action-seed", None, "F04", "C2", "enrichment-consumer")
+        return int(not self.smoke_complete(record))
+
+    def run_single_action_batch(self):
+        started = time.monotonic()
+        self.validate_batch()
+        passed = True
+        for item, configuration, role in SINGLE_ACTION_CONFIGURATIONS:
+            reason = "start_cap" if time.monotonic() - started >= BATCH_START_CAP else None
+            for mode, selected_role in (("single-action", role), ("single-action-judge", "verifier")):
+                record = self.run_mode(mode, None, item, configuration, selected_role, skip_reason=reason)
+                if not self.smoke_complete(record):
+                    passed = False
+        return int(not passed)
 
     def check_candidate(self, content):
         if not 0 < len(content) <= CANDIDATE_MAXIMUM:
@@ -500,6 +607,8 @@ class Phase:
 
 def main(argv):
     commands = {"prepare": (1, "prepare"), "prepare-stop": (0, "prepare_stop"), "allow-c3": (0, "allow_c3"),
+                "validate-batch": (0, "validate_batch"), "prepare-batch": (0, "prepare_batch"),
+                "single-action-seed": (0, "single_action_seed"), "run-single-action-batch": (0, "run_single_action_batch"),
                 "validate-scenario": (0, "validate_scenario"), "allow-images": (0, "allow_images"),
                 "publish-images": (0, "publish_images"), "use-images": (2, "use_images"), "check-dns": (0, "check_dns"),
                 "run-repeats": (0, "run_repeats"), "judge": (0, "judge"), "candidate": (0, "candidate"),

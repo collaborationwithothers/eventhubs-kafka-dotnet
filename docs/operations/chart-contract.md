@@ -86,3 +86,21 @@ For the acceptance commands, `PARCHWELL_TOOLS_DIRECTORY=/workspace/scratch/issue
 - `npm ci --ignore-scripts`, `npm run check:docs` and `git diff --check` passed. The documentation scan reported no warnings, including in both changed contracts.
 
 The assertion replacement follows [decision 6400615208](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/192#issuecomment-6400615208) and remains a disclosed P1 for Hari's merge. This receipt does not claim a live dispatch or gate 2 result. The final head's CI run and cold-review result are recorded in the pull request description under AGENTS.md rule 8.
+
+## S1 probe batch image smoke (#212)
+
+The approved [S1 plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/212#issuecomment-6423432624) adds `single-action`, `single-action-judge` and `single-action-seed` alongside the legacy A01/B04 modes described above. The ordered item/configuration/action-role matrix lives in [phase.py](../../infra/scripts/phase/phase.py); [AGENTS.md](../../AGENTS.md) and the [factory lifecycle](../agents/factory.md#item-lifecycle) govern execution and continuation.
+
+New modes require `phase` to equal `configuration_id`, `image_smoke: true`, an exact matrix role in `action_role`, and the fixed `single_action: single-action` blob container. They forbid `repeat` and `loadgen_job_name`. Each render includes the four `loadgen`, `verifier`, `probe` and `enrichment-consumer` accounts, with matching literal names and optional federation subjects. Legacy inputs and renders retain their two-account projection; an expanded Terraform blob output may also include `single_action`.
+
+| Mode | Service account and container name | Worker image | Job name | Deadline |
+| --- | --- | --- | --- | --- |
+| `single-action` | Matrix `action_role`: `loadgen` or `probe` | LoadGen | `<run>-<item lower>-<configuration lower>-single` | 1980 seconds |
+| `single-action-judge` | `verifier` | Verifier | `<run>-<item lower>-<configuration lower>-single-judge` | 120 seconds |
+| `single-action-seed` | `enrichment-consumer`, only F04/C2 | LoadGen | `<run>-f04-seed` | 1980 seconds |
+
+For example, C12/C2's judge is `probe-1-1-c12-c2-single-judge`. Identity and worker-image selection are independent: the probe action and enrichment seed use the existing LoadGen image. The selected account controls the role label and scheduling: `loadgen` uses the tainted loadgen pool and its toleration; the other roles use the workload pool. The new modes retain the pod security, resources, volumes, identity annotation/label, disabled automount and no-retry shape above. Action and seed set `podReplacementPolicy: Failed`. The separate fixed `runtime.bounds.single_action_execution` object supplies the action/judge deadlines and 30-second termination grace; legacy execution bounds remain unchanged.
+
+Every S1 container uses exactly `args: ["--image-smoke"]` with its existing image entrypoint. Its environment contains only the common `PARCHWELL_*` and telemetry fields listed above; the telemetry service name follows the image worker. The new finite chart suite checks all 33 positive renders with Helm lint/template and strict kubeconform, plus eight single-mutation rejections, alongside every legacy chart case and worker-setting regression.
+
+S1 runs --image-smoke in all 33 Jobs. It verifies pod placement, service-account selection and existing image contents. It does not test token acquisition, data-plane role enforcement, client actions, telemetry ingestion or verifier judgement. S2 supplies those action and judgement modes.

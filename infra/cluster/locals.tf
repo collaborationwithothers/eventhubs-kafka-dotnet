@@ -1,6 +1,6 @@
 locals {
   persistent = data.terraform_remote_state.persistent.outputs
-  workloads  = toset(["loadgen", "enrichment-consumer", "verifier"])
+  workloads  = toset(["loadgen", "enrichment-consumer", "verifier", "probe"])
   names = {
     resource_group     = "rg-parchwell-cluster"
     aks                = "aks-parchwell-${var.naming_suffix}"

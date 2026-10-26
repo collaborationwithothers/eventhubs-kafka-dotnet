@@ -72,7 +72,9 @@ def check_queue(document, filename):
 def check_workflows(repository):
     expected_triggers = {
         'cluster-smoke.yml': {'workflow_dispatch': ''},
-        'scenario.yml': {'workflow_dispatch': {'inputs': {'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04']}}}},
+        'scenario.yml': {'workflow_dispatch': {'inputs': {
+            'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
+            'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']}}}},
         'sweeper.yml': {'workflow_dispatch': '', 'schedule': [{'cron': '*/15 * * * *'}]},
         'dotnet-verification.yml': {'pull_request': '', 'push': {'branches': ['main']}, 'workflow_dispatch': ''},
         'docs-advisory.yml': {'pull_request': {'types': ['opened', 'synchronize', 'reopened', 'ready_for_review']}},

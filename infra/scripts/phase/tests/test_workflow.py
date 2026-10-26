@@ -1,4 +1,4 @@
-"""Offline contract tests for the shared A01/B04 scenario workflow."""
+"""Offline contract tests for the shared scenario workflow and batch smoke."""
 from pathlib import Path
 import importlib.util
 import os
@@ -34,7 +34,8 @@ class WorkflowTests(unittest.TestCase):
         cls.path = REPO / '.github/workflows/scenario.yml'
         cls.text = cls.path.read_text()
         cls.workflow = yaml.load(cls.text, Loader=UniqueLoader)
-        cls.jobs = cls.workflow['jobs']
+        cls.all_jobs = cls.workflow['jobs']
+        cls.jobs = {name: cls.all_jobs[name] for name in ('probe', 'full-C0', 'full-C3')}
         cls.smoke = yaml.load((REPO / '.github/workflows/cluster-smoke.yml').read_text(), Loader=UniqueLoader)
 
     def steps(self, job):
@@ -46,21 +47,27 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse((REPO / 'docs/operations/workflows/b04-scenario.yml.txt').exists())
         self.assertEqual({'workflow_dispatch': {'inputs': {'scenario': {
             'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true',
-            'default': 'A01', 'options': ['A01', 'B04']}}}}, self.workflow['on'])
+            'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
+            'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true',
+                         'default': 'smoke', 'options': ['smoke', 'batch']}}}}, self.workflow['on'])
         self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
         phase_spec = importlib.util.spec_from_file_location('phase_for_workflow', REPO / 'infra/scripts/phase/phase.py')
         phase = importlib.util.module_from_spec(phase_spec)
         phase_spec.loader.exec_module(phase)
-        self.assertEqual(sorted(phase.SCENARIOS), self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'])
+        self.assertEqual(
+            ['A01', 'B04', 'probe-batch'],
+            self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'])
+        self.assertEqual(['A01', 'B04'], sorted(phase.SCENARIOS))
 
     def test_job_topology_routing_and_main_guards(self):
         self.assertEqual(['probe', 'full-C0', 'full-C3'], list(self.jobs))
         self.assertNotIn('needs', self.jobs['probe'])
         self.assertEqual(['probe'], self.jobs['full-C0']['needs'])
-        self.assertEqual("inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'", self.jobs['full-C0']['if'])
+        self.assertEqual("inputs.scenario != 'probe-batch' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'", self.jobs['full-C0']['if'])
         self.assertEqual(['probe', 'full-C0'], self.jobs['full-C3']['needs'])
-        self.assertEqual('always()', self.jobs['full-C3']['if'])
+        self.assertEqual("always() && inputs.scenario != 'probe-batch'", self.jobs['full-C3']['if'])
+        self.assertEqual("inputs.scenario != 'probe-batch'", self.jobs['probe']['if'])
         expected_phases = {
             'probe': ("${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}", "${{ inputs.scenario || 'A01' }}"),
             'full-C0': ('C0', "${{ inputs.scenario || 'A01' }}"),
@@ -205,6 +212,83 @@ esac
             self.assertEqual(2, run.returncode)
             self.assertFalse(record.exists())
             self.assertEqual('', output.read_text())
+
+    def test_batch_topology_and_exact_steps(self):
+        self.assertEqual(['probe', 'full-C0', 'full-C3', 'batch', 'batch-stop'], list(self.all_jobs))
+        batch = self.all_jobs['batch']
+        stop = self.all_jobs['batch-stop']
+        self.assertEqual("inputs.scenario == 'probe-batch'", batch['if'])
+        self.assertNotIn('needs', batch)
+        self.assertEqual(['batch'], stop['needs'])
+        self.assertEqual("always() && inputs.scenario == 'probe-batch' && inputs.run_kind == 'smoke'", stop['if'])
+        expected_ids = {
+            'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_pods delete_workload destroy report'.split(),
+            'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
+        }
+        for name in expected_ids:
+            job = self.all_jobs[name]
+            self.assertEqual(expected_ids[name], [step['id'] for step in job['steps'] if 'id' in step])
+            self.assertEqual('${{ vars.PARCHWELL_RUNNER_LABEL }}', job['runs-on'])
+            self.assertEqual('parchwell-scenarios', job['environment'])
+            self.assertEqual('360', job['timeout-minutes'])
+            self.assertEqual('probe-batch', job['env']['PARCHWELL_SCENARIO'])
+            self.assertEqual('single-action', job['env']['PARCHWELL_PHASE'])
+            self.assertEqual('${{ inputs.run_kind }}', job['env']['PARCHWELL_RUN_KIND'])
+            steps = self.steps(job)
+            for ident in ('guard', 'checkout', 'login', 'azure_session'):
+                self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
+            self.assertEqual('always()', steps['report']['if'])
+            self.assertEqual('${{ toJSON(steps) }}', steps['report']['env']['STEP_RESULTS'])
+            self.assertEqual('${{ job.status }}', steps['report']['env']['JOB_STATUS'])
+        steps = self.steps(batch)
+        self.assertEqual('python3 infra/scripts/phase/phase.py validate-batch', steps['select']['run'])
+        self.assertLess(expected_ids['batch'].index('select'), expected_ids['batch'].index('login'))
+        self.assertEqual('bash infra/scripts/phase/phase.sh prepare-batch', steps['prepare']['run'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh single-action-seed', steps['seed']['run'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh run-single-action-batch', steps['batch']['run'])
+        self.assertNotIn('if', steps['batch'])
+        self.assertIn('publish-images', steps['images']['run'])
+        for ident in ('tools', 'images', 'cluster_init', 'start', 'cluster_plan', 'cluster_apply',
+                      'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'dns', 'credentials',
+                      'namespace', 'delete_workload', 'destroy'):
+            self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
+        self.assertEqual('true', steps['report']['env']['WORKLOAD'])
+        self.assertEqual('guard checkout select tools prepare azure_session', steps['report']['env']['REQUIRED_STEPS'])
+        self.assertEqual('images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_pods delete_workload destroy', steps['report']['env']['WORKLOAD_STEPS'])
+        stop_steps = self.steps(stop)
+        for ident in ('stop_prepare', 'stop'):
+            self.assertEqual(self.steps(self.jobs['full-C3'])[ident], stop_steps[ident])
+        self.assertEqual('false', stop_steps['report']['env']['WORKLOAD'])
+        self.assertEqual('guard checkout stop_prepare azure_session stop', stop_steps['report']['env']['REQUIRED_STEPS'])
+        self.assertEqual('', stop_steps['report']['env']['WORKLOAD_STEPS'])
+        self.assertEqual(2, sum('lifecycle.sh stop-cluster' in step.get('run', '')
+                               for job in self.all_jobs.values() for step in job['steps']))
+
+    def test_batch_upload_is_only_public_pod_evidence(self):
+        uploads = [step for step in self.all_jobs['batch']['steps']
+                   if step.get('uses', '').startswith('actions/upload-artifact@')]
+        self.assertEqual(1, len(uploads))
+        upload = uploads[0]
+        self.assertEqual('upload_pods', upload['id'])
+        self.assertEqual("always() && steps.prepare.outcome == 'success'", upload['if'])
+        self.assertEqual('probe-batch-smoke-pods-${{ github.run_id }}-${{ github.run_attempt }}', upload['with']['name'])
+        self.assertEqual('${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}', upload['with']['path'])
+        self.assertEqual('90', upload['with']['retention-days'])
+        self.assertEqual('5', upload['timeout-minutes'])
+        self.assertEqual('error', upload['with']['if-no-files-found'])
+        self.assertFalse(any(step.get('uses', '').startswith('actions/upload-artifact@')
+                             for step in self.all_jobs['batch-stop']['steps']))
+
+    def test_batch_selector_shell_accepts_only_smoke_before_login(self):
+        select = self.steps(self.all_jobs['batch'])['select']['run']
+        for kind, expected in (('smoke', 0), ('batch', 2), ('unknown', 2)):
+            with self.subTest(kind=kind):
+                env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND=kind)
+                result = subprocess.run(['/bin/bash', '-c', select], cwd=REPO, env=env,
+                                        text=True, capture_output=True, timeout=30)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if kind == 'batch':
+                    self.assertIn('probe batch actions require S2 (#213); select run_kind=smoke for S1', result.stderr)
 
     def test_bridge_discovery(self):
         suite = unittest.TestLoader().discover(str(REPO / 'infra/scripts/tests'), pattern='test_*.py')
