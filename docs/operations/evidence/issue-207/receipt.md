@@ -1,6 +1,6 @@
 # B04 item implementation receipt
 
-The B04 shared-workflow implementation is saved for continuation. Python and pinned offline checks passed, but the Release build exhausted its approved rerun allowance with verifier-test compilation errors. No pull request, cold review, live B04 measurement or verdict was produced.
+The B04 shared-workflow implementation includes scenario routing, typed overrides and bounded error evidence. The sections below record validation and cold-review results; earlier handoff sections are historical. Live B04 behavior remains unmeasured.
 
 The source commit is `1eabb09ae166e078d8b9c793dbc3172411ba4b27`, tree `358f2863c0497e9933c46cd720569278f728de39`, based on `main` at `b68ba0bc62e15d361fa8a3fc2502e2aac87cb638`. The validation below ran on the working tree subsequently saved unchanged in that source commit. This receipt describes that source commit, rather than its own later receipt commit.
 
@@ -98,6 +98,8 @@ Source `f64068b` adds selected `ScenarioId` and `ConfigurationId` equality to th
 
 Cold-review round 2 is frozen in `/tmp/issue207/review-final.diff`. It reports two P0 findings and one P2: the cross-scenario re-labeling issue was demonstrated with all-A01/C0 stores selected as B04, which previously yielded exit 0, `complete_valid` and `counts.ok` of 5; source `f64068b` fixes it. The `expected.yaml` P0 remains as required by approved plan section C2 and awaits Hari's protected merge. The P2 for the stale receipt opening is deferred until the first clean cold-review round under rule 8.
 
-Full verification on source `f64068b` is running; its log is `/tmp/issue207/verify-binding.log`. Worker image smoke is queued afterward, with output directed to `/tmp/issue207/images-binding.log`. No passing result is claimed for either check on this source. The full pipeline passed previously on `1cfed1c3a057f754857666b07ab2b60f280ea2dd`, before the scenario-binding repair.
+Full `./scripts/verify-dotnet.sh` passed with exit 0 on binding source `f64068b`; logs are `/tmp/issue207/verify-binding.log` and `/tmp/parchwell-dotnet-verification.rfXOEnSg`. Architecture passed 11/11, and the independent Kafka, LoadGen, Scenarios and Verifier suites passed 360/360, 371/371, 117/117 and 2747/2747 respectively, with no skips. The clean Release build and warning control passed. Both worker image smoke jobs passed with `scenario_files:3`; logs are `/tmp/issue207/images-binding.log` and `/tmp/parchwell-worker-images.hAR40Hxr`.
 
-The repair used GPT-6 Luna at high effort. The fresh Codex reviewer used high effort. The clean cold-review round, verification and image smoke remain outstanding before CI and the protected merge handoff.
+Commit `9b80289` changes only the regression method name to the required Given/When/Then pattern; its body is unchanged. CI will report on the final head. The repair used GPT-6 Luna at high effort, and the fresh Codex reviewer used high effort. The round 4 cold review, which reports only P0/P1 findings, remains pending.
+
+Cold-review round 3 reviewed 66 paths and found only the approved `expected.yaml` P0 and the receipt-opening P2. The P0 remains because approved plan section C2 requires the change and Hari merges it. The P2 is fixed by the updated opening above. Under rule 8, round 4 will report only P0/P1 findings. Verification and both image smoke jobs have now passed on the binding-repair source.
