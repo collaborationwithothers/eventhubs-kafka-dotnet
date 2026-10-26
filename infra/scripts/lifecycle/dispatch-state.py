@@ -16,7 +16,7 @@ import urllib.request
 MAX_BYTES = 4 * 1024 * 1024
 MAX_PAGES = 3
 MAX_COMPLETED = 20
-WORKFLOWS = ("scenario.yml", "cluster-smoke.yml")
+WORKFLOWS = ("scenario.yml", "cluster-smoke.yml", "b04-scenario.yml")
 
 
 class Unknown(Exception):

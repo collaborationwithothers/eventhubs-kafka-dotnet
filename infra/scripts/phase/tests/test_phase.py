@@ -130,6 +130,7 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(0, self.main('prepare', 'probe'))
         exported = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())
         self.assertEqual('a01-40121134428-1', exported['PARCHWELL_RUN_ID'])
+        self.assertEqual('A01', json.loads((Path(exported['PARCHWELL_PRIVATE_DIRECTORY']) / 'phase.json').read_text())['scenario'])
         self.assertEqual({'PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY', 'PARCHWELL_CLUSTER_BACKEND_CONFIG', 'PARCHWELL_CLUSTER_TFVARS_PATH', 'PARCHWELL_EPHEMERAL_BACKEND_CONFIG', 'PARCHWELL_EPHEMERAL_TFVARS_PATH', 'PARCHWELL_RUN_ID', 'KUBECONFIG'}, set(exported))
         directories = [Path(exported[key]) for key in ('PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY')]
         self.assertEqual(3, len(set(directories)))
@@ -146,6 +147,54 @@ class PhaseTests(unittest.TestCase):
             with self.subTest(phase=selected, overrides=list(overrides)), patch.dict(os.environ, overrides):
                 self.assertEqual(2, self.main('prepare', selected))
                 self.assertEqual('', self.env_file.read_text())
+
+    def test_prepare_b04_c0_and_c1(self):
+        os.environ['PARCHWELL_SCENARIO'] = 'B04'
+        for selected in ('C0', 'C1'):
+            with self.subTest(phase=selected):
+                self.env_file.write_text('')
+                self.assertEqual(0, self.main('prepare', selected))
+                exported = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())
+                os.environ.update(exported)
+                private = Path(exported['PARCHWELL_PRIVATE_DIRECTORY'])
+                state = json.loads((private / 'phase.json').read_text())
+                self.assertEqual({'scenario': 'B04', 'phase': selected, 'configuration': selected,
+                                  'run_id': f'b04-40121134428-1', 'source_commit': SHA}, state)
+                self.assertEqual('B04', state['scenario'])
+                self.assertEqual(selected, state['configuration'])
+                self.assertEqual('b04-40121134428-1', state['run_id'])
+                self.private = private
+                self.artifacts = Path(exported['PARCHWELL_ARTIFACT_DIRECTORY'])
+                self.candidate_dir = Path(exported['PARCHWELL_CANDIDATE_DIRECTORY'])
+                state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in DIGESTS.items()}
+                (private / 'phase.json').write_text(json.dumps(state))
+                (private / 'cluster-output.json').write_text(json.dumps({'workload_identity': {'value': {'namespace': 'parchwell', 'service_accounts': ACCOUNTS}}}))
+                (private / 'ephemeral-output.json').write_text(json.dumps(EPHEMERAL))
+                values = phase.Phase().values('loadgen', 1)
+                self.assertEqual('B04', values['scenario_id'])
+                self.assertEqual(selected, values['configuration_id'])
+
+    def test_prepare_b04_rejections(self):
+        cases = [('B04', 'probe'), ('B04', 'C3'), ('A01', 'C1'), ('b04', 'C0')]
+        for selected_scenario, selected_phase in cases:
+            with self.subTest(scenario=selected_scenario, phase=selected_phase):
+                self.env_file.write_text('')
+                with patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected_scenario}, clear=False):
+                    if selected_scenario == 'A01':
+                        os.environ.pop('PARCHWELL_SCENARIO', None)
+                    self.assertEqual(2, self.main('prepare', selected_phase))
+                self.assertEqual('', self.env_file.read_text())
+
+    def test_b04_candidate_scenario_matches_phase(self):
+        os.environ['PARCHWELL_SCENARIO'] = 'B04'
+        self.prepare('C1')
+        candidate = self.candidate(gate=None)
+        candidate.update(scenario_id='B04', configuration_id='C1')
+        content = json.dumps(candidate).encode()
+        self.assertEqual(candidate, phase.Phase().check_candidate(content))
+        candidate['scenario_id'] = 'A01'
+        with self.assertRaises(phase.Failure):
+            phase.Phase().check_candidate(json.dumps(candidate).encode())
 
     def test_prepare_stop(self):
         env = {key: os.environ[key] for key in ('RUNNER_TEMP', 'GITHUB_ENV', 'GITHUB_OUTPUT', 'PARCHWELL_CLUSTER_RESOURCE_ID')}
@@ -372,6 +421,12 @@ class PhaseTests(unittest.TestCase):
         os.environ.update(STEP_RESULTS=json.dumps({'guard': {'outcome': 'success'}, 'stop': {'outcome': 'success'}, 'destroy': {'outcome': 'failure'}}), WORKLOAD='true')
         self.assertEqual(1, self.main('report'))
         self.assertIn('destroy: failure', self.summary_file.read_text())
+
+    def test_b04_report(self):
+        os.environ.update(PARCHWELL_SCENARIO='B04', PARCHWELL_PHASE='C1', STEP_RESULTS='{}',
+                          JOB_STATUS='success', WORKLOAD='true', REQUIRED_STEPS='', WORKLOAD_STEPS='')
+        self.assertEqual(0, self.main('report'))
+        self.assertTrue(self.summary_file.read_text().startswith('## B04 C1: passed'))
 
     def test_real_chart(self):
         for selected, configuration in [('probe', 'C0'), ('C0', 'C0'), ('C3', 'C3')]:

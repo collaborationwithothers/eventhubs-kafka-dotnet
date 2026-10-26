@@ -52,7 +52,7 @@ def load_yaml(text):
 def check_queue(document, filename):
     expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
     required = filename in ('cluster-smoke.yml', 'sweeper.yml')
-    allowed = required or filename == 'scenario.yml' and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
+    allowed = required or filename in ('scenario.yml', 'b04-scenario.yml') and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
     if allowed and document.get('concurrency') != expected:
         raise ValueError(f'{filename}: concurrency must be exactly {expected}')
 
@@ -72,6 +72,7 @@ def check_queue(document, filename):
 def check_workflows(repository):
     expected_triggers = {
         'cluster-smoke.yml': {'workflow_dispatch': ''},
+        'b04-scenario.yml': {'workflow_dispatch': ''},
         'sweeper.yml': {'workflow_dispatch': '', 'schedule': [{'cron': '*/15 * * * *'}]},
         'dotnet-verification.yml': {'pull_request': '', 'push': {'branches': ['main']}, 'workflow_dispatch': ''},
         'docs-advisory.yml': {'pull_request': {'types': ['opened', 'synchronize', 'reopened', 'ready_for_review']}},
@@ -136,12 +137,13 @@ for script in scripts/*.sh; do
   fi
 done
 run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
+run cmp .github/workflows/b04-scenario.yml docs/operations/workflows/b04-scenario.yml.txt
 run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml
 for workflow in .github/workflows/*.yml; do
   case "$workflow" in
     .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml) continue ;;
   esac
-  if [ "$workflow" = .github/workflows/scenario.yml ] && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
+  if { [ "$workflow" = .github/workflows/scenario.yml ] || [ "$workflow" = .github/workflows/b04-scenario.yml ]; } && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
     run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' "$workflow"
   else
     run actionlint "$workflow"
