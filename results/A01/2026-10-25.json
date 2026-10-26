@@ -41,6 +41,49 @@
       "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400987342",
       "identity_decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6402343589",
       "measurement_receipt": "../../docs/operations/evidence/issue-196/receipt.md"
+    },
+    "mutation_evidence": {
+      "run_id": 40233552992,
+      "run_attempt": 1,
+      "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40233552992",
+      "source_commit": "fd0a65cdf7f72d2aea0e7e1f0cc2d490aa87430a",
+      "source_tree": "263938b67f46ccc8b71dc867c4805d8a5bd73e7b",
+      "summary_artifact_id": 12616772713,
+      "summary_artifact_name": "c5-summary-40233552992-1",
+      "summary_artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40233552992/artifacts/12616772713",
+      "summary_member": "summary.json",
+      "summary_sha256": "0b8e5ba06ac1514d102fa01758a587a740881a6e4489ec6b39a9cafeacebd0b1",
+      "measurement_complete": true,
+      "incomplete_reasons": [],
+      "thresholds_break": 60,
+      "break_passed": true,
+      "detected": 542,
+      "scored_mutants": 542,
+      "full_score_percent": 100.0,
+      "killed_only_score_percent": 72.7,
+      "status_counts": {
+        "Killed": 394,
+        "Timeout": 148,
+        "Survived": 0,
+        "NoCoverage": 0,
+        "CompileError": 27,
+        "RuntimeError": 0,
+        "Ignored": 35
+      },
+      "target_report_sha256_from_summary": {
+        "src/Parchwell.Verifier/Judge/PhaseJudge.cs": "13801598eab255d415de8de4badc92c2c1d330122e429afde5394069b7da53e7",
+        "src/Parchwell.Verifier/VerifyRun/Publication/PublicationAcceptance.cs": "e5b7053d4578cf91ebacb9edb7ed774355d7826a67d39cf7bb521f97a33436a0",
+        "src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs": "10f50885b79284e650803eed1b195e5c64150427003ac5769774b46a086697b9",
+        "src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs": "d2f3d3cc0cd59a1055d5aa51261c9ce80f287d55711587e0f1cc2e57a2934fe0"
+      },
+      "target_source_sha256": {
+        "src/Parchwell.Verifier/Judge/PhaseJudge.cs": "67768b227cce65cc1d639d03149377a51de86d39cd985624f24036e2e3f0258a",
+        "src/Parchwell.Verifier/VerifyRun/Publication/PublicationAcceptance.cs": "8363cdebab24d14e3b65deb3d6147fee71dad6d0bebbc1b1e5332303aa94eb38",
+        "src/Parchwell.Verifier/VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
+        "src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808"
+      },
+      "source_identity_evidence": "scripted_byte_equality_at_mutation_commit_final_A01_source_and_publication_source",
+      "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/196#issuecomment-6408210957"
     }
   },
   "candidate_projection": {
@@ -483,6 +526,11 @@
         "status": "unavailable",
         "reason": "broker_count_not_retained_in_candidate_pod_artifacts_or_job_logs"
       }
-    ]
+    ],
+    "publication_treatment": "unavailable_by_hari_decision",
+    "deviation_from": "ADR-019 check 2",
+    "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/196#issuecomment-6408210957",
+    "follow_up_issue_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/200",
+    "scope": "first_A01_publication_only"
   }
 }
