@@ -2,7 +2,7 @@
 
 ## C5 selected sample and execution receipt
 
-The C5 sample controller and config are [`Mutation/run-c5-sample.py`](../../tests/Parchwell.Verifier.Tests/Mutation/run-c5-sample.py) and [`Mutation/stryker-c5-config.json`](../../tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json). Both bounded campaigns used Stryker 5.0.0, MTP, Release/net10.0, JSON/HTML/progress reporters, 80/60/60 thresholds, and the four planned targets: `Judge/PhaseJudge.cs`, `VerifyRun/Publication/PublicationAcceptance.cs`, `VerifyRun/A01/A01EvidenceRecorder.cs`, and `VerifyRun/A01/WorkloadRecorder.cs`. The controller set `ParchwellVerifierMutationOnly=true` and enforced 2000 generated mutants, 1800 seconds, and 16777216 captured output bytes.
+The local C5 sample controller was deleted under #202. Its two bounded campaigns remain incomplete historical records, not mutation acceptance evidence. The committed [C5 configuration](../../tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json) remains the record of the four selected targets and the 80/60/60 thresholds used for those campaigns. The measurements, limits and source hashes below describe those historical attempts. Current acceptance for changes to these targets uses the post-merge hosted workflow described in [Issue 187 hosted C5 measurement](#issue-187-hosted-c5-measurement), under the policy in [factory.md](../agents/factory.md#evidence-pack).
 
 | Measure | First campaign | After fixture correction |
 | --- | --- | --- |
