@@ -40,7 +40,7 @@ for root in persistent ephemeral cluster; do
 done
 ```
 
-The documentation warnings refer to broken links in unchanged issue-124/issue-140 evidence. They are left under AGENTS.md "Before opening a pull request" rule 8's blanket disposition. No .NET source, package or worker option contract changed; the SDK is unavailable locally, and required CI supplies the normal .NET checks.
+The documentation warnings refer to broken links in unchanged issue-124/issue-140 evidence. They are left under AGENTS.md "Before opening a pull request" rule 8's blanket disposition. At the initial offline validation, no .NET source, package or worker option contract had changed and the SDK was unavailable locally. The architecture-test amendment below records the later .NET validation.
 
 ## Scope and review
 
@@ -55,3 +55,13 @@ The cold review applies AGENTS.md, the blueprint ADRs and the Terraform engineer
 No live dispatch or scientific verdict was produced. Hari must merge the protected workflow/identity changes, apply `infra/persistent`, and refresh `PARCHWELL_PERSISTENT_OUTPUTS` with the probe identity. Then the authorized main-branch dispatch uses `scenario=probe-batch` and `run_kind=smoke`, within the plan's existing attempt cap. The actual batch selection rejects before Azure login until S2 supplies the client actions and judgement.
 
 Record the live run, immutable image digests, all pod outcomes and artifact links, ephemeral destroy, cluster stop and measured timings on issue #212. The image smoke establishes only the wiring and image startup it exercises; token acquisition, data permissions, telemetry ingestion, client outcomes and verifier judgement remain unmeasured here. [AGENTS.md](../../AGENTS.md) and the [factory lifecycle](../agents/factory.md#item-lifecycle) own the merge, execution and continuation rules.
+
+## Approved architecture-test amendment
+
+The first [head CI run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40375820191) passed lifecycle, Terraform and documentation checks. The .NET build passed, then `ChartContractTests` failed because its exact scenario enumeration still expected only A01/B04. The initial plan and cold review missed that existing assertion.
+
+Hari [approved the prepared exact same-PR update](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/212#issuecomment-6423947330), including the exception to the assertion rule. Source commit `19483c86dde90f0a608e6f2ed4d5ca058f4a3f3a` records the renamed test and exact expected eight-ID sequence; every other assertion remains intact. This is an owner-approved scope amendment, disclosed for Hari's merge.
+
+Installed SDK 10.0.402 from the official [10.0 release metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json), verifying the archive against its published SHA-512 before extraction outside the repository. The full `./scripts/verify-dotnet.sh` run began from `2380416559237d94245dd3cd73d7b08059e42295` plus the approved patch, whose tracked code is identical to `19483c86dde90f0a608e6f2ed4d5ca058f4a3f3a`. The full `./scripts/verify-dotnet.sh` command exited zero: locked restore, Release build, XML inventory, effective settings, scaffold inventory and warning-as-error control passed. Parsed reports show Architecture 11, Kafka 360, LoadGen 371, Scenarios 117 and Verifier 2747 tests passed, each with zero failures and zero skips. `bash charts/parchwell/tests/check-loadgen-host.sh` also exited zero: seven rendered environments and one missing-setting regression passed. Both commands used the verified SDK in PATH and the existing lifecycle command wrapper; the full verification used 1800 seconds and the host check 900 seconds. Characterization containers were cleaned up.
+
+Cold-review rounds 1 and 2 reported no P0/P1 or reportable P2. Round 2 included the approved assertion amendment and the receipt while its full local validation was running. This completed validation record receives a fresh final cold review before the next push; final-round findings and the new head's CI are recorded in the pull request description. The initial Codex code and security reviews completed without findings on head `2380416559237d94245dd3cd73d7b08059e42295`; the amended head requires code re-review.
