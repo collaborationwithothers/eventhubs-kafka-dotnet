@@ -47,7 +47,7 @@ internal sealed class SingleActionHandler(IOptions<VerifierHostOptions> configur
         try
         {
             BlobListing listing=await Bounded(ct=>captureStore.ListAsync(prefix+"registrations/",ct),cancellationToken).ConfigureAwait(false);
-            if(listing.IsComplete&&listing.Names.Count==1)
+            if(listing.IsComplete&&listing.Names.Count==1&&IsRegistrationPath(listing.Names[0],prefix))
             {
                 byte[]? bytes=await Read(ct=>captureStore.ReadBoundedAsync(listing.Names[0],65536,ct),65536).ConfigureAwait(false);
                 if(bytes is not null)registration=SingleActionWire.Read<SingleActionRegistration>(bytes,65536);
@@ -55,7 +55,7 @@ internal sealed class SingleActionHandler(IOptions<VerifierHostOptions> configur
             }
         }
         catch(Exception ex) when(Recoverable(ex,cancellationToken)){}
-        if(registration is not null)
+        if(registrationValid&&registration is not null)
         {
             try
             {
@@ -125,6 +125,14 @@ internal sealed class SingleActionHandler(IOptions<VerifierHostOptions> configur
         var judgeReceipt=new SingleActionJudgeReceipt(1,"single-action-judge",run,item,configuration,source,options.JobName!,options.PodName!,options.PodUid!,candidateName,0,true);
         completion.SetPendingBlobReceipt("verifier",SingleActionPaths.JudgeCompletion(run,item,configuration),SingleActionWire.Write(judgeReceipt,65536));
         return 0;
+    }
+
+    private static bool IsRegistrationPath(string name,string prefix)
+    {
+        string registrations=prefix+"registrations/";
+        if(!name.StartsWith(registrations,StringComparison.Ordinal)||!name.EndsWith(".json",StringComparison.Ordinal))return false;
+        string pod=name[registrations.Length..^5];
+        return pod.Length is >=1 and <=253&&!name.Contains("..",StringComparison.Ordinal)&&pod.All(character=>char.IsAsciiLetterOrDigit(character)||character is '-' or '.');
     }
 
     private static string Digest(string image)=>image[(image.LastIndexOf('@')+1)..];

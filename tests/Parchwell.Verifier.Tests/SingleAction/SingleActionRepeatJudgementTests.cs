@@ -15,11 +15,11 @@ public sealed class SingleActionRepeatJudgementTests
         foreach(var repeat in fixture.Repeats){var result=SingleActionFixture.Judge(repeat);Assert.Equal("complete_valid",result.Status);Assert.Equal(0,result.BrokerCount);Assert.Empty(result.Reasons);}
     }
     [Theory]
-    [InlineData(-1,"incomplete")][InlineData(0,"complete_valid")][InlineData(329999,"complete_valid")][InlineData(330000,"complete_valid")][InlineData(330001,"incomplete")]
+    [InlineData(-1,"incomplete")][InlineData(0,"complete_valid")][InlineData(1,"complete_valid")][InlineData(329999,"complete_valid")][InlineData(330000,"complete_valid")][InlineData(330001,"incomplete")]
     public void Given_MonotonicWindow_When_Judged_Then_InclusiveBoundary(long elapsed,string status)=>Assert.Equal(status,SingleActionFixture.Judge(SingleActionFixture.Repeat() with{ElapsedMs=elapsed}).Status);
 
     [Theory]
-    [InlineData(1000,1,"complete_valid")][InlineData(1001,1,"incomplete")][InlineData(1001,2,"complete_valid")]
+    [InlineData(999,1,"complete_valid")][InlineData(1000,1,"complete_valid")][InlineData(1001,1,"incomplete")][InlineData(1001,2,"complete_valid")]
     public void Given_NativeEmission_When_Judged_Then_UnixMillisecondBoundary(long terminal,long native,string expected)
     {
         var repeat=SingleActionFixture.Repeat();repeat=repeat with{TerminalUnixMs=terminal,Statistics=[SingleActionFixture.Statistic(repeat.ClientId,native,1,1,observed:999999)]};
