@@ -11,11 +11,13 @@ public sealed class ChartContractTests
         ?? throw new InvalidOperationException("Missing repository root. Run ./scripts/verify-dotnet.sh.");
 
     [Fact]
-    public void Given_ChartSchema_When_Read_Then_OnlyA01AndClosedRuntimeAreAccepted()
+    public void Given_ChartSchema_When_Read_Then_OnlyA01AndB04AndClosedRuntimeAreAccepted()
     {
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepositoryRoot, "charts/parchwell/values.schema.json")));
         JsonElement properties = schema.RootElement.GetProperty("properties");
-        Assert.Equal("A01", properties.GetProperty("scenario_id").GetProperty("const").GetString());
+        Assert.Collection(properties.GetProperty("scenario_id").GetProperty("enum").EnumerateArray(),
+            value => Assert.Equal("A01", value.GetString()),
+            value => Assert.Equal("B04", value.GetString()));
         Assert.False(schema.RootElement.GetProperty("additionalProperties").GetBoolean());
         JsonElement runtime = properties.GetProperty("runtime");
         Assert.False(runtime.GetProperty("additionalProperties").GetBoolean());
