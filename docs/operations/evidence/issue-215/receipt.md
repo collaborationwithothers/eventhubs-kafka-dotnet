@@ -4,7 +4,7 @@ This receipt records the evidence and publication checks for the proposed B04 ve
 
 ## Source and commands
 
-The branch is `claude/issue-215-implement-plan-k3gt1z`. Its base, `ISSUE215_BASE`, is `cb83254f1c2645acd86fe734b24e542e0956edd3`, the head of `main` when the branch was created. Every check group below ran with `git rev-parse HEAD` reporting that same SHA, plus the three authored files of this pull request.
+The branch is `claude/issue-215-implement-plan-k3gt1z`. Its base, `ISSUE215_BASE`, is `cb83254f1c2645acd86fe734b24e542e0956edd3`, the head of `main` when the branch was created. The step 2 to step 5 commands, the first `npm run check:docs`, the build and the first `./scripts/verify-dotnet.sh` ran with `git rev-parse HEAD` reporting that same SHA, plus the three authored files staged. The full test-suite rerun below and every later rerun of the validator, `npm run check:docs` and the diff checks ran with `git rev-parse HEAD` reporting a commit on this branch. The full test-suite rerun ran at `584943731a49be9d1c7deb58f4c87d38992502f3`, whose tree is that base plus the three authored files.
 
 The work follows [plan Revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/215#issuecomment-6421780147), `updated_at` `2026-10-26T17:31:36Z`. Its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/215#issuecomment-6423136651), posted at `2026-10-26T17:40:51Z` by the check subagent under docs/agents/factory.md "Item lifecycle" step 3 "Standing approval", reports `Blocking findings: none`. Its one P2, marked `apply in implementation`, was applied: `mkdir -p results/B04 docs/operations/evidence/issue-215` ran from the repository root before the step 3 command.
 
@@ -19,7 +19,7 @@ The publication object, report template, report script and validator were extrac
 - `npm run check:docs`: exited 0; no issue in the three files, and the warnings below.
 - `git diff --check` and `git diff --cached --check`: both exited 0 with no whitespace errors.
 
-Manual inspection of the three files against AGENTS.md hard safety rule 7 found no secret, key, connection string, tenant ID or subscription ID. This pull request changes no code. In this session, with .NET SDK 10.0.402, `dotnet build Parchwell.slnx -c Release` exited 0 with 0 warnings and 0 errors. `./scripts/verify-dotnet.sh` exited 2 because it stops at the first failing test project. So it ran again from a scratch copy that changed one line: a failing unit-test project is recorded and the loop continues. That run passed locked restore, solution build, Kafka XML inventory consistency, the unit scaffold inventory and the warning-as-error control. Test results by project, from each project's xunit report:
+Manual inspection of the three files against AGENTS.md hard safety rule 7 found no secret, key, connection string, tenant ID or subscription ID. This pull request changes no code. In this session, with .NET SDK 10.0.402, `dotnet build Parchwell.slnx -c Release` exited 0 with 0 warnings and 0 errors. `./scripts/verify-dotnet.sh` exited 2 because it stops at the first failing test project. So it ran again against this working tree, using a copy of the script that changed one line: a failing unit-test project is recorded and the loop continues. That run passed locked restore, solution build, Kafka XML inventory consistency, the unit scaffold inventory and the warning-as-error control. Test results by project, from each project's xunit report:
 
 | Project | Total | Passed | Failed |
 | --- | ---: | ---: | ---: |
@@ -30,7 +30,7 @@ Manual inspection of the three files against AGENTS.md hard safety rule 7 found 
 | `Parchwell.Verifier.Tests` | 2747 | 2735 | 12 |
 | Total | 3606 | 3591 | 15 |
 
-`Parchwell.Enrichment.Tests` is an empty scaffold and claims no coverage. All 15 failures are component or integration tests that start a local Kafka through Testcontainers. Each failed in its fixture's Docker endpoint lookup, or with `DockerUnavailableException`, before any test body ran: the session container has no Docker daemon. The [.NET verification run 40314240017](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40314240017) succeeded on `cb83254`, and this pull request's own CI is the authoritative check. No Azure operation, B04 dispatch or C5 dispatch was run.
+`Parchwell.Enrichment.Tests` is an empty scaffold and claims no coverage. All 15 failures are component or integration tests that start a local Kafka through Testcontainers. Each failed in its fixture's Docker endpoint lookup, or with `DockerUnavailableException`, before any Kafka container started: the session container has no Docker daemon. The [.NET verification run 40314240017](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40314240017) succeeded on `cb83254`, and this pull request's own CI is the authoritative check. No Azure operation, B04 dispatch or C5 dispatch was run.
 
 ## Final-run evidence
 
@@ -78,5 +78,12 @@ Round 1 applied the `repo-review` rubric to the three-file diff on `cb83254f1c26
 - P1, this receipt: the full test suite had not run locally, because `./scripts/verify-dotnet.sh` stopped at the first failing project. Fixed: the suite ran past that point, and the table above records every project.
 - P2, this receipt: the cold-review record was missing. Fixed by this paragraph.
 - P2, this receipt: "the five ZIP SHA-256 values match the table below" pointed at a four-row table. Fixed: the sentence now names where each of the five values is.
+
+Round 1 was not clean, so rule 8's additional P2 round did not follow it. Round 2 reviewed the diff at `c0c716ce76308201021604e85079bdf768a2a07e`. It confirmed both pinned hashes, the test table against each project's xunit report, the cited verifier and librdkafka lines, the Microsoft quotes and the job-log lines. Its result line was `Findings: 2 at P0 or P1`. Dispositions:
+
+- P0, both files under `results/B04/`: the same finding as round 1, kept on the same grounds.
+- P1, this receipt: it said every check group ran with `HEAD` at the base, but the full test-suite rerun ran at `5849437`. Fixed in "Source and commands", which also now says the modified script ran against this working tree.
+- P2, this receipt: "before any test body ran" was wrong for 5 of the 15 failures, whose test methods started before the Docker lookup failed. Fixed to "before any Kafka container started".
+- P2, this receipt: the record did not say whether the additional P2 round ran. Fixed by the first sentence of this paragraph.
 
 The #184 first-five-pull-request review window does not apply to this pull request. It covered #188, #189, #191, #193 and #194, as recorded in `docs/operations/evidence/issue-196/receipt.md`.
