@@ -16,12 +16,13 @@ phase = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(phase)
 SHA = 'a' * 40
 DIGESTS = {'loadgen': 'sha256:' + 'b' * 64, 'verifier': 'sha256:' + 'c' * 64}
+BATCH_DIGESTS = {**DIGESTS, 'enrichment': 'sha256:' + 'd' * 64}
 RESOURCE = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-synthetic/providers/Microsoft.ContainerService/managedClusters/aks-synthetic'
 PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwellacr.azurecr.io'}}, 'application_insights_connection_string': {'value': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'}}
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
-BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 1980}
+BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 420}
 BATCH_MATRIX = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
     ('B03', 'C1', 'loadgen'), ('B03', 'C2', 'loadgen'),
@@ -61,14 +62,14 @@ class ScriptedCommands:
                 directory = instance.artifacts / job
                 directory.mkdir()
                 role = values['action_role']
-                worker = 'verifier' if values['mode'] == 'single-action-judge' else 'loadgen'
-                pod = {'metadata': {'name': job + '-pod'},
+                worker = 'enrichment' if values['mode'] == 'single-action-seed' else 'verifier' if values['mode'] == 'single-action-judge' else 'loadgen'
+                pod = {'metadata': {'name': job + '-pod', 'uid': '00000000-0000-4000-8000-000000000213'},
                        'spec': {'serviceAccountName': role, 'containers': [{'name': role, 'image': values[worker + '_image']}],
                                 'initContainers': [{'name': 'azure-wi-proxy-init', 'image': 'synthetic-init'}]},
                        'status': {'containerStatuses': [{'name': role, 'state': {'terminated': {'exitCode': 0}}}]}}
                 pods = {'apiVersion': 'v1', 'kind': 'List', 'items': [pod]}
                 collection = {'complete': True, 'smoke_marker_valid': False, 'gaps': []}
-                logs = {f'{job}-pod.containers.{role}.log': 'worker startup\n' + json.dumps({'native_loaded': True, 'scenario_files': 3, 'uid_expected': 1654}) + '\n',
+                logs = {f'{job}-pod.containers.{role}.log': 'worker startup\n' + json.dumps({'mode': 'single-action-seed-smoke', 'native_loaded': True, 'uid_expected': 1654} if worker == 'enrichment' else {'native_loaded': True, 'scenario_files': 3, 'uid_expected': 1654}) + '\n',
                         f'{job}-pod.initContainers.azure-wi-proxy-init.log': 'init log without worker marker\n'}
                 if self.artifact_mutator:
                     self.artifact_mutator(job, pods, collection, logs)
@@ -84,7 +85,7 @@ class ScriptedCommands:
             Path(args[args.index('--file') + 1]).write_bytes(self.download)
         elif args[:4] == ['az', 'acr', 'repository', 'show']:
             worker = args[args.index('--image') + 1].split('/')[1].split(':')[0].split('@')[0]
-            default = (0, DIGESTS[worker] + '\n')
+            default = (0, BATCH_DIGESTS[worker] + '\n')
         elif len(args) > 2 and args[2] == 'resolve':
             default = (0, json.dumps(['10.0.0.4' if 'servicebus' in args[3] else '10.0.0.5']))
         code, content = self.responses.get(key, default)
@@ -511,7 +512,7 @@ class PhaseTests(unittest.TestCase):
         self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
         self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
         state = json.loads((self.private / 'phase.json').read_text())
-        state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in DIGESTS.items()}
+        state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in BATCH_DIGESTS.items()}
         (self.private / 'phase.json').write_text(json.dumps(state))
         accounts = copy.deepcopy(ACCOUNTS)
         for role in ('probe', 'enrichment-consumer'):
@@ -521,6 +522,7 @@ class PhaseTests(unittest.TestCase):
         ephemeral['blob']['value']['containers']['single_action'] = 'single-action'
         (self.private / 'ephemeral-output.json').write_text(json.dumps(ephemeral))
         self.run_id = state['run_id']
+        phase.Phase().start_batch_clock()
 
     def batch_name(self, mode, item='B01', configuration='C0'):
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
@@ -530,12 +532,10 @@ class PhaseTests(unittest.TestCase):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
         with self.mocked():
             self.assertEqual(0, self.main('validate-batch'))
-            for selected, kind in [('probe-batch', 'batch'), ('probe-batch', 'unknown'), ('A01', 'smoke'), ('unknown', 'smoke')]:
+            for selected, kind in [('probe-batch', 'unknown'), ('A01', 'smoke'), ('unknown', 'smoke')]:
                 with self.subTest(scenario=selected, run_kind=kind), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected, 'PARCHWELL_RUN_KIND': kind}):
                     with contextlib.redirect_stderr(io.StringIO()) as error:
                         self.assertEqual(2, phase.main(['validate-batch']))
-                    if kind == 'batch':
-                        self.assertEqual('probe batch actions require S2 (#213); select run_kind=smoke for S1\n', error.getvalue())
                     self.assertEqual(2, self.main('prepare-batch'))
                     self.assertEqual('', self.env_file.read_text())
             for command in ('validate-batch', 'prepare-batch', 'single-action-seed', 'run-single-action-batch'):
@@ -548,7 +548,7 @@ class PhaseTests(unittest.TestCase):
         metadata = json.loads((self.private / 'phase.json').read_text())
         self.assertEqual({'scenario': 'probe-batch', 'phase': 'single-action', 'configuration': None,
                           'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke'},
-                         {key: value for key, value in metadata.items() if key != 'images'})
+                         {key: value for key, value in metadata.items() if key not in ('images', 'batch_started_monotonic', 'batch_clock_boot_id', 'batch_clock_run_id', 'batch_clock_source')})
         self.assertEqual({'phase': 'single-action', 'run_id': self.run_id, 'modes': [], 'candidate': None, 'safety_stop': False}, phase.Phase().state())
         for directory in (self.private, self.artifacts, self.candidate_dir):
             self.assertEqual(0o700, directory.stat().st_mode & 0o777)
@@ -588,7 +588,7 @@ class PhaseTests(unittest.TestCase):
                 self.assertEqual({'loadgen', 'verifier', 'probe', 'enrichment-consumer'}, set(runtime['service_accounts']))
                 self.assertNotIn('repeat', runtime)
                 self.assertNotIn('loadgen_job_name', runtime)
-                worker = 'verifier' if mode == 'single-action-judge' else 'loadgen'
+                worker = 'enrichment' if mode == 'single-action-seed' else 'verifier' if mode == 'single-action-judge' else 'loadgen'
                 pod = json.loads((self.artifacts / record['job'] / 'pods.json').read_text())['items'][0]
                 self.assertEqual(runtime[worker + '_image'], pod['spec']['containers'][0]['image'])
                 self.assertEqual('single-action', runtime['blob']['containers']['single_action'])
@@ -599,14 +599,14 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(33, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
         self.assertFalse(any(call[0][0] == 'az' for call in self.fake.calls))
         self.assertIsNone(phase.Phase().state()['candidate'])
-        self.assertEqual([], list(self.candidate_dir.iterdir()))
+        self.assertEqual({f'{item}-{config}-gap.json' for item, config, _ in BATCH_MATRIX}, {path.name for path in self.candidate_dir.iterdir()})
 
     def test_batch_seed_failure_is_failure_despite_legacy_failed_outcome(self):
         self.prepare_batch()
         job = self.batch_name('single-action-seed')
-        self.fake.responses[('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', job, '1980')] = (1, '')
+        self.fake.responses[('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', job, '420')] = (1, '')
         with self.mocked():
-            self.assertEqual(1, self.main('single-action-seed'))
+            self.assertEqual(0, self.main('single-action-seed'))
         self.assertEqual(1, len(self.records()))
         self.assertEqual(('failed', False), (self.records()[0]['outcome'], self.records()[0]['smoke_valid']))
         self.assertNotIn('failed', phase.BAD_OUTCOMES)
@@ -658,7 +658,7 @@ class PhaseTests(unittest.TestCase):
                 self.fake = ScriptedCommands()
                 self.fake.artifact_mutator = lambda *args: mutate(case, *args)
                 with self.mocked():
-                    self.assertEqual(1, self.main('single-action-seed'))
+                    self.assertEqual(0, self.main('single-action-seed'))
                 self.assertFalse(self.records()[0]['smoke_valid'])
                 self.assertTrue((self.artifacts / self.batch_name('single-action-seed') / 'pods.json').exists())
 
@@ -680,13 +680,15 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(confirm, calls[calls.index(deletion) + 1])
 
     def test_batch_start_cap_configuration_boundary(self):
-        for elapsed, attempted in [(14399, 2), (14400, 0)]:
+        for elapsed, attempted in [(14399, 32), (14400, 0), (14401, 0)]:
             with self.subTest(elapsed=elapsed):
                 self.prepare_batch()
+                phase_data = phase.Phase().read('phase.json')
+                phase_data['batch_started_monotonic'] = 100
+                phase.write_json(self.private / 'phase.json', phase_data)
                 self.fake = ScriptedCommands()
-                times = [0, elapsed] + [14400] * 15
-                with self.mocked(), patch.object(phase.time, 'monotonic', side_effect=times):
-                    self.assertEqual(1, self.main('run-single-action-batch'))
+                with self.mocked(), patch.object(phase.time, 'monotonic', return_value=100 + elapsed):
+                    self.assertEqual(int(attempted == 0), self.main('run-single-action-batch'))
                 records = self.records()
                 self.assertEqual(32, len(records))
                 self.assertEqual(['complete'] * attempted + ['not_attempted'] * (32 - attempted), [record['outcome'] for record in records])
@@ -721,8 +723,8 @@ class PhaseTests(unittest.TestCase):
                 text = rendered.read_text()
                 self.assertIn('args: ["--image-smoke"]', text)
                 self.assertIn(f'serviceAccountName: "{role}"', text)
-                worker = 'verifier' if mode == 'single-action-judge' else 'loadgen'
-                self.assertIn(f'image: "parchwellacr.azurecr.io/parchwell/{worker}@{DIGESTS[worker]}"', text)
+                worker = 'enrichment' if mode == 'single-action-seed' else 'verifier' if mode == 'single-action-judge' else 'loadgen'
+                self.assertIn(f'image: "parchwellacr.azurecr.io/parchwell/{worker}@{BATCH_DIGESTS[worker]}"', text)
 
     def test_real_chart(self):
         for selected, configuration in [('probe', 'C0'), ('C0', 'C0'), ('C3', 'C3')]:

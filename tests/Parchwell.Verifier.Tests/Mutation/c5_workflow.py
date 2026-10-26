@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retain one C5 shard and combine four complete raw mutation populations."""
+"""Retain one C5 shard and combine six complete raw mutation populations."""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ SHARDS = {
     "publication": "VerifyRun/Publication/PublicationAcceptance.cs",
     "a01": "VerifyRun/A01/A01EvidenceRecorder.cs",
     "workload": "VerifyRun/A01/WorkloadRecorder.cs",
+    "single-action-repeat": "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+    "single-action-configuration": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
 }
 BASE_CONFIG = {"stryker-config": {
     "project": "Parchwell.Verifier.csproj", "test-runner": "mtp",

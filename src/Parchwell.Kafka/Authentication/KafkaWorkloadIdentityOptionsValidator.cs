@@ -13,6 +13,8 @@ internal sealed class KafkaWorkloadIdentityOptionsValidator : IValidateOptions<K
         if (string.IsNullOrWhiteSpace(options.TenantId)) failures.Add("TenantId is required.");
         if (string.IsNullOrWhiteSpace(options.ClientId)) failures.Add("ClientId is required.");
         if (string.IsNullOrWhiteSpace(options.TokenFilePath)) failures.Add("TokenFilePath is required.");
+        if (options.TokenScopeOverride is not (null or "https://storage.azure.com/.default"))
+            failures.Add("TokenScopeOverride must be the approved storage scope or null.");
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

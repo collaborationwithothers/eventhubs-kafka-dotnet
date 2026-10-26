@@ -297,7 +297,9 @@
             "verifier_verify",
             "verifier_gate",
             "execution",
-            "single_action_execution"
+            "single_action_execution",
+            "single_action_capture",
+            "single_action_judge"
           ],
           "properties": {
             "scenario_parsing": {
@@ -412,7 +414,63 @@
               "const": {
                 "action_job_seconds": 1980,
                 "judge_job_seconds": 120,
-                "termination_grace_seconds": 30
+                "termination_grace_seconds": 30,
+                "seed_job_seconds": 420
+              }
+            },
+            "single_action_capture": {
+              "type": "object",
+              "const": {
+                "ProcessLifetimeSeconds": 1920,
+                "PostTerminalStatisticsSeconds": 20,
+                "CleanupSeconds": 10,
+                "RegistrationUploadSeconds": 30,
+                "CaptureUploadSeconds": 30,
+                "HostCleanupSeconds": 10,
+                "ReceiptUploadSeconds": 30,
+                "PollSliceMs": 100,
+                "MaxCaptureBytes": 134217728,
+                "MaxRegistrationBytes": 65536,
+                "MaxCompletionBytes": 65536,
+                "MaxStatisticsReportBytes": 262144,
+                "MaxStatisticsReports": 64,
+                "MaxClientErrors": 64,
+                "MaxErrorBytes": 4096,
+                "MaxDiagnostics": 100,
+                "MaxDiagnosticBytes": 2048,
+                "CallbackQueueCapacity": 128,
+                "MaxSettingsKeys": 128,
+                "MaxSettingsBytes": 16384,
+                "MaxNonmatchingRecords": 4096,
+                "MaxInputDepth": 32
+              }
+            },
+            "single_action_judge": {
+              "type": "object",
+              "const": {
+                "MaxCaptureBytes": 134217728,
+                "MaxRegistrationBytes": 65536,
+                "MaxCompletionBytes": 65536,
+                "MaxSeedReceiptBytes": 65536,
+                "MaxSeedPodBytes": 65536,
+                "MaxCandidateBytes": 16777216,
+                "MaxTotalInputBytes": 268435456,
+                "MaxInputDepth": 32,
+                "MaxSettingsKeys": 128,
+                "MaxSettingsBytes": 16384,
+                "MaxErrorBytes": 4096,
+                "MaxDiagnosticBytes": 2048,
+                "MaxDiagnostics": 100,
+                "MaxClientErrors": 64,
+                "MaxStatisticsReports": 64,
+                "MaxStatisticsReportBytes": 262144,
+                "CallbackQueueCapacity": 128,
+                "MaxBrokerEntries": 64,
+                "MaxMatchedValueBytes": 1100000,
+                "MaxNonmatchingRecords": 4096,
+                "ProcessLifetimeSeconds": 90,
+                "IoSeconds": 10,
+                "CleanupSeconds": 10
               }
             }
           }
@@ -426,8 +484,18 @@
           ]
         },
         "image_smoke": {
-          "type": "boolean",
-          "const": true
+          "type": "boolean"
+        },
+        "enrichment_image": {
+          "type": "string",
+          "pattern": "^[^/ ]+/parchwell/enrichment@sha256:[a-f0-9]{64}$"
+        },
+        "seed_receipt_configmap": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?-f04-seed-receipt$"
         }
       },
       "allOf": [
@@ -499,7 +567,8 @@
           "then": {
             "required": [
               "action_role",
-              "image_smoke"
+              "image_smoke",
+              "enrichment_image"
             ],
             "not": {
               "anyOf": [

@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import yaml
 from test_chart import CHART, ROOT, positive_cases, with_case
+from test_single_action_chart import positive_cases as single_action_cases
 
 EXPECTED=b'{"loadgen_configuration_valid":true}\n'
 POD_UID='00000000-0000-4000-8000-000000000192'
@@ -28,6 +29,55 @@ def host_environment(rendered, td):
     env.update(rendered)
     return env
 
+def publish_worker(project, destination):
+    proc = subprocess.run(['python3', 'infra/scripts/lifecycle/command.py', '600', '--', 'dotnet', 'publish',
+        f'src/Parchwell.{project}/Parchwell.{project}.csproj', '--configuration', 'Release', '--output', str(destination),
+        '-p:RestoreLockedMode=true'], cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=625)
+    assert proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-4000:]
+
+def single_action_host_acceptance(td, loadgen_publish):
+    enrichment_publish = td / 'enrichment-publish'
+    verifier_publish = td / 'verifier-publish'
+    publish_worker('Enrichment', enrichment_publish)
+    publish_worker('Verifier', verifier_publish)
+    hosts = {
+        'single-action': (['dotnet', str(loadgen_publish / 'Parchwell.LoadGen.dll'), '--validate-single-action-configuration'],
+            b'{"single_action_configuration_valid":true}\n', 'SingleAction__'),
+        'single-action-seed': (['dotnet', str(enrichment_publish / 'Parchwell.Enrichment.dll'), '--validate-seed-configuration'],
+            b'', 'SeedF04__'),
+        'single-action-judge': (['dotnet', str(verifier_publish / 'Parchwell.Verifier.dll'), '--validate-single-action-configuration'],
+            b'{"single_action_judge_configuration_valid":true}\n', 'Verifier__'),
+    }
+    environments = {}
+    for index, values in enumerate(single_action_cases(False)):
+        fixture = td / f'single-{index}.yaml'
+        with_case(values, fixture)
+        rendered = rendered_environment(fixture, td, f'single-{index}')
+        mode = values['runtime']['mode']
+        host, expected, _ = hosts[mode]
+        output = td / f'single-{index}.host.out'
+        proc = bounded(60, host, output, host_environment(rendered, td))
+        assert proc.returncode == 0 and output.read_bytes() == expected, (mode, index, proc.stderr, output.read_bytes())
+        environments.setdefault(mode, rendered)
+    for mode, (host, _, prefix) in hosts.items():
+        for kind in (('missing', 'unknown', 'legacy') if mode == 'single-action-judge' else ('missing', 'unknown')):
+            rendered = dict(environments[mode])
+            if kind == 'missing':
+                del rendered[prefix + 'PodUid']
+            elif kind == 'legacy':
+                rendered['Verifier__Repeat'] = '1'
+            else:
+                rendered[prefix + 'UnsupportedSetting'] = 'forbidden'
+            output = td / f'{mode}-{kind}.host.out'
+            proc = bounded(60, host, output, host_environment(rendered, td))
+            assert proc.returncode == (2 if mode == 'single-action-judge' else 1), (mode, kind, proc.returncode, proc.stderr)
+    output = td / 'seed-image-smoke.out'
+    proc = bounded(60, ['dotnet', str(enrichment_publish / 'Parchwell.Enrichment.dll'), '--image-smoke'],
+                   output, host_environment({}, td))
+    assert proc.returncode == 0 and output.read_bytes() == b'{"mode":"single-action-seed-smoke","native_loaded":true,"uid_expected":1654}\n'
+    print('single-action host checks passed: 33 rendered environments, 7 missing/unknown/legacy regressions, Enrichment native image smoke')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='parchwell-loadgen-host-') as name:
         td=Path(name); publish=td/'publish'
@@ -47,5 +97,6 @@ def main():
         proc=bounded(60,host,td/'missing.host.out',host_environment(broken,td))
         assert proc.returncode==1 and 'loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:PodUid' in proc.stderr, proc.stderr
         print('loadgen host check passed: 7 rendered environments, 1 missing-setting regression')
+        single_action_host_acceptance(td, publish)
 
 if __name__=='__main__': main()

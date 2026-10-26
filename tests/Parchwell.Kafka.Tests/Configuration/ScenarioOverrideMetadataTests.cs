@@ -16,12 +16,21 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(4, settings.Length);
+        Assert.Equal(13, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
-            setting => { AssertPolicyEntry(setting, "enable.idempotence", 0, 1, "B04"); Assert.Equal(KafkaScenarioOverrideValueKind.Boolean, setting.ValueKind); },
-            setting => { AssertPolicyEntry(setting, "max.in.flight", 1, 1_000_000, "B04"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); });
+            setting => { AssertPolicyEntry(setting, "enable.idempotence", 0, 1, "B04", "B05"); Assert.Equal(KafkaScenarioOverrideValueKind.Boolean, setting.ValueKind); },
+            setting => { AssertPolicyEntry(setting, "max.in.flight", 1, 1_000_000, "B04", "B05"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
+            setting => AssertNewEntry(setting, "message.max.bytes", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B01", 1000, 1000000000),
+            setting => AssertNewEntry(setting, "message.timeout.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B05", 0, int.MaxValue),
+            setting => AssertNewEntry(setting, "compression.type", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B03", 0, 0, ["none", "gzip", "snappy", "lz4", "zstd"]),
+            setting => AssertNewEntry(setting, "transactional.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B05", 0, 0, [], true, true),
+            setting => AssertNewEntry(setting, "group.protocol", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0, ["classic", "consumer"]),
+            setting => AssertNewEntry(setting, "group.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C12", 0, 0, [], true),
+            setting => AssertNewEntry(setting, "session.timeout.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
+            setting => AssertNewEntry(setting, "heartbeat.interval.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
+            setting => AssertNewEntry(setting, "partition.assignment.strategy", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0));
     }
 
     [Theory]
@@ -60,11 +69,11 @@ public sealed class ScenarioOverrideMetadataTests
     }
 
     [Fact]
-    public void Given_OverridePolicy_When_CheckingSupportedRoles_Then_ExposesOnlyLoadGenProducer()
+    public void Given_OverridePolicy_When_CheckingSupportedRoles_Then_ExposesExactlyApprovedRoles()
     {
         Assert.True(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.LoadGenProducer));
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.EnrichmentProducer));
-        Assert.False(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.EnrichmentConsumer));
+        Assert.True(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.EnrichmentConsumer));
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.VerifierConsumer));
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole((KafkaClientRole)int.MaxValue));
     }
@@ -195,14 +204,79 @@ public sealed class ScenarioOverrideMetadataTests
     }
 
     private static void AssertPolicyEntry(KafkaScenarioOverrideSetting setting, string key,
-        int minimum, int maximum, string inventoryId)
+        int minimum, int maximum, params string[] inventoryIds)
     {
         Assert.Equal(key, setting.Key);
         Assert.Equal(minimum, setting.Minimum);
         Assert.Equal(maximum, setting.Maximum);
         Assert.Equal([KafkaClientRole.LoadGenProducer], setting.SupportedRoles);
-        Assert.Equal([inventoryId], setting.InventoryIds);
+        Assert.Equal(inventoryIds, setting.InventoryIds);
         Assert.Single(setting.Sources);
+        Assert.Empty(setting.AllowedValues);
+        Assert.False(setting.AllowAnyNonemptyValue);
+        Assert.False(setting.AllowActivation);
+    }
+
+    private static void AssertNewEntry(KafkaScenarioOverrideSetting setting, string key, KafkaScenarioOverrideValueKind kind,
+        KafkaClientRole role, string inventory, int minimum, int maximum, string[]? allowed = null, bool any = false, bool activation = false)
+    {
+        Assert.Equal(key, setting.Key);
+        Assert.Equal(kind, setting.ValueKind);
+        Assert.Equal([role], setting.SupportedRoles);
+        Assert.Equal([inventory], setting.InventoryIds);
+        Assert.Equal(minimum, setting.Minimum);
+        Assert.Equal(maximum, setting.Maximum);
+        Assert.Equal(allowed ?? [], setting.AllowedValues);
+        Assert.Equal(any, setting.AllowAnyNonemptyValue);
+        Assert.Equal(activation, setting.AllowActivation);
+        Assert.NotEmpty(setting.Sources);
+        Assert.All(setting.Sources, source => Assert.Equal("v2.16.0", source.VersionOrDate));
+    }
+
+    [Theory]
+    [InlineData(KafkaScenarioOverrideValueKind.String)]
+    [InlineData(KafkaScenarioOverrideValueKind.Omission)]
+    public void Given_StringOrOmissionKind_When_UsingNumericConstructor_Then_Rejects(KafkaScenarioOverrideValueKind kind) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateSetting(valueKind: kind));
+
+    [Theory]
+    [InlineData(false, "")]
+    [InlineData(false, "gzip,gzip")]
+    [InlineData(true, "gzip")]
+    [InlineData(false, null)]
+    public void Given_InvalidStringEnum_When_Constructing_Then_Rejects(bool any, string? csv)
+    {
+        ImmutableArray<string> values = csv is null ? [] : [.. csv.Split(',')];
+        Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("compression.type", values, any, false,
+            [KafkaClientRole.LoadGenProducer], ["B03"], [new(new Uri("https://example.com/configuration"), "v1")]));
+    }
+
+    [Fact]
+    public void Given_DefaultEnumWithAllowAny_When_Constructing_Then_NormalizesValuesToEmpty()
+    {
+        var setting = new KafkaScenarioOverrideSetting("transactional.id", default, true, true,
+            [KafkaClientRole.LoadGenProducer], ["B05"], [new(new Uri("https://example.com/configuration"), "v1")]);
+        Assert.False(setting.AllowedValues.IsDefault);
+        Assert.Empty(setting.AllowedValues);
+        Assert.True(setting.AllowAnyNonemptyValue);
+        Assert.True(setting.AllowActivation);
+        Assert.Equal(KafkaScenarioOverrideValueKind.String, setting.ValueKind);
+        Assert.Equal(0, setting.Minimum);
+        Assert.Equal(0, setting.Maximum);
+    }
+
+    [Theory]
+    [InlineData("role")]
+    [InlineData("inventory")]
+    [InlineData("source")]
+    [InlineData("null_source")]
+    public void Given_InvalidSharedMetadata_When_ConstructingStringAndOmission_Then_Rejects(string invalid)
+    {
+        ImmutableArray<KafkaClientRole> roles = invalid == "role" ? [(KafkaClientRole)99] : [KafkaClientRole.EnrichmentConsumer];
+        ImmutableArray<string> inventory = invalid == "inventory" ? ["Z99"] : ["C08"];
+        ImmutableArray<KafkaSettingSource> sources = invalid == "source" ? [] : invalid == "null_source" ? [null!] : [new(new Uri("https://example.com/configuration"), "v1")];
+        Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("group.protocol", ["consumer"], false, false, roles, inventory, sources));
+        Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("session.timeout.ms", roles, inventory, sources));
     }
 
     private static KafkaScenarioOverrideSetting CreateSetting(string key = "request.timeout.ms",

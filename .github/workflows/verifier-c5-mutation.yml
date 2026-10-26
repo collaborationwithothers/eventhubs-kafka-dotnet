@@ -23,6 +23,10 @@ jobs:
             target: VerifyRun/A01/A01EvidenceRecorder.cs
           - shard: workload
             target: VerifyRun/A01/WorkloadRecorder.cs
+          - shard: single-action-repeat
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-configuration
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
     steps:

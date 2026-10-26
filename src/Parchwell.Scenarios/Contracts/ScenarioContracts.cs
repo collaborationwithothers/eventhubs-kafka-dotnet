@@ -23,7 +23,7 @@ public sealed record ScenarioDiagnostic(string Source, string FieldPath, string 
 /// for one client role, with the place in the file where it was written.
 /// </summary>
 /// <remarks>
-/// The loader stores either a plain decimal Int32 in invariant form or exactly true or false. Which keys, roles and ranges are
+/// The loader stores policy-admitted strings, plain decimal Int32 values, boolean literals, or plain omit. Which keys, roles and ranges are
 /// allowed is checked later by <see cref="ScenarioResolver"/>. Overrides are how a scenario expresses
 /// its configurations as deltas from the baseline (ADR-014, ADR-015).
 /// </remarks>
@@ -137,7 +137,15 @@ public sealed record ProbeGate(string Configuration, MeasurementRequest Measurem
 public sealed record ScenarioDefinition(int SchemaVersion, string Id, string Baseline,
     ImmutableArray<KafkaClientRole> Roles, string Profile,
     ImmutableDictionary<string, ScenarioConfiguration> Configurations, FaultDefinition Fault,
-    int Repeats, ScenarioGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source);
+    int Repeats, ScenarioGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source,
+    SingleActionDefinition? SingleAction = null);
+
+/// <summary>The validated fixed single-action rows; owning checks are in scenario-contract.md.</summary>
+public sealed record SingleActionDefinition(ImmutableDictionary<string, SingleActionConfiguration> Configurations);
+
+/// <summary>One fresh-client action with its literal declared inputs.</summary>
+public sealed record SingleActionConfiguration(string Action, KafkaClientRole Role, string Topic, int Partition,
+    int PayloadBytes, int WindowMs, string TokenScope, string Match);
 
 /// <summary>
 /// A synthetic tenant, standing for one firm in the workload, and its share of traffic relative to the
@@ -197,11 +205,19 @@ public sealed record OverrideOrigin(string ScenarioId, string ConfigurationId, S
 public sealed record ResolvedSetting(string Value, KafkaSettingMetadata Baseline, OverrideOrigin? Override);
 
 /// <summary>
-/// The effective settings for one client role in one configuration, plus the baseline's omissions:
-/// settings the baseline deliberately leaves out, which an override may not switch on.
+/// The effective settings for one client role in one configuration, the remaining baseline omissions,
+/// and scenario removals retaining their emitted baseline provenance.
 /// </summary>
 public sealed record ResolvedRoleConfiguration(KafkaClientRole Role,
-    ImmutableDictionary<string, ResolvedSetting> Settings, ImmutableArray<KafkaSettingMetadata> Omissions);
+    ImmutableDictionary<string, ResolvedSetting> Settings, ImmutableArray<KafkaSettingMetadata> Omissions,
+    ImmutableArray<ResolvedOmission> ScenarioOmissions = default)
+{
+    /// <summary>Gets scenario removals, empty when the configuration emits every baseline key.</summary>
+    public ImmutableArray<ResolvedOmission> ScenarioOmissions { get; init; } = ScenarioOmissions.IsDefault ? [] : ScenarioOmissions;
+}
+
+/// <summary>A scenario removal retaining the original emitted metadata and YAML provenance.</summary>
+public sealed record ResolvedOmission(string Key, KafkaSettingMetadata Baseline, OverrideOrigin Origin);
 
 /// <summary>One configuration after its overrides were applied to a fresh baseline for every declared role.</summary>
 public sealed record ResolvedConfiguration(string Id,

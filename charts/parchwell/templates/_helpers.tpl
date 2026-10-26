@@ -10,7 +10,8 @@ app.kubernetes.io/instance: {{ .Values.runtime.run_id | quote }}
 {{- else -}}verifier{{- end -}}
 {{- end -}}
 {{- define "parchwell.worker" -}}
-{{- if has .Values.runtime.mode (list "single-action" "single-action-seed" "loadgen") -}}loadgen{{- else -}}verifier{{- end -}}
+{{- if eq .Values.runtime.mode "single-action-seed" -}}enrichment
+{{- else if has .Values.runtime.mode (list "single-action" "loadgen") -}}loadgen{{- else -}}verifier{{- end -}}
 {{- end -}}
 {{- define "parchwell.jobName" -}}
 {{- $r := .Values.runtime -}}{{- $phase := lower $r.phase -}}
@@ -38,4 +39,12 @@ app.kubernetes.io/instance: {{ .Values.runtime.run_id | quote }}
 {{- if or (ne $r.phase .Values.configuration_id) (eq $expected "") (ne $r.action_role $expected) -}}
 {{- fail "single-action mode/item/configuration/role mismatch" -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "parchwell.validateSeedReceipt" -}}
+{{- $r := .Values.runtime -}}
+{{- $needs := and (not $r.image_smoke) (eq $r.mode "single-action-judge") (eq .Values.scenario_id "F04") -}}
+{{- if $needs -}}
+{{- if ne ($r.seed_receipt_configmap | default "") (printf "%s-f04-seed-receipt" $r.run_id) -}}{{ fail "live F04 judge requires exact seed_receipt_configmap" }}{{- end -}}
+{{- else if $r.seed_receipt_configmap -}}{{ fail "seed_receipt_configmap only permitted for live F04 judge" }}{{- end -}}
 {{- end -}}

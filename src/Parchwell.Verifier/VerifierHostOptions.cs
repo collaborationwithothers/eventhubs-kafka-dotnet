@@ -7,13 +7,20 @@ internal enum VerifierMode
     StartLine,
     Verify,
     Judge,
-    ProbeGate
+    ProbeGate,
+    SingleActionJudge
 }
 
 /// <summary>Holds runner-supplied verifier settings until startup validation completes.</summary>
 /// <remarks>Options bind from the <c>Verifier</c> configuration section; no value has a production default.</remarks>
 internal sealed class VerifierHostOptions
 {
+    public Common.SingleAction.SingleActionLimits? SingleActionLimits { get; set; }
+    public string? EnrichmentImage { get; set; }
+    public string? CaptureContainer { get; set; }
+    public string? CapturePrefix { get; set; }
+    public string? SeedReceiptPath { get; set; }
+    public string? SeedPodIdentityPath { get; set; }
     public string? Mode { get; set; }
     public string? ScenarioId { get; set; }
     public string? VerifierCommit { get; set; }
@@ -112,10 +119,11 @@ internal static class VerifierModeParser
             "start-line" => VerifierMode.StartLine,
             "verify" => VerifierMode.Verify,
             "judge" => VerifierMode.Judge,
+            "single-action-judge" => VerifierMode.SingleActionJudge,
             "probe-gate" => VerifierMode.ProbeGate,
             _ => default
         };
 
-        return value is "start-line" or "verify" or "judge" or "probe-gate";
+        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge";
     }
 }

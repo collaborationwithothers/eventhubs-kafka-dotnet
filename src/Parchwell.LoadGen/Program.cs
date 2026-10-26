@@ -37,7 +37,10 @@ internal static class Program
         TextWriter? completionOutput = null, Func<IHost>? hostFactory = null)
     {
         if (args.Length == 1 && args[0] == "--image-smoke") return ImageSmoke();
+        if (args.Length == 1 && args[0] == "--single-action") return await SingleAction.SingleActionHost.RunAsync(configureTestServices, hostFactory).ConfigureAwait(false);
+        if (args.Length == 1 && args[0] == "--validate-single-action-configuration") return SingleAction.SingleActionHost.ValidateConfiguration();
         if (args.Length == 1 && args[0] == "--validate-configuration") return ValidateConfiguration();
+        if (args.Length != 0) return 1;
         completionOutput ??= Console.Out;
         ITimer? processWatchdog = null;
         IHost? host = null;

@@ -1,0 +1,75 @@
+schema_version: 1
+id: B05
+assessment_rules:
+  observation_unit: fresh_client_single_action
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  completion_checks:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  seed_prerequisite_check: "not_applicable"
+  outcome_class:
+  - result
+  - error_code
+  - is_fatal
+  - origin
+  require_one_class_in_all_five: true
+  unequal_classes: separate_full_plan_no_verdict
+  incomplete_configuration: no_verdict
+  construction_origin: untestable
+  failed_control: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+hypotheses:
+  H1:
+    question: "InitTransactions succeeds."
+    configurations:
+    - C1
+    decision:
+      confirmed_when: "Returned InitTransactions confirms S18 and contradicts S1."
+      contradicted_when: "Errored call confirms S1 and contradicts S18."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions
+  H2:
+    question: "InitTransactions fails."
+    configurations:
+    - C1
+    decision:
+      confirmed_when: "Errored call confirms S1 and contradicts S18."
+      contradicted_when: "Returned InitTransactions confirms S18 and contradicts S1."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+verdict:
+  confirmed_when: "H1 returned InitTransactions confirms S18 and contradicts S1; H2 errored call confirms S1 and contradicts S18."
+  contradicted_when: "not_applicable"
+  undocumented_when: "not_applicable"
+  untestable_when: "Failed control or typed construction-origin hypothesis is untestable; other complete deterministic combinations are untestable."
+  no_verdict_when: "Fewer than five complete, unequal classes or a missing prerequisite yield no verdict, never a replacement repeat."
+  security_finding_when: "not_applicable"
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-transactions
+  version: current
+  read_date: "2026-10-26"
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Error.cs
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  version: revision 4
+  read_date: "2026-10-26"

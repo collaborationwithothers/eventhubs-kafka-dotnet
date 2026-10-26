@@ -129,7 +129,7 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         Inputs["manifest.json"] = JsonSerializer.SerializeToUtf8Bytes(manifest);
         var capabilities = JsonNode.Parse(Inputs["capabilities.json"])!;
         var selected = resolver.Resolve(await loader.LoadAsync("A01")).Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer];
-        capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(selected, WireOptions);
+        capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(new { selected.Role, selected.Settings, selected.Omissions }, WireOptions);
         Inputs["capabilities.json"] = JsonSerializer.SerializeToUtf8Bytes(capabilities);
     }
 

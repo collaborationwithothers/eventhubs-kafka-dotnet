@@ -1,6 +1,30 @@
 # Verifier contract
 
-The production C5 worker has three modes: `start-line`, `verify`, and `judge`. A successful object write alone never authorizes outcome counts or a successful process exit. Each mode publishes a bounded receipt after its work and cleanup complete.
+The production C5 worker supports `start-line`, `verify`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
+
+## Single-action judgement
+
+The new mode reads captured evidence without constructing a Kafka client. Its [wire contract](single-action-contract.md) owns closed schemas, paths, receipts and bounds; [scenario declarations](scenario-contract.md#single-action-declarations) select the action. The [approved parent decision rules](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278) and [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) authorize this closed list:
+
+1. Exactly one registration, matching the selected capture Job, instance, pod and source: otherwise all slots are invalid, `p1_registration`.
+2. Matching successful last-action capture completion with five attempted repeats, zero exit and completed cleanup: otherwise all slots are incomplete, `p2_completion`.
+3. Bounded schema-one capture with matching coordinates and each ordinal 1-5 exactly once: otherwise all slots are invalid, `p3_capture_file`.
+4. Terminal outcome within the inclusive declared window, with a terminal timestamp and no capture-limit gap: otherwise incomplete, `p4_no_terminal_outcome`.
+5. Full resolved settings key/value equality, including each client ID and the omission union: otherwise invalid, `p5_configuration_fidelity`.
+6. A parsed native report emitted at or after terminal outcome and a recorded broker count: otherwise incomplete, `p6_broker_count`.
+7. A well-typed measured success/error tuple; assigned-read success also matches the exact topic, partition, key and value: otherwise invalid, `p7_outcome_record`.
+8. Configuration is invalid if any slot is invalid, complete_valid only if all five are complete, and incomplete otherwise.
+9. Determinism is true for five complete equal classes, false for complete unequal classes and null otherwise. Publish an aggregate class only when true.
+10. Apply the [factory single-action evidence exception](../agents/factory.md#evidence-pack); do not serialize ledger totals for these candidates.
+11. F04 additionally requires the live seed receipt bound to its collected pod identity, declared marker, successful delivery and cleanup. C4 requires the same-run/source complete successful C0 candidate and its final judge receipt. Failure gives `p8_seed_prerequisite`, incomplete F04 evidence and no verdict.
+
+Invalid evidence takes precedence over incomplete evidence without erasing diagnostic reasons. Missing completion, false cleanup and every nonzero completion exit independently prevent complete_valid status. Seed failure never becomes evidence of denied authorization, and it does not prevent unrelated items from being attempted.
+
+For check 6, the [pinned native statistics specification](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md) defines epoch-second `time` and monotonic-microsecond `ts`. Require nonnegative Int64 values and checked `time * 1000 >= terminal_unix_ms`. Choose the earliest qualifying time, then ts, then callback sequence. Count only broker entries with source learned/configured/logical and state UP, and report a lower bound. An observed empty eligible set is zero; absent or unreadable evidence is not zero. No A01 coverage, drain or nonempty-broker condition is added.
+
+The final configuration of an item combines only accepted configuration candidates with successful matching judge receipts. It applies the approved controls and decision rules, retains nondeterministic/incomplete gaps, and leaves expected.yaml assessment-only. Construction-origin outcomes and failed controls are untestable. F04 success observations in C1-C3 remain security findings when registration, capture, fidelity and outcome checks accept them, even if another repeat lacks statistics; verdict work stops for Hari with the raw evidence.
+
+Candidate publication precedes host stop/disposal. Under [ADR-017](../blueprint.md#adr-017-workers-are-generic-host-apps-run-as-kubernetes-jobs-and-set-a-non-zero-exit-code-on-failure), invalid and incomplete candidates cause a nonzero process exit. They retain their raw diagnostic candidate, including security observations, without queuing a successful judge completion receipt. Complete-valid judgement, including a nondeterministic outcome, returns zero; its successful final receipt follows host disposal. The process limit is 90 seconds, with 10-second IO and cleanup budgets inside the 120-second Job deadline. These are approved harness bounds, not a measured completion claim. [Hosted C5 mutation acceptance](verifier-mutation.md#issue-213-single-action-targets) is required after merge before these candidates support publication.
 
 ## C5 phase, blob and receipt contract
 

@@ -125,8 +125,9 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         };
         // The handler resolves the same source itself; no parsed verifier projection is injected.
         LoadedScenario loaded = Loader.LoadAsync(scenarioId).AsTask().GetAwaiter().GetResult();
+        var selectedRole = Resolver.Resolve(loaded).Configurations[Options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
         capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(
-            Resolver.Resolve(loaded).Configurations[Options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
+            new { selectedRole.Role, selectedRole.Settings, selectedRole.Omissions }, WireOptions);
         Set("capabilities.json", capabilities);
         Events.Clear();
         RebuildPublicationReferences();

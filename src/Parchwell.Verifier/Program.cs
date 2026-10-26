@@ -36,9 +36,36 @@ internal static partial class Program
     [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Verifier disposal failed for scenario {ScenarioId} run {RunId}.")]
     private static partial void LogDisposalFailed(ILogger logger, Exception exception, string? scenarioId, string? runId);
 
-    public static Task<int> Main(string[] args) => args.Length == 1 && args[0] == "--image-smoke"
+    public static Task<int> Main(string[] args) => args.Length==1&&args[0]=="--validate-single-action-configuration"
+        ? Task.FromResult(ValidateSingleActionConfiguration())
+        : args.Length == 1 && args[0] == "--image-smoke"
         ? ImageSmoke.RunAsync(Console.Out, AppContext.BaseDirectory)
         : RunAsync(args);
+
+    private static int ValidateSingleActionConfiguration()
+    {
+        try
+        {
+            var builder=Host.CreateApplicationBuilder([]);
+            var options=new VerifierHostOptions();new VerifierHostOptionsSetup(builder.Configuration).Configure(options);
+            if(options.Mode!="single-action-judge"||!new VerifierHostOptionsValidator().Validate(null,options).Succeeded)return 2;
+            foreach(var entry in builder.Configuration.GetSection("Verifier").AsEnumerable())
+            {
+                if(entry.Value is null)continue;
+                string[] segments=entry.Key.Split(':')[1..];
+                Type type=typeof(VerifierHostOptions);
+                foreach(string segment in segments)
+                {
+                    var property=type.GetProperty(segment,System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.IgnoreCase);
+                    if(property is null||!property.CanWrite)return 2;
+                    type=property.PropertyType;
+                }
+            }
+            Console.WriteLine("{\"single_action_judge_configuration_valid\":true}");
+            return 0;
+        }
+        catch(Exception){return 2;}
+    }
 
     internal static IHost BuildHost(
         string[] args,
@@ -87,6 +114,22 @@ internal static partial class Program
                 provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
             services.AddSingleton<IProbeGateFileStore, LocalProbeGateFileStore>();
             services.AddSingleton<IVerifierModeHandler, ProbeGateHandler>();
+            return;
+        }
+        if(mode=="single-action-judge")
+        {
+            var selected=new VerifierHostOptions();new VerifierHostOptionsSetup(configuration).Configure(selected);
+            var validation=new VerifierHostOptionsValidator().Validate(null,selected);
+            if(!validation.Succeeded)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),validation.Failures??[]);
+            RegisterTelemetry(services,configuration);
+            services.AddOptions<ScenarioLoadOptions>().Configure(options=>configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
+            services.AddSingleton<ScenarioLoader>();
+            services.AddSingleton<IScenarioSource>(provider=>new FileSystemScenarioSource(provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
+            services.AddSingleton<IProducerArtifactStore>(provider=>new BlobProducerArtifactStore(CreateBlobContainer(selected,selected.CaptureContainer!),134217728));
+            services.AddSingleton<IVerifierArtifactStore>(provider=>new BlobVerifierArtifactStore(CreateBlobContainer(selected,"verifier"),16777216,16777216));
+            services.AddSingleton<VerifyRun.SingleAction.ISingleActionSeedSource,VerifyRun.SingleAction.SingleActionSeedSource>();
+            services.AddSingleton<VerifyRun.SingleAction.SingleActionScenarioResolver>();
+            services.AddSingleton<IVerifierModeHandler,VerifyRun.SingleAction.SingleActionHandler>();
             return;
         }
         if (mode is not ("start-line" or "verify" or "judge")) return;
@@ -258,9 +301,10 @@ internal static partial class Program
 
         if (host is not null)
         {
+            using var singleActionCleanup=hostOptions?.Mode=="single-action-judge"?new CancellationTokenSource(TimeSpan.FromSeconds(10),timeProvider??TimeProvider.System):null;
             try
             {
-                await host.StopAsync().ConfigureAwait(false);
+                await host.StopAsync(singleActionCleanup?.Token??CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -281,7 +325,8 @@ internal static partial class Program
             {
                 if (host is IAsyncDisposable asyncDisposable)
                 {
-                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                    if(singleActionCleanup is not null)await asyncDisposable.DisposeAsync().AsTask().WaitAsync(singleActionCleanup.Token).ConfigureAwait(false);
+                    else await asyncDisposable.DisposeAsync().ConfigureAwait(false);
                 }
                 else
                 {
@@ -399,6 +444,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
     public void Configure(VerifierHostOptions options)
     {
         string? mode = _configuration["Verifier:Mode"];
+        if(mode=="single-action-judge")ValidateSingleActionFields();
         var usedBudgets = new HashSet<string>(AlwaysReadBudgets, StringComparer.OrdinalIgnoreCase);
         if (mode is "start-line" or "verify")
         {
@@ -426,13 +472,49 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
             .AddInMemoryCollection(values)
             .Build();
         filtered.Bind(options);
-        options.JobName ??= _configuration["PARCHWELL_JOB_NAME"];
-        options.PodName ??= _configuration["PARCHWELL_POD_NAME"];
-        options.PodUid ??= _configuration["PARCHWELL_POD_UID"];
+        if(mode=="single-action-judge")
+        {
+            options.ProcessLifetime=TimeSpan.FromSeconds(options.SingleActionLimits?.ProcessLifetimeSeconds??0);
+            options.CleanupTimeout=TimeSpan.FromSeconds(options.SingleActionLimits?.CleanupSeconds??0);
+            options.IoTimeout=TimeSpan.FromSeconds(options.SingleActionLimits?.IoSeconds??0);
+        }
+        if(mode!="single-action-judge")
+        {
+            options.JobName ??= _configuration["PARCHWELL_JOB_NAME"];
+            options.PodName ??= _configuration["PARCHWELL_POD_NAME"];
+            options.PodUid ??= _configuration["PARCHWELL_POD_UID"];
+        }
         options.SourceCommit = _configuration["PARCHWELL_SOURCE_COMMIT"] ?? options.SourceCommit;
         options.TenantId ??= _configuration["AZURE_TENANT_ID"];
         options.WorkloadIdentityClientId ??= _configuration["AZURE_CLIENT_ID"];
         options.FederatedTokenFilePath ??= _configuration["AZURE_FEDERATED_TOKEN_FILE"];
+    }
+
+    private void ValidateSingleActionFields()
+    {
+        string[] required=["Mode","ScenarioId","ConfigurationId","RunId","VerifierCommit","JobName","PodName","PodUid","BlobServiceUri","VerifierContainer","NamespaceName","ScenarioRoot","LoadGenImage","VerifierImage","EnrichmentImage","CaptureContainer","CapturePrefix"];
+        var allowed=new HashSet<string>(required,StringComparer.OrdinalIgnoreCase){"SingleActionLimits","ScenarioLoadOptions"};
+        if(_configuration["Verifier:ScenarioId"]=="F04")
+        {
+            allowed.Add("SeedReceiptPath");allowed.Add("SeedPodIdentityPath");
+            required=[..required,"SeedReceiptPath","SeedPodIdentityPath"];
+        }
+        var errors=new List<string>();
+        foreach(string key in required)
+            if(_configuration["Verifier:"+key] is null)errors.Add("Missing Verifier:"+key);
+        foreach(var child in _configuration.GetSection("Verifier").GetChildren())
+        {
+            if(!allowed.Contains(child.Key)||child.Value is not null&&child.GetChildren().Any()||child.Key is not ("SingleActionLimits" or "ScenarioLoadOptions")&&child.GetChildren().Any())errors.Add("Unknown Verifier:"+child.Key);
+        }
+        CheckGroup("SingleActionLimits",typeof(Common.SingleAction.SingleActionLimits));
+        CheckGroup("ScenarioLoadOptions",typeof(VerifierScenarioLoadOptions));
+        if(errors.Count!=0)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),errors);
+        void CheckGroup(string group,Type type)
+        {
+            var fields=type.GetProperties().Select(property=>property.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach(string field in fields)if(_configuration[$"Verifier:{group}:{field}"] is null)errors.Add($"Missing Verifier:{group}:{field}");
+            foreach(var child in _configuration.GetSection("Verifier:"+group).GetChildren())if(!fields.Contains(child.Key)||child.GetChildren().Any())errors.Add($"Unknown Verifier:{group}:{child.Key}");
+        }
     }
 
     private static bool KeepValue(string key, HashSet<string> usedBudgets, string? mode)

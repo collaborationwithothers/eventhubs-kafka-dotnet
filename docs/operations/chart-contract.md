@@ -87,7 +87,27 @@ For the acceptance commands, `PARCHWELL_TOOLS_DIRECTORY=/workspace/scratch/issue
 
 The assertion replacement follows [decision 6400615208](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/192#issuecomment-6400615208) and remains a disclosed P1 for Hari's merge. This receipt does not claim a live dispatch or gate 2 result. The final head's CI run and cold-review result are recorded in the pull request description under AGENTS.md rule 8.
 
+## Single-action execution
+
+The [approved S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) enables real batch execution alongside image smoke. Runtime identifiers select the packaged [single-action declaration](scenario-contract.md#single-action-declarations); the chart supplies infrastructure, immutable images and explicit bounds. The [wire contract](single-action-contract.md) owns evidence paths, receipts and limits.
+
+New modes require digest-pinned LoadGen, Verifier and Enrichment images, the exact matrix action role, and all four existing service accounts. `image_smoke` selects inert image validation or real execution. Legacy modes retain their existing image/account inputs. Mode-specific configuration validation uses the actual rendered environment and rejects unknown or missing host option names.
+
+| Mode | Identity | Image | Real invocation | Job deadline |
+| --- | --- | --- | --- | --- |
+| single-action | Matrix loadgen/probe | LoadGen | `--single-action` | 1980 seconds |
+| single-action-judge | verifier | Verifier | `Verifier__Mode=single-action-judge` | 120 seconds |
+| single-action-seed | enrichment-consumer | Enrichment | `--single-action-seed` | 420 seconds |
+
+Smoke uses each image's `--image-smoke` entrypoint; the actual Enrichment marker is distinct from live delivery evidence. Existing Job suffixes, pools, security contexts, resources, no-retry policy and 30-second termination grace remain. Seed has no telemetry inputs. Action uses `SingleAction__*`, seed uses `SeedF04__*`, and judge uses `Verifier__*` inputs named in the approved plan and checked against the actual option types. Bounds are closed constant sections, rather than arbitrary runtime overrides. The seed receives no Blob inputs; only F04 judges receive the optional read-only seed ConfigMap mount. Missing seed files must permit a diagnostic judge to start.
+
+The phase runner publishes all three source-tagged images, records their immutable digests and retains every configuration slot. One boot-scoped monotonic clock begins before seed. Its 14400-second admission cap includes the seed; seed orchestration has a 1050-second absolute bound and each capture/judge pair a shared 3360-second absolute bound. Subprocess grants reserve command.py's five-second termination grace. These limits are the approved harness budgets, not duration measurements. Exhaustion records incomplete/not_attempted gaps, without replacements or later admissions after an uncertain pod cleanup.
+
+Every admitted configuration attempts capture then judgement when the safety/deadline bounds permit it. Seed failure does not skip unrelated items. The phase script transports bounded receipts, pod identity and candidates without deciding the scientific result. Candidate acceptance requires its matching final judge receipt; downloaded but unaccepted bytes remain diagnostics. The always-run workflow paths delete Jobs, destroy the ephemeral layer and stop the cluster for smoke and batch execution. Workflow dispatch and protected merges follow [AGENTS.md](../../AGENTS.md).
+
 ## S1 probe batch image smoke (#212)
+
+This section records the historical S1 interfaces. [Single-action execution](#single-action-execution) describes the S2 interfaces that replace its inert seed image and smoke-only gates.
 
 The approved [S1 plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/212#issuecomment-6423432624) adds `single-action`, `single-action-judge` and `single-action-seed` alongside the legacy A01/B04 modes described above. The ordered item/configuration/action-role matrix lives in [phase.py](../../infra/scripts/phase/phase.py); [AGENTS.md](../../AGENTS.md) and the [factory lifecycle](../agents/factory.md#item-lifecycle) govern execution and continuation.
 

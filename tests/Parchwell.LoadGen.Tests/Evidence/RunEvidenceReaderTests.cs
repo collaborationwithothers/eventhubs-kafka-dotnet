@@ -938,7 +938,8 @@ public sealed class RunEvidenceReaderTests
     private static async Task<JsonObject> SerializeSelectedConfigurationAsync(RunIdentity identity)
     {
         RunEvidenceExpectations expectations = await ExpectationsAsync(identity);
-        return JsonSerializer.SerializeToNode(expectations.ResolvedConfiguration, ResolvedConfigurationJsonOptions)!.AsObject();
+        ResolvedRoleConfiguration selected = expectations.ResolvedConfiguration;
+        return JsonSerializer.SerializeToNode(new { selected.Role, selected.Settings, selected.Omissions }, ResolvedConfigurationJsonOptions)!.AsObject();
     }
 
     private static async Task<RunEvidenceReadResult> ReadAsync(string path, RunIdentity identity,
