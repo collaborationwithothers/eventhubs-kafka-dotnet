@@ -15,23 +15,30 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
     private readonly List<SingleActionStatistics> _statistics = [];
     private readonly List<string> _diagnostics = [];
     private int _statisticsSequence;
+    private int _errorCallbacks;
+    private int _statisticsCallbacks;
     private bool _limit;
     private bool _assigned;
     private Error? _fatalError;
-    private (long Elapsed, long Unix)? _assignmentObservation;
-    private (long Elapsed, long Unix)? _fatalObservation;
+    private long _terminalSequence;
+    private (long Elapsed, long Unix, long Sequence)? _assignmentObservation;
+    private (long Elapsed, long Unix, long Sequence)? _fatalObservation;
     internal bool Limit { get { lock (_gate) return _limit; } }
     internal bool Assigned { get { lock (_gate) return _assigned; } }
     internal Error? FatalError { get { lock (_gate) return _fatalError; } }
-    internal (long Elapsed, long Unix)? AssignmentObservation { get { lock (_gate) return _assignmentObservation; } }
-    internal (long Elapsed, long Unix)? FatalObservation { get { lock (_gate) return _fatalObservation; } }
+    internal (long Elapsed, long Unix, long Sequence)? AssignmentObservation { get { lock (_gate) return _assignmentObservation; } }
+    internal (long Elapsed, long Unix, long Sequence)? FatalObservation { get { lock (_gate) return _fatalObservation; } }
     internal long ElapsedMs => (long)clock.GetElapsedTime(started).TotalMilliseconds;
     internal void AssignedPartitions(int count)
     {
         if (count <= 0) return;
         long elapsed = ElapsedMs;
         long unix = clock.GetUtcNow().ToUnixTimeMilliseconds();
-        Enqueue(() => { _assigned = true; _assignmentObservation ??= (elapsed, unix); });
+        lock (_gate)
+        {
+            if (!EnqueueLocked(() => _assigned = true)) return;
+            _assignmentObservation ??= (elapsed, unix, ++_terminalSequence);
+        }
     }
     internal void Error(Error error)
     {
@@ -39,13 +46,15 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         long unix = clock.GetUtcNow().ToUnixTimeMilliseconds();
         lock (_gate)
         {
+            if (_limit) return;
             if (Encoding.UTF8.GetByteCount(error.Reason) > options.MaxErrorBytes) { MarkLimit(); return; }
-            EnqueueLocked(() =>
+            if (_errorCallbacks >= options.MaxClientErrors) { MarkLimit(); return; }
+            if (!EnqueueLocked(() =>
             {
-                if (_errors.Count >= options.MaxClientErrors) { MarkLimit(); return; }
                 _errors.Add(new((int)error.Code, error.IsFatal, Origin(error), error.Reason, elapsed));
-                if (error.IsFatal) { _fatalError ??= error; _fatalObservation ??= (elapsed, unix); }
-            });
+            })) return;
+            _errorCallbacks++;
+            if (error.IsFatal) { _fatalError ??= error; _fatalObservation ??= (elapsed, unix, ++_terminalSequence); }
         }
     }
     internal void Statistics(string raw)
@@ -53,6 +62,8 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         long elapsed = ElapsedMs;
         lock (_gate)
         {
+            if (_limit) return;
+            if (_statisticsCallbacks >= options.MaxStatisticsReports) { MarkLimit(); return; }
             byte[] bytes;
             try
             {
@@ -62,11 +73,11 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
             catch (EncoderFallbackException) { MarkLimit(); return; }
             string encoded = Convert.ToBase64String(bytes);
             int sequence = ++_statisticsSequence;
-            EnqueueLocked(() =>
+            if (!EnqueueLocked(() =>
             {
-                if (_statistics.Count >= options.MaxStatisticsReports) { MarkLimit(); return; }
                 _statistics.Add(new(sequence, elapsed, encoded));
-            });
+            })) return;
+            _statisticsCallbacks++;
         }
     }
     internal void Diagnostic(string value)
@@ -77,6 +88,15 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         }
     }
     internal void CaptureLimit() { lock (_gate) MarkLimit(); }
+    internal bool TryObserveTerminal(Action observe)
+    {
+        lock (_gate)
+        {
+            if (_limit) return false;
+            observe();
+            return true;
+        }
+    }
     internal void Drain()
     {
         lock (_gate) while (_callbacks.TryDequeue(out Action? callback)) callback();
@@ -87,12 +107,12 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         lock (_gate) return (_errors.ToArray(), _statistics.ToArray(), _diagnostics.AsReadOnly());
     }
     internal static string Origin(Error error) => error.IsBrokerError ? "broker" : "local";
-    private void Enqueue(Action callback) { lock (_gate) EnqueueLocked(callback); }
-    private void EnqueueLocked(Action callback)
+    private bool EnqueueLocked(Action callback)
     {
-        if (_limit) return;
-        if (_callbacks.Count >= options.CallbackQueueCapacity) { MarkLimit(); return; }
+        if (_limit) return false;
+        if (_callbacks.Count >= options.CallbackQueueCapacity) { MarkLimit(); return false; }
         _callbacks.Enqueue(callback);
+        return true;
     }
     private void MarkLimit()
     {

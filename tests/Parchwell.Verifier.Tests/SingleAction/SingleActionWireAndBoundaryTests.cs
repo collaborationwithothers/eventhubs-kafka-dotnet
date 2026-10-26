@@ -109,4 +109,29 @@ public sealed class SingleActionWireAndBoundaryTests
         foreach(string prohibited in new[]{"ok","loss","phantom","reported_failure","duplicate","reorder","counts"})Assert.False(root.ContainsKey(prohibited));
         string[] projection=["repeat","status","reasons","outcome_class","broker_count","statistics_reference"];Assert.Equal(projection.Order(StringComparer.Ordinal),root["repeats"]![0]!.AsObject().Select(p=>p.Key).Order(StringComparer.Ordinal));
     }
+    [Theory]
+    [InlineData("missing_loadgen")][InlineData("missing_verifier")][InlineData("missing_enrichment")]
+    [InlineData("extra")][InlineData("case_changed_key")][InlineData("empty")][InlineData("short")][InlineData("long")]
+    [InlineData("uppercase")][InlineData("nonhex")][InlineData("prefix")][InlineData("null")]
+    public void Given_InvalidImageDigestMap_When_CandidateReadOrWritten_Then_ClosedWireRejected(string mutation)
+    {
+        var candidate=SingleActionFixture.Candidate();
+        var digests=candidate.ImageDigests;
+        if(mutation.StartsWith("missing_",StringComparison.Ordinal))digests.Remove(mutation[8..]);
+        else if(mutation=="extra")digests["other"]="sha256:"+new string('4',64);
+        else if(mutation=="case_changed_key")
+        {
+            digests["LoadGen"]=digests["loadgen"];digests.Remove("loadgen");
+        }
+        else digests["loadgen"]=mutation switch
+        {
+            "empty"=>"", "short"=>"sha256:"+new string('1',63), "long"=>"sha256:"+new string('1',65),
+            "uppercase"=>"sha256:"+new string('A',64), "nonhex"=>"sha256:"+new string('g',64),
+            "prefix"=>"SHA256:"+new string('1',64), _=>null!
+        };
+        byte[] raw=SingleActionWire.Write(candidate,16777216);
+        Assert.Throws<FormatException>(()=>SingleActionCandidateCodec.Read(raw));
+        Assert.Throws<FormatException>(()=>SingleActionCandidateCodec.Write(candidate));
+    }
+
 }

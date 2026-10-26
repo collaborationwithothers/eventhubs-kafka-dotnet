@@ -89,5 +89,15 @@ public sealed class SingleActionSeedAndItemTests
         result=SingleActionFixture.Judge(repeat with{Matched=SingleActionFixture.Json("null")},declaration);Assert.False(SingleActionConfigurationJudgement.SecurityFinding("F04","C2",true,true,[result]));
     }
 
+    [Fact]
+    public void Given_TerminalDenialSuccessAndLaterCaptureOverflow_When_Judged_Then_IncompleteSecurityFindingRetainsMeasuredOutcome()
+    {
+        var repeat=SingleActionFixture.Repeat() with{Diagnostics=["capture_limit"]};
+        var projection=SingleActionFixture.Judge(repeat);
+        Assert.Equal("incomplete",projection.Status);Assert.Contains("p4_no_terminal_outcome",projection.Reasons);
+        Assert.Equal(new SingleActionOutcome("success",null,null,null),projection.OutcomeClass);
+        Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C1",true,true,[projection]));
+    }
+
     private static Dictionary<string,SingleActionCandidate> Candidates(string item)=>SingleActionConfigurationJudgement.Configurations(item).ToDictionary(c=>c,c=>SingleActionFixture.Candidate(item,c,item=="B03"&&c!="C1"||item=="C12"&&c=="C2"||item=="F04"&&c is "C1" or "C2" or "C3"?"error":"success"),StringComparer.Ordinal);
 }

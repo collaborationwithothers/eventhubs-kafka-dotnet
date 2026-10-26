@@ -52,6 +52,8 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
         await WriteAsync(prefix + $"instances/{options.PodName}/capture.json", capture,
             options.MaxCaptureBytes, options.CaptureUploadSeconds, cancellationToken).ConfigureAwait(false);
         if (!_cleanupSucceeded) throw new InvalidOperationException("single_action_client_cleanup_failed");
+        if (repeats.Any(repeat => repeat.Diagnostics.Contains("capture_limit", StringComparer.Ordinal)))
+            throw new InvalidOperationException("single_action_capture_budget_exhausted");
     }
 
     internal async Task<SingleActionRepeat> CaptureRepeatAsync(SingleActionConfiguration action, ResolvedRoleConfiguration resolved,
@@ -87,7 +89,13 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                     var delivered = new TaskCompletionSource<(Error Error, long Elapsed, long Unix)>(TaskCreationOptions.RunContinuationsAsynchronously);
                     producer!.Produce(new TopicPartition(action.Topic, new Partition(action.Partition)),
                         new Message<byte[], byte[]> { Key = ProduceKey(options.ScenarioId, options.ConfigurationId, options.RunId, repeat), Value = Payload(action.PayloadBytes) },
-                        delivery => delivered.TrySetResult((delivery.Error, capture.ElapsedMs, clock.GetUtcNow().ToUnixTimeMilliseconds())));
+                        delivery =>
+                        {
+                            long elapsedMs = capture.ElapsedMs;
+                            long unixMs = clock.GetUtcNow().ToUnixTimeMilliseconds();
+                            if (delivery.Error.IsError && Encoding.UTF8.GetByteCount(delivery.Error.Reason) > options.MaxErrorBytes) { capture.CaptureLimit(); return; }
+                            capture.TryObserveTerminal(() => delivered.TrySetResult((delivery.Error, elapsedMs, unixMs)));
+                        });
                     while (!delivered.Task.IsCompleted && !capture.Limit && capture.ElapsedMs < action.WindowMs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -100,7 +108,7 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                     if (delivered.Task.IsCompletedSuccessfully)
                     {
                         var delivery = await delivered.Task.ConfigureAwait(false);
-                        SetOutcome(delivery.Error.IsError ? delivery.Error : null, delivery.Elapsed, delivery.Unix, false);
+                        SetOutcome(delivery.Error.IsError ? delivery.Error : null, delivery.Elapsed, delivery.Unix, false, observedBeforeLimit: true);
                     }
                     else if (!capture.Limit) capture.Diagnostic("action_window_elapsed");
                 }
@@ -115,20 +123,19 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                 {
                     if (action.Action == "subscribe") consumer!.Subscribe(action.Topic);
                     else consumer!.Assign(new TopicPartitionOffset(action.Topic, new Partition(action.Partition), new Offset(0)));
+                    ObserveConsumerCallbacks();
                     int nonmatching = 0;
                     while (!terminal && !capture.Limit && capture.ElapsedMs < action.WindowMs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         ConsumeResult<byte[], byte[]>? record = consumer!.Consume(TimeSpan.FromMilliseconds(Math.Min(options.PollSliceMs, action.WindowMs - capture.ElapsedMs)));
-                        capture.Drain();
-                        if (capture.FatalError is Error fatal && capture.FatalObservation is { } fatalTime) SetOutcome(fatal, fatalTime.Elapsed, fatalTime.Unix, false);
-                        else if (action.Action == "subscribe" && capture.AssignmentObservation is { } assignedTime) SetOutcome(null, assignedTime.Elapsed, assignedTime.Unix, false);
-                        else if (action.Action == "assign_consume" && record is not null)
+                        ObserveConsumerCallbacks();
+                        if (!terminal && action.Action == "assign_consume" && record is not null)
                         {
                             if (Matches(record, action.Topic, action.Partition, options.RunId))
                             {
-                                matched = new(record.Topic, record.Partition.Value, Convert.ToBase64String(record.Message.Key), Convert.ToBase64String(record.Message.Value));
                                 SetOutcome(null, capture.ElapsedMs, clock.GetUtcNow().ToUnixTimeMilliseconds(), false);
+                                if (terminal) matched = new(record.Topic, record.Partition.Value, Convert.ToBase64String(record.Message.Key), Convert.ToBase64String(record.Message.Value));
                             }
                             else if (++nonmatching >= options.MaxNonmatchingRecords) capture.CaptureLimit();
                         }
@@ -138,10 +145,15 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
         }
         catch (KafkaException exception)
         {
+            if (!constructing && consumer is not null) ObserveConsumerCallbacks();
             SetOutcome(exception.Error, capture.ElapsedMs, clock.GetUtcNow().ToUnixTimeMilliseconds(), constructing);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (Exception exception) { capture.Diagnostic((constructing ? "construction:" : "action:") + exception.GetType().Name); }
+        catch (Exception exception)
+        {
+            if (!constructing && consumer is not null) ObserveConsumerCallbacks();
+            capture.Diagnostic((constructing ? "construction:" : "action:") + exception.GetType().Name);
+        }
         finally
         {
             try
@@ -178,13 +190,26 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
             }
         }
         var snapshot = capture.Snapshot();
-        if (capture.Limit) { terminal = false; terminalUnix = null; result = null; error = null; matched = null; }
+        // Keep a bounded terminal observation when a later callback exceeds a capture
+        // limit. The diagnostic still makes completeness fail; it must not erase an
+        // already measured authorization success that the verifier must retain.
         return new(repeat, clientId, action.Action, terminal, terminal ? elapsed : capture.ElapsedMs, terminalUnix,
             settings, omitted, result, error, matched, snapshot.Errors, snapshot.Statistics, snapshot.Diagnostics);
 
-        void SetOutcome(Error? observed, long elapsedMs, long unixMs, bool construction)
+        void ObserveConsumerCallbacks()
         {
-            if (terminal || elapsedMs > action.WindowMs || capture.Limit) return;
+            capture.Drain();
+            var assigned = action.Action == "subscribe" ? capture.AssignmentObservation : null;
+            var fatal = capture.FatalObservation;
+            if (assigned is { } assignment && (fatal is null || assignment.Sequence < fatal.Value.Sequence))
+                SetOutcome(null, assignment.Elapsed, assignment.Unix, false, observedBeforeLimit: true);
+            else if (fatal is { } fatalTime && capture.FatalError is Error fatalError)
+                SetOutcome(fatalError, fatalTime.Elapsed, fatalTime.Unix, false, observedBeforeLimit: true);
+        }
+
+        void SetOutcome(Error? observed, long elapsedMs, long unixMs, bool construction, bool observedBeforeLimit = false)
+        {
+            if (terminal || elapsedMs > action.WindowMs || capture.Limit && !observedBeforeLimit) return;
             if (observed is not null && Encoding.UTF8.GetByteCount(observed.Reason) > options.MaxErrorBytes) { capture.CaptureLimit(); return; }
             terminal = true;
             elapsed = elapsedMs;

@@ -40,6 +40,7 @@ public sealed class SingleActionLifecycleTests
     [InlineData("stop")]
     [InlineData("dispose")]
     [InlineData("client_cleanup")]
+    [InlineData("capture_limit")]
     [InlineData("completion")]
     public async Task Given_PublicationOrCleanupFailure_When_HostEnds_Then_NoSuccessfulFinalReceipt(string failure)
     {
@@ -54,6 +55,18 @@ public sealed class SingleActionLifecycleTests
             Assert.Single(fixture.NativeClients);
             using JsonDocument capture = JsonDocument.Parse(fixture.Publication.Capture!);
             Assert.Equal(5, capture.RootElement.GetProperty("repeats").GetArrayLength());
+        }
+        if (failure == "capture_limit")
+        {
+            Assert.Equal(5, fixture.NativeClients.Count);
+            using JsonDocument capture = JsonDocument.Parse(fixture.Publication.Capture!);
+            Assert.Equal(5, capture.RootElement.GetProperty("repeats").GetArrayLength());
+            Assert.All(capture.RootElement.GetProperty("repeats").EnumerateArray(), repeat =>
+            {
+                Assert.True(repeat.GetProperty("terminal").GetBoolean());
+                Assert.Equal("success", repeat.GetProperty("result").GetString());
+                Assert.Contains(repeat.GetProperty("diagnostics").EnumerateArray(), diagnostic => diagnostic.GetString() == "capture_limit");
+            });
         }
     }
 
@@ -157,6 +170,7 @@ public sealed class SingleActionLifecycleTests
                 native.Capture = capture;
                 native.ThrowCleanup = failure == "client_cleanup";
                 native.BrokerError = failure == "broker";
+                native.OverflowAfterDelivery = failure == "capture_limit";
                 NativeClients.Add(native);
                 native.Ordinal = NativeClients.Count;
                 Events.Add("client-" + NativeClients.Count);
@@ -211,7 +225,7 @@ public sealed class SingleActionLifecycleTests
         internal SingleActionCapture Capture = null!;
         internal int ProduceCalls, DisposeCalls;
         internal int Ordinal;
-        internal bool ThrowCleanup, BrokerError;
+        internal bool ThrowCleanup, BrokerError, OverflowAfterDelivery;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             if (targetMethod?.Name == "Produce")
@@ -222,6 +236,8 @@ public sealed class SingleActionLifecycleTests
                 Assert.Equal($"F04:C1:run-1:r{Ordinal}", System.Text.Encoding.UTF8.GetString(message.Key));
                 Assert.Equal(1000, message.Value.Length);
                 ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new() { Error = new Error(BrokerError ? ErrorCode.TopicAuthorizationFailed : ErrorCode.NoError) });
+                if (OverflowAfterDelivery)
+                    for (int index = 0; index < 65; index++) Capture.Error(new Error(ErrorCode.Local_Fail));
                 return null;
             }
             if (targetMethod?.Name == "Dispose")
