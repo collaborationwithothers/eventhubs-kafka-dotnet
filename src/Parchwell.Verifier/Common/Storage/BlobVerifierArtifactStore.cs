@@ -24,10 +24,12 @@ internal sealed class BlobVerifierArtifactStore : IVerifierArtifactStore
     public Task<byte[]?> ReadStartLineAsync(string name, CancellationToken cancellationToken)
         => ReadAsync(name, cancellationToken);
 
-    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken)
+    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken) => ReadBoundedAsync(name,_maxInputBytes,cancellationToken);
+
+    public Task<byte[]?> ReadBoundedAsync(string name,long maximumBytes,CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return BoundedBlobReader.ReadAsync(_container.GetBlobClient(name), _maxInputBytes, cancellationToken);
+        return BoundedBlobReader.ReadAsync(_container.GetBlobClient(name), Math.Min(_maxInputBytes,maximumBytes), cancellationToken);
     }
 
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>

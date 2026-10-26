@@ -18,7 +18,9 @@
       "Judge/PhaseJudge.cs",
       "VerifyRun/Publication/PublicationAcceptance.cs",
       "VerifyRun/A01/A01EvidenceRecorder.cs",
-      "VerifyRun/A01/WorkloadRecorder.cs"
+      "VerifyRun/A01/WorkloadRecorder.cs",
+      "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+      "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
     ],
     "coverage-analysis": "off"
   }

@@ -1,0 +1,46 @@
+schema_version: 1
+id: B01
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0:
+    LoadGenProducer:
+      message.max.bytes: 2000000
+  C1:
+    LoadGenProducer:
+      message.max.bytes: 2000000
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+single_action:
+  configurations:
+    C0:
+      action: produce_one
+      role: LoadGenProducer
+      topic: document-events
+      partition: 0
+      payload_bytes: 1000
+      window_ms: 330000
+      token_scope: namespace
+      match: none
+    C1:
+      action: produce_one
+      role: LoadGenProducer
+      topic: document-events
+      partition: 0
+      payload_bytes: 1100000
+      window_ms: 330000
+      token_scope: namespace
+      match: none

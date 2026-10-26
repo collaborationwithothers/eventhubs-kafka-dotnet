@@ -18,7 +18,7 @@ public sealed class KafkaScenarioOverrideSetting
         ImmutableArray<KafkaSettingSource> sources)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        if (!Enum.IsDefined(valueKind)) throw new ArgumentOutOfRangeException(nameof(valueKind));
+        if (valueKind is not (KafkaScenarioOverrideValueKind.Integer or KafkaScenarioOverrideValueKind.Boolean)) throw new ArgumentOutOfRangeException(nameof(valueKind));
         if (valueKind == KafkaScenarioOverrideValueKind.Boolean && (minimum != 0 || maximum != 1))
             throw new ArgumentException("A boolean override uses the bounds 0 and 1.", nameof(minimum));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minimum, maximum);
@@ -38,16 +38,48 @@ public sealed class KafkaScenarioOverrideSetting
         Sources = sources;
     }
 
+    internal KafkaScenarioOverrideSetting(string key, ImmutableArray<string> allowedValues, bool allowAnyNonemptyValue,
+        bool allowActivation, ImmutableArray<KafkaClientRole> supportedRoles, ImmutableArray<string> inventoryIds,
+        ImmutableArray<KafkaSettingSource> sources)
+        : this(key, KafkaScenarioOverrideValueKind.Integer, 0, 0, supportedRoles, inventoryIds, sources)
+    {
+        if (allowAnyNonemptyValue ? !allowedValues.IsDefaultOrEmpty : allowedValues.IsDefaultOrEmpty)
+            throw new ArgumentException("Specify either allowed values or allow-any.", nameof(allowedValues));
+        if (!allowedValues.IsDefaultOrEmpty && (allowedValues.Any(string.IsNullOrWhiteSpace) ||
+            allowedValues.Distinct(StringComparer.Ordinal).Count() != allowedValues.Length))
+            throw new ArgumentException("String enum values must be nonempty and unique.", nameof(allowedValues));
+        ValueKind = KafkaScenarioOverrideValueKind.String;
+        AllowedValues = allowedValues.IsDefault ? [] : allowedValues;
+        AllowAnyNonemptyValue = allowAnyNonemptyValue;
+        AllowActivation = allowActivation;
+    }
+
+    internal KafkaScenarioOverrideSetting(string key, ImmutableArray<KafkaClientRole> supportedRoles,
+        ImmutableArray<string> inventoryIds, ImmutableArray<KafkaSettingSource> sources)
+        : this(key, KafkaScenarioOverrideValueKind.Integer, 0, 0, supportedRoles, inventoryIds, sources)
+    {
+        ValueKind = KafkaScenarioOverrideValueKind.Omission;
+    }
+
+    /// <summary>Gets allowed exact string values; empty for non-enum entries.</summary>
+    public ImmutableArray<string> AllowedValues { get; } = [];
+
+    /// <summary>Gets whether any nonempty string within the scenario scalar bounds is allowed.</summary>
+    public bool AllowAnyNonemptyValue { get; }
+
+    /// <summary>Gets whether a cited baseline omission can be activated by this entry.</summary>
+    public bool AllowActivation { get; }
+
     /// <summary>Gets the exact, case-sensitive Kafka configuration key.</summary>
     public string Key { get; }
 
     /// <summary>Gets the form of value this override accepts.</summary>
     public KafkaScenarioOverrideValueKind ValueKind { get; }
 
-    /// <summary>Gets the native librdkafka minimum accepted value for this setting. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
+    /// <summary>Gets the native librdkafka minimum accepted value for this setting. For a string or omission entry this is the unused placeholder zero. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
     public int Minimum { get; }
 
-    /// <summary>Gets the native librdkafka maximum accepted value for this setting. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
+    /// <summary>Gets the native librdkafka maximum accepted value for this setting. For a string or omission entry this is the unused placeholder zero. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
     public int Maximum { get; }
 
     /// <summary>
@@ -70,8 +102,7 @@ public sealed class KafkaScenarioOverrideSetting
 
 /// <summary>Exposes the keys, native bounds and role policy supported for scenario overrides.</summary>
 /// <remarks>
-/// These bounds are verified against librdkafka v2.16.0. At present, this repository separately
-/// permits overrides only for <see cref="KafkaClientRole.LoadGenProducer"/>.
+/// These bounds are verified against librdkafka v2.16.0. Supported roles are repository policy.
 /// Each entry must name the frozen inventory items it serves.
 /// </remarks>
 public static class KafkaScenarioOverridePolicy
@@ -79,12 +110,24 @@ public static class KafkaScenarioOverridePolicy
     private static readonly KafkaSettingSource NativeConfiguration = new(
         new Uri("https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md"), "v2.16.0");
 
+    private static readonly KafkaSettingSource NativeSource = new(
+        new Uri("https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c"), "v2.16.0");
+
     private static readonly ImmutableArray<KafkaScenarioOverrideSetting> Entries =
     [
         new("request.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 1, 900_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
         new("socket.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 10, 300_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
-        new("enable.idempotence", KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["B04"], [NativeConfiguration]),
-        new("max.in.flight", KafkaScenarioOverrideValueKind.Integer, 1, 1_000_000, [KafkaClientRole.LoadGenProducer], ["B04"], [NativeConfiguration])
+        new("enable.idempotence", KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["B04", "B05"], [NativeConfiguration]),
+        new("max.in.flight", KafkaScenarioOverrideValueKind.Integer, 1, 1_000_000, [KafkaClientRole.LoadGenProducer], ["B04", "B05"], [NativeConfiguration]),
+        new(KafkaSettingKeys.MessageMaxBytes, KafkaScenarioOverrideValueKind.Integer, 1000, 1_000_000_000, [KafkaClientRole.LoadGenProducer], ["B01"], [NativeConfiguration]),
+        new(KafkaSettingKeys.MessageTimeoutMs, KafkaScenarioOverrideValueKind.Integer, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration]),
+        new(KafkaSettingKeys.CompressionType, ["none", "gzip", "snappy", "lz4", "zstd"], false, false, [KafkaClientRole.LoadGenProducer], ["B03"], [NativeConfiguration]),
+        new(KafkaSettingKeys.TransactionalId, [], true, true, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.GroupProtocol, ["classic", "consumer"], false, false, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.GroupId, [], true, false, [KafkaClientRole.EnrichmentConsumer], ["C12"], [NativeConfiguration]),
+        new(KafkaSettingKeys.SessionTimeoutMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.HeartbeatIntervalMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.PartitionAssignmentStrategy, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource])
     ];
 
     /// <summary>Gets the immutable list of exact keys accepted by the override policy.</summary>

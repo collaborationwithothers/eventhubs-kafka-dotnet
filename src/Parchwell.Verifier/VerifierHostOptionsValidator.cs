@@ -20,6 +20,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             return ValidateOptionsResult.Fail(errors);
         }
 
+        if(mode==VerifierMode.SingleActionJudge)return ValidateSingleAction(options);
+
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
         if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
             errors.Add("Verifier:ScenarioId must be A01 or B04 for C5 modes.");
@@ -177,6 +179,41 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
 
         ValidateBudgetSum(requiredBudgets, options.ProcessLifetime, errors);
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+    }
+
+    private static ValidateOptionsResult ValidateSingleAction(VerifierHostOptions options)
+    {
+        var errors=new List<string>();
+        string[] ids=["B01","B03","B05","C08","C12","F04"];
+        if(!ids.Contains(options.ScenarioId,StringComparer.Ordinal))errors.Add("Single-action scenario is invalid.");
+        string[] configurations=options.ScenarioId switch {"B01" or "C08"=>["C0","C1"],"B03"=>["C1","C2","C3","C4"],"B05"=>["C1"],"C12"=>["C1","C2"],"F04"=>["C0","C1","C2","C3","C4"],_=>[]};
+        if(!configurations.Contains(options.ConfigurationId,StringComparer.Ordinal))errors.Add("Single-action configuration is invalid.");
+        if(!Common.Phase.PhaseIdentity.IsRunId(options.RunId))errors.Add("Single-action run is invalid.");
+        if(options.SourceCommit is not {Length:40} source||source.Any(c=>!(c is >= '0' and <= '9' or >= 'a' and <= 'f'))||options.VerifierCommit!=source)errors.Add("Single-action source commit is invalid.");
+        ValidatePodName(options.PodName,errors);RequireText(options.PodUid,"Verifier:PodUid",errors);
+        RequireText(options.NamespaceName,"Verifier:NamespaceName",errors);
+        RequireAbsoluteUri(options.BlobServiceUri,"Verifier:BlobServiceUri",errors);
+        if(options.ScenarioRoot!="/app")errors.Add("Single-action scenario root must be /app.");
+        ValidateScenarioLoadOptions(options.ScenarioLoadOptions,errors);
+        ValidateImageReference(options.LoadGenImage,"Verifier:LoadGenImage",errors);
+        ValidateImageReference(options.VerifierImage,"Verifier:VerifierImage",errors);
+        ValidateImageReference(options.EnrichmentImage,"Verifier:EnrichmentImage",errors);
+        if(options.SingleActionLimits?.IsFixed()!=true)errors.Add("Verifier:SingleActionLimits must equal the fixed wire bounds.");
+        if(options.VerifierContainer!="verifier")errors.Add("Verifier container must be verifier.");
+        string expectedContainer=options.ScenarioId is "C08" or "C12"||options.ScenarioId=="F04"&&options.ConfigurationId is "C2" or "C4"?"single-action":"ledger";
+        if(options.CaptureContainer!=expectedContainer)errors.Add("Capture container must match the action role.");
+        if(options.RunId is not null&&options.ScenarioId is not null&&options.ConfigurationId is not null)
+        {
+            if(options.JobName!=Common.SingleAction.SingleActionPaths.JudgeJob(options.RunId,options.ScenarioId,options.ConfigurationId))errors.Add("Single-action judge Job must be derived.");
+            if(options.CapturePrefix!=Common.SingleAction.SingleActionPaths.Prefix(options.RunId,options.ScenarioId,options.ConfigurationId))errors.Add("Single-action capture prefix must be derived.");
+        }
+        if(options.ScenarioId=="F04")
+        {
+            if(options.SeedReceiptPath!="/run/seed/receipt.json"||options.SeedPodIdentityPath!="/run/seed/pod.json")errors.Add("F04 seed paths must be fixed.");
+        }
+        else if(options.SeedReceiptPath is not null||options.SeedPodIdentityPath is not null)errors.Add("Seed paths are only permitted for F04.");
+        if(options.Repeat is not null||options.Phase is not null||options.LedgerContainer is not null)errors.Add("Single-action mode cannot bind legacy coordinates.");
+        return errors.Count==0?ValidateOptionsResult.Success:ValidateOptionsResult.Fail(errors);
     }
 
     private static void AddKafkaInputs(

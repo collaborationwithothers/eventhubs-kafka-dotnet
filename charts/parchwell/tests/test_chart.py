@@ -21,7 +21,7 @@ def parse_option_properties(text, header):
     lines=text.splitlines(); start=lines.index(header); end=lines.index('}',start)
     found=set()
     for name,accessors in OPTION_PROPERTY.findall('\n'.join(lines[start:end])):
-        if ' '.join(accessors.split())!='get; set;': raise ValueError(f'unsupported_option_property:{name}')
+        if re.fullmatch(r'\s*get;\s*set;\s*', accessors) is None: raise ValueError(f'unsupported_option_property:{name}')
         found.add(name)
     if not found: raise ValueError(f'no_option_properties:{header}')
     return found

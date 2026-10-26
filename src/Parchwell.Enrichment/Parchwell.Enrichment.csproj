@@ -1,1 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <ContainerRepository>parchwell/enrichment</ContainerRepository>
+    <ContainerUser>1654</ContainerUser>
+    <ContainerWorkingDirectory>/app/</ContainerWorkingDirectory>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0.13-noble@sha256:8af87eba5e7cdafb1514d7388be287365da97c132509e84dfe252ffd552398ca</ContainerBaseImage>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <ProjectReference Include="../Parchwell.Kafka/Parchwell.Kafka.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,91 @@
+schema_version: 1
+id: B03
+assessment_rules:
+  observation_unit: fresh_client_single_action
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  completion_checks:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  seed_prerequisite_check: "not_applicable"
+  outcome_class:
+  - result
+  - error_code
+  - is_fatal
+  - origin
+  require_one_class_in_all_five: true
+  unequal_classes: separate_full_plan_no_verdict
+  incomplete_configuration: no_verdict
+  construction_origin: untestable
+  failed_control: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+hypotheses:
+  H0:
+    question: "Gzip delivers."
+    configurations:
+    - C1
+    decision:
+      confirmed_when: "C1 succeeds."
+      contradicted_when: "C1 errors."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  H1_snappy:
+    question: "Snappy, lz4 and zstd each fail. Error code recorded, not compared."
+    configurations:
+    - C2
+    decision:
+      confirmed_when: "C2 errors."
+      contradicted_when: "C2 succeeds."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-troubleshooting-guide
+  H1_lz4:
+    question: "Snappy, lz4 and zstd each fail. Error code recorded, not compared."
+    configurations:
+    - C3
+    decision:
+      confirmed_when: "C3 errors."
+      contradicted_when: "C3 succeeds."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-troubleshooting-guide
+  H1_zstd:
+    question: "Snappy, lz4 and zstd each fail. Error code recorded, not compared."
+    configurations:
+    - C4
+    decision:
+      confirmed_when: "C4 errors."
+      contradicted_when: "C4 succeeds."
+    source: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-troubleshooting-guide
+verdict:
+  confirmed_when: "C1 succeeds and C2, C3 and C4 error."
+  contradicted_when: "C1 succeeds and any of C2, C3 or C4 succeeds."
+  undocumented_when: "not_applicable"
+  untestable_when: "Failed control or typed construction-origin hypothesis is untestable; other complete deterministic combinations are untestable."
+  no_verdict_when: "Fewer than five complete, unequal classes or a missing prerequisite yield no verdict, never a replacement repeat."
+  security_finding_when: "not_applicable"
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-10-26"
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-troubleshooting-guide
+  version: current
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Error.cs
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  version: revision 4
+  read_date: "2026-10-26"

@@ -50,6 +50,10 @@ internal static class MeasurementCatalog
         entries.Add("client.fatal_error", new("lifecycle", "error_code", "none", "run",
             [KafkaClientRole.LoadGenProducer],
             "https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md#fatal-errors", "v2.16.0"));
+        foreach (var (id, kind) in new[] { ("single_action.outcome", "outcome_class"), ("single_action.client_errors", "error_code") })
+            entries.Add(id, new("single_action", kind, "none", "repeat",
+                [KafkaClientRole.LoadGenProducer, KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer],
+                "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278", "plan 6415356278 revision 4; 2026-10-26"));
         return entries.ToImmutable();
     }
 }

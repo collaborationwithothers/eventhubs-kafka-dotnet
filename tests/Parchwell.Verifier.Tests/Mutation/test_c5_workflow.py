@@ -113,6 +113,27 @@ class AggregateFixture:
         return result, summary
 
 
+
+class CommittedContractTests(unittest.TestCase):
+    def test_six_literal_targets_match_code_config_and_workflow(self):
+        expected = {
+            "phase": "Judge/PhaseJudge.cs",
+            "publication": "VerifyRun/Publication/PublicationAcceptance.cs",
+            "a01": "VerifyRun/A01/A01EvidenceRecorder.cs",
+            "workload": "VerifyRun/A01/WorkloadRecorder.cs",
+            "single-action-repeat": "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+            "single-action-configuration": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+        }
+        root = Path(__file__).resolve().parents[3]
+        self.assertEqual(expected, workflow.SHARDS)
+        self.assertEqual(list(expected.values()), workflow.BASE_CONFIG["stryker-config"]["mutate"])
+        committed = json.loads((root / "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json").read_text())
+        self.assertEqual(list(expected.values()), committed["stryker-config"]["mutate"])
+        # PyYAML is supplied by the pinned lifecycle tooling; this checks actual matrix data.
+        import yaml
+        matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
+        self.assertEqual(expected, {row["shard"]: row["target"] for row in matrix})
+
 class AggregationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -129,7 +150,7 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
     def test_combined_threshold_keeps_below_threshold_shards(self):
-        populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3]
+        populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"]]
         fixture = AggregateFixture(self.directory, populations)
         for shard in workflow.SHARDS:
             fixture.target_rows(shard).extend(mutant("extra-" + status, status)
@@ -139,10 +160,10 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((6, 10), (summary["numerator"], summary["denominator"]))
-        self.assertEqual(4, summary["status_counts"]["CompileError"])
-        self.assertEqual(4, summary["status_counts"]["RuntimeError"])
-        self.assertEqual(4, summary["status_counts"]["Ignored"])
+        self.assertEqual((8, 12), (summary["numerator"], summary["denominator"]))
+        self.assertEqual(6, summary["status_counts"]["CompileError"])
+        self.assertEqual(6, summary["status_counts"]["RuntimeError"])
+        self.assertEqual(6, summary["status_counts"]["Ignored"])
         self.assertEqual(2, fixture.receipts["phase"]["child_exit_code"])
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
@@ -150,7 +171,7 @@ class AggregationTests(unittest.TestCase):
     def test_complete_below_threshold_stays_complete(self):
         fixture = AggregateFixture(self.directory, [
             ["Survived"], ["Killed", "Killed", "Survived"], ["Killed"],
-            ["Killed", "Killed", "Survived", "Survived", "Survived"],
+            ["Killed", "Killed", "Survived", "Survived", "Survived"], ["Survived"], ["Survived"],
         ])
         for shard in workflow.SHARDS:
             fixture.target_rows(shard).extend(mutant("extra-" + status, status)
@@ -160,18 +181,18 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(1, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], False)
-        self.assertEqual((5, 10), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((5, 12), (summary["numerator"], summary["denominator"]))
 
     def test_timeout_and_no_coverage_score_populations(self):
         fixture = AggregateFixture(self.directory, [
             ["Killed", "Timeout", "Survived"], ["Killed", "Timeout", "NoCoverage"],
-            ["Killed", "Timeout", "NoCoverage"], ["Killed"],
+            ["Killed", "Timeout", "NoCoverage"], ["Killed"], ["Killed"], ["Killed"],
         ])
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
-        self.assertEqual((7, 10), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((9, 12), (summary["numerator"], summary["denominator"]))
         self.assertGreaterEqual(100 * summary["numerator"], 60 * summary["denominator"])
-        self.assertEqual({"Killed": 4, "Timeout": 3, "Survived": 1, "NoCoverage": 2,
+        self.assertEqual({"Killed": 6, "Timeout": 3, "Survived": 1, "NoCoverage": 2,
                           "CompileError": 0, "RuntimeError": 0, "Ignored": 0}, summary["status_counts"])
 
     def test_identity_and_completeness_failures(self):
@@ -288,7 +309,7 @@ class AggregationTests(unittest.TestCase):
             fixture.save(shard)
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
-        self.assertEqual(4, summary["denominator"])
+        self.assertEqual(6, summary["denominator"])
         self.assertEqual(0, summary["status_counts"]["Ignored"])
 
     def test_foreign_compile_errors_do_not_enter_score_population(self):
@@ -304,8 +325,8 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((4, 4), (summary["numerator"], summary["denominator"]))
-        self.assertEqual({"Killed": 4, "Timeout": 0, "Survived": 0, "NoCoverage": 0,
+        self.assertEqual((6, 6), (summary["numerator"], summary["denominator"]))
+        self.assertEqual({"Killed": 6, "Timeout": 0, "Survived": 0, "NoCoverage": 0,
                           "CompileError": 0, "RuntimeError": 0, "Ignored": 0}, summary["status_counts"])
         survivors = json.loads((fixture.output / "survivors.json").read_text())
         self.assertEqual([], survivors["survivors"])
@@ -338,11 +359,11 @@ class AggregationTests(unittest.TestCase):
 
     def test_survivor_sampling_does_not_change_raw_score(self):
         fixture = AggregateFixture(self.directory, [["Killed"] + ["Survived"] * 51,
-                                                     ["Killed"], ["Killed"], ["Killed"]])
+                                                     ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"]])
         result, summary = fixture.invoke()
         self.assertEqual(1, result)
         self.assertIs(summary["measurement_complete"], True)
-        self.assertEqual((4, 55), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((6, 57), (summary["numerator"], summary["denominator"]))
         survivors = json.loads((fixture.output / "survivors.json").read_text())
         self.assertEqual(51, len(survivors["survivors"]))
         self.assertEqual(50, len(survivors["disposition_sample"]))

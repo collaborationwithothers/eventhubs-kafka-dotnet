@@ -9,5 +9,13 @@ public enum KafkaScenarioOverrideValueKind
 #pragma warning restore CA1720
 
     /// <summary>The native boolean literal <c>true</c> or <c>false</c>.</summary>
-    Boolean
+    Boolean,
+
+    /// <summary>A case-sensitive string admitted by the setting policy.</summary>
+#pragma warning disable CA1720 // Approved contract name.
+    String,
+#pragma warning restore CA1720
+
+    /// <summary>The plain scalar omit, removing an emitted baseline setting.</summary>
+    Omission
 }

@@ -220,9 +220,9 @@ esac
         self.assertEqual("inputs.scenario == 'probe-batch'", batch['if'])
         self.assertNotIn('needs', batch)
         self.assertEqual(['batch'], stop['needs'])
-        self.assertEqual("always() && inputs.scenario == 'probe-batch' && inputs.run_kind == 'smoke'", stop['if'])
+        self.assertEqual("always() && inputs.scenario == 'probe-batch'", stop['if'])
         expected_ids = {
-            'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_pods delete_workload destroy report'.split(),
+            'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
         }
         for name in expected_ids:
@@ -254,7 +254,7 @@ esac
             self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
         self.assertEqual('true', steps['report']['env']['WORKLOAD'])
         self.assertEqual('guard checkout select tools prepare azure_session', steps['report']['env']['REQUIRED_STEPS'])
-        self.assertEqual('images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_pods delete_workload destroy', steps['report']['env']['WORKLOAD_STEPS'])
+        self.assertEqual('images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy', steps['report']['env']['WORKLOAD_STEPS'])
         stop_steps = self.steps(stop)
         for ident in ('stop_prepare', 'stop'):
             self.assertEqual(self.steps(self.jobs['full-C3'])[ident], stop_steps[ident])
@@ -264,14 +264,20 @@ esac
         self.assertEqual(2, sum('lifecycle.sh stop-cluster' in step.get('run', '')
                                for job in self.all_jobs.values() for step in job['steps']))
 
-    def test_batch_upload_is_only_public_pod_evidence(self):
+    def test_batch_upload_includes_candidates_receipts_and_public_pods(self):
         uploads = [step for step in self.all_jobs['batch']['steps']
                    if step.get('uses', '').startswith('actions/upload-artifact@')]
-        self.assertEqual(1, len(uploads))
-        upload = uploads[0]
+        self.assertEqual(2, len(uploads))
+        candidates = uploads[0]
+        self.assertEqual('upload_candidates', candidates['id'])
+        self.assertEqual("always() && steps.prepare.outcome == 'success'", candidates['if'])
+        self.assertEqual({'name': 'probe-batch-candidates-${{ github.run_id }}-${{ github.run_attempt }}',
+                          'path': '${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}', 'retention-days': '90',
+                          'if-no-files-found': 'error'}, candidates['with'])
+        upload = uploads[1]
         self.assertEqual('upload_pods', upload['id'])
         self.assertEqual("always() && steps.prepare.outcome == 'success'", upload['if'])
-        self.assertEqual('probe-batch-smoke-pods-${{ github.run_id }}-${{ github.run_attempt }}', upload['with']['name'])
+        self.assertEqual('probe-batch-pods-${{ github.run_id }}-${{ github.run_attempt }}', upload['with']['name'])
         self.assertEqual('${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}', upload['with']['path'])
         self.assertEqual('90', upload['with']['retention-days'])
         self.assertEqual('5', upload['timeout-minutes'])
@@ -279,16 +285,14 @@ esac
         self.assertFalse(any(step.get('uses', '').startswith('actions/upload-artifact@')
                              for step in self.all_jobs['batch-stop']['steps']))
 
-    def test_batch_selector_shell_accepts_only_smoke_before_login(self):
+    def test_batch_selector_shell_accepts_smoke_and_batch_before_login(self):
         select = self.steps(self.all_jobs['batch'])['select']['run']
-        for kind, expected in (('smoke', 0), ('batch', 2), ('unknown', 2)):
+        for kind, expected in (('smoke', 0), ('batch', 0), ('unknown', 2)):
             with self.subTest(kind=kind):
                 env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND=kind)
                 result = subprocess.run(['/bin/bash', '-c', select], cwd=REPO, env=env,
                                         text=True, capture_output=True, timeout=30)
                 self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
-                if kind == 'batch':
-                    self.assertIn('probe batch actions require S2 (#213); select run_kind=smoke for S1', result.stderr)
 
     def test_bridge_discovery(self):
         suite = unittest.TestLoader().discover(str(REPO / 'infra/scripts/tests'), pattern='test_*.py')

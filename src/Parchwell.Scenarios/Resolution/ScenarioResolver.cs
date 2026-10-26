@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Text;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 
@@ -48,6 +49,7 @@ public sealed class ScenarioResolver
             {
                 var (settings, omissions) = baselineSnapshots[role];
                 var effective = settings;
+                var scenarioOmissions = ImmutableArray.CreateBuilder<ResolvedOmission>();
 
                 if (configuration.Value.Overrides.TryGetValue(role, out var overrides))
                 {
@@ -56,70 +58,62 @@ public sealed class ScenarioResolver
                         var fieldPath = $"configurations.{configuration.Key}.{role}.{item.Key}";
                         var setting = GetSupportedSetting(role, item.Key, definition, fieldPath, item.Value.Location);
                         var value = item.Value.Value;
-                        int parsedValue = 0;
-                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean)
+                        var origin = new OverrideOrigin(definition.Id, configuration.Key, item.Value.Location);
+                        var normalized = value;
+                        switch (setting.ValueKind)
                         {
-                            if (value is not ("true" or "false"))
-                                throw Invalid(definition, fieldPath, "setting_out_of_range",
-                                    $"{item.Key} must be true or false.", item.Value.Location);
-                        }
-                        else if (!int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out parsedValue) ||
-                            parsedValue < setting.Minimum || parsedValue > setting.Maximum)
-                        {
-                            var unit = item.Key.EndsWith(".ms", StringComparison.Ordinal) ? " milliseconds" : string.Empty;
-                            throw Invalid(definition, fieldPath, "setting_out_of_range",
-                                $"{item.Key} must be between {setting.Minimum.ToString(CultureInfo.InvariantCulture)} and {setting.Maximum.ToString(CultureInfo.InvariantCulture)}{unit}.",
-                                item.Value.Location);
+                            case KafkaScenarioOverrideValueKind.Boolean:
+                                if (value is not ("true" or "false")) OutOfRange();
+                                break;
+                            case KafkaScenarioOverrideValueKind.Integer:
+                                if (!int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var parsed) ||
+                                    parsed < setting.Minimum || parsed > setting.Maximum) OutOfRange();
+                                normalized = parsed.ToString(CultureInfo.InvariantCulture);
+                                break;
+                            case KafkaScenarioOverrideValueKind.String:
+                                if (value.Length == 0 || value.IndexOfAny(['\0', '\r', '\n']) >= 0 || Encoding.UTF8.GetByteCount(value) > 65536 ||
+                                    (!setting.AllowAnyNonemptyValue && !setting.AllowedValues.Contains(value, StringComparer.Ordinal))) OutOfRange();
+                                break;
+                            case KafkaScenarioOverrideValueKind.Omission:
+                                if (value != "omit") OutOfRange();
+                                break;
+                            default:
+                                throw new InvalidOperationException("Unknown override value kind.");
                         }
 
-                        // An override may only replace a value the baseline emits. A deliberate omission stays omitted, and a
-                        // new key cannot be introduced, so every difference from the baseline is a visible delta (ADR-015).
                         if (!effective.TryGetValue(item.Key, out var inherited))
                         {
-                            var isOmission = omissions.Any(omission => string.Equals(omission.Key, item.Key, StringComparison.Ordinal));
-                            throw Invalid(definition, fieldPath,
-                                isOmission ? "cannot_activate_omitted_setting" : "setting_not_in_baseline",
-                                isOmission
-                                    ? "A baseline omission cannot be activated by a scenario override."
-                                    : "The setting is not an emitted baseline key and cannot be introduced.",
-                                item.Value.Location);
+                            var omission = omissions.FirstOrDefault(omission => string.Equals(omission.Key, item.Key, StringComparison.Ordinal));
+                            if (omission is not null && setting.AllowActivation)
+                            {
+                                effective = effective.Add(item.Key, new ResolvedSetting(normalized, omission, origin));
+                                omissions = [.. omissions.Where(entry => !string.Equals(entry.Key, item.Key, StringComparison.Ordinal))];
+                                continue;
+                            }
+                            throw Invalid(definition, fieldPath, omission is not null ? "cannot_activate_omitted_setting" : "setting_not_in_baseline",
+                                "The setting is not an emitted baseline key and cannot be introduced.", item.Value.Location);
                         }
-
-                        int baselineValue = 0;
-                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean)
+                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Omission)
                         {
-                            if (inherited.Value is not ("true" or "false"))
-                                throw Invalid(definition, fieldPath, "invalid_baseline_value",
-                                    "The baseline value for this boolean setting is not true or false.", item.Value.Location);
+                            effective = effective.Remove(item.Key);
+                            scenarioOmissions.Add(new(item.Key, inherited.Baseline, origin));
+                            continue;
                         }
-                        else if (!int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out baselineValue))
-                        {
-                            throw Invalid(definition, fieldPath, "invalid_baseline_value",
-                                "The baseline value for this numeric setting is not a plain decimal integer.", item.Value.Location);
-                        }
+                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean && inherited.Value is not ("true" or "false"))
+                            throw Invalid(definition, fieldPath, "invalid_baseline_value", "The boolean baseline is invalid.", item.Value.Location);
+                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Integer &&
+                            !int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                            throw Invalid(definition, fieldPath, "invalid_baseline_value", "The numeric baseline is invalid.", item.Value.Location);
+                        if (string.Equals(normalized, inherited.Value, StringComparison.Ordinal))
+                            throw Invalid(definition, fieldPath, "no_op_override", "An override must change the baseline value.", item.Value.Location);
+                        effective = effective.SetItem(item.Key, inherited with { Value = normalized, Override = origin });
 
-                        // An override equal to the baseline would label a configuration as different while it runs the same settings.
-                        var noOp = setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
-                            ? string.Equals(value, inherited.Value, StringComparison.Ordinal)
-                            : parsedValue == baselineValue;
-                        if (noOp)
-                            throw Invalid(definition, fieldPath, "no_op_override",
-                                setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
-                                    ? "An override must change the boolean baseline value."
-                                    : "An override must change the numeric baseline value.", item.Value.Location);
-
-                        effective = effective.SetItem(item.Key, inherited with
-                        {
-                            Value = setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
-                                ? value
-                                : parsedValue.ToString(CultureInfo.InvariantCulture),
-                            Override = new OverrideOrigin(definition.Id, configuration.Key,
-                                item.Value.Location)
-                        });
+                        void OutOfRange() => throw Invalid(definition, fieldPath, "setting_out_of_range",
+                            $"{item.Key} is outside its supported value policy.", item.Value.Location);
                     }
                 }
 
-                roleConfigurations.Add(role, new ResolvedRoleConfiguration(role, effective, omissions));
+                roleConfigurations.Add(role, new ResolvedRoleConfiguration(role, effective, omissions, scenarioOmissions.ToImmutable()));
             }
 
             resolvedConfigurations.Add(configuration.Key,
@@ -201,15 +195,18 @@ public sealed class ScenarioResolver
         if (!KafkaScenarioOverridePolicy.SupportsRole(role))
         {
             throw Invalid(definition, fieldPath, "wrong_role_setting",
-                "Scenario overrides are currently supported only for LoadGenProducer.", location);
+                $"Scenario overrides are not supported for {role}.{key}.", location);
         }
 
         if (!KafkaScenarioOverridePolicy.TryGetSetting(key, out var setting) || !setting.SupportsRole(role))
         {
             throw Invalid(definition, fieldPath, "unsupported_setting",
-                "The setting is not supported by the scenario override policy.", location);
+                $"{role}.{key} is not supported by the scenario override policy.", location);
         }
 
+        if ((setting.ValueKind is KafkaScenarioOverrideValueKind.String or KafkaScenarioOverrideValueKind.Omission || setting.AllowActivation) &&
+            !setting.InventoryIds.Contains(definition.Id, StringComparer.Ordinal))
+            throw Invalid(definition, fieldPath, "unsupported_setting", "The setting is not supported for this inventory item.", location);
         return setting;
     }
 

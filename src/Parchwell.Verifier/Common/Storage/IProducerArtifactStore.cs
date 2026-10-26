@@ -4,5 +4,6 @@ namespace Parchwell.Verifier.Common.Storage;
 internal interface IProducerArtifactStore
 {
     Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken);
+    Task<byte[]?> ReadBoundedAsync(string name,long maximumBytes,CancellationToken cancellationToken) => ReadAsync(name,cancellationToken);
     Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken);
 }

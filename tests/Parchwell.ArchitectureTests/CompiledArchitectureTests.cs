@@ -14,6 +14,7 @@ namespace Parchwell.ArchitectureTests;
 // checks declared project references, which also catches a reference no type uses.
 public sealed class CompiledArchitectureTests
 {
+    private static readonly string[] KafkaClientTypeNames=["IProducer","IConsumer","ProducerBuilder","ConsumerBuilder"];
     private static readonly Lazy<Architecture> Architecture = new(() =>
     {
         var assemblies = ProjectRules.SourceNames.Select(System.Reflection.Assembly.Load).ToArray();
@@ -92,6 +93,16 @@ public sealed class CompiledArchitectureTests
                 .Where(method => method.DeclaringType.FullName == "System.DateTime" && method.Name == getter);
             Check(production.Should().NotCallAny(forbidden), architecture);
         }
+    }
+
+    [Fact]
+    public void Given_SingleActionJudge_When_CompiledDependenciesAreChecked_Then_NoKafkaClientOrBuilderDependency()
+    {
+        var architecture=Architecture.Value;
+        var judges=Types().That().Are(architecture.Types.Where(type=>type.Namespace.FullName.StartsWith("Parchwell.Verifier.VerifyRun.SingleAction",StringComparison.Ordinal)));
+        var kafkaClients=architecture.Types.Concat(architecture.ReferencedTypes).Where(type=>
+            type.Namespace.FullName=="Confluent.Kafka"&&KafkaClientTypeNames.Any(name=>type.Name.StartsWith(name,StringComparison.Ordinal)));
+        Check(judges.Should().NotDependOnAny(kafkaClients),architecture);
     }
 
     private static void Check(TypesShouldConjunction rule, Architecture architecture)

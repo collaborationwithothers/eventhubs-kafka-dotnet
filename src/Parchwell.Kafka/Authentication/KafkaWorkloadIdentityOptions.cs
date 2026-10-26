@@ -15,4 +15,7 @@ public sealed record KafkaWorkloadIdentityOptions
 
     /// <summary>Gets or sets the path to the projected workload identity token file.</summary>
     public string? TokenFilePath { get; set; }
+
+    /// <summary>Gets or sets the approved storage audience for the F04 scope experiment; null uses the namespace audience.</summary>
+    public string? TokenScopeOverride { get; set; }
 }

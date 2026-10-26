@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Run scenario phase commands while keeping private inputs separate from evidence."""
 
+import ctypes
+import math
 import json
 import os
 from pathlib import Path
@@ -29,7 +31,12 @@ SINGLE_ACTION_CONFIGURATIONS = (
 )
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
+SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
+SEED_RECEIPT_MARKER = "PARCHWELL_F04_SEED_RECEIPT "
 BATCH_START_CAP = 14400
+SEED_DEADLINE = 1050
+PAIR_DEADLINE = 3360
+TERMINATION_RESERVE = 5
 SLOTS = (1, 2, 3, 4, 5)
 CANDIDATE_MAXIMUM = 16_777_216  # PhaseCandidateCodec.MaximumBytes
 LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
@@ -114,6 +121,7 @@ def append_lines(path, lines):
 
 class Phase:
     def __init__(self):
+        self.command_deadline = None
         self.repo = Path(os.environ.get("PARCHWELL_REPOSITORY", Path(__file__).resolve().parents[3])).resolve()
 
     @property
@@ -138,6 +146,13 @@ class Phase:
         write_json(self.artifacts / "phase-status.json", state)
 
     def run(self, args, seconds, output=None, maximum=4 * MIB):
+        if self.command_deadline is not None:
+            remaining = self.command_deadline - time.monotonic()
+            if remaining <= TERMINATION_RESERVE:
+                return 124
+            seconds = min(seconds, math.floor(remaining - TERMINATION_RESERVE))
+            if seconds <= 0:
+                return 124
         command = [sys.executable, str(self.repo / "infra/scripts/lifecycle/command.py"), str(seconds)]
         if output is not None:
             command += ["--stdout-file", str(output), "--max-bytes", str(maximum)]
@@ -158,8 +173,6 @@ class Phase:
     def validate_batch(self):
         if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
             raise Failure("unsupported probe batch selection")
-        if os.environ["PARCHWELL_RUN_KIND"] == "batch":
-            raise Failure("probe batch actions require S2 (#213); select run_kind=smoke for S1")
         return 0
 
     def allow_images(self):
@@ -178,7 +191,7 @@ class Phase:
 
     def prepare_batch(self):
         self.validate_batch()
-        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind="smoke")
+        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"])
 
     def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
@@ -258,7 +271,12 @@ class Phase:
             if self.run(["az", "acr", "login", "--name", acr["name"]], 60):
                 raise Failure("registry login failed", 1)
         images = {}
-        for index, (worker, project) in enumerate((("loadgen", "LoadGen"), ("verifier", "Verifier"))):
+        workers = [("loadgen", "LoadGen"), ("verifier", "Verifier")]
+        if phase["scenario"] == "probe-batch":
+            workers.append(("enrichment", "Enrichment"))
+        if digests is not None and len(digests) != len(workers):
+            raise Failure("image digest count mismatch")
+        for index, (worker, project) in enumerate(workers):
             if digests is None:
                 args = ["dotnet", "publish", f"src/Parchwell.{project}/Parchwell.{project}.csproj",
                         "--configuration", "Release", "-p:RestoreLockedMode=true",
@@ -325,7 +343,10 @@ class Phase:
                    "blob_ip": unwrap(ephemeral["private_endpoint_ips"])["blob"],
                    "application_insights_connection_string": unwrap(persistent["application_insights_connection_string"])}
         if single:
-            runtime.update(action_role=action_role, image_smoke=True)
+            runtime.update(action_role=action_role, image_smoke=phase["run_kind"] == "smoke",
+                           enrichment_image=phase["images"]["enrichment"]["reference"])
+            if mode == "single-action-judge" and item == "F04" and not runtime["image_smoke"]:
+                runtime["seed_receipt_configmap"] = phase["run_id"] + "-f04-seed-receipt"
         elif mode != "judge":
             runtime.update(repeat=repeat, loadgen_job_name=job_name(phase["run_id"], phase["phase"], "loadgen", repeat))
         return {"scenario_id": item if single else phase["scenario"],
@@ -347,7 +368,9 @@ class Phase:
             return None
         return int(deadlines[0])
 
-    def run_mode(self, mode, repeat, item=None, configuration=None, action_role=None, skip_reason=None):
+    def run_mode(self, mode, repeat, item=None, configuration=None, action_role=None, skip_reason=None, absolute_deadline=None):
+        previous_deadline = self.command_deadline
+        self.command_deadline = absolute_deadline
         phase = self.read("phase.json")
         job = job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
         state = self.state()
@@ -355,7 +378,7 @@ class Phase:
                   **{step: None for step in ("render", "apply", "wait", "collect", "delete", "confirm")},
                   "deadline": None, "outcome": "not_attempted"}
         if mode in SINGLE_ACTION_MODES:
-            record.update(item=item, configuration=configuration, role=action_role, image_smoke=True)
+            record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
         state["modes"].append(record)
 
         def save():
@@ -376,6 +399,10 @@ class Phase:
                 if mode in SINGLE_ACTION_MODES:
                     record["reason"] = "safety_stop"
                     save()
+                return record
+            if absolute_deadline is not None and absolute_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                record["reason"] = "orchestration_deadline"
+                save()
                 return record
             if skip_reason:
                 record["reason"] = skip_reason
@@ -420,8 +447,19 @@ class Phase:
                     state["safety_stop"] = True
                     print(f"safety_stop: pods of {job} may still run", flush=True)
             save()
+            if absolute_deadline is not None and absolute_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                record["reason"] = "orchestration_deadline"
+                if record["apply"] == 0 and record["outcome"] != "complete":
+                    state["safety_stop"] = True
+                save()
             return record
         finally:
+            if absolute_deadline is not None and absolute_deadline - time.monotonic() <= TERMINATION_RESERVE and not skip_reason and record.get("reason") != "safety_stop":
+                record["reason"] = "orchestration_deadline"
+                if record["apply"] is None:
+                    record["outcome"] = "not_attempted"
+                save()
+            self.command_deadline = previous_deadline
             print("::endgroup::", flush=True)
 
     def run_repeats(self):
@@ -443,7 +481,7 @@ class Phase:
                     raise ValueError("incomplete collection or pod count")
                 pod = pods[0]
                 role = record["role"]
-                worker = "verifier" if record["mode"] == "single-action-judge" else "loadgen"
+                worker = "enrichment" if record["mode"] == "single-action-seed" else "verifier" if record["mode"] == "single-action-judge" else "loadgen"
                 expected_image = self.read("phase.json")["images"][worker]["reference"]
                 containers = pod["spec"]["containers"]
                 statuses = [status for status in pod["status"]["containerStatuses"] if status["name"] == role]
@@ -456,13 +494,14 @@ class Phase:
                 name = pod["metadata"]["name"]
                 if not isinstance(name, str) or not re.fullmatch(LABEL, name):
                     raise ValueError("invalid pod name")
+                expected_marker = SEED_SMOKE_MARKER if worker == "enrichment" else SMOKE_MARKER
                 for line in (directory / f"{name}.containers.{role}.log").read_text().splitlines():
                     try:
                         marker = strict_json(line)
                     except (ValueError, UnicodeError, Failure):
                         continue
-                    if (marker == SMOKE_MARKER and isinstance(marker, dict)
-                            and all(type(marker[key]) is type(value) for key, value in SMOKE_MARKER.items())):
+                    if (marker == expected_marker and isinstance(marker, dict)
+                            and all(type(marker[key]) is type(value) for key, value in expected_marker.items())):
                         valid = True
                         break
             except (OSError, ValueError, UnicodeError, KeyError, TypeError, IndexError, Failure):
@@ -474,22 +513,282 @@ class Phase:
         self.save_state(state)
         return valid
 
+    @staticmethod
+    def boot_identity():
+        """Read a bounded boot-session UUID without reconstructing wall-clock time."""
+        try:
+            if sys.platform.startswith("linux"):
+                with Path("/proc/sys/kernel/random/boot_id").open("rb") as stream:
+                    value = stream.read(65)
+            elif sys.platform == "darwin":
+                # Apple's read-only scalar (verified 2026-10-26):
+                # https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_sysctl.c#L2921
+                # https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/sysctlbyname.3.html
+                read_value = ctypes.CDLL(None, use_errno=True).sysctlbyname
+                read_value.argtypes = [ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t),
+                                       ctypes.c_void_p, ctypes.c_size_t]
+                read_value.restype = ctypes.c_int
+                buffer = ctypes.create_string_buffer(64)
+                length = ctypes.c_size_t(len(buffer))
+                if read_value(b"kern.bootsessionuuid", buffer, ctypes.byref(length), None, 0) != 0:
+                    return None
+                if not 0 < length.value <= len(buffer):
+                    return None
+                value = buffer.raw[:length.value].rstrip(b"\0")
+            else:
+                return None
+            if len(value) > 64:
+                return None
+            identity = value.decode("ascii").strip().lower()
+            return identity if re.fullmatch(r"[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}", identity) else None
+        except (OSError, AttributeError, UnicodeError, ValueError):
+            return None
+
+    def start_batch_clock(self):
+        phase = self.read("phase.json")
+        phase["batch_started_monotonic"] = time.monotonic()
+        phase["batch_clock_boot_id"] = self.boot_identity()
+        phase["batch_clock_run_id"] = phase["run_id"]
+        phase["batch_clock_source"] = "CLOCK_MONOTONIC"
+        write_json(self.private / "phase.json", phase)
+        return phase["batch_clock_boot_id"] is not None
+
+    def admission_allowed(self):
+        phase = self.read("phase.json")
+        started = phase.get("batch_started_monotonic")
+        now = time.monotonic()
+        try:
+            return (type(started) in (int, float) and 0 <= started <= now and math.isfinite(started)
+                    and phase.get("batch_clock_boot_id") is not None
+                    and phase["batch_clock_boot_id"] == self.boot_identity()
+                    and phase.get("batch_clock_run_id") == phase["run_id"]
+                    and phase.get("batch_clock_source") == "CLOCK_MONOTONIC"
+                    and now - started < BATCH_START_CAP)
+        except (OSError, ValueError, OverflowError):
+            return False
+
+    def transfer_seed(self, record, deadline):
+        """Transfer the raw seed receipt and Kubernetes identity without judging delivery."""
+        phase = self.read("phase.json")
+        directory = self.artifacts / record["job"]
+        try:
+            pods_path = directory / "pods.json"
+            if not 0 < pods_path.stat().st_size <= 4 * MIB:
+                raise ValueError("seed pod size")
+            pods = strict_json(pods_path.read_bytes())["items"]
+            if not isinstance(pods, list) or len(pods) != 1:
+                raise ValueError("seed pod count")
+            pod = pods[0]
+            metadata = pod["metadata"]
+            name = metadata["name"]
+            if not isinstance(name, str) or not re.fullmatch(LABEL, name):
+                raise ValueError("seed pod name")
+            owners = [owner for owner in metadata["ownerReferences"] if owner.get("controller") is True]
+            if len(owners) != 1 or owners[0]["kind"] != "Job" or owners[0]["name"] != record["job"]:
+                raise ValueError("seed pod owner")
+            envelope = {"schema_version": 1, "job_name": record["job"], "pod_name": name,
+                        "pod_uid": metadata["uid"], "service_account": pod["spec"]["serviceAccountName"],
+                        "owner_kind": owners[0]["kind"], "owner_name": owners[0]["name"]}
+            log_path = directory / f"{name}.containers.enrichment-consumer.log"
+            if log_path.stat().st_size > 16 * MIB:
+                raise ValueError("seed log size")
+            with log_path.open("rb") as stream:
+                receipts = []
+                for line in stream:
+                    if line.startswith(SEED_RECEIPT_MARKER.encode()):
+                        if len(line) > 65536:
+                            raise ValueError("seed receipt size")
+                        receipts.append(line[len(SEED_RECEIPT_MARKER):].rstrip(b"\r\n"))
+            if len(receipts) != 1 or not isinstance(strict_json(receipts[0]), dict):
+                raise ValueError("seed receipt count or JSON")
+            envelope_bytes = json.dumps(envelope).encode()
+            if len(envelope_bytes) > 65536:
+                raise ValueError("seed envelope size")
+            configmap = {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {
+                "name": phase["run_id"] + "-f04-seed-receipt", "namespace": "parchwell",
+                "labels": {"app.kubernetes.io/instance": phase["run_id"]}}, "immutable": True,
+                "data": {"receipt.json": receipts[0].decode("utf-8"), "pod.json": envelope_bytes.decode()}}
+            path = self.private / "seed-receipt-configmap.json"
+            write_json(path, configmap)
+            self.command_deadline = deadline
+            if self.run(["kubectl", "create", "-f", str(path), "--request-timeout=30s"], 60):
+                raise ValueError("seed ConfigMap create")
+            return True
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError, Failure):
+            write_json(self.artifacts / "seed-gap.json", {"job": record["job"], "reason": "seed_receipt_transfer"})
+            return False
+        finally:
+            self.command_deadline = None
+
     def single_action_seed(self):
         self.validate_batch()
-        record = self.run_mode("single-action-seed", None, "F04", "C2", "enrichment-consumer")
-        return int(not self.smoke_complete(record))
+        clock_available = self.start_batch_clock()
+        deadline = time.monotonic() + SEED_DEADLINE
+        record = self.run_mode("single-action-seed", None, "F04", "C2", "enrichment-consumer",
+                               skip_reason=None if clock_available else "start_cap", absolute_deadline=deadline)
+        success = (self.smoke_complete(record) if self.read("phase.json")["run_kind"] == "smoke"
+                   else self.transfer_seed(record, deadline))
+        state = self.state()
+        state["seed_gap"] = not success
+        self.save_state(state)
+        # A seed gap remains evidence for the judge; unrelated configurations still run.
+        return 0
 
     def run_single_action_batch(self):
-        started = time.monotonic()
         self.validate_batch()
         passed = True
+        smoke = self.read("phase.json")["run_kind"] == "smoke"
         for item, configuration, role in SINGLE_ACTION_CONFIGURATIONS:
-            reason = "start_cap" if time.monotonic() - started >= BATCH_START_CAP else None
+            reason = None if self.admission_allowed() else "start_cap"
+            deadline = time.monotonic() + PAIR_DEADLINE
             for mode, selected_role in (("single-action", role), ("single-action-judge", "verifier")):
-                record = self.run_mode(mode, None, item, configuration, selected_role, skip_reason=reason)
-                if not self.smoke_complete(record):
-                    passed = False
+                record = self.run_mode(mode, None, item, configuration, selected_role,
+                                       skip_reason=reason, absolute_deadline=deadline)
+                if smoke:
+                    if not self.smoke_complete(record):
+                        passed = False
+                    if mode == "single-action-judge":
+                        self.candidate_gap(item, configuration, "image_smoke")
+                elif mode == "single-action-judge":
+                    if record["outcome"] == "not_attempted":
+                        self.candidate_gap(item, configuration, record.get("reason", "not_attempted"))
+                        passed = False
+                    elif not self.single_action_candidate(record, deadline):
+                        passed = False
         return int(not passed)
+
+    def candidate_gap(self, item, configuration, reason):
+        write_json(self.candidates / f"{item}-{configuration}-gap.json", {
+            "item": item, "configuration": configuration, "reason": reason})
+        state = self.state()
+        state.setdefault("candidates", []).append({"item": item, "configuration": configuration,
+            "accepted": False, "candidate": None, "judge_completion": None})
+        self.save_state(state)
+
+    def download_blob(self, name, target, maximum, deadline):
+        previous = self.command_deadline
+        self.command_deadline = deadline
+        partial = Path(str(target) + ".partial")
+        properties = self.private / (target.name + ".properties.json")
+        account = self.blob_host().split(".")[0]
+        try:
+            args = ["az", "storage", "blob", "show", "--account-name", account, "--container-name", "verifier",
+                    "--name", name, "--auth-mode", "login", "--query", "properties", "--only-show-errors", "-o", "json"]
+            if self.run(args, 60, output=properties, maximum=MIB):
+                return None
+            data = strict_json(properties.read_bytes())
+            length, etag = data["contentLength"], data["etag"]
+            if type(length) is not int or not 0 < length <= maximum or not isinstance(etag, str) or not etag:
+                return None
+            args = ["az", "storage", "blob", "download", "--account-name", account, "--container-name", "verifier",
+                    "--name", name, "--file", str(partial), "--auth-mode", "login", "--if-match", etag,
+                    "--overwrite", "false", "--only-show-errors", "-o", "none"]
+            if self.run(args, 60) or partial.stat().st_size != length:
+                return None
+            content = partial.read_bytes()
+            partial.replace(target)
+            return content
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError, Failure):
+            return None
+        finally:
+            partial.unlink(missing_ok=True)
+            self.command_deadline = previous
+
+    @staticmethod
+    def candidate_transport_shape(candidate):
+        """Check closed JSON transport types; the verifier owns every scientific decision."""
+        def closed(value, keys):
+            return isinstance(value, dict) and set(value) == set(keys.split())
+
+        def outcome(value):
+            return value is None or (closed(value, "result error_code is_fatal origin")
+                and isinstance(value["result"], str)
+                and (value["error_code"] is None or type(value["error_code"]) is int)
+                and (value["is_fatal"] is None or type(value["is_fatal"]) is bool)
+                and (value["origin"] is None or isinstance(value["origin"], str)))
+
+        def strings(value):
+            return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+        if (candidate["status"] not in ("complete_valid", "invalid", "incomplete")
+                or candidate["deterministic"] is not None and type(candidate["deterministic"]) is not bool
+                or type(candidate["security_finding"]) is not bool or not isinstance(candidate["adr012_counts"], str)
+                or not strings(candidate["diagnostics"]) or not outcome(candidate["outcome_class"])
+                or any(value is not None and not isinstance(value, str)
+                       for value in (candidate["managed_version"], candidate["native_version"]))):
+            return False
+        repeats = candidate["repeats"]
+        if not isinstance(repeats, list) or len(repeats) != 5:
+            return False
+        for number, repeat in enumerate(repeats, 1):
+            if (not closed(repeat, "repeat status reasons outcome_class broker_count statistics_reference")
+                    or type(repeat["repeat"]) is not int or repeat["repeat"] != number
+                    or repeat["status"] not in ("complete_valid", "invalid", "incomplete")
+                    or not strings(repeat["reasons"]) or not outcome(repeat["outcome_class"])
+                    or repeat["broker_count"] is not None and type(repeat["broker_count"]) is not int):
+                return False
+            reference = repeat["statistics_reference"]
+            if reference is not None and (not closed(reference, "sequence native_time native_ts raw_sha256")
+                    or any(type(reference[key]) is not int for key in ("sequence", "native_time", "native_ts"))
+                    or not isinstance(reference["raw_sha256"], str)):
+                return False
+        assessment = candidate["item_assessment"]
+        return assessment is None or (closed(assessment, "verdict hypotheses reason")
+            and all(assessment[key] is None or isinstance(assessment[key], str) for key in ("verdict", "reason"))
+            and isinstance(assessment["hypotheses"], dict)
+            and all(isinstance(value, str) for value in assessment["hypotheses"].values()))
+
+    def single_action_candidate(self, record, deadline):
+        phase = self.read("phase.json")
+        item, configuration = record["item"], record["configuration"]
+        prefix = f"{phase['run_id']}/single-action/{item}/{configuration}/"
+        stem = f"{item}-{configuration}"
+        target = self.candidates / (stem + ".json")
+        receipt_target = self.candidates / (stem + "-judge-completion.json")
+        candidate_bytes = self.download_blob(prefix + "candidate.json", target, CANDIDATE_MAXIMUM, deadline)
+        receipt_bytes = self.download_blob(prefix + "judge-completion.json", receipt_target, 65536, deadline)
+        accepted = False
+        try:
+            candidate = strict_json(candidate_bytes)
+            receipt = strict_json(receipt_bytes)
+            candidate_keys = {"schema_version", "mode", "synthetic", "run_id", "scenario_id", "configuration_id",
+                "source_commit", "managed_version", "native_version", "image_digests", "status", "repeats", "deterministic",
+                "outcome_class", "adr012_counts", "diagnostics", "security_finding", "item_assessment"}
+            receipt_keys = {"schema_version", "mode", "run_id", "scenario_id", "configuration_id", "source_commit", "job_name",
+                "pod_name", "pod_uid", "candidate_name", "handler_exit_code", "cleanup_completed"}
+            if not isinstance(candidate, dict) or set(candidate) != candidate_keys or not isinstance(receipt, dict) or set(receipt) != receipt_keys:
+                raise ValueError("transport fields")
+            for document in (candidate, receipt):
+                if (type(document["schema_version"]) is not int or document["schema_version"] != 1
+                        or any(document[key] != value for key, value in (("run_id", phase["run_id"]), ("scenario_id", item),
+                        ("configuration_id", configuration), ("source_commit", phase["source_commit"])))):
+                    raise ValueError("transport identity")
+            if (not self.candidate_transport_shape(candidate) or candidate["mode"] != "single-action" or candidate["synthetic"] is not True
+                    or candidate["image_digests"] != {worker: data["digest"] for worker, data in phase["images"].items()}
+                    or receipt["mode"] != "single-action-judge" or receipt["candidate_name"] != prefix + "candidate.json"
+                    or receipt["job_name"] != record["job"] or type(receipt["handler_exit_code"]) is not int
+                    or receipt["handler_exit_code"] != 0 or receipt["cleanup_completed"] is not True
+                    or not isinstance(receipt["pod_name"], str) or not re.fullmatch(LABEL, receipt["pod_name"])
+                    or not isinstance(receipt["pod_uid"], str) or not receipt["pod_uid"]):
+                raise ValueError("transport receipt")
+            pods_path = self.artifacts / record["job"] / "pods.json"
+            if not 0 < pods_path.stat().st_size <= 4 * MIB:
+                raise ValueError("judge pod size")
+            pods = strict_json(pods_path.read_bytes())["items"]
+            if (not isinstance(pods, list) or len(pods) != 1
+                    or pods[0]["metadata"]["name"] != receipt["pod_name"]
+                    or pods[0]["metadata"]["uid"] != receipt["pod_uid"]):
+                raise ValueError("judge receipt pod binding")
+            accepted = True
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError, Failure):
+            pass
+        state = self.state()
+        state.setdefault("candidates", []).append({"item": item, "configuration": configuration, "accepted": accepted,
+            "candidate": target.name if candidate_bytes else None, "judge_completion": receipt_target.name if receipt_bytes else None})
+        self.save_state(state)
+        if not accepted:
+            write_json(self.candidates / (stem + "-gap.json"), {"item": item, "configuration": configuration, "reason": "candidate_transport"})
+        return accepted
 
     def check_candidate(self, content):
         if not 0 < len(content) <= CANDIDATE_MAXIMUM:
@@ -575,7 +874,7 @@ class Phase:
 
     def delete_workload(self):
         phase = self.read("phase.json")
-        return self.run(["kubectl", "delete", "jobs", "-n", "parchwell", "-l",
+        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] == "probe-batch" else "jobs", "-n", "parchwell", "-l",
                          f"app.kubernetes.io/instance={phase['run_id']}", "--ignore-not-found", "--wait=false",
                          "--request-timeout=30s"], 60)
 
@@ -596,6 +895,10 @@ class Phase:
         if artifact and (Path(artifact) / "phase-status.json").is_file():
             state = self.state()
             lines += [f"{mode['job']}: {mode['outcome']}" for mode in state["modes"]]
+            if state.get("seed_gap"):
+                lines += ["seed receipt gap"]
+            for candidate in state.get("candidates", []):
+                lines += [f"{candidate['item']}-{candidate['configuration']}: accepted={candidate['accepted']} candidate={candidate['candidate']} judge_completion={candidate['judge_completion']}"]
             if state["candidate"] is not None:
                 lines += [f"candidate status: {state['candidate']['status']}", f"candidate gate: {state['candidate']['gate']}"]
         text = "\n".join(lines) + "\n"

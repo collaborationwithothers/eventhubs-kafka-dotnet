@@ -409,7 +409,7 @@ public sealed class ConfigurationFidelityTests
     private static CapturedConfiguration Capture(ResolvedRoleConfiguration selected)
     {
         // Exercise the actual captured-evidence parser, including the wire override:null baseline representation.
-        string configuration = JsonSerializer.Serialize(selected, WireOptions);
+        string configuration = JsonSerializer.Serialize(new { selected.Role, selected.Settings, selected.Omissions }, WireOptions);
         string json = """
             {"schema_version":1,"identity":{"scenario_id":"A01","configuration_id":"C0","run_id":"run-1",
             "instance_id":"instance-1","expected_instance_id":"instance-1","client_id":"producer-1"},

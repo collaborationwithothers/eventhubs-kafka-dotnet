@@ -23,7 +23,9 @@ internal static class DefinitionReader
             validation.ThrowIfErrors();
             throw new InvalidOperationException("Unreachable");
         }
-        validation.CheckFields(rootMap, "", "schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures");
+        validation.TryFields(rootMap, "",
+            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action"],
+            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures"]);
 
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
         var id = validation.String(rootMap, "id", "") ?? "";
@@ -45,8 +47,10 @@ internal static class DefinitionReader
         var repeats = ReadPositiveInt32(validation, rootMap.Fields.GetValueOrDefault("repeats"), "repeats", ScenarioContract.MinimumRepeats);
         var measures = ReadMeasures(validation, rootMap.Fields.GetValueOrDefault("measures"), roles);
         var gate = ReadGate(validation, rootMap.Fields.GetValueOrDefault("gate"), configurations.Keys.ToImmutableHashSet(StringComparer.Ordinal), roles, measures);
+        var definition = new ScenarioDefinition(version, id, baseline, roles, profile, configurations, fault, repeats, gate, measures, root.Location);
+        var singleAction = SingleActionDefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("single_action"), definition);
         validation.ThrowIfErrors();
-        return new ScenarioDefinition(version, id, baseline, roles, profile, configurations, fault, repeats, gate, measures, root.Location);
+        return definition with { SingleAction = singleAction };
     }
 
     private static int ReadLiteralVersion(NodeValidation validation, MapNode map, string key, string path)
@@ -126,6 +130,20 @@ internal static class DefinitionReader
                 var values = ImmutableDictionary.CreateBuilder<string, SettingOverride>(StringComparer.Ordinal);
                 foreach (var (key, settingNode) in settings.Fields)
                 {
+                    if (KafkaScenarioOverridePolicy.TryGetSetting(key, out var policy))
+                    {
+                        if (policy.ValueKind == KafkaScenarioOverrideValueKind.String && settingNode is ScalarNode text &&
+                            !(text.IsPlain && (text.Value.Length == 0 || text.Value is "~" or "null" or "Null" or "NULL")))
+                        {
+                            values[key] = new SettingOverride(text.Value, settingNode.Location);
+                            continue;
+                        }
+                        if (policy.ValueKind == KafkaScenarioOverrideValueKind.Omission && settingNode is ScalarNode { IsPlain: true, Value: "omit" })
+                        {
+                            values[key] = new SettingOverride("omit", settingNode.Location);
+                            continue;
+                        }
+                    }
                     // Only the form of the value is checked here. The resolver decides whether the key, role and range
                     // are allowed.
                     if (settingNode is ScalarNode { IsPlain: true, Value: "true" or "false" } literal)

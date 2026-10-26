@@ -1,0 +1,87 @@
+schema_version: 1
+id: F04
+assessment_rules:
+  observation_unit: fresh_client_single_action
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  completion_checks:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  seed_prerequisite_check: 11
+  outcome_class:
+  - result
+  - error_code
+  - is_fatal
+  - origin
+  require_one_class_in_all_five: true
+  unequal_classes: separate_full_plan_no_verdict
+  incomplete_configuration: no_verdict
+  construction_origin: untestable
+  failed_control: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+hypotheses:
+  H0:
+    question: "C0 and H4 C4 succeed."
+    configurations:
+    - C0
+    decision:
+      confirmed_when: "C0 succeeds."
+      contradicted_when: "C0 errors."
+    source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  H1:
+    question: "The errors for produce without a data-plane role."
+    configurations:
+    - C1
+    decision: recorded_only
+    source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  H2:
+    question: "The errors for consume without a data-plane role."
+    configurations:
+    - C2
+    decision: recorded_only
+    source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  H3:
+    question: "The errors for a token issued for the wrong resource (K-45)."
+    configurations:
+    - C3
+    decision: recorded_only
+    source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  H4:
+    question: "C0 and H4 C4 succeed."
+    configurations:
+    - C4
+    decision:
+      confirmed_when: "C4 succeeds."
+      contradicted_when: "C4 errors."
+    source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+verdict:
+  confirmed_when: "not_applicable"
+  contradicted_when: "not_applicable"
+  undocumented_when: "C0 and C4 succeed and C1, C2 and C3 are decided."
+  untestable_when: "Failed control or typed construction-origin hypothesis is untestable; other complete deterministic combinations are untestable."
+  no_verdict_when: "Fewer than five complete, unequal classes or a missing prerequisite yield no verdict, never a replacement repeat."
+  security_finding_when: "security_finding is true on any p1/p3/p5/p7-accepted F04 C1/C2/C3 success observation, even if another repeat lacks statistics; it links that raw repeat and blocks verdict publication pending Hari."
+sources:
+- url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
+  version: revision 4
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-10-26"
+- url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Error.cs
+  version: v2.16.0
+  read_date: "2026-10-26"

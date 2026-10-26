@@ -32,8 +32,9 @@ public sealed class C3HandlerTests
             .Replace("synthetic-c5-c0-r1-loadgen", "synthetic-c5-c3-r1-loadgen", StringComparison.Ordinal));
         var capabilities = fixture.Json("capabilities.json");
         var loaded = await fixture.Loader.LoadAsync("A01", TestContext.Current.CancellationToken);
+        var selected = fixture.Resolver.Resolve(loaded).Configurations["C3"].Roles[KafkaClientRole.LoadGenProducer];
         capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(
-            fixture.Resolver.Resolve(loaded).Configurations["C3"].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
+            new { selected.Role, selected.Settings, selected.Omissions }, WireOptions);
         fixture.Set("capabilities.json", capabilities);
         int exitCode = await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken);
         Assert.True(exitCode == 0, Encoding.UTF8.GetString(fixture.Output ?? []));

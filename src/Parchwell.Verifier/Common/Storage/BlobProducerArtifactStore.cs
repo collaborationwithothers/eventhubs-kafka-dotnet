@@ -8,11 +8,13 @@ internal sealed class BlobProducerArtifactStore(BlobContainerClient container, l
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>
         BoundedBlobListing.ListAsync(container, prefix, cancellationToken);
 
-    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken)
+    public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken) => ReadBoundedAsync(name,maximumBytes,cancellationToken);
+
+    public Task<byte[]?> ReadBoundedAsync(string name,long maximumArtifactBytes,CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (name.StartsWith('/') || name.Contains("..", StringComparison.Ordinal) || name.Contains('\\'))
             throw new ArgumentException("producer_blob_name_not_fixed", nameof(name));
-        return BoundedBlobReader.ReadAsync(container.GetBlobClient(name), maximumBytes, cancellationToken);
+        return BoundedBlobReader.ReadAsync(container.GetBlobClient(name), Math.Min(maximumBytes,maximumArtifactBytes), cancellationToken);
     }
 }

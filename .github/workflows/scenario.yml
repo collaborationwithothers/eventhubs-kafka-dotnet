@@ -791,21 +791,31 @@ jobs:
         id: namespace
         shell: bash
         run: bash infra/scripts/lifecycle/lifecycle.sh reset-namespace
-      - name: Smoke the separate F04 seed path
+      - name: Run the separate F04 seed path
         id: seed
         shell: bash
         run: bash infra/scripts/phase/phase.sh single-action-seed
-      - name: Smoke every action and judge path
+      - name: Run every action and judge path
         id: batch
         shell: bash
         run: bash infra/scripts/phase/phase.sh run-single-action-batch
+      - name: Upload single-action candidates and judge receipts
+        id: upload_candidates
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: probe-batch-candidates-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}
+          retention-days: 90
+          if-no-files-found: error
       - name: Upload public pod evidence
         id: upload_pods
         if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: probe-batch-smoke-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          name: probe-batch-pods-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
           retention-days: 90
           if-no-files-found: error
@@ -828,11 +838,11 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           WORKLOAD: 'true'
           REQUIRED_STEPS: guard checkout select tools prepare azure_session
-          WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_pods delete_workload destroy
+          WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: always() && inputs.scenario == 'probe-batch' && inputs.run_kind == 'smoke'
+    if: always() && inputs.scenario == 'probe-batch'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360

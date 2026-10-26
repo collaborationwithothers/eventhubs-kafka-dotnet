@@ -40,7 +40,7 @@ public sealed class KafkaAuthenticationFactory
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
-        string scope = KafkaAuthenticationConfiguration.GetScope(baselineOptions.Get(identity.Role.ToString()));
+        string scope = identityOptions.TokenScopeOverride ?? KafkaAuthenticationConfiguration.GetScope(baselineOptions.Get(identity.Role.ToString()));
         string principalName = identityOptions.ClientId
             ?? throw new InvalidOperationException("Kafka workload identity client ID is missing.");
         return new KafkaOAuthBearerSession(

@@ -2,6 +2,20 @@
 
 The load generator executes a finite synthetic offered schedule and preserves independent attempt evidence. Its inventory is registered before each application invocation, while the ledger records terminal observations separately. This contract implements the [agreed design][design] and [implementation handoff][handoff]; it does not establish A01 execution readiness.
 
+## Single-action capture
+
+`--single-action` runs the separate capture slice for the six items in the [scenario contract](scenario-contract.md#single-action-declarations). Producer actions use the loadgen identity; consumer actions use the probe identity. The [single-action contract](single-action-contract.md) owns paths, identities, field schemas and byte limits. Legacy Run execution and its ledger contract below remain separate.
+
+The worker registers once before constructing any Kafka client, then attempts five fresh clients in ordinal order with zero replacements. Each client gets independent authentication, callbacks and cleanup. It executes one declared Produce, InitTransactions, Subscribe or Assign action. It records the actual outcome and error properties without judging evidence validity or changing the hypothesis. EOF and unrelated records never count as a successful assigned read.
+
+The observation window ends at the terminal action outcome or its declared deadline. The same client then remains available for up to 20 seconds to collect native statistics; those reports cannot change the selected outcome. The verifier chooses the usable report. Capture does not import the legacy statistics completion gate or judge native report contents.
+
+The approved process limit is 1920 seconds, inside the chart's 1980-second action Job deadline. Per-client cleanup is bounded at 10 seconds; registration, capture and final receipt uploads each have 30 seconds, and host cleanup has 10 seconds. Poll slices are 100 milliseconds. These are harness budgets from the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798), not measured client performance. Callback/report/read exhaustion records a gap under the wire limits rather than presenting truncation as a complete outcome.
+
+A broker error alone can leave a successfully captured experiment. A capture, write, process-budget or cleanup failure prevents a successful completion receipt. The final create-only completion upload occurs only after capture writes, Kafka cleanup, host stop and host disposal. It records all five attempted slots and successful cleanup; missing completion cannot be inferred from Job termination.
+
+The Enrichment seed is a separate executable and `SeedF04` slice under its own service account. It produces the declared marker once, disposes its host, and emits the bounded console receipt defined by the wire contract. It has no Blob publication or telemetry registration. Its action window is 330000 milliseconds, process limit 390 seconds and Job deadline 420 seconds, with 10-second client and host cleanup budgets. Image smoke is distinct from proof of seed delivery.
+
 ## Worker lifecycle
 
 The load generator runs one finite scenario repeat under a unique Kubernetes Job and pod identity. It resolves its settings from the packaged scenario, registers the invocation before constructing Kafka, publishes failure diagnostics when needed, and writes a completion receipt only after execution, publication and cleanup succeed. It does not classify verifier outcomes or change scenario expectations.
