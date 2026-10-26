@@ -101,6 +101,38 @@ public sealed class JudgeHandlerTests
         }
     }
 
+    [Fact]
+    public async Task GivenFiveAcceptedB04EvidenceResults_WhenJudged_ThenProjectsEachIntoItsOwnRepeat()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            string resultName=PhasePaths.Result("synthetic-c5","C0",repeat);
+            JsonObject result=JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+            result["b04_recorded_evidence"]=new JsonObject
+            {
+                ["delivery_error_codes"]=new JsonArray(-100-repeat,repeat),
+                ["fatal_errors"]=new JsonArray(new JsonObject{["code"]=repeat,["name"]="fatal-"+repeat})
+            };
+            byte[] bytes=Encoding.UTF8.GetBytes(result.ToJsonString());stores.Verifier[resultName]=bytes;
+            string receiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",repeat);
+            JsonObject receipt=JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(),resultName,bytes);
+            stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        }
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+        Assert.Equal(0,await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement[] projected=candidate.RootElement.GetProperty("repeats").EnumerateArray().ToArray();
+        for(int i=1;i<=5;i++)
+        {
+            JsonElement evidence=projected[i-1].GetProperty("b04_recorded_evidence");
+            Assert.Equal(new[]{-100-i,i},evidence.GetProperty("delivery_error_codes").EnumerateArray().Select(x=>x.GetInt32()));
+            Assert.Equal("fatal-"+i,evidence.GetProperty("fatal_errors")[0].GetProperty("name").GetString());
+        }
+    }
+
     [Theory]
     [InlineData("omitted")]
     [InlineData("measurements-omitted")]

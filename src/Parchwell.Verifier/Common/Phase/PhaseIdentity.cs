@@ -9,11 +9,13 @@ internal static partial class PhaseIdentity
 
     internal static bool IsRunId(string? value) => value is not null && RunPattern.IsMatch(value);
 
-    internal static string ValidatePhase(string phase) => phase is "probe" or "C0" or "C3"
-        ? phase
-        : throw new ArgumentException("Phase must be exactly probe, C0, or C3.", nameof(phase));
+    internal static bool IsPhase(string? phase) => phase is "probe" or "C0" or "C1" or "C3";
 
-    internal static string ConfigurationFor(string phase) => ValidatePhase(phase) == "C3" ? "C3" : "C0";
+    internal static string ValidatePhase(string phase) => IsPhase(phase)
+        ? phase
+        : throw new ArgumentException("Phase must be exactly probe, C0, C1, or C3.", nameof(phase));
+
+    internal static string ConfigurationFor(string phase) => ValidatePhase(phase) == "probe" ? "C0" : phase;
 
     internal static int ValidateRepeat(int repeat) => repeat is >= 1 and <= 5
         ? repeat

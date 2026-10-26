@@ -18,6 +18,23 @@ public sealed class VerifyRunHandlerTests
     ];
 
     [Fact]
+    public async Task Given_B04C1Fixture_When_Verifying_Then_RecordsB04EvidenceAndSixCounts()
+    {
+        using var fixture=new HostEvidenceBuilder(scenarioId:"B04",phase:"C1");
+        Assert.Equal(0,await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output=JsonDocument.Parse(fixture.Output!);
+        JsonElement result=output.RootElement;
+        Assert.Equal("B04",result.GetProperty("identity").GetProperty("scenario_id").GetString());
+        Assert.Equal("C1",result.GetProperty("identity").GetProperty("configuration_id").GetString());
+        Assert.Equal("complete_valid",result.GetProperty("status").GetString());
+        Assert.Equal(1,result.GetProperty("ok").GetInt64());
+        foreach(string count in new[]{"loss","phantom","reported_failure","duplicate","reorder"})Assert.Equal(0,result.GetProperty(count).GetInt64());
+        JsonElement evidence=result.GetProperty("b04_recorded_evidence");
+        Assert.Empty(evidence.GetProperty("delivery_error_codes").EnumerateArray());
+        Assert.Empty(evidence.GetProperty("fatal_errors").EnumerateArray());
+    }
+
+    [Fact]
     public async Task Given_CoherentRawSingleDeliveredAttempt_When_Verifying_Then_PublishesSixExactCountsAfterAllCleanupAndReturnsZero()
     {
         using var fixture = new HostEvidenceBuilder();

@@ -13,6 +13,7 @@ using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Window;
 using Parchwell.Verifier.VerifyRun.A01;
+using Parchwell.Verifier.VerifyRun.B04;
 using Parchwell.Verifier.VerifyRun.Configuration;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Judgement;
@@ -206,7 +207,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         using(var deadline=new CancellationTokenSource(options.IoTimeout!.Value,clock))
         using(var local=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,deadline.Token))
         {
-            LoadedScenario scenario=await scenarioLoader.LoadAsync("A01",local.Token).ConfigureAwait(false);
+            LoadedScenario scenario=await scenarioLoader.LoadAsync(options.ScenarioId!,local.Token).ConfigureAwait(false);
             CheckDeadline(scenarioOrigin,options.IoTimeout.Value,local.Token);
             ResolvedScenario resolved=configurationResolver.Resolve(scenario,registration);
             ResolvedRoleConfiguration producer=resolved.Configurations[options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer];
@@ -236,6 +237,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     :RunJudgement.Evaluate(request);
                 judgement=ApplyPublicationOutcome(judgement,accepted);
                 A01EvidenceRecording a01=options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
+                B04EvidenceRecording b04=B04EvidenceRecorder.Record(request);
                 if(!accepted.Accepted)
                     a01=a01 with{ProbeObservation=new ProbeRepeatObservation(false,false,null,null,null,null)};
                 status=judgement.Status??VerifierResultStatus.Incomplete;
@@ -244,7 +246,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 var result=new VerifierResult(1,registration.Identity,manifest.Value?.GeneratorVersion,manifest.Value?.RuntimeVersions,options.VerifierCommit!,typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(),Library.VersionString,
                     status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray(),ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
-                    judgement.Diagnostics.Concat(a01.Diagnostics).ToArray(),a01.WorkloadObservation);
+                    judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).ToArray(),a01.WorkloadObservation??b04.WorkloadObservation,
+                    b04.Evidence);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
                 coverage=judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";

@@ -1,0 +1,93 @@
+schema_version: 1
+id: B04
+
+assessment_rules:
+  authoritative_verifier_counts: complete_valid_runs_only
+  invalid_or_incomplete_run_counts: absent
+  missing_counts_are_zero: false
+  missing_counts_refute_hypotheses: false
+  diagnostic_evidence: retain
+  changed_expectations_require_human_approval: true
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  phase_counts_published: only_when_all_five_repeats_complete_valid
+  fatal_error_evidence_requires:
+    - start_line_accepted
+    - publication_accepted
+    - verifier_receipt_valid
+    - job_binding_pass
+    - registration_count_pass
+    - inventory_coverage_pass
+  oracle_invalidity_alone_invalidates_fatal_error_evidence: false
+  missing_fatal_error_evidence_is_empty: false
+
+configurations:
+  C0:
+    H3:
+      environments: [live]
+      mode: recorded_only
+      observation_unit: repeat
+      record: [verifier_counts, delivery_error_codes, fatal_errors, broker_count]
+      pass_fail_expectation: none
+
+  C1:
+    H1:
+      environments: [live]
+      question: whether a Confluent.Kafka 2.16.0 producer with enable.idempotence true and max.in.flight 5 produces to the Event Hubs Premium namespace
+      holds_when:
+        complete_valid_repeats: 5
+        configuration_fidelity: pass_in_every_repeat
+        verifier_ok: greater_than_zero_in_every_repeat
+        fatal_errors: present_and_empty_in_every_repeat
+      contradicted_when: an_eligible_repeat_records_at_least_one_fatal_error
+      otherwise: inconclusive
+      basis: librdkafka v2.16.0 transmits no idempotent producer message without a valid producer ID
+    H2:
+      environments: [live]
+      question: whether per-key order holds with idempotence enabled
+      holds_when:
+        complete_valid_repeats: 5
+        verifier_reorder: zero_in_every_repeat
+      contradicted_when: a_complete_valid_repeat_has_verifier_reorder_greater_than_zero
+      otherwise: inconclusive
+      comparison_limit: C0 differs from C1 in both enable.idempotence and max.in.flight; a C0 and C1 difference is not attributed to idempotence alone
+    H3:
+      environments: [live]
+      mode: recorded_only
+      observation_unit: repeat
+      record: [verifier_counts, delivery_error_codes, fatal_errors, broker_count]
+      pass_fail_expectation: none
+
+not_tested:
+  N1:
+    question: whether Event Hubs discards a duplicate batch that an idempotent producer resends after a retry
+    reason: ADR-013 invalidates any repeat with a request timeout, retry or asynchronous delivery failure, and no approved live fault produces retries at the approved load
+    publication: not_decidable_at_build_scale_with_current_oracle
+    follow_up: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/204
+  K53:
+    question: whether idempotence survives a producer pod restart
+    reason: a restart creates a second registered producer instance in the repeat, which ADR-012 and ADR-020 invalidate
+    publication: not_tested
+    decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/201#issuecomment-6409664176
+    inventory: amendment 1 also lists K-53 under B10
+
+verdict:
+  subject: Event Hubs Premium support for the idempotent producer of a librdkafka client
+  confirmed_when: C1.H1 holds
+  contradicted_when: C1.H1 contradicted
+  untestable_when: C1.H1 inconclusive
+  exactly_once_claim: not_tested_N1
+  other_hypotheses: published_without_changing_the_verdict
+  baseline_effect: none; enable.idempotence stays false for v1 whatever the verdict
+  baseline_decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/201#issuecomment-6409664176
+
+sources:
+  oracle: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/00845be9bbff97df9566dd88e214f606ff6e12dd/docs/blueprint.md
+  native_configuration: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  native_configuration_checks: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  native_idempotence: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_idempotence.c
+  native_send_gate: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c
+  native_guarantees: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+  microsoft_configuration: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  microsoft_overview: https://learn.microsoft.com/azure/event-hubs/azure-event-hubs-apache-kafka-overview
+  microsoft_faq: https://learn.microsoft.com/azure/event-hubs/apache-kafka-frequently-asked-questions

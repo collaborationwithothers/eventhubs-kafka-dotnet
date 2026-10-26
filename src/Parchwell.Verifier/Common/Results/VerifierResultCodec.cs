@@ -77,6 +77,7 @@ internal static class VerifierResultCodec
             if (result.ProbeObservation is not null) WriteProbeObservation(writer, result.ProbeObservation);
             if (result.A01RecordedEvidence is not null) WriteA01RecordedEvidence(writer, result.A01RecordedEvidence);
             if (result.WorkloadObservation is not null) WriteWorkloadObservation(writer, result.WorkloadObservation);
+            if (result.B04RecordedEvidence is not null) WriteB04RecordedEvidence(writer, result.B04RecordedEvidence);
             WriteJudgedHashes(writer, result.JudgedFileHashes);
             WriteDiagnostics(writer, result.Diagnostics);
             writer.WriteEndObject();
@@ -173,6 +174,8 @@ internal static class VerifierResultCodec
             return ParseResult<VerifierResult>.Failure(a01Problem!);
         if (!TryOptionalObject(root, "workload_observation", artifact, ParseWorkloadObservation, out WorkloadObservation? workload, out StructuralProblem? workloadProblem))
             return ParseResult<VerifierResult>.Failure(workloadProblem!);
+        if (!TryOptionalObject(root, "b04_recorded_evidence", artifact, ParseB04Evidence, out B04RecordedEvidence? b04, out StructuralProblem? b04Problem))
+            return ParseResult<VerifierResult>.Failure(b04Problem!);
         if (!TryHashes(root, artifact, out IReadOnlyList<JudgedFileHash>? hashes, out StructuralProblem? hashesProblem))
             return ParseResult<VerifierResult>.Failure(hashesProblem!);
         if (!TryDiagnostics(root, artifact, limits.MaxDiagnosticBytes, out IReadOnlyList<ResultDiagnostic>? diagnostics, out StructuralProblem? diagnosticsProblem))
@@ -181,7 +184,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -369,6 +372,44 @@ internal static class VerifierResultCodec
             writer.WriteEndArray();
         }
         writer.WriteEndObject();
+    }
+
+    private static void WriteB04RecordedEvidence(Utf8JsonWriter writer, B04RecordedEvidence value)
+    {
+        if (!ValidB04Codes(value.DeliveryErrorCodes) || !ValidB04Fatal(value.FatalErrors))
+            throw new FormatException("B04 recorded evidence is malformed.");
+        writer.WritePropertyName("b04_recorded_evidence");
+        writer.WriteStartObject();
+        if (value.DeliveryErrorCodes is not null) WriteIntArray(writer, "delivery_error_codes", value.DeliveryErrorCodes);
+        if (value.FatalErrors is not null)
+        {
+            writer.WritePropertyName("fatal_errors"); writer.WriteStartArray();
+            foreach (B04FatalError error in value.FatalErrors)
+            { writer.WriteStartObject(); writer.WriteNumber("code", error.Code); writer.WriteString("name", error.Name); writer.WriteEndObject(); }
+            writer.WriteEndArray();
+        }
+        writer.WriteEndObject();
+    }
+
+    private static bool ValidB04Codes(IReadOnlyList<int>? codes)
+    {
+        if (codes is null) return true;
+        if (codes.Count > 256) return false;
+        for (int i = 1; i < codes.Count; i++) if (codes[i - 1] >= codes[i]) return false;
+        return true;
+    }
+
+    private static bool ValidB04Fatal(IReadOnlyList<B04FatalError>? fatal)
+    {
+        if (fatal is null) return true;
+        if (fatal.Count > 256) return false;
+        for (int i = 0; i < fatal.Count; i++)
+        {
+            if (fatal[i] is null || fatal[i].Name is null || fatal[i].Name.Length > 256) return false;
+            if (i > 0 && (fatal[i - 1].Code > fatal[i].Code ||
+                fatal[i - 1].Code == fatal[i].Code && StringComparer.Ordinal.Compare(fatal[i - 1].Name, fatal[i].Name) >= 0)) return false;
+        }
+        return true;
     }
 
     private static void WriteWorkloadObservation(Utf8JsonWriter writer, WorkloadObservation value)
@@ -668,6 +709,50 @@ internal static class VerifierResultCodec
         return true;
     }
 
+    private static bool ParseB04Evidence(JsonElement element, string path, string artifact, out B04RecordedEvidence? value, out StructuralProblem? problem)
+    {
+        value = null;
+        if (!Validate(element, path, Set(), Set("delivery_error_codes", "fatal_errors"), artifact, out problem)) return false;
+        IReadOnlyList<int>? codes = null;
+        if (element.TryGetProperty("delivery_error_codes", out JsonElement codeArray))
+        {
+            if (codeArray.ValueKind != JsonValueKind.Array || codeArray.GetArrayLength() > 256)
+            { problem = Problem(artifact, path + ".delivery_error_codes", "invalid_bounded_array"); return false; }
+            var parsed = new List<int>(codeArray.GetArrayLength());
+            foreach (JsonElement item in codeArray.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Number || !item.TryGetInt32(out int code) || parsed.Count > 0 && parsed[^1] >= code)
+                { problem = Problem(artifact, path + ".delivery_error_codes", "invalid_ordered_int32_array"); return false; }
+                parsed.Add(code);
+            }
+            codes = parsed;
+        }
+        IReadOnlyList<B04FatalError>? fatal = null;
+        if (element.TryGetProperty("fatal_errors", out JsonElement fatalArray))
+        {
+            if (fatalArray.ValueKind != JsonValueKind.Array || fatalArray.GetArrayLength() > 256)
+            { problem = Problem(artifact, path + ".fatal_errors", "invalid_bounded_array"); return false; }
+            var parsed = new List<B04FatalError>(fatalArray.GetArrayLength());
+            foreach (JsonElement item in fatalArray.EnumerateArray())
+            {
+                string itemPath = path + ".fatal_errors[" + parsed.Count + "]";
+                if (!Validate(item, itemPath, Set("code", "name"), Set("code", "name"), artifact, out problem)) return false;
+                if (!TryInt32(item, "code", out int code) || !TryString(item, "name", out string? name) || name!.Length > 256)
+                { problem = Problem(artifact, itemPath, "invalid_fatal_error"); return false; }
+                if (parsed.Count > 0)
+                {
+                    B04FatalError prior = parsed[^1];
+                    if (prior.Code > code || prior.Code == code && StringComparer.Ordinal.Compare(prior.Name, name) >= 0)
+                    { problem = Problem(artifact, itemPath, "fatal_errors_not_distinct_ascending"); return false; }
+                }
+                parsed.Add(new B04FatalError(code, name!));
+            }
+            fatal = parsed;
+        }
+        value = new B04RecordedEvidence(codes, fatal);
+        return true;
+    }
+
     private static bool TryHashes(JsonElement root, string artifact, out IReadOnlyList<JudgedFileHash>? values, out StructuralProblem? problem)
     {
         values = null;
@@ -881,7 +966,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence"
         };
         fields.UnionWith(CountFields);
         return fields;

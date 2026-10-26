@@ -1,0 +1,32 @@
+schema_version: 1
+id: B04
+baseline: Parchwell.Kafka
+roles:
+  - LoadGenProducer
+  - VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+
+configurations:
+  C0: {}
+  C1:
+    LoadGenProducer:
+      enable.idempotence: true
+      max.in.flight: 5
+
+fault:
+  live: {kind: none}
+  component: {kind: none}
+
+repeats: 5
+
+gate: {kind: none}
+
+measures:
+  - {id: ledger.delivery_error_code, role: LoadGenProducer}
+  - {id: client.fatal_error, role: LoadGenProducer}
+  - {id: verifier.ok, role: VerifierConsumer}
+  - {id: verifier.loss, role: VerifierConsumer}
+  - {id: verifier.phantom, role: VerifierConsumer}
+  - {id: verifier.reported_failure, role: VerifierConsumer}
+  - {id: verifier.duplicate, role: VerifierConsumer}
+  - {id: verifier.reorder, role: VerifierConsumer}

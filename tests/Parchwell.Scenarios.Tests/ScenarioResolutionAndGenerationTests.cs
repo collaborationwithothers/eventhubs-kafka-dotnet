@@ -117,21 +117,38 @@ public sealed class ScenarioResolutionAndGenerationTests
         Assert.Contains(exception.Diagnostics, item => item.FieldPath.Contains(key, StringComparison.Ordinal));
     }
 
-    // Replacements must be plain decimal Int32 (scenario-contract.md); other forms fail at load,
+    // Integer replacements must be plain decimal Int32 (scenario-contract.md); other forms fail at load,
     // before the resolver sees them.
     [Theory]
     [InlineData("request.timeout.ms: \"60001\"")]
-    [InlineData("request.timeout.ms: true")]
     [InlineData("request.timeout.ms: 60001.0")]
     [InlineData("request.timeout.ms: +60001")]
     [InlineData("request.timeout.ms: 2147483648")]
-    public async Task Given_QuotedBooleanFractionSignedOrOverflowingReplacement_When_Loading_Then_RejectsNonPlainInt32(string entry)
+    public async Task Given_QuotedFractionSignedOrOverflowingReplacement_When_Loading_Then_RejectsNonPlainInt32(string entry)
     {
         var yaml = ScenarioWithLoadGenOverrides(entry, "changed");
 
         var exception = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load(yaml));
 
         Assert.Contains(exception.Diagnostics, item => item.FieldPath.Contains("request.timeout.ms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Given_BooleanForIntegerOverride_When_Resolving_Then_RejectsWithOriginalSource()
+    {
+        var loaded = await Load(ScenarioWithLoadGenOverrides("request.timeout.ms: true", "changed"));
+        Assert.Equal("true", loaded.Definition.Configurations["changed"].Overrides[KafkaClientRole.LoadGenProducer]["request.timeout.ms"].Value);
+        using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer);
+
+        var exception = Assert.Throws<ScenarioValidationException>(() =>
+            new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded));
+
+        var diagnostic = Assert.Single(exception.Diagnostics);
+        Assert.Equal("setting_out_of_range", diagnostic.Code);
+        Assert.Equal("configurations.changed.LoadGenProducer.request.timeout.ms", diagnostic.FieldPath);
+        Assert.Equal(ScenarioTestData.ScenarioPath, diagnostic.Source);
+        Assert.Equal(10, diagnostic.Line);
+        Assert.NotNull(diagnostic.Column);
     }
 
     // Which roles may be overridden is repository policy (KafkaScenarioOverrideSetting.SupportedRoles),

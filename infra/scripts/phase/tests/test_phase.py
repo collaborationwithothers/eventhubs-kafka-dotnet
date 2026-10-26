@@ -126,6 +126,43 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual('a01-1-1-c3-judge', phase.job_name('a01-1-1', 'C3', 'judge'))
         self.assertEqual('a01-1-1/C3/candidate.json', phase.candidate_blob('a01-1-1', 'C3'))
 
+    def test_validate_scenario_allowlist(self):
+        for selected in ('A01', 'B04'):
+            with self.subTest(scenario=selected), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected}):
+                self.assertEqual(0, self.main('validate-scenario'))
+        for selected in ('A02', 'b04', ''):
+            with self.subTest(scenario=selected), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected}):
+                self.assertEqual(2, self.main('validate-scenario'))
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(0, self.main('validate-scenario'))
+
+    def test_allow_images_requires_both_immutable_digests(self):
+        cases = [(DIGESTS['loadgen'], DIGESTS['verifier'], True)]
+        invalid = [None, '', 'sha256:bad', 'sha256:' + 'a' * 63]
+        cases.extend((value, DIGESTS['verifier'], False) for value in invalid)
+        cases.extend((DIGESTS['loadgen'], value, False) for value in invalid)
+        for loadgen, verifier, allowed in cases:
+            with self.subTest(loadgen=loadgen, verifier=verifier):
+                self.output_file.write_text('')
+                env = {'GITHUB_OUTPUT': str(self.output_file)}
+                if loadgen is not None:
+                    env['LOADGEN_DIGEST'] = loadgen
+                if verifier is not None:
+                    env['VERIFIER_DIGEST'] = verifier
+                with patch.dict(os.environ, env, clear=True), contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(0, phase.main(['allow-images']))
+                expected = 'workload=' + str(allowed).lower() + '\n'
+                self.assertEqual(expected, output.getvalue())
+                self.assertEqual(expected, self.output_file.read_text())
+
+    def test_scenario_commands_reject_extra_arguments_without_output(self):
+        for command in ('validate-scenario', 'allow-images'):
+            with self.subTest(command=command), contextlib.redirect_stdout(io.StringIO()) as output:
+                self.output_file.write_text('')
+                self.assertEqual(2, phase.main([command, 'extra']))
+                self.assertEqual('', output.getvalue())
+                self.assertEqual('', self.output_file.read_text())
+
     def test_prepare_probe(self):
         self.assertEqual(0, self.main('prepare', 'probe'))
         exported = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())

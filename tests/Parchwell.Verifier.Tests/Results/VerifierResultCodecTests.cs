@@ -89,6 +89,129 @@ public sealed class VerifierResultCodecTests
     private static readonly int[] FailedTwelve = [12];
     private static readonly int[] FailedTwo = [2];
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("\"b04_recorded_evidence\":{}")]
+    [InlineData("\"b04_recorded_evidence\":{\"delivery_error_codes\":[],\"fatal_errors\":[]}")]
+    [InlineData("\"b04_recorded_evidence\":{\"delivery_error_codes\":[-2147483648,0,2147483647],\"fatal_errors\":[{\"code\":-2147483648,\"name\":\"\"},{\"code\":2147483647,\"name\":\"z\"}]}")]
+    public void Given_B04EvidenceShape_When_RoundTripped_Then_PreservesAbsenceAndValues(string? json)
+    {
+        B04RecordedEvidence? evidence=null;
+        if(json is not null)
+        {
+            ParseResult<VerifierResult> parsed=ReadProjection(json);
+            Assert.True(parsed.IsSuccess);
+            evidence=parsed.Value!.B04RecordedEvidence;
+        }
+        VerifierResult result=RoundTrip(Result(VerifierResultStatus.Invalid) with { B04RecordedEvidence=evidence });
+        Assert.Equal(evidence is null,result.B04RecordedEvidence is null);
+        if(evidence is not null)
+        {
+            Assert.Equal(evidence.DeliveryErrorCodes?.ToArray(),result.B04RecordedEvidence!.DeliveryErrorCodes?.ToArray());
+            Assert.Equal(evidence.FatalErrors?.ToArray(),result.B04RecordedEvidence.FatalErrors?.ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData("{\"unexpected\":1}")]
+    [InlineData("{\"delivery_error_codes\":null}")]
+    [InlineData("{\"fatal_errors\":null}")]
+    [InlineData("{\"delivery_error_codes\":[],\"delivery_error_codes\":[]} ")]
+    [InlineData("{\"delivery_error_codes\":[2,1]}")]
+    [InlineData("{\"delivery_error_codes\":[1,1]}")]
+    [InlineData("{\"delivery_error_codes\":[2147483648]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":2}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":\"1\",\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":2147483648,\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":\"x\",\"extra\":true}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":2,\"name\":\"x\"},{\"code\":1,\"name\":\"y\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":\"z\"},{\"code\":1,\"name\":\"a\"}]}")]
+    public void Given_MalformedB04Evidence_When_Read_Then_Rejects(string json)
+    {
+        Assert.False(ReadProjection("\"b04_recorded_evidence\":"+json).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(255)]
+    [InlineData(256)]
+    [InlineData(257)]
+    public void Given_B04CodeArrayBoundary_When_Read_Then_EnforcesLimit(int count)
+    {
+        string codes=string.Join(',',Enumerable.Range(0,count));
+        Assert.Equal(count<=256,ReadProjection("\"b04_recorded_evidence\":{\"delivery_error_codes\":["+codes+"]}").IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(255)]
+    [InlineData(256)]
+    [InlineData(257)]
+    public void Given_B04FatalNameBoundary_When_Read_Then_EnforcesScalarLimit(int length)
+    {
+        string name=new('x',length);
+        string json="\"b04_recorded_evidence\":{\"fatal_errors\":[{\"code\":0,\"name\":\""+name+"\"}]}";
+        Assert.Equal(length<=256,ReadProjection(json).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(255)]
+    [InlineData(256)]
+    [InlineData(257)]
+    public void Given_B04FatalArrayBoundary_When_Read_Then_EnforcesLimit(int count)
+    {
+        string fatal=string.Join(',',Enumerable.Range(0,count).Select(i=>"{\"code\":"+i+",\"name\":\"n\"}"));
+        InputLimits limits=RecordedEvidence.SmallLimits with { MaxEntries=4096, MaxArtifactBytes=1_048_576, MaxTotalInputBytes=2_097_152 };
+        Assert.Equal(count<=256,ReadProjection("\"b04_recorded_evidence\":{\"fatal_errors\":["+fatal+"]}",limits).IsSuccess);
+        if(count==256)
+        {
+            var value=Result(VerifierResultStatus.Invalid) with { B04RecordedEvidence=new(null,Enumerable.Range(0,256).Select(i=>new B04FatalError(i,"n")).ToArray()) };
+            byte[] bytes=VerifierResultCodec.Write(value,new OutputLimits(1_048_576,16,256));
+            Assert.Equal(256,VerifierResultCodec.Read(bytes,"result.json",limits,16).Value!.B04RecordedEvidence!.FatalErrors!.Count);
+        }
+    }
+
+    [Theory]
+    [InlineData(255)] [InlineData(256)] [InlineData(257)]
+    public void Given_B04ResultWriterArrayBoundaries_When_Written_Then_Enforces256(int count)
+    {
+        InputLimits inputLimits=RecordedEvidence.SmallLimits with { MaxEntries=4096,MaxArtifactBytes=1_048_576,MaxTotalInputBytes=2_097_152 };
+        OutputLimits outputLimits=new(1_048_576,16,256);
+        B04RecordedEvidence evidence=new(Enumerable.Range(0,count).ToArray(),Enumerable.Range(0,count).Select(i=>new B04FatalError(i,"n")).ToArray());
+        VerifierResult result=Result(VerifierResultStatus.Invalid) with { B04RecordedEvidence=evidence };
+        if(count<=256)
+        {
+            ParseResult<VerifierResult> parsed=VerifierResultCodec.Read(VerifierResultCodec.Write(result,outputLimits),"result.json",inputLimits,16);
+            Assert.True(parsed.IsSuccess);
+            Assert.Equal(count,parsed.Value!.B04RecordedEvidence!.DeliveryErrorCodes!.Count);
+            Assert.Equal(count,parsed.Value.B04RecordedEvidence.FatalErrors!.Count);
+        }
+        else Assert.Throws<FormatException>(()=>VerifierResultCodec.Write(result,outputLimits));
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(255)] [InlineData(256)] [InlineData(257)]
+    public void Given_B04ResultWriterFatalNameBoundaries_When_Written_Then_Enforces256(int length)
+    {
+        InputLimits inputLimits=RecordedEvidence.SmallLimits with { MaxEntries=4096,MaxArtifactBytes=1_048_576,MaxTotalInputBytes=2_097_152 };
+        OutputLimits outputLimits=new(1_048_576,16,256);
+        VerifierResult result=Result(VerifierResultStatus.Invalid) with
+        { B04RecordedEvidence=new(null,[new B04FatalError(0,new string('x',length))]) };
+        if(length<=256)
+        {
+            ParseResult<VerifierResult> parsed=VerifierResultCodec.Read(VerifierResultCodec.Write(result,outputLimits),"result.json",inputLimits,16);
+            Assert.True(parsed.IsSuccess);
+            Assert.Equal(length,parsed.Value!.B04RecordedEvidence!.FatalErrors![0].Name.Length);
+        }
+        else Assert.Throws<FormatException>(()=>VerifierResultCodec.Write(result,outputLimits));
+    }
+
+    [Fact]
+    public void Given_MalformedB04Object_When_Written_Then_ThrowsFormatException()
+    {
+        VerifierResult malformed=Result(VerifierResultStatus.Invalid) with { B04RecordedEvidence=new([2,1],[]) };
+        Assert.Throws<FormatException>(()=>VerifierResultCodec.Write(malformed,OutputLimits));
+    }
+
     [Fact]
     public void Given_MissingManifestProvenance_When_RoundTripped_Then_SchemaOneOmitsBothFields()
     {
@@ -1002,10 +1125,10 @@ public sealed class VerifierResultCodecTests
         Assert.Equal(recording.Diagnostics.Single(), read.Diagnostics.Single());
     }
 
-    private static ParseResult<VerifierResult> ReadProjection(string projection)
+    private static ParseResult<VerifierResult> ReadProjection(string projection,InputLimits? inputLimits=null)
     {
         string root = Encoding.UTF8.GetString(VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits));
-        return VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root[..^1] + "," + projection + "}"), "result.json", RecordedEvidence.SmallLimits, 8);
+        return VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root[..^1] + "," + projection + "}"), "result.json", inputLimits??RecordedEvidence.SmallLimits, 8);
     }
 
     private static VerifierResult Result(

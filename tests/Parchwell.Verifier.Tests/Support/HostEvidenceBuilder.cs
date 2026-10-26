@@ -30,9 +30,11 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     private bool fixtureIdentityInitialized;
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier")
+    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier",string scenarioId="A01",string phase="C0")
     {
-        Options.InstanceId=instanceId;Options.ExpectedInstanceId=PhaseIdentity.JobName(Options.RunId!,Options.Phase!,Options.Repeat!.Value);
+        Options.ScenarioId=scenarioId;
+        SetRepeatCoordinates(Options.Repeat!.Value,phase);
+        Options.InstanceId=instanceId;
         Options.ClientId=clientId;Options.VerifierClientId=verifierClientId;
         Kafka.ReadMetadata = () =>
         {
@@ -53,13 +55,14 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         services = registrations.BuildServiceProvider();
         Resolver = new ScenarioResolver(services.GetRequiredService<KafkaConfigurationFactory>());
         string root = RepositoryRoot();
+        string scenarioPath = "scenarios/" + scenarioId + "/scenario.yaml";
         scenarioDocuments = new(StringComparer.Ordinal)
         {
-            ["scenarios/A01/scenario.yaml"] = File.ReadAllText(Path.Combine(root, "scenarios/A01/scenario.yaml")),
+            [scenarioPath] = File.ReadAllText(Path.Combine(root, scenarioPath)),
             ["scenarios/profiles/lifecycle-1k.yaml"] = ""
         };
-        // The profile reference is read from the repository scenario, independently of captured evidence.
-        string profile = scenarioDocuments["scenarios/A01/scenario.yaml"].Split('\n')
+        // The profile reference is read from the selected repository scenario, independently of captured evidence.
+        string profile = scenarioDocuments[scenarioPath].Split('\n')
             .Single(line => line.StartsWith("profile:", StringComparison.Ordinal))["profile:".Length..].Trim();
         scenarioDocuments.Remove("scenarios/profiles/lifecycle-1k.yaml");
         scenarioDocuments["scenarios/" + profile] = File.ReadAllText(Path.Combine(root, "scenarios", profile));
@@ -67,7 +70,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         {
             MaxDocumentCharacters = 131072, MaxNestingDepth = 32, MaxScalarCharacters = 32768, MaxParserEvents = 16384
         }));
-        identity = IdentityJson(new RunIdentity("A01", "C0", Options.RunId!, Options.InstanceId!,
+        identity = IdentityJson(new RunIdentity(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!, Options.InstanceId!,
             Options.InstanceId!, Options.ClientId!));
         foreach (string name in new[] { "index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
             Inputs[name] = ReadGolden(name);
@@ -112,7 +115,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         }
         Inputs["statistics.jsonl"] = Encoding.UTF8.GetBytes(statistics.ToString());
         JsonObject capabilities = JsonNode.Parse(Inputs["capabilities.json"]!)!.AsObject();
-        capabilities["identity"] = IdentityJson(new RunIdentity("A01", "C0", Options.RunId!, Options.InstanceId!,
+        capabilities["identity"] = IdentityJson(new RunIdentity(Options.ScenarioId!, Options.ConfigurationId!, Options.RunId!, Options.InstanceId!,
             Options.InstanceId!, Options.ClientId!));
         capabilities["observed_broker_names"] = new JsonArray("sasl_ssl://broker-a:9093/1");
         capabilities["statistics_completion"] = new JsonObject
@@ -121,9 +124,9 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             ["missing_brokers"] = new JsonArray(), ["diagnostics"] = new JsonArray()
         };
         // The handler resolves the same source itself; no parsed verifier projection is injected.
-        LoadedScenario loaded = Loader.LoadAsync("A01").AsTask().GetAwaiter().GetResult();
+        LoadedScenario loaded = Loader.LoadAsync(scenarioId).AsTask().GetAwaiter().GetResult();
         capabilities["resolved_configuration"] = JsonSerializer.SerializeToNode(
-            Resolver.Resolve(loaded).Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
+            Resolver.Resolve(loaded).Configurations[Options.ConfigurationId!].Roles[KafkaClientRole.LoadGenProducer], WireOptions);
         Set("capabilities.json", capabilities);
         Events.Clear();
         RebuildPublicationReferences();
@@ -199,6 +202,12 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public bool PreservePublicationReferences { get; set; }
     public void ConfigureRepeat(int repeat,string phase)
     {
+        SetRepeatCoordinates(repeat,phase);
+        Note=null;RebuildPublicationReferences();
+    }
+
+    private void SetRepeatCoordinates(int repeat,string phase)
+    {
         PhaseIdentity.ValidatePhase(phase);
         PhaseIdentity.ValidateRepeat(repeat);
         string loadgen=PhaseIdentity.JobName(Options.RunId!,phase,repeat);
@@ -210,7 +219,6 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         Options.StartLineInputName=PhasePaths.StartLine(Options.RunId!,phase,repeat);
         Options.StartLineOutputName=Options.StartLineInputName;Options.BrokerInventoryOutputName=PhasePaths.BrokerInventory(Options.RunId!,phase,repeat);
         Options.ResultOutputName=PhasePaths.Result(Options.RunId!,phase,repeat);
-        Note=null;RebuildPublicationReferences();
     }
 
     public void SetThrottleWindow(long maximum)

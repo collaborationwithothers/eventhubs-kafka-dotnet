@@ -1,7 +1,16 @@
 # Installed at .github/workflows/scenario.yml; committed copy at docs/operations/workflows/scenario.yml.txt; the two are byte-identical (AGENTS.md hard safety rule 8).
-name: A01 scenario
+name: Scenario
 on:
   workflow_dispatch:
+    inputs:
+      scenario:
+        description: Scenario definition to run
+        type: choice
+        required: true
+        default: A01
+        options:
+          - A01
+          - B04
 permissions:
   contents: read
   id-token: write
@@ -27,7 +36,8 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
-      PARCHWELL_PHASE: probe
+      PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
+      PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}
     steps:
       - name: Require the main branch before login
         id: guard
@@ -45,6 +55,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Validate the selected scenario
+        id: select
+        shell: bash
+        run: python3 infra/scripts/phase/phase.py validate-scenario
       - name: Install the pinned Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
@@ -166,7 +180,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: a01-probe-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || 'a01-probe' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
           retention-days: 90
           if-no-files-found: error
@@ -176,7 +190,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: a01-probe-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || 'a01-probe' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
           retention-days: 90
           if-no-files-found: error
@@ -198,12 +212,12 @@ jobs:
           STEP_RESULTS: ${{ toJSON(steps) }}
           JOB_STATUS: ${{ job.status }}
           WORKLOAD: 'true'
-          REQUIRED_STEPS: guard checkout tools prepare azure_session
+          REQUIRED_STEPS: guard checkout select tools prepare azure_session
           WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report
   full-C0:
     needs: [probe]
-    if: needs.probe.outputs.full_allowed == 'true'
+    if: inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -216,6 +230,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: C0
     steps:
       - name: Require the main branch before login
@@ -234,6 +249,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Validate the selected scenario
+        id: select
+        shell: bash
+        run: python3 infra/scripts/phase/phase.py validate-scenario
       - name: Install the pinned Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
@@ -278,7 +297,7 @@ jobs:
           printf 'PARCHWELL_REAL_AZ=%s\n' "$real_az" >> "$GITHUB_ENV"
           printf 'PARCHWELL_AZ_SESSION_DIRECTORY=%s\n' "$session_dir" >> "$GITHUB_ENV"
           printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
-      - name: Use the probe's immutable worker images
+      - name: Use the initial job's immutable worker images
         id: images
         shell: bash
         env:
@@ -386,7 +405,7 @@ jobs:
           STEP_RESULTS: ${{ toJSON(steps) }}
           JOB_STATUS: ${{ job.status }}
           WORKLOAD: 'true'
-          REQUIRED_STEPS: guard checkout tools prepare azure_session
+          REQUIRED_STEPS: guard checkout select tools prepare azure_session
           WORKLOAD_STEPS: images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report
   full-C3:
@@ -404,7 +423,8 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
-      PARCHWELL_PHASE: C3
+      PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
+      PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C1' || 'C3' }}
     steps:
       - name: Require the main branch before login
         id: guard
@@ -422,14 +442,25 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Decide whether the C3 workload runs
+      - name: Validate the selected scenario
+        id: select
+        shell: bash
+        run: python3 infra/scripts/phase/phase.py validate-scenario
+      - name: Decide whether the final phase workload runs
         id: allowed
         shell: bash
         env:
           PROBE_RESULT: ${{ needs.probe.result }}
           FULL_ALLOWED: ${{ needs.probe.outputs.full_allowed }}
           FULL_C0_RESULT: ${{ needs.full-C0.result }}
-        run: bash infra/scripts/phase/phase.sh allow-c3
+          LOADGEN_DIGEST: ${{ needs.probe.outputs.loadgen_digest }}
+          VERIFIER_DIGEST: ${{ needs.probe.outputs.verifier_digest }}
+        run: |
+          case "$PARCHWELL_SCENARIO" in
+            A01) bash infra/scripts/phase/phase.sh allow-c3 ;;
+            B04) bash infra/scripts/phase/phase.sh allow-images ;;
+            *) exit 2 ;;
+          esac
       - name: Prepare the dispatch-end stop
         id: stop_prepare
         shell: bash
@@ -481,7 +512,7 @@ jobs:
           S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
           S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
         run: bash infra/scripts/phase/phase.sh prepare "$PARCHWELL_PHASE"
-      - name: Use the probe's immutable worker images
+      - name: Use the initial job's immutable worker images
         id: images
         if: steps.allowed.outputs.workload == 'true'
         shell: bash
@@ -569,7 +600,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: a01-C3-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || 'a01-C3' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
           retention-days: 90
           if-no-files-found: error
@@ -579,7 +610,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: a01-C3-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || 'a01-C3' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
           retention-days: 90
           if-no-files-found: error
@@ -608,6 +639,6 @@ jobs:
           STEP_RESULTS: ${{ toJSON(steps) }}
           JOB_STATUS: ${{ job.status }}
           WORKLOAD: ${{ steps.allowed.outputs.workload }}
-          REQUIRED_STEPS: guard checkout allowed stop_prepare azure_session stop
+          REQUIRED_STEPS: guard checkout select allowed stop_prepare azure_session stop
           WORKLOAD_STEPS: tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report

@@ -13,14 +13,17 @@ namespace Parchwell.LoadGen.Tests.Host;
 public sealed class RegisteredWorkerScenarioTests
 {
     [Theory]
-    [InlineData("probe", "C0")]
-    [InlineData("C0", "C0")]
-    [InlineData("C3", "C3")]
+    [InlineData("A01", "probe", "C0")]
+    [InlineData("A01", "C0", "C0")]
+    [InlineData("A01", "C3", "C3")]
+    [InlineData("B04", "C0", "C0")]
+    [InlineData("B04", "C1", "C1")]
     public async Task Given_PackagedScenario_When_ResolvingRegisteredWorker_Then_SelectedConfigurationAndProducerIdentityComeFromItsOwnInputs(
-        string phase, string configuration)
+        string scenarioId, string phase, string configuration)
     {
         string output = Path.Combine(Path.GetTempPath(), "registered-worker-" + Guid.NewGuid().ToString("N"));
         Dictionary<string, string> inputs = LoadGenHostProcessTests.CreateInputs(output);
+        inputs["LoadGen__ScenarioId"] = scenarioId;
         inputs["LoadGen__ConfigurationId"] = configuration;
         inputs["LoadGen__Phase"] = phase;
         inputs["LoadGen__RunId"] = "run-1";
@@ -38,8 +41,9 @@ public sealed class RegisteredWorkerScenarioTests
         Assert.Equal($"run-1-{phase.ToLowerInvariant()}-r1-loadgen", options.JobName);
         Assert.Equal(1, telemetry.RegistrationCount);
 
+        Assert.Equal(scenarioId, options.ScenarioId);
         LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>()
-            .LoadAsync("A01", TestContext.Current.CancellationToken);
+            .LoadAsync(options.ScenarioId, TestContext.Current.CancellationToken);
         ResolvedScenario resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded);
         foreach (ResolvedRoleConfiguration role in resolved.Configurations[configuration].Roles.Values)
             Assert.Equal("worker-pod", role.Settings["client.id"].Value);

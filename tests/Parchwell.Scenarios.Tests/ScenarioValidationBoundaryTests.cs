@@ -94,4 +94,74 @@ public sealed class ScenarioValidationBoundaryTests
         Assert.Equal(10, diagnostic.Line);
         Assert.NotNull(diagnostic.Column);
     }
+
+    [Theory]
+    [InlineData("enable.idempotence", "false", "no_op_override")]
+    [InlineData("enable.idempotence", "1", "setting_out_of_range")]
+    [InlineData("max.in.flight", "true", "setting_out_of_range")]
+    [InlineData("max.in.flight", "0", "setting_out_of_range")]
+    [InlineData("max.in.flight", "1000001", "setting_out_of_range")]
+    [InlineData("max.in.flight", "1000000", "no_op_override")]
+    [InlineData("request.timeout.ms", "true", "setting_out_of_range")]
+    public async Task Given_InvalidB04Override_When_Resolving_Then_UsesSnakeCaseDiagnosticWithOriginalSource(
+        string key, string value, string code)
+    {
+        var yaml = B04WithOverride(key, value);
+        var source = new InMemoryScenarioSource(("scenarios/B04/scenario.yaml", yaml),
+            (ScenarioTestData.ProfilePath, ScenarioTestData.ValidProfile));
+        var loaded = await ScenarioTestData.Loader(source).LoadAsync("B04", TestContext.Current.CancellationToken);
+        using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer, KafkaClientRole.VerifierConsumer);
+
+        var exception = Assert.Throws<ScenarioValidationException>(() =>
+            new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded));
+
+        var diagnostic = Assert.Single(exception.Diagnostics);
+        Assert.Equal(code, diagnostic.Code);
+        Assert.Equal($"configurations.changed.LoadGenProducer.{key}", diagnostic.FieldPath);
+        Assert.Equal("scenarios/B04/scenario.yaml", diagnostic.Source);
+        Assert.Equal(10, diagnostic.Line);
+        Assert.NotNull(diagnostic.Column);
+    }
+
+    [Theory]
+    [InlineData("\"true\"")]
+    [InlineData("True")]
+    [InlineData("yes")]
+    [InlineData("1.5")]
+    public async Task Given_NonPlainBooleanOverride_When_LoadingB04_Then_RequiresInt32OrPlainBoolean(string value)
+    {
+        var source = new InMemoryScenarioSource(("scenarios/B04/scenario.yaml", B04WithOverride("enable.idempotence", value)),
+            (ScenarioTestData.ProfilePath, ScenarioTestData.ValidProfile));
+
+        var exception = await Assert.ThrowsAsync<ScenarioValidationException>(async () =>
+            await ScenarioTestData.Loader(source).LoadAsync("B04", TestContext.Current.CancellationToken));
+
+        Assert.Equal("int32_required", Assert.Single(exception.Diagnostics).Code);
+    }
+
+    [Fact]
+    public async Task Given_ValidB04BooleanAndIntegerOverrides_When_Resolving_Then_PreservesBaselineAndRecordsOrigin()
+    {
+        var yaml = B04WithOverrides("enable.idempotence: true\n      max.in.flight: 5");
+        var source = new InMemoryScenarioSource(("scenarios/B04/scenario.yaml", yaml),
+            (ScenarioTestData.ProfilePath, ScenarioTestData.ValidProfile));
+        var loaded = await ScenarioTestData.Loader(source).LoadAsync("B04", TestContext.Current.CancellationToken);
+        using var provider = ScenarioTestData.Provider(KafkaClientRole.LoadGenProducer, KafkaClientRole.VerifierConsumer);
+        var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
+        var baseline = resolved.Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer].Settings;
+        var changed = resolved.Configurations["changed"].Roles[KafkaClientRole.LoadGenProducer].Settings;
+
+        Assert.Equal("true", changed["enable.idempotence"].Value);
+        Assert.Equal("5", changed["max.in.flight"].Value);
+        foreach (var key in baseline.Keys.Except(["enable.idempotence", "max.in.flight"], StringComparer.Ordinal))
+            Assert.Equal(baseline[key].Value, changed[key].Value);
+        Assert.Equal("changed", changed["enable.idempotence"].Override?.ConfigurationId);
+        Assert.Equal("changed", changed["max.in.flight"].Override?.ConfigurationId);
+    }
+
+    private static string B04WithOverride(string key, string value) => B04WithOverrides($"{key}: {value}");
+
+    private static string B04WithOverrides(string entries) =>
+        "schema_version: 1\nid: B04\nbaseline: Parchwell.Kafka\nroles: [LoadGenProducer, VerifierConsumer]\nprofile: profiles/saturation-ramp.yaml\nconfigurations:\n  C0: {}\n  changed:\n    LoadGenProducer:\n      " + entries.Replace("\n", "\n      ", StringComparison.Ordinal) +
+        "\n\nfault:\n  live: {kind: none}\n  component: {kind: none}\nrepeats: 5\ngate: {kind: none}\nmeasures:\n  - {id: verifier.ok, role: VerifierConsumer}\n";
 }

@@ -1,4 +1,5 @@
 using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Publication;
 
@@ -30,13 +31,8 @@ public sealed record ProducerRunContext(RunIdentity Identity, string Phase, int 
     public void Validate()
     {
         Identity.Validate();
-        bool validPair = Phase switch
-        {
-            "probe" => Identity.ConfigurationId == "C0",
-            "C0" => Identity.ConfigurationId == "C0",
-            "C3" => Identity.ConfigurationId == "C3",
-            _ => false
-        };
+        bool validPair = ScenarioPhases.TryGetConfiguration(Identity.ScenarioId, Phase, out string? expectedConfiguration) &&
+            Identity.ConfigurationId == expectedConfiguration;
         if (!validPair || RepeatNumber is < 1 or > 5 ||
             string.IsNullOrWhiteSpace(JobName) || string.IsNullOrWhiteSpace(PodName) ||
             string.IsNullOrWhiteSpace(PodUid) || PodUid.Any(char.IsWhiteSpace) || PodUid.Any(char.IsControl) ||

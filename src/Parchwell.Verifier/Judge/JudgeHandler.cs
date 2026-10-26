@@ -45,7 +45,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             bool startAccepted=false,publicationAccepted=false,receiptValid=false,knownInvalid=false,trustedIncomplete=false;
             bool? jobBinding=null,registrationCount=null,inventoryCoverage=null;
             OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
-            BrokerConnectionCount? brokerCount=null;
+            BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
@@ -204,6 +204,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             {
                                 workload=result.WorkloadObservation;
                                 brokerCount=result.BrokerCount;
+                                b04Evidence=result.B04RecordedEvidence;
                                 if(result.A01RecordedEvidence is not null)acceptedA01.Add(result.A01RecordedEvidence);
                                 string? producerKafkaVersion=null,producerNativeVersion=null,producerDotnetVersion=null;
                                 result.RuntimeVersions?.TryGetValue("Confluent.Kafka",out producerKafkaVersion);
@@ -231,7 +232,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;
             }
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots);
@@ -249,7 +250,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         Parchwell.Verifier.Common.Results.A01WindowEvidence[] a01Windows=acceptedA01.SelectMany(e=>e.Windows??Array.Empty<Parchwell.Verifier.Common.Results.A01WindowEvidence>()).ToArray();
         string[] versionReasons=new Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?>[]{v=>v.Generator,v=>v.Kafka,v=>v.Native,v=>v.Dotnet}.Any(selector=>CommonVersion(selector) is null)?["version_unavailable"]:[];
         string[] timingReasons=phaseStarted is null?["timing_unavailable"]:[];
-        var candidate=new PhaseCandidate(1,true,"A01",options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,judgement.Status,judgement.Gate,
+        var candidate=new PhaseCandidate(1,true,options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,judgement.Status,judgement.Gate,
             new Dictionary<string,string?>(StringComparer.Ordinal){["verifier"]=typeof(JudgeHandler).Assembly.GetName().Version?.ToString(),["workload_generator"]=CommonVersion(v=>v.Generator),["confluent_kafka"]=CommonVersion(v=>v.Kafka),["librdkafka"]=CommonVersion(v=>v.Native),["dotnet"]=CommonVersion(v=>v.Dotnet)},
             new Dictionary<string,string?>(StringComparer.Ordinal){["loadgen"]=Digest(options.LoadGenImage),["verifier"]=Digest(options.VerifierImage)},
             new Dictionary<string,object?>(StringComparer.Ordinal){["worker_started_utc"]=phaseStarted?.ToString("O",System.Globalization.CultureInfo.InvariantCulture),["judge_completed_utc"]=phaseStarted is null?null:clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),["duration_seconds"]=phaseStarted is null?null:(decimal?)(clock.GetUtcNow()-phaseStarted.Value).TotalSeconds},
@@ -261,7 +262,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         await Bounded(ct=>verifier.CreateAsync(name,bytes,ct),options,clock,cancellationToken).ConfigureAwait(false);
         int exit=judgement.Status=="complete_valid"?0:1;
         var candidateReference=new ArtifactReference("verifier",name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
-        var receipt=new WorkerReceipt(1,"judge","A01",options.ConfigurationId!,options.RunId!,options.Phase!,null,
+        var receipt=new WorkerReceipt(1,"judge",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,null,
             PhaseIdentity.JudgeJobName(options.RunId!,options.Phase!),options.PodName!,null,options.SourceCommit!,exit,true,
             judgeStarted.ToString("O",System.Globalization.CultureInfo.InvariantCulture),clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),[candidateReference],null,null);
         completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.JudgeCompletion(options.RunId!,options.Phase!),PhaseWireCodec.WriteReceipt(receipt));

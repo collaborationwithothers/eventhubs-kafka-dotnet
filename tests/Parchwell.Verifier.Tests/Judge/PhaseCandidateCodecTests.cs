@@ -11,6 +11,145 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class PhaseCandidateCodecTests
 {
     private static readonly string[] BrokerCountFields = ["client_id", "first_post_drain", "lower_bound", "maximum", "role"];
+
+    [Fact]
+    public void Given_B04Candidate_When_RoundTripped_Then_ProjectsExactEvidenceAndAllowsAbsence()
+    {
+        PhaseCandidate a01=Candidate();
+        PhaseCandidate b04=a01 with
+        {
+            ScenarioId="B04",ConfigurationId="C1",Phase="C1",
+            Repeats=[a01.Repeats[0] with { B04Evidence=new([-185,7],[new B04FatalError(3,"fatal")]) }]
+        };
+        byte[] bytes=PhaseCandidateCodec.Write(b04);
+        using JsonDocument document=PhaseCandidateCodec.Read(bytes);
+        JsonElement repeat=Assert.Single(document.RootElement.GetProperty("repeats").EnumerateArray());
+        JsonElement evidence=repeat.GetProperty("b04_recorded_evidence");
+        Assert.Equal(new[]{"delivery_error_codes","fatal_errors"},evidence.EnumerateObject().Select(x=>x.Name));
+        Assert.Equal(new[]{-185,7},evidence.GetProperty("delivery_error_codes").EnumerateArray().Select(x=>x.GetInt32()));
+        PhaseCandidate noEvidence=b04 with { Repeats=[b04.Repeats[0] with { B04Evidence=null }] };
+        using JsonDocument absent=PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(noEvidence));
+        Assert.False(Assert.Single(absent.RootElement.GetProperty("repeats").EnumerateArray()).TryGetProperty("b04_recorded_evidence",out _));
+    }
+
+    [Fact]
+    public void Given_MalformedB04CandidateEvidence_When_Read_Then_Rejects()
+    {
+        string json=System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        json=json.Replace("\"workload_observation\":", "\"b04_recorded_evidence\":{\"delivery_error_codes\":[2,1]},\"workload_observation\":", StringComparison.Ordinal);
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"delivery_error_codes\":[],\"fatal_errors\":[]}")]
+    [InlineData("{\"delivery_error_codes\":[-2147483648,0,2147483647],\"fatal_errors\":[{\"code\":-2147483648,\"name\":\"\"},{\"code\":2147483647,\"name\":\"z\"}]}")]
+    public void Given_ValidB04CandidateEvidence_When_Read_Then_PreservesClosedValues(string evidence)
+    {
+        using JsonDocument parsed=PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(CandidateWithB04(evidence)));
+        JsonElement actual=Assert.Single(parsed.RootElement.GetProperty("repeats").EnumerateArray()).GetProperty("b04_recorded_evidence");
+        if(evidence=="{}")Assert.Empty(actual.EnumerateObject());
+        else if(evidence=="{\"delivery_error_codes\":[],\"fatal_errors\":[]}")
+        {
+            Assert.Empty(actual.GetProperty("delivery_error_codes").EnumerateArray());
+            Assert.Empty(actual.GetProperty("fatal_errors").EnumerateArray());
+        }
+        else
+        {
+            Assert.Equal(new[]{"delivery_error_codes","fatal_errors"},actual.EnumerateObject().Select(x=>x.Name));
+            if(actual.TryGetProperty("delivery_error_codes",out JsonElement codes))
+                Assert.Equal(new[]{int.MinValue,0,int.MaxValue},codes.EnumerateArray().Select(x=>x.GetInt32()));
+            if(actual.TryGetProperty("fatal_errors",out JsonElement fatal))
+            {
+                Assert.Equal(new[]{"code","name"},fatal[0].EnumerateObject().Select(x=>x.Name));
+                Assert.Equal(int.MinValue,fatal[0].GetProperty("code").GetInt32());
+                Assert.Equal(string.Empty,fatal[0].GetProperty("name").GetString());
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("{\"unknown\":1}")]
+    [InlineData("{\"delivery_error_codes\":null}")]
+    [InlineData("{\"delivery_error_codes\":[\"1\"]}")]
+    [InlineData("{\"delivery_error_codes\":[2147483648]}")]
+    [InlineData("{\"delivery_error_codes\":[2,1]}")]
+    [InlineData("{\"delivery_error_codes\":[1,1]}")]
+    [InlineData("{\"fatal_errors\":null}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":2}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":\"1\",\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":2147483648,\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":\"n\",\"extra\":true}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"code\":1,\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":2,\"name\":\"n\"},{\"code\":1,\"name\":\"n\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":\"z\"},{\"code\":1,\"name\":\"a\"}]}")]
+    [InlineData("{\"fatal_errors\":[{\"code\":1,\"name\":\"a\"},{\"code\":1,\"name\":\"a\"}]}")]
+    public void Given_MalformedB04CandidateJson_When_Read_Then_Rejects(string evidence)
+    {
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(CandidateWithB04(evidence))));
+    }
+
+    [Theory]
+    [InlineData(255)] [InlineData(256)] [InlineData(257)]
+    public void Given_B04CandidateArrayBoundaries_When_ReadAndWritten_Then_Enforces256(int count)
+    {
+        string codes=string.Join(',',Enumerable.Range(0,count));
+        string fatal=string.Join(',',Enumerable.Range(0,count).Select(i=>"{\"code\":"+i+",\"name\":\"n\"}"));
+        bool valid=count<=256;
+        Assert.Equal(valid,TryReadCandidate(CandidateWithB04("{\"delivery_error_codes\":["+codes+"]}")));
+        Assert.Equal(valid,TryReadCandidate(CandidateWithB04("{\"fatal_errors\":["+fatal+"]}")));
+        PhaseCandidate candidate=CandidateWithB04(new B04RecordedEvidence(
+            Enumerable.Range(0,count).ToArray(),Enumerable.Range(0,count).Select(i=>new B04FatalError(i,"n")).ToArray()));
+        if(valid)using(PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate))){ }
+        else Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(candidate));
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(255)] [InlineData(256)] [InlineData(257)]
+    public void Given_B04CandidateFatalNameBoundaries_When_ReadAndWritten_Then_Enforces256(int length)
+    {
+        string name=new('x',length);
+        string json=CandidateWithB04("{\"fatal_errors\":[{\"code\":0,\"name\":\""+name+"\"}]}");
+        bool valid=length<=256;
+        Assert.Equal(valid,TryReadCandidate(json));
+        PhaseCandidate candidate=CandidateWithB04(new B04RecordedEvidence(null,[new B04FatalError(0,name)]));
+        if(valid)using(PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate))){ }
+        else Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(candidate));
+    }
+
+    [Fact]
+    public void Given_UnsortedB04CandidateRecords_When_Written_Then_RejectsMalformedValues()
+    {
+        PhaseCandidate delivery=CandidateWithB04(new B04RecordedEvidence([2,1],[]));
+        PhaseCandidate fatal=CandidateWithB04(new B04RecordedEvidence(null,[new B04FatalError(2,"n"),new B04FatalError(1,"n")]));
+        PhaseCandidate equalCodeReverseNames=CandidateWithB04(new B04RecordedEvidence(null,[new B04FatalError(1,"z"),new B04FatalError(1,"a")]));
+        PhaseCandidate duplicateFatal=CandidateWithB04(new B04RecordedEvidence(null,[new B04FatalError(1,"a"),new B04FatalError(1,"a")]));
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(delivery));
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(fatal));
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(equalCodeReverseNames));
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(duplicateFatal));
+    }
+
+    [Theory]
+    [InlineData("A01","probe","C0",true)]
+    [InlineData("A01","C0","C0",true)]
+    [InlineData("A01","C3","C3",true)]
+    [InlineData("B04","C0","C0",true)]
+    [InlineData("B04","C1","C1",true)]
+    [InlineData("B04","probe","C0",false)]
+    [InlineData("B04","C3","C3",false)]
+    [InlineData("A01","C1","C1",false)]
+    [InlineData("B04","C1","C0",false)]
+    public void Given_ScenarioPhaseConfiguration_When_CandidateRead_Then_EnforcesExecutablePairs(string scenario,string phase,string configuration,bool accepted)
+    {
+        string json=System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        json=json.Replace("\"scenario_id\":\"A01\"",$"\"scenario_id\":\"{scenario}\"",StringComparison.Ordinal)
+            .Replace("\"configuration_id\":\"C0\"",$"\"configuration_id\":\"{configuration}\"",StringComparison.Ordinal)
+            .Replace("\"phase\":\"C0\"",$"\"phase\":\"{phase}\"",StringComparison.Ordinal);
+        if(accepted)using(PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json))){ }
+        else Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
+    }
     [Fact]
     public void GivenCandidateWithBrokerAndWorkload_WhenWritten_ThenProjectsOpaqueBrokerAndRecordOnlyWorkload()
     {
@@ -285,6 +424,24 @@ public sealed class PhaseCandidateCodecTests
         string json = root.ToJsonString();
         Assert.Contains("\"repeat\":1,", json, StringComparison.Ordinal);
         return System.Text.Encoding.UTF8.GetBytes(json.Replace("\"repeat\":1,", "\"repeat\":1,\"broker_count\":" + countJson + ",", StringComparison.Ordinal));
+    }
+
+    private static string CandidateWithB04(string evidenceJson)
+    {
+        string json=System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        return json.Replace("\"workload_observation\":", "\"b04_recorded_evidence\":"+evidenceJson+",\"workload_observation\":", StringComparison.Ordinal);
+    }
+
+    private static PhaseCandidate CandidateWithB04(B04RecordedEvidence evidence)
+    {
+        PhaseCandidate candidate=Candidate();
+        return candidate with { Repeats=[candidate.Repeats[0] with { B04Evidence=evidence }] };
+    }
+
+    private static bool TryReadCandidate(string json)
+    {
+        try { using(PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json))) { return true; } }
+        catch(FormatException) { return false; }
     }
 
     private static PhaseCandidate Candidate()

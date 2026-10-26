@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Input;
 
@@ -90,13 +91,8 @@ public sealed class LoadGenHostOptions
         if (!System.Text.RegularExpressions.Regex.IsMatch(RunId, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant) || RunId.Length > 29)
             throw new InvalidOperationException("run_id_must_be_dns_label");
-        bool validPhaseConfiguration = Phase switch
-        {
-            "probe" => ConfigurationId == "C0",
-            "C0" => ConfigurationId == "C0",
-            "C3" => ConfigurationId == "C3",
-            _ => false
-        };
+        bool validPhaseConfiguration = ScenarioPhases.TryGetConfiguration(ScenarioId, Phase, out string? expectedConfiguration) &&
+            ConfigurationId == expectedConfiguration;
         if (!validPhaseConfiguration)
             throw new InvalidOperationException("phase_configuration_pair_invalid");
         if (RepeatNumber is < 1 or > 5) throw new InvalidOperationException("repeat_number_out_of_range");

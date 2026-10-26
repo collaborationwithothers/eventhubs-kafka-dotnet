@@ -107,11 +107,10 @@ class DispatchStateTests(unittest.TestCase):
         http, logs = self.evaluate({
             runs_path("scenario.yml"): page("workflow_runs", [run(1, updated=3599)]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", [run(2, status="queued")]),
-            runs_path("b04-scenario.yml"): 404,
             jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(3599)}]),
         }, (True, False))
         self.assertIn('"age_seconds": 3599.0', logs)
-        self.assertEqual(4, len(http.calls))
+        self.assertEqual(3, len(http.calls))
 
     def test_old_created_rerun_ends_last_at_3600_seconds_with_job_pagination(self):
         http, logs = self.evaluate({
@@ -119,21 +118,19 @@ class DispatchStateTests(unittest.TestCase):
             runs_path("cluster-smoke.yml"): page("workflow_runs", [
                 run(2, created=1000000, updated=3500, attempt=3),
                 run(3, created=2000000, updated=2000000)]),
-            runs_path("b04-scenario.yml"): 404,
             jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(7200)}]),
             jobs_path(2, 3): page("jobs", [{"id": 21, "completed_at": None}], total=2, more=True),
             jobs_path(2, 3, 2): page("jobs", [{"id": 22, "completed_at": stamp(3600)}], total=2),
         }, (True, True))
         self.assertIn('"age_seconds": 3600.0', logs)
         self.assertIn('"run_attempt": 3', logs)
-        self.assertEqual(6, len(http.calls))
+        self.assertEqual(5, len(http.calls))
         self.assertFalse(any("/runs/3/" in path for path, _ in http.calls))
 
     def test_completed_run_without_completed_jobs_and_absent_workflow_is_idle_only(self):
         _, logs = self.evaluate({
             runs_path("scenario.yml"): page("workflow_runs", [run(1)]),
             runs_path("cluster-smoke.yml"): 404,
-            runs_path("b04-scenario.yml"): 404,
             jobs_path(1): page("jobs", [{"id": 11, "completed_at": None}]),
         }, (True, False))
         self.assertIn('"event": "workflow_absent"', logs)
@@ -143,9 +140,8 @@ class DispatchStateTests(unittest.TestCase):
         http, logs = self.evaluate({
             runs_path("scenario.yml"): page("workflow_runs", [run(1, status="new_api_status")]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", [run(2, status="in_progress")]),
-            runs_path("b04-scenario.yml"): 404,
         }, (False, False))
-        self.assertEqual(3, len(http.calls))
+        self.assertEqual(2, len(http.calls))
         self.assertIn('"event": "dispatch_active_or_unknown"', logs)
 
     def test_run_pagination_cap_cannot_establish_idle(self):
@@ -155,7 +151,6 @@ class DispatchStateTests(unittest.TestCase):
                 total=301, more=True)
             for number in range(1, 4)
         }
-        replies[runs_path("b04-scenario.yml")] = 404
         http, logs = self.evaluate(replies, (False, False))
         self.assertEqual(3, len(http.calls))
         self.assertIn('"reason": "pagination_cap"', logs)
@@ -165,12 +160,11 @@ class DispatchStateTests(unittest.TestCase):
             runs_path("scenario.yml"): page("workflow_runs", [
                 run(index, created=10000 + index, updated=100) for index in range(1, 22)]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", []),
-            runs_path("b04-scenario.yml"): 404,
             **{jobs_path(index): page("jobs", [{"id": index, "completed_at": stamp(3600)}])
                for index in range(1, 21)},
         }
         http, logs = self.evaluate(replies, (True, False))
-        self.assertEqual(23, len(http.calls))
+        self.assertEqual(22, len(http.calls))
         self.assertIn('"reason": "completed_run_cap"', logs)
         self.assertIn('"inspected": 20', logs)
 
@@ -178,20 +172,19 @@ class DispatchStateTests(unittest.TestCase):
         http, logs = self.evaluate({
             runs_path("scenario.yml"): page("workflow_runs", [run(1)]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", []),
-            runs_path("b04-scenario.yml"): 404,
             jobs_path(1): (b"x" * (dispatch.MAX_BYTES + 1), False),
         }, (True, False))
         self.assertIn('"reason": "response_byte_cap"', logs)
         self.assertNotIn("x" * 100, logs)
         self.assertEqual(1, http.responses[-1].read_sizes[-1])
 
-    def test_b04_active_run_defers_all_cleanup(self):
+    def test_shared_scenario_active_run_defers_all_cleanup(self):
         http, logs = self.evaluate({
-            runs_path("scenario.yml"): page("workflow_runs", []),
+            runs_path("scenario.yml"): page("workflow_runs", [run(3, status="in_progress")]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", []),
-            runs_path("b04-scenario.yml"): page("workflow_runs", [run(3, status="in_progress")]),
         }, (False, False))
-        self.assertEqual(3, len(http.calls))
+        self.assertEqual(("scenario.yml", "cluster-smoke.yml"), dispatch.WORKFLOWS)
+        self.assertEqual(2, len(http.calls))
         self.assertIn('"event": "dispatch_active_or_unknown"', logs)
 
 

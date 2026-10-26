@@ -13,11 +13,14 @@ namespace Parchwell.Kafka.Configuration;
 /// </remarks>
 public sealed class KafkaScenarioOverrideSetting
 {
-    internal KafkaScenarioOverrideSetting(string key, int minimum, int maximum,
+    internal KafkaScenarioOverrideSetting(string key, KafkaScenarioOverrideValueKind valueKind, int minimum, int maximum,
         ImmutableArray<KafkaClientRole> supportedRoles, ImmutableArray<string> inventoryIds,
         ImmutableArray<KafkaSettingSource> sources)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        if (!Enum.IsDefined(valueKind)) throw new ArgumentOutOfRangeException(nameof(valueKind));
+        if (valueKind == KafkaScenarioOverrideValueKind.Boolean && (minimum != 0 || maximum != 1))
+            throw new ArgumentException("A boolean override uses the bounds 0 and 1.", nameof(minimum));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minimum, maximum);
         if (supportedRoles.IsDefaultOrEmpty || supportedRoles.Any(role => !Enum.IsDefined(role)))
             throw new ArgumentException("At least one defined client role is required.", nameof(supportedRoles));
@@ -27,6 +30,7 @@ public sealed class KafkaScenarioOverrideSetting
             throw new ArgumentException("Every override needs cited sources.", nameof(sources));
 
         Key = key;
+        ValueKind = valueKind;
         Minimum = minimum;
         Maximum = maximum;
         SupportedRoles = supportedRoles;
@@ -37,10 +41,13 @@ public sealed class KafkaScenarioOverrideSetting
     /// <summary>Gets the exact, case-sensitive Kafka configuration key.</summary>
     public string Key { get; }
 
-    /// <summary>Gets the native librdkafka minimum accepted value for this setting.</summary>
+    /// <summary>Gets the form of value this override accepts.</summary>
+    public KafkaScenarioOverrideValueKind ValueKind { get; }
+
+    /// <summary>Gets the native librdkafka minimum accepted value for this setting. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
     public int Minimum { get; }
 
-    /// <summary>Gets the native librdkafka maximum accepted value for this setting.</summary>
+    /// <summary>Gets the native librdkafka maximum accepted value for this setting. For a boolean entry this is a fixed placeholder and is not compared with the supplied literal.</summary>
     public int Maximum { get; }
 
     /// <summary>
@@ -74,8 +81,10 @@ public static class KafkaScenarioOverridePolicy
 
     private static readonly ImmutableArray<KafkaScenarioOverrideSetting> Entries =
     [
-        new("request.timeout.ms", 1, 900_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
-        new("socket.timeout.ms", 10, 300_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration])
+        new("request.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 1, 900_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
+        new("socket.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 10, 300_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
+        new("enable.idempotence", KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["B04"], [NativeConfiguration]),
+        new("max.in.flight", KafkaScenarioOverrideValueKind.Integer, 1, 1_000_000, [KafkaClientRole.LoadGenProducer], ["B04"], [NativeConfiguration])
     ];
 
     /// <summary>Gets the immutable list of exact keys accepted by the override policy.</summary>

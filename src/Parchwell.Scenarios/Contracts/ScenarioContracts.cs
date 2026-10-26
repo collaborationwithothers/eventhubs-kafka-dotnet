@@ -19,15 +19,15 @@ public sealed record ScenarioDiagnostic(string Source, string FieldPath, string 
     int? Line = null, int? Column = null);
 
 /// <summary>
-/// An override: one integer value in a scenario definition that replaces the value of one
-/// baseline Kafka setting for one client role, with the place in the file where it was written.
+/// An override: one value in a scenario definition that replaces one baseline Kafka setting
+/// for one client role, with the place in the file where it was written.
 /// </summary>
 /// <remarks>
-/// The loader checks only that the value is a plain decimal Int32. Which keys, roles and ranges are
+/// The loader stores either a plain decimal Int32 in invariant form or exactly true or false. Which keys, roles and ranges are
 /// allowed is checked later by <see cref="ScenarioResolver"/>. Overrides are how a scenario expresses
 /// its configurations as deltas from the baseline (ADR-014, ADR-015).
 /// </remarks>
-public sealed record SettingOverride(int Value, SourceLocation Location);
+public sealed record SettingOverride(string Value, SourceLocation Location);
 
 /// <summary>
 /// A configuration: one named variant of the experiment, such as a baseline run or a run with a

@@ -298,19 +298,21 @@ public sealed class LoadGenWorkerHostTests
     }
 
     [Theory]
-    [InlineData("probe", "C0", 1)]
-    [InlineData("probe", "C0", 5)]
-    [InlineData("C0", "C0", 1)]
-    [InlineData("C0", "C0", 5)]
-    [InlineData("C3", "C3", 1)]
-    [InlineData("C3", "C3", 5)]
+    [InlineData("A01", "probe", "C0", 1)]
+    [InlineData("A01", "probe", "C0", 5)]
+    [InlineData("A01", "C0", "C0", 1)]
+    [InlineData("A01", "C0", "C0", 5)]
+    [InlineData("A01", "C3", "C3", 1)]
+    [InlineData("A01", "C3", "C3", 5)]
+    [InlineData("B04", "C0", "C0", 1)]
+    [InlineData("B04", "C1", "C1", 1)]
     public void Given_RequiredRegisteredWorkerInputs_When_BindingHostOptions_Then_PreservesExactIdentityAndPrefixes(
-        string phase, string configurationId, int repeatNumber)
+        string scenarioId, string phase, string configurationId, int repeatNumber)
     {
         var publisher = new RecordingPublisher();
         var telemetry = new RecordingTelemetryRegistration();
         using IHost host = CreateHost(publisher, durationSeconds: 1, phase: phase,
-            configurationId: configurationId, repeatNumber: repeatNumber, telemetryRegistration: telemetry);
+            configurationId: configurationId, scenarioId: scenarioId, repeatNumber: repeatNumber, telemetryRegistration: telemetry);
         LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
         Assert.Equal(1, telemetry.RegistrationCount);
         ParchwellTelemetryOptions configuredTelemetry = Assert.IsType<ParchwellTelemetryOptions>(telemetry.ConfiguredOptions);
@@ -318,7 +320,7 @@ public sealed class LoadGenWorkerHostTests
         Assert.Equal(options.ApplicationInsightsConnectionString, configuredTelemetry.ConnectionString);
         Assert.Equal("Parchwell.LoadGen", configuredTelemetry.ServiceName);
         Assert.Equal("worker-pod", configuredTelemetry.ServiceInstanceId);
-        Assert.Equal("A01", configuredTelemetry.ScenarioId);
+        Assert.Equal(scenarioId, configuredTelemetry.ScenarioId);
         Assert.Equal(options.RunId, configuredTelemetry.RunId);
         var context = new ProducerRunContext(new Parchwell.LoadGen.Run.Contracts.RunIdentity(options.ScenarioId,
             options.ConfigurationId, options.RunId, options.ActualInstanceId, options.ExpectedInstanceId, options.ClientId),
@@ -343,6 +345,27 @@ public sealed class LoadGenWorkerHostTests
         Assert.Equal(context.InstancePrefix + "diagnostics/", context.DiagnosticsPrefix);
         Assert.Equal(context.InstancePrefix + "completion.json", context.CompletionPath);
         Assert.False(Directory.Exists(publisher.OutputRoot));
+    }
+
+    [Theory]
+    [InlineData("B04", "probe", "C0")]
+    [InlineData("B04", "C1", "C0")]
+    [InlineData("A01", "C1", "C1")]
+    public void Given_InvalidScenarioPhaseConfiguration_When_BindingHostOptions_Then_RejectsWithExistingDiagnostic(
+        string scenarioId, string phase, string configurationId)
+    {
+        string output = Path.Combine(Path.GetTempPath(), "invalid-phase-worker-" + Guid.NewGuid().ToString("N"));
+        Dictionary<string, string> inputs = LoadGenHostProcessTests.CreateInputs(output);
+        inputs["LoadGen__ScenarioId"] = scenarioId;
+        inputs["LoadGen__Phase"] = phase;
+        inputs["LoadGen__ConfigurationId"] = configurationId;
+        inputs["LoadGen__JobName"] = $"child-run-{phase.ToLowerInvariant()}-r1-loadgen";
+        string[] args = inputs.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+        var telemetry = new RecordingTelemetryRegistration();
+        OptionsValidationException failure = Assert.Throws<OptionsValidationException>(() =>
+            Program.BuildHostCore(args, null, telemetry.Register));
+        Assert.Contains("LoadGen host inputs or finite budgets are invalid.", failure.Failures);
+        Assert.Equal(0, telemetry.RegistrationCount);
     }
 
     [Theory]
@@ -559,7 +582,8 @@ public sealed class LoadGenWorkerHostTests
         int repeatNumber = 1, IProducerRunLifecycle? lifecycle = null,
         TimeProvider? timeProvider = null,
         RecordingTelemetryRegistration? telemetryRegistration = null,
-        ILogger<LoadGenWorker>? workerLogger = null)
+        ILogger<LoadGenWorker>? workerLogger = null,
+        string scenarioId = "A01")
     {
         ProducerFactoryTracker syntheticProducerFactory = producerFactory ?? new ProducerFactoryTracker();
         string output = Path.Combine(Path.GetTempPath(), "loadgen-host-run-" + Guid.NewGuid().ToString("N"));
@@ -567,6 +591,7 @@ public sealed class LoadGenWorkerHostTests
         if (publisher is BlockingPublisher blocking) blocking.OutputRoot = output;
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__RunId"] = "host-run-" + Guid.NewGuid().ToString("N")[..20];
+        values["LoadGen__ScenarioId"] = scenarioId;
         values["LoadGen__ConfigurationId"] = configurationId;
         values["LoadGen__Phase"] = phase;
         values["LoadGen__RepeatNumber"] = repeatNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
