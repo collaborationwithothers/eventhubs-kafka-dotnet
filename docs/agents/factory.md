@@ -4,6 +4,8 @@ How agents build this repository, and where Hari's judgment stays.
 
 Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request for issue #40 (2026-10-13): the "Decisions taken" date range and its "Tools" and "Where sessions run" rows, "Item lifecycle" step 2, "Escalation" layers 1 and 2, "Measuring the gate", the Copilot paragraph under "Ruleset", and "Sequence to start the factory" step 4. Hari's merge of that pull request is the approval. Amended in the pull request for issue #72 (2026-10-16): "Item lifecycle" step 1 and the plan template's "Enforced checks" field; amended again in the follow-up pull request for issue #72 (2026-10-17): "Item lifecycle" step 1 and the plan template's "Hypothesis" and "Decision rules" fields. Amended in the pull request for issue #85 (2026-10-18): "Item lifecycle" steps 1 and 3, "Modes of work" and "Escapes". Amended in the pull request for issue #104 (2026-10-21): "Item lifecycle" steps 1 and 3, standing approval of implementation-grade plans.
 
+The #211 amendment to "Evidence pack" follows [the adopted S0 decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/211#issuecomment-6423734358). Hari's merge of its pull request records approval of this amendment.
+
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
 ## Decisions taken (2026-10-11 to 2026-10-13)
@@ -85,8 +87,8 @@ Expected outcome file: scenarios/<ID>/expected.yaml (approved with this plan)
 Every verdict pull request contains:
 - the scenario definition and expected outcome as approved;
 - candidate-derived results per repeat in `results/<ID>/<utc-date>.json`;
-- per-repeat run validity and completion status, reasons for any invalid or incomplete result, with links to the workflow's per-repeat pod logs and pod JSON for worker exit outcomes;
-- verifier counts for every complete, valid repeat: `ok`, `loss`, `phantom`, `reported_failure`, `duplicate` and `reorder` (ADR-012); invalid or incomplete repeats retain diagnostic records with these authoritative counts absent, never substituted with zeros;
+- per-repeat run validity and completion status, reasons for any invalid or incomplete result, with links to the workflow's per-repeat pod logs and pod JSON for worker exit outcomes; for single-action probe items, link one pod log and one pod JSON per configuration Job, with each repeat's lines tagged by repeat number; retain the separate F04 seed Job's available pod evidence with its prerequisite evidence ([adopted S0 decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/211#issuecomment-6423734358));
+- verifier counts for every complete, valid repeat: `ok`, `loss`, `phantom`, `reported_failure`, `duplicate` and `reorder` (ADR-012); for single-action probe items, record these counts as not applicable and leave them absent, never zero ([approved counts exception](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415081194)); invalid or incomplete repeats retain diagnostic records with these authoritative counts absent, never substituted with zeros;
 - per-repeat broker connection counts for every Kafka client whose statistics the run captures (ADR-019 check 2), using the checked measurements defined in [verifier-contract.md](../operations/verifier-contract.md#statistics-and-configuration); unavailable measurements are not substituted with zeros;
 - Confluent.Kafka and librdkafka versions, PU count, node size, region, run timestamps;
 - the proposed verdict (confirmed, contradicted, undocumented, untestable) and a three-sentence summary.
