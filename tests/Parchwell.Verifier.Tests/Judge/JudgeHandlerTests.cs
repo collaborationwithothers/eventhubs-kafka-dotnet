@@ -43,6 +43,32 @@ public sealed class JudgeHandlerTests
     }
 
     [Fact]
+    public async Task GivenB04OptionsWithA01RepeatEvidence_WhenJudged_ThenRejectsCrossScenarioEvidence()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var options=Options();options.ScenarioId="B04";
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(options),verifier,
+            new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement root=candidate.RootElement;
+        Assert.Equal("B04",root.GetProperty("scenario_id").GetString());
+        Assert.Equal("invalid",root.GetProperty("status").GetString());
+        Assert.False(root.TryGetProperty("counts",out _));
+        foreach(JsonElement repeat in root.GetProperty("repeats").EnumerateArray())
+        {
+            Assert.False(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+            Assert.False(repeat.TryGetProperty("counts",out _));
+            Assert.False(repeat.TryGetProperty("broker_count",out _));
+            Assert.False(repeat.TryGetProperty("b04_recorded_evidence",out _));
+        }
+    }
+
+    [Fact]
     public async Task GivenFiveInvalidButUsableProbeRepeats_WhenJudged_ThenGatePassesAndCountsStayAbsent()
     {
         PhaseStores stores=await BuildFiveRepeats("probe",15);

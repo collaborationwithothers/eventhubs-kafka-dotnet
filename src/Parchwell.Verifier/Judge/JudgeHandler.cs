@@ -70,7 +70,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         {
                             registrationCount=producerListing.IsComplete&&registrationNames.Length==1?true:null;
                             string instance=registeredInstance!;
-                            jobBinding=registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
+                            jobBinding=registration.Identity.ScenarioId==options.ScenarioId&&registration.Identity.ConfigurationId==options.ConfigurationId&&
+                                registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
                                 registration.JobName==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&registration.Identity.InstanceId==instance&&
                                 registration.Identity.ExpectedInstanceId==instance&&registration.SourceCommit==options.SourceCommit;
                             identity=registration.Identity.InstanceId;
@@ -113,10 +114,12 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     // slot/source/Job mismatch even when the receipt's other
                     // artifacts or the verify publication are unavailable.
                     RunIdentity? startIdentity=r.Identity;
-                    bool startBinding=r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&
+                    bool startBinding=r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&
                         r.SourceCommit==options.SourceCommit&&
                         r.JobName==PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,i)&&
-                        startIdentity is not null&&startIdentity.RunId==options.RunId&&
+                        startIdentity is not null&&startIdentity.ScenarioId==options.ScenarioId&&startIdentity.ConfigurationId==options.ConfigurationId&&
+                        startIdentity.RunId==options.RunId&&
                         startIdentity.InstanceId==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&
                         startIdentity.ExpectedInstanceId==startIdentity.InstanceId;
                     if(!startBinding)jobBinding=false;
@@ -134,7 +137,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         startContentsValid=parsedNote.IsSuccess&&parsedInventory.IsSuccess&&parsedNote.Value!.Identity==r.Identity&&
                             parsedNote.Value.VerifierCommit==options.SourceCommit;
                     }
-                    startAccepted=r.Mode=="start-line"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&startContentsValid&&
+                    startAccepted=r.Mode=="start-line"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&startContentsValid&&
                         r.Artifacts[0].Name==noteName&&r.Artifacts[1].Name==inventoryName&&Matches(r.Artifacts[0],"verifier",noteName,note)&&
                         Matches(r.Artifacts[1],"verifier",inventoryName,inventory);
                     if(startAccepted && DateTimeOffset.TryParse(r.StartedUtc,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out var repeatStarted))
@@ -159,7 +164,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         if(producerReceiptBytes is not null)inputBudget.ConsumeBytes(producerReceiptBytes.LongLength);
                         if(producerReceiptBytes is not null)producerReceipt=PhaseWireCodec.ReadProducerCompletion(producerReceiptBytes);
                     }
-                    receiptValid=r.Mode=="verify"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&
+                    receiptValid=r.Mode=="verify"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&
                         r.HandlerExitCode is 0 or 1&&r.JobName==PhaseIdentity.VerifyJobName(options.RunId!,options.Phase!,i)&&
                         resultRef.Container=="verifier"&&resultRef.Name==resultName&&resultBytes is not null&&resultRef.Length==resultBytes.LongLength&&
                         resultRef.Sha256==Convert.ToHexStringLower(SHA256.HashData(resultBytes));
@@ -181,7 +188,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             bool semanticReceipt = result.VerifierCommit==r.SourceCommit &&
                                 (r.HandlerExitCode==0 ? result.Status==VerifierResultStatus.CompleteValid : result.Status!=VerifierResultStatus.CompleteValid);
                             receiptValid &= semanticReceipt;
-                            bool same=registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
+                            bool same=result.Identity.ScenarioId==options.ScenarioId&&result.Identity.ConfigurationId==options.ConfigurationId&&
+                                registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
                             receiptValid&=same;
                             publicationAccepted&=receiptValid;
                             // J3 binds the result to the verifier receipt and registered producer.
