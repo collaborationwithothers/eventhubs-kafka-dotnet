@@ -1,3 +1,6 @@
+{{- if has .Values.runtime.mode (list "single-action" "single-action-judge" "single-action-seed") -}}
+{{- include "parchwell.singleActionJob" . -}}
+{{- else -}}
 {{- $r := .Values.runtime -}}
 {{- $mode := $r.mode -}}
 {{- $role := include "parchwell.role" . -}}
@@ -159,3 +162,4 @@ spec:
           emptyDir: {sizeLimit: 8Gi}
         - name: tmp
           emptyDir: {}
+{{- end }}

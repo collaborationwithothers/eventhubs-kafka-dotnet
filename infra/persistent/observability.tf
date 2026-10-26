@@ -14,7 +14,7 @@ module "log_analytics" {
 }
 
 locals {
-  application_insights_roles = { for key in toset(["loadgen", "verifier"]) : key => {
+  application_insights_roles = { for key in toset(["loadgen", "verifier", "probe"]) : key => {
     role_definition_id_or_name       = "Monitoring Metrics Publisher"
     principal_id                     = module.workload_identities[key].principal_id
     principal_type                   = "ServicePrincipal"

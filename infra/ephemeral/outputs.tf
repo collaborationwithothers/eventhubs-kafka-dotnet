@@ -7,10 +7,10 @@ output "eventhubs" {
   }
 }
 output "blob" {
-  description = "Blob account URL and the three workload container names."
+  description = "Blob account URL and workload container names."
   value = {
     account_url = "https://${module.storage.fqdn.blob}"
-    containers  = { ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name }
+    containers  = { ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name, single_action = module.storage.containers.single_action.name }
   }
 }
 output "private_endpoint_ips" {

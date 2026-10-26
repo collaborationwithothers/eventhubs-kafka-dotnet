@@ -1,5 +1,6 @@
 """Synthetic command-contract tests; real judge bytes are checked at gate 2."""
 import contextlib
+import copy
 import importlib.util
 import io
 import json
@@ -20,6 +21,18 @@ PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwe
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
+BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 1980}
+BATCH_MATRIX = (
+    ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
+    ('B03', 'C1', 'loadgen'), ('B03', 'C2', 'loadgen'),
+    ('B03', 'C3', 'loadgen'), ('B03', 'C4', 'loadgen'),
+    ('B05', 'C1', 'loadgen'),
+    ('C08', 'C0', 'probe'), ('C08', 'C1', 'probe'),
+    ('C12', 'C1', 'probe'), ('C12', 'C2', 'probe'),
+    ('F04', 'C0', 'loadgen'), ('F04', 'C1', 'loadgen'),
+    ('F04', 'C2', 'probe'), ('F04', 'C3', 'loadgen'),
+    ('F04', 'C4', 'probe'),
+)
 
 
 class ScriptedCommands:
@@ -29,15 +42,40 @@ class ScriptedCommands:
         self.responses = {}
         self.download = b''
         self.properties = []
+        self.artifact_mutator = None
 
     def __call__(self, instance, args, seconds, output=None, maximum=4 * 1024 * 1024):
         args = list(map(str, args))
         self.calls.append((args, seconds, output, maximum))
         key, default = tuple(args), (0, '')
         if args[0] == 'helm':
-            values = json.loads(Path(args[-1]).read_text())['runtime']
-            name = phase.job_name(values['run_id'], values['phase'], values['mode'], values.get('repeat'))
-            default = (0, f'kind: Job\nmetadata:\n  name: "{name}"\nspec:\n  activeDeadlineSeconds: {DEADLINES[values["mode"]]}\n')
+            document = json.loads(Path(args[-1]).read_text())
+            values = document['runtime']
+            name = phase.job_name(values['run_id'], values['phase'], values['mode'], values.get('repeat'), document['scenario_id'], document['configuration_id'], values.get('action_role'))
+            deadline = {**DEADLINES, **BATCH_DEADLINES}[values['mode']]
+            default = (0, f'kind: Job\nmetadata:\n  name: "{name}"\nspec:\n  activeDeadlineSeconds: {deadline}\n')
+        elif len(args) == 4 and args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job']:
+            job = args[-1]
+            values = json.loads((instance.private / f'values-{job}.json').read_text())['runtime']
+            if values['mode'] in BATCH_DEADLINES:
+                directory = instance.artifacts / job
+                directory.mkdir()
+                role = values['action_role']
+                worker = 'verifier' if values['mode'] == 'single-action-judge' else 'loadgen'
+                pod = {'metadata': {'name': job + '-pod'},
+                       'spec': {'serviceAccountName': role, 'containers': [{'name': role, 'image': values[worker + '_image']}],
+                                'initContainers': [{'name': 'azure-wi-proxy-init', 'image': 'synthetic-init'}]},
+                       'status': {'containerStatuses': [{'name': role, 'state': {'terminated': {'exitCode': 0}}}]}}
+                pods = {'apiVersion': 'v1', 'kind': 'List', 'items': [pod]}
+                collection = {'complete': True, 'smoke_marker_valid': False, 'gaps': []}
+                logs = {f'{job}-pod.containers.{role}.log': 'worker startup\n' + json.dumps({'native_loaded': True, 'scenario_files': 3, 'uid_expected': 1654}) + '\n',
+                        f'{job}-pod.initContainers.azure-wi-proxy-init.log': 'init log without worker marker\n'}
+                if self.artifact_mutator:
+                    self.artifact_mutator(job, pods, collection, logs)
+                (directory / 'pods.json').write_text(json.dumps(pods))
+                (directory / 'collection-status.json').write_text(json.dumps(collection))
+                for name, content in logs.items():
+                    (directory / name).write_text(content)
         elif args[:3] == ['kubectl', 'get', 'pods']:
             default = (0, '{"items": []}')
         elif args[:4] == ['az', 'storage', 'blob', 'show']:
@@ -464,6 +502,227 @@ class PhaseTests(unittest.TestCase):
                           JOB_STATUS='success', WORKLOAD='true', REQUIRED_STEPS='', WORKLOAD_STEPS='')
         self.assertEqual(0, self.main('report'))
         self.assertTrue(self.summary_file.read_text().startswith('## B04 C1: passed'))
+
+    def prepare_batch(self):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
+        self.assertEqual(0, self.main('prepare-batch'))
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
+        self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
+        self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
+        self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
+        state = json.loads((self.private / 'phase.json').read_text())
+        state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in DIGESTS.items()}
+        (self.private / 'phase.json').write_text(json.dumps(state))
+        accounts = copy.deepcopy(ACCOUNTS)
+        for role in ('probe', 'enrichment-consumer'):
+            accounts[role] = {'name': role, 'client_id': 'synthetic-' + role, 'subject': 'system:serviceaccount:parchwell:' + role}
+        (self.private / 'cluster-output.json').write_text(json.dumps({'workload_identity': {'value': {'namespace': 'parchwell', 'service_accounts': accounts}}}))
+        ephemeral = copy.deepcopy(EPHEMERAL)
+        ephemeral['blob']['value']['containers']['single_action'] = 'single-action'
+        (self.private / 'ephemeral-output.json').write_text(json.dumps(ephemeral))
+        self.run_id = state['run_id']
+
+    def batch_name(self, mode, item='B01', configuration='C0'):
+        suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
+        return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
+
+    def test_batch_selection_and_strict_command_arguments(self):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
+        with self.mocked():
+            self.assertEqual(0, self.main('validate-batch'))
+            for selected, kind in [('probe-batch', 'batch'), ('probe-batch', 'unknown'), ('A01', 'smoke'), ('unknown', 'smoke')]:
+                with self.subTest(scenario=selected, run_kind=kind), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected, 'PARCHWELL_RUN_KIND': kind}):
+                    with contextlib.redirect_stderr(io.StringIO()) as error:
+                        self.assertEqual(2, phase.main(['validate-batch']))
+                    if kind == 'batch':
+                        self.assertEqual('probe batch actions require S2 (#213); select run_kind=smoke for S1\n', error.getvalue())
+                    self.assertEqual(2, self.main('prepare-batch'))
+                    self.assertEqual('', self.env_file.read_text())
+            for command in ('validate-batch', 'prepare-batch', 'single-action-seed', 'run-single-action-batch'):
+                self.assertEqual(2, self.main(command, 'extra'))
+            self.assertEqual(2, self.main('prepare', 'C0'))
+        self.assertEqual([], self.fake.calls)
+
+    def test_batch_preparation_privacy_and_metadata(self):
+        self.prepare_batch()
+        metadata = json.loads((self.private / 'phase.json').read_text())
+        self.assertEqual({'scenario': 'probe-batch', 'phase': 'single-action', 'configuration': None,
+                          'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke'},
+                         {key: value for key, value in metadata.items() if key != 'images'})
+        self.assertEqual({'phase': 'single-action', 'run_id': self.run_id, 'modes': [], 'candidate': None, 'safety_stop': False}, phase.Phase().state())
+        for directory in (self.private, self.artifacts, self.candidate_dir):
+            self.assertEqual(0o700, directory.stat().st_mode & 0o777)
+        self.assertNotEqual(self.private, self.artifacts)
+        for name in ('phase.json', 'persistent-output.json', 'cluster_backend.hcl', 'cluster_tfvars.tfvars.json', 'ephemeral_backend.hcl', 'ephemeral_tfvars.tfvars.json'):
+            self.assertEqual(0o600, (self.private / name).stat().st_mode & 0o777)
+            self.assertFalse((self.artifacts / name).exists())
+        self.assertEqual([], list(self.candidate_dir.iterdir()))
+        for overrides in ({'GITHUB_RUN_ID': '1' * 30}, {'GITHUB_SHA': 'invalid'}, {'S_CLUSTER_BACKEND': ''}):
+            self.env_file.write_text('')
+            with patch.dict(os.environ, overrides):
+                self.assertEqual(2, self.main('prepare-batch'))
+            self.assertEqual('', self.env_file.read_text())
+
+    def test_batch_matrix_names_roles_images_and_sequence(self):
+        self.assertEqual(BATCH_MATRIX, phase.SINGLE_ACTION_CONFIGURATIONS)
+        self.prepare_batch()
+        with self.mocked():
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(1, len(self.records()))
+            self.assertEqual(0, self.main('run-single-action-batch'))
+        expected = [('F04', 'C2', 'single-action-seed', 'enrichment-consumer')]
+        expected += [(item, configuration, mode, selected_role) for item, configuration, role in BATCH_MATRIX
+                     for mode, selected_role in [('single-action', role), ('single-action-judge', 'verifier')]]
+        self.assertEqual(33, len(self.records()))
+        self.assertEqual(33, len({record['job'] for record in self.records()}))
+        for record, (item, configuration, mode, role) in zip(self.records(), expected):
+            with self.subTest(job=record['job']):
+                self.assertEqual(self.batch_name(mode, item, configuration), record['job'])
+                self.assertEqual((item, configuration, mode, role, True, True, 'complete'),
+                                 (record['item'], record['configuration'], record['mode'], record['role'], record['image_smoke'], record['smoke_valid'], record['outcome']))
+                values_path = self.private / f'values-{record["job"]}.json'
+                document = json.loads(values_path.read_text())
+                runtime = document['runtime']
+                self.assertEqual((item, configuration, configuration, role, True),
+                                 (document['scenario_id'], document['configuration_id'], runtime['phase'], runtime['action_role'], runtime['image_smoke']))
+                self.assertEqual({'loadgen', 'verifier', 'probe', 'enrichment-consumer'}, set(runtime['service_accounts']))
+                self.assertNotIn('repeat', runtime)
+                self.assertNotIn('loadgen_job_name', runtime)
+                worker = 'verifier' if mode == 'single-action-judge' else 'loadgen'
+                pod = json.loads((self.artifacts / record['job'] / 'pods.json').read_text())['items'][0]
+                self.assertEqual(runtime[worker + '_image'], pod['spec']['containers'][0]['image'])
+                self.assertEqual('single-action', runtime['blob']['containers']['single_action'])
+                self.assertEqual(0o600, values_path.stat().st_mode & 0o777)
+                self.assertFalse((self.artifacts / values_path.name).exists())
+        self.assertEqual([record['job'] for record in self.records()],
+                         [call[0][3] for call in self.fake.calls if call[0][:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job']])
+        self.assertEqual(33, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+        self.assertFalse(any(call[0][0] == 'az' for call in self.fake.calls))
+        self.assertIsNone(phase.Phase().state()['candidate'])
+        self.assertEqual([], list(self.candidate_dir.iterdir()))
+
+    def test_batch_seed_failure_is_failure_despite_legacy_failed_outcome(self):
+        self.prepare_batch()
+        job = self.batch_name('single-action-seed')
+        self.fake.responses[('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', job, '1980')] = (1, '')
+        with self.mocked():
+            self.assertEqual(1, self.main('single-action-seed'))
+        self.assertEqual(1, len(self.records()))
+        self.assertEqual(('failed', False), (self.records()[0]['outcome'], self.records()[0]['smoke_valid']))
+        self.assertNotIn('failed', phase.BAD_OUTCOMES)
+
+    def test_batch_failed_job_and_collect_failures_do_not_pass(self):
+        for operation, code in [('wait-job', 1), ('collect-job', 1), ('collect-job', 2)]:
+            with self.subTest(operation=operation, code=code):
+                self.prepare_batch()
+                self.fake = ScriptedCommands()
+                job = self.batch_name('single-action')
+                args = ('bash', 'infra/scripts/lifecycle/lifecycle.sh', operation, job)
+                if operation == 'wait-job':
+                    args += ('1980',)
+                self.fake.responses[args] = (code, '')
+                with self.mocked():
+                    self.assertEqual(1, self.main('run-single-action-batch'))
+                self.assertEqual(32, len(self.records()))
+                self.assertFalse(self.records()[0]['smoke_valid'])
+                self.assertTrue(all(record['smoke_valid'] for record in self.records()[1:]))
+                self.assertEqual(32, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+
+    def test_batch_collected_pod_identity_exit_and_marker_contract(self):
+        def mutate(case, _job, pods, collection, logs):
+            pod = pods['items'][0]
+            worker_log = next(name for name in logs if '.containers.' in name)
+            if case == 'missing pod':
+                pods['items'] = []
+            elif case == 'duplicate pod':
+                pods['items'].append(copy.deepcopy(pod))
+            elif case == 'account':
+                pod['spec']['serviceAccountName'] = 'probe'
+            elif case == 'image':
+                pod['spec']['containers'][0]['image'] = 'unexpected-image'
+            elif case == 'exit':
+                pod['status']['containerStatuses'][0]['state']['terminated']['exitCode'] = 1
+            elif case == 'marker':
+                logs[worker_log] = '{"native_loaded":true,"scenario_files":2,"uid_expected":1654}\n'
+            elif case == 'marker types':
+                logs[worker_log] = '{"native_loaded":1,"scenario_files":3,"uid_expected":1654}\n'
+            elif case == 'missing log':
+                del logs[worker_log]
+            elif case == 'collection incomplete':
+                collection['complete'] = False
+            elif case == 'collection gap':
+                collection['gaps'] = [{'kind': 'log_read_failed'}]
+        for case in ('missing pod', 'duplicate pod', 'account', 'image', 'exit', 'marker', 'marker types', 'missing log', 'collection incomplete', 'collection gap'):
+            with self.subTest(case=case):
+                self.prepare_batch()
+                self.fake = ScriptedCommands()
+                self.fake.artifact_mutator = lambda *args: mutate(case, *args)
+                with self.mocked():
+                    self.assertEqual(1, self.main('single-action-seed'))
+                self.assertFalse(self.records()[0]['smoke_valid'])
+                self.assertTrue((self.artifacts / self.batch_name('single-action-seed') / 'pods.json').exists())
+
+    def test_batch_uncertain_pod_safety_stop_preserves_all_records(self):
+        self.prepare_batch()
+        job = self.batch_name('single-action')
+        self.fake.responses[('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', job, '1980')] = (124, '')
+        confirm = ('kubectl', 'get', 'pods', '-n', 'parchwell', '-l', f'job-name={job}', '-o', 'json', '--request-timeout=30s')
+        self.fake.responses[confirm] = (0, '{"items":[{"metadata":{"name":"uncertain"}}]}')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-single-action-batch'))
+        records = self.records()
+        self.assertEqual(['unknown'] + ['not_attempted'] * 31, [record['outcome'] for record in records])
+        self.assertTrue(all(record['reason'] == 'safety_stop' for record in records[1:]))
+        self.assertTrue(phase.Phase().state()['safety_stop'])
+        self.assertEqual(1, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+        calls = [tuple(call[0]) for call in self.fake.calls]
+        deletion = ('kubectl', 'delete', 'job', job, '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s')
+        self.assertEqual(confirm, calls[calls.index(deletion) + 1])
+
+    def test_batch_start_cap_configuration_boundary(self):
+        for elapsed, attempted in [(14399, 2), (14400, 0)]:
+            with self.subTest(elapsed=elapsed):
+                self.prepare_batch()
+                self.fake = ScriptedCommands()
+                times = [0, elapsed] + [14400] * 15
+                with self.mocked(), patch.object(phase.time, 'monotonic', side_effect=times):
+                    self.assertEqual(1, self.main('run-single-action-batch'))
+                records = self.records()
+                self.assertEqual(32, len(records))
+                self.assertEqual(['complete'] * attempted + ['not_attempted'] * (32 - attempted), [record['outcome'] for record in records])
+                self.assertTrue(all(record['reason'] == 'start_cap' for record in records[attempted:]))
+                self.assertEqual(attempted, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+                self.assertFalse(any(record['smoke_valid'] for record in records[attempted:]))
+
+    def test_expanded_blob_output_renders_legacy_a01_and_b04(self):
+        for selected in ('A01', 'B04'):
+            with self.subTest(scenario=selected):
+                os.environ['PARCHWELL_SCENARIO'] = selected
+                self.prepare('C0', run='synthetic-c6')
+                ephemeral = copy.deepcopy(EPHEMERAL)
+                ephemeral['blob']['value']['containers']['single_action'] = 'single-action'
+                (self.private / 'ephemeral-output.json').write_text(json.dumps(ephemeral))
+                self.assertEqual(DEADLINES['loadgen'], phase.Phase().render('loadgen', 1))
+                self.assertEqual({'loadgen', 'verifier'}, set(phase.Phase().values('loadgen', 1)['runtime']['service_accounts']))
+
+    def test_real_batch_chart_seed_action_judge(self):
+        self.prepare_batch()
+        # Synthetic GUIDs satisfy the chart account contract.
+        cluster = json.loads((self.private / 'cluster-output.json').read_text())
+        for index, account in enumerate(cluster['workload_identity']['value']['service_accounts'].values(), 1):
+            account['client_id'] = f'00000000-0000-0000-0000-{index:012d}'
+        (self.private / 'cluster-output.json').write_text(json.dumps(cluster))
+        for mode, item, configuration, role in [('single-action-seed', 'F04', 'C2', 'enrichment-consumer'),
+                                                ('single-action', 'C12', 'C2', 'probe'),
+                                                ('single-action-judge', 'C12', 'C2', 'verifier')]:
+            with self.subTest(mode=mode):
+                self.assertEqual(BATCH_DEADLINES[mode], phase.Phase().render(mode, None, item, configuration, role))
+                rendered = self.private / f'rendered-{self.batch_name(mode, item, configuration)}.yaml'
+                text = rendered.read_text()
+                self.assertIn('args: ["--image-smoke"]', text)
+                self.assertIn(f'serviceAccountName: "{role}"', text)
+                worker = 'verifier' if mode == 'single-action-judge' else 'loadgen'
+                self.assertIn(f'image: "parchwellacr.azurecr.io/parchwell/{worker}@{DIGESTS[worker]}"', text)
 
     def test_real_chart(self):
         for selected, configuration in [('probe', 'C0'), ('C0', 'C0'), ('C3', 'C3')]:

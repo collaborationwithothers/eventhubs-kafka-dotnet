@@ -1,5 +1,8 @@
 locals {
   workload_roles = {
+    probe_events_receiver              = { workload = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_eventhubs["document-events"].id }
+    probe_single_action_contributor    = { workload = "probe", role_definition_name = "Storage Blob Data Contributor", scope = module.storage.containers.single_action.id }
+    verifier_single_action_reader      = { workload = "verifier", role_definition_name = "Storage Blob Data Reader", scope = module.storage.containers.single_action.id }
     loadgen_events_sender              = { workload = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = module.eventhubs.resource_eventhubs["document-events"].id }
     loadgen_ledger_contributor         = { workload = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = module.storage.containers.ledger.id }
     enrichment_events_receiver         = { workload = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_eventhubs["document-events"].id }

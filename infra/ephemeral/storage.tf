@@ -16,9 +16,10 @@ locals {
     min_tls_version                 = "TLS1_2"
     role_assignments                = {}
     containers = {
-      ledger      = { name = "ledger", public_access = "None", role_assignments = {} }
-      verifier    = { name = "verifier", public_access = "None", role_assignments = {} }
-      claim_check = { name = "claim-check", public_access = "None", role_assignments = {} }
+      ledger        = { name = "ledger", public_access = "None", role_assignments = {} }
+      verifier      = { name = "verifier", public_access = "None", role_assignments = {} }
+      claim_check   = { name = "claim-check", public_access = "None", role_assignments = {} }
+      single_action = { name = "single-action", public_access = "None", role_assignments = {} }
     }
     private_endpoints_manage_dns_zone_group = true
     private_endpoints = {

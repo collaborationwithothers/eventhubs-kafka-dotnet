@@ -78,6 +78,11 @@ runtime:
         "MaxTotalInputBytes": 83886080,
         "ScenarioRoot": "/app"
       },
+      "single_action_execution": {
+        "action_job_seconds": 1980,
+        "judge_job_seconds": 120,
+        "termination_grace_seconds": 30
+      },
       "execution": {
         "loadgen_job_seconds": 1140,
         "verify_job_seconds": 750,
