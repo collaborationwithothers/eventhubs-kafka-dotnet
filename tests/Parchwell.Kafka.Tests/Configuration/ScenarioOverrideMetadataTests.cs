@@ -6,8 +6,8 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
-// Protects the scenario override policy: only the A01 timeout keys may be overridden, only for the
-// load generator, within the range cited from librdkafka v2.16.0 CONFIGURATION.md.
+// Protects the scenario override policy: only listed keys may be overridden, only for the load
+// generator, within the form and range cited from librdkafka v2.16.0 CONFIGURATION.md.
 [Trait("Category", "Unit")]
 public sealed class ScenarioOverrideMetadataTests
 {
@@ -16,17 +16,21 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(2, settings.Length);
+        Assert.Equal(4, settings.Length);
         Assert.Collection(settings,
-            setting => AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000),
-            setting => AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000));
+            setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
+            setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
+            setting => { AssertPolicyEntry(setting, "enable.idempotence", 0, 1, "B04"); Assert.Equal(KafkaScenarioOverrideValueKind.Boolean, setting.ValueKind); },
+            setting => { AssertPolicyEntry(setting, "max.in.flight", 1, 1_000_000, "B04"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); });
     }
 
     [Theory]
-    [InlineData("request.timeout.ms", 1, 900_000)]
-    [InlineData("socket.timeout.ms", 10, 300_000)]
+    [InlineData("request.timeout.ms", 1, 900_000, "A01")]
+    [InlineData("socket.timeout.ms", 10, 300_000, "A01")]
+    [InlineData("max.in.flight", 1, 1_000_000, "B04")]
+    [InlineData("enable.idempotence", 0, 1, "B04")]
     public void Given_OverrideKey_When_LookingUpPolicy_Then_ExposesPinnedNativeBoundsAndCitation(
-        string key, int minimum, int maximum)
+        string key, int minimum, int maximum, string inventoryId)
     {
         Assert.True(KafkaScenarioOverridePolicy.TryGetSetting(key, out var setting));
         Assert.NotNull(setting);
@@ -36,12 +40,14 @@ public sealed class ScenarioOverrideMetadataTests
         var source = Assert.Single(setting.Sources);
         Assert.Equal("https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md", source.Url.AbsoluteUri);
         Assert.Equal("v2.16.0", source.VersionOrDate);
-        Assert.Contains("A01", setting.InventoryIds);
+        Assert.Contains(inventoryId, setting.InventoryIds);
     }
 
     [Theory]
     [InlineData("request.timeout.ms")]
     [InlineData("socket.timeout.ms")]
+    [InlineData("enable.idempotence")]
+    [InlineData("max.in.flight")]
     public void Given_OverrideKey_When_CheckingRolePolicy_Then_AllowsOnlyLoadGenProducer(string key)
     {
         Assert.True(KafkaScenarioOverridePolicy.TryGetSetting(key, out var setting));
@@ -116,6 +122,31 @@ public sealed class ScenarioOverrideMetadataTests
     }
 
     [Fact]
+    public void Given_UndefinedValueKind_When_CreatingOverrideMetadata_Then_Throws()
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => CreateSetting(valueKind: (KafkaScenarioOverrideValueKind)99));
+        Assert.Equal("valueKind", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(-1, 1)]
+    [InlineData(0, 2)]
+    [InlineData(1, 1)]
+    public void Given_BooleanValueKindWithWrongBounds_When_CreatingOverrideMetadata_Then_Throws(int minimum, int maximum)
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateSetting(valueKind: KafkaScenarioOverrideValueKind.Boolean,
+            minimum: minimum, maximum: maximum));
+        Assert.Equal("minimum", exception.ParamName);
+    }
+
+    [Fact]
+    public void Given_BooleanValueKindWithPlaceholderBounds_When_CreatingOverrideMetadata_Then_Accepts()
+    {
+        var setting = CreateSetting(valueKind: KafkaScenarioOverrideValueKind.Boolean, minimum: 0, maximum: 1);
+        Assert.Equal(KafkaScenarioOverrideValueKind.Boolean, setting.ValueKind);
+    }
+
+    [Fact]
     public void Given_NoSupportedRoles_When_CreatingOverrideMetadata_Then_Throws()
     {
         var exception = Assert.Throws<ArgumentException>(() => CreateSetting(roles: []));
@@ -164,22 +195,23 @@ public sealed class ScenarioOverrideMetadataTests
     }
 
     private static void AssertPolicyEntry(KafkaScenarioOverrideSetting setting, string key,
-        int minimum, int maximum)
+        int minimum, int maximum, string inventoryId)
     {
         Assert.Equal(key, setting.Key);
         Assert.Equal(minimum, setting.Minimum);
         Assert.Equal(maximum, setting.Maximum);
         Assert.Equal([KafkaClientRole.LoadGenProducer], setting.SupportedRoles);
-        Assert.Equal(["A01"], setting.InventoryIds);
+        Assert.Equal([inventoryId], setting.InventoryIds);
         Assert.Single(setting.Sources);
     }
 
     private static KafkaScenarioOverrideSetting CreateSetting(string key = "request.timeout.ms",
         int minimum = 1, int maximum = 900_000,
+        KafkaScenarioOverrideValueKind valueKind = KafkaScenarioOverrideValueKind.Integer,
         ImmutableArray<KafkaClientRole> roles = default,
         ImmutableArray<string> inventoryIds = default,
         ImmutableArray<KafkaSettingSource> sources = default) =>
-        new(key, minimum, maximum,
+        new(key, valueKind, minimum, maximum,
             roles.IsDefault ? [KafkaClientRole.LoadGenProducer] : roles,
             inventoryIds.IsDefault ? ["A01"] : inventoryIds,
             sources.IsDefault

@@ -47,6 +47,9 @@ internal static class MeasurementCatalog
         entries.Add("producer.request_timeout", new("request_evidence", "event", "none", "request",
             [KafkaClientRole.LoadGenProducer, KafkaClientRole.EnrichmentProducer],
             "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L1043-L1049", "v2.16.0; collector pending"));
+        entries.Add("client.fatal_error", new("lifecycle", "error_code", "none", "run",
+            [KafkaClientRole.LoadGenProducer],
+            "https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md#fatal-errors", "v2.16.0"));
         return entries.ToImmutable();
     }
 }

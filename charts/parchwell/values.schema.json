@@ -9,11 +9,15 @@
   ],
   "properties": {
     "scenario_id": {
-      "const": "A01"
+      "enum": [
+        "A01",
+        "B04"
+      ]
     },
     "configuration_id": {
       "enum": [
         "C0",
+        "C1",
         "C3"
       ]
     },
@@ -46,6 +50,7 @@
           "enum": [
             "probe",
             "C0",
+            "C1",
             "C3"
           ]
         },

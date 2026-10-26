@@ -128,14 +128,19 @@ internal static class DefinitionReader
                 {
                     // Only the form of the value is checked here. The resolver decides whether the key, role and range
                     // are allowed.
+                    if (settingNode is ScalarNode { IsPlain: true, Value: "true" or "false" } literal)
+                    {
+                        values[key] = new SettingOverride(literal.Value, settingNode.Location);
+                        continue;
+                    }
                     if (settingNode is not ScalarNode { IsPlain: true } scalar || !int.TryParse(scalar.Value,
                             NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ||
                         !IsSignedInteger(scalar.Value))
                     {
-                        validation.Error(settingNode, NodeValidation.Join(rolePath, key), "int32_required", "Expected a plain decimal Int32 replacement.");
+                        validation.Error(settingNode, NodeValidation.Join(rolePath, key), "int32_required", "Expected a plain decimal Int32 or a plain true or false replacement.");
                         continue;
                     }
-                    values[key] = new SettingOverride(number, settingNode.Location);
+                    values[key] = new SettingOverride(number.ToString(CultureInfo.InvariantCulture), settingNode.Location);
                 }
                 overrides[role] = values.ToImmutable();
             }

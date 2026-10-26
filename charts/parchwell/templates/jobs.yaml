@@ -4,7 +4,7 @@
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts $role -}}
 {{- $phaseOK := or (and (eq $r.phase "probe") (eq $.Values.configuration_id "C0")) (eq $r.phase $.Values.configuration_id) -}}
-{{- if not $phaseOK }}{{ fail "phase/configuration pair must be probe/C0, C0/C0 or C3/C3" }}{{ end -}}
+{{- if not $phaseOK }}{{ fail "phase/configuration must be probe/C0, C0/C0, C1/C1, or C3/C3" }}{{ end -}}
 {{- if and (ne $mode "judge") (ne $r.loadgen_job_name (printf "%s-%s-r%d-loadgen" $r.run_id (lower $r.phase) (int $r.repeat))) }}{{ fail "loadgen_job_name must equal the derived producer Job name" }}{{ end -}}
 {{- if or (contains " " $r.blob.account_url) (contains "\t" $r.blob.account_url) }}{{ fail "blob account URL must be an HTTPS account-root URI" }}{{ end -}}
 {{- range $ip := list $r.eventhubs_ip $r.blob_ip -}}
@@ -90,7 +90,7 @@ spec:
             - name: Telemetry__ServiceInstanceId
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             - name: Telemetry__ScenarioId
-              value: A01
+              value: {{ $.Values.scenario_id | quote }}
             - name: Telemetry__RunId
               value: {{ $r.run_id | quote }}
             {{- if eq $role "loadgen" }}
@@ -98,7 +98,7 @@ spec:
             - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ end }}
-            {{- range $key, $value := dict "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "RepeatNumber" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ApplicationInsightsConnectionString" $r.application_insights_connection_string }}
+            {{- range $key, $value := dict "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "RepeatNumber" (printf "%d" (int $r.repeat)) "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "BlobContainer" "ledger" "ApplicationInsightsConnectionString" $r.application_insights_connection_string }}
             - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
@@ -117,7 +117,7 @@ spec:
             - name: {{ printf "Verifier__ScenarioLoadOptions__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
-            {{- range $key, $value := dict "Mode" $mode "ScenarioId" "A01" "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
+            {{- range $key, $value := dict "Mode" $mode "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}

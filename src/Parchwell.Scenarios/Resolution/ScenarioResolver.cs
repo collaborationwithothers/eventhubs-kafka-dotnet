@@ -54,12 +54,21 @@ public sealed class ScenarioResolver
                     foreach (var item in overrides.OrderBy(pair => pair.Key, StringComparer.Ordinal))
                     {
                         var fieldPath = $"configurations.{configuration.Key}.{role}.{item.Key}";
-                        var bounds = GetSupportedBounds(role, item.Key, definition, fieldPath, item.Value.Location);
+                        var setting = GetSupportedSetting(role, item.Key, definition, fieldPath, item.Value.Location);
                         var value = item.Value.Value;
-                        if (value < bounds.Minimum || value > bounds.Maximum)
+                        int parsedValue = 0;
+                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean)
                         {
+                            if (value is not ("true" or "false"))
+                                throw Invalid(definition, fieldPath, "setting_out_of_range",
+                                    $"{item.Key} must be true or false.", item.Value.Location);
+                        }
+                        else if (!int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out parsedValue) ||
+                            parsedValue < setting.Minimum || parsedValue > setting.Maximum)
+                        {
+                            var unit = item.Key.EndsWith(".ms", StringComparison.Ordinal) ? " milliseconds" : string.Empty;
                             throw Invalid(definition, fieldPath, "setting_out_of_range",
-                                $"{item.Key} must be between {bounds.Minimum.ToString(CultureInfo.InvariantCulture)} and {bounds.Maximum.ToString(CultureInfo.InvariantCulture)} milliseconds.",
+                                $"{item.Key} must be between {setting.Minimum.ToString(CultureInfo.InvariantCulture)} and {setting.Maximum.ToString(CultureInfo.InvariantCulture)}{unit}.",
                                 item.Value.Location);
                         }
 
@@ -76,24 +85,34 @@ public sealed class ScenarioResolver
                                 item.Value.Location);
                         }
 
-                        if (!int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var baselineValue))
+                        int baselineValue = 0;
+                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean)
+                        {
+                            if (inherited.Value is not ("true" or "false"))
+                                throw Invalid(definition, fieldPath, "invalid_baseline_value",
+                                    "The baseline value for this boolean setting is not true or false.", item.Value.Location);
+                        }
+                        else if (!int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out baselineValue))
                         {
                             throw Invalid(definition, fieldPath, "invalid_baseline_value",
-                                "The baseline value for this numeric setting is not a plain decimal integer.",
-                                item.Value.Location);
+                                "The baseline value for this numeric setting is not a plain decimal integer.", item.Value.Location);
                         }
 
-                        // An override equal to the baseline would label a configuration as different while it runs the same
-                        // settings, so it is rejected.
-                        if (value == baselineValue)
-                        {
+                        // An override equal to the baseline would label a configuration as different while it runs the same settings.
+                        var noOp = setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
+                            ? string.Equals(value, inherited.Value, StringComparison.Ordinal)
+                            : parsedValue == baselineValue;
+                        if (noOp)
                             throw Invalid(definition, fieldPath, "no_op_override",
-                                "An override must change the numeric baseline value.", item.Value.Location);
-                        }
+                                setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
+                                    ? "An override must change the boolean baseline value."
+                                    : "An override must change the numeric baseline value.", item.Value.Location);
 
                         effective = effective.SetItem(item.Key, inherited with
                         {
-                            Value = value.ToString(CultureInfo.InvariantCulture),
+                            Value = setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean
+                                ? value
+                                : parsedValue.ToString(CultureInfo.InvariantCulture),
                             Override = new OverrideOrigin(definition.Id, configuration.Key,
                                 item.Value.Location)
                         });
@@ -176,7 +195,7 @@ public sealed class ScenarioResolver
         _ => throw new InvalidOperationException($"Kafka role {role} is not supported.")
     };
 
-    private static (int Minimum, int Maximum) GetSupportedBounds(KafkaClientRole role, string key,
+    private static KafkaScenarioOverrideSetting GetSupportedSetting(KafkaClientRole role, string key,
         ScenarioDefinition definition, string fieldPath, SourceLocation location)
     {
         if (!KafkaScenarioOverridePolicy.SupportsRole(role))
@@ -191,7 +210,7 @@ public sealed class ScenarioResolver
                 "The setting is not supported by the scenario override policy.", location);
         }
 
-        return (setting.Minimum, setting.Maximum);
+        return setting;
     }
 
     private static ScenarioValidationException Invalid(ScenarioDefinition definition, string fieldPath,

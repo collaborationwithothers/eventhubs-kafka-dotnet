@@ -30,7 +30,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-expected='{"native_loaded":true,"scenario_files":2,"uid_expected":1654}'
+expected='{"native_loaded":true,"scenario_files":3,"uid_expected":1654}'
 for project in LoadGen Verifier; do
     worker=${project,,}
     archive="$work/$worker.tar.gz"

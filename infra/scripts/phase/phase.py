@@ -131,6 +131,18 @@ class Phase:
         if not re.fullmatch(RESOURCE, require("PARCHWELL_CLUSTER_RESOURCE_ID")):
             raise Failure("invalid AKS resource ID")
 
+    def validate_scenario(self):
+        scenario()
+        return 0
+
+    def allow_images(self):
+        allowed = all(re.fullmatch(DIGEST, os.environ.get(name, "")) is not None
+                      for name in ("LOADGEN_DIGEST", "VERIFIER_DIGEST"))
+        decision = "workload=" + str(allowed).lower()
+        append_lines(require("GITHUB_OUTPUT"), [decision])
+        print(decision)
+        return 0
+
     def prepare(self, phase):
         selected = scenario()
         if phase not in SCENARIOS[selected]:
@@ -488,6 +500,7 @@ class Phase:
 
 def main(argv):
     commands = {"prepare": (1, "prepare"), "prepare-stop": (0, "prepare_stop"), "allow-c3": (0, "allow_c3"),
+                "validate-scenario": (0, "validate_scenario"), "allow-images": (0, "allow_images"),
                 "publish-images": (0, "publish_images"), "use-images": (2, "use_images"), "check-dns": (0, "check_dns"),
                 "run-repeats": (0, "run_repeats"), "judge": (0, "judge"), "candidate": (0, "candidate"),
                 "delete-workload": (0, "delete_workload"), "report": (0, "report")}

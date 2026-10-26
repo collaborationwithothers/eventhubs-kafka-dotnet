@@ -172,7 +172,7 @@ internal static partial class Program
             options.ScenarioId=configuration["Telemetry:ScenarioId"]??string.Empty;
             options.RunId=configuration["Telemetry:RunId"]??string.Empty;
         });
-        if(configuration["Telemetry:ServiceName"]!="Parchwell.Verifier"||configuration["Telemetry:ScenarioId"]!="A01"||
+        if(configuration["Telemetry:ServiceName"]!="Parchwell.Verifier"||configuration["Telemetry:ScenarioId"]!=configuration["Verifier:ScenarioId"]||
             configuration["Telemetry:RunId"]!=configuration["Verifier:RunId"]||string.IsNullOrWhiteSpace(configuration["Telemetry:ServiceInstanceId"]))
             throw new InvalidOperationException($"Telemetry identity is invalid for mode {mode}.");
     }

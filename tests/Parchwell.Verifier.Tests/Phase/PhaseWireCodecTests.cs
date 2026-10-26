@@ -14,6 +14,7 @@ public sealed class PhaseWireCodecTests
     [Theory]
     [InlineData("probe","probe")]
     [InlineData("C0","C0")]
+    [InlineData("C1","C1")]
     [InlineData("C3","C3")]
     public void Given_ValidPhase_When_DerivingRepeatNames_Then_PreservesBlobCaseAndLowercasesJob(string phase,string path)
     {
@@ -107,6 +108,44 @@ public sealed class PhaseWireCodecTests
         Assert.Equal(value,PhaseWireCodec.ReadRegistration(bytes));
         byte[] malformed=[..bytes.AsSpan(0,bytes.Length-1).ToArray(),..Encoding.UTF8.GetBytes(",\"extra\":true}")];
         Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.ReadRegistration(malformed));
+    }
+
+    [Theory]
+    [InlineData("B04","C0","C0",true)]
+    [InlineData("B04","C1","C1",true)]
+    [InlineData("B04","probe","C0",false)]
+    [InlineData("B04","C3","C3",false)]
+    [InlineData("A01","C1","C1",false)]
+    [InlineData("B04","C1","C0",false)]
+    public void Given_ScenarioPhaseConfiguration_When_ReceiptWritten_Then_EnforcesExecutablePairs(string scenario,string phase,string configuration,bool accepted)
+    {
+        var receipt=new WorkerReceipt(1,"judge",scenario,configuration,"synthetic-c5",phase,null,
+            PhaseIdentity.JudgeJobName("synthetic-c5",phase),"judge-pod",null,new string('a',40),1,true,
+            "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",
+            [new("verifier",PhasePaths.Candidate("synthetic-c5",phase),1,new string('a',64))],null,null);
+        var identity=new RunIdentity(scenario,configuration,"synthetic-c5","producer-c5","producer-c5","producer-c5");
+        var registration=new ProducerRegistration(1,identity,phase,1,PhaseIdentity.JobName("synthetic-c5",phase,1),"pod-c5","uid-c5",new string('a',40));
+        var completion=new ProducerCompletionReceipt(1,identity,phase,1,registration.JobName,"pod-c5","uid-c5",new string('a',40),"loadgen",0,true);
+        var verifyReceipt=new WorkerReceipt(1,"verify",scenario,configuration,"synthetic-c5",phase,1,
+            PhaseIdentity.VerifyJobName("synthetic-c5",phase,1),"verifier-pod",identity,new string('a',40),0,true,
+            "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",
+            [new("verifier",PhasePaths.Result("synthetic-c5",phase,1),1,new string('a',64))],null,new("pass","pass","pass"));
+        if(accepted)
+        {
+            Assert.Equal(phase,PhaseWireCodec.ReadReceipt(PhaseWireCodec.WriteReceipt(receipt)).Phase);
+            Assert.Equal(registration,PhaseWireCodec.ReadRegistration(PhaseWireCodec.WriteRegistration(registration)));
+            Assert.Equal(completion,PhaseWireCodec.ReadProducerCompletion(PhaseWireCodec.WriteProducerCompletion(completion)));
+            WorkerReceipt actualVerify=PhaseWireCodec.ReadReceipt(PhaseWireCodec.WriteReceipt(verifyReceipt));
+            Assert.Equal(verifyReceipt with { Artifacts=actualVerify.Artifacts },actualVerify);
+            Assert.Equal(verifyReceipt.Artifacts,actualVerify.Artifacts);
+        }
+        else
+        {
+            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteReceipt(receipt));
+            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteRegistration( registration));
+            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.ReadProducerCompletion(PhaseWireCodec.WriteProducerCompletion(completion)));
+            Assert.ThrowsAny<Exception>(()=>PhaseWireCodec.WriteReceipt(verifyReceipt));
+        }
     }
 
     [Fact]

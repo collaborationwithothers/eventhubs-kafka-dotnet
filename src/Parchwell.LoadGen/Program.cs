@@ -213,7 +213,7 @@ internal static class Program
         try
         {
             _ = Library.VersionString;
-            string[] paths = ["scenarios/A01/scenario.yaml", "scenarios/profiles/saturation-ramp.yaml"];
+            string[] paths = ["scenarios/A01/scenario.yaml", "scenarios/B04/scenario.yaml", "scenarios/profiles/saturation-ramp.yaml"];
             foreach (string path in paths)
             {
                 string current = AppContext.BaseDirectory;
@@ -226,7 +226,7 @@ internal static class Program
                 if ((File.GetAttributes(current) & FileAttributes.Directory) != 0)
                     throw new InvalidDataException("image_scenario_file_not_regular");
             }
-            Console.Out.WriteLine("{\"native_loaded\":true,\"scenario_files\":2,\"uid_expected\":1654}");
+            Console.Out.WriteLine("{\"native_loaded\":true,\"scenario_files\":3,\"uid_expected\":1654}");
             return 0;
         }
         catch

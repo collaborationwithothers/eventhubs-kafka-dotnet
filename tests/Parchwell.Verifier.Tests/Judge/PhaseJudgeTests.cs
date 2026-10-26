@@ -105,6 +105,65 @@ public sealed class PhaseJudgeTests
             Assert.Equal(new BrokerConnectionCount("LoadGenProducer", $"client-{i}", i + 1, i, true), result.Repeats[i - 1].BrokerCount);
     }
 
+    [Theory]
+    [InlineData("start")]
+    [InlineData("publication")]
+    [InlineData("receipt")]
+    [InlineData("job")]
+    [InlineData("registration")]
+    [InlineData("inventory")]
+    public void Given_B04EvidenceAndFailedTrustPredicate_When_Judged_Then_OmitsOnlyUntrustedProjection(string predicate)
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with
+        { B04Evidence=new([i],[new B04FatalError(i,"fatal")]) }).ToArray();
+        evidence[2]=predicate switch
+        {
+            "start"=>evidence[2] with{StartLineAccepted=false},
+            "publication"=>evidence[2] with{PublicationAccepted=false},
+            "receipt"=>evidence[2] with{VerifierReceiptValid=false},
+            "job"=>evidence[2] with{JobBindingPass=false},
+            "registration"=>evidence[2] with{RegistrationCountPass=false},
+            "inventory"=>evidence[2] with{InventoryCoveragePass=false},
+            _=>throw new ArgumentOutOfRangeException(nameof(predicate))
+        };
+        PhaseJudgement result=PhaseJudge.Evaluate("C1",evidence);
+        Assert.Null(result.Repeats[2].B04Evidence);
+        Assert.Equal(evidence[0].B04Evidence,result.Repeats[0].B04Evidence);
+    }
+
+    [Theory]
+    [InlineData("job")]
+    [InlineData("registration")]
+    [InlineData("inventory")]
+    public void Given_NullableB04TrustPredicate_When_Judged_Then_OmitsProjection(string predicate)
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with { B04Evidence=new([i],[]) }).ToArray();
+        evidence[0]=predicate switch
+        {
+            "job"=>evidence[0] with{JobBindingPass=null},
+            "registration"=>evidence[0] with{RegistrationCountPass=null},
+            "inventory"=>evidence[0] with{InventoryCoveragePass=null},
+            _=>throw new ArgumentOutOfRangeException(nameof(predicate))
+        };
+        Assert.Null(PhaseJudge.Evaluate("C1",evidence).Repeats[0].B04Evidence);
+    }
+
+    [Fact]
+    public void Given_KnownInvalidOrSlotOnlyIssue_When_Judged_Then_PreservesTrustedB04Evidence()
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with { B04Evidence=new([i],[]) }).ToArray();
+        evidence[1]=evidence[1] with{KnownInvalid=true};
+        evidence[2]=evidence[2] with{SlotPresent=false};
+        PhaseJudgement result=PhaseJudge.Evaluate("C1",evidence);
+        Assert.Equal(evidence[1].B04Evidence,result.Repeats[1].B04Evidence);
+        Assert.Null(result.Repeats[1].Counts);
+        Assert.Equal(evidence[2].B04Evidence,result.Repeats[2].B04Evidence);
+        PhaseJudgement extra=PhaseJudge.Evaluate("C1",evidence.Append(Complete(6,null)).ToArray());
+        Assert.Equal(evidence[0].B04Evidence,extra.Repeats[0].B04Evidence);
+        PhaseJudgement duplicate=PhaseJudge.Evaluate("C1",evidence.Append(evidence[0]).ToArray());
+        Assert.Null(duplicate.Repeats[0].B04Evidence);
+    }
+
     [Fact]
     public void Given_MessageInvalidityWithAuthorizedBrokerCount_When_Judged_Then_RetainsMeasurementAndPassingProbe()
     {

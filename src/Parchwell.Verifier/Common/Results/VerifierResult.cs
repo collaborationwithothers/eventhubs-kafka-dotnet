@@ -33,7 +33,8 @@ internal sealed record VerifierResult(
     A01RecordedEvidence? A01RecordedEvidence,
     IReadOnlyList<JudgedFileHash> JudgedFileHashes,
     IReadOnlyList<ResultDiagnostic> Diagnostics,
-    WorkloadObservation? WorkloadObservation = null);
+    WorkloadObservation? WorkloadObservation = null,
+    B04RecordedEvidence? B04RecordedEvidence = null);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);
@@ -76,6 +77,12 @@ internal sealed record ProbeRepeatObservation(
 internal sealed record A01RecordedEvidence(
     IReadOnlyList<int>? DeliveryErrorCodes,
     IReadOnlyList<A01WindowEvidence>? Windows);
+
+/// <summary>Contains bounded recorded evidence for the B04 scenario.</summary>
+internal sealed record B04RecordedEvidence(IReadOnlyList<int>? DeliveryErrorCodes, IReadOnlyList<B04FatalError>? FatalErrors);
+
+/// <summary>Records one distinct fatal client error supplied by captured lifecycle evidence.</summary>
+internal sealed record B04FatalError(int Code, string Name);
 
 /// <summary>Records supplied increments and selected native values for one A01 window.</summary>
 internal sealed record A01WindowEvidence(

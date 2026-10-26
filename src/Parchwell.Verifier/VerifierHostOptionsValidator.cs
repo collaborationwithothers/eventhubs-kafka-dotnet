@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Parchwell.Scenarios;
 
 namespace Parchwell.Verifier;
 
@@ -20,8 +21,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         }
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
-        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge && options.ScenarioId != "A01")
-            errors.Add("Verifier:ScenarioId must be A01 for C5 modes.");
+        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
+            errors.Add("Verifier:ScenarioId must be A01 or B04 for C5 modes.");
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         RequireText(options.SourceCommit, "PARCHWELL_SOURCE_COMMIT", errors);
         if (options.SourceCommit is not null && options.VerifierCommit != options.SourceCommit) errors.Add("Verifier:VerifierCommit must equal PARCHWELL_SOURCE_COMMIT.");
@@ -62,8 +63,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             {
                 ValidatePodName(options.PodName, errors);
                 RequireText(options.CandidateOutputName, "Verifier:CandidateOutputName", errors);
-                if(options.RunId is not null&&(options.Phase is "probe" or "C0" or "C3")&&Common.Phase.PhaseIdentity.IsRunId(options.RunId)&&
-                    options.CandidateOutputName!=Common.Phase.PhasePaths.Candidate(options.RunId,options.Phase))
+                if(options.RunId is not null&&Common.Phase.PhaseIdentity.IsPhase(options.Phase)&&Common.Phase.PhaseIdentity.IsRunId(options.RunId)&&
+                    options.CandidateOutputName!=Common.Phase.PhasePaths.Candidate(options.RunId,options.Phase!))
                     errors.Add("Verifier:CandidateOutputName must be the derived phase path.");
                 ValidateImageReference(options.LoadGenImage, "Verifier:LoadGenImage", errors);
                 ValidateImageReference(options.VerifierImage, "Verifier:VerifierImage", errors);
@@ -79,7 +80,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 RequireText(options.BrokerInventoryOutputName, "Verifier:BrokerInventoryOutputName", errors);
                 RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
                 RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
-                if ((options.Phase is "probe" or "C0" or "C3") && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5)
+                if (Common.Phase.PhaseIdentity.IsPhase(options.Phase) && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5)
                 {
                     if (options.StartLineOutputName != Common.Phase.PhasePaths.StartLine(options.RunId!, options.Phase!, options.Repeat.Value)) errors.Add("Start-line output path must be the derived repeat path.");
                     if (options.BrokerInventoryOutputName != Common.Phase.PhasePaths.BrokerInventory(options.RunId!, options.Phase!, options.Repeat.Value)) errors.Add("Broker inventory output path must be the derived repeat path.");
@@ -105,7 +106,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 ValidateScenarioLoadOptions(options.ScenarioLoadOptions, errors);
                 if (options.ExpectedBrokerNames is not null)
                     errors.Add("Verifier:ExpectedBrokerNames is not accepted; broker inventory is discovered independently.");
-                if ((options.Phase is "probe" or "C0" or "C3") && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5)
+                if (Common.Phase.PhaseIdentity.IsPhase(options.Phase) && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5)
                 {
                     if (options.StartLineInputName != Common.Phase.PhasePaths.StartLine(options.RunId!, options.Phase!, options.Repeat.Value)) errors.Add("Start-line input path must be the derived repeat path.");
                     if (options.ResultOutputName != Common.Phase.PhasePaths.Result(options.RunId!, options.Phase!, options.Repeat.Value)) errors.Add("Result output path must be the derived repeat path.");
@@ -212,9 +213,9 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.RunId, "Verifier:RunId", errors);
         if (!Common.Phase.PhaseIdentity.IsRunId(options.RunId)) errors.Add("Verifier:RunId must be a DNS-safe run identifier.");
         RequireText(options.Phase, "Verifier:Phase", errors);
-        if (options.Phase is not ("probe" or "C0" or "C3")) errors.Add("Verifier:Phase must be exactly probe, C0, or C3.");
+        if (!Common.Phase.PhaseIdentity.IsPhase(options.Phase)) errors.Add("Verifier:Phase must be exactly probe, C0, C1, or C3.");
         RequireText(options.ConfigurationId, "Verifier:ConfigurationId", errors);
-        if ((options.Phase is "probe" or "C0" or "C3") && options.ConfigurationId != Common.Phase.PhaseIdentity.ConfigurationFor(options.Phase))
+        if (!ScenarioPhases.TryGetConfiguration(options.ScenarioId, options.Phase, out string? expected) || options.ConfigurationId != expected)
             errors.Add("Verifier:ConfigurationId does not match Verifier:Phase.");
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         RequireText(options.TenantId ?? Environment.GetEnvironmentVariable("AZURE_TENANT_ID"), "Verifier:TenantId/AZURE_TENANT_ID", errors);
@@ -225,7 +226,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         if (mode == VerifierMode.Judge)
         {
             if (options.Repeat.HasValue) errors.Add("Judge mode forbids Verifier:Repeat.");
-            if (Common.Phase.PhaseIdentity.IsRunId(options.RunId) && (options.Phase is "probe" or "C0" or "C3"))
+            if (Common.Phase.PhaseIdentity.IsRunId(options.RunId) && Common.Phase.PhaseIdentity.IsPhase(options.Phase))
             {
                 if (options.JobName != Common.Phase.PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!)) errors.Add("Verifier:JobName does not match the derived judge Job.");
                 // The chart supplies RepeatPrefix for repeat workers. PhasePrefix is
@@ -236,7 +237,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         else
         {
             if (options.Repeat is not (>= 1 and <= 5)) errors.Add("Verifier:Repeat must be between 1 and 5.");
-            string expectedJob = (options.Phase is "probe" or "C0" or "C3") && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5
+            string expectedJob = Common.Phase.PhaseIdentity.IsPhase(options.Phase) && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5
                 ? mode == VerifierMode.StartLine
                     ? Common.Phase.PhaseIdentity.StartLineJobName(options.RunId!, options.Phase!, options.Repeat.Value)
                     : Common.Phase.PhaseIdentity.VerifyJobName(options.RunId!, options.Phase!, options.Repeat.Value)
@@ -248,7 +249,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 // The chart supplies RepeatPrefix for repeat workers. PhasePrefix is
                 // derived from the fixed run/phase identity and is optional input.
             }
-            string loadgen = (options.Phase is "probe" or "C0" or "C3") && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5
+            string loadgen = Common.Phase.PhaseIdentity.IsPhase(options.Phase) && Common.Phase.PhaseIdentity.IsRunId(options.RunId) && options.Repeat is >= 1 and <= 5
                 ? Common.Phase.PhaseIdentity.JobName(options.RunId!, options.Phase!, options.Repeat.Value) : string.Empty;
             if (options.ExpectedInstanceId != loadgen) errors.Add("Verifier:ExpectedInstanceId must equal the derived LoadGen Job name.");
         }

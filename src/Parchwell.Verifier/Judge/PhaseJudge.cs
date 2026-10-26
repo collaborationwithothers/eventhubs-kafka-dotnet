@@ -18,12 +18,13 @@ internal sealed record PhaseRepeatEvidence(
     ProbeRepeatObservation? ProbeObservation,
     string? Identity = null,
     WorkloadObservation? WorkloadObservation = null,
-    BrokerConnectionCount? BrokerCount = null);
+    BrokerConnectionCount? BrokerCount = null,
+    B04RecordedEvidence? B04Evidence = null);
 
 internal sealed record PhaseRepeatChecks(bool J1, bool J2, bool J3, bool J4, bool J5, bool J6, bool J8);
 internal sealed record PhaseRepeatResult(int Repeat, string Status, IReadOnlyList<string> Reasons, PhaseRepeatChecks Checks,
     OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null,
-    BrokerConnectionCount? BrokerCount = null);
+    BrokerConnectionCount? BrokerCount = null, B04RecordedEvidence? B04Evidence = null);
 internal sealed record PhaseJudgement(string Status, string? Gate, OutcomeCounts? Counts,
     IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons);
 
@@ -33,7 +34,7 @@ internal static class PhaseJudge
     internal static PhaseJudgement Evaluate(string phase, IReadOnlyList<PhaseRepeatEvidence> evidence)
     {
         ArgumentNullException.ThrowIfNull(evidence);
-        if (phase is not ("probe" or "C0" or "C3")) throw new ArgumentException("Unsupported phase.", nameof(phase));
+        if (!Parchwell.Verifier.Common.Phase.PhaseIdentity.IsPhase(phase)) throw new ArgumentException("Unsupported phase.", nameof(phase));
         var byRepeat = evidence.GroupBy(x => x.Repeat).ToDictionary(x => x.Key, x => x.ToArray());
         bool extra = evidence.Any(x => x.Repeat is < 1 or > 5);
         var repeats = new List<PhaseRepeatResult>(5);
@@ -67,7 +68,9 @@ internal static class PhaseJudge
                 e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.WorkloadObservation : null,
                 e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
-                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.BrokerCount : null));
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.BrokerCount : null,
+                e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
+                    RegistrationCountPass:true, InventoryCoveragePass:true } ? e.B04Evidence : null));
             reasons.AddRange(rr);
         }
         if (extra || evidence.GroupBy(x => x.Repeat).Any(g => g.Count() > 1)) reasons.Add("j1_repeat_slots");

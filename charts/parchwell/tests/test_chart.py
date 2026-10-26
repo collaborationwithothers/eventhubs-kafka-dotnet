@@ -62,6 +62,11 @@ def positive_cases():
        for repeat in (1,5):
         d=deepcopy(FIXTURE); d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode=mode,repeat=repeat,loadgen_job_name=f"{r['run_id']}-{phase.lower()}-r{repeat}-loadgen");yield d
       d=deepcopy(FIXTURE);d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode='judge');r.pop('repeat',None);r.pop('loadgen_job_name',None);yield d
+    for mode in ('start-line','loadgen','verify','judge'):
+      d=deepcopy(FIXTURE);d['scenario_id']='B04';d['configuration_id']='C1';r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase='C1',mode=mode)
+      if mode=='judge': r.pop('repeat',None);r.pop('loadgen_job_name',None)
+      else: r.update(repeat=1,loadgen_job_name=f"{r['run_id']}-c1-r1-loadgen")
+      yield d
 
 def scalar(value):
     if isinstance(value, bool): return str(value).lower()
@@ -74,19 +79,19 @@ def expected_environment(d):
       'PARCHWELL_POD_NAME':('field','metadata.name'),'PARCHWELL_POD_UID':('field','metadata.uid'),
       'Telemetry__ConnectionString':('value',r['application_insights_connection_string']),
       'Telemetry__ServiceName':('value','Parchwell.LoadGen' if mode=='loadgen' else 'Parchwell.Verifier'),
-      'Telemetry__ServiceInstanceId':('field','metadata.name'),'Telemetry__ScenarioId':('value','A01'),
+      'Telemetry__ServiceInstanceId':('field','metadata.name'),'Telemetry__ScenarioId':('value',d['scenario_id']),
       'Telemetry__RunId':('value',r['run_id'])}
     if mode=='loadgen':
       for section in ('loadgen','scenario_parsing'):
         expected.update({f'LoadGen__{k}':('value',scalar(v)) for k,v in r['bounds'][section].items()})
-      explicit={'ScenarioId':'A01','ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'RepeatNumber':repeat,'JobName':job,'NamespaceName':r['eventhubs']['namespace_name'],'BlobEndpoint':r['blob']['account_url'],'BlobContainer':'ledger','ApplicationInsightsConnectionString':r['application_insights_connection_string']}
+      explicit={'ScenarioId':d['scenario_id'],'ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'RepeatNumber':repeat,'JobName':job,'NamespaceName':r['eventhubs']['namespace_name'],'BlobEndpoint':r['blob']['account_url'],'BlobContainer':'ledger','ApplicationInsightsConnectionString':r['application_insights_connection_string']}
       expected.update({f'LoadGen__{k}':('value',scalar(v)) for k,v in explicit.items()})
       expected.update({f'LoadGen__{k}':('field','metadata.name') for k in ('ExpectedInstanceId','ActualInstanceId','PodName','ClientId')})
       expected['LoadGen__PodUid']=('field','metadata.uid')
     else:
       expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_shared'].items()})
       expected.update({f'Verifier__ScenarioLoadOptions__{k}':('value',scalar(v)) for k,v in r['bounds']['scenario_parsing'].items()})
-      explicit={'Mode':mode,'ScenarioId':'A01','ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'JobName':job,'VerifierCommit':r['source_commit'],'BlobServiceUri':r['blob']['account_url'],'VerifierContainer':'verifier','LedgerContainer':'ledger'}
+      explicit={'Mode':mode,'ScenarioId':d['scenario_id'],'ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'JobName':job,'VerifierCommit':r['source_commit'],'BlobServiceUri':r['blob']['account_url'],'VerifierContainer':'verifier','LedgerContainer':'ledger'}
       expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in explicit.items()})
       expected['Verifier__VerifierClientId']=('field','metadata.name')
       if mode!='judge':
@@ -151,7 +156,7 @@ def main():
   assert DEFAULTS['execution']==BOUNDS['execution']
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
-    positives=list(positive_cases()); assert len(positives)==21
+    positives=list(positive_cases()); assert len(positives)==25
     for i,d in enumerate(positives):
       f=td/f'{i}.yaml';out=td/f'{i}.rendered.yaml';with_case(d,f)
       lint=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(td/f'{i}.lint'),'--max-bytes','4194304','--','helm','lint',str(CHART),'-f',str(f)])
@@ -160,7 +165,16 @@ def main():
       assert templ.returncode==0 and not Path(str(out)+'.incomplete').exists(),templ.stderr
       valid=run(['python3','infra/scripts/lifecycle/command.py','120','--','kubeconform','-strict','-summary','-kubernetes-version','1.35.0',str(out)])
       assert valid.returncode==0,valid.stdout+valid.stderr
-      verify(out.read_text(),d)
+      document=out.read_text()
+      verify(document,d)
+      if i >= 21:
+        assert d['scenario_id']=='B04' and d['configuration_id']=='C1' and d['runtime']['phase']=='C1'
+        job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job')
+        assert '-c1-' in job['metadata']['name']
+        names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
+        assert names['Telemetry__ScenarioId']=='B04'
+        if d['runtime']['mode']=='loadgen': assert names['LoadGen__ScenarioId']=='B04'
+        else: assert names['Verifier__ScenarioId']=='B04'
     base=deepcopy(positives[0])
     negatives=[]
     def mut(fn,source=base):
@@ -211,5 +225,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 21 positive, 32 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 25 positive, 32 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()

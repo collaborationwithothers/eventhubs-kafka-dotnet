@@ -229,6 +229,22 @@ public sealed class ProducerRunLifecycleTests
         Assert.Empty(handler.Requests);
     }
 
+    [Theory]
+    [InlineData("B04", "C0", "C0", true)]
+    [InlineData("B04", "C1", "C1", true)]
+    [InlineData("B04", "probe", "C0", false)]
+    [InlineData("B04", "C1", "C0", false)]
+    [InlineData("A01", "C1", "C1", false)]
+    public void Given_ScenarioPhaseConfigurationPair_When_ValidatingProducerContext_Then_AcceptsOnlyOwnedPairs(
+        string scenarioId, string phase, string configurationId, bool valid)
+    {
+        var context = new ProducerRunContext(
+            new RunIdentity(scenarioId, configurationId, "run-1", "pod-one", "pod-one", "pod-one"),
+            phase, 1, $"run-1-{phase.ToLowerInvariant()}-r1-loadgen", "pod-one", "pod-uid-1", new string('a', 40));
+        if (valid) context.Validate();
+        else Assert.Throws<InvalidDataException>(context.Validate);
+    }
+
     private static BlobServiceClient CreateClient(HttpMessageHandler handler)
     {
         var clientOptions = new BlobClientOptions

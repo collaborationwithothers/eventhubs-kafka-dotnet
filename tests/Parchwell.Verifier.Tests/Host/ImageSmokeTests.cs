@@ -8,13 +8,13 @@ namespace Parchwell.Verifier.Tests.Host;
 public sealed class ImageSmokeTests
 {
     [Fact]
-    public async Task Given_PackagedInputs_When_ImageSmokeRuns_Then_LoadsNativeLibraryAndReportsTwoFiles()
+    public async Task Given_PackagedInputs_When_ImageSmokeRuns_Then_LoadsNativeLibraryAndReportsThreeFiles()
     {
         using var output = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(0, await ImageSmoke.RunAsync(output, AppContext.BaseDirectory));
         using JsonDocument json = JsonDocument.Parse(output.ToString());
         Assert.True(json.RootElement.GetProperty("native_loaded").GetBoolean());
-        Assert.Equal(2, json.RootElement.GetProperty("scenario_files").GetInt32());
+        Assert.Equal(3, json.RootElement.GetProperty("scenario_files").GetInt32());
         Assert.Equal(1654, json.RootElement.GetProperty("uid_expected").GetInt32());
         Assert.False(File.Exists(Path.Combine(AppContext.BaseDirectory, "scenarios/A01/expected.yaml")));
     }

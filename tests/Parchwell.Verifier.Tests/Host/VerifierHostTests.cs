@@ -173,7 +173,28 @@ public sealed class VerifierHostTests
         ValidateOptionsResult result = new VerifierHostOptionsValidator().Validate(null, options);
 
         Assert.False(result.Succeeded);
-        Assert.Contains(result.Failures!, failure => failure.Contains("ScenarioId must be A01", StringComparison.Ordinal));
+        Assert.Contains(result.Failures!, failure => failure.Contains("ScenarioId must be A01 or B04", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("B04","C0","C0",true)]
+    [InlineData("B04","C1","C1",true)]
+    [InlineData("B04","probe","C0",false)]
+    [InlineData("B04","C3","C3",false)]
+    [InlineData("A01","C1","C1",false)]
+    [InlineData("B04","C1","C0",false)]
+    public void Given_ScenarioPhaseConfiguration_When_C5OptionsValidated_Then_EnforcesExecutablePairs(string scenario,string phase,string configuration,bool accepted)
+    {
+        VerifierHostOptions options=ValidOptions("verify");
+        options.ScenarioId=scenario;options.Phase=phase;options.ConfigurationId=configuration;
+        string loadgen=PhaseIdentity.JobName(options.RunId!,phase,1);
+        options.JobName=PhaseIdentity.VerifyJobName(options.RunId!,phase,1);options.ExpectedInstanceId=loadgen;
+        options.InstanceId=loadgen;options.ClientId=loadgen;
+        options.RepeatPrefix=PhaseIdentity.RepeatPrefix(options.RunId!,phase,1);options.PhasePrefix=PhaseIdentity.PhasePrefix(options.RunId!,phase);
+        options.ArtifactPrefix=PhasePaths.ProducersPrefix(options.RunId!,phase,1);options.StartLineInputName=PhasePaths.StartLine(options.RunId!,phase,1);
+        options.ResultOutputName=PhasePaths.Result(options.RunId!,phase,1);
+        ValidateOptionsResult result=new VerifierHostOptionsValidator().Validate(null,options);
+        Assert.Equal(accepted,result.Succeeded);
     }
 
     public static IEnumerable<object[]> InvalidPodNames =>

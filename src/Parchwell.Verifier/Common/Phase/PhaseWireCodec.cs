@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Serialization;
 
 namespace Parchwell.Verifier.Common.Phase;
@@ -53,8 +54,8 @@ internal static partial class PhaseWireCodec
         if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
             value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
             throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");
-        if (value.Identity.ScenarioId != "A01" ||
-            value.Identity.ConfigurationId != PhaseIdentity.ConfigurationFor(value.Phase) ||
+        if (!ScenarioPhases.TryGetConfiguration(value.Identity.ScenarioId, value.Phase, out string? expectedConfiguration) ||
+            value.Identity.ConfigurationId != expectedConfiguration ||
             value.Identity.InstanceId != value.Identity.ExpectedInstanceId)
             throw new PhaseWireIdentityException("Producer completion receipt identity does not match its phase.");
         ValidateRegistration(new ProducerRegistration(value.SchemaVersion, value.Identity, value.Phase, value.RepeatNumber, value.JobName, value.PodName, value.PodUid, value.SourceCommit));
@@ -118,13 +119,13 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateReceipt(WorkerReceipt r)
     {
-        if (r.Mode == "start-line" && (r.Phase is "probe" or "C0" or "C3") && (r.ScenarioId != "A01" || r.ConfigurationId != PhaseIdentity.ConfigurationFor(r.Phase) ||
+        if (r.Mode == "start-line" && (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? startConfiguration) || r.ConfigurationId != startConfiguration ||
             r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
                 startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
         if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
-        if (r.ConfigurationId != PhaseIdentity.ConfigurationFor(r.Phase) || r.ScenarioId != "A01") throw new FormatException("Receipt scenario or configuration does not match its phase.");
+        if (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) || r.ConfigurationId != expectedConfiguration) throw new FormatException("Receipt scenario or configuration does not match its phase.");
         if (r.Mode == "judge" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
         if (r.Repeat is int repeat) PhaseIdentity.ValidateRepeat(repeat);
         if (!Text(r.JobName,253,true) || !Text(r.PodName,253,true)) throw new FormatException("Receipt Job and pod names must be bounded text.");
@@ -143,7 +144,7 @@ internal static partial class PhaseWireCodec
         else
         {
             RunIdentity identity=r.Identity!;
-            if (identity.ScenarioId != "A01" || identity.ConfigurationId != r.ConfigurationId || identity.RunId != r.RunId ||
+            if (!ScenarioPhases.TryGetConfiguration(identity.ScenarioId, r.Phase, out string? identityConfiguration) || identityConfiguration != r.ConfigurationId || identity.ScenarioId != r.ScenarioId || identity.ConfigurationId != r.ConfigurationId || identity.RunId != r.RunId ||
                 identity.InstanceId != identity.ExpectedInstanceId || !Segment(identity.InstanceId) || !Text(identity.ClientId,253,false))
                 throw new FormatException("Receipt producer identity does not bind to its run.");
             int repeatNumber=r.Repeat!.Value;
@@ -189,7 +190,7 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateRegistration(ProducerRegistration v)
     {
-        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || v.Identity.ScenarioId != "A01" || v.Identity.ConfigurationId != PhaseIdentity.ConfigurationFor(v.Phase) || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || v.JobName != PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
+        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || !ScenarioPhases.TryGetConfiguration(v.Identity.ScenarioId, v.Phase, out string? expectedConfiguration) || v.Identity.ConfigurationId != expectedConfiguration || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || v.JobName != PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
     }
 
     private static DateTimeOffset ParseUtc(string value)

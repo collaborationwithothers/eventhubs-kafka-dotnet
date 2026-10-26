@@ -12,5 +12,7 @@
   <ItemGroup>
     <EmbeddedResource Include="../../scenarios/A01/scenario.yaml" LogicalName="Parchwell.Scenarios.Tests.A01.scenario.yaml" />
     <EmbeddedResource Include="../../scenarios/profiles/saturation-ramp.yaml" LogicalName="Parchwell.Scenarios.Tests.A01.saturation-ramp.yaml" />
+    <EmbeddedResource Include="../../scenarios/B04/scenario.yaml" LogicalName="Parchwell.Scenarios.Tests.B04.scenario.yaml" />
+    <EmbeddedResource Include="$(MSBuildProjectDirectory)/../../scenarios/profiles/saturation-ramp.yaml" LogicalName="Parchwell.Scenarios.Tests.B04.saturation-ramp.yaml" />
   </ItemGroup>
 </Project>

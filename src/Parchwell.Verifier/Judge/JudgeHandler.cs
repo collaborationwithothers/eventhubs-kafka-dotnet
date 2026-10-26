@@ -45,7 +45,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             bool startAccepted=false,publicationAccepted=false,receiptValid=false,knownInvalid=false,trustedIncomplete=false;
             bool? jobBinding=null,registrationCount=null,inventoryCoverage=null;
             OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
-            BrokerConnectionCount? brokerCount=null;
+            BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
@@ -70,7 +70,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         {
                             registrationCount=producerListing.IsComplete&&registrationNames.Length==1?true:null;
                             string instance=registeredInstance!;
-                            jobBinding=registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
+                            jobBinding=registration.Identity.ScenarioId==options.ScenarioId&&registration.Identity.ConfigurationId==options.ConfigurationId&&
+                                registration.Identity.RunId==options.RunId&&registration.Phase==options.Phase&&registration.RepeatNumber==i&&
                                 registration.JobName==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&registration.Identity.InstanceId==instance&&
                                 registration.Identity.ExpectedInstanceId==instance&&registration.SourceCommit==options.SourceCommit;
                             identity=registration.Identity.InstanceId;
@@ -113,10 +114,12 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     // slot/source/Job mismatch even when the receipt's other
                     // artifacts or the verify publication are unavailable.
                     RunIdentity? startIdentity=r.Identity;
-                    bool startBinding=r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&
+                    bool startBinding=r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&
                         r.SourceCommit==options.SourceCommit&&
                         r.JobName==PhaseIdentity.StartLineJobName(options.RunId!,options.Phase!,i)&&
-                        startIdentity is not null&&startIdentity.RunId==options.RunId&&
+                        startIdentity is not null&&startIdentity.ScenarioId==options.ScenarioId&&startIdentity.ConfigurationId==options.ConfigurationId&&
+                        startIdentity.RunId==options.RunId&&
                         startIdentity.InstanceId==PhaseIdentity.JobName(options.RunId!,options.Phase!,i)&&
                         startIdentity.ExpectedInstanceId==startIdentity.InstanceId;
                     if(!startBinding)jobBinding=false;
@@ -134,7 +137,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         startContentsValid=parsedNote.IsSuccess&&parsedInventory.IsSuccess&&parsedNote.Value!.Identity==r.Identity&&
                             parsedNote.Value.VerifierCommit==options.SourceCommit;
                     }
-                    startAccepted=r.Mode=="start-line"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&startContentsValid&&
+                    startAccepted=r.Mode=="start-line"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&r.HandlerExitCode==0&&startContentsValid&&
                         r.Artifacts[0].Name==noteName&&r.Artifacts[1].Name==inventoryName&&Matches(r.Artifacts[0],"verifier",noteName,note)&&
                         Matches(r.Artifacts[1],"verifier",inventoryName,inventory);
                     if(startAccepted && DateTimeOffset.TryParse(r.StartedUtc,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out var repeatStarted))
@@ -159,7 +164,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         if(producerReceiptBytes is not null)inputBudget.ConsumeBytes(producerReceiptBytes.LongLength);
                         if(producerReceiptBytes is not null)producerReceipt=PhaseWireCodec.ReadProducerCompletion(producerReceiptBytes);
                     }
-                    receiptValid=r.Mode=="verify"&&r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&
+                    receiptValid=r.Mode=="verify"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
+                        r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
+                        r.RunId==options.RunId&&r.Phase==options.Phase&&r.Repeat==i&&r.SourceCommit==options.SourceCommit&&
                         r.HandlerExitCode is 0 or 1&&r.JobName==PhaseIdentity.VerifyJobName(options.RunId!,options.Phase!,i)&&
                         resultRef.Container=="verifier"&&resultRef.Name==resultName&&resultBytes is not null&&resultRef.Length==resultBytes.LongLength&&
                         resultRef.Sha256==Convert.ToHexStringLower(SHA256.HashData(resultBytes));
@@ -181,7 +188,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             bool semanticReceipt = result.VerifierCommit==r.SourceCommit &&
                                 (r.HandlerExitCode==0 ? result.Status==VerifierResultStatus.CompleteValid : result.Status!=VerifierResultStatus.CompleteValid);
                             receiptValid &= semanticReceipt;
-                            bool same=registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
+                            bool same=result.Identity.ScenarioId==options.ScenarioId&&result.Identity.ConfigurationId==options.ConfigurationId&&
+                                registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
                             receiptValid&=same;
                             publicationAccepted&=receiptValid;
                             // J3 binds the result to the verifier receipt and registered producer.
@@ -204,6 +212,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             {
                                 workload=result.WorkloadObservation;
                                 brokerCount=result.BrokerCount;
+                                b04Evidence=result.B04RecordedEvidence;
                                 if(result.A01RecordedEvidence is not null)acceptedA01.Add(result.A01RecordedEvidence);
                                 string? producerKafkaVersion=null,producerNativeVersion=null,producerDotnetVersion=null;
                                 result.RuntimeVersions?.TryGetValue("Confluent.Kafka",out producerKafkaVersion);
@@ -231,7 +240,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;
             }
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots);
@@ -249,7 +258,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         Parchwell.Verifier.Common.Results.A01WindowEvidence[] a01Windows=acceptedA01.SelectMany(e=>e.Windows??Array.Empty<Parchwell.Verifier.Common.Results.A01WindowEvidence>()).ToArray();
         string[] versionReasons=new Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?>[]{v=>v.Generator,v=>v.Kafka,v=>v.Native,v=>v.Dotnet}.Any(selector=>CommonVersion(selector) is null)?["version_unavailable"]:[];
         string[] timingReasons=phaseStarted is null?["timing_unavailable"]:[];
-        var candidate=new PhaseCandidate(1,true,"A01",options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,judgement.Status,judgement.Gate,
+        var candidate=new PhaseCandidate(1,true,options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,judgement.Status,judgement.Gate,
             new Dictionary<string,string?>(StringComparer.Ordinal){["verifier"]=typeof(JudgeHandler).Assembly.GetName().Version?.ToString(),["workload_generator"]=CommonVersion(v=>v.Generator),["confluent_kafka"]=CommonVersion(v=>v.Kafka),["librdkafka"]=CommonVersion(v=>v.Native),["dotnet"]=CommonVersion(v=>v.Dotnet)},
             new Dictionary<string,string?>(StringComparer.Ordinal){["loadgen"]=Digest(options.LoadGenImage),["verifier"]=Digest(options.VerifierImage)},
             new Dictionary<string,object?>(StringComparer.Ordinal){["worker_started_utc"]=phaseStarted?.ToString("O",System.Globalization.CultureInfo.InvariantCulture),["judge_completed_utc"]=phaseStarted is null?null:clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),["duration_seconds"]=phaseStarted is null?null:(decimal?)(clock.GetUtcNow()-phaseStarted.Value).TotalSeconds},
@@ -261,7 +270,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         await Bounded(ct=>verifier.CreateAsync(name,bytes,ct),options,clock,cancellationToken).ConfigureAwait(false);
         int exit=judgement.Status=="complete_valid"?0:1;
         var candidateReference=new ArtifactReference("verifier",name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
-        var receipt=new WorkerReceipt(1,"judge","A01",options.ConfigurationId!,options.RunId!,options.Phase!,null,
+        var receipt=new WorkerReceipt(1,"judge",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,null,
             PhaseIdentity.JudgeJobName(options.RunId!,options.Phase!),options.PodName!,null,options.SourceCommit!,exit,true,
             judgeStarted.ToString("O",System.Globalization.CultureInfo.InvariantCulture),clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),[candidateReference],null,null);
         completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.JudgeCompletion(options.RunId!,options.Phase!),PhaseWireCodec.WriteReceipt(receipt));
