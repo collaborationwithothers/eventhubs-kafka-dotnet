@@ -37,6 +37,13 @@ Cold review round 1, on commit `2306b27`:
 - P2, `docs/traces/K09.md`: the opening and the prerequisites section say the operating system prerequisite is met by inference.
 - Pre-existing, not blocking, `docs/traces/K09.md`: the compatibility-check sentence now lists the checks it covers, including line 53, NodeLocal DNSCache.
 
+Cold review round 2, on commit `3c100ae`:
+- P1, `docs/traces/K06.md`: the Why section said a spot eviction cannot be triggered. It now cites the documented simulated eviction (spot eviction guide line 114, Spot CLI page line 68), and keeps the section 12 reason.
+- P1, `docs/traces/H01.md`: the Terraform bullet stated as fact what the body calls inference. It now marks the inference and notes that #155 leaves it unconfirmed.
+- P2, `docs/traces/H01.md`: the opening now says the #155 observation leaves the export inference unconfirmed.
+- P2, `docs/traces/K07.md`: the Kubernetes quote's range is now lines 224 to 229.
+- P2, `docs/traces/K09.md`: the Claim section names line 97, the Azure CLI prerequisite, and why the prerequisites section leaves it out.
+
 ## Review
 
 The cold review result and its dispositions are recorded in the pull request description.
