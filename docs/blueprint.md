@@ -1008,6 +1008,8 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 | D04 | 10,000 brokered connections per PU | S3 | D: needs connection counts beyond build scale | S |
 | D05 | 100 event hubs per PU | S3 | D: documentation trace only | S |
 
+**D01 note** ([#224 decision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573)). If D01 shows that Kafka `CreateTopics` creates event hubs on the namespace, D01 adds one check to its live run: it keeps creating one-partition topics until the client returns an error, and records that error. On the 1 PU namespace the 98th create would be the 101st event hub; [the D05 write-up](traces/D05.md) gives the arithmetic. If `CreateTopics` fails, the check does not run.
+
 **E. Log compaction**
 
 | ID | Item | Source | Type | Size |
@@ -1040,11 +1042,13 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 | G04 | One private DNS zone per region | S13 | D: single-region harness | S |
 | G05 | Geo-disaster recovery (metadata-only alias) | S2 | X: geo-replication supersedes it on Premium | - |
 
+**G01 note** ([#224 decision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573)). G01's evidence will record each node pool's LocalDNS mode. S13 states that after promotion "the private endpoint keeps working without any change" and that "Each region resolves the namespace name to its local endpoint, regardless of which region is primary" (geo-replication.md lines 259 and 267, azure-docs commit `6da87e3`). Inference: promotion does not change the DNS answer a pod receives through the private endpoint, so G01 does not expect a LocalDNS cache to serve a stale address; [the K09 write-up](traces/K09.md) gives the reasoning.
+
 **H. Operations and observability**
 
 | ID | Item | Source | Type | Size |
 |---|---|---|---|---|
-| H01 | Throttling absent from ThrottledRequests; detect from client statistics | S2, S7 | T | S |
+| H01 | Throttling absent from ThrottledRequests; detect from client statistics | S2, S7 | D: without a throttle event there is nothing to detect ([#155 decision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/155#issuecomment-6442094735)) | S |
 | H02 | Client `consumer_lag` versus `AZMSApplicationMetricLogs` ConsumerLag | S7, S10 | T | M |
 | H03 | UnknownServerException | S2 | D: cannot be triggered deliberately | S |
 | H04 | Kafka client older than 1.0 | S2 | X: Confluent.Kafka 2.16 only | - |
@@ -1071,7 +1075,7 @@ Reason: the frozen list covered Kubernetes behaviour only through C04, C06, C07 
 | K06 | Spot eviction notice against the termination grace period (Microsoft pages disagree) | K-31 | D: harness uses normal pools (ADR-008) | S |
 | K07 | Zone spread of consumer group members | K-32 | D: a zone outage cannot be induced | S |
 | K08 | VM freeze pauses: Microsoft describes them as lasting a few seconds; a rebalance follows only if a pause exceeds `session.timeout.ms` | K-33 | D: a platform freeze cannot be triggered | S |
-| K09 | LocalDNS prerequisites and effects | K-40 | D: reimages nodes; outside the harness design | S |
+| K09 | LocalDNS prerequisites and effects | K-40 | D: LocalDNS changes the DNS path for every item; to be pinned `Disabled` ([#224 decision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573)); a separate pool would avoid reimaging existing pools (inference) but adds a node and changes ADR-008 | S |
 | K10 | SNAT port use for Entra egress | K-41 | D: exhaustion needs scale | S |
 
 **Folded into existing items** (configurations or hypotheses added; the catalogue row is the source)
