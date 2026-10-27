@@ -1,7 +1,7 @@
 # eventhubs-kafka-dotnet: blueprint
 
 Status: approved by Hari on 2026-10-11.
-Inventory frozen: 2026-10-11. Amended once, by Hari on 2026-10-12 (amendment 1, section 12). Anything else found later goes to v1.1.
+Inventory frozen: 2026-10-11. Amended once, by Hari on 2026-10-12 (amendment 1, section 12). Item types changed since, by Hari's decisions: C11 to D ([PR #218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/218)), and H01 to D with K09's reason corrected ([#224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224)). Anything else found later goes to v1.1.
 
 The ADR-003, ADR-012 and ADR-013 amendments follow [Hari-approved #80 revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6235834239); Hari's merge of this pull request records approval of these amendments.
 
@@ -425,7 +425,7 @@ The additional AKS control-plane identity receives Network Contributor only on t
 - Late-write guard: the initial oracle invalidates a run if an accepted `Produce` call ends in an asynchronous delivery failure, a producer request times out or is retried, or a transport failure makes persistence uncertain, even if a later retry succeeds. Synchronous pre-enqueue rejections still enter the ledger as failed attempts (ADR-012). This deliberately conservative rule avoids converting an unseen late append into a reported failure, or missing a late duplicate after a successful retry.
 - The producer records these guard conditions independently of the ledger writer and retains them in the sealed manifest. It preserves delivery persistence status; `PossiblyPersisted` means transmitted without acknowledgement, while `Persisted` means written and acknowledged (Fact: S29). A missing status or `PossiblyPersisted` invalidates the run. The status field must remain enabled; Confluent.Kafka substitutes `PossiblyPersisted` when it is disabled (Fact: S29). This harness requirement is tagged A01/B10.
 - Guard evidence includes producer broker counters `req_timeouts`, `txretries`, `txerrs` and `rxerrs`, which are documented as cumulative counts of request timeouts, retries, transmission errors and receive errors (Fact: S29). Any observed non-zero counter invalidates the run. The harness retains broker error evidence throughout production and statistics through the post-drain sample. For the initial oracle, coverage of "every broker instance used" is assessed by a stable set of broker names whose native `source` is `learned`, `configured` or `logical`, from the first persisted report through the first post-drain report, together with the expected-broker and post-drain coverage checks in #80 revision 4. A change in that set invalidates the run. Missing broker coverage, missing required fields, counter resets and the named incomplete-evidence cases in that plan invalidate the run; absent evidence cannot be treated as zero. This is an accepted sampled-coverage criterion, not proof of every broker lifetime. A broker handle created and destroyed entirely between two reports may be unobserved even when the sampled name set is stable; that residual risk is accepted for this oracle. Statistics are asynchronous and may be inconsistent across totals (Fact: S29), so a zero aggregate or an idle waiting period is not proof that a timed-out write cannot still arrive. If the harness cannot establish the plan's coverage criterion, it rejects the run rather than inferring finality.
-- For an invalid or incomplete run, the verifier records the status and reason, retains raw records for diagnosis, leaves authoritative outcome counts absent, and exits non-zero (ADR-017). The judge cannot accept authoritative message totals from that run. A01, B09, H07 and H01 may therefore retain timing/throttling observations while the oracle is untestable for outcome totals; an improved oracle requires a reviewed plan before those totals can be accepted. Hypotheses are not changed to conceal this limitation.
+- For an invalid or incomplete run, the verifier records the status and reason, retains raw records for diagnosis, leaves authoritative outcome counts absent, and exits non-zero (ADR-017). The judge cannot accept authoritative message totals from that run. A01, B09 and H07 may therefore retain timing/throttling observations while the oracle is untestable for outcome totals; an improved oracle requires a reviewed plan before those totals can be accepted. Hypotheses are not changed to conceal this limitation.
 
 **Consequences.**
 - Each repeat sees only its own messages, except for the late writes below, so the duplicate-run rule (ADR-012) applies to one repeat's window.
@@ -629,7 +629,7 @@ Each entry links to the inventory items that test it. Detection queries are in s
 - Detection: client-side `kafka.broker.throttle.max_ms` rising while platform `ThrottledRequests` stays flat (Fact basis: S2). Query Q1.
 - Mitigation: alert on client throttle, not platform metric; scale PUs; producer backpressure.
 - Not protected against: sustained overload beyond 16 PUs (Fact: Premium maximum; S3).
-- Inventory: B09, C05, H01, H07.
+- Inventory: B09, C05, H07. H01 traces this failure mode from documentation ([write-up](traces/H01.md)).
 
 **FM-02: Idle connection dropped by Azure.**
 - Trigger: a tenant idle for more than 240 s, then a produce (Fact: Azure closes idle connections after 240 s; S1).
@@ -837,6 +837,8 @@ client
 | order by TimeGenerated asc
 ```
 
+The Event Hubs metrics reference marks `ThrottledRequests` as not exportable through diagnostic settings ("DS Export" `No`, [line 73](https://github.com/MicrosoftDocs/azure-monitor-docs/blob/6b3769e284c0234a021a3ff9c86c821414ad3eb0/articles/azure-monitor/reference/supported-metrics/microsoft-eventhub-namespaces-metrics.md)). Inference: the metric does not reach `AzureMetrics`, so `platformThrottled` stays empty even when the namespace throttles; read it from Azure Monitor metrics instead. #155 reported another such metric in `AzureMetrics`, so this is not confirmed ([H01 write-up](traces/H01.md)).
+
 **Q2: Consumer lag per partition.**
 ```kusto
 AppMetrics
@@ -988,7 +990,7 @@ Legend. Type: T = tested, D = traced from documentation and design (cheap or imp
 | C08 | `group.protocol = consumer` (KIP-848) support on Event Hubs | S6 | T | S |
 | C09 | Offset commits throttled at 2 per second per partition; commit-per-message | S2 | T | M |
 | C10 | Store-after-process versus default auto offset store: loss and duplicates on crash | S6 | T | M |
-| C11 | Offset metadata over 1,024 bytes | S2 | D: the pinned client exposes no commit metadata ([managed API](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/TopicPartitionOffset.cs), [native conversion](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs#L1344-L1376)) | S |
+| C11 | Offset metadata over 1,024 bytes | S2 | D: the pinned client exposes no commit metadata ([managed API](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/TopicPartitionOffset.cs), [native conversion](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs#L1342-L1373)) | S |
 | C12 | `group.id` over 256 characters | S2 | T | S |
 | C13 | 1,000 Kafka consumer groups per namespace | S3 | T | S |
 | C14 | Zombie consumer sharing a `group.id` | S1 | T | M |

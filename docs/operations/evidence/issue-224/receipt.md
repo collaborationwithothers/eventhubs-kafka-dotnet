@@ -24,6 +24,8 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 
 - After each round of review edits, `pr1 --check`, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun on the staged tree before its commit (`3c100ae`, `e6a4e9c`, `0baccfa` and the round 4 commit). Each printed the same results as above: `trace batch PR 1 check (variant B): ok`, nothing, and the same 8 warnings.
 
+- After Hari's added changes (below), the plan's `pr1 --check` exits 1 at its blueprint confinement assertion, because the plan allowed only the K09, H01, D01 and G01 lines. A copy of the script with only `BP_EDITS` extended by the five added line prefixes (`Inventory frozen: `, `- For an invalid or incomplete run,`, `- Inventory: B09, C05`, `The Event Hubs metrics reference marks`, `| C11 |`) prints `trace batch PR 1 check (variant B): ok`. Every other assertion is unchanged.
+
 ## Review edits
 
 Cold review round 1, on commit `2306b27`:
@@ -56,6 +58,13 @@ Cold review round 4, on commit `0baccfa`:
 - P2, `docs/traces/K09.md`: "or result" is removed, because the verdict pull request adds a report.
 - P2, `docs/traces/K09.md`: the geo-replication line 267 citation now names its file.
 - P2, `docs/traces/D04.md`: 588 is now "at most about 588", because 17 is a lower bound.
+
+Changes Hari added on 2026-10-27 in this session's chat ("Stale blueprint texting fix it", "c11 fix it"), beyond the plan's file content:
+- `docs/blueprint.md` line 4 now records the item type changes since amendment 1: C11 (PR #218), and H01 and K09 (#224).
+- ADR-013 no longer lists H01 among the items that may retain throttling observations from a run.
+- FM-01 no longer lists H01 among the items that test it; it names the H01 write-up as a trace.
+- Query Q1 gains a note: `ThrottledRequests` has DS Export `No`, so by inference `platformThrottled` stays empty from the workspace.
+- The C11 row and `docs/traces/C11.md` now cite SafeKafkaHandle.cs lines 1342 to 1373, the extent of `GetCTopicPartitionList` at v2.16.0, instead of lines 1344 to 1376.
 
 ## Review
 
