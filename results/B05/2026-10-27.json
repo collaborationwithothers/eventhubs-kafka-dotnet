@@ -5,7 +5,7 @@
     "summary": [
       "InitTransactions returned without error in all five fresh producers, so H1 holds and the proposed B05 verdict is confirmed.",
       "This confirms the transactions page, which says Kafka transactions are in public preview in Premium, and contradicts the configurations page, which lists transactions as not currently supported.",
-      "Only InitTransactions was tested; begin, commit, abort and exactly-once semantics were not."
+      "Only InitTransactions was tested in these synthetic repeats; begin, commit, abort and exactly-once semantics were not."
     ],
     "hypotheses": {
       "H1": "holds",
