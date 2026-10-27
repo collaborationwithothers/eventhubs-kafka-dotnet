@@ -22,7 +22,7 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 - `npm run check:docs` exited 0. `npm run check:docs` reports 8 warnings. Two are `Undefined identifier: S0` in `docs/agents/factory.md`, which this pull request changes, at lines 7 and 92; both exist on `39e2cbb` (lines 7 and 90), come from the #211 amendment's `S0` decision label, and are left as they stand because this pull request does not change those sentences. The other 6 are in files this pull request does not change.
 - The disposition above is the plan's text with `S0` set as code. In plain text the label raised a ninth `Undefined identifier: S0` warning, in this receipt.
 
-- After each round of review edits, `pr1 --check`, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun on the staged tree before its commit (`3c100ae`, `e6a4e9c`, `0baccfa` and the round 4 commit). Each printed the same results as above: `trace batch PR 1 check (variant B): ok`, nothing, and the same 8 warnings.
+- After each round of review edits, `pr1 --check`, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun on the staged tree before its commit (`3c100ae`, `e6a4e9c`, `0baccfa` and later commits). Each printed the same results as above: `trace batch PR 1 check (variant B): ok`, nothing, and the same 8 warnings.
 
 - After Hari's added changes (below), the plan's `pr1 --check` exits 1 at its blueprint confinement assertion, because the plan allowed only the K09, H01, D01 and G01 lines. On the basis of [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624) item 2, a copy of the script with only `BP_EDITS` extended by the five added line prefixes (`Inventory frozen: `, `- For an invalid or incomplete run,`, `- Inventory: B09, C05`, `The Event Hubs metrics reference marks`, `| C11 |`) prints `trace batch PR 1 check (variant B): ok`. Every other assertion is unchanged. On each commit from `7e4acfa` on, the extended check, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were run on the staged tree before the commit, with the results above: `ok`, nothing, and the same 8 warnings. The unmodified plan check still exits 1 there, and the pull request description lists that for Hari.
 
@@ -83,6 +83,11 @@ Cold review round 7, on commit `712f406`: no P0 or P1. Its three P2s are prose f
 - P2, `docs/blueprint.md` line 4: it now also names the D01 and G01 notes and the C11 citation fix.
 - P2, this receipt: `## Sources` now lists both decision records.
 - P2, `docs/traces/K09.md`: the opening now says 1.37 turns LocalDNS on only for pools that pass the compatibility checks.
+
+Cold review round 8, on commit `b6a2c25`, the additional round under rule 8: `Findings: none at P0 or P1`.
+
+Codex code review on PR #227, commit `b6a2c25`:
+- P2, `docs/traces/H01.md`: the Detection bullet counted a positive-count window with a maximum of 0 as throttling. The bridge treats that window as an observed zero (statistics-bridge.md line 65). The bullet now requires a maximum above 0 as well. This changes plan-required text, and Hari approved it ([decision record 6452561082](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6452561082)).
 
 ## Review
 
