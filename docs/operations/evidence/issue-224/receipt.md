@@ -49,9 +49,9 @@ Cold review round 2, on commit `3c100ae`:
 - P2, `docs/traces/K09.md`: the Claim section names line 97, the Azure CLI prerequisite, and why the prerequisites section leaves it out.
 
 Cold review round 3, on commit `e6a4e9c`:
-- P1, `docs/traces/C16.md`, `D04.md` and `E05.md`: each opening stated as fact a reason its body marks as inference or does not support. Each opening now gives the section 12 reason instead.
+- Three P1s, one per file, `docs/traces/C16.md`, `D04.md` and `E05.md`: each opening stated as fact a reason its body marks as inference or does not support. Each opening now gives the section 12 reason instead.
 
-The plan's cap of 20 dispositions was used up after round 3. Round 4's findings were handed off ([comment 6444163539](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6444163539)). On 2026-10-27 Hari approved two more review rounds in this session's chat ("I approve 2 more review rounds do it").
+The plan's cap of 20 dispositions was used up after round 3. Round 4's findings were handed off ([comment 6444163539](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6444163539)). On 2026-10-27 Hari approved two more review rounds in this session's chat ("I approve 2 more review rounds do it"), recorded on #224 as [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624).
 
 Cold review round 4, on commit `0baccfa`:
 - P1, `docs/traces/K09.md`: the Security bullet stated an unsourced claim about LocalDNS. It now uses the K06 to K08 wording, and so do the Security bullets of C16, D04 and E05 (rule 5).
@@ -59,12 +59,19 @@ Cold review round 4, on commit `0baccfa`:
 - P2, `docs/traces/K09.md`: the geo-replication line 267 citation now names its file.
 - P2, `docs/traces/D04.md`: 588 is now "at most about 588", because 17 is a lower bound.
 
-Changes Hari added on 2026-10-27 in this session's chat ("Stale blueprint texting fix it", "c11 fix it"), beyond the plan's file content:
+Changes Hari added on 2026-10-27 in this session's chat ("Stale blueprint texting fix it", "c11 fix it"), beyond the plan's file content, recorded in [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624):
 - `docs/blueprint.md` line 4 now records the item type changes since amendment 1: C11 (PR #218), and H01 and K09 (#224).
 - ADR-013 no longer lists H01 among the items that may retain throttling observations from a run.
 - FM-01 no longer lists H01 among the items that test it; it names the H01 write-up as a trace.
 - Query Q1 gains a note: `ThrottledRequests` has DS Export `No`, so by inference `platformThrottled` stays empty from the workspace.
 - The C11 row and `docs/traces/C11.md` now cite SafeKafkaHandle.cs lines 1342 to 1373, the extent of `GetCTopicPartitionList` at v2.16.0, instead of lines 1344 to 1376.
+
+Cold review round 5, on commit `073b631`:
+- P1, `docs/traces/K07.md` and P1, `docs/traces/K08.md`: the round 2 fix to the K07 range (lines 224 to 229, not 228) and the round 1 removal of the plan's ADR-015 statement from K08 changed plan-required elements without Hari's approval (plan "How text is written and accepted" item 5). Both fixes are correct against their sources. Hari approved both as plan amendments ([decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624)).
+- P2, `docs/blueprint.md` and `docs/traces/C11.md`: the stale H01 references, line 4 and the C11 range, already fixed by Hari's added changes above.
+- P2, this receipt: the cap approval was a chat quote only. It is now recorded on #224 as [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624).
+- P2, this receipt: the round 3 entry now says it is three findings.
+- P2, `docs/traces/C11.md` and `docs/traces/H03.md`: the bare "none." Design and Security bullets now give a reason.
 
 ## Review
 
