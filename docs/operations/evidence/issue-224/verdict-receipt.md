@@ -18,8 +18,8 @@ The newest completed run of `verifier-c5-mutation.yml` on `main` is [40415248275
 
 All commands ran in the cloud session workspace on 2026-10-27, on branch `claude/issue-224-trace-batch-verdict` based on `origin/main`. The files were staged and not yet committed.
 
-- `python3 trace_224.py verdict --write` exited 0 and printed `mutation gate: run 40415248275 at 7b6834c5e8668e89376597bc2b524c0725326daf` and `trace batch verdict write: ok`. It ran once, writing the thirteen reports dated 2026-10-27.
-- `python3 trace_224.py verdict --check` exited 0 and printed the same gate line and `trace batch verdict check: ok`.
+- `python3 trace_224.py verdict --write` exited 0 and printed `mutation gate: run 40415248275 at 7b6834c5e8668e89376597bc2b524c0725326daf` and `trace batch verdict write: ok`. It ran once, writing the thirteen reports dated 2026-10-27. K09's report was later removed (see `## Review edits`).
+- `python3 trace_224.py verdict --check` exited 0 and printed the same gate line and `trace batch verdict check: ok`. After the K09 removal, it ran on the copy of the script with K09 taken out of `IDS` but kept in `D_SET`, as the removal rule says. It again exited 0 with the same two lines.
 - `git diff --cached --check --merge-base origin/main` exited 0 and printed nothing.
 - `npm run check:docs` exited 0. It reported the same 8 warnings as on `main`, all in files this pull request does not change.
 
@@ -27,7 +27,10 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 
 Edits to the written reports, before the first commit:
 - Plan check P2 marked `apply in implementation`: the H01 report's Authority line now also links decision (amendment) 6442095091, which added H01 to the batch.
-- Found in the session's own sweep: the K06 to K10 reports now name section 12 "Inventory amendment 1", where those rows sit, instead of "Frozen inventory". It is the same correction PR #227 made in the factory.md traced-item rule.
+- Found in the session's own sweep: the K06, K07, K08 and K10 reports (and K09's, before its removal) now name section 12 "Inventory amendment 1", where those rows sit, instead of "Frozen inventory". It is the same correction PR #227 made in the factory.md traced-item rule.
+
+Removal under decision 6, after Hari disputed K09 on PR #228:
+- `results/K09/2026-10-27.md` is deleted. K09's section 12 reason and its merged write-up describe a `Disabled` pin that [#225 decision 6452847121](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/225#issuecomment-6452847121) reversed to `Preferred`. Hari adopted that decision on #224 in [decision record 6453763954](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6453763954). The #225 pull request corrects the K09 write-up and row, and K09's verdict follows in its own pull request.
 
 ## Review
 
