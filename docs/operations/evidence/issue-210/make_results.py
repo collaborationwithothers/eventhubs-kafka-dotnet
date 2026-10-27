@@ -73,7 +73,7 @@ ERROR_NAMES = {
 SUMMARIES = {
     "B01": [
         "In five fresh producers each, a 1,000-byte event delivered and a 1,100,000-byte event failed, so the proposed B01 verdict is confirmed.",
-        "The large event failed with the local error -192, message timed out, after the client logged repeated connection resets by the broker; the reset is the observed surface and its cause is inferred.",
+        "The large event failed with the local error -192, message timed out, after the client logged repeated connection resets by the peer; the reset is the observed surface, and that the broker closed the connection because of the event is inferred.",
         "This result does not say whether Event Hubs means 1,000,000 or 1,048,576 bytes by 1 MB, and the workload is synthetic.",
     ],
     "B03": [
