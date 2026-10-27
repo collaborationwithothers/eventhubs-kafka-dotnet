@@ -24,7 +24,18 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 
 ## Review edits
 
-None.
+Cold review round 1, on commit `2306b27`:
+- P1, `docs/traces/H01.md`: the metrics reference marks more than four metrics DS Export `No`. The sentence now says the four named metrics are among them.
+- P1, `docs/traces/H01.md`: the opening stated as fact what the body calls inference. The opening now marks it as inference.
+- P1, `docs/traces/H03.md`: the opening and the Symptom bullet stated the -1 mapping as fact. Both now mark it as inference, and the Errors.java `forCode` fallback at lines 507 to 514 is added.
+- P1, `docs/traces/K08.md`: the Design bullet named librdkafka as the actor. It now says the broker removes the member, as CONFIGURATION.md line 131 states.
+- P2, `docs/agents/factory.md`: the traced-item rule now names "Inventory amendment 1" as well, because K06 to K10 are typed D there.
+- P2, `docs/traces/C16.md`, `D04.md` and `H01.md`: line numbers in relatively linked repository documents now name commit `39e2cbb`.
+- P2, `docs/traces/K08.md`: the Runbook bullet no longer credits ADR-015, whose baseline covers Kafka client settings only.
+- P2, `docs/traces/H03.md`: the SeedF04Worker sentence now includes its "construction" branch, and "four sources" is now "three sources, and one inference".
+- P2, `docs/traces/K09.md`: #225 is described as the issue that will add the pin, and no pull request for it exists on 2026-10-27.
+- P2, `docs/traces/K09.md`: the opening and the prerequisites section say the operating system prerequisite is met by inference.
+- Pre-existing, not blocking, `docs/traces/K09.md`: the compatibility-check sentence now lists the checks it covers, including line 53, NodeLocal DNSCache.
 
 ## Review
 
