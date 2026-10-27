@@ -1,0 +1,773 @@
+{
+  "publication": {
+    "item": "B03",
+    "proposed_verdict": "confirmed",
+    "summary": [
+      "In five fresh producers each, a gzip-compressed event delivered and snappy, lz4 and zstd events each failed, so the proposed B03 verdict is confirmed.",
+      "Every failure was broker error 43, which librdkafka names as message format on broker does not support request, matching Microsoft's example error.",
+      "Each repeat produced one 1,000-byte synthetic event, so this result says nothing about throughput or compression ratios."
+    ],
+    "hypotheses": {
+      "H0": "holds",
+      "H1_snappy": "holds",
+      "H1_lz4": "holds",
+      "H1_zstd": "holds"
+    },
+    "derivation": "re-derived from scenarios/B03/expected.yaml decision rules by make_results.py; equal to the verifier item_assessment",
+    "per_configuration": {
+      "C1": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C2": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": 43,
+          "is_fatal": false,
+          "origin": "broker"
+        },
+        "broker_count_per_repeat": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C3": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": 43,
+          "is_fatal": false,
+          "origin": "broker"
+        },
+        "broker_count_per_repeat": [
+          1,
+          2,
+          1,
+          1,
+          1
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C4": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": 43,
+          "is_fatal": false,
+          "origin": "broker"
+        },
+        "broker_count_per_repeat": [
+          1,
+          2,
+          1,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true
+      }
+    },
+    "error_code_names": {
+      "43": "RD_KAFKA_RESP_ERR_UNSUPPORTED_FOR_MESSAGE_FORMAT, Broker: Message format on broker does not support request"
+    },
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139",
+      "attempt": 1,
+      "run_id": "probe-40415641139-1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715895816",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715517221",
+      "jobs": {
+        "C1": {
+          "capture": {
+            "job": "probe-40415641139-1-b03-c1-single",
+            "pod": "probe-40415641139-1-b03-c1-single-stnnb",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-27T06:03:50Z",
+            "container_finished_at": "2026-10-27T06:05:34Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c1-single/probe-40415641139-1-b03-c1-single-stnnb.containers.loadgen.log",
+            "pod_json_member": "probe-40415641139-1-b03-c1-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-b03-c1-single-judge",
+            "pod": "probe-40415641139-1-b03-c1-single-judge-lr6km",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:05:42Z",
+            "container_finished_at": "2026-10-27T06:05:44Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c1-single-judge/probe-40415641139-1-b03-c1-single-judge-lr6km.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-b03-c1-single-judge/pods.json"
+          }
+        },
+        "C2": {
+          "capture": {
+            "job": "probe-40415641139-1-b03-c2-single",
+            "pod": "probe-40415641139-1-b03-c2-single-4275x",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-27T06:05:55Z",
+            "container_finished_at": "2026-10-27T06:07:38Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c2-single/probe-40415641139-1-b03-c2-single-4275x.containers.loadgen.log",
+            "pod_json_member": "probe-40415641139-1-b03-c2-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-b03-c2-single-judge",
+            "pod": "probe-40415641139-1-b03-c2-single-judge-mrbwt",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:07:48Z",
+            "container_finished_at": "2026-10-27T06:07:50Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c2-single-judge/probe-40415641139-1-b03-c2-single-judge-mrbwt.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-b03-c2-single-judge/pods.json"
+          }
+        },
+        "C3": {
+          "capture": {
+            "job": "probe-40415641139-1-b03-c3-single",
+            "pod": "probe-40415641139-1-b03-c3-single-67c2k",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-27T06:08:00Z",
+            "container_finished_at": "2026-10-27T06:09:43Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c3-single/probe-40415641139-1-b03-c3-single-67c2k.containers.loadgen.log",
+            "pod_json_member": "probe-40415641139-1-b03-c3-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-b03-c3-single-judge",
+            "pod": "probe-40415641139-1-b03-c3-single-judge-ggjgv",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:09:52Z",
+            "container_finished_at": "2026-10-27T06:09:54Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c3-single-judge/probe-40415641139-1-b03-c3-single-judge-ggjgv.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-b03-c3-single-judge/pods.json"
+          }
+        },
+        "C4": {
+          "capture": {
+            "job": "probe-40415641139-1-b03-c4-single",
+            "pod": "probe-40415641139-1-b03-c4-single-lt5ld",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-27T06:10:05Z",
+            "container_finished_at": "2026-10-27T06:11:48Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c4-single/probe-40415641139-1-b03-c4-single-lt5ld.containers.loadgen.log",
+            "pod_json_member": "probe-40415641139-1-b03-c4-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-b03-c4-single-judge",
+            "pod": "probe-40415641139-1-b03-c4-single-judge-89jz8",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:11:58Z",
+            "container_finished_at": "2026-10-27T06:11:59Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b03-c4-single-judge/probe-40415641139-1-b03-c4-single-judge-89jz8.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-b03-c4-single-judge/pods.json"
+          }
+        }
+      }
+    },
+    "versions": {
+      "confluent_kafka_managed": "2.16.0.0",
+      "librdkafka_native": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      }
+    },
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred_from_pinned_configuration_and_no_change_cluster_plan",
+      "sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/job/121897291309",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7b6834c5e8668e89376597bc2b524c0725326daf/infra/cluster/aks.tf"
+      ]
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275/artifacts/12705444729",
+      "commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "measurement_complete": true,
+      "break_passed": true,
+      "numerator": 1302,
+      "denominator": 1302
+    },
+    "workload": "synthetic"
+  },
+  "candidates": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081046,
+            "native_ts": 11014565621,
+            "raw_sha256": "b5a2ffcd2160c5f46f550c3e2a2fde9720fd66c4658b3962cd8e5ca6e680a03d"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081067,
+            "native_ts": 11034984478,
+            "raw_sha256": "1097302867db89aada826089666767cf5d7bc286a60d1dc1836d91ede2e46531"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081087,
+            "native_ts": 11055196730,
+            "raw_sha256": "149d1a7c6fc9ceee3b6ab680be93a3ccaa21164a84ddc70e9f367b3384b04d6e"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081108,
+            "native_ts": 11075810684,
+            "raw_sha256": "1a0e613726ca8416d7cfd8ae358d84f651fcd8cfc9ea2ebeb6d2c209c48ac7d3"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081128,
+            "native_ts": 11096024628,
+            "raw_sha256": "cad07d7b786f04ee9f63cad5b5fee0cfc095d3dbe651c20ea24f40e6b7918c06"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C2",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081171,
+            "native_ts": 11139009267,
+            "raw_sha256": "6f4c34575c6a07aceca96db7a8c9db43e032b7eab1b5fa120a3f361736bc2f70"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081191,
+            "native_ts": 11159628673,
+            "raw_sha256": "205d119e6894e8bf376f6601d1974b2573b2569013eab69bfa967d3c66dd8a19"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081212,
+            "native_ts": 11179841505,
+            "raw_sha256": "7f5e16dd15e08c9d2cba94f0db387534fa303f5f8d9a95045f396b7f64a19fb2"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081232,
+            "native_ts": 11200155265,
+            "raw_sha256": "c6b15f00c48f7db5d72ce40759d6eefbf25ac6deceb2cd7bd868c797cde5afdf"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081252,
+            "native_ts": 11220368116,
+            "raw_sha256": "d0a6cdddc95c050e8ca63421322522db6d846006e9a2c4761661245651fdebed"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": 43,
+        "is_fatal": false,
+        "origin": "broker"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C3": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C3",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081296,
+            "native_ts": 11264171846,
+            "raw_sha256": "34748e4620a04427dcfcdf1770d4bf5fdcd53be01c8a940b70b958d9fad8a7e4"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081316,
+            "native_ts": 11284591151,
+            "raw_sha256": "293c9604650ab4212d1123d04bc695f8b6a402122754001091430c5d37e42d31"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081337,
+            "native_ts": 11304804582,
+            "raw_sha256": "cad590d37ffbd19c87a2baea3da3fb1a637666fcf71d89e53d901d946d24b547"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081357,
+            "native_ts": 11325118387,
+            "raw_sha256": "d86a836fc4576521f95a5643aeda63123cbc993cd9095f9404791c2a51c4943c"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081377,
+            "native_ts": 11345431486,
+            "raw_sha256": "52b0a2818e30af94e5424fa0dcdaad464db8ad005eeefe3051dea607c402a930"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": 43,
+        "is_fatal": false,
+        "origin": "broker"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C4": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C4",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081421,
+            "native_ts": 11388958431,
+            "raw_sha256": "e80ff784ff84ea2eae1dc807a0f7587c38191741d0daa3efc803afdb6de1fa98"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081441,
+            "native_ts": 11409478358,
+            "raw_sha256": "7041a7b661a8461a8b78e8ade6d26458e8b449ff3d8767e4dffc5df43c5d1c81"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081462,
+            "native_ts": 11429791095,
+            "raw_sha256": "4942ca56b8dc44815640979f6f05b27bcb60b4e1227b6fc2cfe00ec9f2396f49"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081482,
+            "native_ts": 11450007860,
+            "raw_sha256": "5d4b13a351d6d6be172c8aafb9b54cb6d58af802974722e9b6622402c2666bb2"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 43,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081502,
+            "native_ts": 11470220501,
+            "raw_sha256": "0886601bf1e914a7e7c01adae91ed79ef92d8d00ddc1633613f2b38c19b27510"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": 43,
+        "is_fatal": false,
+        "origin": "broker"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": "confirmed",
+        "hypotheses": {
+          "H0": "holds",
+          "H1_snappy": "holds",
+          "H1_lz4": "holds",
+          "H1_zstd": "holds"
+        },
+        "reason": null
+      }
+    }
+  },
+  "judge_receipts": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-b03-c1-single-judge",
+      "pod_name": "probe-40415641139-1-b03-c1-single-judge-lr6km",
+      "pod_uid": "b14804d4-df0d-4767-b946-b55aba388904",
+      "candidate_name": "probe-40415641139-1/single-action/B03/C1/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C2",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-b03-c2-single-judge",
+      "pod_name": "probe-40415641139-1-b03-c2-single-judge-mrbwt",
+      "pod_uid": "80890a26-2f1b-4546-8473-deb5b7089e80",
+      "candidate_name": "probe-40415641139-1/single-action/B03/C2/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C3": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C3",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-b03-c3-single-judge",
+      "pod_name": "probe-40415641139-1-b03-c3-single-judge-ggjgv",
+      "pod_uid": "bf46d7a3-14c8-4988-9148-9129cf1b70cc",
+      "candidate_name": "probe-40415641139-1/single-action/B03/C3/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C4": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B03",
+      "configuration_id": "C4",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-b03-c4-single-judge",
+      "pod_name": "probe-40415641139-1-b03-c4-single-judge-89jz8",
+      "pod_uid": "49137580-65bc-4811-b579-5d9d3b7e3398",
+      "candidate_name": "probe-40415641139-1/single-action/B03/C4/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}

@@ -1,0 +1,421 @@
+{
+  "publication": {
+    "item": "C12",
+    "proposed_verdict": "confirmed",
+    "summary": [
+      "A consumer with a 256-character group.id was assigned partitions in all five repeats, and a 257-character group.id was rejected by the broker in all five, so the proposed C12 verdict is confirmed.",
+      "The rejection was broker error 24, which librdkafka names as invalid group.id.",
+      "The workload is synthetic, and the result covers only the subscribe action on document-events."
+    ],
+    "hypotheses": {
+      "H1": "holds",
+      "H2": "holds"
+    },
+    "derivation": "re-derived from scenarios/C12/expected.yaml decision rules by make_results.py; equal to the verifier item_assessment",
+    "per_configuration": {
+      "C1": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C2": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": 24,
+          "is_fatal": false,
+          "origin": "broker"
+        },
+        "broker_count_per_repeat": [
+          2,
+          3,
+          2,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true
+      }
+    },
+    "error_code_names": {
+      "24": "RD_KAFKA_RESP_ERR_INVALID_GROUP_ID, Broker: Invalid group.id"
+    },
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139",
+      "attempt": 1,
+      "run_id": "probe-40415641139-1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715895816",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715517221",
+      "jobs": {
+        "C1": {
+          "capture": {
+            "job": "probe-40415641139-1-c12-c1-single",
+            "pod": "probe-40415641139-1-c12-c1-single-9tkvq",
+            "service_account": "probe",
+            "container_started_at": "2026-10-27T06:29:30Z",
+            "container_finished_at": "2026-10-27T06:33:52Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-c12-c1-single/probe-40415641139-1-c12-c1-single-9tkvq.containers.probe.log",
+            "pod_json_member": "probe-40415641139-1-c12-c1-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-c12-c1-single-judge",
+            "pod": "probe-40415641139-1-c12-c1-single-judge-lnmb7",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:34:04Z",
+            "container_finished_at": "2026-10-27T06:34:06Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-c12-c1-single-judge/probe-40415641139-1-c12-c1-single-judge-lnmb7.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-c12-c1-single-judge/pods.json"
+          }
+        },
+        "C2": {
+          "capture": {
+            "job": "probe-40415641139-1-c12-c2-single",
+            "pod": "probe-40415641139-1-c12-c2-single-z2hqx",
+            "service_account": "probe",
+            "container_started_at": "2026-10-27T06:34:17Z",
+            "container_finished_at": "2026-10-27T06:36:01Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-c12-c2-single/probe-40415641139-1-c12-c2-single-z2hqx.containers.probe.log",
+            "pod_json_member": "probe-40415641139-1-c12-c2-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-c12-c2-single-judge",
+            "pod": "probe-40415641139-1-c12-c2-single-judge-fk4zj",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:36:10Z",
+            "container_finished_at": "2026-10-27T06:36:11Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-c12-c2-single-judge/probe-40415641139-1-c12-c2-single-judge-fk4zj.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-c12-c2-single-judge/pods.json"
+          }
+        }
+      }
+    },
+    "versions": {
+      "confluent_kafka_managed": "2.16.0.0",
+      "librdkafka_native": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      }
+    },
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred_from_pinned_configuration_and_no_change_cluster_plan",
+      "sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/job/121897291309",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7b6834c5e8668e89376597bc2b524c0725326daf/infra/cluster/aks.tf"
+      ]
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275/artifacts/12705444729",
+      "commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "measurement_complete": true,
+      "break_passed": true,
+      "numerator": 1302,
+      "denominator": 1302
+    },
+    "workload": "synthetic"
+  },
+  "candidates": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "C12",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082586,
+            "native_ts": 6253488743,
+            "raw_sha256": "618d454ee36970a66c593744122cbf91b817728b23505baca946e988b0b34ace"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793082640,
+            "native_ts": 6307039762,
+            "raw_sha256": "d99d853da6d7e247abc09af285ccd8edb7ffe4789eea83ec621dd3c8f2bbc2b3"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793082697,
+            "native_ts": 6363809658,
+            "raw_sha256": "c3630f3fa0e7bd188c9748b6c111ea9fc68fff6c399eec2b3960d7f8f05e2130"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793082757,
+            "native_ts": 6423783382,
+            "raw_sha256": "b3c71760da3f4ec0cbf8130b805ba282bc73b2641f4d8647300b3cc50b56c0f6"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793082817,
+            "native_ts": 6483756861,
+            "raw_sha256": "64c4d49b2eb75091bf957adcdf06797cc142fb1716c26893cd44945651cfbc7b"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "C12",
+      "configuration_id": "C2",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 24,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082873,
+            "native_ts": 6540605289,
+            "raw_sha256": "869c973d83ad9a4286f777de7c43143315a72e8d4771283dd77cef7c32258599"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 24,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082894,
+            "native_ts": 6561227281,
+            "raw_sha256": "d5bf7b95e0e80b971c0455c1e0f1cd0057cd2121a9f79a9b78c84fd5029e2989"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 24,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082914,
+            "native_ts": 6581541225,
+            "raw_sha256": "4991b23ec3e0895530034ff1285a2d91748f2d274f3b3d3b2e16a91a28759421"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 24,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082935,
+            "native_ts": 6601854511,
+            "raw_sha256": "21070689bfa7f24baf6871558fe703533216c6c340e8f1ed05de2ea0eabab653"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 24,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793082955,
+            "native_ts": 6622364502,
+            "raw_sha256": "66e3b30d4f7aa291d646d9d55fa3965c27979184a57f286d3bbaebe152e4a1a0"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": 24,
+        "is_fatal": false,
+        "origin": "broker"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": "confirmed",
+        "hypotheses": {
+          "H1": "holds",
+          "H2": "holds"
+        },
+        "reason": null
+      }
+    }
+  },
+  "judge_receipts": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "C12",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-c12-c1-single-judge",
+      "pod_name": "probe-40415641139-1-c12-c1-single-judge-lnmb7",
+      "pod_uid": "70996f6e-72b1-4a39-8271-b26254f4d263",
+      "candidate_name": "probe-40415641139-1/single-action/C12/C1/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "C12",
+      "configuration_id": "C2",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-c12-c2-single-judge",
+      "pod_name": "probe-40415641139-1-c12-c2-single-judge-fk4zj",
+      "pod_uid": "d739437d-90f4-448b-832b-af2a577e4acb",
+      "candidate_name": "probe-40415641139-1/single-action/C12/C2/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}
