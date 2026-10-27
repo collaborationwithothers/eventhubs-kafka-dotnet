@@ -22,6 +22,8 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 - `npm run check:docs` exited 0. `npm run check:docs` reports 8 warnings. Two are `Undefined identifier: S0` in `docs/agents/factory.md`, which this pull request changes, at lines 7 and 92; both exist on `39e2cbb` (lines 7 and 90), come from the #211 amendment's `S0` decision label, and are left as they stand because this pull request does not change those sentences. The other 6 are in files this pull request does not change.
 - The disposition above is the plan's text with `S0` set as code. In plain text the label raised a ninth `Undefined identifier: S0` warning, in this receipt.
 
+- After each round of review edits, `pr1 --check`, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun on the staged tree before its commit (`3c100ae`, `e6a4e9c` and the round 3 commit). Each printed the same results as above: `trace batch PR 1 check (variant B): ok`, nothing, and the same 8 warnings.
+
 ## Review edits
 
 Cold review round 1, on commit `2306b27`:
@@ -43,6 +45,9 @@ Cold review round 2, on commit `3c100ae`:
 - P2, `docs/traces/H01.md`: the opening now says the #155 observation leaves the export inference unconfirmed.
 - P2, `docs/traces/K07.md`: the Kubernetes quote's range is now lines 224 to 229.
 - P2, `docs/traces/K09.md`: the Claim section names line 97, the Azure CLI prerequisite, and why the prerequisites section leaves it out.
+
+Cold review round 3, on commit `e6a4e9c`:
+- P1, `docs/traces/C16.md`, `D04.md` and `E05.md`: each opening stated as fact a reason its body marks as inference or does not support. Each opening now gives the section 12 reason instead.
 
 ## Review
 
