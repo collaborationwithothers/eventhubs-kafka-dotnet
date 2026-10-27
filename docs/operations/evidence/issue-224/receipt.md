@@ -24,7 +24,7 @@ All commands ran in the cloud session workspace on 2026-10-27, on branch `claude
 
 - After each round of review edits, `pr1 --check`, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun on the staged tree before its commit (`3c100ae`, `e6a4e9c`, `0baccfa` and the round 4 commit). Each printed the same results as above: `trace batch PR 1 check (variant B): ok`, nothing, and the same 8 warnings.
 
-- After Hari's added changes (below), the plan's `pr1 --check` exits 1 at its blueprint confinement assertion, because the plan allowed only the K09, H01, D01 and G01 lines. A copy of the script with only `BP_EDITS` extended by the five added line prefixes (`Inventory frozen: `, `- For an invalid or incomplete run,`, `- Inventory: B09, C05`, `The Event Hubs metrics reference marks`, `| C11 |`) prints `trace batch PR 1 check (variant B): ok`. Every other assertion is unchanged.
+- After Hari's added changes (below), the plan's `pr1 --check` exits 1 at its blueprint confinement assertion, because the plan allowed only the K09, H01, D01 and G01 lines. On the basis of [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624) item 2, a copy of the script with only `BP_EDITS` extended by the five added line prefixes (`Inventory frozen: `, `- For an invalid or incomplete run,`, `- Inventory: B09, C05`, `The Event Hubs metrics reference marks`, `| C11 |`) prints `trace batch PR 1 check (variant B): ok`. Every other assertion is unchanged. On each commit from `7e4acfa` on, the extended check, `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were run on the staged tree before the commit, with the results above: `ok`, nothing, and the same 8 warnings. The unmodified plan check still exits 1 there, and the pull request description lists that for Hari.
 
 ## Review edits
 
@@ -60,7 +60,7 @@ Cold review round 4, on commit `0baccfa`:
 - P2, `docs/traces/D04.md`: 588 is now "at most about 588", because 17 is a lower bound.
 
 Changes Hari added on 2026-10-27 in this session's chat ("Stale blueprint texting fix it", "c11 fix it"), beyond the plan's file content, recorded in [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624):
-- `docs/blueprint.md` line 4 now records the item type changes since amendment 1: C11 (PR #218), and H01 and K09 (#224).
+- `docs/blueprint.md` line 4 now records the changes to section 12 since amendment 1: C11 (PR #218), H01 (#224), and K09's corrected reason (#224). It also records the ADR-013, FM-01 and Q1 edits below.
 - ADR-013 no longer lists H01 among the items that may retain throttling observations from a run.
 - FM-01 no longer lists H01 among the items that test it; it names the H01 write-up as a trace.
 - Query Q1 gains a note: `ThrottledRequests` has DS Export `No`, so by inference `platformThrottled` stays empty from the workspace.
@@ -72,6 +72,12 @@ Cold review round 5, on commit `073b631`:
 - P2, this receipt: the cap approval was a chat quote only. It is now recorded on #224 as [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624).
 - P2, this receipt: the round 3 entry now says it is three findings.
 - P2, `docs/traces/C11.md` and `docs/traces/H03.md`: the bare "none." Design and Security bullets now give a reason.
+
+Cold review round 6, on commit `fa6237c` (rounds 6 to 9 are approved in [decision record 6450806971](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450806971) and 6450522624):
+- P1, `docs/traces/K09.md`: the compatibility-check sentence stated the version and cluster type matches as facts. It now says they would match a pool at 1.37 or later, and marks the cluster type as inference.
+- P2, `docs/blueprint.md` line 4: it now records the ADR-013, FM-01 and Q1 edits and links Hari's decision record.
+- P2, this receipt: the line 4 entry no longer says K09's type changed.
+- P2, this receipt: the validation entry names the commits, the three commands and the basis for the extended check.
 
 ## Review
 

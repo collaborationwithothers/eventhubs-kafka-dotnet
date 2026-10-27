@@ -1,7 +1,7 @@
 # eventhubs-kafka-dotnet: blueprint
 
 Status: approved by Hari on 2026-10-11.
-Inventory frozen: 2026-10-11. Amended once, by Hari on 2026-10-12 (amendment 1, section 12). Item types changed since, by Hari's decisions: C11 to D ([PR #218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/218)), and H01 to D with K09's reason corrected ([#224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224)). Anything else found later goes to v1.1.
+Inventory frozen: 2026-10-11. Amended once, by Hari on 2026-10-12 (amendment 1, section 12). Item types changed since, by Hari's decisions: C11 to D ([PR #218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/218)), and H01 to D with K09's reason corrected ([#224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224)). The same #224 change removes H01 from the run items in ADR-013 and FM-01 and adds the note after query Q1 ([decision record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624), item 2). Anything else found later goes to v1.1.
 
 The ADR-003, ADR-012 and ADR-013 amendments follow [Hari-approved #80 revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/80#issuecomment-6235834239); Hari's merge of this pull request records approval of these amendments.
 
