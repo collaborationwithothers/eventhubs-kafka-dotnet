@@ -11,7 +11,7 @@
       "H1": "holds",
       "H2": "contradicted"
     },
-    "derivation": "re-derived from scenarios/B05/expected.yaml decision rules by make_results.py; equal to the verifier item_assessment",
+    "derivation": "decision rules transcribed from scenarios/B05/expected.yaml (SHA-256 7806ddc0821bb03375c9e69728da27d9bcdbcc1196ee1ef6c498f677aa86d42c) into make_results.py; derived verdict equal to the verifier item_assessment",
     "per_configuration": {
       "C1": {
         "status": "complete_valid",

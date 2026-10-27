@@ -13,7 +13,7 @@
       "H1_lz4": "holds",
       "H1_zstd": "holds"
     },
-    "derivation": "re-derived from scenarios/B03/expected.yaml decision rules by make_results.py; equal to the verifier item_assessment",
+    "derivation": "decision rules transcribed from scenarios/B03/expected.yaml (SHA-256 c65fa4e1b9bb089434f7c4f5aa55b0c6b5d1ad4b3d69ebf55a130a8df0d28bf7) into make_results.py; derived verdict equal to the verifier item_assessment",
     "per_configuration": {
       "C1": {
         "status": "complete_valid",
