@@ -5,7 +5,7 @@ This receipt records validation of the trace batch documentation changes for iss
 ## Sources
 
 - Plan: [Trace batch implementation-grade plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438840070), `Revision: 2.`, `updated_at` 2026-10-27T12:57:51Z. It was approved under docs/agents/factory.md "Item lifecycle" step 3 "Standing approval" by the [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6442677677) of 2026-10-27T13:08:43Z, which states `Blocking findings: none`.
-- Decisions, in creation order: [6438353573](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573), [amendment 6442095091](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6442095091), which adopts [#155 decision 6442094735](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/155#issuecomment-6442094735) items 2 and 5, and [6442153525](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6442153525).
+- Decisions, in creation order: [6438353573](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573), [amendment 6442095091](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6442095091), which adopts [#155 decision 6442094735](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/155#issuecomment-6442094735) items 2 and 5, [6442153525](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6442153525), and Hari's decision records from this session's chat, [6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624) and [6450806971](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450806971).
 - Baseline: `main` at `39e2cbba73f28855d3d0bbc3511d977294b8ba09`.
 - K09 variant: B. `origin/main:infra/cluster/aks.tf` has 0 matches of the plan's LocalDNS pin pattern and no `local_dns` text.
 - The plan script was taken unmodified from the posted plan comment and saved outside the repository.
@@ -60,7 +60,7 @@ Cold review round 4, on commit `0baccfa`:
 - P2, `docs/traces/D04.md`: 588 is now "at most about 588", because 17 is a lower bound.
 
 Changes Hari added on 2026-10-27 in this session's chat ("Stale blueprint texting fix it", "c11 fix it"), beyond the plan's file content, recorded in [decision record 6450522624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6450522624):
-- `docs/blueprint.md` line 4 now records the changes to section 12 since amendment 1: C11 (PR #218), H01 (#224), and K09's corrected reason (#224). It also records the ADR-013, FM-01 and Q1 edits below.
+- `docs/blueprint.md` line 4 now records the type and reason changes to section 12 since amendment 1: C11 (PR #218), H01 (#224), and K09's corrected reason (#224). It also records #224's D01 and G01 notes, the C11 citation fix, and the ADR-013, FM-01 and Q1 edits below.
 - ADR-013 no longer lists H01 among the items that may retain throttling observations from a run.
 - FM-01 no longer lists H01 among the items that test it; it names the H01 write-up as a trace.
 - Query Q1 gains a note: `ThrottledRequests` has DS Export `No`, so by inference `platformThrottled` stays empty from the workspace.
@@ -78,6 +78,11 @@ Cold review round 6, on commit `fa6237c` (rounds 6 to 9 are approved in [decisio
 - P2, `docs/blueprint.md` line 4: it now records the ADR-013, FM-01 and Q1 edits and links Hari's decision record.
 - P2, this receipt: the line 4 entry no longer says K09's type changed.
 - P2, this receipt: the validation entry names the commits, the three commands and the basis for the extended check.
+
+Cold review round 7, on commit `712f406`: no P0 or P1. Its three P2s are prose fixes in files already in the diff, applied under rule 8:
+- P2, `docs/blueprint.md` line 4: it now also names the D01 and G01 notes and the C11 citation fix.
+- P2, this receipt: `## Sources` now lists both decision records.
+- P2, `docs/traces/K09.md`: the opening now says 1.37 turns LocalDNS on only for pools that pass the compatibility checks.
 
 ## Review
 
