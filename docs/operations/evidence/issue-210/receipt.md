@@ -12,7 +12,7 @@ C08 C1, F04 C2 and F04 C3 were incomplete in all five repeats, with reasons `p4_
 
 ## Source and commands
 
-The branch is `claude/issue-210-probe-batch-verdict`. Its base is `7b6834c5e8668e89376597bc2b524c0725326daf`, the head of `main` and the source of the run. All commands ran with `git rev-parse HEAD` reporting that SHA and the authored files in the working tree.
+The branch is `claude/issue-210-probe-batch-verdict`. Its base is `7b6834c5e8668e89376597bc2b524c0725326daf`, the head of `main` and the source of the run. The commands ran with `git rev-parse HEAD` reporting that SHA, or `458616f` with the authored files committed as a backup under AGENTS.md "Before opening a pull request" rule 12; the tree differs only by the authored files.
 
 | Artifact ID | Name | ZIP SHA-256 |
 | --- | --- | --- |
@@ -40,11 +40,23 @@ C5 publication status: passed. [Run 40415248275](https://github.com/collaboratio
 
 - `npm ci --ignore-scripts`: exit 0.
 - `npm run check:docs`: exit 0. No issue in the authored files. Blanket disposition: its 8 warnings are all in files this pull request does not change, the same 8 as on `main`.
-- `./scripts/verify-dotnet.sh`, with .NET SDK 10.0.402 installed in the session: RESULT_PENDING.
+- `./scripts/verify-dotnet.sh`, with .NET SDK 10.0.402 installed in the session: exit 2. Locked restore, solution build, Kafka XML inventory, architecture tests, the unit scaffold inventory and two test projects passed; the script then stopped at the first failing test project. It ran again from a temporary copy that changed one line, so that a failing unit-test project is recorded and the loop continues. That copy was removed afterwards and is not committed. The rerun also passed the warning-as-error control. Counts from each project's xunit report, by script:
+
+| Project | Total | Passed | Failed |
+| --- | ---: | ---: | ---: |
+| `Parchwell.ArchitectureTests` | 12 | 12 | 0 |
+| `Parchwell.Enrichment.Tests` | 55 | 55 | 0 |
+| `Parchwell.Kafka.Tests` | 402 | 401 | 1 |
+| `Parchwell.LoadGen.Tests` | 484 | 482 | 2 |
+| `Parchwell.Scenarios.Tests` | 149 | 149 | 0 |
+| `Parchwell.Verifier.Tests` | 3342 | 3330 | 12 |
+| Total | 4444 | 4429 | 15 |
+
+All 15 failures are component or integration tests that start a local Kafka through Testcontainers. Each failed in its fixture's Docker endpoint lookup (`ExperimentDockerAuthentication.get_Endpoint`) or with `DockerUnavailableException`, before any Kafka container started. Three of them report it through their per-trial `proof.json` files. The session container has no Docker daemon. This pull request's own CI is the authoritative check.
 - Manual inspection against AGENTS.md hard safety rule 7: no secret, key, connection string, tenant ID or subscription ID in the authored files. The job logs mask subscription IDs; none was copied.
 
 No Azure operation and no workflow dispatch was run. This pull request changes no code, scenario, expected outcome or contract.
 
 ## Cold review
 
-COLD_REVIEW_PENDING
+Cold-review rounds and their dispositions are recorded here as each round completes. The final head's CI run and the last round are recorded in the pull request description under AGENTS.md "Before opening a pull request" rule 8.
