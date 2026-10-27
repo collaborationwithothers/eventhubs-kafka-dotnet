@@ -1,0 +1,245 @@
+{
+  "publication": {
+    "item": "B05",
+    "proposed_verdict": "confirmed",
+    "summary": [
+      "InitTransactions returned without error in all five fresh producers, so H1 holds and the proposed B05 verdict is confirmed.",
+      "This confirms the transactions page, which says Kafka transactions are in public preview in Premium, and contradicts the configurations page, which lists transactions as not currently supported.",
+      "Only InitTransactions was tested in these synthetic repeats; begin, commit, abort and exactly-once semantics were not."
+    ],
+    "hypotheses": {
+      "H1": "holds",
+      "H2": "contradicted"
+    },
+    "derivation": "decision rules transcribed from scenarios/B05/expected.yaml (SHA-256 7806ddc0821bb03375c9e69728da27d9bcdbcc1196ee1ef6c498f677aa86d42c) into make_results.py; derived verdict equal to the verifier item_assessment",
+    "per_configuration": {
+      "C1": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true
+      }
+    },
+    "error_code_names": {},
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139",
+      "attempt": 1,
+      "run_id": "probe-40415641139-1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715895816",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/artifacts/12715517221",
+      "jobs": {
+        "C1": {
+          "capture": {
+            "job": "probe-40415641139-1-b05-c1-single",
+            "pod": "probe-40415641139-1-b05-c1-single-rgtn8",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-27T06:12:10Z",
+            "container_finished_at": "2026-10-27T06:13:58Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b05-c1-single/probe-40415641139-1-b05-c1-single-rgtn8.containers.loadgen.log",
+            "pod_json_member": "probe-40415641139-1-b05-c1-single/pods.json"
+          },
+          "judge": {
+            "job": "probe-40415641139-1-b05-c1-single-judge",
+            "pod": "probe-40415641139-1-b05-c1-single-judge-85spc",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-27T06:14:08Z",
+            "container_finished_at": "2026-10-27T06:14:10Z",
+            "exit_code": 0,
+            "pod_log_member": "probe-40415641139-1-b05-c1-single-judge/probe-40415641139-1-b05-c1-single-judge-85spc.containers.verifier.log",
+            "pod_json_member": "probe-40415641139-1-b05-c1-single-judge/pods.json"
+          }
+        }
+      }
+    },
+    "versions": {
+      "confluent_kafka_managed": "2.16.0.0",
+      "librdkafka_native": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      }
+    },
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred_from_pinned_configuration_and_no_change_cluster_plan",
+      "sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415641139/job/121897291309",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7b6834c5e8668e89376597bc2b524c0725326daf/infra/cluster/aks.tf"
+      ]
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40415248275/artifacts/12705444729",
+      "commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "measurement_complete": true,
+      "break_passed": true,
+      "numerator": 1302,
+      "denominator": 1302
+    },
+    "workload": "synthetic"
+  },
+  "candidates": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B05",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:164c74943e84bbfacd7ee5e1da7c54f62517dcffb2b48b22bd01dc879aaf0642",
+        "verifier": "sha256:c20cf49bcff51e067afa4300256576a59d8b8355c0bbcac1349f826da5144905",
+        "enrichment": "sha256:8bb5903ed2ba94340a83a2b63c39179cbad0b512b8f4c75a357004aea3214868"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081546,
+            "native_ts": 11514163238,
+            "raw_sha256": "3a828aa8cd42be7d7de781459d580a6cf674e8c7e30851d54ec840d04194df0b"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081568,
+            "native_ts": 11536483628,
+            "raw_sha256": "a963575f494da933e35139b3713954dc60c830229307151845f282f0b547d4b1"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081589,
+            "native_ts": 11557496410,
+            "raw_sha256": "d7e057ca4f9f3a14e8502df3c284e0b859667e0b3987ec6f3111da6660075b64"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081610,
+            "native_ts": 11578612409,
+            "raw_sha256": "5da54452bf5660d9e103bcbd797f5974cf0e9ef6ad1afd3d23766d3ef15c3791"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793081631,
+            "native_ts": 11599624804,
+            "raw_sha256": "ee82dd9dcb91a314867ed1dc7a1fd0229ea8de45c1e52f245e44ae227ea3d37d"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": "confirmed",
+        "hypotheses": {
+          "H1": "holds",
+          "H2": "contradicted"
+        },
+        "reason": null
+      }
+    }
+  },
+  "judge_receipts": {
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40415641139-1",
+      "scenario_id": "B05",
+      "configuration_id": "C1",
+      "source_commit": "7b6834c5e8668e89376597bc2b524c0725326daf",
+      "job_name": "probe-40415641139-1-b05-c1-single-judge",
+      "pod_name": "probe-40415641139-1-b05-c1-single-judge-85spc",
+      "pod_uid": "b7c6d812-27e0-449e-b6a3-100cbf6ba5a4",
+      "candidate_name": "probe-40415641139-1/single-action/B05/C1/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}
