@@ -6,6 +6,8 @@ Status: approved by Hari on 2026-10-12. Amended for ADR-018 in the pull request 
 
 The #211 amendment to "Evidence pack" follows [the adopted S0 decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/211#issuecomment-6423734358). Hari's merge of its pull request records approval of this amendment.
 
+The #224 amendment to "Evidence pack", for traced items, follows [#224 decision 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573). Hari's merge of its pull request records approval of this amendment.
+
 The factory exists to minimise Hari's hours per inventory item, not to minimise calendar time. Generating code is cheap; verifying it is the constraint. So Hari's attention goes into two decisions per item, and everything between them is checked by machines that are hard to fool.
 
 ## Decisions taken (2026-10-11 to 2026-10-13)
@@ -92,6 +94,8 @@ Every verdict pull request contains:
 - per-repeat broker connection counts for every Kafka client whose statistics the run captures (ADR-019 check 2), using the checked measurements defined in [verifier-contract.md](../operations/verifier-contract.md#statistics-and-configuration); unavailable measurements are not substituted with zeros;
 - Confluent.Kafka and librdkafka versions, PU count, node size, region, run timestamps;
 - the proposed verdict (confirmed, contradicted, undocumented, untestable) and a three-sentence summary.
+
+For a traced item, typed D in docs/blueprint.md section 12 "Frozen inventory" or "Inventory amendment 1", nothing runs. Its verdict pull request contains the report `results/<ID>/<utc-date>.md`, dated the UTC day the report is written. The report links the item's write-up under `docs/traces/` as merged on `main`, whose sources are each pinned to a commit or tag. It proposes the verdict `untestable` with the item's section 12 reason, and opens with a three-sentence summary. The run evidence listed above is recorded as not applicable and left absent, never zero: the scenario definition and expected outcome, per-repeat results, validity, completion and pod evidence, verifier counts, broker counts, client versions, PU count, node size, region and run timestamps ([#224 decision 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/224#issuecomment-6438353573)).
 
 Mutation acceptance for a pull request that changes any path in the `mutate` list of `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` is a passing `verifier-c5-mutation.yml` run dispatched on `main` after the change merges. The run's `summary.json` must identify the commit actually tested, report `measurement_complete: true` and `break_passed: true`, and name a commit on `main` whose history includes the target-changing merge commit. A passing run on a later main commit is acceptable when it includes the target changes under review. If a later main change modifies any configured target, acceptance for that change requires a later passing run whose measured commit includes it. A missing, failed or incomplete latest applicable run blocks evidence-pack publication; if the run fails or is incomplete, open a fix issue. Do not use the deleted local sample as a mutation check.
 
