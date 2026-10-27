@@ -16,7 +16,7 @@ The newest completed run of `verifier-c5-mutation.yml` on `main` is [40415248275
 
 ## Validation
 
-All commands ran in the cloud session workspace on 2026-10-27, on branch `claude/issue-224-trace-batch-verdict` based on `origin/main` `fd49816`. The first four results below ran with the reports staged and not yet committed. The checks after the K09 removal ran on commit `55aa24f` with the deletion staged, before commit `9cebf3e`, and again after the round 2 receipt edits, with those staged.
+All commands ran in the cloud session workspace on 2026-10-27, on branch `claude/issue-224-trace-batch-verdict` based on `origin/main` `fd49816`. `verdict --write` ran on a clean tree, as its run-once guard requires. The next three results ran with the reports staged and not yet committed. The checks after the K09 removal ran on commit `55aa24f` with the deletion staged, before commit `9cebf3e`, and again after the round 2 receipt edits, with those staged.
 
 - `python3 trace_224.py verdict --write` exited 0 and printed `mutation gate: run 40415248275 at 7b6834c5e8668e89376597bc2b524c0725326daf` and `trace batch verdict write: ok`. It ran once, writing the thirteen reports dated 2026-10-27. K09's report was later removed (see `## Review edits`).
 - `python3 trace_224.py verdict --check` exited 0 and printed the same gate line and `trace batch verdict check: ok`. After the K09 removal, it ran on the copy of the script with K09 taken out of `IDS` but kept in `D_SET`, as the removal rule says. It again exited 0 with the same two lines. `git diff --cached --check --merge-base origin/main` and `npm run check:docs` were rerun at the same points, with the same results: nothing, and the same 8 warnings.
