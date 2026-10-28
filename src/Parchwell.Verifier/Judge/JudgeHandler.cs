@@ -215,7 +215,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                                 b04Evidence=result.B04RecordedEvidence;
                                 if(result.A01RecordedEvidence is not null)acceptedA01.Add(result.A01RecordedEvidence);
                                 string? producerKafkaVersion=null,producerNativeVersion=null,producerDotnetVersion=null;
-                                result.RuntimeVersions?.TryGetValue("Confluent.Kafka",out producerKafkaVersion);
+                                result.RuntimeVersions?.TryGetValue("confluent_kafka",out producerKafkaVersion);
                                 result.RuntimeVersions?.TryGetValue("librdkafka",out producerNativeVersion);
                                 result.RuntimeVersions?.TryGetValue("dotnet",out producerDotnetVersion);
                                 acceptedVersions.Add((result.GeneratorVersion,producerKafkaVersion,producerNativeVersion,producerDotnetVersion));
