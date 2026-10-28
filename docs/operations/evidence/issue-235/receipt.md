@@ -61,3 +61,53 @@ The batch destroyed-resource plan supplies Premium/1 PU/uksouth; pinned cluster 
 The exact six approved paths were staged individually before the documentation scan. Diff whitespace checks and the six-path/YAML scope checks passed. `npm run check:docs` completed successfully with no warning in a changed file. Existing warnings in files outside this PR remain unchanged and are outside its scope; this blanket disposition follows AGENTS.md rule 8. The local `main` ref was absent, so it was created at the fetched `origin/main` solely for the plan's literal diff commands.
 
 The complete authored review material includes the six-file diff, temporary authoring/check scripts, source-verification brief and earlier planning/check prose and scripts. Cold-review round 1 reviewed every supplied path and found only the mandatory P0 for adding results before a PR can carry the verdict label; it found no other substantive or P2 finding. That P0 is retained under AGENTS.md rule 8's approved-verdict exception, listed in the PR description, and resolved by a verdict-labelled PR reviewed and merged by Hari. The final P0/P1-only round is pending after a prose correction to already-reviewed material. The PR description records the final reviewed head and last cold-review round, without a receipt-only commit; Hari remains the merger.
+
+## PR #239 cleanup repair
+
+The cleanup repair retains the shared Azure CLI lock until the direct child is reaped and every observed member of its Linux process group is absent or a zombie. It preserves the existing signal handling, authentication, command forwarding and exit mapping. The original C08 publication evidence above is unchanged.
+
+Authority is [repair decision 6478753444](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6478753444), [plan Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6477632754) (`updated_at: 2026-10-28T19:41:45Z`), [independent check 6478902074](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6478902074) and [exact-revision approval 6478914516](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6478914516). Before mutation, the existing PR head was confirmed as `cb8730925d74d0e26fa0a856bcafb5b71118fad7`. Current main `f7ac84238137545d7a185c9268d917667c61e724` was integrated by local natural merge `0ba6c26132abe391134bd0df042f72cb2f94cbc5`, with one Codex co-author trailer and no intermediate push. The wrapper and original tests are unchanged between that main and the original PR head.
+
+The historical [Lifecycle failure](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40752875245/job/123043927149) established only that its absent-or-Z assertion was false when sampled. It retained no sampled state. D1's single bounded observation pass exhausted its fixed 12 existing-test executions without reproducing the failure, exited 2 and printed the approved inconclusive marker. Its 36 sampled grandchild states were Z; each logged raw stat string matched its recorded byte encoding. These synthetic observations do not establish the historical CI state or its precise cause.
+
+D2's new deterministic method ran once against the unchanged wrapper and failed with the intended event mismatch: the actual TERM, KILL and unlock sequence omitted every group observation and poll. That meaningful red result established the source-contract gap independently of D1's inconclusive outcome. After the minimal barrier repair, the same method passed: real main/flock/run_process retained the independently checked lock and ignored handlers across PermissionError, ValueError, R and X observations, emitted the cleanup-observation diagnostic once, then allowed Z and unlock. Fixed parser cases verify final-parenthesis parsing, matching groups, vanished entries and propagated observation errors. Every existing fixture, test method and assertion remains unchanged.
+
+Only one authored repair iteration was needed. These exact commands ran from the repository root; each external deadline is a planning cap, not a measured duration guarantee:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 infra/scripts/lifecycle/command.py 90 -- python3 /tmp/issue235-cli-cleanup-diagnostic.py
+PYTHONDONTWRITEBYTECODE=1 python3 infra/scripts/lifecycle/command.py 10 -- python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -k test_21_cleanup_waits_for_group_observation_before_unlock -v
+PYTHONDONTWRITEBYTECODE=1 python3 infra/scripts/lifecycle/command.py 15 -- python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -k test_15_signals_timeout_reap_group_before_unlock -v
+PYTHONDONTWRITEBYTECODE=1 python3 infra/scripts/lifecycle/command.py 60 -- python3 -m unittest discover -s scripts/tests -p test_azure_cli_session.py -v
+python3 infra/scripts/lifecycle/command.py 120 -- npm run check:docs
+python /tmp/issue235-repair-implementation/check-preservation.py
+git diff --check
+git diff --cached --check
+```
+
+| Gate | Observed result |
+|---|---|
+| D1, one invocation | Exit 2; fixed cap exhausted without reproduction |
+| D2, once before wrapper edit | Exit 1; meaningful missing-observation event assertion |
+| Iteration 1 deterministic regression, once after repair | Exit 0 |
+| Iteration 1 existing real-process test 15, once | Exit 0 |
+| Complete synthetic suite, once | Exit 0; all 21 tests passed |
+| Bounded documentation scan, once | Exit 0; no warning in a changed file |
+| Preservation and exact-eight-path comparison | Exit 0 |
+| Unstaged and staged whitespace checks | Exit 0 |
+
+Existing documentation warnings in files outside this PR remain unchanged and outside its scope, under the existing blanket disposition. The scan completed before this receipt recorded its observed status; it was not repeated to obtain a different result.
+
+The new poll follows the existing group KILL and unbounded final direct-child reap. It completes only when every matching observation is Z or the group is absent, waiting through X and other non-Z states. Unexpected observation/parse errors emit one fixed diagnostic and retain the lock while retrying. This adds a Linux `/proc` dependency and can outlast the nominal invocation budget, as the existing final reap already could. There is no new final-cleanup deadline or strict total 60-second guarantee. The [Linux stat manual](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html), read 2026-10-28, defines parenthesized comm, state and process-group fields, including X as dead and Z as zombie. The parser splits after the final closing parenthesis. This repair claims no macOS support and changes no authentication scope, workflow, command runner or live infrastructure behavior.
+
+The finite preservation script compares the five frozen files against `cb8730925d74d0e26fa0a856bcafb5b71118fad7`, both scenario YAML files against that head and current main, and the original receipt prefix against that head. It checks the exact eight-path complete PR scope and byte equality of every original test method and fixture prefix. All comparisons passed; the unchanged original receipt prefix SHA-256 is `f7e768a9ddf3656ca8dafa4955754b8c5bff166055291ae40773cd67348d59bb`.
+
+| Frozen file | SHA-256 |
+|---|---|
+| results/C08/2026-10-28.json | 1ee2eb8bc6d5959d223841bb04d71f73b6207f4d29d7be760978019a95f95817 |
+| results/C08/2026-10-28.md | c392cddfe8c81203cc2ffe4d289e497ce25d0c8a07d70b89f6d42633f02ebbe0 |
+| docs/blueprint.md | db0756401ad5d3877f1c16d5d96f1d1f99b20b7ad1788c8e794241dab68872ca |
+| docs/operations/kafka-configuration-explained.md | cf294f37e85f6b199c621889598a8083ef441148ef605e713ae94bc3cdbcfd95 |
+| docs/research/kubernetes-kafka-clients.md | a92ba6555c4d37d39636a1e3d267e7962b4d10a567371ff941391d56c9aa6d1e |
+
+The YAML hashes remain the values recorded above. No artifact download, publication regeneration, Azure command, workflow dispatch or SASL investigation was performed for this repair. Temporary diagnostic/preservation scripts and authored review material are included in the complete cold-review diff; synthetic logs and command output remain outside the repository. The fresh repair cold review and final-head automatic CI/code/security reviews remain pending at preparation; the PR records their observed final state and reviewed head. Hari reviews and merges the verdict.

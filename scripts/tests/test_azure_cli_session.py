@@ -664,5 +664,95 @@ class AzureCliSessionTests(unittest.TestCase):
                 self.assertFalse((base / 'original-calls').exists())
 
 
+    def test_21_cleanup_waits_for_group_observation_before_unlock(self):
+        self.state.write_text(json.dumps({'request_started_monotonic': time.monotonic(),
+                                         'assertion_exp': int(time.time()) + 600}))
+        self.state.chmod(0o600)
+        process = mock.Mock(pid=4242)
+        process.wait.side_effect = [session.SessionInterrupted(signal.SIGINT), 0, 0]
+        events = []
+
+        def assert_locked():
+            with (self.private / 'lock').open('a') as independent:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(independent, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        observations = iter([PermissionError, ValueError, ['R'], ['X'], ['Z']])
+
+        def observe(pgid):
+            self.assertEqual(4242, pgid)
+            value = next(observations)
+            events.append(('observe', value if isinstance(value, type) else value[0]))
+            assert_locked()
+            for number in (signal.SIGINT, signal.SIGTERM, signal.SIGALRM):
+                self.assertEqual(signal.SIG_IGN, signal.getsignal(number))
+            if isinstance(value, type):
+                raise value()
+            return value
+
+        def poll(seconds):
+            self.assertEqual(0.05, seconds)
+            assert_locked()
+            events.append(('sleep', seconds))
+
+        stderr = io.StringIO()
+        with mock.patch.object(session.subprocess, 'Popen', return_value=process), \
+                mock.patch.object(session.os, 'killpg', side_effect=lambda pgid, number: events.append(('signal', pgid, number))), \
+                mock.patch.object(session, 'process_group_states', side_effect=observe, create=True) as observed, \
+                mock.patch.object(session.time, 'sleep', side_effect=poll), \
+                contextlib.redirect_stderr(stderr):
+            self.assertEqual(130, session.main(['resource', 'list'], environ=self.env))
+        with (self.private / 'lock').open('a') as independent:
+            fcntl.flock(independent, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            events.append(('unlock',))
+        self.assertEqual([
+            ('signal', 4242, signal.SIGTERM), ('signal', 4242, signal.SIGKILL),
+            ('observe', PermissionError), ('sleep', 0.05),
+            ('observe', ValueError), ('sleep', 0.05),
+            ('observe', 'R'), ('sleep', 0.05),
+            ('observe', 'X'), ('sleep', 0.05),
+            ('observe', 'Z'), ('unlock',)], events)
+        self.assertEqual(3, process.wait.call_count)
+        self.assertEqual(5, observed.call_count)
+        with self.assertRaises(StopIteration):
+            next(observations)
+        self.assertEqual('azure_cli_session_cleanup_observation_failed\n', stderr.getvalue())
+
+        cases = [
+            ('empty', None, None, []),
+            ('running', '501', '501 (comm) R 1 4242 0', ['R']),
+            ('dead', '501', '501 (comm) X 1 4242 0', ['X']),
+            ('zombie', '501', '501 (comm) Z 1 4242 0', ['Z']),
+            ('other group', '501', '501 (comm) R 1 9999 0', []),
+            ('nonnumeric', 'self', None, []),
+            ('parenthesized comm', '501', '501 (odd ) name) R 1 4242 0', ['R']),
+            ('vanished file', '501', FileNotFoundError, []),
+            ('vanished process', '501', ProcessLookupError, []),
+            ('permission', '501', PermissionError, PermissionError),
+            ('missing close', '501', '501 (comm', IndexError),
+            ('missing tail', '501', '501 (comm)', IndexError),
+            ('noninteger group', '501', '501 (comm) R 1 bad 0', ValueError),
+        ]
+        for label, name, raw, expected in cases:
+            with self.subTest(parser=label):
+                entry = mock.MagicMock()
+                entry.name = name
+                stat_file = entry.__truediv__.return_value
+                if isinstance(raw, type):
+                    stat_file.read_text.side_effect = raw
+                else:
+                    stat_file.read_text.return_value = raw
+                with mock.patch.object(session, 'Path') as proc_path:
+                    proc_path.return_value.iterdir.return_value = [] if name is None else [entry]
+                    if isinstance(expected, type):
+                        with self.assertRaises(expected):
+                            session.process_group_states(4242)
+                    else:
+                        self.assertEqual(expected, session.process_group_states(4242))
+                    proc_path.assert_called_once_with('/proc')
+                    if name == 'self':
+                        stat_file.read_text.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

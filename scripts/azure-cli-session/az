@@ -64,6 +64,21 @@ def request_timeout(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
+def process_group_states(pgid):
+    states = []
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            raw = (entry / 'stat').read_text()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        fields = raw.rsplit(')', 1)[1].split()
+        if int(fields[2]) == pgid:
+            states.append(fields[0])
+    return states
+
+
 def stop_process(process):
     # Keep the lock until the direct child is reaped and its group is stopped,
     # even when another cancellation arrives during the one-second grace period.
@@ -80,6 +95,19 @@ def stop_process(process):
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
         process.wait()
+        observation_failed = False
+        while True:
+            try:
+                states = process_group_states(process.pid)
+            except (OSError, ValueError, IndexError):
+                if not observation_failed:
+                    print('azure_cli_session_cleanup_observation_failed', file=sys.stderr)
+                    observation_failed = True
+                time.sleep(LOCK_POLL_SECONDS)
+                continue
+            if all(state == 'Z' for state in states):
+                break
+            time.sleep(LOCK_POLL_SECONDS)
     finally:
         for number, handler in previous.items():
             signal.signal(number, handler)
