@@ -54,12 +54,19 @@ public sealed class ConfigurationMappingTests
         {
             Assert.Equal(role, item.Role);
             Assert.Null(item.Value);
-            Assert.Equal(item.Key is "group.instance.id" or "auto.commit.interval.ms" or "enable.auto.offset.store"
+            Assert.Equal(item.Key is "group.instance.id" or "auto.commit.interval.ms" or "enable.auto.offset.store" or "debug"
                 ? KafkaSettingDisposition.Unspecified : KafkaSettingDisposition.Excluded, item.Disposition);
             Assert.DoesNotContain(configuration, pair => pair.Key == item.Key);
             Assert.Equal(OmissionTags(item.Key).Order(StringComparer.Ordinal), item.InventoryIds.Order(StringComparer.Ordinal));
             Assert.NotEmpty(item.Sources);
             Assert.False(string.IsNullOrWhiteSpace(item.SelectionReason));
+            if (item.Key == "debug")
+            {
+                Assert.Equal("No debug contexts are selected; the pinned native default enables none.", item.SelectionReason);
+                var source = Assert.Single(item.Sources);
+                Assert.Equal(ApprovedConfigurationContract.Native, source.Url.AbsoluteUri);
+                Assert.Equal("v2.16.0", source.VersionOrDate);
+            }
         });
         foreach (string excluded in new[] { "transactional.id", "sasl.username", "sasl.password", "sasl.jaas.config", "sasl.oauthbearer.client.secret", "sasl.oauthbearer.token.endpoint.url", "sasl.oauthbearer.scope", "delivery.report.only.error", "retries", "sasl.mechanisms", "compression.codec", "max.in.flight.requests.per.connection" })
             Assert.Null(configuration.Get(excluded));
@@ -221,6 +228,7 @@ public sealed class ConfigurationMappingTests
         "transactional.id" => ["B05"],
         "delivery.report.only.error" => ["A01", "B10"],
         "group.instance.id" => ["C06"],
+        "debug" => ["C08", "F04"],
         "auto.commit.interval.ms" => ["C09", "C10"],
         "enable.auto.offset.store" => ["C10"],
         _ => throw new ArgumentOutOfRangeException(nameof(key))
@@ -232,8 +240,8 @@ public sealed class ConfigurationMappingTests
         return role switch
         {
             KafkaClientRole.LoadGenProducer or KafkaClientRole.EnrichmentProducer => common.Concat(["transactional.id", "delivery.report.only.error"]),
-            KafkaClientRole.EnrichmentConsumer => common.Concat(["group.instance.id"]),
-            KafkaClientRole.VerifierConsumer => common.Concat(["group.instance.id", "auto.commit.interval.ms", "enable.auto.offset.store"]),
+            KafkaClientRole.EnrichmentConsumer => common.Concat(["group.instance.id", "debug"]),
+            KafkaClientRole.VerifierConsumer => common.Concat(["group.instance.id", "auto.commit.interval.ms", "enable.auto.offset.store", "debug"]),
             _ => throw new ArgumentOutOfRangeException(nameof(role))
         };
     }

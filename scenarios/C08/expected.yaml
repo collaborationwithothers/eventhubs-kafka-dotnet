@@ -23,6 +23,11 @@ assessment_rules:
   incomplete_configuration: no_verdict
   construction_origin: untestable
   failed_control: untestable
+  terminal_rules:
+    C1: "window_end_no_outcome"
+  no_outcome_published_as:
+    C1: "no assignment and no error within the window"
+  debug_cause: "A cause taken from debug lines is published as inference from pod logs, separate from the verdict (ADR-019). For a configuration, the cause is reported as unavailable when its capture container's log collection records truncated_log or log_read_failed, or when any of its repeats logged single_action_client_log_capped. The verdict is unaffected."
   adr012_counts: not_applicable
   evidence_policy: docs/agents/factory.md#evidence-pack
   error_text_compared: false
@@ -45,7 +50,7 @@ hypotheses:
 verdict:
   confirmed_when: "not_applicable"
   contradicted_when: "not_applicable"
-  undocumented_when: "C0 succeeds and C1 is decided; the C1 class is published."
+  undocumented_when: "C0 succeeds and C1 is decided; the C1 class is published. A C1 class of no_outcome is published as exactly \"no assignment and no error within the window\"."
   untestable_when: "Failed control or typed construction-origin hypothesis is untestable; other complete deterministic combinations are untestable."
   no_verdict_when: "Fewer than five complete, unequal classes or a missing prerequisite yield no verdict, never a replacement repeat."
   security_finding_when: "not_applicable"
@@ -54,8 +59,8 @@ sources:
   version: v2.16.0
   read_date: "2026-10-26"
 - url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
-  version: revision 4
-  read_date: "2026-10-26"
+  version: revision 5
+  read_date: "2026-10-27"
 - url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
   version: v2.16.0
   read_date: "2026-10-26"
@@ -65,3 +70,6 @@ sources:
 - url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Error.cs
   version: v2.16.0
   read_date: "2026-10-26"
+- url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/221#issuecomment-6452902336
+  version: decision 6452902336
+  read_date: "2026-10-27"

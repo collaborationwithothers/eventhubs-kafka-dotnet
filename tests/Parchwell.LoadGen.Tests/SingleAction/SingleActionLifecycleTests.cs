@@ -28,6 +28,7 @@ public sealed class SingleActionLifecycleTests
         Assert.Equal([1, 2, 3, 4, 5], repeats.Select(repeat => repeat.GetProperty("repeat").GetInt32()));
         Assert.Equal(["pod-1-r1", "pod-1-r2", "pod-1-r3", "pod-1-r4", "pod-1-r5"], repeats.Select(repeat => repeat.GetProperty("client_id").GetString()));
         Assert.All(repeats, repeat => Assert.Equal("success", repeat.GetProperty("result").GetString()));
+        Assert.All(repeats, repeat => Assert.Equal(0, repeat.GetProperty("client_errors_dropped").GetInt64()));
         using JsonDocument completion = JsonDocument.Parse(fixture.Publication.Completion!);
         Assert.Equal(5, completion.RootElement.GetProperty("repeats_attempted").GetInt32());
         Assert.Equal(0, completion.RootElement.GetProperty("handler_exit_code").GetInt32());
@@ -131,19 +132,70 @@ public sealed class SingleActionLifecycleTests
         Assert.Throws<InvalidOperationException>(options.Validate);
     }
 
+    [Fact]
+    public async Task Given_CommittedF04C3With66CallbacksAndNoDelivery_When_HostCaptures_Then_CountsDroppedErrorsAndPublishesCompletion()
+    {
+        using var fixture = new Fixture(firstRule: true);
+        int exit = await SingleActionHost.RunAsync(hostFactory: () => fixture.Host);
+        Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.NativeClients.Count);
+        Assert.All(fixture.NativeClients, native =>
+        {
+            Assert.Equal(1, native.ProduceCalls);
+            Assert.Equal(1, native.DisposeCalls);
+        });
+        using JsonDocument capture = JsonDocument.Parse(fixture.Publication.Capture!);
+        JsonElement[] repeats = capture.RootElement.GetProperty("repeats").EnumerateArray().ToArray();
+        Assert.Equal(5, repeats.Length);
+        Assert.All(repeats, repeat =>
+        {
+            Assert.True(repeat.GetProperty("terminal").GetBoolean());
+            Assert.Equal("error", repeat.GetProperty("result").GetString());
+            Assert.Equal(-196, repeat.GetProperty("error").GetProperty("code").GetInt32());
+            Assert.Equal(64, repeat.GetProperty("client_errors").GetArrayLength());
+            Assert.Equal(2, repeat.GetProperty("client_errors_dropped").GetInt64());
+            Assert.DoesNotContain(repeat.GetProperty("diagnostics").EnumerateArray(), diagnostic => diagnostic.GetString() == "capture_limit");
+        });
+        using JsonDocument completion = JsonDocument.Parse(fixture.Publication.Completion!);
+        Assert.Equal(5, completion.RootElement.GetProperty("repeats_attempted").GetInt32());
+        Assert.Equal(0, completion.RootElement.GetProperty("handler_exit_code").GetInt32());
+        Assert.True(completion.RootElement.GetProperty("cleanup_completed").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_LogCapDuringCleanup_When_HostEnds_Then_OnlyCleanupFailurePreventsCompletion(bool cleanupThrows)
+    {
+        using var fixture = new Fixture(cleanupThrows ? "client_cleanup_logs" : "log_cap");
+        int exit = await SingleActionHost.RunAsync(hostFactory: () => fixture.Host);
+        Assert.Equal(cleanupThrows ? 1 : 0, exit);
+        Assert.Equal(cleanupThrows, fixture.Publication.Completion is null);
+        Assert.Equal(cleanupThrows ? 1 : 5, fixture.NativeClients.Count);
+        string output = fixture.Logs.ToString();
+        Assert.Equal(cleanupThrows ? 1 : 5, output.Split("single_action_client_log_capped", StringSplitOptions.None).Length - 1);
+        string frozen = fixture.Logs.ToString();
+        foreach (var native in fixture.NativeClients) native.Capture.Log(new("N", SyslogLevel.Error, "F", "after freeze"));
+        Assert.Equal(frozen, fixture.Logs.ToString());
+        using JsonDocument capture = JsonDocument.Parse(fixture.Publication.Capture!);
+        Assert.All(capture.RootElement.GetProperty("repeats").EnumerateArray(), repeat =>
+            Assert.DoesNotContain(repeat.GetProperty("diagnostics").EnumerateArray(), diagnostic => diagnostic.GetString() == "capture_limit"));
+    }
+
     private sealed class Fixture : IDisposable
     {
         internal List<string> Events { get; } = [];
         internal List<NativeProducer> NativeClients { get; } = [];
         internal RecordingPublication Publication { get; }
         internal TestHost Host { get; }
-        internal Fixture(string? failure = null)
+        internal StringWriter Logs { get; } = new();
+        internal Fixture(string? failure = null, bool firstRule = false)
         {
             var clock = new SingleActionCaptureTests.AdvancingClock();
             var options = SingleActionCaptureTests.Options();
             options.ScenarioId = "F04";
-            options.ConfigurationId = "C1";
-            options.JobName = "run-1-f04-c1-single";
+            options.ConfigurationId = firstRule ? "C3" : "C1";
+            options.JobName = firstRule ? "run-1-f04-c3-single" : "run-1-f04-c1-single";
             options.BlobContainer = "ledger";
             string root = AppContext.BaseDirectory;
             while (!File.Exists(Path.Combine(root, "Parchwell.slnx"))) root = Path.GetDirectoryName(root) ?? throw new DirectoryNotFoundException("repository_root");
@@ -168,7 +220,9 @@ public sealed class SingleActionLifecycleTests
                 IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProducer>();
                 var native = (NativeProducer)(object)producer;
                 native.Capture = capture;
-                native.ThrowCleanup = failure == "client_cleanup";
+                native.ThrowCleanup = failure is "client_cleanup" or "client_cleanup_logs";
+                native.LogOnCleanup = failure is "log_cap" or "client_cleanup_logs";
+                native.FirstRule = firstRule;
                 native.BrokerError = failure == "broker";
                 native.OverflowAfterDelivery = failure == "capture_limit";
                 NativeClients.Add(native);
@@ -176,10 +230,11 @@ public sealed class SingleActionLifecycleTests
                 Events.Add("client-" + NativeClients.Count);
                 return producer;
             }, (_, _, _) => throw new InvalidOperationException("unexpected_consumer")));
-            services.AddSingleton<SingleActionWorker>();
+            services.AddSingleton(provider => new SingleActionWorker(options, provider.GetRequiredService<SingleActionSessionFactory>(),
+                Publication, clock, clientLogOutput: Logs));
             Host = new(services.BuildServiceProvider(), Events, failure);
         }
-        public void Dispose() => Host.DisposeProvider();
+        public void Dispose() { Host.DisposeProvider(); Logs.Dispose(); }
     }
     internal sealed class RecordingPublication(List<string> events, string? failure) : ISingleActionPublication
     {
@@ -225,16 +280,21 @@ public sealed class SingleActionLifecycleTests
         internal SingleActionCapture Capture = null!;
         internal int ProduceCalls, DisposeCalls;
         internal int Ordinal;
-        internal bool ThrowCleanup, BrokerError, OverflowAfterDelivery;
+        internal bool ThrowCleanup, BrokerError, OverflowAfterDelivery, FirstRule, LogOnCleanup;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             if (targetMethod?.Name == "Produce")
             {
                 ProduceCalls++;
-                Assert.Equal(new TopicPartition("document-state", new Partition(0)), args![0]);
+                Assert.Equal(new TopicPartition(FirstRule ? "document-events" : "document-state", new Partition(0)), args![0]);
                 var message = (Message<byte[], byte[]>)args[1]!;
-                Assert.Equal($"F04:C1:run-1:r{Ordinal}", System.Text.Encoding.UTF8.GetString(message.Key));
+                Assert.Equal($"F04:{(FirstRule ? "C3" : "C1")}:run-1:r{Ordinal}", System.Text.Encoding.UTF8.GetString(message.Key));
                 Assert.Equal(1000, message.Value.Length);
+                if (FirstRule)
+                {
+                    for (int index = 0; index < 66; index++) Capture.Error(new Error(ErrorCode.Local_Fail));
+                    return null;
+                }
                 ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new() { Error = new Error(BrokerError ? ErrorCode.TopicAuthorizationFailed : ErrorCode.NoError) });
                 if (OverflowAfterDelivery)
                     for (int index = 0; index < 65; index++) Capture.Error(new Error(ErrorCode.Local_Fail));
@@ -243,6 +303,10 @@ public sealed class SingleActionLifecycleTests
             if (targetMethod?.Name == "Dispose")
             {
                 DisposeCalls++;
+                if (LogOnCleanup) Task.Run(() =>
+                {
+                    for (int index = 0; index < 161; index++) Capture.Log(new("N", SyslogLevel.Error, "F", new string('x', 988)));
+                }).GetAwaiter().GetResult();
                 if (ThrowCleanup) throw new IOException("synthetic_client_cleanup_failure");
                 return null;
             }

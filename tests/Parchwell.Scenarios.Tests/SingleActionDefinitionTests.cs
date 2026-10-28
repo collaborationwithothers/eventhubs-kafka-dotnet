@@ -53,6 +53,12 @@ public sealed class SingleActionDefinitionTests
             var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
             foreach (var (id, row) in action.Configurations)
             {
+                Assert.Equal((item, id) switch
+                {
+                    ("C08", "C1") or ("F04", "C2") => "window_end_no_outcome",
+                    ("F04", "C3") => "first_error_callback_or_delivery",
+                    _ => "standard"
+                }, row.TerminalRule);
                 Assert.Equal(0, row.Partition);
                 Assert.Equal(item == "F04" && id is "C1" or "C2" ? "document-state" : "document-events", row.Topic);
                 Assert.Equal(item == "F04" && id == "C3" ? "storage" : "namespace", row.TokenScope);
@@ -112,7 +118,11 @@ public sealed class SingleActionDefinitionTests
             Assert.NotNull(omission.Origin.Location.Column);
         }
         Assert.Empty(baseline.ScenarioOmissions);
-        Assert.Equal(baseline.Omissions, changed.Omissions);
+        Assert.Equal(baseline.Omissions.OrderBy(x => x.Key, StringComparer.Ordinal),
+            changed.Omissions.Add(changed.Settings["debug"].Baseline).OrderBy(x => x.Key, StringComparer.Ordinal));
+        Assert.Same(Assert.Single(baseline.Omissions, x => x.Key == "debug"), changed.Settings["debug"].Baseline);
+        Assert.Equal("cgrp", changed.Settings["debug"].Value);
+        Assert.DoesNotContain(changed.Omissions, x => x.Key == "debug");
     }
 
     [Fact]
@@ -219,6 +229,223 @@ public sealed class SingleActionDefinitionTests
         Assert.Contains(error.Diagnostics, diagnostic => diagnostic.Code == "single_action_item");
     }
 
+    [Fact]
+    public void Given_EightArgumentAction_When_Constructing_Then_DefaultsToStandardTerminalRule()
+    {
+        var action = new SingleActionConfiguration("produce_one", KafkaClientRole.LoadGenProducer,
+            "document-events", 0, 1000, 330000, "namespace", "none");
+        Assert.Equal("standard", action.TerminalRule);
+    }
+
+    [Theory]
+    [InlineData("C08", "C1", KafkaClientRole.EnrichmentConsumer, "cgrp")]
+    [InlineData("F04", "C2", KafkaClientRole.VerifierConsumer, "topic,fetch,metadata")]
+    public async Task Given_CommittedDebugActivation_When_Resolving_Then_RetainsCitedOmissionAndYamlOrigin(
+        string item, string configuration, KafkaClientRole role, string value)
+    {
+        var loaded = await Load(item);
+        using var provider = ScenarioTestData.Provider([.. loaded.Definition.Roles]);
+        var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
+        var changed = resolved.Configurations[configuration].Roles[role];
+        var debug = changed.Settings["debug"];
+        Assert.Equal(value, debug.Value);
+        AssertDebugOmission(debug.Baseline, role);
+        var origin = Assert.IsType<OverrideOrigin>(debug.Override);
+        Assert.Equal(item, origin.ScenarioId);
+        Assert.Equal(configuration, origin.ConfigurationId);
+        Assert.Equal($"scenarios/{item}/scenario.yaml", origin.Location.Path);
+        Assert.NotNull(origin.Location.Line);
+        Assert.NotNull(origin.Location.Column);
+        Assert.Equal(loaded.Definition.Configurations[configuration].Overrides[role]["debug"].Location, origin.Location);
+        Assert.Same(Assert.Single(resolved.Configurations["C0"].Roles[role].Omissions, x => x.Key == "debug"), debug.Baseline);
+        Assert.DoesNotContain(changed.Omissions, x => x.Key == "debug");
+        Assert.DoesNotContain(changed.ScenarioOmissions, x => x.Key == "debug");
+    }
+
+    [Fact]
+    public async Task Given_AllOtherCommittedConfigurationsAndRoles_When_Resolving_Then_RetainsDebugOmissionsOnlyOnConsumers()
+    {
+        foreach (var item in new[] { "B01", "B03", "B05", "C08", "C12", "F04" })
+        {
+            var loaded = await Load(item);
+            using var provider = ScenarioTestData.Provider([.. loaded.Definition.Roles]);
+            var resolved = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>()).Resolve(loaded);
+            foreach (var (configuration, row) in resolved.Configurations)
+            foreach (var (role, settings) in row.Roles)
+            {
+                if ((item, configuration, role) is ("C08", "C1", KafkaClientRole.EnrichmentConsumer) or
+                    ("F04", "C2", KafkaClientRole.VerifierConsumer)) continue;
+                Assert.DoesNotContain("debug", settings.Settings.Keys);
+                if (role is KafkaClientRole.EnrichmentConsumer or KafkaClientRole.VerifierConsumer)
+                    AssertDebugOmission(Assert.Single(settings.Omissions, x => x.Key == "debug"), role);
+                else Assert.DoesNotContain(settings.Omissions, x => x.Key == "debug");
+                Assert.DoesNotContain(settings.ScenarioOmissions, x => x.Key == "debug");
+            }
+        }
+    }
+
+    private static void AssertDebugOmission(KafkaSettingMetadata metadata, KafkaClientRole role)
+    {
+        Assert.Equal("debug", metadata.Key);
+        Assert.Equal(role, metadata.Role);
+        Assert.Null(metadata.Value);
+        Assert.Equal(KafkaSettingDisposition.Unspecified, metadata.Disposition);
+        Assert.Equal(["C08", "F04"], metadata.InventoryIds);
+        Assert.Equal("No debug contexts are selected; the pinned native default enables none.", metadata.SelectionReason);
+        var source = Assert.Single(metadata.Sources);
+        Assert.Equal(ApprovedConfigurationContract.Native, source.Url.AbsoluteUri);
+        Assert.Equal("v2.16.0", source.VersionOrDate);
+    }
+
+    [Theory]
+    [InlineData("C08", "C1", null)]
+    [InlineData("C08", "C1", "standard")]
+    [InlineData("C08", "C1", "first_error_callback_or_delivery")]
+    [InlineData("C08", "C1", "unknown")]
+    [InlineData("C08", "C1", "null")]
+    [InlineData("C08", "C1", "''")]
+    [InlineData("C08", "C1", "[]")]
+    [InlineData("C08", "C1", "{}")]
+    [InlineData("F04", "C2", null)]
+    [InlineData("F04", "C2", "standard")]
+    [InlineData("F04", "C2", "first_error_callback_or_delivery")]
+    [InlineData("F04", "C2", "unknown")]
+    [InlineData("F04", "C2", "null")]
+    [InlineData("F04", "C2", "''")]
+    [InlineData("F04", "C2", "[]")]
+    [InlineData("F04", "C2", "{}")]
+    [InlineData("F04", "C3", null)]
+    [InlineData("F04", "C3", "standard")]
+    [InlineData("F04", "C3", "window_end_no_outcome")]
+    [InlineData("F04", "C3", "unknown")]
+    [InlineData("F04", "C3", "null")]
+    [InlineData("F04", "C3", "''")]
+    [InlineData("F04", "C3", "[]")]
+    [InlineData("F04", "C3", "{}")]
+    public async Task Given_RequiredTerminalRuleWithMissingOrWrongValue_When_Loading_Then_RejectsOwningRow(
+        string item, string configuration, string? value)
+    {
+        var original = Text(item);
+        var yaml = MutateActionRow(original, configuration, row =>
+        {
+            var terminal = row.Split('\n').Single(line => line.Contains("terminal_rule:", StringComparison.Ordinal));
+            return row.Replace(terminal + "\n", value is null ? "" : "      terminal_rule: " + value + "\n", StringComparison.Ordinal);
+        });
+        Assert.NotEqual(original, yaml);
+        var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load(item, yaml));
+        var diagnostic = Assert.Single(error.Diagnostics);
+        Assert.Equal("single_action_terminal_rule", diagnostic.Code);
+        Assert.Equal($"single_action.configurations.{configuration}.terminal_rule", diagnostic.FieldPath);
+        Assert.Equal("The field must equal the fixed experiment input.", diagnostic.Message);
+        Assert.Equal($"scenarios/{item}/scenario.yaml", diagnostic.Source);
+        var rowStart = yaml.IndexOf("    " + configuration + ":\n", yaml.IndexOf("single_action:", StringComparison.Ordinal), StringComparison.Ordinal);
+        var actionStart = yaml.IndexOf("      action:", rowStart, StringComparison.Ordinal);
+        Assert.Equal(yaml[..actionStart].Count(c => c == '\n') + 1, diagnostic.Line);
+        Assert.Equal(7, diagnostic.Column);
+    }
+
+    [Theory]
+    [InlineData("B01", "C0")]
+    [InlineData("B01", "C1")]
+    [InlineData("B03", "C1")]
+    [InlineData("B03", "C2")]
+    [InlineData("B03", "C3")]
+    [InlineData("B03", "C4")]
+    [InlineData("B05", "C1")]
+    [InlineData("C08", "C0")]
+    [InlineData("C12", "C1")]
+    [InlineData("C12", "C2")]
+    [InlineData("F04", "C0")]
+    [InlineData("F04", "C1")]
+    [InlineData("F04", "C4")]
+    public async Task Given_StandardRowWithExplicitTerminalRule_When_Loading_Then_RejectsPresence(string item, string configuration)
+    {
+        var original = Text(item);
+        var yaml = MutateActionRow(original, configuration, row => row + "      terminal_rule: standard\n");
+        Assert.NotEqual(original, yaml);
+        var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load(item, yaml));
+        var diagnostic = Assert.Single(error.Diagnostics);
+        Assert.Equal("single_action_terminal_rule", diagnostic.Code);
+        Assert.Equal($"single_action.configurations.{configuration}.terminal_rule", diagnostic.FieldPath);
+        Assert.Equal("The field must equal the fixed experiment input.", diagnostic.Message);
+    }
+
+    [Theory]
+    [InlineData("C08", "C1", "window_end_no_outcome")]
+    [InlineData("F04", "C2", "window_end_no_outcome")]
+    [InlineData("F04", "C3", "first_error_callback_or_delivery")]
+    public async Task Given_QuotedCorrectTerminalRule_When_Loading_Then_AcceptsLiteral(string item, string configuration, string rule)
+    {
+        var original = Text(item);
+        var yaml = MutateActionRow(original, configuration,
+            row => row.Replace("terminal_rule: " + rule, "terminal_rule: '" + rule + "'", StringComparison.Ordinal));
+        Assert.NotEqual(original, yaml);
+        Assert.Equal(rule, (await Load(item, yaml)).Definition.SingleAction!.Configurations[configuration].TerminalRule);
+    }
+
+    [Theory]
+    [InlineData("C08", "      debug: cgrp\n", "      debug: all\n")]
+    [InlineData("C08", "      debug: cgrp\n", "")]
+    [InlineData("F04", "      debug: \"topic,fetch,metadata\"", "      debug: cgrp")]
+    [InlineData("F04", "    VerifierConsumer:\n      debug: \"topic,fetch,metadata\"", "    VerifierConsumer: {}")]
+    public async Task Given_MutatedDebugDelta_When_Loading_Then_RejectsFixedContract(string item, string before, string after)
+    {
+        var original = Text(item);
+        var yaml = original.Replace(before, after, StringComparison.Ordinal);
+        Assert.NotEqual(original, yaml);
+        var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load(item, yaml));
+        var diagnostic = Assert.Single(error.Diagnostics);
+        Assert.Equal("single_action_deltas", diagnostic.Code);
+        Assert.Equal("single_action", diagnostic.FieldPath);
+        Assert.Equal("The declaration must equal the fixed experiment contract.", diagnostic.Message);
+    }
+
+    [Theory]
+    [InlineData("value")]
+    [InlineData("producer")]
+    [InlineData("inventory")]
+    public async Task Given_MutatedLoadedDebugOverride_When_Resolving_Then_RejectsWithExactSource(string mutation)
+    {
+        var item = mutation == "producer" ? "F04" : "C08";
+        var loaded = await Load(item);
+        var definition = loaded.Definition;
+        var role = mutation == "producer" ? KafkaClientRole.LoadGenProducer : KafkaClientRole.EnrichmentConsumer;
+        var configuration = definition.Configurations["C1"];
+        var settings = configuration.Overrides[role];
+        var location = mutation == "producer" ? new SourceLocation("scenarios/F04/scenario.yaml", 101, 9) : settings["debug"].Location;
+        if (mutation == "inventory") definition = definition with { Id = "C12" };
+        else
+        {
+            settings = settings.SetItem("debug", new(mutation == "value" ? "all" : "cgrp", location));
+            configuration = configuration with { Overrides = configuration.Overrides.SetItem(role, settings) };
+            definition = definition with { Configurations = definition.Configurations.SetItem("C1", configuration) };
+        }
+        using var provider = ScenarioTestData.Provider([.. loaded.Definition.Roles]);
+        var resolver = new ScenarioResolver(provider.GetRequiredService<KafkaConfigurationFactory>());
+        var error = Assert.Throws<ScenarioValidationException>(() => resolver.Resolve(new LoadedScenario(definition, loaded.Profile)));
+        var diagnostic = Assert.Single(error.Diagnostics);
+        Assert.Equal(mutation == "value" ? "setting_out_of_range" : "unsupported_setting", diagnostic.Code);
+        Assert.Equal($"configurations.C1.{role}.debug", diagnostic.FieldPath);
+        Assert.Equal(mutation switch
+        {
+            "value" => "debug is outside its supported value policy.",
+            "producer" => "LoadGenProducer.debug is not supported by the scenario override policy.",
+            _ => "The setting is not supported for this inventory item."
+        }, diagnostic.Message);
+        Assert.Equal(location.Path, diagnostic.Source);
+        Assert.Equal(location.Line, diagnostic.Line);
+        Assert.Equal(location.Column, diagnostic.Column);
+    }
+
+    private static string MutateActionRow(string yaml, string configuration, Func<string, string> mutate)
+    {
+        var start = yaml.IndexOf("    " + configuration + ":\n", yaml.IndexOf("single_action:", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = yaml.IndexOf("\n    C", start, StringComparison.Ordinal);
+        end = end < 0 ? yaml.Length : end + 1;
+        return yaml[..start] + mutate(yaml[start..end]) + yaml[end..];
+    }
+
     private static string[] ExpectedDeltas(string item, string configuration) => (item, configuration) switch
     {
         ("B01", _) => ["LoadGenProducer:message.max.bytes=2000000"],
@@ -227,7 +454,8 @@ public sealed class SingleActionDefinitionTests
         ("B03", "C3") => ["LoadGenProducer:compression.type=lz4"],
         ("B03", "C4") => ["LoadGenProducer:compression.type=zstd"],
         ("B05", "C1") => ["LoadGenProducer:transactional.id=b05-probe", "LoadGenProducer:enable.idempotence=true", "LoadGenProducer:max.in.flight=5", "LoadGenProducer:message.timeout.ms=60000"],
-        ("C08", "C1") => ["EnrichmentConsumer:group.protocol=consumer", "EnrichmentConsumer:session.timeout.ms=omit", "EnrichmentConsumer:heartbeat.interval.ms=omit", "EnrichmentConsumer:partition.assignment.strategy=omit"],
+        ("C08", "C1") => ["EnrichmentConsumer:group.protocol=consumer", "EnrichmentConsumer:session.timeout.ms=omit", "EnrichmentConsumer:heartbeat.interval.ms=omit", "EnrichmentConsumer:partition.assignment.strategy=omit", "EnrichmentConsumer:debug=cgrp"],
+        ("F04", "C2") => ["VerifierConsumer:debug=topic,fetch,metadata"],
         ("C12", "C1") => ["EnrichmentConsumer:group.id=c12-" + new string('g', 252)],
         ("C12", "C2") => ["EnrichmentConsumer:group.id=c12-" + new string('g', 253)],
         _ => []

@@ -145,7 +145,7 @@ public sealed record SingleActionDefinition(ImmutableDictionary<string, SingleAc
 
 /// <summary>One fresh-client action with its literal declared inputs.</summary>
 public sealed record SingleActionConfiguration(string Action, KafkaClientRole Role, string Topic, int Partition,
-    int PayloadBytes, int WindowMs, string TokenScope, string Match);
+    int PayloadBytes, int WindowMs, string TokenScope, string Match, string TerminalRule = "standard");
 
 /// <summary>
 /// A synthetic tenant, standing for one firm in the workload, and its share of traffic relative to the

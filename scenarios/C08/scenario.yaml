@@ -13,6 +13,7 @@ configurations:
       session.timeout.ms: omit
       heartbeat.interval.ms: omit
       partition.assignment.strategy: omit
+      debug: cgrp
 fault:
   live:
     kind: none
@@ -46,3 +47,4 @@ single_action:
       window_ms: 120000
       token_scope: namespace
       match: none
+      terminal_rule: window_end_no_outcome

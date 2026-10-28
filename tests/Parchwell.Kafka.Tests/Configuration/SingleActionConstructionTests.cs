@@ -53,6 +53,9 @@ public sealed class SingleActionConstructionTests
             Assert.Equal("60000", settings["message.timeout.ms"]);
         }
         if (item == "C12") Assert.Equal(configuration == "C1" ? 256 : 257, settings["group.id"].Length);
+        if (item == "C08" && configuration == "C1") Assert.Equal("cgrp", settings["debug"]);
+        else if (item == "F04" && configuration == "C2") Assert.Equal("topic,fetch,metadata", settings["debug"]);
+        else Assert.DoesNotContain("debug", settings.Keys);
         Build(services, settings, role);
     }
 

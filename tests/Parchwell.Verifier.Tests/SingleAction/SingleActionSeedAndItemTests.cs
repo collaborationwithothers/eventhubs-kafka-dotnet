@@ -8,6 +8,7 @@ namespace Parchwell.Verifier.Tests.SingleAction;
 
 public sealed class SingleActionSeedAndItemTests
 {
+    private static readonly string[] ProjectionKeys=["repeat","status","reasons","outcome_class","broker_count","statistics_reference"];
     [Fact]
     public void Given_LiteralLiveDeliveryAndCollectedPod_When_Checked_Then_SeedAccepted()=>Assert.True(Seed(SingleActionFixture.Seed(),SingleActionFixture.SeedPod()));
     private static bool Seed(SingleActionSeedReceipt? receipt,SingleActionSeedPod? pod)=>SingleActionConfigurationJudgement.Seed(receipt,pod,SingleActionFixture.Run,SingleActionFixture.Source);
@@ -102,6 +103,61 @@ public sealed class SingleActionSeedAndItemTests
         Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C1",true,true,[projection]));
         Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C1",true,true,incomplete));
     }
+
+    [Fact]
+    public void Given_C08SuccessControlAndNoOutcome_When_ItemJudged_Then_UndocumentedWithRecordedClass()
+    {
+        var candidates=Candidates("C08");candidates["C1"]=SingleActionFixture.Candidate("C08","C1","no_outcome");
+        var assessment=SingleActionConfigurationJudgement.JudgeItem("C08",candidates);
+        Assert.Equal("undocumented",assessment.Verdict);Assert.Null(assessment.Reason);Assert.Equal(2,assessment.Hypotheses.Count);Assert.Equal("holds",assessment.Hypotheses["H0"]);Assert.Equal("recorded_only",assessment.Hypotheses["H1"]);
+    }
+    [Fact]
+    public void Given_F04ControlsAndMeasuredClassesIncludingNoOutcome_When_ItemJudged_Then_UndocumentedWithoutSecurityFinding()
+    {
+        var candidates=Candidates("F04");candidates["C2"]=SingleActionFixture.Candidate("F04","C2","no_outcome");
+        var c3=candidates["C3"];var error=new SingleActionOutcome("error",-169,false,"broker");candidates["C3"]=c3 with{OutcomeClass=error,Repeats=c3.Repeats.Select(r=>r with{OutcomeClass=error}).ToArray()};
+        Assert.All(candidates.Values,c=>Assert.False(c.SecurityFinding));Assert.Equal(29,candidates["C1"].OutcomeClass!.ErrorCode);Assert.Equal(-169,candidates["C3"].OutcomeClass!.ErrorCode);
+        var assessment=SingleActionConfigurationJudgement.JudgeItem("F04",candidates);
+        Assert.Equal("undocumented",assessment.Verdict);Assert.Null(assessment.Reason);Assert.Equal(5,assessment.Hypotheses.Count);
+        Assert.Equal("holds",assessment.Hypotheses["H0"]);Assert.Equal("holds",assessment.Hypotheses["H4"]);foreach(string label in new[]{"H1","H2","H3"})Assert.Equal("recorded_only",assessment.Hypotheses[label]);
+    }
+    [Theory]
+    [InlineData("unequal")][InlineData("incomplete")]
+    public void Given_NoOutcomeSlotsWithOneDifferentOrIncompleteRepeat_When_Aggregated_Then_NoItemVerdict(string mutation)
+    {
+        var projections=NoOutcomeProjections();projections[0]=mutation=="unequal"?projections[0] with{OutcomeClass=new("success",null,null,null)}:projections[0] with{Status="incomplete",Reasons=["p6_broker_count"],BrokerCount=null,StatisticsReference=null};
+        var aggregate=SingleActionConfigurationJudgement.Aggregate(projections);Assert.Equal(mutation=="unequal"?"complete_valid":"incomplete",aggregate.Status);Assert.Null(aggregate.Outcome);
+        if(mutation=="unequal")Assert.False(aggregate.Deterministic);else Assert.Null(aggregate.Deterministic);
+        var candidates=Candidates("C08");candidates["C1"]=SingleActionFixture.Candidate("C08","C1","no_outcome") with{Repeats=projections,Status=aggregate.Status,Deterministic=aggregate.Deterministic,OutcomeClass=aggregate.Outcome};
+        var assessment=SingleActionConfigurationJudgement.JudgeItem("C08",candidates);Assert.Null(assessment.Verdict);Assert.Equal(mutation=="unequal"?"unequal_classes_separate_full_plan":"incomplete_configuration",assessment.Reason);
+    }
+    [Theory]
+    [InlineData(false,true,"p8_seed_prerequisite")][InlineData(true,false,"p2_completion")]
+    public void Given_ValidNoOutcomeSlotsWithGlobalGap_When_Applied_Then_IncompleteWithoutVerdict(bool seed,bool completion,string reason)
+    {
+        var projections=SingleActionConfigurationJudgement.ApplyGlobal(true,true,completion,seed,NoOutcomeProjections());
+        Assert.Equal(5,projections.Length);Assert.All(projections,r=>{Assert.Equal("incomplete",r.Status);Assert.Equal(new[]{reason},r.Reasons);Assert.Equal(new SingleActionOutcome("no_outcome",null,null,null),r.OutcomeClass);});
+        var aggregate=SingleActionConfigurationJudgement.Aggregate(projections);Assert.Equal("incomplete",aggregate.Status);Assert.Null(aggregate.Deterministic);Assert.Null(aggregate.Outcome);
+        var candidates=Candidates("F04");candidates["C2"]=SingleActionFixture.Candidate("F04","C2","no_outcome") with{Repeats=projections,Status=aggregate.Status,Deterministic=aggregate.Deterministic,OutcomeClass=aggregate.Outcome};Assert.Null(SingleActionConfigurationJudgement.JudgeItem("F04",candidates).Verdict);
+    }
+    [Fact]
+    public void Given_NoOutcomeCandidate_When_CodecRoundTrips_Then_NullTupleAndExactKeysPreserved()
+    {
+        var candidate=SingleActionFixture.Candidate("C08","C1","no_outcome") with{Repeats=NoOutcomeProjections()};
+        byte[] bytes=SingleActionCandidateCodec.Write(candidate);var result=SingleActionCandidateCodec.Read(bytes);
+        Assert.Equal(new SingleActionOutcome("no_outcome",null,null,null),result.OutcomeClass);Assert.All(result.Repeats,r=>Assert.Equal(result.OutcomeClass,r.OutcomeClass));
+        var root=System.Text.Json.Nodes.JsonNode.Parse(bytes)!;string[] keys=["result","error_code","is_fatal","origin"];
+        Assert.Equal(keys.Order(StringComparer.Ordinal),root["outcome_class"]!.AsObject().Select(p=>p.Key).Order(StringComparer.Ordinal));Assert.Equal("no_outcome",root["outcome_class"]!["result"]!.GetValue<string>());foreach(string key in keys[1..])Assert.Null(root["outcome_class"]![key]);
+        Assert.Equal(ProjectionKeys.Order(StringComparer.Ordinal),root["repeats"]![0]!.AsObject().Select(p=>p.Key).Order(StringComparer.Ordinal));
+    }
+    [Fact]
+    public void Given_FirstRuleSuccessWithDroppedCallbacks_When_Judged_Then_SecurityObservationRemains()
+    {
+        var repeat=SingleActionFixture.Repeat() with{ClientErrors=Enumerable.Range(0,64).Select(_=>new SingleActionClientError(-169,false,"local","synthetic",0)).ToArray(),ClientErrorsDropped=2};
+        var result=SingleActionFixture.Judge(repeat,SingleActionFixture.Declaration with{TerminalRule="first_error_callback_or_delivery"});
+        Assert.Equal("complete_valid",result.Status);Assert.Empty(result.Reasons);Assert.Equal(new SingleActionOutcome("success",null,null,null),result.OutcomeClass);Assert.True(SingleActionConfigurationJudgement.SecurityFinding("F04","C3",true,true,[result]));
+    }
+    private static SingleActionRepeatProjection[] NoOutcomeProjections()=>Enumerable.Range(1,5).Select(i=>SingleActionFixture.Judge(SingleActionFixture.NoOutcomeRepeat(i),SingleActionFixture.NoOutcomeDeclaration)).ToArray();
 
     private static Dictionary<string,SingleActionCandidate> Candidates(string item)=>SingleActionConfigurationJudgement.Configurations(item).ToDictionary(c=>c,c=>SingleActionFixture.Candidate(item,c,item=="B03"&&c!="C1"||item=="C12"&&c=="C2"||item=="F04"&&c is "C1" or "C2" or "C3"?"error":"success"),StringComparer.Ordinal);
 }

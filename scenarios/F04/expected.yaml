@@ -23,6 +23,12 @@ assessment_rules:
   incomplete_configuration: no_verdict
   construction_origin: untestable
   failed_control: untestable
+  terminal_rules:
+    C2: "window_end_no_outcome"
+    C3: "first_error_callback_or_delivery"
+  no_outcome_published_as:
+    C2: "no read and no error within the window"
+  debug_cause: "A cause taken from debug lines is published as inference from pod logs, separate from the verdict (ADR-019). For a configuration, the cause is reported as unavailable when its capture container's log collection records truncated_log or log_read_failed, or when any of its repeats logged single_action_client_log_capped. The verdict is unaffected."
   adr012_counts: not_applicable
   evidence_policy: docs/agents/factory.md#evidence-pack
   error_text_compared: false
@@ -65,14 +71,14 @@ hypotheses:
 verdict:
   confirmed_when: "not_applicable"
   contradicted_when: "not_applicable"
-  undocumented_when: "C0 and C4 succeed and C1, C2 and C3 are decided."
+  undocumented_when: "C0 and C4 succeed and C1, C2 and C3 are decided. A C2 class of no_outcome is published as exactly \"no read and no error within the window\". It is never published as \"denied\" or as any authorization result. The published C3 class carries the code of the error callback or delivery report that ended the repeat. Any success in a repeat of C1, C2 or C3 stops verdict work and goes to Hari with its raw evidence; C2 success requires the matched seed bytes, never EOF."
   untestable_when: "Failed control or typed construction-origin hypothesis is untestable; other complete deterministic combinations are untestable."
   no_verdict_when: "Fewer than five complete, unequal classes or a missing prerequisite yield no verdict, never a replacement repeat."
   security_finding_when: "security_finding is true on any p1/p3/p5/p7-accepted F04 C1/C2/C3 success observation, even if another repeat lacks statistics; it links that raw repeat and blocks verdict publication pending Hari."
 sources:
 - url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278
-  version: revision 4
-  read_date: "2026-10-26"
+  version: revision 5
+  read_date: "2026-10-27"
 - url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
   version: v2.16.0
   read_date: "2026-10-26"
@@ -85,3 +91,6 @@ sources:
 - url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Error.cs
   version: v2.16.0
   read_date: "2026-10-26"
+- url: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/221#issuecomment-6452902336
+  version: decision 6452902336
+  read_date: "2026-10-27"

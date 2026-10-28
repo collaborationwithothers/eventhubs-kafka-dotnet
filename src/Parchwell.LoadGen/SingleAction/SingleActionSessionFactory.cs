@@ -14,6 +14,7 @@ internal sealed class SingleActionSessionFactory
         {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, role, settings["client.id"]), cancellation);
             return authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+                .SetLogHandler((_, message) => capture.Log(message))
                 .SetErrorHandler((_, error) => capture.Error(error))
                 .SetStatisticsHandler((_, report) => capture.Statistics(report)).Build();
         };
@@ -21,6 +22,7 @@ internal sealed class SingleActionSessionFactory
         {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, role, settings["client.id"]), cancellation);
             return authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+                .SetLogHandler((_, message) => capture.Log(message))
                 .SetErrorHandler((_, error) => capture.Error(error))
                 .SetStatisticsHandler((_, report) => capture.Statistics(report))
                 .SetPartitionsAssignedHandler((_, assigned) => capture.AssignedPartitions(assigned.Count)).Build();

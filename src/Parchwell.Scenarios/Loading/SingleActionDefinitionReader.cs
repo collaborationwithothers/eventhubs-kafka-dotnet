@@ -33,7 +33,8 @@ internal static class SingleActionDefinitionReader
             var path = "single_action.configurations." + id;
             var row = validation.Map(input, path);
             if (row is null) continue;
-            validation.CheckFields(row, path, "action", "role", "topic", "partition", "payload_bytes", "window_ms", "token_scope", "match");
+            validation.TryFields(row, path, ["action", "role", "topic", "partition", "payload_bytes", "window_ms", "token_scope", "match", "terminal_rule"],
+                ["action", "role", "topic", "partition", "payload_bytes", "window_ms", "token_scope", "match"]);
             var action = String("action") ?? "";
             var roleName = String("role") ?? "";
             var roleValid = Enum.TryParse<KafkaClientRole>(roleName, out var role) && Enum.IsDefined(role) && role.ToString() == roleName;
@@ -43,6 +44,8 @@ internal static class SingleActionDefinitionReader
             var window = Integer("window_ms");
             var scope = String("token_scope") ?? "";
             var match = String("match") ?? "";
+            var hasTerminalRule = row.Fields.TryGetValue("terminal_rule", out var terminalRuleNode);
+            var terminalRule = terminalRuleNode is ScalarNode terminalScalar ? terminalScalar.Value : "standard";
             if (expected.TryGetValue(id, out var literal))
             {
                 Check("action", action == literal.Action);
@@ -53,8 +56,11 @@ internal static class SingleActionDefinitionReader
                 Check("window", window == literal.WindowMs);
                 Check("token_scope", scope == literal.TokenScope);
                 Check("match", match == literal.Match);
+                Check("terminal_rule", literal.TerminalRule == "standard"
+                    ? !hasTerminalRule
+                    : hasTerminalRule && terminalRuleNode is ScalarNode && terminalRule == literal.TerminalRule);
             }
-            result[id] = new(action, role, topic, partition, payload, window, scope, match);
+            result[id] = new(action, role, topic, partition, payload, window, scope, match, terminalRule);
             continue;
 
             string? String(string key)
@@ -99,18 +105,18 @@ internal static class SingleActionDefinitionReader
             case "B01": Add("C0", "produce_one", KafkaClientRole.LoadGenProducer, 1000); Add("C1", "produce_one", KafkaClientRole.LoadGenProducer, 1100000); break;
             case "B03": foreach (var c in new[] { "C1", "C2", "C3", "C4" }) Add(c, "produce_one", KafkaClientRole.LoadGenProducer, 1000); break;
             case "B05": Add("C1", "init_transactions", KafkaClientRole.LoadGenProducer, 0); break;
-            case "C08": Add("C0", "subscribe", KafkaClientRole.EnrichmentConsumer, 0); Add("C1", "subscribe", KafkaClientRole.EnrichmentConsumer, 0); break;
+            case "C08": Add("C0", "subscribe", KafkaClientRole.EnrichmentConsumer, 0); Add("C1", "subscribe", KafkaClientRole.EnrichmentConsumer, 0, terminalRule: "window_end_no_outcome"); break;
             case "C12": Add("C1", "subscribe", KafkaClientRole.EnrichmentConsumer, 0); Add("C2", "subscribe", KafkaClientRole.EnrichmentConsumer, 0); break;
             case "F04":
                 Add("C0", "produce_one", KafkaClientRole.LoadGenProducer, 1000, match: "f04_seed");
                 Add("C1", "produce_one", KafkaClientRole.LoadGenProducer, 1000, topic: "document-state");
-                Add("C2", "assign_consume", KafkaClientRole.VerifierConsumer, 1000, topic: "document-state", match: "f04_seed");
-                Add("C3", "produce_one", KafkaClientRole.LoadGenProducer, 1000, scope: "storage");
+                Add("C2", "assign_consume", KafkaClientRole.VerifierConsumer, 1000, topic: "document-state", match: "f04_seed", terminalRule: "window_end_no_outcome");
+                Add("C3", "produce_one", KafkaClientRole.LoadGenProducer, 1000, scope: "storage", terminalRule: "first_error_callback_or_delivery");
                 Add("C4", "assign_consume", KafkaClientRole.VerifierConsumer, 1000, match: "f04_seed"); break;
         }
         return rows.ToImmutable();
-        void Add(string configuration, string action, KafkaClientRole role, int payload, string topic = "document-events", string scope = "namespace", string match = "none") =>
-            rows.Add(configuration, new(action, role, topic, 0, payload, action == "produce_one" ? 330000 : action == "init_transactions" ? 150000 : 120000, scope, match));
+        void Add(string configuration, string action, KafkaClientRole role, int payload, string topic = "document-events", string scope = "namespace", string match = "none", string terminalRule = "standard") =>
+            rows.Add(configuration, new(action, role, topic, 0, payload, action == "produce_one" ? 330000 : action == "init_transactions" ? 150000 : 120000, scope, match, terminalRule));
     }
 
     private static string[] Deltas(string item, string configuration) => (item, configuration) switch
@@ -121,7 +127,8 @@ internal static class SingleActionDefinitionReader
         ("B03", "C3") => ["LoadGenProducer:compression.type=lz4"],
         ("B03", "C4") => ["LoadGenProducer:compression.type=zstd"],
         ("B05", "C1") => ["LoadGenProducer:transactional.id=b05-probe", "LoadGenProducer:enable.idempotence=true", "LoadGenProducer:max.in.flight=5", "LoadGenProducer:message.timeout.ms=60000"],
-        ("C08", "C1") => ["EnrichmentConsumer:group.protocol=consumer", "EnrichmentConsumer:session.timeout.ms=omit", "EnrichmentConsumer:heartbeat.interval.ms=omit", "EnrichmentConsumer:partition.assignment.strategy=omit"],
+        ("C08", "C1") => ["EnrichmentConsumer:group.protocol=consumer", "EnrichmentConsumer:session.timeout.ms=omit", "EnrichmentConsumer:heartbeat.interval.ms=omit", "EnrichmentConsumer:partition.assignment.strategy=omit", "EnrichmentConsumer:debug=cgrp"],
+        ("F04", "C2") => ["VerifierConsumer:debug=topic,fetch,metadata"],
         ("C12", "C1") => ["EnrichmentConsumer:group.id=c12-" + new string('g', 252)],
         ("C12", "C2") => ["EnrichmentConsumer:group.id=c12-" + new string('g', 253)],
         _ => []

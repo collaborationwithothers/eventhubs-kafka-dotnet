@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.Common.SingleAction;
@@ -475,6 +476,321 @@ public sealed class SingleActionCaptureTests
         Assert.Equal(limited ? 0 : 1, fixture.Native.ProduceCalls);
     }
 
+    private const string FirstRule = "first_error_callback_or_delivery";
+    private const string WindowRule = "window_end_no_outcome";
+
+    [Fact]
+    public async Task Given_FirstRuleCallbackDuringBuild_When_Capturing_Then_SkipsProduceAndKeepsCallbackOrigin()
+    {
+        var fixture = new Fixture();
+        fixture.Native.OnBuild = () =>
+        {
+            fixture.Clock.Milliseconds = 7;
+            fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal("error", repeat.Result);
+        Assert.Equal(-196, repeat.Error!.Code);
+        Assert.Equal("local", repeat.Error.Origin);
+        Assert.False(repeat.Error.IsFatal);
+        Assert.Equal(7, repeat.ElapsedMs);
+        Assert.Equal(7, repeat.TerminalUnixMs);
+        Assert.Equal(0, fixture.Native.ProduceCalls);
+        Assert.Equal(1, fixture.Native.DisposeCalls);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task Given_CallbackAndDelivery_When_FirstRuleCaptures_Then_GateOrderChoosesOutcomeEvenAtTiedTime(bool callbackFirst, bool tied)
+    {
+        var fixture = new Fixture();
+        fixture.Native.ActionElapsed = 7;
+        if (callbackFirst)
+        {
+            fixture.Native.BeforeDelivery = () =>
+            {
+                fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+                if (!tied) fixture.Clock.Milliseconds++;
+            };
+        }
+        else fixture.Native.AfterDelivery = () =>
+        {
+            if (!tied) fixture.Clock.Milliseconds++;
+            fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal(callbackFirst ? "error" : "success", repeat.Result);
+        Assert.Equal(callbackFirst ? -196 : null, repeat.Error?.Code);
+        Assert.Equal(7, repeat.ElapsedMs);
+        Assert.Equal(7, repeat.TerminalUnixMs);
+        Assert.Single(repeat.ClientErrors);
+        Assert.Equal(tied ? 20007 : 20008, fixture.Clock.Milliseconds);
+        Assert.Equal(1, fixture.Native.ProduceCalls);
+        Assert.Equal(1, fixture.Native.DisposeCalls);
+    }
+
+    [Theory]
+    [InlineData(ErrorCode.Local_Fail, -196, "local")]
+    [InlineData(ErrorCode.Local_AllBrokersDown, -187, "local")]
+    [InlineData(ErrorCode.TopicAuthorizationFailed, 29, "broker")]
+    public async Task Given_FirstRuleCallbackCodes_When_Capturing_Then_RetainsActualCodeWithoutFiltering(ErrorCode code, int expected, string origin)
+    {
+        var fixture = new Fixture();
+        fixture.Native.BeforeDelivery = () => fixture.Native.Capture.Error(new Error(code));
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.Equal("error", repeat.Result);
+        Assert.Equal(expected, repeat.Error!.Code);
+        Assert.Equal(origin, repeat.Error.Origin);
+        Assert.False(repeat.Error.IsFatal);
+    }
+
+    [Fact]
+    public async Task Given_NoDelivery_When_FirstRuleCallbackArrivesOnDelay_Then_TerminatesAndCollectsPostTerminalStatistics()
+    {
+        var fixture = new Fixture();
+        fixture.Native.NoDelivery = true;
+        fixture.Clock.OnDelay = () =>
+        {
+            fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+            fixture.Native.Capture.Statistics("{\"time\":1,\"ts\":1,\"brokers\":{}}");
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.Equal("error", repeat.Result);
+        Assert.Equal(100, repeat.ElapsedMs);
+        Assert.Equal(100, repeat.TerminalUnixMs);
+        Assert.Equal(20100, fixture.Clock.Milliseconds);
+        Assert.Single(repeat.Statistics);
+        Assert.Equal(1, fixture.Native.ProduceCalls);
+        Assert.Equal(1, fixture.Native.DisposeCalls);
+    }
+
+    [Theory]
+    [InlineData(63, 63, 0)]
+    [InlineData(64, 64, 0)]
+    [InlineData(65, 64, 1)]
+    [InlineData(66, 64, 2)]
+    public async Task Given_FirstRuleErrorCountBoundary_When_Capturing_Then_Records64AndCountsOverflow(int count, int recorded, long dropped)
+    {
+        var fixture = new Fixture();
+        fixture.Native.NoDelivery = true;
+        fixture.Native.BeforeDelivery = () =>
+        {
+            for (int index = 0; index < count; index++)
+                fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail, index >= 64 ? new string('x', 4097) : "synthetic"));
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.Equal("error", repeat.Result);
+        Assert.Equal(-196, repeat.Error!.Code);
+        Assert.Equal(recorded, repeat.ClientErrors.Count);
+        Assert.Equal(dropped, repeat.ClientErrorsDropped);
+        Assert.DoesNotContain("capture_limit", repeat.Diagnostics);
+        using JsonDocument json = JsonDocument.Parse(SingleActionWire.Encode(repeat, fixture.Options.MaxCaptureBytes));
+        Assert.Equal(dropped, json.RootElement.GetProperty("client_errors_dropped").GetInt64());
+    }
+
+    [Fact]
+    public async Task Given_StandardErrorOverflow_When_Capturing_Then_StillLimitsAndNeverCountsDroppedErrors()
+    {
+        var fixture = new Fixture();
+        fixture.Native.ProduceErrors = 65;
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000));
+        Assert.Equal(64, repeat.ClientErrors.Count);
+        Assert.Equal(0, repeat.ClientErrorsDropped);
+        Assert.Contains("capture_limit", repeat.Diagnostics);
+    }
+
+    [Fact]
+    public void Given_FirstRuleOversizedRecordedReason_When_Capturing_Then_StillLimitsBeforeChoosingOutcome()
+    {
+        var fixture = new Fixture();
+        var capture = new SingleActionCapture(fixture.Options, fixture.Clock, 0, new(100), FirstRule);
+        capture.Error(new Error(ErrorCode.Local_Fail, new string('x', 4097)));
+        Assert.True(capture.Limit);
+        Assert.False(capture.ProducerOutcome.IsCompleted);
+        Assert.Empty(capture.Snapshot().Errors);
+        Assert.Equal(0, capture.Snapshot().Dropped);
+    }
+
+    [Fact]
+    public async Task Given_ChosenCallbackThenConcurrentErrors_When_FirstRuleCaptures_Then_PreservesFirstAndSaturatesRecordedArray()
+    {
+        var fixture = new Fixture();
+        fixture.Native.NoDelivery = true;
+        fixture.Native.ActionElapsed = 7;
+        fixture.Native.BeforeDelivery = () =>
+        {
+            fixture.Native.Capture.Error(new Error(ErrorCode.TopicAuthorizationFailed));
+            Task.WhenAll(Enumerable.Range(0, 66).Select(_ => Task.Run(() => fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail)))))
+                .GetAwaiter().GetResult();
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.Equal(29, repeat.Error!.Code);
+        Assert.Equal(7, repeat.ElapsedMs);
+        Assert.Equal(7, repeat.TerminalUnixMs);
+        Assert.Equal(64, repeat.ClientErrors.Count);
+        Assert.Equal(3, repeat.ClientErrorsDropped);
+        Assert.DoesNotContain("capture_limit", repeat.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_DeliveryThenStatisticsOverflow_When_FirstRuleCaptures_Then_PreservesSuccessAndStatisticsLimit()
+    {
+        var fixture = new Fixture();
+        fixture.Native.AfterDelivery = () =>
+        {
+            for (int index = 0; index < 65; index++) fixture.Native.Capture.Statistics("{}");
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal("success", repeat.Result);
+        Assert.Equal(64, repeat.Statistics.Count);
+        Assert.Equal(0, repeat.ClientErrorsDropped);
+        Assert.Contains("capture_limit", repeat.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData(true, -196)]
+    [InlineData(false, 29)]
+    public async Task Given_ProduceException_When_FirstRuleCaptures_Then_EarlierCallbackWinsOtherwiseExceptionIsOutcome(bool callback, int code)
+    {
+        var fixture = new Fixture();
+        fixture.Native.BeforeDelivery = () =>
+        {
+            if (callback) fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+            throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.TopicAuthorizationFailed), new());
+        };
+        var repeat = await fixture.RunAsync(Action("produce_one", 330000) with { TerminalRule = FirstRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal("error", repeat.Result);
+        Assert.Equal(code, repeat.Error!.Code);
+        Assert.Equal(callback ? "local" : "broker", repeat.Error.Origin);
+        Assert.Equal(1, fixture.Native.ProduceCalls);
+    }
+
+    [Theory]
+    [InlineData("subscribe", WindowRule)]
+    [InlineData("assign_consume", WindowRule)]
+    [InlineData("subscribe", "standard")]
+    [InlineData("assign_consume", "standard")]
+    public async Task Given_SilentConsumer_When_WindowEnds_Then_OnlyWindowRuleRecordsNoOutcome(string action, string rule)
+    {
+        var fixture = new Fixture();
+        const string raw = "{\"time\":120,\"ts\":1,\"brokers\":{}}";
+        fixture.Native.OnPoll = () =>
+        {
+            if (fixture.Clock.Milliseconds == 120100) fixture.Native.Capture.Statistics(raw);
+        };
+        var repeat = await fixture.RunAsync(Action(action, 120000) with { TerminalRule = rule });
+        bool noOutcome = rule == WindowRule;
+        Assert.Equal(noOutcome, repeat.Terminal);
+        Assert.Equal(noOutcome ? "no_outcome" : null, repeat.Result);
+        Assert.Equal(120000, repeat.ElapsedMs);
+        Assert.Equal(noOutcome ? 120000 : null, repeat.TerminalUnixMs);
+        Assert.Null(repeat.Error);
+        Assert.Null(repeat.Matched);
+        Assert.Empty(repeat.ClientErrors);
+        Assert.Equal(0, repeat.ClientErrorsDropped);
+        Assert.Equal(noOutcome ? 140000 : 120000, fixture.Clock.Milliseconds);
+        Assert.Equal(1, fixture.Native.DisposeCalls);
+        if (noOutcome)
+        {
+            var report = Assert.Single(repeat.Statistics);
+            Assert.Equal(120100, report.ObservedElapsedMs);
+            Assert.Equal(raw, Encoding.UTF8.GetString(Convert.FromBase64String(report.RawBase64)));
+        }
+        else Assert.Empty(repeat.Statistics);
+    }
+
+    [Fact]
+    public async Task Given_NonfatalConsumerError_When_WindowRuleExpires_Then_LeavesOutcomeAbsent()
+    {
+        var fixture = new Fixture();
+        fixture.Native.OnFirstPoll = () => fixture.Native.Capture.Error(new Error(ErrorCode.Local_Fail));
+        var repeat = await fixture.RunAsync(Action("subscribe", 120000) with { TerminalRule = WindowRule });
+        Assert.False(repeat.Terminal);
+        Assert.Null(repeat.Result);
+        Assert.Single(repeat.ClientErrors);
+        Assert.Equal(0, repeat.ClientErrorsDropped);
+        Assert.Equal(120000, repeat.ElapsedMs);
+        Assert.Equal(120000, fixture.Clock.Milliseconds);
+    }
+
+    [Theory]
+    [InlineData("subscribe", 119999)]
+    [InlineData("subscribe", 120000)]
+    [InlineData("subscribe", 120001)]
+    [InlineData("assign_consume", 119999)]
+    [InlineData("assign_consume", 120000)]
+    [InlineData("assign_consume", 120001)]
+    public async Task Given_ConsumerSuccessBoundary_When_WindowRuleCaptures_Then_WithinWindowSuccessPrecedesNoOutcome(string action, int observed)
+    {
+        var fixture = new Fixture();
+        if (action == "subscribe")
+        {
+            fixture.Native.AssignOnPoll = true;
+            fixture.Native.ActionElapsed = observed;
+        }
+        else
+        {
+            fixture.Native.Records.Enqueue(Record("document-events"));
+            fixture.Native.OnFirstPoll = () => fixture.Clock.Milliseconds = observed;
+        }
+        var repeat = await fixture.RunAsync(Action(action, 120000) with { TerminalRule = WindowRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal(observed <= 120000 ? "success" : "no_outcome", repeat.Result);
+        Assert.Equal(Math.Min(observed, 120000), repeat.ElapsedMs);
+        Assert.Equal(action == "assign_consume" && observed <= 120000, repeat.Matched is not null);
+        Assert.Empty(repeat.ClientErrors);
+    }
+
+    [Fact]
+    public async Task Given_NoOutcomeThenPostTerminalError_When_Capturing_Then_KeepsTupleAndRawCallbackForVerifier()
+    {
+        var fixture = new Fixture();
+        fixture.Native.OnPoll = () =>
+        {
+            if (fixture.Clock.Milliseconds == 120100) fixture.Native.Capture.Error(new Error(ErrorCode.TopicAuthorizationFailed));
+        };
+        var repeat = await fixture.RunAsync(Action("subscribe", 120000) with { TerminalRule = WindowRule });
+        Assert.True(repeat.Terminal);
+        Assert.Equal("no_outcome", repeat.Result);
+        Assert.Equal(120000, repeat.ElapsedMs);
+        Assert.Equal(120000, repeat.TerminalUnixMs);
+        Assert.Null(repeat.Error);
+        Assert.Null(repeat.Matched);
+        Assert.Equal(29, Assert.Single(repeat.ClientErrors).Code);
+        Assert.Equal(0, repeat.ClientErrorsDropped);
+    }
+
+    [Theory]
+    [InlineData("empty", true)]
+    [InlineData("limit", false)]
+    [InlineData("error", false)]
+    [InlineData("assignment_before", false)]
+    [InlineData("assignment_equal", false)]
+    [InlineData("assignment_after", true)]
+    [InlineData("direct_assignment", true)]
+    public void Given_WindowEndObservation_When_ArbitratingUnderGate_Then_RequiresNoErrorsOrTimelySubscriptionAssignment(string state, bool expected)
+    {
+        var fixture = new Fixture();
+        var capture = new SingleActionCapture(fixture.Options, fixture.Clock, 0, new(100), WindowRule);
+        if (state == "limit") capture.CaptureLimit();
+        if (state == "error") capture.Error(new Error(ErrorCode.Local_Fail));
+        if (state.StartsWith("assignment_", StringComparison.Ordinal) || state == "direct_assignment")
+        {
+            fixture.Clock.Milliseconds = state == "assignment_before" ? 119999 : state == "assignment_after" ? 120001 : 120000;
+            capture.AssignedPartitions(1);
+        }
+        bool observed = false;
+        Assert.Equal(expected, capture.TryObserveWindowEnd(120000, state != "direct_assignment", () => observed = true));
+        Assert.Equal(expected, observed);
+    }
+
     internal static SingleActionHostOptions Options() => new()
     {
         ScenarioId = "F04", ConfigurationId = "C2", RunId = "run-1", SourceCommit = new string('a', 40),
@@ -502,7 +818,7 @@ public sealed class SingleActionCaptureTests
         internal AdvancingClock Clock { get; } = new();
         internal NativeProxy Native { get; }
         private readonly SingleActionWorker _worker;
-        internal Fixture()
+        internal Fixture(TextWriter? clientLogOutput = null)
         {
             IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProxy>();
             IConsumer<byte[], byte[]> consumer = DispatchProxy.Create<IConsumer<byte[], byte[]>, NativeProxy>();
@@ -513,13 +829,15 @@ public sealed class SingleActionCaptureTests
             var factory = new SingleActionSessionFactory((_, capture, _) =>
             {
                 if (Native.ConstructionFailure is not null) throw Native.ConstructionFailure;
-                Native.Capture = capture; return producer;
+                Native.Capture = capture;
+                Native.OnBuild?.Invoke();
+                return producer;
             }, (_, capture, _) =>
             {
                 if (Native.ConstructionFailure is not null) throw Native.ConstructionFailure;
                 Native.Capture = capture; return consumer;
             });
-            _worker = new(Options, factory, new MemoryPublication(), Clock);
+            _worker = new(Options, factory, new MemoryPublication(), Clock, clientLogOutput: clientLogOutput ?? new StringWriter());
         }
         internal Task<SingleActionRepeat> RunAsync(SingleActionConfiguration action, ResolvedRoleConfiguration? resolved = null) => _worker.CaptureRepeatAsync(action, resolved ?? Resolved(), 1, new(100), TestContext.Current.CancellationToken);
     }
@@ -565,6 +883,7 @@ public sealed class SingleActionCaptureTests
         internal bool FatalOnPoll, NoDelivery, PostTerminalConsumeError, PostTerminalStatisticsOverflow;
         internal bool FatalBeforeAssignment, ThrowAfterFirstAssignment, StatisticsOverflowOnFirstPoll;
         internal int ProduceErrors, ErrorsAfterDelivery;
+        internal Action? OnBuild, BeforeDelivery, AfterDelivery, OnFirstPoll, OnPoll, OnDispose;
         internal Exception? ConstructionFailure, ActionException;
         internal Error Error = new(ErrorCode.NoError);
         internal string? Report;
@@ -586,7 +905,9 @@ public sealed class SingleActionCaptureTests
                     Clock.Milliseconds += ActionElapsed;
                     if (Report is not null) Capture.Statistics(Report);
                     for (int index = 0; index < ProduceErrors; index++) Capture.Error(new Error(ErrorCode.Local_Fail));
+                    BeforeDelivery?.Invoke();
                     if (!NoDelivery) ((Action<DeliveryReport<byte[], byte[]>>)args![2]!)(new() { Error = Error });
+                    AfterDelivery?.Invoke();
                     for (int index = 0; index < ErrorsAfterDelivery; index++) Capture.Error(new Error(ErrorCode.Local_Fail));
                     return null;
                 case "InitTransactions": InitCalls++; InitTimeout = (TimeSpan)args![0]!; return null;
@@ -594,6 +915,7 @@ public sealed class SingleActionCaptureTests
                 case "Assign": AssignCalls++; Assignment = (TopicPartitionOffset)args![0]!; return null;
                 case "Consume":
                     PollCalls++;
+                    if (PollCalls == 1) OnFirstPoll?.Invoke();
                     if (PollCalls == 1 && StatisticsOverflowOnFirstPoll)
                         for (int index = 0; index < 65; index++) Capture.Statistics("{\"time\":1,\"ts\":1}");
                     if (PollCalls == 2 && PostTerminalStatisticsOverflow)
@@ -603,11 +925,12 @@ public sealed class SingleActionCaptureTests
                     if (PollCalls == 1 && FatalOnPoll && FatalBeforeAssignment) Capture.Error(new Error(ErrorCode.Local_Fatal, "synthetic fatal", true));
                     if (PollCalls == 1 && AssignOnPoll) { Clock.Milliseconds += ActionElapsed; Capture.AssignedPartitions(1); }
                     else if (Records.Count == 0) Clock.Milliseconds += 100;
+                    OnPoll?.Invoke();
                     if (PollCalls == 1 && FatalOnPoll && !FatalBeforeAssignment) Capture.Error(new Error(ErrorCode.Local_Fatal, "synthetic fatal", true));
                     if (PollCalls == 1 && ThrowAfterFirstAssignment)
                         throw new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.TopicAuthorizationFailed));
                     return Records.TryDequeue(out ConsumeResult<byte[], byte[]>? record) ? record : null;
-                case "Dispose": DisposeCalls++; return null;
+                case "Dispose": DisposeCalls++; OnDispose?.Invoke(); return null;
                 default: throw new NotSupportedException(targetMethod?.Name);
             }
         }
