@@ -34,7 +34,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | C05 | Fetch throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C06 | Static group membership | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C07 | Partition assignment strategy | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| C08 | KIP-848 consumer protocol | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| C08 | KIP-848 consumer protocol | Not supported on our Event Hubs Premium namespace on 2026-10-28 with librdkafka 2.16.0 (inferred from pod logs). C1's approved wording is "no assignment and no error within the window"; three repeats remain incomplete with SASL failures of unknown cause. Published under Hari's C08-only waiver. | undocumented | [Report](results/C08/2026-10-28.md) |
 | C09 | Offset commit throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C10 | Offset storage and crash outcomes | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C11 | Trace: offset metadata size | Not run: the pinned client exposes no commit metadata. | untestable | [Report](results/C11/2026-10-27.md) |

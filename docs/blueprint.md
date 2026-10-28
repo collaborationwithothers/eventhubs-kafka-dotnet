@@ -1159,7 +1159,7 @@ ADR-020 removes per-item cost caps; these historical estimates are not limits.
 
 1. Whether UK West supports Event Hubs geo-replication (decides whether G01 to G03 are tested or traced).
 2. Whether partitions can be added to a compacted event hub (E04).
-3. Whether Event Hubs supports `group.protocol = consumer` (C08).
+3. Not supported on our Event Hubs Premium namespace on 2026-10-28: the namespace did not advertise a KIP-848 ConsumerGroupHeartbeat API version usable by librdkafka 2.16.0, so the consumer-protocol subscriber did not join and this unsupported-API path raised no application error; this source-supported inference from pod logs answers [C08](../results/C08/2026-10-28.md).
 4. Resource-specific table and column for replication lag; columns of `AZMSRunTimeAuditLogs`.
 5. AKS Free tier control plane charge and private endpoint hourly price in UK South.
 6. Runner VNet integration: the runner VNet's egress address for AKS authorised IP ranges; spoke address space that does not overlap the runner VNet.
