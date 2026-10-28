@@ -111,3 +111,28 @@ The finite preservation script compares the five frozen files against `cb8730925
 | docs/research/kubernetes-kafka-clients.md | a92ba6555c4d37d39636a1e3d267e7962b4d10a567371ff941391d56c9aa6d1e |
 
 The YAML hashes remain the values recorded above. No artifact download, publication regeneration, Azure command, workflow dispatch or SASL investigation was performed for this repair. Temporary diagnostic/preservation scripts and authored review material are included in the complete cold-review diff; synthetic logs and command output remain outside the repository. The fresh repair cold review and final-head automatic CI/code/security reviews remain pending at preparation; the PR records their observed final state and reviewed head. Hari reviews and merges the verdict.
+
+## PR #239 README index amendment
+
+This amendment makes the C08 README row link the report added by this verdict PR. The row retains namespace/date/client scope, source-supported inference, the approved C1 wording, incomplete repeats, unknown SASL cause and Hari's C08-only waiver.
+
+Authority: [decision 6479699314](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6479699314), [plan Revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6477632754) (`updated_at: 2026-10-28T20:21:59Z`), [independent check 6479854223](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6479854223) and [exact-revision approval 6479870654](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6479870654).
+
+Source head and validation source commit: `ee69d6b34a1c9b00171a679ce91c83bb1e6d6402`, with this authored Markdown amendment uncommitted during validation. Row evidence: `results/C08/2026-10-28.md` lines 3, 20-26 and 54-60. The remote main and PR heads matched the plan snapshot before editing; fresh authority metadata and exact Revision 4 bytes matched the approved contract.
+
+The one-off same-class acceptance passed with 76 ordered unique rows, 21 report links and 55 unpublished rows. Every checked report verdict, details path and inventory anchor matched; no other README byte or derived prose changed. The complete PR contains exactly 9 paths, and this amendment authors only README.md and this receipt append. All seven frozen files, both scenario YAML files and the complete existing receipt prefix match the pinned source bytes. The prefix SHA-256 is `c4677f985915a543d6e8a607638f65488c49f22c9d04d77adc76541581f79979`.
+
+The acceptance and documentation commands each ran once from the repository root and exited 0. Staged and unstaged whitespace checks also exited 0:
+
+```sh
+python3 infra/scripts/lifecycle/command.py 120 -- python3 /tmp/issue235-readme-amendment/acceptance.py
+python3 infra/scripts/lifecycle/command.py 120 -- npm run check:docs
+git diff --check
+git diff --cached --check
+```
+
+The acceptance and documentation output were retained outside the repository under `/tmp/issue235-readme-implementation/`; the documentation command's combined output was captured in `check-docs.txt`. The documentation scan completed with no warning in any changed PR file. Existing documentation warnings in files outside this PR remain unchanged and outside its scope; this blanket disposition follows AGENTS.md rule 8. The scan completed before this receipt recorded its observed result and is not repeated for that record. The final limited preservation check (`python3 /tmp/issue235-readme-implementation/check-preservation.py`) and both whitespace checks exited 0 after recording validation. Only the preservation prefix of the approved script was reused; the all-index/report loop and documentation scan were not repeated.
+
+Cold review: pending fresh review of the complete nine-path PR diff and all authored external scripts, plans, decisions, checks, prose and prior review records. The reviewed source is the source head above plus this working amendment; the coordinating session will record the last round and final head in the PR description. The original result-path finding remains under AGENTS.md rule 8's approved-verdict exception. No conditional prose round has run for this amendment.
+
+No runtime test rerun, workflow dispatch, manual rerun, live run or merge was performed for this Markdown amendment.
