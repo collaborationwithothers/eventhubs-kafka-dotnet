@@ -1,0 +1,1107 @@
+{
+  "publication": {
+    "item": "F04",
+    "proposed_verdict": "undocumented",
+    "summary": [
+      "Across 25 complete synthetic repeats in five deterministic configurations, both authorized controls succeeded and the missing-role producer returned broker error 29 (RD_KAFKA_RESP_ERR_TOPIC_AUTHORIZATION_FAILED), so the proposed F04 verdict is undocumented.",
+      "The missing-role consumer recorded exactly 'no read and no error within the window' in all five repeats; no authorization conclusion is drawn, and its debug cause is unavailable because all five repeats capped client logging.",
+      "The wrong-resource producer ended every repeat with local error -169 (RD_KAFKA_RESP_ERR__AUTHENTICATION); H1, H2 and H3 record observed surfaces only."
+    ],
+    "hypotheses": {
+      "H0": "holds",
+      "H1": "recorded_only",
+      "H2": "recorded_only",
+      "H3": "recorded_only",
+      "H4": "holds"
+    },
+    "derivation": "closed decision rules transcribed from scenarios/F04/expected.yaml (SHA-256 1354fc4a4531b63c9e7707c6d360faca97b0788faeca08842b504415d6967d5a); derived assessment equals the verifier item_assessment",
+    "per_configuration": {
+      "C0": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C1": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": 29,
+          "is_fatal": false,
+          "origin": "broker"
+        },
+        "broker_count_per_repeat": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C2": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "no_outcome",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C3": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "error",
+          "error_code": -169,
+          "is_fatal": false,
+          "origin": "local"
+        },
+        "broker_count_per_repeat": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "broker_count_lower_bound": true
+      },
+      "C4": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "broker_count_lower_bound": true
+      }
+    },
+    "c2_observation": "no read and no error within the window",
+    "c2_debug_cause": {
+      "status": "unavailable",
+      "reason": "single_action_client_log_capped",
+      "dropped_lines_per_repeat": [
+        667,
+        667,
+        667,
+        667,
+        667
+      ],
+      "pod_log_member": "probe-40722187672-1-f04-c2-single/probe-40722187672-1-f04-c2-single-hgdmk.containers.probe.log"
+    },
+    "error_code_names": {
+      "29": "RD_KAFKA_RESP_ERR_TOPIC_AUTHORIZATION_FAILED",
+      "-169": "RD_KAFKA_RESP_ERR__AUTHENTICATION"
+    },
+    "error_code_source": "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.h#L352-L495",
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672",
+      "attempt": 1,
+      "run_id": "probe-40722187672-1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/artifacts/12834018507",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/artifacts/12835061323",
+      "candidate_artifact_expires_at": "2027-01-26T16:03:35Z",
+      "pod_artifact_expires_at": "2027-01-26T16:03:35Z",
+      "jobs": {
+        "C0": {
+          "capture": {
+            "job": "probe-40722187672-1-f04-c0-single",
+            "pod": "probe-40722187672-1-f04-c0-single-7fgxl",
+            "pod_uid": "cc4117b2-ec3b-4973-b922-f7a8b7a2a50d",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-28T16:36:15Z",
+            "container_finished_at": "2026-10-28T16:37:59Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+            "pod_log_member": "probe-40722187672-1-f04-c0-single/probe-40722187672-1-f04-c0-single-7fgxl.containers.loadgen.log",
+            "pod_json_member": "probe-40722187672-1-f04-c0-single/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c0-single/collection-status.json"
+          },
+          "judge": {
+            "job": "probe-40722187672-1-f04-c0-single-judge",
+            "pod": "probe-40722187672-1-f04-c0-single-judge-wchjp",
+            "pod_uid": "6b958896-4f1b-4523-b78f-51c235ed3c73",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-28T16:38:06Z",
+            "container_finished_at": "2026-10-28T16:38:08Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+            "pod_log_member": "probe-40722187672-1-f04-c0-single-judge/probe-40722187672-1-f04-c0-single-judge-wchjp.containers.verifier.log",
+            "pod_json_member": "probe-40722187672-1-f04-c0-single-judge/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c0-single-judge/collection-status.json"
+          }
+        },
+        "C1": {
+          "capture": {
+            "job": "probe-40722187672-1-f04-c1-single",
+            "pod": "probe-40722187672-1-f04-c1-single-zngf5",
+            "pod_uid": "ae9c40bf-9b1c-4510-bb4a-d09b2dcd99cf",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-28T16:38:19Z",
+            "container_finished_at": "2026-10-28T16:40:01Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+            "pod_log_member": "probe-40722187672-1-f04-c1-single/probe-40722187672-1-f04-c1-single-zngf5.containers.loadgen.log",
+            "pod_json_member": "probe-40722187672-1-f04-c1-single/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c1-single/collection-status.json"
+          },
+          "judge": {
+            "job": "probe-40722187672-1-f04-c1-single-judge",
+            "pod": "probe-40722187672-1-f04-c1-single-judge-2ck4q",
+            "pod_uid": "449520b0-c11d-4403-9f64-4fc8b8a530ce",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-28T16:40:13Z",
+            "container_finished_at": "2026-10-28T16:40:14Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+            "pod_log_member": "probe-40722187672-1-f04-c1-single-judge/probe-40722187672-1-f04-c1-single-judge-2ck4q.containers.verifier.log",
+            "pod_json_member": "probe-40722187672-1-f04-c1-single-judge/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c1-single-judge/collection-status.json"
+          }
+        },
+        "C2": {
+          "capture": {
+            "job": "probe-40722187672-1-f04-c2-single",
+            "pod": "probe-40722187672-1-f04-c2-single-hgdmk",
+            "pod_uid": "ca6f30d2-e09d-4afd-8fcb-ddc5321f4fbe",
+            "service_account": "probe",
+            "container_started_at": "2026-10-28T16:40:25Z",
+            "container_finished_at": "2026-10-28T16:52:07Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+            "pod_log_member": "probe-40722187672-1-f04-c2-single/probe-40722187672-1-f04-c2-single-hgdmk.containers.probe.log",
+            "pod_json_member": "probe-40722187672-1-f04-c2-single/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c2-single/collection-status.json"
+          },
+          "judge": {
+            "job": "probe-40722187672-1-f04-c2-single-judge",
+            "pod": "probe-40722187672-1-f04-c2-single-judge-r2gks",
+            "pod_uid": "04d1fdab-6ac6-4ff7-b516-b4552f0dce1a",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-28T16:52:19Z",
+            "container_finished_at": "2026-10-28T16:52:21Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+            "pod_log_member": "probe-40722187672-1-f04-c2-single-judge/probe-40722187672-1-f04-c2-single-judge-r2gks.containers.verifier.log",
+            "pod_json_member": "probe-40722187672-1-f04-c2-single-judge/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c2-single-judge/collection-status.json"
+          }
+        },
+        "C3": {
+          "capture": {
+            "job": "probe-40722187672-1-f04-c3-single",
+            "pod": "probe-40722187672-1-f04-c3-single-cg9jl",
+            "pod_uid": "c8a81293-a00d-4aba-9e31-66e9485b8ce8",
+            "service_account": "loadgen",
+            "container_started_at": "2026-10-28T16:52:32Z",
+            "container_finished_at": "2026-10-28T16:54:14Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+            "pod_log_member": "probe-40722187672-1-f04-c3-single/probe-40722187672-1-f04-c3-single-cg9jl.containers.loadgen.log",
+            "pod_json_member": "probe-40722187672-1-f04-c3-single/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c3-single/collection-status.json"
+          },
+          "judge": {
+            "job": "probe-40722187672-1-f04-c3-single-judge",
+            "pod": "probe-40722187672-1-f04-c3-single-judge-kb6zk",
+            "pod_uid": "f7159f87-e09f-4599-a184-be6718eaef0e",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-28T16:54:26Z",
+            "container_finished_at": "2026-10-28T16:54:27Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+            "pod_log_member": "probe-40722187672-1-f04-c3-single-judge/probe-40722187672-1-f04-c3-single-judge-kb6zk.containers.verifier.log",
+            "pod_json_member": "probe-40722187672-1-f04-c3-single-judge/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c3-single-judge/collection-status.json"
+          }
+        },
+        "C4": {
+          "capture": {
+            "job": "probe-40722187672-1-f04-c4-single",
+            "pod": "probe-40722187672-1-f04-c4-single-wckjw",
+            "pod_uid": "d8b61a8c-336a-4c9c-9a3b-3f0c943a3dee",
+            "service_account": "probe",
+            "container_started_at": "2026-10-28T16:54:38Z",
+            "container_finished_at": "2026-10-28T16:56:21Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+            "pod_log_member": "probe-40722187672-1-f04-c4-single/probe-40722187672-1-f04-c4-single-wckjw.containers.probe.log",
+            "pod_json_member": "probe-40722187672-1-f04-c4-single/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c4-single/collection-status.json"
+          },
+          "judge": {
+            "job": "probe-40722187672-1-f04-c4-single-judge",
+            "pod": "probe-40722187672-1-f04-c4-single-judge-64hf9",
+            "pod_uid": "679d0a03-daca-43fd-94b4-2dfb1cebce12",
+            "service_account": "verifier",
+            "container_started_at": "2026-10-28T16:56:32Z",
+            "container_finished_at": "2026-10-28T16:56:34Z",
+            "exit_code": 0,
+            "restart_count": 0,
+            "image_digest": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+            "pod_log_member": "probe-40722187672-1-f04-c4-single-judge/probe-40722187672-1-f04-c4-single-judge-64hf9.containers.verifier.log",
+            "pod_json_member": "probe-40722187672-1-f04-c4-single-judge/pods.json",
+            "collection_status_member": "probe-40722187672-1-f04-c4-single-judge/collection-status.json"
+          }
+        }
+      },
+      "seed_job": {
+        "job": "probe-40722187672-1-f04-seed",
+        "pod": "probe-40722187672-1-f04-seed-8dr2d",
+        "pod_uid": "968b6b3c-ac3e-4c98-928f-9bcb4f2c3168",
+        "service_account": "enrichment-consumer",
+        "container_started_at": "2026-10-28T16:20:00Z",
+        "container_finished_at": "2026-10-28T16:20:02Z",
+        "exit_code": 0,
+        "restart_count": 0,
+        "image_digest": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d",
+        "pod_log_member": "probe-40722187672-1-f04-seed/probe-40722187672-1-f04-seed-8dr2d.containers.enrichment-consumer.log",
+        "pod_json_member": "probe-40722187672-1-f04-seed/pods.json",
+        "collection_status_member": "probe-40722187672-1-f04-seed/collection-status.json"
+      }
+    },
+    "seed_prerequisite": {
+      "schema_version": 1,
+      "mode": "single-action-seed",
+      "run_id": "probe-40722187672-1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-seed",
+      "pod_name": "probe-40722187672-1-f04-seed-8dr2d",
+      "pod_uid": "968b6b3c-ac3e-4c98-928f-9bcb4f2c3168",
+      "service_account": "enrichment-consumer",
+      "topic": "document-state",
+      "partition": 0,
+      "key_base64": "ZjA0LXNlZWQ6cHJvYmUtNDA3MjIxODc2NzItMQ==",
+      "value_sha256": "68fe9c9f499dd1a6bf07c6f737c2b6a8118cca37877336ee0f2674209554d3c6",
+      "delivered": true,
+      "error": null,
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "input_sha256": {
+      "source": {
+        "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
+        "scenarios/F04/expected.yaml": "1354fc4a4531b63c9e7707c6d360faca97b0788faeca08842b504415d6967d5a",
+        "infra/cluster/aks.tf": "969762e923eae813525207d50f5689de9fbed20c0c4c2c274367bcb54462a8a2"
+      },
+      "candidate_artifact_members": {
+        "F04-C0-judge-completion.json": "234f804af38a8fe46f8c305f56d93f7e8f797de2c546ce85f86be41bb6ca6e84",
+        "F04-C0.json": "d5e052dd69bc9bdfdca4684af1caeda4f3395070b2e294885fbc545b2014b21a",
+        "F04-C1-judge-completion.json": "13707129569abbc0457076a66dc35c7d5abda583a761d81bcf7ef0b455e338ad",
+        "F04-C1.json": "4995ea7c48b8420faa90c8d3e28acc51e20bf91e2f6cfd34a02026f552d9e36b",
+        "F04-C2-judge-completion.json": "d0ae1fc5c52c1a925fad35d0e4ecf36f18a60966d42720e7516928d8472bace4",
+        "F04-C2.json": "cb60c2edfa74dcca380746d32a275b2d2935d4183da44083c3dbcab5214c8619",
+        "F04-C3-judge-completion.json": "b7485bafe64436de12df4e452072de03eeac7fca3e8c6da8ec6a1df901bb3c58",
+        "F04-C3.json": "1441bb3fe736098eb14c1a40aeb9c2c4366e11ca091dedfa9b78bdda3b73c113",
+        "F04-C4-judge-completion.json": "337706343544a524ad20603be1df276d84325ea67920bfe61c9aeb2a66478992",
+        "F04-C4.json": "379c17b67160bf9fa71a75cc29cc5bce142c687aedf2274a1eaa6bdbb049462b"
+      },
+      "pod_artifact_members": {
+        "probe-40722187672-1-f04-c0-single/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c0-single/pods.json": "4280b1e5d0e5b72ff64fa906e11be2ae736c4447bae5f8e98328a8809db68c5c",
+        "probe-40722187672-1-f04-c0-single/probe-40722187672-1-f04-c0-single-7fgxl.containers.loadgen.log": "df8bc83a7ce9f53821cc225aedb7f6311a3197d1d7c8f427e24119065ef93648",
+        "probe-40722187672-1-f04-c0-single-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c0-single-judge/pods.json": "489f1e07356471db128ea9bbe663569dc570e7fa49d9ebbe94fdd5f4b477ad5c",
+        "probe-40722187672-1-f04-c0-single-judge/probe-40722187672-1-f04-c0-single-judge-wchjp.containers.verifier.log": "dfe9074af4188ff1af46809ce1853d2bb92ca2d712d9929b84d985a12f8ab76c",
+        "probe-40722187672-1-f04-c1-single/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c1-single/pods.json": "a207e9d0c7a2ab420cf659151206d7faf496e8f78b8750e3c1b6f472aa1a4b56",
+        "probe-40722187672-1-f04-c1-single/probe-40722187672-1-f04-c1-single-zngf5.containers.loadgen.log": "2ab99c9460db9768d2e8def6199fc8cea0550e9acad639706158624dc2b99066",
+        "probe-40722187672-1-f04-c1-single-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c1-single-judge/pods.json": "4065c524c537fe0e1b5096c96ada5a0f1dd8bd8cd583c6bc06be7f6472bc1955",
+        "probe-40722187672-1-f04-c1-single-judge/probe-40722187672-1-f04-c1-single-judge-2ck4q.containers.verifier.log": "1e162e4a5f34da5a3f0354d60b9e1067a23f208923c644b7035a9143bde179a1",
+        "probe-40722187672-1-f04-c2-single/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c2-single/pods.json": "2e57a8b60b3bbd68e5371dd360625f9152007b7f4eba027b7716954aabe2be21",
+        "probe-40722187672-1-f04-c2-single/probe-40722187672-1-f04-c2-single-hgdmk.containers.probe.log": "de910d9bd9279726e17d3193e3edeed7fcbccab4ec716d9496008410d71a6631",
+        "probe-40722187672-1-f04-c2-single-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c2-single-judge/pods.json": "3b136563fc135c21d7e763b6f7a72e2d76e2a3a0317ed70da743c5979c23b22e",
+        "probe-40722187672-1-f04-c2-single-judge/probe-40722187672-1-f04-c2-single-judge-r2gks.containers.verifier.log": "acbc3c3d23fc33da8b5b3ad8aa79c2339e44600c5b61a69bae573814264b6e25",
+        "probe-40722187672-1-f04-c3-single/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c3-single/pods.json": "37ebc5b2432c9a9829769d6fc9571c18fd35414c68ac39c3f54c284b48b66232",
+        "probe-40722187672-1-f04-c3-single/probe-40722187672-1-f04-c3-single-cg9jl.containers.loadgen.log": "6107c5a4d1589fef572c864750ac57c3ceccae2ec7d740fa75a1658069a4015d",
+        "probe-40722187672-1-f04-c3-single-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c3-single-judge/pods.json": "feca2a8004ad65be411077f7d59b7449d6398e84f403806ae9ec2de68e6eec67",
+        "probe-40722187672-1-f04-c3-single-judge/probe-40722187672-1-f04-c3-single-judge-kb6zk.containers.verifier.log": "afa2595c3eb6c769f283749e07ef9b9acf9fd9d299e2caa3715e409a318f2b25",
+        "probe-40722187672-1-f04-c4-single/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c4-single/pods.json": "c188a3a4654321756122f9f583b9db497e18a03021cbefc6c9e652677859f4b4",
+        "probe-40722187672-1-f04-c4-single/probe-40722187672-1-f04-c4-single-wckjw.containers.probe.log": "faa7e16cc53ee3289dfe2648cd6899e53fe2feaa56f5a85eb717ad100e9752e3",
+        "probe-40722187672-1-f04-c4-single-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-c4-single-judge/pods.json": "def727bb2e5fe59be35211976a942dde9317dbd79ecddda2ad98388ded2d1e4a",
+        "probe-40722187672-1-f04-c4-single-judge/probe-40722187672-1-f04-c4-single-judge-64hf9.containers.verifier.log": "6406773b3c7389b16fd8b7f76a56e761e744520aab6e4f3674a56fd54a31ec8b",
+        "probe-40722187672-1-f04-seed/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
+        "probe-40722187672-1-f04-seed/pods.json": "ed7378bca8f6c3c59eef07dd587ca744e5f7044e8c6730e57cc1499236364d9a",
+        "probe-40722187672-1-f04-seed/probe-40722187672-1-f04-seed-8dr2d.containers.enrichment-consumer.log": "d8104fb3addb3f4447d863b96edd57f6ccaf67053037410f089afb69b33acabc"
+      },
+      "c5_summary": "bfdca0521f24944a458fb125b09f761ac45cd71343933a23b0e1fddcebc532bb"
+    },
+    "versions": {
+      "confluent_kafka_managed": "2.16.0.0",
+      "librdkafka_native": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      }
+    },
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "measurement_source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/job/122935779352",
+      "measurement_timestamps": {
+        "capacity": "2026-10-28T16:57:19.2361202Z",
+        "location": "2026-10-28T16:57:19.2371086Z",
+        "sku": "2026-10-28T16:57:19.2387025Z"
+      },
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred from the pinned infra/cluster/aks.tf setting for all three pools and the no-change cluster plan",
+      "node_size_sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/20f17794330b60d77a75bf5788ee442cc8baa1f6/infra/cluster/aks.tf",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/job/122935779352"
+      ],
+      "cluster_plan_timestamp": "2026-10-28T16:13:38.8790298Z"
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40642331044",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40642331044/artifacts/12808596014",
+      "commit": "1f14866faf395ecb28d3b9009986c1b332074386",
+      "measurement_complete": true,
+      "break_passed": true,
+      "numerator": 1341,
+      "denominator": 1341,
+      "target_history": "C5 targets unchanged between measured commit and final-run source; checked in authored receipt"
+    },
+    "approval_sources": [
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278",
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6454346600",
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6477157262",
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/230#issuecomment-6477157742"
+    ],
+    "workload": "synthetic"
+  },
+  "candidates": {
+    "C0": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C0",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205391,
+            "native_ts": 1975542206,
+            "raw_sha256": "85c4d4d9fde35be50ae99140b40ddf0007922ce3359fc7e2c1946e32f86e172a"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205412,
+            "native_ts": 1996364495,
+            "raw_sha256": "55d588bd5f820a931dc8bd06a83c4fdd7ad80475e1c7d731c64f56478fe64e84"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205433,
+            "native_ts": 2016778417,
+            "raw_sha256": "97ad6a42cadd413d1275e1c6742a9cf1adfd8bcceb7c8f14b578d191a6a24ec1"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205453,
+            "native_ts": 2036993681,
+            "raw_sha256": "d1676e441a8f2de0edc9f56bad073bb99e8685bce4865488837d517e60b87419"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205473,
+            "native_ts": 2057313666,
+            "raw_sha256": "216660286ca32cbddb8e401fe1a2f1141854219f729f02d9d84200220d27e366"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 29,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205515,
+            "native_ts": 2098736931,
+            "raw_sha256": "eef8baef2eaa67bd0c68723fa16f48aa438e5501fd794c5fcd79021cb9d5167b"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 29,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205535,
+            "native_ts": 2119159162,
+            "raw_sha256": "5b757bbf98c622385cf15e67d87a189bb803b77cf088df344efa4fa16bd33eca"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 29,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205555,
+            "native_ts": 2139371392,
+            "raw_sha256": "5c86c03c65b2638d79b3164f072c06372408bdf728f1e7cc7aff0438449f9cba"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 29,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205575,
+            "native_ts": 2159585272,
+            "raw_sha256": "c656b5cc4d74fa1cf6b880e71a81076b9d9b96224b9c9a3de027e4b66b50cc80"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": 29,
+            "is_fatal": false,
+            "origin": "broker"
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793205596,
+            "native_ts": 2179704544,
+            "raw_sha256": "ecdb72426bd8e8bf77c756cd42a12832ccfc1c6905ed5518e11cc519b25b85ec"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": 29,
+        "is_fatal": false,
+        "origin": "broker"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C2",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793205761,
+            "native_ts": 3259570472,
+            "raw_sha256": "436b02aca0b33cfdc5eed2488b1153271064cc9a05fcdc1bfd70212b531c26cb"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793205901,
+            "native_ts": 3399557235,
+            "raw_sha256": "fa65f35caecf3e23c9031af3a0adcb6f0afaac8915748d16e5f269ff90f869a3"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793206041,
+            "native_ts": 3539580154,
+            "raw_sha256": "af2ed3e605ecdd3c2415417da3fa50651e8f45f0c7abe104fb9be3bdea534e69"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793206181,
+            "native_ts": 3679603763,
+            "raw_sha256": "ed33596d54dc20b10f5cc9a7de6f62e18d8cce924be7760b53727cbb9bbb4aba"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793206321,
+            "native_ts": 3819628929,
+            "raw_sha256": "5cce609ccca0803c089c8d5833992a49f5291c5b0f6eb4e56cef0099b361af02"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "no_outcome",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C3": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C3",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": -169,
+            "is_fatal": false,
+            "origin": "local"
+          },
+          "broker_count": 0,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206368,
+            "native_ts": 2952057990,
+            "raw_sha256": "bcb68e4b146ba18d903debe9010950d0da00c38ca18c1ed739174f2e3bc6b4e0"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": -169,
+            "is_fatal": false,
+            "origin": "local"
+          },
+          "broker_count": 0,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206388,
+            "native_ts": 2972296971,
+            "raw_sha256": "ab173a24fdc846a708a3773e67cf8d20622793868a738355ce6524a729db38ab"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": -169,
+            "is_fatal": false,
+            "origin": "local"
+          },
+          "broker_count": 0,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206408,
+            "native_ts": 2992443983,
+            "raw_sha256": "16c238e2b0d73c8f97c725cbcab2be93c9409c0a998f6ae32ea6f0eab4f12df7"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": -169,
+            "is_fatal": false,
+            "origin": "local"
+          },
+          "broker_count": 0,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206428,
+            "native_ts": 3012549196,
+            "raw_sha256": "98aaa2ba320e8a3bcffcb4c967e7bb66415640fb8ba612d9a0b71fa425b39390"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "error",
+            "error_code": -169,
+            "is_fatal": false,
+            "origin": "local"
+          },
+          "broker_count": 0,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206449,
+            "native_ts": 3032724405,
+            "raw_sha256": "cfe60fd367b5d3a75a5aae9538da45f718998b7bd513d02ddc03d4362a20c258"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "error",
+        "error_code": -169,
+        "is_fatal": false,
+        "origin": "local"
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C4": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C4",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206494,
+            "native_ts": 3992534359,
+            "raw_sha256": "f00ad9e5ad62956d96bd8467427d6ee4f00d294b238ae50e133b2995bf6c7f88"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206515,
+            "native_ts": 4013079494,
+            "raw_sha256": "0312932c765706dad4d64a25c9bf708a58e2f25c36d594c40b7e219a1b38ddb2"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206535,
+            "native_ts": 4033189029,
+            "raw_sha256": "1b50137e4c74c506d4d771664670027ebbd718793ade7b3e2a1ad22bd7f0a532"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206555,
+            "native_ts": 4053296591,
+            "raw_sha256": "3b6fe4978d5ca9a0cc0f68784a01a0e499a16565dd84603b7e8f37364d10497a"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793206575,
+            "native_ts": 4073413832,
+            "raw_sha256": "b81171cb5c0a49f83dd4a399b19b92c5ef45dfbc0c0267cae906a97c99b9ff51"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": "undocumented",
+        "hypotheses": {
+          "H0": "holds",
+          "H1": "recorded_only",
+          "H2": "recorded_only",
+          "H3": "recorded_only",
+          "H4": "holds"
+        },
+        "reason": null
+      }
+    }
+  },
+  "judge_receipts": {
+    "C0": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C0",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-c0-single-judge",
+      "pod_name": "probe-40722187672-1-f04-c0-single-judge-wchjp",
+      "pod_uid": "6b958896-4f1b-4523-b78f-51c235ed3c73",
+      "candidate_name": "probe-40722187672-1/single-action/F04/C0/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-c1-single-judge",
+      "pod_name": "probe-40722187672-1-f04-c1-single-judge-2ck4q",
+      "pod_uid": "449520b0-c11d-4403-9f64-4fc8b8a530ce",
+      "candidate_name": "probe-40722187672-1/single-action/F04/C1/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C2": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C2",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-c2-single-judge",
+      "pod_name": "probe-40722187672-1-f04-c2-single-judge-r2gks",
+      "pod_uid": "04d1fdab-6ac6-4ff7-b516-b4552f0dce1a",
+      "candidate_name": "probe-40722187672-1/single-action/F04/C2/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C3": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C3",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-c3-single-judge",
+      "pod_name": "probe-40722187672-1-f04-c3-single-judge-kb6zk",
+      "pod_uid": "f7159f87-e09f-4599-a184-be6718eaef0e",
+      "candidate_name": "probe-40722187672-1/single-action/F04/C3/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C4": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "F04",
+      "configuration_id": "C4",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-f04-c4-single-judge",
+      "pod_name": "probe-40722187672-1-f04-c4-single-judge-64hf9",
+      "pod_uid": "679d0a03-daca-43fd-94b4-2dfb1cebce12",
+      "candidate_name": "probe-40722187672-1/single-action/F04/C4/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}
