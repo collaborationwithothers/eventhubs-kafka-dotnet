@@ -15,6 +15,71 @@ namespace Parchwell.Verifier.Tests.Judge;
 #pragma warning disable CA1707
 public sealed class JudgeHandlerTests
 {
+    // Production-writer metadata must survive verification and phase aggregation without normalization.
+    [Theory]
+    [InlineData("2.16.0")]
+    [InlineData("2.16.0+worker-build")]
+    public async Task Given_WorkerRuntimeVersions_When_Judged_Then_PreservesExactProducerVersion(string kafkaVersion)
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null,(fixture,_)=>SetWorkerRuntimeVersions(fixture,kafkaVersion));
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,
+            new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0,exit);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            using JsonDocument result=JsonDocument.Parse(stores.Verifier[PhasePaths.Result("synthetic-c5","C0",repeat)]);
+            JsonElement runtimeVersions=result.RootElement.GetProperty("runtime_versions");
+            Assert.Equal(kafkaVersion,runtimeVersions.GetProperty("confluent_kafka").GetString());
+            Assert.Equal("2.16.0",runtimeVersions.GetProperty("librdkafka").GetString());
+            Assert.Equal("10.0.13",runtimeVersions.GetProperty("dotnet").GetString());
+            Assert.False(runtimeVersions.TryGetProperty("Confluent.Kafka",out _));
+        }
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement root=candidate.RootElement;
+        Assert.Equal("complete_valid",root.GetProperty("status").GetString());
+        Assert.Equal(5,root.GetProperty("repeats").GetArrayLength());
+        Assert.Equal(5,root.GetProperty("counts").GetProperty("ok").GetInt64());
+        JsonElement versions=root.GetProperty("versions");
+        Assert.Equal(kafkaVersion,versions.GetProperty("confluent_kafka").GetString());
+        Assert.Equal("2.16.0",versions.GetProperty("librdkafka").GetString());
+        Assert.Equal("10.0.13",versions.GetProperty("dotnet").GetString());
+        Assert.Equal("synthetic-producer",versions.GetProperty("workload_generator").GetString());
+        Assert.DoesNotContain("version_unavailable",root.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
+    }
+
+    // Missing or inconsistent metadata remains diagnostic while the message outcomes remain valid.
+    [Theory]
+    [InlineData("missing",1)]
+    [InlineData("missing",5)]
+    [InlineData("disagreeing",1)]
+    [InlineData("disagreeing",5)]
+    public async Task Given_MissingOrDisagreeingWorkerKafkaVersion_When_Judged_Then_PreservesUnavailableMetadata(string condition,int selectedRepeat)
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null,(fixture,repeat)=>SetWorkerRuntimeVersions(fixture,
+            repeat==selectedRepeat?(condition=="missing"?null:"2.15.0"):"2.16.0"));
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,
+            new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+
+        int exit=await handler.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement root=candidate.RootElement;
+        Assert.Equal("complete_valid",root.GetProperty("status").GetString());
+        Assert.Equal(5,root.GetProperty("counts").GetProperty("ok").GetInt64());
+        JsonElement versions=root.GetProperty("versions");
+        Assert.Equal(JsonValueKind.Null,versions.GetProperty("confluent_kafka").ValueKind);
+        Assert.Equal("2.16.0",versions.GetProperty("librdkafka").GetString());
+        Assert.Equal("10.0.13",versions.GetProperty("dotnet").GetString());
+        Assert.Equal("synthetic-producer",versions.GetProperty("workload_generator").GetString());
+        Assert.Contains("version_unavailable",root.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
+    }
+
     [Fact]
     public async Task GivenFiveCompletedRepeats_WhenJudged_ThenPublishesCompleteCandidateAndFinalReceipt()
     {
@@ -680,6 +745,12 @@ public sealed class JudgeHandlerTests
         Assert.Equal(1,exit);
         Assert.Equal("synthetic-c5/C0/candidate.json",verifier.CreatedName);
         using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement versions=candidate.RootElement.GetProperty("versions");
+        Assert.Equal(JsonValueKind.Null,versions.GetProperty("confluent_kafka").ValueKind);
+        Assert.Equal(JsonValueKind.Null,versions.GetProperty("librdkafka").ValueKind);
+        Assert.Equal(JsonValueKind.Null,versions.GetProperty("dotnet").ValueKind);
+        Assert.Equal(JsonValueKind.Null,versions.GetProperty("workload_generator").ValueKind);
+        Assert.Contains("version_unavailable",candidate.RootElement.GetProperty("reasons").EnumerateArray().Select(reason=>reason.GetString()));
         Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
         Assert.Equal(5,candidate.RootElement.GetProperty("repeats").GetArrayLength());
         Assert.All(candidate.RootElement.GetProperty("repeats").EnumerateArray(),repeat=>Assert.False(repeat.TryGetProperty("broker_count",out _)));
@@ -699,7 +770,8 @@ public sealed class JudgeHandlerTests
         LoadGenImage="loadgen:tag@sha256:"+new string('b',64),VerifierImage="verifier:tag@sha256:"+new string('c',64)
     };
 
-    private static async Task<PhaseStores> BuildFiveRepeats(string phase,int? invalidCheck)
+    private static async Task<PhaseStores> BuildFiveRepeats(
+        string phase,int? invalidCheck,Action<HostEvidenceBuilder,int>? configure=null)
     {
         var verifierObjects=new Dictionary<string,byte[]>(StringComparer.Ordinal);
         var ledgerObjects=new Dictionary<string,byte[]>(StringComparer.Ordinal);
@@ -722,6 +794,7 @@ public sealed class JudgeHandlerTests
                 fixture.Inputs["statistics.jsonl"]=Encoding.UTF8.GetBytes(string.Join('\n',rows)+"\n");
                 fixture.RebuildPublicationReferences();
             }
+            configure?.Invoke(fixture,repeat);
             var completion=new VerifierCompletionState();
             int exit=await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken);
             Assert.Equal(invalidCheck is null?0:1,exit);
@@ -732,6 +805,19 @@ public sealed class JudgeHandlerTests
             foreach(var item in fixture.LedgerObjects)ledgerObjects[item.Key]=item.Value;
         }
         return new(verifierObjects,ledgerObjects);
+    }
+
+    private static void SetWorkerRuntimeVersions(HostEvidenceBuilder fixture,
+        string? kafkaVersion="2.16.0")
+    {
+        JsonObject captured=JsonNode.Parse(File.ReadAllBytes(
+            RecordedEvidence.FixturePath("captured-run/manifest.json")))!.AsObject();
+        JsonObject manifest=fixture.Json("manifest.json");
+        JsonObject versions=captured["runtime_versions"]!.DeepClone().AsObject();
+        if(kafkaVersion is null)versions.Remove("confluent_kafka");
+        else versions["confluent_kafka"]=kafkaVersion;
+        manifest["runtime_versions"]=versions;
+        fixture.Set("manifest.json",manifest);
     }
 
     private static void ReplaceResult(PhaseStores stores,string phase,int repeat,string count,long value)
