@@ -24,9 +24,11 @@ Registration has exactly `schema_version: 1`, `mode: "single-action"`, `identity
 
 Capture has exactly `schema_version: 1`, `mode: "single-action"`, `synthetic: true`, `identity`, `job_name`, `pod_name`, `pod_uid`, `source_commit`, `managed_version`, `native_version` and `repeats`. Repeat ordinals are exactly 1 through 5, once each.
 
-Each repeat has exactly `repeat`, `client_id`, `action`, `terminal`, `elapsed_ms`, `terminal_unix_ms`, `settings`, `omitted_keys`, `result`, `error`, `matched`, `client_errors`, `statistics` and `diagnostics`. Elapsed milliseconds are a nonnegative monotonic integer duration. Terminal time is nullable Int64 Unix milliseconds. Settings are the complete string dictionary supplied to client construction; omitted keys are the sorted unique baseline/scenario omission union. Each fresh client uses `<pod>-r<repeat>` as its client ID.
+Each repeat has exactly `repeat`, `client_id`, `action`, `terminal`, `elapsed_ms`, `terminal_unix_ms`, `settings`, `omitted_keys`, `result`, `error`, `matched`, `client_errors`, `client_errors_dropped`, `statistics` and `diagnostics`. Elapsed milliseconds are a nonnegative monotonic integer duration. Terminal time is nullable Int64 Unix milliseconds. Settings are the complete string dictionary supplied to client construction; omitted keys are the sorted unique baseline/scenario omission union. Each fresh client uses `<pod>-r<repeat>` as its client ID.
 
-`result` is `success`, `error` or null. Error is null or exactly `code` (Int32), `is_fatal` (boolean), `origin` (`construction`, `local` or `broker`) and `reason` (string). Native codes and fatality are measured, never synthesized for code-less exceptions. Successful outcomes carry no error. Callback errors are separately retained as `code`, `is_fatal`, `origin`, `reason` and `observed_elapsed_ms`.
+`result` is `success`, `error`, `no_outcome` or null. Error is null or exactly `code` (Int32), `is_fatal` (boolean), `origin` (`construction`, `local` or `broker`) and `reason` (string). Native codes and fatality are measured, never synthesized for code-less exceptions. Successful outcomes carry no error. Callback errors are separately retained as `code`, `is_fatal`, `origin`, `reason` and `observed_elapsed_ms`.
+
+`client_errors_dropped` is a required Int64 JSON integer. Acceptance follows the [parent plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278), Decision rules 2/4 and Enforced checks 4/7; the [verifier](verifier-contract.md#single-action-judgement) applies them. The no-outcome class has explicit null `error_code`, `is_fatal` and `origin`.
 
 Matched data is null or exactly `topic`, `partition`, `key_base64` and `value_base64`. Assigned-read success requires the exact declared marker bytes. Only F04 C0 produces UTF-8 key `f04-seed:<run>`; every other `produce_one` key is `<ITEM>:<CONFIG>:<run>:r<repeat>`. F04 seed and control values contain exactly 1000 ASCII `s` bytes. EOF and unrelated records do not establish success.
 
@@ -63,11 +65,14 @@ The following are approved harness limits, not performance measurements.
 | Settings | 128 keys; 16384 UTF-8 bytes |
 | Error reason | 4096 UTF-8 bytes |
 | Diagnostics | 100 per configuration; 2048 bytes each |
-| Client errors and statistics | 64 each per repeat |
+| Recorded client errors | 64 per repeat |
+| Statistics | 64 per repeat |
 | Decoded native report | 262144 bytes; 64 broker entries |
 | Callback queue | 128 entries |
 | Decoded matched value | 1100000 bytes; F04 requires 1000 |
 | Nonmatching assigned records | 4096 per repeat |
 | Registration enumeration | 16 pages; 1024 entries; 1048576 name bytes |
 
-Exhaustion retains `capture_limit` or an explicit gap and cannot authorize truncated evidence as complete. Base64 bounds raw reports without arbitrary JSON-string expansion. The [LoadGen lifecycle](loadgen-contract.md#single-action-capture) and [chart contract](chart-contract.md#single-action-execution) own process and orchestration budgets.
+Exhaustion retains `capture_limit` or an explicit gap and cannot authorize truncated evidence as complete, except for dropped client-error recording under the [parent plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278), 'Terminal rules'; the recorded-array bound remains. Base64 bounds raw reports without arbitrary JSON-string expansion. The [LoadGen lifecycle](loadgen-contract.md#single-action-capture) and [chart contract](chart-contract.md#single-action-execution) own process and orchestration budgets.
+
+The parent's 'Client-log bound' and Decision rule 10 govern bounded pod logs and debug-cause availability.

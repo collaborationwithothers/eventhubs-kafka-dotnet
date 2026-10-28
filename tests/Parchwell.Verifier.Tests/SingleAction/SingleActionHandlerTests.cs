@@ -16,7 +16,44 @@ namespace Parchwell.Verifier.Tests.SingleAction;
 [Collection("VerifierEnvironment")]
 public sealed class SingleActionHandlerTests
 {
-    private static readonly string[] SuccessfulProcessEvents=["candidate","stop","dispose","receipt"], DiagnosticProcessEvents=["candidate","stop","dispose"];
+    private static readonly string[] SuccessfulProcessEvents=["candidate","stop","dispose","receipt"], DiagnosticProcessEvents=["candidate","stop","dispose"], CaptureFileReasons=["p3_capture_file"];
+    [Theory]
+    [InlineData("missing")][InlineData("\"0\"")][InlineData("null")][InlineData("0.5")][InlineData("9223372036854775808")]
+    public async Task Given_MalformedDroppedCount_When_HandlerRuns_Then_FiveP3SlotsAndNoReceipt(string raw)
+    {
+        var fixture=await HandlerFixture.CreateAsync();
+        string json=System.Text.Encoding.UTF8.GetString(fixture.Store.Files[fixture.CaptureName]);const string field="\"client_errors_dropped\":0";
+        int index=json.IndexOf(field,StringComparison.Ordinal);Assert.True(index>=0);
+        json=json[..index]+(raw=="missing"?"":"\"client_errors_dropped\":"+raw)+json[(index+field.Length+(raw=="missing"?1:0))..];
+        fixture.Store.Files[fixture.CaptureName]=System.Text.Encoding.UTF8.GetBytes(json);
+        Assert.Equal(1,await fixture.Handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        var candidate=SingleActionCandidateCodec.Read(fixture.Store.Files[fixture.Prefix+"candidate.json"]);
+        Assert.Equal("invalid",candidate.Status);Assert.Null(candidate.Deterministic);Assert.Null(candidate.OutcomeClass);Assert.Equal(5,candidate.Repeats.Length);
+        Assert.All(candidate.Repeats,r=>{Assert.Equal("invalid",r.Status);Assert.Equal(CaptureFileReasons,r.Reasons);Assert.Null(r.OutcomeClass);});
+        fixture.Completion.MarkReturned(fixture.Options,1,CancellationToken.None,CancellationToken.None);Assert.False(fixture.Completion.TryGetBlobReceipt(out _,out _,out _));
+    }
+    [Theory]
+    [InlineData("C08","C1")][InlineData("F04","C2")]
+    public async Task Given_CommittedWindowRuleWithFiveNoOutcomes_When_HandlerRuns_Then_ValidDeterministicCandidateAndReceipt(string item,string configuration)
+    {
+        var fixture=await HandlerFixture.CreateAsync(item:item,configuration:configuration);
+        var capture=SingleActionWire.Read<SingleActionCapture>(fixture.Store.Files[fixture.CaptureName],134217728);
+        for(int i=0;i<capture.Repeats.Length;i++)
+        {
+            var repeat=capture.Repeats[i];var noOutcome=SingleActionFixture.NoOutcomeRepeat(repeat.Repeat,repeat.Action);
+            string native=System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(noOutcome.Statistics[0].RawBase64)).Replace(noOutcome.ClientId,repeat.ClientId,StringComparison.Ordinal);
+            capture.Repeats[i]=noOutcome with{ClientId=repeat.ClientId,Settings=repeat.Settings,OmittedKeys=repeat.OmittedKeys,Statistics=[noOutcome.Statistics[0] with{RawBase64=Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(native))}]};
+        }
+        fixture.Store.Files[fixture.CaptureName]=SingleActionWire.Write(capture,134217728);
+        Assert.Equal(0,await fixture.Handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        var candidate=SingleActionCandidateCodec.Read(fixture.Store.Files[fixture.Prefix+"candidate.json"]);
+        Assert.Equal(item,candidate.ScenarioId);Assert.Equal(configuration,candidate.ConfigurationId);Assert.Equal("complete_valid",candidate.Status);Assert.True(candidate.Deterministic);Assert.Equal(new SingleActionOutcome("no_outcome",null,null,null),candidate.OutcomeClass);Assert.False(candidate.SecurityFinding);
+        Assert.Equal(5,candidate.Repeats.Length);Assert.All(candidate.Repeats,r=>{Assert.Equal("complete_valid",r.Status);Assert.Empty(r.Reasons);Assert.Equal(candidate.OutcomeClass,r.OutcomeClass);Assert.Equal(0,r.BrokerCount);Assert.Equal(120,r.StatisticsReference!.NativeTime);});
+        Assert.All(SingleActionWire.Read<SingleActionCapture>(fixture.Store.Files[fixture.CaptureName],134217728).Repeats,r=>Assert.Equal(0,r.ClientErrorsDropped));
+        if(item=="C08"){Assert.NotNull(candidate.ItemAssessment);Assert.Null(candidate.ItemAssessment.Verdict);Assert.Equal("missing_configuration",candidate.ItemAssessment.Reason);}else Assert.Null(candidate.ItemAssessment);
+        Assert.False(fixture.Completion.TryGetBlobReceipt(out _,out _,out _));fixture.Completion.MarkReturned(fixture.Options,0,CancellationToken.None,CancellationToken.None);
+        Assert.True(fixture.Completion.TryGetBlobReceipt(out string container,out string name,out byte[] receipt));Assert.Equal("verifier",container);Assert.Equal(fixture.Prefix+"judge-completion.json",name);Assert.Equal(fixture.Prefix+"candidate.json",SingleActionWire.Read<SingleActionJudgeReceipt>(receipt,65536).CandidateName);
+    }
     [Theory]
     [InlineData("valid","complete_valid",null)][InlineData("zero_registration","invalid","p1_registration")][InlineData("two_registrations","invalid","p1_registration")][InlineData("listing_incomplete","invalid","p1_registration")]
     [InlineData("missing_completion","incomplete","p2_completion")][InlineData("false_cleanup","incomplete","p2_completion")][InlineData("exit1","incomplete","p2_completion")][InlineData("exit-1","incomplete","p2_completion")][InlineData("exit2","incomplete","p2_completion")]

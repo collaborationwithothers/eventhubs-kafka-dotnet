@@ -29,6 +29,7 @@ SINGLE_ACTION_CONFIGURATIONS = (
     ('F04', 'C2', 'probe'), ('F04', 'C3', 'loadgen'),
     ('F04', 'C4', 'probe'),
 )
+SINGLE_ACTION_ITEMS = ('B01', 'B03', 'B05', 'C08', 'C12', 'F04')
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
@@ -56,6 +57,17 @@ def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
     if selected not in (*SCENARIOS, "probe-batch"):
         raise Failure("unsupported scenario")
+    return selected
+
+
+def batch_items():
+    value = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
+    if value == 'all':
+        return list(SINGLE_ACTION_ITEMS)
+    selected = value.split(',')
+    canonical = [item for item in SINGLE_ACTION_ITEMS if item in selected]
+    if selected != canonical or not canonical:
+        raise Failure('unsupported probe batch selection')
     return selected
 
 
@@ -207,6 +219,7 @@ class Phase:
     def validate_batch(self):
         if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
             raise Failure("unsupported probe batch selection")
+        batch_items()
         return 0
 
     def allow_images(self):
@@ -225,7 +238,7 @@ class Phase:
 
     def prepare_batch(self):
         self.validate_batch()
-        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"])
+        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=batch_items())
 
     def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
@@ -265,8 +278,10 @@ class Phase:
             write_private(private / name, value + "\n")
         write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": configuration,
                                            "run_id": run, "source_commit": sha, **metadata})
-        write_json(artifacts / "phase-status.json", {"phase": phase, "run_id": run,
-                   "modes": [], "candidate": None, "safety_stop": False})
+        status = {"phase": phase, "run_id": run, "modes": [], "candidate": None, "safety_stop": False}
+        if selected == "probe-batch":
+            status["not_selected"] = []
+        write_json(artifacts / "phase-status.json", status)
         settings = {"PARCHWELL_PRIVATE_DIRECTORY": private, "PARCHWELL_CANDIDATE_DIRECTORY": candidate,
                     "PARCHWELL_ARTIFACT_DIRECTORY": artifacts,
                     "PARCHWELL_CLUSTER_BACKEND_CONFIG": private / "cluster_backend.hcl",
@@ -664,6 +679,8 @@ class Phase:
     def single_action_seed(self):
         self.validate_batch()
         clock_available = self.start_batch_clock()
+        if 'F04' not in self.read('phase.json')['items']:
+            return 0
         deadline = time.monotonic() + SEED_DEADLINE
         record = self.run_mode("single-action-seed", None, "F04", "C2", "enrichment-consumer",
                                skip_reason=None if clock_available else "start_cap", absolute_deadline=deadline)
@@ -677,9 +694,18 @@ class Phase:
 
     def run_single_action_batch(self):
         self.validate_batch()
+        selected = self.read('phase.json')['items']
+        state = self.state()
+        state['not_selected'] = [
+            {'item': item, 'configuration': configuration}
+            for item, configuration, _ in SINGLE_ACTION_CONFIGURATIONS
+            if item not in selected]
+        self.save_state(state)
         passed = True
         smoke = self.read("phase.json")["run_kind"] == "smoke"
         for item, configuration, role in SINGLE_ACTION_CONFIGURATIONS:
+            if item not in selected:
+                continue
             reason = None if self.admission_allowed() else "start_cap"
             deadline = time.monotonic() + PAIR_DEADLINE
             for mode, selected_role in (("single-action", role), ("single-action-judge", "verifier")):
@@ -936,6 +962,8 @@ class Phase:
         if artifact and (Path(artifact) / "phase-status.json").is_file():
             state = self.state()
             lines += [f"{mode['job']}: {mode['outcome']}" for mode in state["modes"]]
+            for skipped in state.get('not_selected', []):
+                lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
             if state.get("seed_gap"):
                 lines += ["seed receipt gap"]
             for candidate in state.get("candidates", []):

@@ -20,6 +20,11 @@ on:
         options:
           - smoke
           - batch
+      items:
+        description: Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)
+        type: string
+        required: false
+        default: all
 permissions:
   contents: read
   id-token: write
@@ -669,6 +674,7 @@ jobs:
       PARCHWELL_SCENARIO: probe-batch
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
+      PARCHWELL_BATCH_ITEMS: ${{ inputs.items }}
     steps:
       - name: Require the main branch before login
         id: guard
@@ -858,6 +864,7 @@ jobs:
       PARCHWELL_SCENARIO: probe-batch
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
+      PARCHWELL_BATCH_ITEMS: ${{ inputs.items }}
     steps:
       - name: Require the main branch before login
         id: guard

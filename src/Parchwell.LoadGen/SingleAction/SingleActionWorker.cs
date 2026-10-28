@@ -7,7 +7,7 @@ using Parchwell.Scenarios;
 namespace Parchwell.LoadGen.SingleAction;
 
 internal sealed class SingleActionWorker(SingleActionHostOptions options, SingleActionSessionFactory sessions,
-    ISingleActionPublication publication, TimeProvider clock, ILogger<SingleActionWorker>? logger = null)
+    ISingleActionPublication publication, TimeProvider clock, ILogger<SingleActionWorker>? logger = null, TextWriter? clientLogOutput = null)
 {
     private static readonly Action<ILogger, string, string, string, int, Exception?> RepeatStarted = LoggerMessage.Define<string, string, string, int>(
         LogLevel.Information, new EventId(1, nameof(RepeatStarted)),
@@ -37,7 +37,7 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                 settings["client.id"] = clientId;
                 repeats.Add(new(repeat, clientId, action.Action, false, 0, null, settings,
                     resolved.Omissions.Select(value => value.Key).Concat(resolved.ScenarioOmissions.Select(value => value.Key)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
-                    null, null, null, [], [], ["not_attempted:client_cleanup_failed"]));
+                    null, null, null, [], 0, [], ["not_attempted:client_cleanup_failed"]));
             }
             if (logger is not null)
             {
@@ -60,7 +60,8 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
         int repeat, SingleActionDiagnosticBudget diagnostics, CancellationToken cancellationToken)
     {
         long started = clock.GetTimestamp();
-        var capture = new SingleActionCapture(options, clock, started, diagnostics);
+        var clientLogs = new SingleActionClientLogBudget(repeat);
+        var capture = new SingleActionCapture(options, clock, started, diagnostics, action.TerminalRule, clientLogs);
         string clientId = $"{options.PodName}-r{repeat}";
         var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
         settings["client.id"] = clientId;
@@ -86,31 +87,21 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                 constructing = false;
                 if (action.Action == "produce_one")
                 {
-                    var delivered = new TaskCompletionSource<(Error Error, long Elapsed, long Unix)>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    producer!.Produce(new TopicPartition(action.Topic, new Partition(action.Partition)),
-                        new Message<byte[], byte[]> { Key = ProduceKey(options.ScenarioId, options.ConfigurationId, options.RunId, repeat), Value = Payload(action.PayloadBytes) },
-                        delivery =>
-                        {
-                            long elapsedMs = capture.ElapsedMs;
-                            long unixMs = clock.GetUtcNow().ToUnixTimeMilliseconds();
-                            if (delivery.Error.IsError && Encoding.UTF8.GetByteCount(delivery.Error.Reason) > options.MaxErrorBytes) { capture.CaptureLimit(); return; }
-                            capture.TryObserveTerminal(() => delivered.TrySetResult((delivery.Error, elapsedMs, unixMs)));
-                        });
-                    while (!delivered.Task.IsCompleted && !capture.Limit && capture.ElapsedMs < action.WindowMs)
+                    if (!capture.ProducerOutcome.IsCompleted)
+                        producer!.Produce(new TopicPartition(action.Topic, new Partition(action.Partition)),
+                            new Message<byte[], byte[]> { Key = ProduceKey(options.ScenarioId, options.ConfigurationId, options.RunId, repeat), Value = Payload(action.PayloadBytes) },
+                            delivery => capture.Delivery(delivery.Error));
+                    while (!capture.ProducerOutcome.IsCompleted && !capture.Limit && capture.ElapsedMs < action.WindowMs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         capture.Drain();
                         if (capture.Limit) break;
                         TimeSpan slice = TimeSpan.FromMilliseconds(Math.Min(options.PollSliceMs, action.WindowMs - capture.ElapsedMs));
-                        await Task.WhenAny(delivered.Task, Task.Delay(slice, clock, cancellationToken)).ConfigureAwait(false);
+                        await Task.WhenAny(capture.ProducerOutcome, Task.Delay(slice, clock, cancellationToken)).ConfigureAwait(false);
                     }
                     capture.Drain();
-                    if (delivered.Task.IsCompletedSuccessfully)
-                    {
-                        var delivery = await delivered.Task.ConfigureAwait(false);
-                        SetOutcome(delivery.Error.IsError ? delivery.Error : null, delivery.Elapsed, delivery.Unix, false, observedBeforeLimit: true);
-                    }
-                    else if (!capture.Limit) capture.Diagnostic("action_window_elapsed");
+                    ObserveProducerOutcome();
+                    if (!capture.ProducerOutcome.IsCompletedSuccessfully && !capture.Limit) capture.Diagnostic("action_window_elapsed");
                 }
                 else if (action.Action == "init_transactions")
                 {
@@ -140,17 +131,30 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                             else if (++nonmatching >= options.MaxNonmatchingRecords) capture.CaptureLimit();
                         }
                     }
+                    ObserveConsumerCallbacks();
+                    if (!terminal && !capture.Limit && capture.ElapsedMs >= action.WindowMs && action.TerminalRule == "window_end_no_outcome")
+                        capture.TryObserveWindowEnd(action.WindowMs, action.Action == "subscribe", () =>
+                        {
+                            terminal = true;
+                            elapsed = action.WindowMs;
+                            terminalUnix = clock.GetUtcNow().ToUnixTimeMilliseconds();
+                            result = "no_outcome";
+                            error = null;
+                            matched = null;
+                        });
                 }
             }
         }
         catch (KafkaException exception)
         {
+            if (action.Action == "produce_one") ObserveProducerOutcome();
             if (!constructing && consumer is not null) ObserveConsumerCallbacks();
             SetOutcome(exception.Error, capture.ElapsedMs, clock.GetUtcNow().ToUnixTimeMilliseconds(), constructing);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
+            if (action.Action == "produce_one") ObserveProducerOutcome();
             if (!constructing && consumer is not null) ObserveConsumerCallbacks();
             capture.Diagnostic((constructing ? "construction:" : "action:") + exception.GetType().Name);
         }
@@ -187,6 +191,10 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
                     _cleanupSucceeded = false;
                     capture.Diagnostic("client_cleanup_failed:" + exception.GetType().Name);
                 }
+                finally
+                {
+                    foreach (string line in clientLogs.Seal()) (clientLogOutput ?? Console.Error).Write(line);
+                }
             }
         }
         var snapshot = capture.Snapshot();
@@ -194,7 +202,14 @@ internal sealed class SingleActionWorker(SingleActionHostOptions options, Single
         // limit. The diagnostic still makes completeness fail; it must not erase an
         // already measured authorization success that the verifier must retain.
         return new(repeat, clientId, action.Action, terminal, terminal ? elapsed : capture.ElapsedMs, terminalUnix,
-            settings, omitted, result, error, matched, snapshot.Errors, snapshot.Statistics, snapshot.Diagnostics);
+            settings, omitted, result, error, matched, snapshot.Errors, snapshot.Dropped, snapshot.Statistics, snapshot.Diagnostics);
+
+        void ObserveProducerOutcome()
+        {
+            if (!capture.ProducerOutcome.IsCompletedSuccessfully) return;
+            var outcome = capture.ProducerOutcome.GetAwaiter().GetResult();
+            SetOutcome(outcome.Error.IsError ? outcome.Error : null, outcome.Elapsed, outcome.Unix, false, observedBeforeLimit: true);
+        }
 
         void ObserveConsumerCallbacks()
         {

@@ -165,7 +165,9 @@ internal static class BaselineSettingsCatalog
         KafkaSettingDefinition.Explicit(KafkaSettingKeys.AllowAutoCreateTopics, "false", ["D01"], [NativeConfiguration, ApprovedPlan],
             "Pinned consumer-specific native default; the producer default differs."),
         KafkaSettingDefinition.Omitted(KafkaSettingKeys.GroupInstanceId, KafkaSettingDisposition.Unspecified, ["C06"], [NativeConfiguration],
-            "Static membership is unspecified; retain native dynamic membership without an instance ID.")
+            "Static membership is unspecified; retain native dynamic membership without an instance ID."),
+        KafkaSettingDefinition.Omitted(KafkaSettingKeys.Debug, KafkaSettingDisposition.Unspecified, ["C08", "F04"], [NativeConfiguration],
+            "No debug contexts are selected; the pinned native default enables none.")
     ];
 
     private static readonly ImmutableArray<KafkaSettingDefinition> Enrichment =

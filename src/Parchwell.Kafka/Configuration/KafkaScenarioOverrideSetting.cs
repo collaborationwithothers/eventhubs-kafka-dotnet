@@ -127,7 +127,9 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.GroupId, [], true, false, [KafkaClientRole.EnrichmentConsumer], ["C12"], [NativeConfiguration]),
         new(KafkaSettingKeys.SessionTimeoutMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.HeartbeatIntervalMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
-        new(KafkaSettingKeys.PartitionAssignmentStrategy, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource])
+        new(KafkaSettingKeys.PartitionAssignmentStrategy, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.Debug, ["cgrp", "topic,fetch,metadata"], false, true,
+            [KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], ["C08", "F04"], [NativeConfiguration])
     ];
 
     /// <summary>Gets the immutable list of exact keys accepted by the override policy.</summary>

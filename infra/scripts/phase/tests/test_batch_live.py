@@ -21,8 +21,8 @@ class BatchLiveTests(unittest.TestCase):
     prepare_batch = fixture.PhaseTests.prepare_batch
     batch_name = fixture.PhaseTests.batch_name
 
-    def prepare_live(self):
-        self.prepare_batch()
+    def prepare_live(self, items='all'):
+        self.prepare_batch(items)
         value = phase.Phase().read('phase.json')
         value['run_kind'] = 'batch'
         phase.write_json(self.private / 'phase.json', value)
@@ -75,6 +75,151 @@ class BatchLiveTests(unittest.TestCase):
                 original.download = json.dumps(value).encode()
             return original(instance, args, seconds, output, maximum)
         return command
+
+    def test_c08_f04_selection_renders_only_fifteen_jobs_and_reports_nine_not_selected(self):
+        self.prepare_live('C08,F04')
+        data = phase.Phase().read('phase.json')
+        for field in ('batch_started_monotonic', 'batch_clock_boot_id', 'batch_clock_run_id', 'batch_clock_source'):
+            data.pop(field)
+        phase.write_json(self.private / 'phase.json', data)
+        cluster = phase.Phase().read('cluster-output.json')
+        for index, account in enumerate(cluster['workload_identity']['value']['service_accounts'].values(), 1):
+            account['client_id'] = f'00000000-0000-0000-0000-{index:012d}'
+        phase.write_json(self.private / 'cluster-output.json', cluster)
+        self.seed_artifacts()
+        real_run = phase.Phase.run
+        other = self.candidate_commands()
+        helm_outputs = []
+        def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+            if args[0] == 'helm':
+                helm_outputs.append(Path(output))
+                return real_run(instance, args, seconds, output, maximum)
+            return other(instance, args, seconds, output, maximum)
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=command), patch.object(
+                phase.Phase, 'sleep'), patch.object(phase.time, 'monotonic', return_value=100), patch.object(
+                phase.Phase, 'boot_identity', return_value='01234567-89ab-4cde-8fab-0123456789ab'):
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(0, self.main('run-single-action-batch'))
+        suffixes = ['f04-seed',
+            'c08-c0-single', 'c08-c0-single-judge', 'c08-c1-single', 'c08-c1-single-judge',
+            'f04-c0-single', 'f04-c0-single-judge', 'f04-c1-single', 'f04-c1-single-judge',
+            'f04-c2-single', 'f04-c2-single-judge', 'f04-c3-single', 'f04-c3-single-judge',
+            'f04-c4-single', 'f04-c4-single-judge']
+        expected_jobs = [self.run_id + '-' + suffix for suffix in suffixes]
+        self.assertEqual(expected_jobs, [record['job'] for record in self.records()])
+        self.assertEqual(expected_jobs, [path.name.removeprefix('rendered-').removesuffix('.yaml') for path in helm_outputs])
+        applies = [Path(call[0][call[0].index('-f') + 1]).name.removeprefix('rendered-').removesuffix('.yaml')
+                   for call in self.fake.calls if call[0][:2] == ['kubectl', 'apply']]
+        self.assertEqual(expected_jobs, applies)
+        rendered = list(self.private.glob('rendered-*.yaml'))
+        for names in ([record['job'] for record in self.records()], applies, [path.name for path in rendered]):
+            self.assertEqual(15, len(names))
+            self.assertEqual(15, len(set(names)))
+        for path, job_name in zip(helm_outputs, expected_jobs):
+            jobs = [document for document in yaml.safe_load_all(path.read_text())
+                    if document and document.get('kind') == 'Job']
+            self.assertEqual(1, len(jobs))
+            self.assertEqual(job_name, jobs[0]['metadata']['name'])
+        state = phase.Phase().state()
+        self.assertEqual(7, len(state['candidates']))
+        self.assertTrue(all(candidate['accepted'] for candidate in state['candidates']))
+        stems = ['C08-C0', 'C08-C1', 'F04-C0', 'F04-C1', 'F04-C2', 'F04-C3', 'F04-C4']
+        self.assertEqual({stem + suffix for stem in stems for suffix in ('.json', '-judge-completion.json')},
+                         {path.name for path in self.candidate_dir.iterdir()})
+        for stem in stems:
+            self.assertEqual('incomplete', json.loads((self.candidate_dir / (stem + '.json')).read_text())['status'])
+        excluded = [{'item': 'B01', 'configuration': 'C0'}, {'item': 'B01', 'configuration': 'C1'},
+            {'item': 'B03', 'configuration': 'C1'}, {'item': 'B03', 'configuration': 'C2'},
+            {'item': 'B03', 'configuration': 'C3'}, {'item': 'B03', 'configuration': 'C4'},
+            {'item': 'B05', 'configuration': 'C1'},
+            {'item': 'C12', 'configuration': 'C1'}, {'item': 'C12', 'configuration': 'C2'}]
+        self.assertEqual(excluded, state['not_selected'])
+        for row in excluded:
+            item, config = row['item'], row['configuration']
+            for mode in ('single-action', 'single-action-judge'):
+                job = self.batch_name(mode, item, config)
+                self.assertFalse((self.private / f'values-{job}.json').exists())
+                self.assertFalse((self.private / f'rendered-{job}.yaml').exists())
+                self.assertFalse((self.artifacts / job).exists())
+            self.assertEqual([], list(self.candidate_dir.glob(f'{item}-{config}*.json')))
+        self.assertEqual([], list(self.candidate_dir.glob('*-gap.json')))
+        self.assertFalse(state['safety_stop'])
+        os.environ.update(STEP_RESULTS='{}', JOB_STATUS='success', WORKLOAD='true', REQUIRED_STEPS='',
+                          WORKLOAD_STEPS='', PARCHWELL_PHASE='single-action')
+        self.assertEqual(0, self.main('report'))
+        summary = self.summary_file.read_text().splitlines()
+        self.assertEqual(['B01-C0: not selected', 'B01-C1: not selected', 'B03-C1: not selected',
+            'B03-C2: not selected', 'B03-C3: not selected', 'B03-C4: not selected',
+            'B05-C1: not selected', 'C12-C1: not selected', 'C12-C2: not selected'],
+            [line for line in summary if line.endswith(': not selected')])
+        for row in excluded:
+            self.assertFalse(any(line.startswith(f"{row['item']}-{row['configuration']}: accepted=") for line in summary))
+
+    def test_f04_selection_includes_seed_and_every_f04_configuration(self):
+        self.prepare_live('F04')
+        self.seed_artifacts()
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.candidate_commands()):
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(0, self.main('run-single-action-batch'))
+        self.assertEqual([self.run_id + '-' + suffix for suffix in [
+            'f04-seed', 'f04-c0-single', 'f04-c0-single-judge', 'f04-c1-single', 'f04-c1-single-judge',
+            'f04-c2-single', 'f04-c2-single-judge', 'f04-c3-single', 'f04-c3-single-judge',
+            'f04-c4-single', 'f04-c4-single-judge']], [record['job'] for record in self.records()])
+        self.assertEqual(11, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+        candidates = phase.Phase().state()['candidates']
+        self.assertEqual(5, len(candidates))
+        self.assertTrue(all(candidate['accepted'] for candidate in candidates))
+        self.assertEqual(1, sum(call[0][:2] == ['kubectl', 'create'] for call in self.fake.calls))
+        self.assertFalse(phase.Phase().state()['seed_gap'])
+
+    def test_c08_selection_skips_seed_but_starts_shared_clock(self):
+        identity = '01234567-89ab-4cde-8fab-0123456789ab'
+        for boot in (identity, None):
+            with self.subTest(boot=boot):
+                self.prepare_live('C08')
+                self.fake = fixture.ScriptedCommands()
+                data = phase.Phase().read('phase.json')
+                for field in ('batch_started_monotonic', 'batch_clock_boot_id', 'batch_clock_run_id', 'batch_clock_source'):
+                    data.pop(field)
+                phase.write_json(self.private / 'phase.json', data)
+                with self.mocked(), patch.object(phase.time, 'monotonic', return_value=100), patch.object(
+                        phase.Phase, 'boot_identity', return_value=boot), patch.object(
+                        phase.Phase, 'smoke_complete') as smoke, patch.object(phase.Phase, 'transfer_seed') as transfer:
+                    self.assertEqual(0, self.main('single-action-seed'))
+                    smoke.assert_not_called()
+                    transfer.assert_not_called()
+                self.assertEqual([], self.records())
+                self.assertEqual([], self.fake.calls)
+                self.assertFalse((self.artifacts / 'seed-gap.json').exists())
+                self.assertEqual([], list(self.private.glob('*seed*')))
+                self.assertEqual([], list(self.private.glob('values-*.json')))
+                self.assertEqual([], list(self.private.glob('rendered-*.yaml')))
+                data = phase.Phase().read('phase.json')
+                if boot is not None:
+                    self.assertEqual({'batch_started_monotonic': 100, 'batch_clock_boot_id': identity,
+                        'batch_clock_run_id': self.run_id, 'batch_clock_source': 'CLOCK_MONOTONIC'},
+                        {key: value for key, value in data.items() if key.startswith('batch_')})
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.candidate_commands()), patch.object(
+                        phase.time, 'monotonic', return_value=101), patch.object(phase.Phase, 'boot_identity', return_value=boot):
+                    self.assertEqual(0 if boot is not None else 1, self.main('run-single-action-batch'))
+                self.assertEqual([self.run_id + '-' + suffix for suffix in ['c08-c0-single', 'c08-c0-single-judge',
+                    'c08-c1-single', 'c08-c1-single-judge']], [record['job'] for record in self.records()])
+                state = phase.Phase().state()
+                self.assertNotIn('seed_gap', state)
+                self.assertFalse(any(record['mode'] == 'single-action-seed' for record in self.records()))
+                self.assertFalse(any(call[0][:2] == ['kubectl', 'create'] for call in self.fake.calls))
+                self.assertEqual([], list(self.private.glob('*seed*')))
+                self.assertEqual(2, len(state['candidates']))
+                if boot is not None:
+                    self.assertEqual(4, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
+                    self.assertTrue(all(candidate['accepted'] for candidate in state['candidates']))
+                    self.assertEqual(100, phase.Phase().read('phase.json')['batch_started_monotonic'])
+                    with patch.object(phase.time, 'monotonic', return_value=14500), patch.object(phase.Phase, 'boot_identity', return_value=identity):
+                        self.assertFalse(phase.Phase().admission_allowed())
+                else:
+                    self.assertTrue(all(record['outcome'] == 'not_attempted' and record['reason'] == 'start_cap' for record in self.records()))
+                    self.assertEqual(2, len(list(self.candidate_dir.glob('*-gap.json'))))
+                    self.assertEqual([], self.fake.calls)
 
     def test_batch_selection_preserves_live_run_kind(self):
         self.prepare_live()

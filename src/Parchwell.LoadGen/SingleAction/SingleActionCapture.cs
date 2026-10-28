@@ -6,7 +6,7 @@ namespace Parchwell.LoadGen.SingleAction;
 
 // Owns bounded raw callback transport only. It never decides verifier validity or a hypothesis.
 internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeProvider clock, long started,
-    SingleActionDiagnosticBudget diagnosticBudget)
+    SingleActionDiagnosticBudget diagnosticBudget, string terminalRule = "standard", SingleActionClientLogBudget? clientLogs = null)
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly object _gate = new();
@@ -16,6 +16,8 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
     private readonly List<string> _diagnostics = [];
     private int _statisticsSequence;
     private int _errorCallbacks;
+    private long _errorsDropped;
+    private readonly TaskCompletionSource<(Error Error, long Elapsed, long Unix)> _producerOutcome = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _statisticsCallbacks;
     private bool _limit;
     private bool _assigned;
@@ -23,6 +25,8 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
     private long _terminalSequence;
     private (long Elapsed, long Unix, long Sequence)? _assignmentObservation;
     private (long Elapsed, long Unix, long Sequence)? _fatalObservation;
+    internal Task<(Error Error, long Elapsed, long Unix)> ProducerOutcome => _producerOutcome.Task;
+    internal void Log(LogMessage message) => clientLogs?.Append(message);
     internal bool Limit { get { lock (_gate) return _limit; } }
     internal bool Assigned { get { lock (_gate) return _assigned; } }
     internal Error? FatalError { get { lock (_gate) return _fatalError; } }
@@ -46,6 +50,11 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         long unix = clock.GetUtcNow().ToUnixTimeMilliseconds();
         lock (_gate)
         {
+            if (terminalRule == "first_error_callback_or_delivery" && _errorCallbacks >= options.MaxClientErrors)
+            {
+                if (_errorsDropped < long.MaxValue) _errorsDropped++;
+                return;
+            }
             if (_limit) return;
             if (Encoding.UTF8.GetByteCount(error.Reason) > options.MaxErrorBytes) { MarkLimit(); return; }
             if (_errorCallbacks >= options.MaxClientErrors) { MarkLimit(); return; }
@@ -54,6 +63,7 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
                 _errors.Add(new((int)error.Code, error.IsFatal, Origin(error), error.Reason, elapsed));
             })) return;
             _errorCallbacks++;
+            if (terminalRule == "first_error_callback_or_delivery") _producerOutcome.TrySetResult((error, elapsed, unix));
             if (error.IsFatal) { _fatalError ??= error; _fatalObservation ??= (elapsed, unix, ++_terminalSequence); }
         }
     }
@@ -88,11 +98,23 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
         }
     }
     internal void CaptureLimit() { lock (_gate) MarkLimit(); }
-    internal bool TryObserveTerminal(Action observe)
+    internal void Delivery(Error error)
+    {
+        long elapsed = ElapsedMs;
+        long unix = clock.GetUtcNow().ToUnixTimeMilliseconds();
+        lock (_gate)
+        {
+            if (_limit) return;
+            if (error.IsError && Encoding.UTF8.GetByteCount(error.Reason) > options.MaxErrorBytes) { MarkLimit(); return; }
+            _producerOutcome.TrySetResult((error, elapsed, unix));
+        }
+    }
+    internal bool TryObserveWindowEnd(int windowMs, bool subscription, Action observe)
     {
         lock (_gate)
         {
-            if (_limit) return false;
+            if (_limit || _errorCallbacks != 0 || _errorsDropped != 0 ||
+                subscription && _assignmentObservation is { } assignment && assignment.Elapsed <= windowMs) return false;
             observe();
             return true;
         }
@@ -101,10 +123,13 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
     {
         lock (_gate) while (_callbacks.TryDequeue(out Action? callback)) callback();
     }
-    internal (SingleActionClientError[] Errors, SingleActionStatistics[] Statistics, IReadOnlyList<string> Diagnostics) Snapshot()
+    internal (SingleActionClientError[] Errors, long Dropped, SingleActionStatistics[] Statistics, IReadOnlyList<string> Diagnostics) Snapshot()
     {
-        Drain();
-        lock (_gate) return (_errors.ToArray(), _statistics.ToArray(), _diagnostics.AsReadOnly());
+        lock (_gate)
+        {
+            Drain();
+            return (_errors.ToArray(), _errorsDropped, _statistics.ToArray(), _diagnostics.AsReadOnly());
+        }
     }
     internal static string Origin(Error error) => error.IsBrokerError ? "broker" : "local";
     private bool EnqueueLocked(Action callback)

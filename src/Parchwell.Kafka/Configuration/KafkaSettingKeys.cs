@@ -301,4 +301,9 @@ internal static class KafkaSettingKeys
     /// <remarks>Inventory: <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/b8a25359c8c531c20b0950f3981b6c22a867df1e/docs/blueprint.md#L1014">B05</see>.
     /// Scenario results are pending; add published result links when available.</remarks>
     internal const string IsolationLevel = "isolation.level";
+
+    /// <summary>The <c>debug</c> setting key.</summary>
+    /// <remarks>Inventory: <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/b8a25359c8c531c20b0950f3981b6c22a867df1e/docs/blueprint.md#L917">C08</see>, <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/b8a25359c8c531c20b0950f3981b6c22a867df1e/docs/blueprint.md#L958">F04</see>.
+    /// Scenario results are pending; add published result links when available.</remarks>
+    internal const string Debug = "debug";
 }

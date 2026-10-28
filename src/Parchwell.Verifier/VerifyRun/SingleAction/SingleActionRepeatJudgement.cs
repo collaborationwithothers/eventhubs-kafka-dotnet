@@ -13,13 +13,17 @@ internal static class SingleActionRepeatJudgement
     internal static SingleActionRepeatProjection Judge(SingleActionRepeat repeat,SingleActionConfiguration declaration,IReadOnlyDictionary<string,string> expected,IEnumerable<string> omissions,string run)
     {
         var reasons=new List<string>();
-        bool terminal=repeat.Terminal&&repeat.TerminalUnixMs.HasValue&&repeat.ElapsedMs>=0&&repeat.ElapsedMs<=declaration.WindowMs&&!repeat.Diagnostics.Contains("capture_limit",StringComparer.Ordinal);
+        bool noOutcome=repeat.Result.ValueKind==JsonValueKind.String&&repeat.Result.GetString()=="no_outcome";
+        bool terminal=repeat.Terminal&&repeat.TerminalUnixMs.HasValue&&repeat.ElapsedMs>=0&&repeat.ElapsedMs<=declaration.WindowMs&&!repeat.Diagnostics.Contains("capture_limit",StringComparer.Ordinal)&&
+            (!noOutcome||(declaration.TerminalRule=="window_end_no_outcome"&&repeat.ElapsedMs==declaration.WindowMs));
         if(!terminal)reasons.Add("p4_no_terminal_outcome");
         string[] omitted=omissions.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         bool fidelity=repeat.Action==declaration.Action&&repeat.Settings.Count==expected.Count&&expected.All(p=>repeat.Settings.TryGetValue(p.Key,out string? value)&&value==p.Value)&&repeat.OmittedKeys.SequenceEqual(omitted,StringComparer.Ordinal)&&!omitted.Any(repeat.Settings.ContainsKey);
         if(!fidelity)reasons.Add("p5_configuration_fidelity");
         SingleActionOutcome? outcome=null;
-        if(repeat.Terminal&&!TryOutcome(repeat,declaration,run,out outcome))reasons.Add("p7_outcome_record");
+        bool outcomeRecord=repeat.Terminal||noOutcome
+            ?TryOutcome(repeat,declaration,run,out outcome):DroppedErrorsValid(repeat,declaration);
+        if(!outcomeRecord)reasons.Add("p7_outcome_record");
         var statistics=terminal?SelectStatistics(repeat,declaration):null;
         if(statistics is null)reasons.Add("p6_broker_count");
         string status=reasons.Any(r=>r is "p5_configuration_fidelity" or "p7_outcome_record")?"invalid":reasons.Count==0?"complete_valid":"incomplete";
@@ -29,8 +33,15 @@ internal static class SingleActionRepeatJudgement
     internal static bool TryOutcome(SingleActionRepeat repeat,SingleActionConfiguration declaration,string run,out SingleActionOutcome? outcome)
     {
         outcome=null;
+        if(!DroppedErrorsValid(repeat,declaration))return false;
         if(repeat.Result.ValueKind!=JsonValueKind.String)return false;
         string? result=repeat.Result.GetString();
+        if(result=="no_outcome")
+        {
+            if(declaration.TerminalRule!="window_end_no_outcome"||repeat.Error.ValueKind!=JsonValueKind.Null||
+                repeat.Matched.ValueKind!=JsonValueKind.Null||repeat.ClientErrors.Length!=0||repeat.ClientErrorsDropped!=0)return false;
+            outcome=new("no_outcome",null,null,null);return true;
+        }
         if(result=="success")
         {
             if(repeat.Error.ValueKind!=JsonValueKind.Null)return false;
@@ -41,6 +52,10 @@ internal static class SingleActionRepeatJudgement
         if(result!="error"||repeat.Matched.ValueKind!=JsonValueKind.Null||!Error(repeat.Error,out int code,out bool fatal,out string? origin))return false;
         outcome=new("error",code,fatal,origin);return true;
     }
+
+    private static bool DroppedErrorsValid(SingleActionRepeat repeat,SingleActionConfiguration declaration) =>
+        repeat.ClientErrorsDropped>=0&&(repeat.ClientErrorsDropped==0||
+        declaration.TerminalRule=="first_error_callback_or_delivery"&&repeat.ClientErrors.Length==64);
 
     private static bool Error(JsonElement value,out int code,out bool fatal,out string? origin)
     {

@@ -1,9 +1,12 @@
-"""Eight offline cases; downloaded tools only validate local synthetic inputs."""
+"""Thirteen offline cases; downloaded tools only validate local synthetic inputs."""
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / 'infra/scripts/lifecycle'
@@ -21,6 +24,36 @@ CHECKER = embedded('check-offline.sh')
 
 
 class ToolsOfflineTests(unittest.TestCase):
+    def test_committed_scenario_items_map_passes_check_workflows(self):
+        CHECKER['check_workflows'](ROOT)
+
+    def scenario_workflow_fixture(self, mutation):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / '.github/workflows', root / '.github/workflows')
+            mirrors = root / 'docs/operations/workflows'
+            mirrors.mkdir(parents=True)
+            shutil.copy2(ROOT / 'docs/operations/workflows/sweeper.yml.txt', mirrors / 'sweeper.yml.txt')
+            path = root / '.github/workflows/scenario.yml'
+            document = CHECKER['load_yaml'](path.read_text())
+            mutation(document)
+            path.write_text(yaml.safe_dump(document, sort_keys=False))
+            with self.assertRaisesRegex(ValueError, r'^scenario\.yml: unexpected workflow triggers$'):
+                CHECKER['check_workflows'](root)
+
+    def test_scenario_missing_items_fails_check_workflows(self):
+        self.scenario_workflow_fixture(lambda document: document['on']['workflow_dispatch']['inputs'].pop('items'))
+
+    def test_scenario_wrong_items_default_fails_check_workflows(self):
+        self.scenario_workflow_fixture(lambda document: document['on']['workflow_dispatch']['inputs']['items'].update(default='C08,F04'))
+
+    def test_scenario_extra_input_fails_check_workflows(self):
+        self.scenario_workflow_fixture(lambda document: document['on']['workflow_dispatch']['inputs'].update(
+            unexpected={'description': 'synthetic', 'type': 'string', 'required': 'false', 'default': 'synthetic'}))
+
+    def test_scenario_extra_pull_request_trigger_fails_check_workflows(self):
+        self.scenario_workflow_fixture(lambda document: document['on'].update(pull_request=''))
+
     def test_corrupted_download_never_reaches_extraction(self):
         with tempfile.TemporaryDirectory() as directory:
             artifact = Path(directory) / 'terraform.zip'

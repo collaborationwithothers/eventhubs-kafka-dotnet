@@ -4,21 +4,23 @@ The production C5 worker supports `start-line`, `verify`, `judge`, and the separ
 
 ## Single-action judgement
 
-The new mode reads captured evidence without constructing a Kafka client. Its [wire contract](single-action-contract.md) owns closed schemas, paths, receipts and bounds; [scenario declarations](scenario-contract.md#single-action-declarations) select the action. The [approved parent decision rules](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278) and [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) authorize this closed list:
+The new mode reads captured evidence without constructing a Kafka client. Its [wire contract](single-action-contract.md) owns closed schemas, paths, receipts and bounds; [scenario declarations](scenario-contract.md#single-action-declarations) select the action. The [parent plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278) and [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) authorize this closed list. The parent owns scientific decision rules; this list identifies implementation diagnostics.
 
 1. Exactly one registration, matching the selected capture Job, instance, pod and source: otherwise all slots are invalid, `p1_registration`.
 2. Matching successful last-action capture completion with five attempted repeats, zero exit and completed cleanup: otherwise all slots are incomplete, `p2_completion`.
 3. Bounded schema-one capture with matching coordinates and each ordinal 1-5 exactly once: otherwise all slots are invalid, `p3_capture_file`.
-4. Terminal outcome within the inclusive declared window, with a terminal timestamp and no capture-limit gap: otherwise incomplete, `p4_no_terminal_outcome`.
+4. Terminal outcome with timestamp and no capture-limit gap, accepted under parent Enforced check 4 and the selected terminal rule: otherwise incomplete, `p4_no_terminal_outcome`.
 5. Full resolved settings key/value equality, including each client ID and the omission union: otherwise invalid, `p5_configuration_fidelity`.
 6. A parsed native report emitted at or after terminal outcome and a recorded broker count: otherwise incomplete, `p6_broker_count`.
-7. A well-typed measured success/error tuple; assigned-read success also matches the exact topic, partition, key and value: otherwise invalid, `p7_outcome_record`.
+7. A success/error/no-outcome record and `client_errors_dropped` accepted under parent Enforced check 7, including exact assigned-read marker matching: otherwise invalid, `p7_outcome_record`.
 8. Configuration is invalid if any slot is invalid, complete_valid only if all five are complete, and incomplete otherwise.
 9. Determinism is true for five complete equal classes, false for complete unequal classes and null otherwise. Publish an aggregate class only when true.
 10. Apply the [factory single-action evidence exception](../agents/factory.md#evidence-pack); do not serialize ledger totals for these candidates.
 11. F04 additionally requires the live seed receipt bound to its collected pod identity, declared marker, successful delivery and cleanup. C4 requires the same-run/source complete successful C0 candidate and its final judge receipt. Failure gives `p8_seed_prerequisite`, incomplete F04 evidence and no verdict.
 
 Invalid evidence takes precedence over incomplete evidence without erasing diagnostic reasons. Missing completion, false cleanup and every nonzero completion exit independently prevent complete_valid status. Seed failure never becomes evidence of denied authorization, and it does not prevent unrelated items from being attempted.
+
+Class `(no_outcome, null, null, null)` supplies neither authorization nor cause. Check 6 still requires native statistics at or after terminal time. Debug-cause publication follows parent Decision rule 10; fixed no-outcome sentences are in C08/F04 `expected.yaml`.
 
 For check 6, the [pinned native statistics specification](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md) defines epoch-second `time` and monotonic-microsecond `ts`. Require nonnegative Int64 values and checked `time * 1000 >= terminal_unix_ms`. Choose the earliest qualifying time, then ts, then callback sequence. Count only broker entries with source learned/configured/logical and state UP, and report a lower bound. An observed empty eligible set is zero; absent or unreadable evidence is not zero. No A01 coverage, drain or nonempty-broker condition is added.
 

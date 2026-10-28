@@ -504,8 +504,8 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(0, self.main('report'))
         self.assertTrue(self.summary_file.read_text().startswith('## B04 C1: passed'))
 
-    def prepare_batch(self):
-        os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
+    def prepare_batch(self, items='all'):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS=items)
         self.assertEqual(0, self.main('prepare-batch'))
         os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
         self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
@@ -532,6 +532,31 @@ class PhaseTests(unittest.TestCase):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
         with self.mocked():
             self.assertEqual(0, self.main('validate-batch'))
+            for kind in ('smoke', 'batch'):
+                for items in ('all', 'C08,F04', 'F04', 'C08'):
+                    with self.subTest(run_kind=kind, items=items), patch.dict(os.environ, {
+                            'PARCHWELL_RUN_KIND': kind, 'PARCHWELL_BATCH_ITEMS': items}):
+                        self.assertEqual(0, self.main('validate-batch'))
+                        self.assertEqual(0, self.main('prepare-batch'))
+                        private = Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())['PARCHWELL_PRIVATE_DIRECTORY'])
+                        expected = ['B01', 'B03', 'B05', 'C08', 'C12', 'F04'] if items == 'all' else items.split(',')
+                        self.assertEqual(expected, json.loads((private / 'phase.json').read_text())['items'])
+                        self.env_file.write_text('')
+                for items in ('F04,C08', 'C08,C08', 'E01', ''):
+                    with self.subTest(run_kind=kind, items=items), patch.dict(os.environ, {
+                            'PARCHWELL_RUN_KIND': kind, 'PARCHWELL_BATCH_ITEMS': items}):
+                        for command in ('validate-batch', 'prepare-batch'):
+                            with contextlib.redirect_stderr(io.StringIO()) as error:
+                                self.assertEqual(2, phase.main([command]))
+                            self.assertEqual('unsupported probe batch selection', error.getvalue().strip())
+                        self.assertEqual('', self.env_file.read_text())
+                        self.assertEqual([], self.fake.calls)
+            os.environ.pop('PARCHWELL_BATCH_ITEMS', None)
+            self.assertEqual(0, self.main('prepare-batch'))
+            private = Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())['PARCHWELL_PRIVATE_DIRECTORY'])
+            self.assertEqual(['B01', 'B03', 'B05', 'C08', 'C12', 'F04'],
+                             json.loads((private / 'phase.json').read_text())['items'])
+            self.env_file.write_text('')
             for selected, kind in [('probe-batch', 'unknown'), ('A01', 'smoke'), ('unknown', 'smoke')]:
                 with self.subTest(scenario=selected, run_kind=kind), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected, 'PARCHWELL_RUN_KIND': kind}):
                     with contextlib.redirect_stderr(io.StringIO()) as error:
@@ -547,9 +572,10 @@ class PhaseTests(unittest.TestCase):
         self.prepare_batch()
         metadata = json.loads((self.private / 'phase.json').read_text())
         self.assertEqual({'scenario': 'probe-batch', 'phase': 'single-action', 'configuration': None,
-                          'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke'},
+                          'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke',
+                          'items': ['B01', 'B03', 'B05', 'C08', 'C12', 'F04']},
                          {key: value for key, value in metadata.items() if key not in ('images', 'batch_started_monotonic', 'batch_clock_boot_id', 'batch_clock_run_id', 'batch_clock_source')})
-        self.assertEqual({'phase': 'single-action', 'run_id': self.run_id, 'modes': [], 'candidate': None, 'safety_stop': False}, phase.Phase().state())
+        self.assertEqual({'phase': 'single-action', 'run_id': self.run_id, 'modes': [], 'candidate': None, 'safety_stop': False, 'not_selected': []}, phase.Phase().state())
         for directory in (self.private, self.artifacts, self.candidate_dir):
             self.assertEqual(0o700, directory.stat().st_mode & 0o777)
         self.assertNotEqual(self.private, self.artifacts)
@@ -599,6 +625,7 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(33, sum(call[0][:2] == ['kubectl', 'apply'] for call in self.fake.calls))
         self.assertFalse(any(call[0][0] == 'az' for call in self.fake.calls))
         self.assertIsNone(phase.Phase().state()['candidate'])
+        self.assertEqual([], phase.Phase().state()['not_selected'])
         self.assertEqual({f'{item}-{config}-gap.json' for item, config, _ in BATCH_MATRIX}, {path.name for path in self.candidate_dir.iterdir()})
 
     def test_batch_seed_failure_is_failure_despite_legacy_failed_outcome(self):

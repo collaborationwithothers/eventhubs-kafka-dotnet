@@ -49,7 +49,9 @@ class WorkflowTests(unittest.TestCase):
             'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true',
             'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true',
-                         'default': 'smoke', 'options': ['smoke', 'batch']}}}}, self.workflow['on'])
+                         'default': 'smoke', 'options': ['smoke', 'batch']},
+            'items': {'description': 'Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)',
+                      'type': 'string', 'required': 'false', 'default': 'all'}}}}, self.workflow['on'])
         self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
         phase_spec = importlib.util.spec_from_file_location('phase_for_workflow', REPO / 'infra/scripts/phase/phase.py')
@@ -234,6 +236,7 @@ esac
             self.assertEqual('probe-batch', job['env']['PARCHWELL_SCENARIO'])
             self.assertEqual('single-action', job['env']['PARCHWELL_PHASE'])
             self.assertEqual('${{ inputs.run_kind }}', job['env']['PARCHWELL_RUN_KIND'])
+            self.assertEqual('${{ inputs.items }}', job['env']['PARCHWELL_BATCH_ITEMS'])
             steps = self.steps(job)
             for ident in ('guard', 'checkout', 'login', 'azure_session'):
                 self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
@@ -245,6 +248,7 @@ esac
         self.assertLess(expected_ids['batch'].index('select'), expected_ids['batch'].index('login'))
         self.assertEqual('bash infra/scripts/phase/phase.sh prepare-batch', steps['prepare']['run'])
         self.assertEqual('bash infra/scripts/phase/phase.sh single-action-seed', steps['seed']['run'])
+        self.assertNotIn('if', steps['seed'])
         self.assertEqual('bash infra/scripts/phase/phase.sh run-single-action-batch', steps['batch']['run'])
         self.assertNotIn('if', steps['batch'])
         self.assertIn('publish-images', steps['images']['run'])
@@ -289,10 +293,25 @@ esac
         select = self.steps(self.all_jobs['batch'])['select']['run']
         for kind, expected in (('smoke', 0), ('batch', 0), ('unknown', 2)):
             with self.subTest(kind=kind):
-                env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND=kind)
+                env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS='all')
                 result = subprocess.run(['/bin/bash', '-c', select], cwd=REPO, env=env,
                                         text=True, capture_output=True, timeout=30)
                 self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+
+    def test_batch_selector_shell_validates_items_before_login(self):
+        select = self.steps(self.all_jobs['batch'])['select']['run']
+        for items, expected in [('all', 0), ('C08,F04', 0), ('F04', 0), ('C08', 0),
+                                ('F04,C08', 2), ('C08,C08', 2), ('E01', 2), ('', 2), (None, 0)]:
+            with self.subTest(items=items):
+                env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='batch',
+                           PARCHWELL_BATCH_ITEMS=items or '')
+                if items is None:
+                    env.pop('PARCHWELL_BATCH_ITEMS', None)
+                result = subprocess.run(['/bin/bash', '-c', select], cwd=REPO, env=env,
+                                        text=True, capture_output=True, timeout=30)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if expected:
+                    self.assertEqual('unsupported probe batch selection', result.stderr.strip())
 
     def test_bridge_discovery(self):
         suite = unittest.TestLoader().discover(str(REPO / 'infra/scripts/tests'), pattern='test_*.py')

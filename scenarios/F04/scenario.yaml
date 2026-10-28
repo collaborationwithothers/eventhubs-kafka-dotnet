@@ -11,7 +11,8 @@ configurations:
   C1:
     LoadGenProducer: {}
   C2:
-    VerifierConsumer: {}
+    VerifierConsumer:
+      debug: "topic,fetch,metadata"
   C3:
     LoadGenProducer: {}
   C4:
@@ -62,6 +63,7 @@ single_action:
       window_ms: 120000
       token_scope: namespace
       match: f04_seed
+      terminal_rule: window_end_no_outcome
     C3:
       action: produce_one
       role: LoadGenProducer
@@ -71,6 +73,7 @@ single_action:
       window_ms: 330000
       token_scope: storage
       match: none
+      terminal_rule: first_error_callback_or_delivery
     C4:
       action: assign_consume
       role: VerifierConsumer

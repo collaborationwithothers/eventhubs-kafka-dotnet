@@ -74,7 +74,8 @@ def check_workflows(repository):
         'cluster-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
-            'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']}}}},
+            'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
+            'items': {'description': 'Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)', 'type': 'string', 'required': 'false', 'default': 'all'}}}},
         'sweeper.yml': {'workflow_dispatch': '', 'schedule': [{'cron': '*/15 * * * *'}]},
         'dotnet-verification.yml': {'pull_request': '', 'push': {'branches': ['main']}, 'workflow_dispatch': ''},
         'docs-advisory.yml': {'pull_request': {'types': ['opened', 'synchronize', 'reopened', 'ready_for_review']}},

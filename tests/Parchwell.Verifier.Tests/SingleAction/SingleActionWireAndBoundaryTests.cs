@@ -10,6 +10,34 @@ namespace Parchwell.Verifier.Tests.SingleAction;
 public sealed class SingleActionWireAndBoundaryTests
 {
     [Theory]
+    [InlineData("missing")][InlineData("duplicate")][InlineData("null")][InlineData("\"0\"")][InlineData("true")][InlineData("false")]
+    [InlineData("[]")][InlineData("{}")][InlineData("0.5")][InlineData("1.0")][InlineData("1e0")]
+    [InlineData("9223372036854775808")][InlineData("-9223372036854775809")]
+    public void Given_MalformedDroppedCount_When_CaptureRead_Then_FormatRejected(string raw)
+    {
+        string json=Encoding.UTF8.GetString(SingleActionWire.Write(SingleActionFixture.Capture(),134217728));
+        const string field="\"client_errors_dropped\":0";
+        int index=json.IndexOf(field,StringComparison.Ordinal);Assert.True(index>=0);
+        json=json[..index]+(raw=="missing"?"":raw=="duplicate"?field+","+field:"\"client_errors_dropped\":"+raw)+json[(index+field.Length+(raw=="missing"?1:0))..];
+        Assert.Throws<FormatException>(()=>SingleActionWire.Read<SingleActionCapture>(Encoding.UTF8.GetBytes(json),134217728));
+    }
+    [Theory]
+    [InlineData(long.MinValue)][InlineData(long.MinValue+1)][InlineData(-1)][InlineData(0)][InlineData(1)][InlineData(long.MaxValue-1)][InlineData(long.MaxValue)]
+    public void Given_Int64DroppedCount_When_CaptureRoundTrips_Then_ValuePreservedWithoutSemanticFiltering(long value)
+    {
+        var capture=SingleActionFixture.Capture();capture.Repeats[0]=capture.Repeats[0] with{ClientErrorsDropped=value};
+        Assert.Equal(value,SingleActionWire.Read<SingleActionCapture>(SingleActionWire.Write(capture,134217728),134217728).Repeats[0].ClientErrorsDropped);
+    }
+    [Fact]
+    public void Given_Capture_When_RoundTrips_Then_ExactRepeatSchemaAndFiveZeroCounts()
+    {
+        byte[] bytes=SingleActionWire.Write(SingleActionFixture.Capture(),134217728);
+        var root=JsonNode.Parse(bytes)!;
+        string[] expected=["repeat","client_id","action","terminal","elapsed_ms","terminal_unix_ms","settings","omitted_keys","result","error","matched","client_errors","client_errors_dropped","statistics","diagnostics"];
+        Assert.Equal(expected.Order(StringComparer.Ordinal),root["repeats"]![0]!.AsObject().Select(p=>p.Key).Order(StringComparer.Ordinal));
+        var capture=SingleActionWire.Read<SingleActionCapture>(bytes,134217728);Assert.Equal(5,capture.Repeats.Length);Assert.All(capture.Repeats,r=>Assert.Equal(0,r.ClientErrorsDropped));Assert.Equal(1,capture.SchemaVersion);
+    }
+    [Theory]
     [InlineData("unknown")][InlineData("missing")][InlineData("duplicate")][InlineData("trailing")][InlineData("utf8")][InlineData("type")][InlineData("null")][InlineData("depth")]
     public void Given_StrictWireViolation_When_Read_Then_Rejected(string mutation)
     {

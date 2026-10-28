@@ -14,7 +14,7 @@ internal sealed record SingleActionMatched(string Topic, int Partition, string K
 internal sealed record SingleActionRepeat(int Repeat, string ClientId, string Action, bool Terminal, long ElapsedMs,
     long? TerminalUnixMs, IReadOnlyDictionary<string, string> Settings, IReadOnlyList<string> OmittedKeys,
     string? Result, SingleActionError? Error, SingleActionMatched? Matched,
-    IReadOnlyList<SingleActionClientError> ClientErrors, IReadOnlyList<SingleActionStatistics> Statistics, IReadOnlyList<string> Diagnostics);
+    IReadOnlyList<SingleActionClientError> ClientErrors, long ClientErrorsDropped, IReadOnlyList<SingleActionStatistics> Statistics, IReadOnlyList<string> Diagnostics);
 internal sealed record SingleActionCaptureFile(int SchemaVersion, string Mode, bool Synthetic, SingleActionIdentity Identity,
     string JobName, string PodName, string PodUid, string SourceCommit, string ManagedVersion, string NativeVersion,
     IReadOnlyList<SingleActionRepeat> Repeats);

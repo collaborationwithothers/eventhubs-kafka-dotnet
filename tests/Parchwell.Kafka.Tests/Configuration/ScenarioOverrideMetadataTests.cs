@@ -6,8 +6,7 @@ namespace Parchwell.Kafka.Tests.Configuration;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
-// Protects the scenario override policy: only listed keys may be overridden, only for the load
-// generator, within the form and range cited from librdkafka v2.16.0 CONFIGURATION.md.
+// Protects the scenario override policy: exact keys, value policies, approved roles, inventory IDs and pinned sources.
 [Trait("Category", "Unit")]
 public sealed class ScenarioOverrideMetadataTests
 {
@@ -16,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(13, settings.Length);
+        Assert.Equal(14, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -30,7 +29,22 @@ public sealed class ScenarioOverrideMetadataTests
             setting => AssertNewEntry(setting, "group.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C12", 0, 0, [], true),
             setting => AssertNewEntry(setting, "session.timeout.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
             setting => AssertNewEntry(setting, "heartbeat.interval.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
-            setting => AssertNewEntry(setting, "partition.assignment.strategy", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0));
+            setting => AssertNewEntry(setting, "partition.assignment.strategy", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
+            setting =>
+            {
+                Assert.Equal("debug", setting.Key);
+                Assert.Equal(KafkaScenarioOverrideValueKind.String, setting.ValueKind);
+                Assert.Equal(0, setting.Minimum);
+                Assert.Equal(0, setting.Maximum);
+                Assert.Equal([KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], setting.SupportedRoles);
+                Assert.Equal(["C08", "F04"], setting.InventoryIds);
+                Assert.Equal(["cgrp", "topic,fetch,metadata"], setting.AllowedValues);
+                Assert.False(setting.AllowAnyNonemptyValue);
+                Assert.True(setting.AllowActivation);
+                var source = Assert.Single(setting.Sources);
+                Assert.Equal("https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md", source.Url.AbsoluteUri);
+                Assert.Equal("v2.16.0", source.VersionOrDate);
+            });
     }
 
     [Theory]
@@ -74,8 +88,19 @@ public sealed class ScenarioOverrideMetadataTests
         Assert.True(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.LoadGenProducer));
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.EnrichmentProducer));
         Assert.True(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.EnrichmentConsumer));
-        Assert.False(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.VerifierConsumer));
+        Assert.True(KafkaScenarioOverridePolicy.SupportsRole(KafkaClientRole.VerifierConsumer));
         Assert.False(KafkaScenarioOverridePolicy.SupportsRole((KafkaClientRole)int.MaxValue));
+    }
+
+    [Fact]
+    public void Given_DebugOverride_When_CheckingRoles_Then_AllowsExactlyBothConsumers()
+    {
+        Assert.True(KafkaScenarioOverridePolicy.TryGetSetting("debug", out var setting));
+        Assert.True(setting.SupportsRole(KafkaClientRole.EnrichmentConsumer));
+        Assert.True(setting.SupportsRole(KafkaClientRole.VerifierConsumer));
+        Assert.False(setting.SupportsRole(KafkaClientRole.LoadGenProducer));
+        Assert.False(setting.SupportsRole(KafkaClientRole.EnrichmentProducer));
+        Assert.False(setting.SupportsRole((KafkaClientRole)int.MaxValue));
     }
 
     // Keys match exactly, so a misspelt scenario key is refused rather than treated as the approved one.
