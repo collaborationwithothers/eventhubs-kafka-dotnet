@@ -1,0 +1,389 @@
+{
+  "publication": {
+    "item": "C08",
+    "proposed_verdict": "undocumented",
+    "workload": "synthetic",
+    "adr012_counts": "not_applicable",
+    "summary": [
+      "Not supported on our Event Hubs Premium namespace on 2026-10-28: the namespace did not advertise a KIP-848 ConsumerGroupHeartbeat API version usable by librdkafka 2.16.0, so a consumer with group.protocol=consumer did not join and this unsupported-API path raised no application error.",
+      "This is a source-supported inference from pod logs; the published C1 class is \"no assignment and no error within the window\".",
+      "The proposed verdict is undocumented under Hari's C08-only waiver, and three of the five C1 repeats remain incomplete."
+    ],
+    "run": {
+      "url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672",
+      "attempt": 1,
+      "run_id": "probe-40722187672-1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/artifacts/12834018507",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40722187672/artifacts/12835061323",
+      "conclusion": "failure"
+    },
+    "waiver": {
+      "decision": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/235#issuecomment-6477476542",
+      "scope": "C08_only",
+      "rule": "incomplete_configuration: no_verdict",
+      "original_candidate_assessment_preserved": true
+    },
+    "published_c1_class": "no assignment and no error within the window",
+    "finding": {
+      "scope": "our Event Hubs Premium namespace on 2026-10-28",
+      "basis": "source_supported_inference_from_pod_logs",
+      "text": "The namespace did not advertise a ConsumerGroupHeartbeat API version usable by librdkafka 2.16.0."
+    },
+    "unsupported_api_log_count_per_repeat": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "unsupported_api_log_count_basis": "quoted_COORD_event",
+    "coordinator_sasl_fail_count_per_repeat": [
+      0,
+      1,
+      1,
+      1,
+      0
+    ],
+    "coordinator_sasl_fail_cause": "unknown",
+    "managed_version": "2.16.0.0",
+    "native_version": "2.16.0",
+    "image_digests": {
+      "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+      "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+      "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+    },
+    "mutation": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40642331044",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40642331044/artifacts/12808596014",
+      "measured_commit": "1f14866faf395ecb28d3b9009986c1b332074386",
+      "measurement_complete": true,
+      "break_passed": true,
+      "shards": [
+        "phase",
+        "publication",
+        "a01",
+        "workload",
+        "single-action-repeat",
+        "single-action-configuration"
+      ]
+    },
+    "environment": {
+      "sku": "Premium",
+      "processing_units": 1,
+      "region": "uksouth",
+      "basis": "destroyed_resource_plan_in_batch_job_122935779352",
+      "node_size": "Standard_D4ds_v5",
+      "node_size_basis": "source_supported_inference_from_pinned_aks_tf_and_no_change_cluster_plan",
+      "observed_node_size": null
+    },
+    "jobs": [
+      {
+        "configuration": "C0",
+        "role": "capture",
+        "job": "probe-40722187672-1-c08-c0-single",
+        "pod": "probe-40722187672-1-c08-c0-single-ww5md",
+        "service_account": "probe",
+        "started_at": "2026-10-28T16:20:13Z",
+        "finished_at": "2026-10-28T16:24:36Z",
+        "exit_code": 0,
+        "restarts": 0,
+        "pod_member": "probe-40722187672-1-c08-c0-single/pods.json",
+        "log_member": "probe-40722187672-1-c08-c0-single/probe-40722187672-1-c08-c0-single-ww5md.containers.probe.log",
+        "collection_member": "probe-40722187672-1-c08-c0-single/collection-status.json"
+      },
+      {
+        "configuration": "C0",
+        "role": "judge",
+        "job": "probe-40722187672-1-c08-c0-single-judge",
+        "pod": "probe-40722187672-1-c08-c0-single-judge-4mm8c",
+        "service_account": "verifier",
+        "started_at": "2026-10-28T16:24:48Z",
+        "finished_at": "2026-10-28T16:24:50Z",
+        "exit_code": 0,
+        "restarts": 0,
+        "pod_member": "probe-40722187672-1-c08-c0-single-judge/pods.json",
+        "log_member": "probe-40722187672-1-c08-c0-single-judge/probe-40722187672-1-c08-c0-single-judge-4mm8c.containers.verifier.log",
+        "collection_member": "probe-40722187672-1-c08-c0-single-judge/collection-status.json"
+      },
+      {
+        "configuration": "C1",
+        "role": "capture",
+        "job": "probe-40722187672-1-c08-c1-single",
+        "pod": "probe-40722187672-1-c08-c1-single-l4tmx",
+        "service_account": "probe",
+        "started_at": "2026-10-28T16:25:07Z",
+        "finished_at": "2026-10-28T16:35:48Z",
+        "exit_code": 0,
+        "restarts": 0,
+        "pod_member": "probe-40722187672-1-c08-c1-single/pods.json",
+        "log_member": "probe-40722187672-1-c08-c1-single/probe-40722187672-1-c08-c1-single-l4tmx.containers.probe.log",
+        "collection_member": "probe-40722187672-1-c08-c1-single/collection-status.json"
+      },
+      {
+        "configuration": "C1",
+        "role": "judge",
+        "job": "probe-40722187672-1-c08-c1-single-judge",
+        "pod": "probe-40722187672-1-c08-c1-single-judge-9l8gh",
+        "service_account": "verifier",
+        "started_at": "2026-10-28T16:36:01Z",
+        "finished_at": "2026-10-28T16:36:03Z",
+        "exit_code": 1,
+        "restarts": 0,
+        "pod_member": "probe-40722187672-1-c08-c1-single-judge/pods.json",
+        "log_member": "probe-40722187672-1-c08-c1-single-judge/probe-40722187672-1-c08-c1-single-judge-9l8gh.containers.verifier.log",
+        "collection_member": "probe-40722187672-1-c08-c1-single-judge/collection-status.json"
+      }
+    ],
+    "artifact_expiry": {
+      "12835061323": "2027-01-26T16:03:35Z",
+      "12834018507": "2027-01-26T16:03:35Z"
+    }
+  },
+  "candidates": {
+    "C0": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "C08",
+      "configuration_id": "C0",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 1,
+            "native_time": 1793204430,
+            "native_ts": 1928371493,
+            "raw_sha256": "321edf965be8588f560cfe7da6a0a27871e4b67333f8a3b2c7bbd612b4930534"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793204483,
+            "native_ts": 1981924957,
+            "raw_sha256": "6e41bb3947ce88faebfb4ac70d076807d34686bccbbd4ec4accef5a6dc268b3a"
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793204540,
+            "native_ts": 2038784472,
+            "raw_sha256": "650ae4fd98877ff9cc1b78a2d0f62f371a39f25bd7c5ff34ae4f575d5f7e1d2f"
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793204600,
+            "native_ts": 2098751425,
+            "raw_sha256": "5edf1276d7554ce81ad9ac3d36aabbe89564f46bc93c0359b543a00c0e7ba1de"
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 17,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793204660,
+            "native_ts": 2158815356,
+            "raw_sha256": "a7ad1afaef2613ce89cb6cb7e8f3d8c17beb49b20683bd14e2717385438e2cba"
+          }
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C1": {
+      "schema_version": 1,
+      "mode": "single-action",
+      "synthetic": true,
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "C08",
+      "configuration_id": "C1",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:45d1c73aa48e85317f56d63388d223330a5ac1a35bfd37672eff394b8163f636",
+        "verifier": "sha256:cfecf1fd6aad9702ea65f7e9b42756fcc9935d7d05886f9a5b927166f4e9bb19",
+        "enrichment": "sha256:4abfb6925e0ee301aa8702f31745a11531e2b07e744e22ecdc32438b3992465d"
+      },
+      "status": "incomplete",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793204843,
+            "native_ts": 2341163837,
+            "raw_sha256": "721a798bdd7700ebd557d7953660888f84cbdb5a1d4c3786395e6ae884220edc"
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "incomplete",
+          "reasons": [
+            "p4_no_terminal_outcome",
+            "p6_broker_count"
+          ],
+          "outcome_class": null,
+          "broker_count": null,
+          "statistics_reference": null
+        },
+        {
+          "repeat": 3,
+          "status": "incomplete",
+          "reasons": [
+            "p4_no_terminal_outcome",
+            "p6_broker_count"
+          ],
+          "outcome_class": null,
+          "broker_count": null,
+          "statistics_reference": null
+        },
+        {
+          "repeat": 4,
+          "status": "incomplete",
+          "reasons": [
+            "p4_no_terminal_outcome",
+            "p6_broker_count"
+          ],
+          "outcome_class": null,
+          "broker_count": null,
+          "statistics_reference": null
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "no_outcome",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793205343,
+            "native_ts": 2841156099,
+            "raw_sha256": "0e194f3b9d4b1cd325bc35a85118e4509ea217562ba1ba5bf599640a490b0c66"
+          }
+        }
+      ],
+      "deterministic": null,
+      "outcome_class": null,
+      "adr012_counts": "not_applicable",
+      "diagnostics": [],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": null,
+        "hypotheses": {
+          "H0": "undecided",
+          "H1": "undecided"
+        },
+        "reason": "incomplete_configuration"
+      }
+    }
+  },
+  "judge_receipts": {
+    "C0": {
+      "schema_version": 1,
+      "mode": "single-action-judge",
+      "run_id": "probe-40722187672-1",
+      "scenario_id": "C08",
+      "configuration_id": "C0",
+      "source_commit": "20f17794330b60d77a75bf5788ee442cc8baa1f6",
+      "job_name": "probe-40722187672-1-c08-c0-single-judge",
+      "pod_name": "probe-40722187672-1-c08-c0-single-judge-4mm8c",
+      "pod_uid": "401af578-c142-4795-a0a0-cb61bc21c253",
+      "candidate_name": "probe-40722187672-1/single-action/C08/C0/candidate.json",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  },
+  "transport_gaps": {
+    "C1": {
+      "item": "C08",
+      "configuration": "C1",
+      "reason": "candidate_transport"
+    }
+  }
+}
