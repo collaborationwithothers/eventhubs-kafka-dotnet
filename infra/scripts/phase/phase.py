@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import importlib.util
 import time
 from urllib.parse import urlsplit
 
@@ -55,13 +56,17 @@ class Failure(Exception):
 
 def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
-    if selected not in (*SCENARIOS, "probe-batch"):
+    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2"):
         raise Failure("unsupported scenario")
     return selected
 
 
 def batch_items():
     value = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
+    if os.environ.get('PARCHWELL_SCENARIO') == 'probe-batch-2':
+        if value != 'all' or os.environ.get('PARCHWELL_RUN_KIND') != 'smoke':
+            raise Failure('unsupported probe batch selection')
+        return ['B08', 'E01', 'F06']
     if value == 'all':
         return list(SINGLE_ACTION_ITEMS)
     selected = value.split(',')
@@ -182,6 +187,13 @@ class Phase:
     def candidates(self):
         return Path(require("PARCHWELL_CANDIDATE_DIRECTORY"))
 
+    def probe_v2(self):
+        source = Path(__file__).with_name("probe_v2.py")
+        spec = importlib.util.spec_from_file_location("parchwell_probe_v2", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.ProbeV2(self)
+
     def read(self, name):
         return strict_json((self.private / name).read_bytes())
 
@@ -217,6 +229,9 @@ class Phase:
         return 0
 
     def validate_batch(self):
+        if scenario() == "probe-batch-2":
+            batch_items()
+            return 0
         if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
             raise Failure("unsupported probe batch selection")
         batch_items()
@@ -238,7 +253,7 @@ class Phase:
 
     def prepare_batch(self):
         self.validate_batch()
-        return self.prepare_shared("probe-batch", "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=batch_items())
+        return self.prepare_shared(scenario(), "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=batch_items())
 
     def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
@@ -259,6 +274,12 @@ class Phase:
             if name.endswith(".json") and not isinstance(strict_json(value), dict):
                 raise Failure("expected JSON object: " + variable)
             secrets[name] = value
+        ephemeral_variables = strict_json(secrets["ephemeral_tfvars.tfvars.json"])
+        if selected == "probe-batch-2":
+            ephemeral_variables["probe_namespace_data_roles"] = True
+        elif ephemeral_variables.get("probe_namespace_data_roles", False) is not False:
+            raise Failure("namespace probe roles require probe-batch-2")
+        secrets["ephemeral_tfvars.tfvars.json"] = json.dumps(ephemeral_variables)
         persistent = strict_json(secrets["persistent-output.json"])
         acr = unwrap(persistent["acr"])
         if not re.fullmatch(r"[a-z0-9]+", acr["name"]) or not re.fullmatch(r"[a-z0-9.-]+", acr["login_server"]):
@@ -279,8 +300,14 @@ class Phase:
         write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": configuration,
                                            "run_id": run, "source_commit": sha, **metadata})
         status = {"phase": phase, "run_id": run, "modes": [], "candidate": None, "safety_stop": False}
-        if selected == "probe-batch":
+        if selected in ("probe-batch", "probe-batch-2"):
             status["not_selected"] = []
+        if selected == "probe-batch-2":
+            scope_directory = private / "probe-v2"
+            scope_directory.mkdir(mode=0o700)
+            confirmation = os.environ.get("S_PROBE_V2_EFFECTIVE_SCOPE", "")
+            if confirmation and len(confirmation.encode("utf-8")) <= 32768:
+                write_private(scope_directory / "effective-scope.json", confirmation)
         write_json(artifacts / "phase-status.json", status)
         settings = {"PARCHWELL_PRIVATE_DIRECTORY": private, "PARCHWELL_CANDIDATE_DIRECTORY": candidate,
                     "PARCHWELL_ARTIFACT_DIRECTORY": artifacts,
@@ -678,6 +705,8 @@ class Phase:
 
     def single_action_seed(self):
         self.validate_batch()
+        if scenario() == "probe-batch-2":
+            return 0
         clock_available = self.start_batch_clock()
         if 'F04' not in self.read('phase.json')['items']:
             return 0
@@ -694,6 +723,8 @@ class Phase:
 
     def run_single_action_batch(self):
         self.validate_batch()
+        if scenario() == "probe-batch-2":
+            return self.probe_v2().run_batch()
         selected = self.read('phase.json')['items']
         state = self.state()
         state['not_selected'] = [
@@ -941,7 +972,7 @@ class Phase:
 
     def delete_workload(self):
         phase = self.read("phase.json")
-        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] == "probe-batch" else "jobs", "-n", "parchwell", "-l",
+        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") else "jobs", "-n", "parchwell", "-l",
                          f"app.kubernetes.io/instance={phase['run_id']}", "--ignore-not-found", "--wait=false",
                          "--request-timeout=30s"], 60)
 
@@ -968,6 +999,8 @@ class Phase:
                 lines += ["seed receipt gap"]
             for candidate in state.get("candidates", []):
                 lines += [f"{candidate['item']}-{candidate['configuration']}: accepted={candidate['accepted']} candidate={candidate['candidate']} judge_completion={candidate['judge_completion']}"]
+                if "smoke_valid" in candidate:
+                    lines += [f"{candidate['item']}-{candidate['configuration']}: smoke_valid={candidate['smoke_valid']}"]
             if state["candidate"] is not None:
                 lines += [f"candidate status: {state['candidate']['status']}", f"candidate gate: {state['candidate']['gate']}"]
         text = "\n".join(lines) + "\n"

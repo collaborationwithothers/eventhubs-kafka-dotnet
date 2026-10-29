@@ -124,3 +124,11 @@ For example, C12/C2's judge is `probe-1-1-c12-c2-single-judge`. Identity and wor
 Every S1 container uses exactly `args: ["--image-smoke"]` with its existing image entrypoint. Its environment contains only the common `PARCHWELL_*` and telemetry fields listed above; the telemetry service name follows the image worker. The new finite chart suite checks all 33 positive renders with Helm lint/template and strict kubeconform, plus eight single-mutation rejections, alongside every legacy chart case and worker-setting regression.
 
 S1 runs --image-smoke in all 33 Jobs. It verifies pod placement, service-account selection and existing image contents. It does not test token acquisition, data-plane role enforcement, client actions, telemetry ingestion or verifier judgement. S2 supplies those action and judgement modes.
+
+## Schema-two execution
+
+V2 modes are `single-action-v2` and `single-action-v2-judge`. The chart renders one fixed stage Job and four workload service accounts, selecting the account/image and optional read-only dependencies from the [V2 matrix](single-action-contract.md#schema-two-live-probes). Caller-selected accounts or evidence paths are not accepted. The verifier image is used only for judges; all actor/helper stages use LoadGen. Existing identity federation, security contexts, pools, restart/replacement behavior and legacy chart modes are preserved.
+
+Runtime bounds agree exactly with [probe-v2-runtime-limits.json](probe-v2-runtime-limits.json). Environment names use ProbeV2__ or ProbeV2Judge__ and exact selected-section leaves; the published host validators check real rendered environments. NamespaceName refers to Event Hubs; resource namespace remains parchwell. Workload identity client ID must match the injected AZURE_CLIENT_ID. Unknown/case-colliding fields or mixed generation prefixes fail startup.
+
+The [smoke contract](probe-v2-smoke-contract.md) requires actual V2 execution commands, not image-smoke commands, for live acceptance. Private role evidence is mounted only into judges after namespace reset. Missing evidence mounts are optional so the judge can report gaps; optional does not mean accepted. Workflow ownership and teardown remain ADR-020 policy.

@@ -45,7 +45,8 @@ public sealed class ScenarioValidationBoundaryTests
     public async Task Given_FrozenInventoryId_When_Loading_Then_AcceptsTheSharedInventory(string id)
     {
         var path = $"scenarios/{id}/scenario.yaml";
-        var yaml = ScenarioTestData.ValidScenario.Replace("id: A01", "id: " + id, StringComparison.Ordinal);
+        var yaml = id == "F06" ? ProbeV2DefinitionTests.Text(id).Replace("profiles/saturation-ramp.yaml", "profiles/synthetic.yaml", StringComparison.Ordinal) :
+            ScenarioTestData.ValidScenario.Replace("id: A01", "id: " + id, StringComparison.Ordinal);
         var source = new InMemoryScenarioSource((path, yaml), (ScenarioTestData.ProfilePath, ScenarioTestData.ValidProfile));
 
         var loaded = await ScenarioTestData.Loader(source).LoadAsync(id, TestContext.Current.CancellationToken);

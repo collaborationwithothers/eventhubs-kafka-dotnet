@@ -15,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(14, settings.Length);
+        Assert.Equal(15, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -24,6 +24,7 @@ public sealed class ScenarioOverrideMetadataTests
             setting => AssertNewEntry(setting, "message.max.bytes", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B01", 1000, 1000000000),
             setting => AssertNewEntry(setting, "message.timeout.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B05", 0, int.MaxValue),
             setting => AssertNewEntry(setting, "compression.type", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B03", 0, 0, ["none", "gzip", "snappy", "lz4", "zstd"]),
+            setting => AssertNewEntry(setting, "partitioner", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B08", 0, 0, ["consistent_random", "murmur2_random"]),
             setting => AssertNewEntry(setting, "transactional.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B05", 0, 0, [], true, true),
             setting => AssertNewEntry(setting, "group.protocol", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0, ["classic", "consumer"]),
             setting => AssertNewEntry(setting, "group.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C12", 0, 0, [], true),
@@ -70,6 +71,7 @@ public sealed class ScenarioOverrideMetadataTests
     [InlineData("request.timeout.ms")]
     [InlineData("socket.timeout.ms")]
     [InlineData("enable.idempotence")]
+    [InlineData("partitioner")]
     [InlineData("max.in.flight")]
     public void Given_OverrideKey_When_CheckingRolePolicy_Then_AllowsOnlyLoadGenProducer(string key)
     {

@@ -192,3 +192,9 @@ The latest full LoadGen acceptance after the evidence-drain handshake fix passed
 [sdk-transport]: https://github.com/Azure/azure-sdk-for-net/blob/Azure.Core_1.60.0/sdk/core/Azure.Core/src/Pipeline/HttpClientTransport.cs#L107-L136
 
 [a01-plan]: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/14#issuecomment-6198834304
+
+## Schema-two capture
+
+`--single-action-v2` runs the isolated actor/helper slice; `--validate-single-action-v2-configuration` validates its closed environment without Kafka, Blob, token-file or input-file access. It uses the [V2 wire and admission contract](single-action-contract.md#schema-two-live-probes), validated `ProbeV2__` options, TimeProvider, existing configuration/authentication factories and actual Confluent interfaces. It registers before construction and emits the final capture only after client and host cleanup. It has no Blob publication dependency.
+
+NamespaceName is the Event Hubs namespace; the Kubernetes namespace remains parchwell. The chart supplies exact finite limits from [the runtime table](probe-v2-runtime-limits.json), and the [smoke contract](probe-v2-smoke-contract.md) restricts live dispatch. Telemetry participation follows ADR-020. Existing schema-one paths remain unchanged.

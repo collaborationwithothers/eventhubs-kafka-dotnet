@@ -7,6 +7,7 @@ import tempfile
 import yaml
 from test_chart import CHART, ROOT, positive_cases, with_case
 from test_single_action_chart import positive_cases as single_action_cases
+from test_probe_v2_chart import positive_cases as probe_v2_cases
 
 EXPECTED=b'{"loadgen_configuration_valid":true}\n'
 POD_UID='00000000-0000-4000-8000-000000000192'
@@ -78,6 +79,51 @@ def single_action_host_acceptance(td, loadgen_publish):
     print('single-action host checks passed: 33 rendered environments, 7 missing/unknown/legacy regressions, Enrichment native image smoke')
 
 
+
+def probe_v2_host_acceptance(td, loadgen_publish):
+    verifier_publish = td / 'verifier-publish'
+    hosts = {
+        'single-action-v2': (['dotnet', str(loadgen_publish / 'Parchwell.LoadGen.dll'), '--validate-single-action-v2-configuration'],
+            b'{"single_action_v2_configuration_valid":true}\n', 'ProbeV2__', 1),
+        'single-action-v2-judge': (['dotnet', str(verifier_publish / 'Parchwell.Verifier.dll'), '--validate-single-action-v2-judge-configuration'],
+            b'{"single_action_v2_judge_configuration_valid":true}\n', 'ProbeV2Judge__', 2),
+    }
+    def environment(rendered):
+        env = host_environment(rendered, td)
+        key = 'ProbeV2Judge__WorkloadIdentityClientId' if 'ProbeV2Judge__WorkloadIdentityClientId' in rendered else 'ProbeV2__WorkloadIdentityClientId'
+        env.update(AZURE_TENANT_ID='00000000-0000-0000-0000-000000000010', AZURE_CLIENT_ID=rendered[key])
+        return env
+    environments = {}
+    cases = list(probe_v2_cases())
+    assert len(cases) == 49
+    for index, values in enumerate(cases):
+        fixture = td / f'v2-{index}.yaml'; with_case(values, fixture)
+        rendered = rendered_environment(fixture, td, f'v2-{index}')
+        mode = values['runtime']['mode']; host, expected, _, _ = hosts[mode]
+        output = td / f'v2-{index}.host.out'
+        proc = bounded(60, host, output, environment(rendered))
+        assert proc.returncode == 0 and output.read_bytes() == expected, (mode, index, proc.stderr, output.read_bytes())
+        environments.setdefault(mode, rendered)
+    for mode, (host, _, prefix, failure) in hosts.items():
+        for kind in ('missing', 'unknown', 'case_collision', 'legacy', 'wrong_identity'):
+            rendered = dict(environments[mode])
+            if kind == 'missing':
+                del rendered[prefix + 'PodUid']
+            elif kind == 'unknown':
+                rendered[prefix + 'UnsupportedSetting'] = 'forbidden'
+            elif kind == 'case_collision':
+                rendered[prefix.lower() + 'poduid'] = POD_UID
+            elif kind == 'legacy':
+                rendered['SingleAction__RunId'] = 'forbidden'
+            env = environment(rendered)
+            if kind == 'wrong_identity':
+                env['AZURE_CLIENT_ID'] = '00000000-0000-0000-0000-000000000099'
+            output = td / f'{mode}-{kind}.host.out'
+            proc = bounded(60, host, output, env)
+            assert proc.returncode == failure, (mode, kind, proc.returncode, proc.stderr)
+    print('probe V2 host checks passed: 49 rendered environments and 10 rejected input regressions')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='parchwell-loadgen-host-') as name:
         td=Path(name); publish=td/'publish'
@@ -98,5 +144,6 @@ def main():
         assert proc.returncode==1 and 'loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:PodUid' in proc.stderr, proc.stderr
         print('loadgen host check passed: 7 rendered environments, 1 missing-setting regression')
         single_action_host_acceptance(td, publish)
+        probe_v2_host_acceptance(td, publish)
 
 if __name__=='__main__': main()

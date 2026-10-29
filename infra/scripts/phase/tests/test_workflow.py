@@ -47,10 +47,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse((REPO / 'docs/operations/workflows/b04-scenario.yml.txt').exists())
         self.assertEqual({'workflow_dispatch': {'inputs': {'scenario': {
             'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true',
-            'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
+            'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true',
                          'default': 'smoke', 'options': ['smoke', 'batch']},
-            'items': {'description': 'Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)',
+            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke with all only)',
                       'type': 'string', 'required': 'false', 'default': 'all'}}}}, self.workflow['on'])
         self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
@@ -58,7 +58,7 @@ class WorkflowTests(unittest.TestCase):
         phase = importlib.util.module_from_spec(phase_spec)
         phase_spec.loader.exec_module(phase)
         self.assertEqual(
-            ['A01', 'B04', 'probe-batch'],
+            ['A01', 'B04', 'probe-batch', 'probe-batch-2'],
             self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'])
         self.assertEqual(['A01', 'B04'], sorted(phase.SCENARIOS))
 
@@ -66,10 +66,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(['probe', 'full-C0', 'full-C3'], list(self.jobs))
         self.assertNotIn('needs', self.jobs['probe'])
         self.assertEqual(['probe'], self.jobs['full-C0']['needs'])
-        self.assertEqual("inputs.scenario != 'probe-batch' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'", self.jobs['full-C0']['if'])
+        self.assertEqual("inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'", self.jobs['full-C0']['if'])
         self.assertEqual(['probe', 'full-C0'], self.jobs['full-C3']['needs'])
-        self.assertEqual("always() && inputs.scenario != 'probe-batch'", self.jobs['full-C3']['if'])
-        self.assertEqual("inputs.scenario != 'probe-batch'", self.jobs['probe']['if'])
+        self.assertEqual("always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2'", self.jobs['full-C3']['if'])
+        self.assertEqual("inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2'", self.jobs['probe']['if'])
         expected_phases = {
             'probe': ("${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}", "${{ inputs.scenario || 'A01' }}"),
             'full-C0': ('C0', "${{ inputs.scenario || 'A01' }}"),
@@ -219,10 +219,10 @@ esac
         self.assertEqual(['probe', 'full-C0', 'full-C3', 'batch', 'batch-stop'], list(self.all_jobs))
         batch = self.all_jobs['batch']
         stop = self.all_jobs['batch-stop']
-        self.assertEqual("inputs.scenario == 'probe-batch'", batch['if'])
+        self.assertEqual("inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2'", batch['if'])
         self.assertNotIn('needs', batch)
         self.assertEqual(['batch'], stop['needs'])
-        self.assertEqual("always() && inputs.scenario == 'probe-batch'", stop['if'])
+        self.assertEqual("always() && (inputs.scenario == 'probe-batch' || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'all'))", stop['if'])
         expected_ids = {
             'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
@@ -233,7 +233,7 @@ esac
             self.assertEqual('${{ vars.PARCHWELL_RUNNER_LABEL }}', job['runs-on'])
             self.assertEqual('parchwell-scenarios', job['environment'])
             self.assertEqual('360', job['timeout-minutes'])
-            self.assertEqual('probe-batch', job['env']['PARCHWELL_SCENARIO'])
+            self.assertEqual('${{ inputs.scenario }}', job['env']['PARCHWELL_SCENARIO'])
             self.assertEqual('single-action', job['env']['PARCHWELL_PHASE'])
             self.assertEqual('${{ inputs.run_kind }}', job['env']['PARCHWELL_RUN_KIND'])
             self.assertEqual('${{ inputs.items }}', job['env']['PARCHWELL_BATCH_ITEMS'])
@@ -312,6 +312,30 @@ esac
                 self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
                 if expected:
                     self.assertEqual('unsupported probe batch selection', result.stderr.strip())
+
+    def test_v2_selector_rejects_full_runs_and_partial_smokes_before_login(self):
+        select = self.steps(self.all_jobs['batch'])['select']['run']
+        for kind, items, expected in [('smoke', 'all', 0), ('batch', 'all', 2), ('smoke', 'B08', 2), ('smoke', 'E01,F06', 2), ('smoke', 'F04', 2), ('smoke', '', 2)]:
+            with self.subTest(kind=kind, items=items):
+                env = dict(os.environ, PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items)
+                result = subprocess.run(['/bin/bash', '-c', select], cwd=REPO, env=env, text=True, capture_output=True, timeout=30)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if expected:
+                    self.assertEqual('unsupported probe batch selection', result.stderr.strip())
+        prepare = self.steps(self.all_jobs['batch'])['prepare']
+        self.assertEqual('${{ secrets.PARCHWELL_PROBE_V2_EFFECTIVE_SCOPE }}', prepare['env']['S_PROBE_V2_EFFECTIVE_SCOPE'])
+        locations = [(name, step.get('id')) for name, job in self.all_jobs.items() for step in job['steps']
+                     if 'S_PROBE_V2_EFFECTIVE_SCOPE' in step.get('env', {})]
+        self.assertEqual([('batch', 'prepare')], locations)
+        expression = self.all_jobs['batch-stop']['if']
+        for selected, kind, items, expected in [('probe-batch-2', 'smoke', 'all', True), ('probe-batch-2', 'batch', 'all', False),
+                ('probe-batch-2', 'smoke', '', False), ('probe-batch-2', 'smoke', 'B08', False), ('probe-batch', 'batch', 'F04', True),
+                ('A01', 'smoke', 'all', False)]:
+            evaluated = expression.replace('always()', 'True').replace('&&', ' and ').replace('||', ' or ')
+            for name, value in [('scenario', selected), ('run_kind', kind), ('items', items)]:
+                evaluated = evaluated.replace('inputs.' + name, repr(value))
+            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}}, {}), (selected, kind, items))
+        self.assertEqual(['A01', 'B04', 'probe-batch'], self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'][:3])
 
     def test_bridge_discovery(self):
         suite = unittest.TestLoader().discover(str(REPO / 'infra/scripts/tests'), pattern='test_*.py')

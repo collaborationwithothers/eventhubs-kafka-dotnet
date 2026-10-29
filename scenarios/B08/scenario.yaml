@@ -1,0 +1,53 @@
+schema_version: 1
+id: B08
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+- VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0: {}
+  C1:
+    LoadGenProducer:
+      partitioner: murmur2_random
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+- id: single_action.outcome
+  role: VerifierConsumer
+- id: single_action.client_errors
+  role: VerifierConsumer
+probe_v2:
+  configurations:
+    C0:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: loadgen
+      topic: document-events
+      partition_mode: automatic
+      partition: null
+      value_kind: marker
+      window_ms: 330000
+      key_rule: b08_fixed
+      read_rule: delivery_location
+    C1:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: loadgen
+      topic: document-events
+      partition_mode: automatic
+      partition: null
+      value_kind: marker
+      window_ms: 330000
+      key_rule: b08_fixed
+      read_rule: delivery_location

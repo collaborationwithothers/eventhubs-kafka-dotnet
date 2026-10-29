@@ -12,6 +12,7 @@ on:
           - A01
           - B04
           - probe-batch
+          - probe-batch-2
       run_kind:
         description: Probe batch run kind
         type: choice
@@ -21,7 +22,7 @@ on:
           - smoke
           - batch
       items:
-        description: Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)
+        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke with all only)"
         type: string
         required: false
         default: all
@@ -34,7 +35,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   probe:
-    if: inputs.scenario != 'probe-batch'
+    if: inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -232,7 +233,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   full-C0:
     needs: [probe]
-    if: inputs.scenario != 'probe-batch' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'
+    if: inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -425,7 +426,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   full-C3:
     needs: [probe, full-C0]
-    if: always() && inputs.scenario != 'probe-batch'
+    if: always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -658,7 +659,7 @@ jobs:
           WORKLOAD_STEPS: tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report
   batch:
-    if: inputs.scenario == 'probe-batch'
+    if: inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2'
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -671,7 +672,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
-      PARCHWELL_SCENARIO: probe-batch
+      PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
       PARCHWELL_BATCH_ITEMS: ${{ inputs.items }}
@@ -722,6 +723,7 @@ jobs:
           S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
           S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
           S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
+          S_PROBE_V2_EFFECTIVE_SCOPE: ${{ secrets.PARCHWELL_PROBE_V2_EFFECTIVE_SCOPE }}
         run: bash infra/scripts/phase/phase.sh prepare-batch
       - name: Existing environment OIDC login
         id: login
@@ -848,7 +850,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: always() && inputs.scenario == 'probe-batch'
+    if: always() && (inputs.scenario == 'probe-batch' || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'all'))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -861,7 +863,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
-      PARCHWELL_SCENARIO: probe-batch
+      PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
       PARCHWELL_BATCH_ITEMS: ${{ inputs.items }}

@@ -9,4 +9,5 @@ kubeconform -v 2>&1 | grep -Fq 0.8.0
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 cd "$root"
 "$python" charts/parchwell/tests/test_chart.py
-exec "$python" charts/parchwell/tests/test_single_action_chart.py
+"$python" charts/parchwell/tests/test_single_action_chart.py
+exec "$python" charts/parchwell/tests/test_probe_v2_chart.py

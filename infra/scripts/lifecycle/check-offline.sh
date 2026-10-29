@@ -73,9 +73,9 @@ def check_workflows(repository):
     expected_triggers = {
         'cluster-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
-            'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch']},
+            'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
-            'items': {'description': 'Probe batch items (all or comma-separated B01,B03,B05,C08,C12,F04 in this order)', 'type': 'string', 'required': 'false', 'default': 'all'}}}},
+            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke with all only)', 'type': 'string', 'required': 'false', 'default': 'all'}}}},
         'sweeper.yml': {'workflow_dispatch': '', 'schedule': [{'cron': '*/15 * * * *'}]},
         'dotnet-verification.yml': {'pull_request': '', 'push': {'branches': ['main']}, 'workflow_dispatch': ''},
         'docs-advisory.yml': {'pull_request': {'types': ['opened', 'synchronize', 'reopened', 'ready_for_review']}},

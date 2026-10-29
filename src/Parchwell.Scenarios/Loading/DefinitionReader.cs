@@ -24,7 +24,7 @@ internal static class DefinitionReader
             throw new InvalidOperationException("Unreachable");
         }
         validation.TryFields(rootMap, "",
-            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action"],
+            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action", "probe_v2"],
             ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures"]);
 
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
@@ -49,8 +49,11 @@ internal static class DefinitionReader
         var gate = ReadGate(validation, rootMap.Fields.GetValueOrDefault("gate"), configurations.Keys.ToImmutableHashSet(StringComparer.Ordinal), roles, measures);
         var definition = new ScenarioDefinition(version, id, baseline, roles, profile, configurations, fault, repeats, gate, measures, root.Location);
         var singleAction = SingleActionDefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("single_action"), definition);
+        if (rootMap.Fields.ContainsKey("single_action") && rootMap.Fields.TryGetValue("probe_v2", out var probeNode))
+            validation.Error(probeNode, "probe_v2", "probe_v2_unexpected", "Probe generations cannot be combined.");
+        var probeV2 = ProbeV2DefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("probe_v2"), definition);
         validation.ThrowIfErrors();
-        return definition with { SingleAction = singleAction };
+        return definition with { SingleAction = singleAction, ProbeV2 = probeV2 };
     }
 
     private static int ReadLiteralVersion(NodeValidation validation, MapNode map, string key, string path)

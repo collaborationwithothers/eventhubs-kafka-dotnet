@@ -613,3 +613,58 @@ run "reject_expiry" {
   }
   expect_failures = [var.expires_at]
 }
+
+run "probe_v2_roles_false" {
+  command = plan
+  variables {
+    probe_namespace_data_roles = false
+  }
+  assert {
+    condition = jsonencode(output.probe_v2_role_scope.assignments) == jsonencode({
+      probe_events_receiver              = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000013" }
+      probe_single_action_contributor    = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000013" }
+      verifier_single_action_reader      = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000006" }
+      loadgen_events_sender              = { service_account = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000004" }
+      loadgen_ledger_contributor         = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000004" }
+      enrichment_events_receiver         = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_state_sender            = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_dlq_sender              = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_claim_check_contributor = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check", principal_id = "00000000-0000-0000-0000-000000000005" }
+      verifier_events_receiver           = { service_account = "verifier", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_ledger_reader             = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_results_contributor       = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
+    })
+    error_message = "Disabled V2 roles must preserve the complete twelve-entry applied role map."
+  }
+  assert {
+    condition = output.probe_v2_role_scope.probe_namespace_data_roles == false && output.probe_v2_role_scope.namespace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && jsonencode(output.probe_v2_role_scope.topics) == jsonencode({
+      document-events     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"
+      document-state      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state"
+      document-events-dlq = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq"
+      }) && jsonencode(output.probe_v2_role_scope.accounts) == jsonencode({
+      loadgen             = { client_id = "00000000-0000-0000-0000-000000000001", principal_id = "00000000-0000-0000-0000-000000000004" }
+      probe               = { client_id = "00000000-0000-0000-0000-000000000012", principal_id = "00000000-0000-0000-0000-000000000013" }
+      enrichment-consumer = { client_id = "00000000-0000-0000-0000-000000000002", principal_id = "00000000-0000-0000-0000-000000000005" }
+      verifier            = { client_id = "00000000-0000-0000-0000-000000000003", principal_id = "00000000-0000-0000-0000-000000000006" }
+    })
+    error_message = "Private scope evidence must bind the namespace, all target hubs and all four persistent identities."
+  }
+}
+
+run "probe_v2_roles_true" {
+  command = plan
+  variables {
+    probe_namespace_data_roles = true
+  }
+  assert {
+    condition = jsonencode(output.probe_v2_role_scope.assignments) == jsonencode(merge(run.probe_v2_roles_false.probe_v2_role_scope.assignments, {
+      probe_namespace_sender   = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1", principal_id = "00000000-0000-0000-0000-000000000013" }
+      probe_namespace_receiver = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1", principal_id = "00000000-0000-0000-0000-000000000013" }
+    })) && output.probe_v2_role_scope.probe_namespace_data_roles == true
+    error_message = "Enabled V2 roles must add only probe namespace Sender and Receiver, preserving every existing grant."
+  }
+  assert {
+    condition     = jsonencode(output.probe_v2_role_scope.accounts) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.accounts) && jsonencode(output.probe_v2_role_scope.topics) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.topics) && output.probe_v2_role_scope.namespace_id == run.probe_v2_roles_false.probe_v2_role_scope.namespace_id
+    error_message = "The namespace-role switch must not alter any identity or target."
+  }
+}
