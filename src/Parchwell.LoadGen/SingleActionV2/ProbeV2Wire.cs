@@ -40,7 +40,13 @@ internal static class ProbeV2Wire
     internal static byte[] Encode<T>(T value, int maximum)
     {
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
-        if (bytes.Length > maximum) throw new InvalidDataException("v2_capture_limit");
+        if (bytes.Length > maximum)
+        {
+            var exception = new InvalidDataException("v2_capture_limit");
+            exception.Data["observed_bytes"] = bytes.Length;
+            exception.Data["allowed_bytes"] = maximum;
+            throw exception;
+        }
         return bytes;
     }
     internal static T Read<T>(ReadOnlyMemory<byte> bytes, int maximum)

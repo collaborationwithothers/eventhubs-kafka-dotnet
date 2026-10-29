@@ -214,7 +214,7 @@ internal static class SingleActionRepeatJudgement
         if (row.Terminal && !V2TerminalOrder(row,matrix.WindowMs)) Bad("v2_terminal");
         if (row.Diagnostics.Count != 0) reasons.Add(row.Diagnostics.Any(x => x.StartsWith("client_cleanup_failed",StringComparison.Ordinal)) ? "v2_completion" : "v2_capture_limit");
         bool statisticsLimited = false;
-        var statistic = terminal ? V2Statistics(row,out statisticsLimited) : null;
+        var statistic = terminal ? V2Statistics(options,row,out statisticsLimited) : null;
         if (statisticsLimited) reasons.Add("v2_capture_limit");
         if (statistic is null) reasons.Add("v2_statistics");
         var recordValue = row.ReadObservation.Record;
@@ -264,17 +264,17 @@ internal static class SingleActionRepeatJudgement
         }
         catch (FormatException) { return false; }
     }
-    private static (int Count,ProbeV2StatisticsReference Reference)? V2Statistics(ProbeV2Repeat row,out bool limited)
+    private static (int Count,ProbeV2StatisticsReference Reference)? V2Statistics(ProbeV2Options options,ProbeV2Repeat row,out bool limited)
     {
         limited = false;
         if (row.Statistics.Count != 1 || row.TerminalUnixMs is null) return null;
         var report = row.Statistics[0];
-        if (!V2Base64(report.RawBase64,32768,out limited) || limited) return null;
+        if (!V2Base64(report.RawBase64,options.Limits.MaxStatisticsReportBytes,out limited) || limited) return null;
         if (report.Sequence < 0 || report.ObservedElapsedMs < row.ElapsedMs || report.ObservedElapsedMs - row.ElapsedMs > 20000) return null;
         try
         {
             byte[] raw = Convert.FromBase64String(report.RawBase64);
-            var parsed = StrictJson.ParseDocument(raw,"statistics",new(32,32768,268435456,32768,10000,10000,2048),null);
+            var parsed = StrictJson.ParseDocument(raw,"statistics",new(options.Limits.MaxInputDepth,options.Limits.MaxStatisticsReportBytes,options.JudgeLimits.MaxTotalInputBytes,options.Limits.MaxStatisticsReportBytes,10000,10000,options.Limits.MaxDiagnosticBytes),null);
             if (!parsed.IsSuccess) return null;
             using var document = parsed.Value!;
             var root = document.RootElement;
@@ -285,7 +285,7 @@ internal static class SingleActionRepeatJudgement
                 !root.TryGetProperty("time",out var timeValue) || !StrictJson.TryGetInt64(timeValue,out long time) || time < 0 ||
                 !root.TryGetProperty("ts",out var tsValue) || !StrictJson.TryGetInt64(tsValue,out long ts) || ts < 0 || checked(time * 1000) < row.TerminalUnixMs ||
                 !root.TryGetProperty("brokers",out var brokers) || brokers.ValueKind != JsonValueKind.Object) return null;
-            if (brokers.EnumerateObject().Count() > 64) { limited = true; return null; }
+            if (brokers.EnumerateObject().Count() > options.JudgeLimits.MaxBrokerEntries) { limited = true; return null; }
             int count = 0;
             foreach (var broker in brokers.EnumerateObject())
             {

@@ -95,7 +95,7 @@ public sealed class ProbeV2JudgementTests
     [InlineData(32767,true)][InlineData(32768,true)][InlineData(32769,false)]
     public void Given_RawStatisticsBytes_When_Checked_Then_ExactCeilingApplies(int size,bool valid)
     {
-        var options = ProbeV2Fixture.Options(); var evidence = ProbeV2Fixture.Evidence(options,"C0","action"); var row = evidence.Capture!.Repeats[0];
+        var options = ProbeV2Fixture.Options(); options.Limits.MaxStatisticsReportBytes = 32768; var evidence = ProbeV2Fixture.Evidence(options,"C0","action"); var row = evidence.Capture!.Repeats[0];
         string raw = Encoding.UTF8.GetString(Convert.FromBase64String(row.Statistics[0].RawBase64));
         raw += new string(' ',size - Encoding.UTF8.GetByteCount(raw));
         row = row with { Statistics = [row.Statistics[0] with { RawBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw)) }] };

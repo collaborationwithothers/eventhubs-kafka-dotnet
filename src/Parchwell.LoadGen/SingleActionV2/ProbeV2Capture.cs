@@ -33,8 +33,10 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     {
         lock (gate)
         {
-            if (errors.Count >= limits.MaxClientErrors || Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes)
-            { MarkLimit(); return; }
+            if (errors.Count >= limits.MaxClientErrors)
+            { MarkLimit(nameof(limits.MaxClientErrors), errors.Count + 1L, limits.MaxClientErrors); return; }
+            if (Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes)
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(error.Reason), limits.MaxErrorBytes); return; }
             var value = ErrorValue(error, false, ++sequence);
             errors.Add(value);
             if (error.IsFatal) ObserveTerminal("error", value, value.ObservedElapsedMs);
@@ -44,7 +46,8 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     {
         lock (gate)
         {
-            if (Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes) { MarkLimit(); return; }
+            if (Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes)
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(error.Reason), limits.MaxErrorBytes); return; }
             ProbeV2Error value = ErrorValue(error, constructing, ++sequence);
             ObserveTerminal("error", value, value.ObservedElapsedMs);
         }
@@ -55,7 +58,7 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
         {
             long order = ++sequence;
             if (report.Error.IsError && Encoding.UTF8.GetByteCount(report.Error.Reason) > limits.MaxErrorBytes)
-            { MarkLimit(); return; }
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(report.Error.Reason), limits.MaxErrorBytes); return; }
             ProbeV2Error? error = report.Error.IsError ? ErrorValue(report.Error, false, order) : null;
             long elapsed = ElapsedMs;
             if (!string.IsNullOrEmpty(report.Topic) && report.Partition.Value >= 0 && report.Offset.Value >= 0)
@@ -72,10 +75,13 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
             if (value.IsPartitionEOF) { eofCount++; return; }
             if (unassigned) { Diagnostic("unassigned_record"); MarkLimit(); return; }
             recordsSeen++;
-            if (recordsSeen > limits.MaxNonmatchingRecords) { MarkLimit(); return; }
+            if (recordsSeen > limits.MaxNonmatchingRecords)
+            { MarkLimit(nameof(limits.MaxNonmatchingRecords), recordsSeen, limits.MaxNonmatchingRecords); return; }
             if (value.Topic != requested.Topic || value.Partition.Value != requested.Partition || value.Offset.Value != requested.Offset) return;
-            if (value.Message?.Key is not byte[] key || key.Length > limits.MaxKeyBytes || value.Message.Value?.Length > limits.MaxValueBytes)
-            { MarkLimit(); return; }
+            if (value.Message?.Key is not byte[] key) { MarkLimit(); return; }
+            if (key.Length > limits.MaxKeyBytes) { MarkLimit(nameof(limits.MaxKeyBytes), key.Length, limits.MaxKeyBytes); return; }
+            if (value.Message.Value?.Length > limits.MaxValueBytes)
+            { MarkLimit(nameof(limits.MaxValueBytes), value.Message.Value.Length, limits.MaxValueBytes); return; }
             record ??= new(value.Topic, value.Partition.Value, value.Offset.Value, Convert.ToBase64String(key),
                 value.Message.Value is null ? null : Convert.ToBase64String(value.Message.Value), ElapsedMs, order);
             ObserveTerminal("success", null, record.ObservedElapsedMs);
@@ -102,10 +108,12 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
             try
             {
                 var utf8 = new UTF8Encoding(false, true);
-                if (utf8.GetByteCount(raw) > limits.MaxStatisticsReportBytes) { MarkLimit(); return; }
+                int bytes = utf8.GetByteCount(raw);
+                if (bytes > limits.MaxStatisticsReportBytes)
+                { MarkLimit(nameof(limits.MaxStatisticsReportBytes), bytes, limits.MaxStatisticsReportBytes); return; }
                 statistics.Add(new(order, ElapsedMs, Convert.ToBase64String(utf8.GetBytes(raw))));
             }
-            catch (EncoderFallbackException) { MarkLimit(); }
+            catch (EncoderFallbackException) { MarkLimit("capture_rejected:StatisticsUtf8"); }
         }
     }
     internal void Log(LogMessage message)
@@ -131,11 +139,14 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
         lock (gate)
         {
             if (diagnostics.Contains(reason, StringComparer.Ordinal)) return;
-            if (Encoding.UTF8.GetByteCount(reason) > limits.MaxDiagnosticBytes || !diagnosticBudget.TryAdd(diagnostics, reason))
-            { MarkLimit(); return; }
+            if (Encoding.UTF8.GetByteCount(reason) > limits.MaxDiagnosticBytes)
+            { MarkLimit(nameof(limits.MaxDiagnosticBytes), Encoding.UTF8.GetByteCount(reason), limits.MaxDiagnosticBytes); return; }
+            if (!diagnosticBudget.TryAdd(diagnostics, reason))
+            { MarkLimit(nameof(limits.MaxDiagnostics), limits.MaxDiagnostics + 1L, limits.MaxDiagnostics); return; }
         }
     }
     internal void CaptureLimit() { lock (gate) MarkLimit(); }
+    internal void CaptureLimit(string name, long observed, long allowed) { lock (gate) MarkLimit(name, observed, allowed); }
     internal ProbeV2Repeat Snapshot(int repeat, string clientId, ProbeV2Stage stage, IReadOnlyDictionary<string, string> settings,
         IReadOnlyList<string> omitted, int[]? metadata, ProbeV2Requested requested)
     {
@@ -154,12 +165,14 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
         result = outcome;
         terminalError = error;
     }
-    private void MarkLimit()
+    private void MarkLimit(string name, long observed, long allowed) =>
+        MarkLimit(FormattableString.Invariant($"capture_rejected:{name}:observed={observed}:allowed={allowed}"));
+    private void MarkLimit(string? detail = null)
     {
         limit = true;
         if (!diagnostics.Contains("capture_limit", StringComparer.Ordinal))
         {
-            diagnosticBudget.MarkLimit(diagnostics);
+            diagnosticBudget.MarkLimit(diagnostics, detail);
         }
     }
 }
@@ -180,19 +193,22 @@ internal sealed class ProbeV2DiagnosticBudget(int maximum)
             return true;
         }
     }
-    internal void MarkLimit(List<string> target)
+    internal void MarkLimit(List<string> target, string? detail)
     {
         lock (gate)
         {
             if (!lists.Contains(target)) lists.Add(target);
-            if (count >= maximum)
+            foreach (string value in detail is null ? ["capture_limit"] : new[] { "capture_limit", detail })
             {
-                List<string> previous = lists.Last(value => value.Any(reason => reason != "capture_limit"));
-                previous.RemoveAt(previous.FindLastIndex(reason => reason != "capture_limit"));
-                count--;
+                if (count >= maximum)
+                {
+                    List<string> previous = lists.Last(value => value.Any(reason => reason != "capture_limit" && !reason.StartsWith("capture_rejected:", StringComparison.Ordinal)));
+                    previous.RemoveAt(previous.FindLastIndex(reason => reason != "capture_limit" && !reason.StartsWith("capture_rejected:", StringComparison.Ordinal)));
+                    count--;
+                }
+                target.Add(value);
+                count++;
             }
-            target.Add("capture_limit");
-            count++;
         }
     }
 }

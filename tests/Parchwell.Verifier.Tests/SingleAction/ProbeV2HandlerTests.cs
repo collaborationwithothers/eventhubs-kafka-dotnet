@@ -53,7 +53,7 @@ public sealed class ProbeV2HandlerTests
         var fixture = await Fixture.CreateAsync(); string capture = "/run/probe-inputs/run1-b08-c0-action/capture.json";
         if (mutation == "missing") fixture.Inputs.Files.Remove(capture);
         if (mutation == "invalid") fixture.Inputs.Files[capture] = "{}"u8.ToArray();
-        if (mutation == "oversized") fixture.Inputs.Files[capture] = new byte[524289];
+        if (mutation == "oversized") fixture.Inputs.Files[capture] = new byte[fixture.Options.Limits.MaxCaptureBytes + 1];
         if (mutation == "bad_pod")
         {
             string path = "/run/probe-inputs/run1-b08-c0-action/pod.json";
@@ -75,7 +75,7 @@ public sealed class ProbeV2HandlerTests
     {
         var fixture = await Fixture.CreateAsync();
         string path = kind == "scope" ? "/run/probe-inputs/scope/role-scope.json" : "/run/probe-inputs/run1-b08-c0-action/" + kind + ".json";
-        int limit = kind switch { "capture" => 524288,"scope" => 131072,_ => 65536 };
+        int limit = kind switch { "capture" => fixture.Options.Limits.MaxCaptureBytes,"scope" => 131072,_ => 65536 };
         fixture.Inputs.Files[path] = delta == -2 ? [] : Pad(fixture.Inputs.Files[path],limit + delta);
         Assert.Equal(0,await ProbeV2Host.RunAsync(() => fixture.Host));
         var candidate = ProbeV2Wire.Read<ProbeV2Candidate>(fixture.Store.Files[fixture.Prefix + "candidate.json"],16777216);
@@ -219,7 +219,7 @@ public sealed class ProbeV2HandlerTests
                 }).ToArray();
                 string root = Path.Combine(fixture.Options.InputRoot,capture.JobName);
                 fixture.Inputs.Files.Add(Path.Combine(root,"registration.json"),ProbeV2Wire.Write(evidence.Registration!,65536));
-                fixture.Inputs.Files.Add(Path.Combine(root,"capture.json"),ProbeV2Wire.Write(capture with { Repeats = rows },524288));
+                fixture.Inputs.Files.Add(Path.Combine(root,"capture.json"),ProbeV2Wire.Write(capture with { Repeats = rows },fixture.Options.Limits.MaxCaptureBytes));
                 fixture.Inputs.Files.Add(Path.Combine(root,"pod.json"),ProbeV2Wire.Write(evidence.Pod!,65536));
             }
             fixture.Inputs.Files.Add("/run/probe-inputs/scope/role-scope.json",ProbeV2Wire.Write(ProbeV2Fixture.Scope(fixture.Options),131072));

@@ -47,8 +47,11 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         using var actionCancellation = CancellationTokenSource.CreateLinkedTokenSource(token, actionDeadline.Token);
         try
         {
-            if (settings.Count > options.Limits.MaxSettingsKeys || settings.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value)) > options.Limits.MaxSettingsBytes)
-                capture.CaptureLimit();
+            int settingsBytes = settings.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value));
+            if (settings.Count > options.Limits.MaxSettingsKeys)
+                capture.CaptureLimit(nameof(options.Limits.MaxSettingsKeys), settings.Count, options.Limits.MaxSettingsKeys);
+            else if (settingsBytes > options.Limits.MaxSettingsBytes)
+                capture.CaptureLimit(nameof(options.Limits.MaxSettingsBytes), settingsBytes, options.Limits.MaxSettingsBytes);
             else
             {
                 if (stage.Action == "produce_one") producer = sessions.Producer(settings, capture, actionCancellation.Token);

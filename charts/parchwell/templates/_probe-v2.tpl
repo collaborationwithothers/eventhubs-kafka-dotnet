@@ -192,13 +192,19 @@ spec:
           emptyDir: {}
         {{- range $index,$dependency := $spec.dependencies }}
         - name: {{ printf "evidence-%d" $index }}
-          configMap:
-            name: {{ printf "%s-evidence" $dependency | quote }}
-            optional: true
-            items:
-              - {key: registration.json, path: registration.json}
-              - {key: capture.json, path: capture.json}
-              - {key: pod.json, path: pod.json}
+          projected:
+            sources:
+              {{- range $part := until 4 }}
+              - configMap:
+                  name: {{ printf "%s-evidence%s" $dependency (ternary "" (printf "-%d" $part) (eq $part 0)) | quote }}
+                  optional: true
+                  items:
+                    {{- if eq $part 0 }}
+                    - {key: registration.json, path: registration.json}
+                    - {key: pod.json, path: pod.json}
+                    {{- end }}
+                    - {key: {{ printf "capture.json.part%d" $part }}, path: {{ printf "capture.json.part%d" $part }}}
+              {{- end }}
         {{- end }}
         {{- if $judge }}
         - name: role-scope

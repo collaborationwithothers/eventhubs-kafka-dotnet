@@ -136,10 +136,10 @@ internal sealed class ProbeV2CaptureLimits
             IoSeconds != 10 ||
             PollSliceMs != 100 ||
             MetadataTimeoutMs != 60000 ||
-            MaxCaptureBytes != 524288 ||
+            MaxCaptureBytes != 2097152 ||
             MaxRegistrationBytes != 65536 ||
             MaxPodBytes != 65536 ||
-            MaxStatisticsReportBytes != 32768 ||
+            MaxStatisticsReportBytes != 262144 ||
             MaxStatisticsReports != 1 ||
             MaxClientErrors != 8 ||
             MaxErrorBytes != 1024 ||

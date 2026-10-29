@@ -23,17 +23,34 @@ def check_actor(directory):
                   'stage': identity['stage'], 'role': identity['service_account'], 'outcome': 'complete', 'collect': 0}
         path = case.artifacts / record['job']
         path.mkdir()
-        case.write(path / 'pods.json', {'items': [{'metadata': {'name': envelope['pod_name'], 'uid': envelope['pod_uid'],
+        pods = {'items': [{'metadata': {'name': envelope['pod_name'], 'uid': envelope['pod_uid'],
             'ownerReferences': [{'controller': True, 'kind': 'Job', 'name': envelope['owner_name']}]},
             'spec': {'serviceAccountName': envelope['service_account'], 'containers': [{'name': record['role'], 'image': phase['images']['loadgen']['reference']}]},
-            'status': {'containerStatuses': [{'name': record['role'], 'imageID': phase['images']['loadgen']['reference'], 'state': {'terminated': {'exitCode': 0}}}]}}]})
-        (path / f"{envelope['pod_name']}.containers.{record['role']}.log").write_bytes((directory / 'actor.stdout').read_bytes())
+            'status': {'containerStatuses': [{'name': record['role'], 'imageID': phase['images']['loadgen']['reference'], 'state': {'terminated': {'exitCode': 0}}}]}}]}
+        source_log = (directory / 'actor.stdout').read_bytes()
+        maximum_log = case.subject.limits['execution']['max_container_log_bytes']
+        def collect(args, seconds, output=None, maximum=4194304):
+            if args[1:3] == ['get', 'pods']:
+                case.write(output, pods)
+                return 0
+            if args[1] != 'logs' or f'--limit-bytes={maximum_log + 1}' not in args or maximum != maximum_log:
+                raise AssertionError('actor collection did not use the configured log budget')
+            output.write_bytes(source_log[:maximum])
+            return 125 if len(source_log) > maximum else 0
+        with patch.object(case.p, 'run', side_effect=collect):
+            if case.subject.collect(record) != (0, True):
+                raise AssertionError('actual actor log rejected by collection')
+        collected = path / f"{envelope['pod_name']}.containers.{record['role']}.log"
+        if collected.read_bytes() != source_log:
+            raise AssertionError('actual actor log changed by collection')
         with patch.object(case.p, 'run', side_effect=case.fake):
             if not case.subject.transfer(record):
                 raise AssertionError('actual actor bytes rejected by transport')
-        manifest = json.loads((case.private / 'probe-v2' / (record['job'] + '-evidence.json')).read_bytes())
+        payload = case.transported(record)
+        if len(case.calls) != 4 or any(call[0][1] != 'create' for call in case.calls):
+            raise AssertionError('actor transport did not create exactly four immutable parts')
         for name in ('registration.json', 'capture.json'):
-            if manifest['data'][name].encode() != (directory / name).read_bytes().rstrip(b'\r\n'):
+            if payload[name] != (directory / name).read_bytes().rstrip(b'\r\n'):
                 raise AssertionError('actor bytes changed by transport: ' + name)
     finally:
         case.doCleanups()

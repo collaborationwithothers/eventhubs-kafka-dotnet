@@ -5,7 +5,7 @@ using Xunit;
 namespace Parchwell.LoadGen.Tests.SingleActionV2;
 
 #pragma warning disable CA1707
-public sealed class ProbeV2InputsTests
+public sealed partial class ProbeV2InputsTests
 {
     [Fact]
     public async Task Given_FiveTypedErrorsWithoutDelivery_When_ReadHelperAdmits_Then_AllSlotsNeedNoClient()
@@ -56,12 +56,14 @@ public sealed class ProbeV2InputsTests
     private sealed class Fixture : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "probe-v2-inputs-" + Guid.NewGuid().ToString("N"));
+        internal string CapturePath => Path.Combine(directory, ProbeV2Options.Job(options.RunId, options.ScenarioId, options.ConfigurationId, "action"), "capture.json");
         internal ProbeV2Inputs Inputs { get; }
         internal ProbeV2Stage Stage { get; } = ProbeV2Stage.For("F06", "C2", "read");
         private readonly ProbeV2Options options = ProbeV2OptionsTests.Options("F06", "C2", "read");
-        internal Fixture()
+        internal Fixture(int? maximum = null)
         {
             options.InputRoot = directory;
+            if (maximum is { } bound) options.Limits.MaxCaptureBytes = bound;
             Inputs = new(options, new TestClock());
         }
         internal async Task WriteAsync(bool[] delivered, string? fault = null)
