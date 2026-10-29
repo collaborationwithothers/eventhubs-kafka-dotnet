@@ -363,8 +363,15 @@ class Phase:
                     raise Failure("image publish failed: " + worker, 1)
             reference = ":" + phase["source_commit"] if digests is None else "@" + digests[index]
             path = self.private / f"{worker}-digest.txt"
-            if self.run(self.image_command(worker, reference, acr), 60, output=path, maximum=4096):
-                raise Failure("image readback failed: " + worker, 1)
+            attempt_limit = 2 if phase["scenario"] == "probe-batch-2" else 1
+            for attempt in range(1, attempt_limit + 1):
+                status = self.run(self.image_command(worker, reference, acr), 60, output=path, maximum=4096)
+                detail = f"{worker} (attempt={attempt}/{attempt_limit}, exit={status})"
+                if status == 0:
+                    break
+                if status not in (1, 124) or attempt == attempt_limit:
+                    raise Failure("image readback failed: " + detail, 1)
+                print("image readback retry: " + detail, file=sys.stderr)
             digest = path.read_text().strip()
             if not re.fullmatch(DIGEST, digest) or (digests is not None and digest != digests[index]):
                 raise Failure("image digest mismatch: " + worker, 1)
