@@ -290,7 +290,8 @@ internal static class SingleActionConfigurationJudgement
             if (item == "E01")
             {
                 var seed = Raw((configuration,"seed"),ordinal); var seedread = Raw((configuration,"seedread"),ordinal);
-                if (seed?.Result != "success" || seedread?.Result != "success" || seedread.ReadObservation.Record?.ValueBase64 != seed.Requested?.ValueBase64) reasons.Add("v2_seed");
+                if (seed?.Result != "success" || seedread?.Result != "success" || seedread.ReadObservation.Record?.ValueBase64 != seed.Requested?.ValueBase64)
+                { reasons.Add("v2_seed"); controls = false; }
             }
             if (item == "F06" && configuration is "C9" or "C10" or "C11")
             {
@@ -304,8 +305,7 @@ internal static class SingleActionConfigurationJudgement
             bool fidelity = !action.Reasons.Any(x => x is "v2_identity" or "v2_configuration" or "v2_wire");
             security |= item == "F06" && configuration is "C2" or "C4" or "C10" or "C11" && fidelity && successEvidence;
             bool positive = item != "F06" || configuration is "C0" or "C1" or "C3" or "C5" or "C6" or "C7" or "C8" or "C9";
-            if (positive && (raw?.Result != "success" || read?.Record is null || semantic.ValueMatch != true)) controls = false;
-            if (item == "E01" && keys.Where(x => x.Stage is "seed" or "seedread").Any(x => Raw(x,ordinal)?.Result != "success")) controls = false;
+            if (positive && (raw?.Result != "success" || read?.Record is null || item != "E01" && semantic.ValueMatch != true)) controls = false;
             var projected = action with { Status = invalid ? "invalid" : reasons.Count == 0 ? "complete_valid" : "incomplete",
                 Reasons = reasons.Distinct(StringComparer.Ordinal).ToArray(), SemanticOutcome = semantic, ReadObservation = read,
                 SeedReference = seedReference,ControlReferences = references.ToArray(),Clients = clients.ToArray() };

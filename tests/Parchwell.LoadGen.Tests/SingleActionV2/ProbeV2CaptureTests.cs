@@ -10,6 +10,28 @@ namespace Parchwell.LoadGen.Tests.SingleActionV2;
 public sealed class ProbeV2CaptureTests
 {
     [Theory]
+    [InlineData("record",119999,"success")][InlineData("record",120000,"success")][InlineData("record",120001,"no_outcome")]
+    [InlineData("fatal",119999,"error")][InlineData("fatal",120000,"error")][InlineData("fatal",120001,"no_outcome")]
+    [InlineData("nonfatal",119999,null)][InlineData("nonfatal",120000,null)][InlineData("nonfatal",120001,"no_outcome")]
+    public void Given_FinalPollCrossesDeadline_When_CapturingSilence_Then_OnlyInWindowObservationsDisqualifyIt(string observation,long elapsed,string? outcome)
+    {
+        var clock = new TestClock { Milliseconds = elapsed };
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(),clock,0,120000);
+        var request = new ProbeV2Requested("document-state","explicit",0,41,"aw==","dg==");
+        if (observation == "record")
+            capture.Read(new ConsumeResult<byte[],byte[]> { Topic = "document-state",Partition = 0,Offset = 41,Message = new() { Key = [107],Value = [118] } },request);
+        else capture.Error(new Error(observation == "fatal" ? ErrorCode.Local_Fail : ErrorCode.Local_Transport,"synthetic",observation == "fatal"));
+        clock.Milliseconds = Math.Max(elapsed,120000);
+        capture.NoOutcome();
+        var result = capture.Snapshot(1,"pod-r1",ProbeV2Stage.For("F06","C10","action"),new Dictionary<string,string>(),[],null,request);
+        Assert.Equal(outcome,result.Result);
+        Assert.Equal(outcome is not null,result.Terminal);
+        if (observation == "record") Assert.Equal(elapsed,result.ReadObservation.Record!.ObservedElapsedMs);
+        else Assert.Equal(elapsed,Assert.Single(result.ClientErrors).ObservedElapsedMs);
+        Assert.False(capture.Limit);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("eA==")]

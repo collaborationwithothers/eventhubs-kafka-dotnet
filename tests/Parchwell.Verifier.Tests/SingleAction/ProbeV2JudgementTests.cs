@@ -228,6 +228,21 @@ public sealed class ProbeV2JudgementTests
         var candidate = SingleActionConfigurationJudgement.V2Candidate(options,evidence,ProbeV2Fixture.Check(options,evidence),ProbeV2Fixture.Scope(options),new Dictionary<string,ProbeV2Candidate>(StringComparer.Ordinal));
         Assert.Equal("complete_valid",candidate.Status); Assert.True(candidate.SecurityFinding); Assert.Equal("no_outcome",candidate.OutcomeClass!.Result);
     }
+    [Theory]
+    [InlineData(false,119999)][InlineData(false,120000)][InlineData(false,120001)]
+    [InlineData(true,119999)][InlineData(true,120000)][InlineData(true,120001)]
+    public void Given_CallbackAtSilenceBoundary_When_Judged_Then_LateErrorsRemainEvidenceWithoutChangingTheWindow(bool fatal,long observed)
+    {
+        var options = ProbeV2Fixture.Options("F06","C10");
+        var evidence = ProbeV2Fixture.Evidence(options,"C10","action");
+        var error = new ProbeV2Error(-1,fatal,"local","synthetic",observed,4);
+        var row = evidence.Capture!.Repeats[0] with { ClientErrors = [error] };
+        var result = SingleActionRepeatJudgement.JudgeV2Slot(options,evidence,row,row.Settings,[]);
+        Assert.Equal(observed > 120000 ? "complete_valid" : "invalid",result.Status);
+        Assert.Equal(observed <= 120000,result.Reasons.Contains("v2_terminal",StringComparer.Ordinal));
+        if (observed > 120000) Assert.Equal("no_outcome",result.OutcomeClass!.Result);
+        Assert.Equal(error,Assert.Single(row.ClientErrors));
+    }
     [Fact]
     public void Given_CleanupFailurePrefixThenResumedClient_When_CompletionChecked_Then_FailureCannotBeHidden()
     {

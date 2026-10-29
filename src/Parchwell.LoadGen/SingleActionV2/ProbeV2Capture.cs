@@ -85,7 +85,8 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     {
         lock (gate)
         {
-            if (terminal || limit || errors.Count != 0 || record is not null || ElapsedMs < windowMs) return;
+            if (terminal || limit || errors.Any(error => error.ObservedElapsedMs <= windowMs) ||
+                record is not null && record.ObservedElapsedMs <= windowMs || ElapsedMs < windowMs) return;
             terminal = true;
             terminalElapsed = windowMs;
             terminalUnix = clock.GetUtcNow().ToUnixTimeMilliseconds();

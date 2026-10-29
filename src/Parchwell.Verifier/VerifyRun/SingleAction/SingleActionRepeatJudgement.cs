@@ -140,7 +140,8 @@ internal static class SingleActionRepeatJudgement
             settingsLimited || row.ClientErrors.Any(ErrorLimited) || row.Error is not null && ErrorLimited(row.Error) ||
             row.Delivery?.Error is { } deliveryError && ErrorLimited(deliveryError)) reasons.Add("v2_capture_limit");
         if (row.Repeat is < 1 or > 5 || row.ReadObservation.RecordsSeen < 0 || row.ReadObservation.EofCount < 0 ||
-            row.ElapsedMs < 0 || row.TerminalUnixMs < 0 || row.ClientErrors.Any(x => !V2Error(x)) || row.Error is not null && !V2Error(row.Error)) Bad("v2_wire");
+            row.ElapsedMs < 0 || row.TerminalUnixMs < 0 || row.Statistics.Any(x => x.ObservedElapsedMs < 0 || x.Sequence < 0) ||
+            row.ClientErrors.Any(x => !V2Error(x)) || row.Error is not null && !V2Error(row.Error)) Bad("v2_wire");
         bool ErrorLimited(ProbeV2Error error) => Encoding.UTF8.GetByteCount(error.Reason) > options.Limits.MaxErrorBytes;
         bool PayloadValid(string? value,int maximum,bool nullable = false)
         {
@@ -167,6 +168,7 @@ internal static class SingleActionRepeatJudgement
         if (row.Action != matrix.Action || !settingsLimited && (expected.Count != row.Settings.Count || expected.Any(x => !row.Settings.TryGetValue(x.Key,out string? value) || value != x.Value)) ||
             !row.OmittedKeys.SequenceEqual(omitted,StringComparer.Ordinal) || omitted.Any(row.Settings.ContainsKey)) Bad("v2_configuration");
         var request = row.Requested;
+        if (request is { Partition: < 0 } or { Offset: < 0 }) Bad("v2_wire");
         bool keyValid = request is not null && PayloadValid(request.KeyBase64,options.Limits.MaxKeyBytes);
         bool valueValid = request is not null && PayloadValid(request.ValueBase64,options.Limits.MaxValueBytes,true);
         bool keyLimited = request is not null && V2Base64(request.KeyBase64,options.Limits.MaxKeyBytes,out bool kl) && kl;
@@ -206,7 +208,7 @@ internal static class SingleActionRepeatJudgement
         }
         else if (row.Result == "error" && row.Error is { } error && V2Error(error)) outcome = new("error",error.Code,error.IsFatal,error.Origin);
         else if (row.Result == "no_outcome" && options.ScenarioId == "F06" && evidence.Stage == "action" && evidence.Configuration is "C10" or "C11" &&
-            row.ElapsedMs == 120000 && row.Error is null && row.ClientErrors.Count == 0 && (row.ReadObservation.Record is null || row.ReadObservation.Record.ObservedElapsedMs > matrix.WindowMs) && row.Diagnostics.Count == 0)
+            row.ElapsedMs == 120000 && row.Error is null && row.ClientErrors.All(error => error.ObservedElapsedMs > matrix.WindowMs) && (row.ReadObservation.Record is null || row.ReadObservation.Record.ObservedElapsedMs > matrix.WindowMs) && row.Diagnostics.Count == 0)
             outcome = new("no_outcome",null,null,null);
         else if (row.Result is not null || row.Terminal) Bad("v2_terminal");
         if (row.Terminal && !V2TerminalOrder(row,matrix.WindowMs)) Bad("v2_terminal");

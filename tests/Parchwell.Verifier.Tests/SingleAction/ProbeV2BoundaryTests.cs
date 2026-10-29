@@ -10,6 +10,19 @@ namespace Parchwell.Verifier.Tests.SingleAction;
 public sealed class ProbeV2BoundaryTests
 {
     [Theory]
+    [InlineData("partition",-1)][InlineData("partition",0)][InlineData("partition",1)]
+    [InlineData("offset",-1)][InlineData("offset",0)][InlineData("offset",1)]
+    public void Given_RequestedLocationBoundary_When_Checked_Then_NegativeCoordinatesAreMalformed(string field,int value)
+    {
+        var (options,evidence,row) = Fixture("read");
+        var request = field == "partition" ? row.Requested! with { Partition = value } : row.Requested! with { Offset = value };
+        var record = value < 0 ? row.ReadObservation.Record! : field == "partition" ? row.ReadObservation.Record! with { Partition = value } : row.ReadObservation.Record! with { Offset = value };
+        var result = Judge(options,evidence,row with { Requested = request,ReadObservation = row.ReadObservation with { Record = record } });
+        Assert.Equal(value < 0 ? "invalid" : "complete_valid",result.Status);
+        Assert.Equal(value < 0,result.Reasons.Contains("v2_wire",StringComparer.Ordinal));
+    }
+
+    [Theory]
     [InlineData(0,"invalid")][InlineData(127,"complete_valid")][InlineData(128,"complete_valid")][InlineData(129,"incomplete")]
     public void Given_SettingsKeyCount_When_Checked_Then_ExhaustionIsIncompleteAndEmptyIsNotFidelity(int count,string status)
     {
@@ -247,6 +260,24 @@ public sealed class ProbeV2BoundaryTests
         var rows = Enumerable.Range(1,count).Select(i => ProbeV2Fixture.Row(options,"C0","action",i)).ToArray();
         var result = SingleActionConfigurationJudgement.V2EvidenceProblems(options,evidence with { Capture = evidence.Capture! with { Repeats = rows } });
         Assert.Equal(count == 5 ? Array.Empty<string>() : ["v2_wire"],result);
+    }
+
+    [Theory]
+    [InlineData("observed",-1,false)][InlineData("observed",0,false)][InlineData("observed",1,false)]
+    [InlineData("sequence",-1,false)][InlineData("sequence",0,false)][InlineData("sequence",1,false)]
+    [InlineData("observed",-1,true)][InlineData("observed",0,true)][InlineData("observed",1,true)]
+    [InlineData("sequence",-1,true)][InlineData("sequence",0,true)][InlineData("sequence",1,true)]
+    public void Given_OuterStatisticsNumericFields_When_Checked_Then_NegativesAreMalformedEvenWithoutTerminal(string field,long value,bool terminal)
+    {
+        var (options,evidence,row) = Fixture();
+        if (!terminal) row = row with { Terminal = false,TerminalUnixMs = null,Result = null };
+        var report = row.Statistics[0];
+        report = field == "observed" ? report with { ObservedElapsedMs = value } : report with { Sequence = value };
+        var result = Judge(options,evidence,row with { Statistics = [report] });
+        Assert.Equal(value < 0,result.Reasons.Contains("v2_wire",StringComparer.Ordinal));
+        Assert.Equal(value < 0 || terminal && field == "sequence" ? "invalid" : "incomplete",result.Status);
+        Assert.DoesNotContain("v2_capture_limit",result.Reasons);
+        if (!terminal || field == "observed") Assert.Contains("v2_statistics",result.Reasons);
     }
 
     private static string Utf8(int bytes) => new string('é',bytes / 2) + (bytes % 2 == 0 ? "" : "x");
