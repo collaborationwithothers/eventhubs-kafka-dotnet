@@ -107,6 +107,32 @@ public sealed class ProbeV2CaptureTests
         Assert.False(capture.Limit);
     }
 
+    [Theory]
+    [InlineData(ErrorCode.Local_Transport, -195, "local")]
+    [InlineData(ErrorCode.Unknown, -1, "broker")]
+    [InlineData(ErrorCode.TopicAuthorizationFailed, 29, "broker")]
+    public void Given_DeliveryErrorCode_When_Captured_Then_OriginFollowsLocalErrorFlag(ErrorCode code, int expected, string origin)
+    {
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 330000);
+        capture.Delivery(new() { Topic = "document-state", Partition = Partition.Any, Offset = Offset.Unset,
+            Status = PersistenceStatus.NotPersisted, Error = new Error(code) });
+        ProbeV2Repeat result = Snapshot(capture);
+        Assert.Equal("error", result.Result);
+        Assert.Equal(expected, result.Error!.Code);
+        Assert.Equal(origin, result.Error.Origin);
+    }
+
+    [Fact]
+    public void Given_UnknownCodeDuringConstruction_When_Captured_Then_ConstructionOriginTakesPrecedence()
+    {
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 330000);
+        capture.Exception(new Error(ErrorCode.Unknown), true);
+        ProbeV2Repeat result = Snapshot(capture);
+        Assert.Equal("error", result.Result);
+        Assert.Equal(-1, result.Error!.Code);
+        Assert.Equal("construction", result.Error.Origin);
+    }
+
     [Fact]
     public void Given_ErrorDeliveryWithUnsetLocation_When_Captured_Then_ErrorRetainedAndNoLocationInvented()
     {
