@@ -69,6 +69,14 @@ For a child issue of a split, read the parent items its body lists. Apply the ch
 
 When an item closes, Hari records his own time in one line on its issue, for example `Hari time: 1.5 h`. No measurement script is added now: comment history does not expire, and factory-outcome counts join the escape script planned with #17. Basis: #85, decision of 2026-10-20, decision 12 (https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-6284948629).
 
+## Execution and review record
+
+AGENTS.md "Before opening a pull request" owns the execution card and predicate-to-test preparation, frozen review inputs and complete reports, consolidated corrections, publication checkpoint, verification repetition and cost-complaint response. Its rules 5, 8, 11 and 13 own the review protocol, cumulative budget, stopping and handoff actions. Use those rules rather than treating a new session as a fresh review allowance.
+
+The single authored receipt connects the selected plan and recognized later decisions from "Item lifecycle" step 3 to the implementation and review reports. For directly authorized governance work without an approved item plan, it records the actual authorization, task brief and issue. Keep the PR description short and link the receipt; the final-head CI and last cold-review record belong there under AGENTS.md "Before opening a pull request" rule 8.
+
+For [the review-cost retrospective](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/247), adoption alone does not complete the issue. Record pilot evidence from the next implementation started after adoption: coverage prepared before review, complete reports before corrections, consolidated corrections, earliest authorized publication, cumulative comprehensive/focused and hosted review counts, and any surfaced budget conflicts. Close only after adoption and that pilot evidence; review limits are governance choices, with no claimed token savings.
+
 ## Plan template
 
 ```
