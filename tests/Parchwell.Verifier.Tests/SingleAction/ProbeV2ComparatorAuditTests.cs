@@ -247,12 +247,12 @@ public sealed class ProbeV2ComparatorAuditTests
 
     [Theory]
     [InlineData("scope",1)][InlineData("scope",2)][InlineData("scope",3)]
-    [InlineData("confirmation",0)][InlineData("confirmation",1)][InlineData("confirmation",2)]
+    [InlineData("confirmation",1)][InlineData("confirmation",2)][InlineData("confirmation",3)]
     public void Given_PermissionScopeSchemaBoundary_When_Checked_Then_OnlyDeclaredVersionsAreAdmitted(string field,int version)
     {
         var options = ProbeV2Fixture.Options("F06"); var scope = ProbeV2Fixture.Scope(options);
         scope = field == "scope" ? scope with { SchemaVersion = version } : scope with { EffectiveScope = scope.EffectiveScope! with { SchemaVersion = version } };
-        Assert.Equal(version == (field == "scope" ? 2 : 1),SingleActionConfigurationJudgement.V2Scope(options,scope));
+        Assert.Equal(version == 2,SingleActionConfigurationJudgement.V2Scope(options,scope));
     }
 
     [Theory]

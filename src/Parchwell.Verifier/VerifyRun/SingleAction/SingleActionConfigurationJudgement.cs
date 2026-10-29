@@ -202,7 +202,7 @@ internal static class SingleActionConfigurationJudgement
             !string.Equals(actual.Scope,x.Value.Scope,StringComparison.OrdinalIgnoreCase) || actual.PrincipalId != deployed.Accounts[x.Value.Account].PrincipalId)) return false;
         if (options.ScenarioId != "F06") return true;
         var confirmation = scope.EffectiveScope;
-        return confirmation is not null && confirmation.SchemaVersion == 1 && confirmation.SourceCommit == options.SourceCommit &&
+        return confirmation is not null && confirmation.SchemaVersion == 2 &&
             confirmation.NamespaceId == deployed.NamespaceId && confirmation.Accounts.Count == 2 &&
             V2ControlNames.All(alias => confirmation.Accounts.TryGetValue(alias,out var account) && account.NoAdditionalDataAccess && account.PrincipalId == deployed.Accounts[alias].PrincipalId) &&
             scope.EffectiveScopeSha256 is { Length:64 } hash && hash.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');

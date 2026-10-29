@@ -229,7 +229,7 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(49, rendered_count)
 
     def test_scope_is_private_bound_and_created_immutably_once(self):
-        confirmation = {'schema_version': 1, 'source_commit': SHA, 'namespace_id': NS,
+        confirmation = {'schema_version': 2, 'namespace_id': NS,
             'accounts': {a: {'principal_id': ACCOUNTS[a]['principal_id'], 'no_additional_data_access': True} for a in ('loadgen', 'enrichment-consumer')}}
         raw = json.dumps(confirmation, indent=2).encode()
         (self.private / 'probe-v2/effective-scope.json').write_bytes(raw)
@@ -249,10 +249,24 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual('create', self.calls[0][0][1])
 
     def test_missing_or_false_confirmation_stays_a_gap(self):
-        for invalid in (None, {'schema_version': 1, 'source_commit': SHA, 'namespace_id': NS, 'accounts': {'loadgen': {'principal_id': ACCOUNTS['loadgen']['principal_id'], 'no_additional_data_access': False}, 'enrichment-consumer': {'principal_id': ACCOUNTS['enrichment-consumer']['principal_id'], 'no_additional_data_access': True}}}):
+        for invalid in (None, {'schema_version': 2, 'namespace_id': NS, 'accounts': {'loadgen': {'principal_id': ACCOUNTS['loadgen']['principal_id'], 'no_additional_data_access': False}, 'enrichment-consumer': {'principal_id': ACCOUNTS['enrichment-consumer']['principal_id'], 'no_additional_data_access': True}}}):
             with self.subTest(invalid=invalid):
                 if invalid is not None:
                     self.write(self.private / 'probe-v2/effective-scope.json', invalid)
+                (self.private / f'probe-v2/{RUN}-v2-role-scope.json').unlink(missing_ok=True)
+                with patch.object(self.p, 'run', side_effect=self.fake):
+                    self.assertTrue(self.subject.scope())
+                snapshot = json.loads((self.private / 'probe-v2/role-scope.json').read_text())
+                self.assertIsNone(snapshot['effective_scope'])
+                self.assertIsNone(snapshot['effective_scope_sha256'])
+
+    def test_superseded_or_commit_bound_confirmation_stays_a_gap(self):
+        accounts = {a: {'principal_id': ACCOUNTS[a]['principal_id'], 'no_additional_data_access': True} for a in ('loadgen', 'enrichment-consumer')}
+        for invalid in ({'schema_version': 1, 'source_commit': SHA, 'namespace_id': NS, 'accounts': accounts},
+                        {'schema_version': 2, 'source_commit': SHA, 'namespace_id': NS, 'accounts': accounts},
+                        {'schema_version': 3, 'namespace_id': NS, 'accounts': accounts}):
+            with self.subTest(keys=sorted(invalid), version=invalid['schema_version']):
+                self.write(self.private / 'probe-v2/effective-scope.json', invalid)
                 (self.private / f'probe-v2/{RUN}-v2-role-scope.json').unlink(missing_ok=True)
                 with patch.object(self.p, 'run', side_effect=self.fake):
                     self.assertTrue(self.subject.scope())
