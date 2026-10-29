@@ -92,7 +92,7 @@ internal static class ProbeV2Fixture
         bool wide = options.ScenarioId != "B08";
         if (wide) { Add("probe_namespace_sender","probe","Azure Event Hubs Data Sender",ns); Add("probe_namespace_receiver","probe","Azure Event Hubs Data Receiver",ns); }
         return new(2,options.RunId,options.SourceCommit,options.NamespaceName,new(ns,topics,accounts,roles,wide),
-            new(1,options.SourceCommit,ns,new(StringComparer.Ordinal) { ["loadgen"] = new(accounts["loadgen"].PrincipalId,true),["enrichment-consumer"] = new(accounts["enrichment-consumer"].PrincipalId,true) }),new string('a',64));
+            new(2,ns,new(StringComparer.Ordinal) { ["loadgen"] = new(accounts["loadgen"].PrincipalId,true),["enrichment-consumer"] = new(accounts["enrichment-consumer"].PrincipalId,true) }),new string('a',64));
     }
     internal static Dictionary<(string Configuration,string Stage),ProbeV2RepeatProjection[]> Check(ProbeV2Options options,Dictionary<(string Configuration,string Stage),ProbeV2Evidence> evidence) =>
         evidence.ToDictionary(x => x.Key,x => x.Value.Capture!.Repeats.Select(row =>

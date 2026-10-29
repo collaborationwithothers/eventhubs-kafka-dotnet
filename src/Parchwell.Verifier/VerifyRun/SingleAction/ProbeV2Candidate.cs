@@ -23,6 +23,6 @@ internal sealed record ProbeV2Deployed(string NamespaceId, Dictionary<string,str
     Dictionary<string,ProbeV2Account> Accounts, Dictionary<string,ProbeV2Assignment> Assignments, bool ProbeNamespaceDataRoles);
 internal sealed record ProbeV2Account(string ClientId, string PrincipalId);
 internal sealed record ProbeV2Assignment(string ServiceAccount, string RoleDefinitionName, string Scope, string PrincipalId);
-internal sealed record ProbeV2Effective(int SchemaVersion, string SourceCommit, string NamespaceId,
+internal sealed record ProbeV2Effective(int SchemaVersion, string NamespaceId,
     Dictionary<string,ProbeV2Confirmation> Accounts);
 internal sealed record ProbeV2Confirmation(string PrincipalId, bool NoAdditionalDataAccess);

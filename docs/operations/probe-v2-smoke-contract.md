@@ -36,8 +36,7 @@ Terraform's sensitive `probe_v2_role_scope` output records the actual namespace,
 
 ```json
 {
-  "schema_version": 1,
-  "source_commit": "<tested full source commit>",
+  "schema_version": 2,
   "namespace_id": "<actual namespace resource ID>",
   "accounts": {
     "loadgen": {"principal_id": "<actual principal>", "no_additional_data_access": true},
@@ -48,7 +47,9 @@ Terraform's sensitive `probe_v2_role_scope` output records the actual namespace,
 
 The confirmation covers both controls on all three targets, including direct, inherited, group and custom-role data access beyond the managed assignments. It is a trusted reviewed assertion, not a conclusion manufactured from Terraform. Missing or mismatched confirmation prevents permission-scope acceptance.
 
-The prepare step receives that secret only as `S_PROBE_V2_EFFECTIVE_SCOPE`. It keeps raw bytes private, validates source/namespace/principals against deployed outputs, and records their SHA-256. The workflow materializes the bounded private role snapshot after namespace reset. Only judges mount it. Public candidates contain aliases and scope classes, never raw role material, tenant, subscription or principal identifiers.
+The confirmation is bound to the namespace and the two principals it describes, not to a source commit, so a merge to `main` does not invalidate it. Hari re-issues it when either narrow identity, the namespace or the intended access of the narrow controls changes. It does not detect access added in Azure after it is signed. Version 1 confirmations, which carried `source_commit`, are rejected.
+
+The prepare step receives that secret only as `S_PROBE_V2_EFFECTIVE_SCOPE`. It keeps raw bytes private, validates the schema version, namespace and principals against deployed outputs, and records their SHA-256. The workflow materializes the bounded private role snapshot after namespace reset. Only judges mount it. Public candidates contain aliases and scope classes, never raw role material, tenant, subscription or principal identifiers.
 
 ## Completion and subsequent work
 

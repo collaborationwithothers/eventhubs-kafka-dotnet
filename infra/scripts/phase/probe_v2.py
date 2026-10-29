@@ -183,8 +183,8 @@ class ProbeV2:
         confirmation = digest = None
         try:
             raw, candidate = read(self.p.private / "probe-v2/effective-scope.json", 32768)
-            if (not closed(candidate, "schema_version source_commit namespace_id accounts") or type(candidate["schema_version"]) is not int
-                    or candidate["schema_version"] != 1 or candidate["source_commit"] != phase["source_commit"]
+            if (not closed(candidate, "schema_version namespace_id accounts") or type(candidate["schema_version"]) is not int
+                    or candidate["schema_version"] != 2
                     or candidate["namespace_id"] != deployed["namespace_id"] or not closed(candidate["accounts"], "loadgen enrichment-consumer")):
                 raise ValueError("v2_effective_scope")
             for name, identity in candidate["accounts"].items():
