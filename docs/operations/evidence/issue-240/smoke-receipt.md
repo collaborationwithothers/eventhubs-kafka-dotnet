@@ -53,6 +53,8 @@ dotnet tests/Parchwell.Verifier.Tests/bin/Debug/net10.0/Parchwell.Verifier.Tests
 PARCHWELL_V2_CONTRACT_EXPORT="$fresh_judge_export" dotnet tests/Parchwell.Verifier.Tests/bin/Debug/net10.0/Parchwell.Verifier.Tests.dll -namespace 'Parchwell.Verifier.Tests.SingleAction' -noLogo
 ```
 
+The second cold review found that a missing envelope suppressed identity mismatches in remaining evidence, and that a nonterminal Persisted delivery incorrectly required readback. The verifier now checks every available identity and pairwise pod binding before applying completion gaps. Helper admission requires a terminal source with its request; late delivery after an earlier terminal error remains readback and security evidence. Added regression cases cover missing-file combinations, partial identity mismatches and absent-terminal admission. The same verifier build and test commands above passed with zero build warnings/errors, 463 focused V2 tests and 1150 SingleAction tests, none failed or skipped. A fresh actual judge export again passed transport and receipt-hash validation with the unchanged actor export.
+
 ## Repeating producer/transport integration
 
 Set `PARCHWELL_PROBE_V2_FIXTURE_DIRECTORY` and `PARCHWELL_V2_CONTRACT_EXPORT` to separate fresh temporary directories before running the current .NET test suites. The actor lifecycle test writes actor.stdout, registration.json, capture.json and pod.json from actual worker execution; the verifier lifecycle test writes candidate.json and judge-completion.json from the actual handler/host. Then run:

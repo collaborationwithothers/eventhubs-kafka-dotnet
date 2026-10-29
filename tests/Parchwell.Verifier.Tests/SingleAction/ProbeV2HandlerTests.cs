@@ -127,6 +127,28 @@ public sealed class ProbeV2HandlerTests
         byte[] padded = new byte[length]; padded.AsSpan().Fill(32); source.CopyTo(padded,0); return padded;
     }
 
+    [Theory]
+    [InlineData("registration")][InlineData("capture")][InlineData("pod")]
+    public async Task Given_MissingFileAndWrongAvailableIdentity_When_HostPublishes_Then_CandidateIsInvalid(string missing)
+    {
+        var fixture = await Fixture.CreateAsync(); string root = "/run/probe-inputs/run1-b08-c0-action/";
+        fixture.Inputs.Files.Remove(root + missing + ".json");
+        if (missing == "pod")
+        {
+            var registration = ProbeV2Wire.Read<ProbeV2Registration>(fixture.Inputs.Files[root + "registration.json"],65536);
+            fixture.Inputs.Files[root + "registration.json"] = ProbeV2Wire.Write(registration with { SourceCommit = new string('2',40) },65536);
+        }
+        else
+        {
+            var pod = ProbeV2Wire.Read<ProbeV2Pod>(fixture.Inputs.Files[root + "pod.json"],65536);
+            fixture.Inputs.Files[root + "pod.json"] = ProbeV2Wire.Write(pod with { ImageDigest = "sha256:" + new string('c',64) },65536);
+        }
+        Assert.Equal(0,await ProbeV2Host.RunAsync(() => fixture.Host));
+        var candidate = ProbeV2Wire.Read<ProbeV2Candidate>(fixture.Store.Files[fixture.Prefix + "candidate.json"],16777216);
+        Assert.Equal("invalid",candidate.Status); Assert.Null(candidate.Deterministic);
+        Assert.All(candidate.Repeats,row => { Assert.Contains("v2_identity",row.Reasons); Assert.Contains("v2_completion",row.Reasons); });
+    }
+
     [Fact]
     public async Task Given_ExistingCandidate_When_JudgeRuns_Then_CreateOnlyWriteCannotOverwriteIt()
     {

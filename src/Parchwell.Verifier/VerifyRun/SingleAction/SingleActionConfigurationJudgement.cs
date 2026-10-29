@@ -129,18 +129,23 @@ internal static class SingleActionConfigurationJudgement
         var registration = evidence.Registration; var capture = evidence.Capture; var pod = evidence.Pod;
         var matrix = ProbeV2Matrix.For(options.ScenarioId,evidence.Configuration,evidence.Stage);
         string job = ProbeV2Matrix.Job(options.RunId,options.ScenarioId,evidence.Configuration,evidence.Stage);
-        if (registration is null || capture is null || pod is null) { reasons.Add("v2_completion"); return reasons.Distinct(StringComparer.Ordinal).ToArray(); }
-        if (registration.SchemaVersion != 2 || registration.Mode != "single-action-v2" || !registration.Synthetic ||
+        if (registration is null || capture is null || pod is null) reasons.Add("v2_completion");
+        if (registration is not null && (registration.SchemaVersion != 2 || registration.Mode != "single-action-v2" || !registration.Synthetic ||
             registration.RunId != options.RunId || registration.ScenarioId != options.ScenarioId || registration.ConfigurationId != evidence.Configuration ||
             registration.Stage != evidence.Stage || registration.SourceCommit != options.SourceCommit || registration.JobName != job ||
-            registration.ServiceAccount != matrix.Account || registration.PodName.Length > 63 || !Pod(registration.PodName,job) || !SingleActionWire.Text(registration.PodUid) ||
-            capture.SchemaVersion != 2 || capture.Mode != registration.Mode || !capture.Synthetic || capture.RunId != registration.RunId ||
-            capture.ScenarioId != registration.ScenarioId || capture.ConfigurationId != registration.ConfigurationId || capture.Stage != registration.Stage ||
-            capture.SourceCommit != registration.SourceCommit || capture.JobName != registration.JobName || capture.PodName != registration.PodName ||
-            capture.PodUid != registration.PodUid || capture.ServiceAccount != registration.ServiceAccount ||
-            pod.SchemaVersion != 2 || pod.JobName != job || pod.OwnerKind != "Job" || pod.OwnerName != job || pod.PodName != registration.PodName ||
-            pod.PodUid != registration.PodUid || pod.ServiceAccount != matrix.Account || pod.ImageDigest != options.ImageDigests()["loadgen"])
+            registration.ServiceAccount != matrix.Account || registration.PodName.Length > 63 || !Pod(registration.PodName,job) || !SingleActionWire.Text(registration.PodUid)))
             reasons.Add("v2_identity");
+        if (capture is not null && (capture.SchemaVersion != 2 || capture.Mode != "single-action-v2" || !capture.Synthetic || capture.RunId != options.RunId ||
+            capture.ScenarioId != options.ScenarioId || capture.ConfigurationId != evidence.Configuration || capture.Stage != evidence.Stage ||
+            capture.SourceCommit != options.SourceCommit || capture.JobName != job || capture.ServiceAccount != matrix.Account ||
+            capture.PodName.Length > 63 || !Pod(capture.PodName,job) || !SingleActionWire.Text(capture.PodUid))) reasons.Add("v2_identity");
+        if (pod is not null && (pod.SchemaVersion != 2 || pod.JobName != job || pod.OwnerKind != "Job" || pod.OwnerName != job ||
+            pod.PodName.Length > 63 || !Pod(pod.PodName,job) || !SingleActionWire.Text(pod.PodUid) ||
+            pod.ServiceAccount != matrix.Account || pod.ImageDigest != options.ImageDigests()["loadgen"])) reasons.Add("v2_identity");
+        if (registration is not null && capture is not null && (registration.PodName != capture.PodName || registration.PodUid != capture.PodUid) ||
+            registration is not null && pod is not null && (registration.PodName != pod.PodName || registration.PodUid != pod.PodUid) ||
+            capture is not null && pod is not null && (capture.PodName != pod.PodName || capture.PodUid != pod.PodUid)) reasons.Add("v2_identity");
+        if (capture is null) return reasons.Distinct(StringComparer.Ordinal).ToArray();
         if (capture.Repeats.Count != 5 || !capture.Repeats.Select(x => x.Repeat).SequenceEqual(Enumerable.Range(1,5)) ||
             !SingleActionWire.Text(capture.ManagedVersion) || !SingleActionWire.Text(capture.NativeVersion)) reasons.Add("v2_wire");
         if (capture.Repeats.Sum(x => x.Diagnostics.Count) > options.Limits.MaxDiagnostics) reasons.Add("v2_capture_limit");
@@ -248,7 +253,7 @@ internal static class SingleActionConfigurationJudgement
                 var source = Raw(sourceKey,ordinal);
                 bool sourceReceipt = evidence.TryGetValue(sourceKey,out var sourceEvidence) && sourceEvidence.Capture is { HandlerExitCode:0, CleanupCompleted:true, HostCleanupCompleted:true } &&
                     V2EvidenceProblems(options,sourceEvidence).Length == 0;
-                string admission = sourceReceipt && source is not null && SingleActionRepeatJudgement.V2Delivered(source) ? "required" :
+                string admission = sourceReceipt && source is { Terminal:true,Requested:not null } && SingleActionRepeatJudgement.V2Delivered(source) ? "required" :
                     sourceReceipt && source is { Terminal:true,Result:"error",Error:not null } ? "not_applicable_no_delivery" : "not_attempted_dependency";
                 if (matrix.Action == "assign_consume")
                 {
