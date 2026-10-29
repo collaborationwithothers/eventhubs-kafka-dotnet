@@ -16,6 +16,9 @@
     <Content Include="../../scenarios/C08/scenario.yaml" Link="scenarios/C08/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/C12/scenario.yaml" Link="scenarios/C12/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/F04/scenario.yaml" Link="scenarios/F04/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/B08/scenario.yaml" Link="scenarios/B08/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/E01/scenario.yaml" Link="scenarios/E01/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/F06/scenario.yaml" Link="scenarios/F06/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/profiles/saturation-ramp.yaml" Link="scenarios/profiles/saturation-ramp.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>

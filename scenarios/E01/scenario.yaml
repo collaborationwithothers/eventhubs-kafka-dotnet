@@ -1,0 +1,51 @@
+schema_version: 1
+id: E01
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+- VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0: {}
+  C1: {}
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+- id: single_action.outcome
+  role: VerifierConsumer
+- id: single_action.client_errors
+  role: VerifierConsumer
+probe_v2:
+  configurations:
+    C0:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: probe
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: empty
+      window_ms: 330000
+      key_rule: e01_unique
+      read_rule: delivery_location
+    C1:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: probe
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: 'null'
+      window_ms: 330000
+      key_rule: e01_unique
+      read_rule: delivery_location

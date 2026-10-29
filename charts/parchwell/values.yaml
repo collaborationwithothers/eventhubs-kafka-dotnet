@@ -128,3 +128,54 @@ runtime:
       ProcessLifetimeSeconds: 90
       IoSeconds: 10
       CleanupSeconds: 10
+    probe_v2:
+      capture:
+        PostTerminalStatisticsSeconds: 20
+        CleanupSeconds: 10
+        HostCleanupSeconds: 10
+        IoSeconds: 10
+        PollSliceMs: 100
+        MetadataTimeoutMs: 60000
+        MaxCaptureBytes: 524288
+        MaxRegistrationBytes: 65536
+        MaxPodBytes: 65536
+        MaxStatisticsReportBytes: 32768
+        MaxStatisticsReports: 1
+        MaxClientErrors: 8
+        MaxErrorBytes: 1024
+        MaxDiagnostics: 100
+        MaxDiagnosticBytes: 2048
+        CallbackQueueCapacity: 128
+        MaxSettingsKeys: 128
+        MaxSettingsBytes: 16384
+        MaxNonmatchingRecords: 4096
+        MaxInputDepth: 32
+        MaxKeyBytes: 4096
+        MaxValueBytes: 4096
+        MaxClientLogBytes: 16384
+      judge:
+        ProcessLifetimeSeconds: 90
+        IoSeconds: 10
+        CleanupSeconds: 10
+        MaxCandidateBytes: 16777216
+        MaxJudgeReceiptBytes: 65536
+        MaxTotalInputBytes: 268435456
+        MaxInputFiles: 256
+        MaxBrokerEntries: 64
+        MaxRoleScopeBytes: 131072
+        MaxEffectiveScopeBytes: 32768
+      execution:
+        producer_process_seconds: 1920
+        producer_job_seconds: 1980
+        reader_process_seconds: 840
+        reader_job_seconds: 900
+        judge_job_seconds: 120
+        termination_grace_seconds: 30
+        collection_seconds_per_stage: 120
+        admission_seconds: 14400
+        max_container_log_bytes: 1048576
+      parsing:
+        MaxDocumentCharacters: 1048576
+        MaxNestingDepth: 32
+        MaxScalarCharacters: 65536
+        MaxParserEvents: 100000

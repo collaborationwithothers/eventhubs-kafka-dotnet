@@ -203,6 +203,8 @@ Single Azure Monitor backbone (ADR-007). Workspace-based Application Insights re
 
 **Decision.** Option 4. Local authentication disabled on the namespace. One user-assigned identity per workload: `loadgen` gets Azure Event Hubs Data Sender on `document-events` only; `enrichment-consumer` gets Data Receiver on `document-events` and Data Sender on `document-state` and the DLQ; `verifier` gets Data Receiver only on Event Hubs. Storage roles for `loadgen` and `verifier` are in ADR-012. The verifier keeps Storage Blob Data Reader on `ledger` and receives Storage Blob Data Contributor on a separate verifier-only container in the same ephemeral storage account. Only the verifier workload identity writes that container. Its start-line notes and run results are written create-only; it cannot write the ledger evidence it judges.
 
+Test-only exception adopted on [issue #240](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6490720216): only an explicitly approved live probe batch 2 environment may add Azure Event Hubs Data Sender and Data Receiver at its ephemeral namespace scope to probe. Event-hub-scoped control identities, verifier identity, Blob permissions and network isolation remain unchanged. The namespace-role flag defaults to false; legacy probes cannot enable it.
+
 **Consequences.**
 - No secrets anywhere in the cluster or the repo.
 - The refresh handler is the repo's own code, so its failure modes are the repo's responsibility (F03, FM-06).
@@ -799,7 +801,7 @@ ADR-020 removes cost from results and removes reservation/reconciliation; the hi
 ## 9. Security and identity
 
 - **Data plane: Entra only.** Local (SAS) authentication disabled on the namespace. OAUTHBEARER through a custom refresh handler using `WorkloadIdentityCredential` (ADR-003).
-- **Least privilege.** Role assignments at event hub scope, not namespace, per identity. No identity can create or delete topics. Assignments live in Terraform. The two ledger roles are scoped to the `ledger` container, not the storage account (ADR-012).
+- **Least privilege.** Role assignments follow ADR-003, including its explicitly selected test-only probe exception. No identity can create or delete topics. Assignments live in Terraform. The two ledger roles are scoped to the `ledger` container, not the storage account (ADR-012).
 - **Workload identity.** One user-assigned identity per workload, federated to a single Kubernetes service account in a single namespace. Federated credentials recreated per cluster.
 - **Control plane.** AKS local accounts disabled; Entra integration with Azure RBAC for Kubernetes. Terraform apply runs through the protected scenario environment requiring Hari's approval. Destroy-only recovery also trusts the main-only `parchwell-sweeper` environment without required reviewers, using a second federated credential on the same app. Hari creates both external prerequisites; no new identity or role assignment is introduced ([decision #114/6332413257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/114#issuecomment-6332413257)).
 - **Network.** Public network access disabled on Event Hubs and Storage. Private endpoints only. AKS API server access through authorised IP ranges covering Hari's address and the runner VNet's egress address (private cluster deferred; it adds friction for local kubectl without changing the data-plane posture). Workflow access and dispatch restrictions are owned by AGENTS.md hard safety rules 8 and 9.

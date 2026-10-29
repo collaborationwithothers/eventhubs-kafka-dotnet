@@ -451,3 +451,11 @@ Validation used .NET SDK 10.0.402 installed at `~/.dotnet`, selected with `PATH=
 - `git diff --check`: no output.
 
 No Azure call, workflow dispatch or mutation campaign was run.
+
+## Schema-two smoke judgement
+
+`--single-action-v2-judge` judges mounted V2 captures and publishes create-only candidates followed by final completion receipts. `--validate-single-action-v2-judge-configuration` checks its closed environment without evidence, token or network access. It uses `ProbeV2Judge__` options and constructs no Kafka client.
+
+The [V2 evidence contract](single-action-contract.md#schema-two-live-probes) owns the closed schemas, dependency admission, image binding, masks and V1-V12 checks. Decision predicates stay in the existing SingleActionRepeatJudgement and SingleActionConfigurationJudgement mutation targets. [Smoke acceptance](probe-v2-smoke-contract.md#smoke-acceptance) owns positive-control diagnostics and the requirement for null item assessment. Complete wire evidence does not manufacture a positive control, and failed controls cannot be repaired by transport. Runtime bounds come from [the V2 table](probe-v2-runtime-limits.json).
+
+Private role snapshots are read only by the judge. Public candidates retain aliases and checked fields, not private principal/tenant/subscription data or raw native logs. The legacy codec remains three-image/schema-one; V2 uses its separate two-image codec. Hosted mutation acceptance remains necessary for later scientific evidence-pack publication under the factory policy.

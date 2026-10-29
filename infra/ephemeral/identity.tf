@@ -1,5 +1,5 @@
 locals {
-  workload_roles = {
+  baseline_workload_roles = {
     probe_events_receiver              = { workload = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_eventhubs["document-events"].id }
     probe_single_action_contributor    = { workload = "probe", role_definition_name = "Storage Blob Data Contributor", scope = module.storage.containers.single_action.id }
     verifier_single_action_reader      = { workload = "verifier", role_definition_name = "Storage Blob Data Reader", scope = module.storage.containers.single_action.id }
@@ -13,6 +13,10 @@ locals {
     verifier_ledger_reader             = { workload = "verifier", role_definition_name = "Storage Blob Data Reader", scope = module.storage.containers.ledger.id }
     verifier_results_contributor       = { workload = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = module.storage.containers.verifier.id }
   }
+  workload_roles = merge(local.baseline_workload_roles, var.probe_namespace_data_roles ? {
+    probe_namespace_sender   = { workload = "probe", role_definition_name = "Azure Event Hubs Data Sender", scope = module.eventhubs.resource_id }
+    probe_namespace_receiver = { workload = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_id }
+  } : {})
 }
 
 resource "azurerm_role_assignment" "workload" {

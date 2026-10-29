@@ -103,3 +103,9 @@ The declaration catalogue includes ledger.delivery_error_code, ledger.delivery_l
 producer.request_timeout is a declaration of required request-level evidence, not an existing managed callback. [Native request timeout logging](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L1043-L1049) is distinct from [message delivery timeout translation](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L4766-L4770). Each approved item plan names the collection channel and ordering evidence. Bridge/export/result support is separately planned in [#59](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/59).
 
 ADR-013 remains binding: timeout/retry ambiguity or incomplete guard evidence prevents authoritative outcome totals. Missing counts never become zero or falsify A01 H3. Unit fixtures are synthetic and in-memory.
+
+## Live probe batch 2 definitions
+
+B08, E01 and F06 use the closed `probe_v2.configurations` declaration, mutually exclusive with `single_action`. Its rows contain exactly action, role, service_account, topic, partition_mode, partition, value_kind, window_ms, key_rule and read_rule. The fixed [V2 matrix and evidence rules](single-action-contract.md#schema-two-live-probes) own their allowed combinations; arbitrary accounts, topics, keys, modes or terminal rules are rejected.
+
+All use five repeats, no replacement, no fault/gate, and one single_action.outcome/client_errors measure for each declared role. B08 C0 has no delta; C1 changes only partitioner from consistent_random to murmur2_random. E01/F06 have no Kafka deltas. Both worker images package these definitions and their existing workload profile. [Smoke-only admission](probe-v2-smoke-contract.md) does not add expected-outcome files or scientific verdicts.

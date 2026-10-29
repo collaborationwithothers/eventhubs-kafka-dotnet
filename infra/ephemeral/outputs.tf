@@ -20,3 +20,31 @@ output "private_endpoint_ips" {
     blob      = data.azurerm_private_endpoint_connection.blob.private_service_connection[0].private_ip_address
   }
 }
+
+output "probe_v2_role_scope" {
+  description = "Private applied identity and role-scope evidence for probe V2; not proof of absent inherited access."
+  sensitive   = true
+  value = {
+    namespace_id = module.eventhubs.resource_id
+    topics = {
+      document-events     = module.eventhubs.resource_eventhubs["document-events"].id
+      document-state      = azurerm_eventhub.state.id
+      document-events-dlq = module.eventhubs.resource_eventhubs["document-events-dlq"].id
+    }
+    accounts = {
+      for account in ["loadgen", "probe", "enrichment-consumer", "verifier"] : account => {
+        client_id    = local.persistent.workload_identities[account].client_id
+        principal_id = local.persistent.workload_identities[account].principal_id
+      }
+    }
+    assignments = {
+      for key, role in local.workload_roles : key => {
+        service_account      = role.workload
+        role_definition_name = azurerm_role_assignment.workload[key].role_definition_name
+        scope                = azurerm_role_assignment.workload[key].scope
+        principal_id         = azurerm_role_assignment.workload[key].principal_id
+      }
+    }
+    probe_namespace_data_roles = var.probe_namespace_data_roles
+  }
+}

@@ -1,0 +1,171 @@
+schema_version: 1
+id: F06
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+- VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0: {}
+  C1: {}
+  C2: {}
+  C3: {}
+  C4: {}
+  C5: {}
+  C6: {}
+  C7: {}
+  C8: {}
+  C9: {}
+  C10: {}
+  C11: {}
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+- id: single_action.outcome
+  role: VerifierConsumer
+- id: single_action.client_errors
+  role: VerifierConsumer
+probe_v2:
+  configurations:
+    C0:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: loadgen
+      topic: document-events
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C1:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: probe
+      topic: document-events
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C2:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: loadgen
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C3:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: probe
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C4:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: loadgen
+      topic: document-events-dlq
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C5:
+      action: produce_one
+      role: LoadGenProducer
+      service_account: probe
+      topic: document-events-dlq
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 330000
+      key_rule: f06_unique
+      read_rule: delivery_location
+    C6:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: probe
+      topic: document-events
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location
+    C7:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: probe
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location
+    C8:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: probe
+      topic: document-events-dlq
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location
+    C9:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: enrichment-consumer
+      topic: document-events
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location
+    C10:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: enrichment-consumer
+      topic: document-state
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location
+    C11:
+      action: assign_consume
+      role: VerifierConsumer
+      service_account: enrichment-consumer
+      topic: document-events-dlq
+      partition_mode: explicit
+      partition: 0
+      value_kind: marker
+      window_ms: 120000
+      key_rule: f06_seed
+      read_rule: seeded_location

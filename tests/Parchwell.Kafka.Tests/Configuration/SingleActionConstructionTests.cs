@@ -16,6 +16,18 @@ namespace Parchwell.Kafka.Tests.Configuration;
 [Trait("Category", "Native")]
 public sealed class SingleActionConstructionTests
 {
+    [Fact]
+    public void Given_Murmur2PartitionerDelta_When_BuildingBaselineProducer_Then_NativeClientConstructs()
+    {
+        using var services = Services();
+        var baseline = services.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer().Configuration;
+        var settings = baseline.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        Assert.Equal("consistent_random", settings["partitioner"]);
+        settings["partitioner"] = "murmur2_random";
+        Build(services, settings, KafkaClientRole.LoadGenProducer);
+        Assert.Equal("consistent_random", baseline.Get("partitioner"));
+    }
+
     [Theory]
     [InlineData("B01", "C0")]
     [InlineData("B01", "C1")]

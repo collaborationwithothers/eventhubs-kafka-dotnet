@@ -17,7 +17,10 @@
         "B05",
         "C08",
         "C12",
-        "F04"
+        "F04",
+        "B08",
+        "E01",
+        "F06"
       ]
     },
     "configuration_id": {
@@ -26,7 +29,14 @@
         "C1",
         "C2",
         "C3",
-        "C4"
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
       ]
     },
     "runtime": {
@@ -61,7 +71,14 @@
             "C1",
             "C2",
             "C3",
-            "C4"
+            "C4",
+            "C5",
+            "C6",
+            "C7",
+            "C8",
+            "C9",
+            "C10",
+            "C11"
           ]
         },
         "mode": {
@@ -72,7 +89,9 @@
             "judge",
             "single-action",
             "single-action-judge",
-            "single-action-seed"
+            "single-action-seed",
+            "single-action-v2",
+            "single-action-v2-judge"
           ]
         },
         "repeat": {
@@ -472,6 +491,65 @@
                 "IoSeconds": 10,
                 "CleanupSeconds": 10
               }
+            },
+            "probe_v2": {
+              "type": "object",
+              "const": {
+                "capture": {
+                  "PostTerminalStatisticsSeconds": 20,
+                  "CleanupSeconds": 10,
+                  "HostCleanupSeconds": 10,
+                  "IoSeconds": 10,
+                  "PollSliceMs": 100,
+                  "MetadataTimeoutMs": 60000,
+                  "MaxCaptureBytes": 524288,
+                  "MaxRegistrationBytes": 65536,
+                  "MaxPodBytes": 65536,
+                  "MaxStatisticsReportBytes": 32768,
+                  "MaxStatisticsReports": 1,
+                  "MaxClientErrors": 8,
+                  "MaxErrorBytes": 1024,
+                  "MaxDiagnostics": 100,
+                  "MaxDiagnosticBytes": 2048,
+                  "CallbackQueueCapacity": 128,
+                  "MaxSettingsKeys": 128,
+                  "MaxSettingsBytes": 16384,
+                  "MaxNonmatchingRecords": 4096,
+                  "MaxInputDepth": 32,
+                  "MaxKeyBytes": 4096,
+                  "MaxValueBytes": 4096,
+                  "MaxClientLogBytes": 16384
+                },
+                "judge": {
+                  "ProcessLifetimeSeconds": 90,
+                  "IoSeconds": 10,
+                  "CleanupSeconds": 10,
+                  "MaxCandidateBytes": 16777216,
+                  "MaxJudgeReceiptBytes": 65536,
+                  "MaxTotalInputBytes": 268435456,
+                  "MaxInputFiles": 256,
+                  "MaxBrokerEntries": 64,
+                  "MaxRoleScopeBytes": 131072,
+                  "MaxEffectiveScopeBytes": 32768
+                },
+                "execution": {
+                  "producer_process_seconds": 1920,
+                  "producer_job_seconds": 1980,
+                  "reader_process_seconds": 840,
+                  "reader_job_seconds": 900,
+                  "judge_job_seconds": 120,
+                  "termination_grace_seconds": 30,
+                  "collection_seconds_per_stage": 120,
+                  "admission_seconds": 14400,
+                  "max_container_log_bytes": 1048576
+                },
+                "parsing": {
+                  "MaxDocumentCharacters": 1048576,
+                  "MaxNestingDepth": 32,
+                  "MaxScalarCharacters": 65536,
+                  "MaxParserEvents": 100000
+                }
+              }
             }
           }
         },
@@ -496,6 +574,18 @@
             "null"
           ],
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?-f04-seed-receipt$"
+        },
+        "stage": {
+          "enum": [
+            "seed",
+            "seedread",
+            "action",
+            "read",
+            "judge"
+          ]
+        },
+        "probe_namespace_data_roles": {
+          "type": "boolean"
         }
       },
       "allOf": [
@@ -503,72 +593,19 @@
           "if": {
             "properties": {
               "mode": {
-                "const": "judge"
+                "enum": [
+                  "single-action-v2",
+                  "single-action-v2-judge"
+                ]
               }
-            },
-            "required": [
-              "mode"
-            ]
-          },
-          "then": {
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "repeat"
-                  ]
-                },
-                {
-                  "required": [
-                    "loadgen_job_name"
-                  ]
-                }
-              ]
             }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "mode": {
-                "enum": [
-                  "start-line",
-                  "loadgen",
-                  "verify"
-                ]
-              }
-            },
-            "required": [
-              "mode"
-            ]
-          },
-          "then": {
-            "required": [
-              "repeat",
-              "loadgen_job_name"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "mode": {
-                "enum": [
-                  "single-action",
-                  "single-action-judge",
-                  "single-action-seed"
-                ]
-              }
-            },
-            "required": [
-              "mode"
-            ]
           },
           "then": {
             "required": [
               "action_role",
               "image_smoke",
-              "enrichment_image"
+              "stage",
+              "probe_namespace_data_roles"
             ],
             "not": {
               "anyOf": [
@@ -581,23 +618,59 @@
                   "required": [
                     "loadgen_job_name"
                   ]
+                },
+                {
+                  "required": [
+                    "enrichment_image"
+                  ]
+                },
+                {
+                  "required": [
+                    "seed_receipt_configmap"
+                  ]
                 }
               ]
             },
             "properties": {
+              "bounds": {
+                "required": [
+                  "probe_v2"
+                ]
+              },
               "service_accounts": {
                 "required": [
                   "loadgen",
                   "verifier",
                   "probe",
                   "enrichment-consumer"
-                ]
-              },
-              "blob": {
+                ],
                 "properties": {
-                  "containers": {
+                  "loadgen": {
                     "required": [
-                      "single_action"
+                      "name",
+                      "client_id",
+                      "subject"
+                    ]
+                  },
+                  "verifier": {
+                    "required": [
+                      "name",
+                      "client_id",
+                      "subject"
+                    ]
+                  },
+                  "probe": {
+                    "required": [
+                      "name",
+                      "client_id",
+                      "subject"
+                    ]
+                  },
+                  "enrichment-consumer": {
+                    "required": [
+                      "name",
+                      "client_id",
+                      "subject"
                     ]
                   }
                 }
@@ -605,38 +678,164 @@
             }
           },
           "else": {
-            "not": {
-              "anyOf": [
-                {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "judge"
+                    }
+                  },
                   "required": [
-                    "action_role"
+                    "mode"
                   ]
                 },
-                {
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "repeat"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "loadgen_job_name"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "start-line",
+                        "loadgen",
+                        "verify"
+                      ]
+                    }
+                  },
                   "required": [
-                    "image_smoke"
+                    "mode"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "repeat",
+                    "loadgen_job_name"
                   ]
                 }
-              ]
-            },
-            "properties": {
-              "service_accounts": {
+              },
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "single-action",
+                        "single-action-judge",
+                        "single-action-seed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "action_role",
+                    "image_smoke",
+                    "enrichment_image"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "repeat"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "loadgen_job_name"
+                        ]
+                      }
+                    ]
+                  },
+                  "properties": {
+                    "service_accounts": {
+                      "required": [
+                        "loadgen",
+                        "verifier",
+                        "probe",
+                        "enrichment-consumer"
+                      ]
+                    },
+                    "blob": {
+                      "properties": {
+                        "containers": {
+                          "required": [
+                            "single_action"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "action_role"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "image_smoke"
+                        ]
+                      }
+                    ]
+                  },
+                  "properties": {
+                    "service_accounts": {
+                      "not": {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "probe"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "enrichment-consumer"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
                 "not": {
                   "anyOf": [
                     {
                       "required": [
-                        "probe"
+                        "stage"
                       ]
                     },
                     {
                       "required": [
-                        "enrichment-consumer"
+                        "probe_namespace_data_roles"
                       ]
                     }
                   ]
                 }
               }
-            }
+            ]
           }
         }
       ]
@@ -650,63 +849,141 @@
             "properties": {
               "mode": {
                 "enum": [
-                  "single-action",
-                  "single-action-judge",
-                  "single-action-seed"
-                ]
-              }
-            },
-            "required": [
-              "mode"
-            ]
-          }
-        },
-        "required": [
-          "runtime"
-        ]
-      },
-      "then": {
-        "properties": {
-          "scenario_id": {
-            "enum": [
-              "B01",
-              "B03",
-              "B05",
-              "C08",
-              "C12",
-              "F04"
-            ]
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "scenario_id": {
-            "enum": [
-              "A01",
-              "B04"
-            ]
-          },
-          "configuration_id": {
-            "enum": [
-              "C0",
-              "C1",
-              "C3"
-            ]
-          },
-          "runtime": {
-            "properties": {
-              "phase": {
-                "enum": [
-                  "probe",
-                  "C0",
-                  "C1",
-                  "C3"
+                  "single-action-v2",
+                  "single-action-v2-judge"
                 ]
               }
             }
           }
         }
+      },
+      "then": {
+        "properties": {
+          "scenario_id": {
+            "enum": [
+              "B08",
+              "E01",
+              "F06"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "scenario_id": {
+                  "enum": [
+                    "B08",
+                    "E01"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "configuration_id": {
+                  "enum": [
+                    "C0",
+                    "C1"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "scenario_id": {
+                  "enum": [
+                    "E01",
+                    "F06"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "runtime": {
+                  "properties": {
+                    "probe_namespace_data_roles": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "else": {
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "runtime": {
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "single-action",
+                        "single-action-judge",
+                        "single-action-seed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                }
+              },
+              "required": [
+                "runtime"
+              ]
+            },
+            "then": {
+              "properties": {
+                "scenario_id": {
+                  "enum": [
+                    "B01",
+                    "B03",
+                    "B05",
+                    "C08",
+                    "C12",
+                    "F04"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "scenario_id": {
+                  "enum": [
+                    "A01",
+                    "B04"
+                  ]
+                },
+                "configuration_id": {
+                  "enum": [
+                    "C0",
+                    "C1",
+                    "C3"
+                  ]
+                },
+                "runtime": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "probe",
+                        "C0",
+                        "C1",
+                        "C3"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   ]

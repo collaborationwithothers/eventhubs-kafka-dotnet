@@ -122,6 +122,7 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.MessageMaxBytes, KafkaScenarioOverrideValueKind.Integer, 1000, 1_000_000_000, [KafkaClientRole.LoadGenProducer], ["B01"], [NativeConfiguration]),
         new(KafkaSettingKeys.MessageTimeoutMs, KafkaScenarioOverrideValueKind.Integer, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration]),
         new(KafkaSettingKeys.CompressionType, ["none", "gzip", "snappy", "lz4", "zstd"], false, false, [KafkaClientRole.LoadGenProducer], ["B03"], [NativeConfiguration]),
+        new(KafkaSettingKeys.Partitioner, ["consistent_random", "murmur2_random"], false, false, [KafkaClientRole.LoadGenProducer], ["B08"], [NativeConfiguration]),
         new(KafkaSettingKeys.TransactionalId, [], true, true, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.GroupProtocol, ["classic", "consumer"], false, false, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.GroupId, [], true, false, [KafkaClientRole.EnrichmentConsumer], ["C12"], [NativeConfiguration]),

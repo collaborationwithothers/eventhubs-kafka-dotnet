@@ -68,3 +68,9 @@ variable "persistent_backend_use_oidc" {
   default     = true
   description = "Use workload OIDC for the persistent backend; false selects the operator's configured non-OIDC authentication."
 }
+
+variable "probe_namespace_data_roles" {
+  type        = bool
+  default     = false
+  description = "Enable the explicitly approved test-only probe V2 namespace Sender and Receiver exception."
+}
