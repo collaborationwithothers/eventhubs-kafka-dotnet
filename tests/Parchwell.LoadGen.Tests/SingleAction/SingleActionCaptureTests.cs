@@ -538,6 +538,7 @@ public sealed class SingleActionCaptureTests
     [InlineData(ErrorCode.Local_Fail, -196, "local")]
     [InlineData(ErrorCode.Local_AllBrokersDown, -187, "local")]
     [InlineData(ErrorCode.TopicAuthorizationFailed, 29, "broker")]
+    [InlineData(ErrorCode.Unknown, -1, "broker")]
     public async Task Given_FirstRuleCallbackCodes_When_Capturing_Then_RetainsActualCodeWithoutFiltering(ErrorCode code, int expected, string origin)
     {
         var fixture = new Fixture();

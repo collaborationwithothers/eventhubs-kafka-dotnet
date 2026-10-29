@@ -131,7 +131,7 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
             return (_errors.ToArray(), _errorsDropped, _statistics.ToArray(), _diagnostics.AsReadOnly());
         }
     }
-    internal static string Origin(Error error) => error.IsBrokerError ? "broker" : "local";
+    internal static string Origin(Error error) => error.IsLocalError ? "local" : "broker";
     private bool EnqueueLocked(Action callback)
     {
         if (_limit) return false;

@@ -155,7 +155,7 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
             terminalError, errors.ToArray(), statistics.ToArray(), diagnostics.AsReadOnly());
     }
     private ProbeV2Error ErrorValue(Error error, bool constructing, long order) => new((int)error.Code, error.IsFatal,
-        constructing ? "construction" : error.IsBrokerError ? "broker" : "local", error.Reason, ElapsedMs, order);
+        constructing ? "construction" : error.IsLocalError ? "local" : "broker", error.Reason, ElapsedMs, order);
     private void ObserveTerminal(string outcome, ProbeV2Error? error, long elapsed)
     {
         if (terminal || limit || elapsed > windowMs) return;

@@ -36,6 +36,7 @@ public sealed class SeedF04Tests
     [Theory]
     [InlineData(ErrorCode.TopicAuthorizationFailed, "broker")]
     [InlineData(ErrorCode.Local_MsgTimedOut, "local")]
+    [InlineData(ErrorCode.Unknown, "broker")]
     public async Task Given_delivery_failure_When_executed_Then_measured_error_is_retained(ErrorCode code, string origin)
     {
         var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, RecordingProducer>();
