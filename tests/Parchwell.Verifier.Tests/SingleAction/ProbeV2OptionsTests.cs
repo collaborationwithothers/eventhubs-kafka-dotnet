@@ -84,6 +84,64 @@ public sealed class ProbeV2OptionsTests
     {
         var values = Values(); values["PARCHWELL_POD_UID"] = "other"; Assert.Throws<InvalidOperationException>(() => Read(values));
     }
+    [Theory]
+    [InlineData("run",0,false)][InlineData("run",1,true)][InlineData("run",2,true)][InlineData("run",28,true)][InlineData("run",29,true)][InlineData("run",30,false)]
+    [InlineData("namespace",0,false)][InlineData("namespace",1,true)][InlineData("namespace",2,true)][InlineData("namespace",62,true)][InlineData("namespace",63,true)][InlineData("namespace",64,false)]
+    [InlineData("pod",0,false)][InlineData("pod",62,true)][InlineData("pod",63,true)][InlineData("pod",64,false)]
+    [InlineData("commit",0,false)][InlineData("commit",39,false)][InlineData("commit",40,true)][InlineData("commit",41,false)]
+    [InlineData("loadgen_digest",0,false)][InlineData("loadgen_digest",63,false)][InlineData("loadgen_digest",64,true)][InlineData("loadgen_digest",65,false)]
+    [InlineData("verifier_digest",0,false)][InlineData("verifier_digest",63,false)][InlineData("verifier_digest",64,true)][InlineData("verifier_digest",65,false)]
+    public void Given_IdentityStringLengthBoundary_When_Validated_Then_ExactWireAndDnsBoundsApply(string field,int length,bool valid)
+    {
+        var options = ProbeV2Fixture.Options();
+        switch (field)
+        {
+            case "run":
+                options.RunId = new string('a',length); options.JobName = ProbeV2Matrix.Job(options.RunId,"B08","C0","judge"); options.PodName = options.JobName + "-abc"; break;
+            case "namespace": options.NamespaceName = new string('a',length); break;
+            case "pod": options.PodName = length == 0 ? "" : options.JobName + "-" + new string('a',length - options.JobName.Length - 1); break;
+            case "commit": options.SourceCommit = new string('a',length); break;
+            case "loadgen_digest": options.LoadGenImage = "registry.test/loadgen@sha256:" + new string('a',length); break;
+            default: options.VerifierImage = "registry.test/verifier@sha256:" + new string('a',length); break;
+        }
+        if (valid) options.Validate();
+        else Assert.Throws<InvalidOperationException>(options.Validate);
+    }
+
+    [Theory]
+    [InlineData("ProbeV2Judge:")][InlineData("ProbeV2Judge:Limits:")][InlineData("ProbeV2Judge:JudgeLimits:")][InlineData("ProbeV2Judge:ScenarioLoadOptions:")]
+    public void Given_EmptyOptionGroup_When_Validated_Then_CompleteShapeIsStillRequired(string prefix)
+    {
+        var values = Values();
+        foreach (string key in values.Keys.Where(key => key.StartsWith(prefix,StringComparison.Ordinal)).ToArray()) values.Remove(key);
+        Assert.Throws<InvalidOperationException>(() => Read(values));
+    }
+
+    public static TheoryData<string> StringLeaves => new(Values().Where(pair => pair.Key.StartsWith("ProbeV2Judge:",StringComparison.Ordinal) &&
+        !pair.Key.StartsWith("ProbeV2Judge:Limits:",StringComparison.Ordinal) && !pair.Key.StartsWith("ProbeV2Judge:JudgeLimits:",StringComparison.Ordinal) &&
+        !pair.Key.StartsWith("ProbeV2Judge:ScenarioLoadOptions:",StringComparison.Ordinal)).Select(pair => pair.Key));
+    [Theory,MemberData(nameof(StringLeaves))]
+    public void Given_EmptyIdentityOption_When_Validated_Then_RequiredTextCannotBeOmitted(string name)
+    {
+        var values = Values(); values[name] = ""; Assert.Throws<InvalidOperationException>(() => Read(values));
+    }
+
+    [Theory]
+    [InlineData("user",0)][InlineData("user",1)][InlineData("user",2)]
+    [InlineData("query",0)][InlineData("query",1)][InlineData("query",2)]
+    [InlineData("fragment",0)][InlineData("fragment",1)][InlineData("fragment",2)]
+    public void Given_BlobUriOptionalComponentLength_When_Validated_Then_EachComponentMustBeEmpty(string component,int length)
+    {
+        var options = ProbeV2Fixture.Options(); string text = new('x',length);
+        options.BlobServiceUri = component switch
+        {
+            "user" => "https://" + (length == 0 ? "" : text + "@") + "syntheticstore.blob.core.windows.net/",
+            "query" => "https://syntheticstore.blob.core.windows.net/" + (length == 0 ? "" : "?" + text[..^1]),
+            _ => "https://syntheticstore.blob.core.windows.net/" + (length == 0 ? "" : "#" + text[..^1])
+        };
+        if (length == 0) options.Validate(); else Assert.Throws<InvalidOperationException>(options.Validate);
+    }
+
     private static ProbeV2Options Read(Dictionary<string,string?> values) => ProbeV2Options.Read(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
     private static Dictionary<string,string?> Values()
     {
