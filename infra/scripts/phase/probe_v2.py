@@ -22,6 +22,16 @@ CANDIDATE_KEYS = "schema_version mode synthetic run_id scenario_id configuration
 RECEIPT_KEYS = "schema_version mode run_id scenario_id configuration_id source_commit job_name pod_name pod_uid candidate_name candidate_sha256 handler_exit_code cleanup_completed".split()
 
 
+CAPTURE_PART_BYTES = 524288
+CAPTURE_PART_COUNT = 4
+
+
+class TransferLimit(ValueError):
+    def __init__(self, limit, observed, allowed):
+        super().__init__("v2_transport_limit")
+        self.details = {"limit": limit, "observed": observed, "allowed": allowed}
+
+
 def closed(value, keys):
     return isinstance(value, dict) and set(value) == set(keys.split() if isinstance(keys, str) else keys)
 
@@ -192,16 +202,16 @@ class ProbeV2:
         private_json(self.p.private / "probe-v2/role-scope.json", snapshot)
         return self.configmap(phase["run_id"] + "-v2-role-scope", {"role-scope.json": encoded.decode()})
 
-    def configmap(self, name, data):
+    def configmap(self, name, data, *, binary=False):
         phase = self.p.read("phase.json")
         manifest = {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": name, "namespace": "parchwell",
-                    "labels": {"app.kubernetes.io/instance": phase["run_id"]}}, "immutable": True, "data": data}
+                    "labels": {"app.kubernetes.io/instance": phase["run_id"]}}, "immutable": True, "binaryData" if binary else "data": data}
         path = self.p.private / "probe-v2" / (name + ".json")
         if path.exists():
             raise ValueError("v2_configmap_already_materialized")
         raw = private_json(path, manifest)
         if len(raw) > 1048576:
-            raise ValueError("v2_configmap_limit")
+            raise TransferLimit("configmap_bytes", len(raw), 1048576)
         return self.p.run(["kubectl", "create", "-f", str(path), "--request-timeout=30s"], 60) == 0
 
     def pod(self, record):
@@ -229,18 +239,22 @@ class ProbeV2:
         decode(json.dumps(envelope).encode(), 65536)
         return envelope
 
-    @staticmethod
-    def capture_shape(document):
+    def capture_shape(self, document):
         def strings(value):
             return isinstance(value, list) and all(isinstance(v, str) for v in value)
 
-        def binary(value, maximum, nullable=False):
+        def binary(value, maximum, nullable=False, limit=None):
             if value is None:
                 return nullable
             if not isinstance(value, str):
                 return False
             try:
-                return len(base64.b64decode(value, validate=True)) <= maximum
+                observed = len(base64.b64decode(value, validate=True))
+                if limit is not None and observed > maximum:
+                    raise TransferLimit(limit, observed, maximum)
+                return observed <= maximum
+            except TransferLimit:
+                raise
             except (ValueError, binascii.Error):
                 return False
 
@@ -269,7 +283,7 @@ class ProbeV2:
                 return False
             for report in slot["statistics"]:
                 if (not closed(report, "sequence observed_elapsed_ms raw_base64") or not integer(report["sequence"])
-                        or not integer(report["observed_elapsed_ms"]) or not binary(report["raw_base64"], 32768)):
+                        or not integer(report["observed_elapsed_ms"]) or not binary(report["raw_base64"], self.limits["capture"]["MaxStatisticsReportBytes"], limit="statistics_report_bytes")):
                     return False
             requested = slot["requested"]
             if requested is not None and (not closed(requested, "topic partition_mode partition offset key_base64 value_base64")
@@ -297,17 +311,22 @@ class ProbeV2:
         try:
             pod = self.pod(record)
             path = self.p.artifacts / record["job"] / f"{pod['pod_name']}.containers.{record['role']}.log"
-            if not 0 < path.stat().st_size <= 1048576:
-                raise ValueError("v2_log_limit")
-            lines = path.read_bytes().splitlines(keepends=True)
+            maximum = self.limits["execution"]["max_container_log_bytes"]
+            with path.open("rb") as stream:
+                log = stream.read(maximum + 1)
+            if not 0 < len(log) <= maximum:
+                raise TransferLimit("container_log_bytes", len(log), maximum)
+            lines = log.splitlines(keepends=True)
             found = {}
             indexes = {}
             capture_document = None
-            for key, marker, bound in (("registration.json", REGISTRATION_MARKER, 65536), ("capture.json", CAPTURE_MARKER, 524288)):
+            for key, marker, bound in (("registration.json", REGISTRATION_MARKER, self.limits["capture"]["MaxRegistrationBytes"]), ("capture.json", CAPTURE_MARKER, self.limits["capture"]["MaxCaptureBytes"])):
                 matches = [(index, line[len(marker):].removesuffix(b"\n").removesuffix(b"\r")) for index, line in enumerate(lines) if line.startswith(marker)]
                 if len(matches) != 1:
                     raise ValueError("v2_receipt_count")
                 index, raw = matches[0]
+                if len(raw) > bound:
+                    raise TransferLimit(key + "_bytes", len(raw), bound)
                 document = decode(raw, bound)
                 expected_keys = IDENTITY_KEYS if key == "registration.json" else IDENTITY_KEYS + ["managed_version", "native_version", "repeats", "handler_exit_code", "cleanup_completed", "host_cleanup_completed"]
                 if not closed(document, expected_keys) or type(document["schema_version"]) is not int or document["schema_version"] != 2 or document["mode"] != "single-action-v2" or document["synthetic"] is not True:
@@ -321,12 +340,23 @@ class ProbeV2:
                     if not self.capture_shape(document):
                         raise ValueError("v2_capture_shape")
                     capture_document = document
-                found[key] = raw.decode("utf-8")
+                found[key] = raw
                 indexes[key] = index
             if indexes["registration.json"] >= indexes["capture.json"]:
                 raise ValueError("v2_receipt_order")
-            found["pod.json"] = json.dumps(pod, separators=(",", ":"))
-            transferred = self.configmap(record["job"] + "-evidence", found)
+            found["pod.json"] = json.dumps(pod, separators=(",", ":")).encode("utf-8")
+            decode(found["pod.json"], self.limits["capture"]["MaxPodBytes"])
+            capture = found.pop("capture.json")
+            if len(capture) > CAPTURE_PART_BYTES * CAPTURE_PART_COUNT:
+                raise TransferLimit("capture_parts_bytes", len(capture), CAPTURE_PART_BYTES * CAPTURE_PART_COUNT)
+            transferred = True
+            for part in range(CAPTURE_PART_COUNT):
+                payload = found.copy() if part == 0 else {}
+                payload[f"capture.json.part{part}"] = capture[part * CAPTURE_PART_BYTES:(part + 1) * CAPTURE_PART_BYTES]
+                name = record["job"] + "-evidence" + (f"-{part}" if part else "")
+                if not self.configmap(name, {key: base64.b64encode(value).decode("ascii") for key, value in payload.items()}, binary=True):
+                    transferred = False
+                    break
             if transferred:
                 record["admitted_client_slots"] = sum(slot["admission"] == "required" for slot in capture_document["repeats"])
                 record["capture_complete"] = (capture_document["handler_exit_code"] == 0
@@ -337,8 +367,11 @@ class ProbeV2:
                         saved.update(admitted_client_slots=record["admitted_client_slots"], capture_complete=record["capture_complete"])
                 self.p.save_state(state)
             return transferred
-        except (OSError, ValueError, KeyError, TypeError, UnicodeError, AttributeError):
-            private_json(self.p.artifacts / record["job"] / "v2-transfer-gap.json", {"job": record["job"], "reason": "v2_evidence_transport"})
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError, AttributeError) as exception:
+            gap = {"job": record["job"], "reason": "v2_evidence_transport"}
+            if isinstance(exception, TransferLimit):
+                gap.update(exception.details)
+            private_json(self.p.artifacts / record["job"] / "v2-transfer-gap.json", gap)
             return False
 
     def wait(self, job, seconds):
@@ -391,9 +424,13 @@ class ProbeV2:
             public_pod(pod)
             private_json(directory / "pods.json", data)
             path = directory / f"{name}.containers.{record['role']}.log"
-            code = self.p.run(["kubectl", "logs", "-n", "parchwell", name, "-c", record["role"], "--timestamps=false", "--limit-bytes=1048577", "--request-timeout=30s"], 30, output=path, maximum=1048576)
+            maximum = self.limits["execution"]["max_container_log_bytes"]
+            code = self.p.run(["kubectl", "logs", "-n", "parchwell", name, "-c", record["role"], "--timestamps=false", f"--limit-bytes={maximum + 1}", "--request-timeout=30s"], 30, output=path, maximum=maximum)
             if code:
-                gaps.append({"kind": "truncated_log" if code == 125 else "log_read_failed", "status": code})
+                gap = {"kind": "truncated_log" if code == 125 else "log_read_failed", "status": code}
+                if code == 125:
+                    gap.update(limit="container_log_bytes", observed=maximum + 1, observed_at_least=True, allowed=maximum)
+                gaps.append(gap)
         except (OSError, ValueError, KeyError, TypeError, UnicodeError):
             gaps.append({"kind": "pod_collection"})
         private_json(directory / "collection-status.json", {"complete": not gaps, "gaps": gaps})

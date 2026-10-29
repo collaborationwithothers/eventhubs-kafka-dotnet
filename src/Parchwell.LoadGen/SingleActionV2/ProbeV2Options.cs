@@ -34,8 +34,8 @@ internal sealed class ProbeV2Limits
     internal static ProbeV2Limits Fixed() => new()
     {
         PostTerminalStatisticsSeconds = 20, CleanupSeconds = 10, HostCleanupSeconds = 10, IoSeconds = 10,
-        PollSliceMs = 100, MetadataTimeoutMs = 60000, MaxCaptureBytes = 524288, MaxRegistrationBytes = 65536,
-        MaxPodBytes = 65536, MaxStatisticsReportBytes = 32768, MaxStatisticsReports = 1, MaxClientErrors = 8,
+        PollSliceMs = 100, MetadataTimeoutMs = 60000, MaxCaptureBytes = 2097152, MaxRegistrationBytes = 65536,
+        MaxPodBytes = 65536, MaxStatisticsReportBytes = 262144, MaxStatisticsReports = 1, MaxClientErrors = 8,
         MaxErrorBytes = 1024, MaxDiagnostics = 100, MaxDiagnosticBytes = 2048, CallbackQueueCapacity = 128,
         MaxSettingsKeys = 128, MaxSettingsBytes = 16384, MaxNonmatchingRecords = 4096, MaxInputDepth = 32,
         MaxKeyBytes = 4096, MaxValueBytes = 4096, MaxClientLogBytes = 16384

@@ -101,10 +101,25 @@ internal sealed partial class ProbeV2Inputs(ProbeV2Options options, TimeProvider
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, timeout.Token);
         string directory = Path.Combine(options.InputRoot, job);
         string path = Path.Combine(directory, name);
+        if (name != "capture.json" || File.Exists(path))
+            return await FileBytesAsync(path, maximum, false, linked.Token).ConfigureAwait(false);
+        using var combined = new MemoryStream();
+        for (int part = 0; part < 4; part++)
+        {
+            byte[] bytes = await FileBytesAsync(path + ".part" + part, 524288, true, linked.Token).ConfigureAwait(false);
+            if (combined.Length + bytes.Length > maximum) throw new InvalidDataException("v2_input_limit");
+            await combined.WriteAsync(bytes, linked.Token).ConfigureAwait(false);
+        }
+        if (combined.Length == 0) throw new InvalidDataException("v2_input_limit");
+        return combined.ToArray();
+    }
+    private static async Task<byte[]> FileBytesAsync(string path, int maximum, bool allowEmpty, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        if (stream.Length <= 0 || stream.Length > maximum) throw new InvalidDataException("v2_input_limit");
+        if ((!allowEmpty && stream.Length == 0) || stream.Length > maximum) throw new InvalidDataException("v2_input_limit");
         byte[] bytes = new byte[checked((int)stream.Length)];
-        await stream.ReadExactlyAsync(bytes, linked.Token).ConfigureAwait(false);
+        await stream.ReadExactlyAsync(bytes, token).ConfigureAwait(false);
         if (stream.ReadByte() != -1) throw new InvalidDataException("v2_input_changed");
         return bytes;
     }

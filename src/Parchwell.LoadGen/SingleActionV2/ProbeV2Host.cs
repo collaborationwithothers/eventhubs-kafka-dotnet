@@ -122,7 +122,9 @@ internal static class ProbeV2Host
         return exit;
     }
     private static Task ReportFailure(TextWriter logs, string operation, Exception exception, ProbeV2Options? options) =>
-        logs.WriteLineAsync($"{operation}:{exception.GetType().Name} scenario_id={options?.ScenarioId ?? "unknown"} run_id={options?.RunId ?? "unknown"} configuration_id={options?.ConfigurationId ?? "unknown"} stage={options?.Stage ?? "unknown"}");
+        logs.WriteLineAsync($"{operation}:{exception.GetType().Name} scenario_id={options?.ScenarioId ?? "unknown"} run_id={options?.RunId ?? "unknown"} configuration_id={options?.ConfigurationId ?? "unknown"} stage={options?.Stage ?? "unknown"}" +
+            (exception is InvalidDataException && exception.Data["observed_bytes"] is int observed && exception.Data["allowed_bytes"] is int allowed
+                ? FormattableString.Invariant($" limit=MaxSerializedBytes observed={observed} allowed={allowed}") : ""));
     internal static int ValidateConfiguration()
     {
         try

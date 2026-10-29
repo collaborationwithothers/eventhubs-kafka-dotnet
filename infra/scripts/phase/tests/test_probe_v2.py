@@ -1,4 +1,5 @@
 """Synthetic transport regressions; producer integration has its own required fixture command."""
+import base64
 import copy
 import hashlib
 import importlib.util
@@ -125,6 +126,29 @@ class ProbeV2Tests(unittest.TestCase):
         log.write_bytes(v2.REGISTRATION_MARKER + raw_registration + b'\n' + v2.CAPTURE_MARKER + raw_capture + b'\n')
         return log, raw_registration, raw_capture
 
+    def transported(self, record):
+        payload = {}
+        capture_parts = []
+        for part in range(4):
+            name = record['job'] + '-evidence' + (f'-{part}' if part else '')
+            path = self.private / 'probe-v2' / (name + '.json')
+            raw = path.read_bytes()
+            self.assertLessEqual(len(raw), 1048576)
+            manifest = json.loads(raw)
+            self.assertTrue(manifest['immutable'])
+            self.assertEqual(self.p.read('phase.json')['run_id'], manifest['metadata']['labels']['app.kubernetes.io/instance'])
+            self.assertEqual(name, manifest['metadata']['name'])
+            self.assertNotIn('data', manifest)
+            fields = manifest['binaryData']
+            expected = {f'capture.json.part{part}'} | ({'registration.json', 'pod.json'} if part == 0 else set())
+            self.assertEqual(expected, set(fields))
+            decoded = {key: base64.b64decode(value, validate=True) for key, value in fields.items()}
+            capture_parts.append(decoded.pop(f'capture.json.part{part}'))
+            self.assertLessEqual(len(capture_parts[-1]), 524288)
+            payload.update(decoded)
+        payload['capture.json'] = b''.join(capture_parts)
+        return payload
+
     def fake(self, args, seconds, output=None, maximum=4194304):
         self.calls.append((args, seconds, output, maximum))
         if output is not None:
@@ -242,12 +266,121 @@ class ProbeV2Tests(unittest.TestCase):
         with patch.object(self.p, 'run', side_effect=self.fake):
             self.assertTrue(self.subject.transfer(record))
             self.assertFalse(self.subject.transfer(record))
-        manifest = json.loads((self.private / f"probe-v2/{record['job']}-evidence.json").read_text())
-        self.assertEqual(registration_bytes, manifest['data']['registration.json'].encode())
-        self.assertEqual(capture_bytes, manifest['data']['capture.json'].encode())
-        self.assertEqual({'registration.json', 'capture.json', 'pod.json'}, set(manifest['data']))
-        self.assertTrue(manifest['immutable'])
-        self.assertEqual(1, len(self.calls))
+        payload = self.transported(record)
+        self.assertEqual(registration_bytes, payload['registration.json'])
+        self.assertEqual(capture_bytes, payload['capture.json'])
+        self.assertEqual({'registration.json', 'capture.json', 'pod.json'}, set(payload))
+        self.assertEqual(4, len(self.calls))
+
+    def test_five_full_statistics_reports_roundtrip_above_one_mib_without_byte_or_hash_changes(self):
+        record = self.record()
+        log, reg, cap = self.evidence(record)
+        value = json.loads(cap)
+        report = b'{"synthetic":true,"padding":"' + b'x' * (262144 - 31) + b'"}'
+        self.assertEqual(262144, len(report))
+        for slot in value['repeats']:
+            slot['statistics'] = [{'sequence': 1, 'observed_elapsed_ms': 1, 'raw_base64': base64.b64encode(report).decode()}]
+        raw = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
+        self.assertGreater(len(raw), 1048576)
+        source_log = v2.REGISTRATION_MARKER + reg + b'\n' + v2.CAPTURE_MARKER + raw + b'\n'
+        self.assertGreater(len(source_log), 1048576)
+        log.unlink()
+        (log.parent / 'pods.json').unlink()
+        maximum_log = self.subject.limits['execution']['max_container_log_bytes']
+        def collect_command(args, seconds, output=None, maximum=4194304):
+            if args[1:3] == ['get', 'pods']:
+                self.write(output, {'items': [pod(record)]})
+                return 0
+            self.assertEqual(['kubectl', 'logs', '-n', 'parchwell', record['job'] + '-pod', '-c', record['role'], '--timestamps=false', f'--limit-bytes={maximum_log + 1}', '--request-timeout=30s'], args)
+            self.assertEqual(maximum_log, maximum)
+            output.write_bytes(source_log[:maximum])
+            return 125 if len(source_log) > maximum else 0
+        with patch.object(self.p, 'run', side_effect=collect_command):
+            self.assertEqual((0, True), self.subject.collect(record))
+        self.assertEqual(source_log, log.read_bytes())
+        self.assertTrue(json.loads((log.parent / 'collection-status.json').read_bytes())['complete'])
+        with patch.object(self.p, 'run', side_effect=self.fake):
+            self.assertTrue(self.subject.transfer(record))
+        result = self.transported(record)
+        self.assertEqual(raw, result['capture.json'])
+        self.assertEqual(hashlib.sha256(raw).digest(), hashlib.sha256(result['capture.json']).digest())
+        self.assertEqual(reg, result['registration.json'])
+        self.assertEqual(4, len(self.calls))
+
+    def test_collection_log_limit_is_inclusive_and_truncation_reports_safe_bound_details(self):
+        maximum_log = self.subject.limits['execution']['max_container_log_bytes']
+        for offset in (-1, 0, 1):
+            with self.subTest(offset=offset):
+                record = self.record(configuration=f'C{offset + 1}')
+                source = b'x' * (maximum_log + offset)
+                def collect_command(args, seconds, output=None, maximum=4194304):
+                    if args[1:3] == ['get', 'pods']:
+                        self.write(output, {'items': [pod(record)]})
+                        return 0
+                    self.assertEqual(['kubectl', 'logs', '-n', 'parchwell', record['job'] + '-pod', '-c', record['role'], '--timestamps=false', f'--limit-bytes={maximum_log + 1}', '--request-timeout=30s'], args)
+                    self.assertEqual(maximum_log, maximum)
+                    output.write_bytes(source[:maximum])
+                    return 125 if len(source) > maximum else 0
+                with patch.object(self.p, 'run', side_effect=collect_command):
+                    self.assertEqual((int(offset > 0), True), self.subject.collect(record))
+                status = json.loads((self.artifacts / record['job'] / 'collection-status.json').read_bytes())
+                self.assertEqual(offset <= 0, status['complete'])
+                self.assertEqual([] if offset <= 0 else [{'kind': 'truncated_log', 'status': 125, 'limit': 'container_log_bytes', 'observed': maximum_log + 1, 'observed_at_least': True, 'allowed': maximum_log}], status['gaps'])
+
+    def test_first_binary_configmap_fits_existing_serialized_bound_at_all_decoded_maxima(self):
+        fields = {'registration.json': b'x' * 65536, 'pod.json': b'x' * 65536, 'capture.json.part0': b'x' * 524288}
+        with patch.object(self.p, 'run', side_effect=self.fake):
+            self.assertTrue(self.subject.configmap('synthetic-max-evidence', {name: base64.b64encode(raw).decode() for name, raw in fields.items()}, binary=True))
+        raw = (self.private / 'probe-v2/synthetic-max-evidence.json').read_bytes()
+        self.assertLessEqual(len(raw), 1048576)
+        self.assertEqual(fields, {name: base64.b64decode(value, validate=True) for name, value in json.loads(raw)['binaryData'].items()})
+
+    def test_utf8_bytes_remain_exact_and_invalid_utf8_has_no_lossy_fallback(self):
+        for valid in (True, False):
+            with self.subTest(valid=valid):
+                record = self.record(configuration='C0' if valid else 'C1')
+                log, reg, cap = self.evidence(record)
+                value = json.loads(cap)
+                value['managed_version'] += '-π'
+                raw = json.dumps(value, ensure_ascii=False).encode()
+                if not valid:
+                    raw = raw.replace('π'.encode(), b'\xff')
+                log.write_bytes(v2.REGISTRATION_MARKER + reg + b'\n' + v2.CAPTURE_MARKER + raw + b'\n')
+                with patch.object(self.p, 'run', side_effect=self.fake):
+                    self.assertEqual(valid, self.subject.transfer(record))
+                if valid:
+                    self.assertEqual(raw, self.transported(record)['capture.json'])
+                else:
+                    self.assertFalse((self.private / f"probe-v2/{record['job']}-evidence.json").exists())
+
+    def test_oversize_statistics_reports_include_safe_bound_details(self):
+        record = self.record()
+        log, reg, cap = self.evidence(record)
+        value = json.loads(cap)
+        maximum = self.subject.limits['capture']['MaxStatisticsReportBytes']
+        value['repeats'][0]['statistics'] = [{'sequence': 1, 'observed_elapsed_ms': 1, 'raw_base64': base64.b64encode(b'x' * (maximum + 1)).decode()}]
+        log.write_bytes(v2.REGISTRATION_MARKER + reg + b'\n' + v2.CAPTURE_MARKER + json.dumps(value).encode() + b'\n')
+        with patch.object(self.p, 'run', side_effect=self.fake):
+            self.assertFalse(self.subject.transfer(record))
+        gap = json.loads((self.artifacts / record['job'] / 'v2-transfer-gap.json').read_bytes())
+        self.assertEqual({'job': record['job'], 'reason': 'v2_evidence_transport', 'limit': 'statistics_report_bytes', 'observed': maximum + 1, 'allowed': maximum}, gap)
+        self.assertEqual([], self.calls)
+
+    def test_capture_aggregate_limit_is_inclusive_and_safe_rejection_names_bound(self):
+        for offset in (-1, 0, 1):
+            with self.subTest(offset=offset):
+                record = self.record(configuration=f'C{offset + 1}')
+                log, reg, cap = self.evidence(record)
+                maximum = self.subject.limits['capture']['MaxCaptureBytes']
+                raw = cap + b' ' * (maximum + offset - len(cap))
+                log.write_bytes(v2.REGISTRATION_MARKER + reg + b'\n' + v2.CAPTURE_MARKER + raw + b'\n')
+                with patch.object(self.p, 'run', side_effect=self.fake):
+                    self.assertEqual(offset <= 0, self.subject.transfer(record))
+                if offset <= 0:
+                    self.assertEqual(raw, self.transported(record)['capture.json'])
+                else:
+                    gap = json.loads((self.artifacts / record['job'] / 'v2-transfer-gap.json').read_bytes())
+                    self.assertEqual({'job': record['job'], 'reason': 'v2_evidence_transport', 'limit': 'capture.json_bytes', 'observed': maximum + 1, 'allowed': maximum}, gap)
 
     def test_transfer_rejects_owner_image_marker_order_duplicates_and_wrong_receipt(self):
         record = self.record()
@@ -286,8 +419,7 @@ class ProbeV2Tests(unittest.TestCase):
         with patch.object(self.p, 'run', side_effect=self.fake):
             self.assertTrue(self.subject.transfer(record))
         # Worker failure is retained for the verifier; transport never upgrades its cleanup flags.
-        manifest = json.loads((self.private / f"probe-v2/{record['job']}-evidence.json").read_text())
-        self.assertFalse(json.loads(manifest['data']['capture.json'])['cleanup_completed'])
+        self.assertFalse(json.loads(self.transported(record)['capture.json'])['cleanup_completed'])
         self.assertFalse(record['capture_complete'])
 
     def candidate_run(self, value=None, mutate_receipt=None, mutate_pod=None):

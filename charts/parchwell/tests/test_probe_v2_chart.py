@@ -153,8 +153,12 @@ def verify(document, values):
     mounts = [{'name': 'work', 'mountPath': '/work'}, {'name': 'tmp', 'mountPath': '/tmp'}]
     for index, dependency in enumerate(dependencies(values)):
         name = f'evidence-{index}'
-        volumes.append({'name': name, 'configMap': {'name': dependency + '-evidence', 'optional': True,
-            'items': [{'key': field, 'path': field} for field in ('registration.json', 'capture.json', 'pod.json')]}})
+        sources = []
+        for part in range(4):
+            fields = (['registration.json', 'pod.json'] if part == 0 else []) + [f'capture.json.part{part}']
+            sources.append({'configMap': {'name': dependency + '-evidence' + (f'-{part}' if part else ''), 'optional': True,
+                'items': [{'key': field, 'path': field} for field in fields]}})
+        volumes.append({'name': name, 'projected': {'sources': sources}})
         mounts.append({'name': name, 'mountPath': '/run/probe-inputs/' + dependency, 'readOnly': True})
     if judge:
         volumes.append({'name': 'role-scope', 'configMap': {'name': runtime['run_id'] + '-v2-role-scope', 'optional': True,

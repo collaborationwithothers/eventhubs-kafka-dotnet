@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.SingleActionV2;
 using Parchwell.Scenarios;
+using Parchwell.Testing;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.SingleActionV2;
@@ -14,6 +15,36 @@ namespace Parchwell.LoadGen.Tests.SingleActionV2;
 #pragma warning disable CA1707
 public sealed class ProbeV2LifecycleTests
 {
+    [Fact]
+    public async Task Given_FiveMaximumSizedNativeStatistics_When_HostEnds_Then_FullCaptureFollowsCleanupAndIsExportable()
+    {
+        using var cluster = new ProbeV2MockCluster(64);
+        cluster.CreateTopic("document-events", 32);
+        string raw = await cluster.CaptureProducerStatisticsAsync("document-events", "synthetic-budget-producer", TestContext.Current.CancellationToken);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(raw) > 32768);
+        raw += new string(' ', 262144 - System.Text.Encoding.UTF8.GetByteCount(raw));
+        using var fixture = new Fixture(statistics: raw);
+        Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs));
+        string line = fixture.Output.ToString().Split('\n').Single(value => value.StartsWith("PARCHWELL_PROBE_V2_CAPTURE ", StringComparison.Ordinal));
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(line["PARCHWELL_PROBE_V2_CAPTURE ".Length..]);
+        Assert.InRange(bytes.Length, 1048577, fixture.Options.Limits.MaxCaptureBytes);
+        ProbeV2CaptureFile capture = ProbeV2Wire.Read<ProbeV2CaptureFile>(bytes, fixture.Options.Limits.MaxCaptureBytes);
+        Assert.True(capture.CleanupCompleted && capture.HostCleanupCompleted);
+        Assert.Equal(0, capture.HandlerExitCode);
+        Assert.All(capture.Repeats, row => Assert.Equal(raw, System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(Assert.Single(row.Statistics).RawBase64))));
+        Assert.Equal("capture", fixture.Events[^1]);
+        string? directory = System.Environment.GetEnvironmentVariable("PARCHWELL_PROBE_V2_LARGE_FIXTURE_DIRECTORY");
+        if (directory is not null)
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllTextAsync(Path.Combine(directory, "actor.stdout"), fixture.Output.ToString(), TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "registration.json"), ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536), TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "capture.json"), bytes, TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
+                fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
+                "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536), TestContext.Current.CancellationToken);
+        }
+    }
     [Fact]
     public async Task Given_FiveFreshClients_When_HostEnds_Then_CaptureFollowsStopDispose()
     {
@@ -101,7 +132,7 @@ public sealed class ProbeV2LifecycleTests
         internal RecordingWriter Output { get; }
         internal StringWriter Logs { get; } = new();
         internal TestHost Host { get; }
-        internal Fixture(string? failure = null, string item = "B08", string configuration = "C0")
+        internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null)
         {
             Options = ProbeV2OptionsTests.Options(item, configuration);
             string root = AppContext.BaseDirectory;
@@ -128,6 +159,7 @@ public sealed class ProbeV2LifecycleTests
                 var proxy = (NativeProducer)(object)producer;
                 proxy.Capture = capture;
                 proxy.Failure = failure;
+                proxy.Statistics = statistics;
                 proxy.Clock = clock;
                 Clients.Add(proxy);
                 Events.Add("client-" + Clients.Count);
@@ -179,6 +211,7 @@ public sealed class ProbeV2LifecycleTests
         internal ProbeV2Capture Capture = null!;
         internal TestClock Clock = null!;
         internal string? Failure;
+        internal string? Statistics;
         internal int ProduceCalls, DisposeCalls;
         internal object? Destination;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -196,7 +229,7 @@ public sealed class ProbeV2LifecycleTests
                     Status = broker ? PersistenceStatus.NotPersisted : PersistenceStatus.Persisted,
                     Error = new Error(broker ? ErrorCode.TopicAuthorizationFailed : ErrorCode.NoError)
                 });
-                Clock.OnDelay = () => Capture.Statistics("{\"time\":" + Clock.Milliseconds / 1000 + ",\"ts\":1,\"brokers\":{}}");
+                Clock.OnDelay = () => Capture.Statistics(Statistics ?? "{\"time\":" + Clock.Milliseconds / 1000 + ",\"ts\":1,\"brokers\":{}}");
                 return null;
             }
             if (targetMethod?.Name == "Dispose")

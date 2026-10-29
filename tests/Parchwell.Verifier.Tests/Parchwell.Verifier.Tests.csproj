@@ -10,6 +10,7 @@
     <ProjectReference Include="../../src/Parchwell.Verifier/Parchwell.Verifier.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../fixtures/ProbeV2MockCluster.cs" Link="Support/ProbeV2MockCluster.cs" />
     <None Include="../fixtures/verifier-v1/**/*">
       <Link>fixtures/verifier-v1/%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

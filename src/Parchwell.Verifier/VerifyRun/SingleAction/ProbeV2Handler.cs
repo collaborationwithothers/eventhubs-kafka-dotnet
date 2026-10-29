@@ -16,10 +16,26 @@ internal sealed class ProbeV2Inputs : IProbeV2Inputs
 {
     public async Task<byte[]?> ReadAsync(string path, int maximum, CancellationToken cancellationToken)
     {
-        if (!File.Exists(path)) return null;
+        cancellationToken.ThrowIfCancellationRequested();
+        if (File.Exists(path)) return await FileBytesAsync(path, maximum, cancellationToken).ConfigureAwait(false);
+        if (Path.GetFileName(path) != "capture.json") return null;
+        using var combined = new MemoryStream();
+        for (int part = 0; part < 4; part++)
+        {
+            string partPath = path + ".part" + part;
+            if (!File.Exists(partPath)) return null;
+            byte[] bytes = await FileBytesAsync(partPath, 524288, cancellationToken).ConfigureAwait(false);
+            if (combined.Length + bytes.Length > maximum) throw new InputLimitExceededException("v2_capture_limit");
+            await combined.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        }
+        return combined.ToArray();
+    }
+    private static async Task<byte[]> FileBytesAsync(string path, int maximum, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
         if (stream.Length > maximum) throw new InputLimitExceededException("v2_capture_limit");
-        byte[] bytes = new byte[(int)stream.Length];
+        byte[] bytes = new byte[checked((int)stream.Length)];
         await stream.ReadExactlyAsync(bytes,cancellationToken).ConfigureAwait(false);
         if (stream.ReadByte() != -1) throw new InputLimitExceededException("v2_input_changed");
         return bytes;
