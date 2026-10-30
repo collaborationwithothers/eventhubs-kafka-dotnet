@@ -292,6 +292,7 @@ public sealed class ProjectedTokenFileObserverIntegrationTests
         DateTime timestamp = new(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
         File.SetLastWriteTimeUtc(tokenV1, timestamp);
         File.SetLastWriteTimeUtc(tokenV2, timestamp);
+        AssertEqualVersionMetadata(tokenV1, tokenV2);
         return (tokenV1, tokenV2);
     }
 

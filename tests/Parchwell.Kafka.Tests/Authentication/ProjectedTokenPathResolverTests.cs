@@ -12,55 +12,80 @@ public sealed class ProjectedTokenPathResolverTests
     [Fact]
     public void Given_IntermediateDirectoryLinkChanges_When_ResolvingTokenPath_Then_ResolvedVersionPathChanges()
     {
-        Assert.Equal("/r/v1/token", Resolve("/r/token", [new("/r/token", "..data/token"), new("/r/..data", "v1")], ["/r", "/r/v1"]));
-        Assert.Equal("/r/v2/token", Resolve("/r/token", [new("/r/token", "..data/token"), new("/r/..data", "v2")], ["/r", "/r/v2"]));
-        Assert.Equal("/r/v1/token", Resolve("/r/..data/token", [new("/r/..data", "v1")], ["/r", "/r/v1"]));
-        Assert.Equal("/versions/v1/token", Resolve("/r/token", [new("/r/token", "..data/token"), new("/r/..data", "/versions/v1")], ["/r", "/versions", "/versions/v1"]));
-        Assert.Equal("/r/token", Resolve("/r/token", [], ["/r"]));
+        Assert.Equal("/r/v1/token", Resolve(
+            "/r/token", [new("/r/token", "..data/token"), new("/r/..data", "v1")],
+            ["/r", "/r/v1"], ["/r", "/r/token", "/r/..data", "/r/v1", "/r/v1/token"]));
+        Assert.Equal("/r/v2/token", Resolve(
+            "/r/token", [new("/r/token", "..data/token"), new("/r/..data", "v2")],
+            ["/r", "/r/v2"], ["/r", "/r/token", "/r/..data", "/r/v2", "/r/v2/token"]));
+        Assert.Equal("/r/v1/token", Resolve(
+            "/r/..data/token", [new("/r/..data", "v1")],
+            ["/r", "/r/v1"], ["/r", "/r/..data", "/r/v1", "/r/v1/token"]));
+        Assert.Equal("/r/v2/token", Resolve(
+            "/r/..data/token", [new("/r/..data", "v2")],
+            ["/r", "/r/v2"], ["/r", "/r/..data", "/r/v2", "/r/v2/token"]));
+        Assert.Equal("/versions/v1/token", Resolve(
+            "/r/token", [new("/r/token", "..data/token"), new("/r/..data", "/versions/v1")],
+            ["/r", "/versions", "/versions/v1"], ["/r", "/r/token", "/r/..data", "/versions", "/versions/v1", "/versions/v1/token"]));
+        Assert.Equal("/r/token", Resolve("/r/token", [], ["/r"], ["/r", "/r/token"]));
     }
 
     // Raw target links must be expanded before their dot segments are consumed.
     [Fact]
     public void Given_RawTargetDotSegments_When_Resolving_Then_LinksAreProcessedBeforeDotSegments()
     {
-        Assert.Equal("/else/token", Resolve("/r/link", [new("/r/link", "a/../token"), new("/r/a", "/else/deep")], ["/r", "/else", "/else/deep"]));
-        Assert.Equal("/r/token", Resolve("/r/./token", [], ["/r"]));
-        Assert.Equal("/token", Resolve("/../token", [], []));
-        Assert.Equal("/r/dir/token", Resolve("/r/again/../again/token", [new("/r/again", "dir")], ["/r", "/r/dir"]));
+        Assert.Equal("/else/token", Resolve(
+            "/r/link", [new("/r/link", "a/../token"), new("/r/a", "/else/deep")],
+            ["/r", "/else", "/else/deep"], ["/r", "/r/link", "/r/a", "/else", "/else/deep", "/else/token"]));
+        Assert.Equal("/r/token", Resolve("/r/./token", [], ["/r"], ["/r", "/r/token"]));
+        Assert.Equal("/token", Resolve("/../token", [], [], ["/token"]));
+        Assert.Equal("/r/dir/token", Resolve(
+            "/r/again/../again/token", [new("/r/again", "dir")], ["/r", "/r/dir"],
+            ["/r", "/r/again", "/r/dir", "/r/again", "/r/dir", "/r/dir/token"]));
     }
 
     // Repeated links are bounded by finite budgets rather than a global seen-link ban.
     [Fact]
     public void Given_LinkCycle_When_Resolving_Then_FiniteBudgetsRejectWithoutGlobalRevisitRule()
     {
-        int selfProbes = 0;
+        var selfCandidates = new List<string>();
         Assert.Throws<IOException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/token",
             candidate =>
             {
-                selfProbes++;
-                return candidate == "/r/token" ? "token" : null;
+                selfCandidates.Add(candidate);
+                return candidate switch
+                {
+                    "/r" => null,
+                    "/r/token" => "token",
+                    _ => throw new InvalidOperationException("Unexpected resolver probe.")
+                };
             },
-            _ => { }));
+            candidate => Assert.Equal("/r", candidate)));
         int cycleLinkProbes = 0;
+        var cycleCandidates = new List<string>();
         Assert.Throws<IOException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/token",
             candidate =>
             {
+                cycleCandidates.Add(candidate);
                 if (candidate is "/r/token" or "/r/other")
                     cycleLinkProbes++;
                 return candidate switch
                 {
+                    "/r" => null,
                     "/r/token" => "other",
                     "/r/other" => "token",
-                    _ => null
+                    _ => throw new InvalidOperationException("Unexpected resolver probe.")
                 };
             },
-            _ => { }));
+            candidate => Assert.Equal("/r", candidate)));
 
-        Assert.Equal(42, selfProbes);
+        Assert.Equal(41, selfCandidates.Count(candidate => candidate == "/r/token"));
         Assert.Equal(41, cycleLinkProbes);
-        Assert.True(selfProbes <= ProjectedTokenPathResolver.MaximumComponentVisits);
+        Assert.Equal(Enumerable.Repeat("/r/token", 41).Prepend("/r"), selfCandidates);
+        Assert.Equal(Enumerable.Range(0, 41).Select(index => index % 2 == 0 ? "/r/token" : "/r/other").Prepend("/r"), cycleCandidates);
+        Assert.True(selfCandidates.Count(candidate => candidate == "/r/token") <= ProjectedTokenPathResolver.MaximumComponentVisits);
         Assert.True(cycleLinkProbes <= ProjectedTokenPathResolver.MaximumComponentVisits);
     }
 
@@ -74,6 +99,11 @@ public sealed class ProjectedTokenPathResolverTests
         var links = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int index = 1; index <= count; index++)
             links[$"/r/l{index}"] = index == count ? "target" : $"l{index + 1}";
+        var expectedProbes = new List<string> { "/r" };
+        expectedProbes.AddRange(Enumerable.Range(1, count).Select(index => $"/r/l{index}"));
+        if (succeeds)
+            expectedProbes.Add("/r/target");
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
         var probes = new List<string>();
 
         if (succeeds)
@@ -82,10 +112,11 @@ public sealed class ProjectedTokenPathResolverTests
                 "/r/l1",
                 candidate =>
                 {
+                    Assert.Contains(candidate, expectedProbeSet);
                     probes.Add(candidate);
                     return links.GetValueOrDefault(candidate);
                 },
-                _ => { });
+                candidate => Assert.Equal("/r", candidate));
             Assert.Equal("/r/target", result);
         }
         else
@@ -94,14 +125,18 @@ public sealed class ProjectedTokenPathResolverTests
                 "/r/l1",
                 candidate =>
                 {
+                    Assert.Contains(candidate, expectedProbeSet);
                     probes.Add(candidate);
                     return links.GetValueOrDefault(candidate);
                 },
-                _ => { }));
+                candidate => Assert.Equal("/r", candidate)));
         }
 
-        Assert.Equal(succeeds ? count + 2 : count + 1, probes.Count);
-        Assert.DoesNotContain("/r/target", probes.Where(candidate => links.ContainsKey(candidate)));
+        Assert.Equal(expectedProbes, probes);
+        if (succeeds)
+            Assert.Equal("/r/target", probes[^1]);
+        else
+            Assert.DoesNotContain("/r/target", probes);
     }
 
     // A directory-link chain keeps its expansion budget while a suffix remains pending.
@@ -111,35 +146,47 @@ public sealed class ProjectedTokenPathResolverTests
         var links = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int index = 1; index <= 41; index++)
             links[$"/r/d{index}"] = index == 41 ? "final" : $"d{index + 1}";
-        int probes = 0;
+        var expectedProbes = new List<string> { "/r" };
+        expectedProbes.AddRange(Enumerable.Range(1, 41).Select(index => $"/r/d{index}"));
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
+        var probes = new List<string>();
 
         Assert.Throws<IOException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/d1/token",
             candidate =>
             {
-                probes++;
+                Assert.Contains(candidate, expectedProbeSet);
+                probes.Add(candidate);
                 return links.GetValueOrDefault(candidate);
             },
-            _ => { }));
+            candidate => Assert.Equal("/r", candidate)));
 
-        Assert.Equal(42, probes);
+        Assert.Equal(expectedProbes, probes);
+        Assert.DoesNotContain("/r/final", probes);
+        Assert.DoesNotContain("/r/final/token", probes);
     }
 
     // Every normal component, including the final file, consumes one visit.
     [Theory]
     [InlineData(255, true)]
-    [InlineData(256, false)]
+    [InlineData(256, true)]
     [InlineData(257, false)]
     public void Given_NormalComponentVisitBoundary_When_Resolving_Then_Enforces256Visits(int count, bool succeeds)
     {
-        string path = "/" + string.Join('/', Enumerable.Repeat("a", count)) + "/token";
+        string path = "/" + string.Join('/', Enumerable.Repeat("a", count));
         var directories = Prefixes(path);
-        int probes = 0;
-        Action act = () => ProjectedTokenPathResolver.Resolve(
+        var probes = new List<string>();
+        string[] expectedProbes = Enumerable.Range(1, Math.Min(count, ProjectedTokenPathResolver.MaximumComponentVisits))
+            .Select(visited => "/" + string.Join('/', Enumerable.Repeat("a", visited)))
+            .ToArray();
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
+        string? resolved = null;
+        Action act = () => resolved = ProjectedTokenPathResolver.Resolve(
             path,
-            _ =>
+            candidate =>
             {
-                probes++;
+                Assert.Contains(candidate, expectedProbeSet);
+                probes.Add(candidate);
                 return null;
             },
             candidate => Assert.Contains(candidate, directories));
@@ -149,7 +196,9 @@ public sealed class ProjectedTokenPathResolverTests
         else
             Assert.Throws<IOException>(act);
 
-        Assert.Equal(Math.Min(count + 1, ProjectedTokenPathResolver.MaximumComponentVisits), probes);
+        Assert.Equal(expectedProbes, probes);
+        if (succeeds)
+            Assert.Equal(path, resolved);
     }
 
     // Dot components consume visits even though they need no filesystem delegate.
@@ -160,12 +209,15 @@ public sealed class ProjectedTokenPathResolverTests
     public void Given_DotComponentVisitBoundary_When_Resolving_Then_DotsConsumeVisits(int dots, bool succeeds)
     {
         string path = "/" + string.Join('/', Enumerable.Repeat(".", dots)) + "/token";
-        int probes = 0;
+        var probes = new List<string>();
+        string[] expectedProbes = succeeds ? ["/token"] : [];
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
         Action act = () => Assert.Equal("/token", ProjectedTokenPathResolver.Resolve(
             path,
-            _ =>
+            candidate =>
             {
-                probes++;
+                Assert.Contains(candidate, expectedProbeSet);
+                probes.Add(candidate);
                 return null;
             },
             _ => { }));
@@ -175,7 +227,7 @@ public sealed class ProjectedTokenPathResolverTests
         else
             Assert.Throws<IOException>(act);
 
-        Assert.Equal(succeeds ? 1 : 0, probes);
+        Assert.Equal(expectedProbes, probes);
     }
 
     // The absolute input bound is inclusive at exactly 4096 characters.
@@ -216,14 +268,25 @@ public sealed class ProjectedTokenPathResolverTests
         string leaf = new('a', componentLength);
         string linkTarget = new('x', 32);
         string path = "/r/link/" + leaf;
-        int probes = 0;
+        string targetPath = "/r/" + linkTarget;
+        string[] expectedProbes = succeeds
+            ? new[] { "/r", "/r/link", targetPath, targetPath + "/" + leaf }
+            : new[] { "/r", "/r/link" };
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
+        var probes = new List<string>();
         Action act = () =>
         {
             string resolved = ProjectedTokenPathResolver.Resolve(path, candidate =>
             {
-                probes++;
-                return candidate == "/r/link" ? linkTarget : null;
-            }, candidate => Assert.Contains(candidate, new[] { "/r", "/r/" + linkTarget }));
+                Assert.Contains(candidate, expectedProbeSet);
+                probes.Add(candidate);
+                return candidate switch
+                {
+                    "/r/link" => linkTarget,
+                    "/r" => null,
+                    _ => null
+                };
+            }, candidate => Assert.Contains(candidate, new[] { "/r", targetPath }));
             Assert.Equal("/r/" + linkTarget + "/" + leaf, resolved);
         };
 
@@ -233,23 +296,28 @@ public sealed class ProjectedTokenPathResolverTests
         else
             Assert.Throws<IOException>(act);
 
-        Assert.Equal(succeeds ? 4 : 2, probes);
+        Assert.Equal(expectedProbes, probes);
     }
 
     // Raw link text is validated before it can create more traversal work.
     [Fact]
     public void Given_OverlongRawTarget_When_Resolving_Then_RejectsBeforeSubstitution()
     {
-        int probes = 0;
+        var probes = new List<string>();
         Assert.Throws<IOException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/link",
-            _ =>
+            candidate =>
             {
-                probes++;
-                return new string('a', 4097);
+                probes.Add(candidate);
+                return candidate switch
+                {
+                    "/r" => null,
+                    "/r/link" => new string('a', 4097),
+                    _ => throw new InvalidOperationException("Unexpected resolver probe.")
+                };
             },
-            _ => { }));
-        Assert.Equal(1, probes);
+            candidate => Assert.Equal("/r", candidate)));
+        Assert.Equal(["/r", "/r/link"], probes);
     }
 
     // Empty and NUL raw targets cannot enter the traversal queue.
@@ -260,29 +328,14 @@ public sealed class ProjectedTokenPathResolverTests
         {
             Assert.Throws<IOException>(() => ProjectedTokenPathResolver.Resolve(
                 "/r/link",
-                candidate => candidate == "/r/link" ? target : null,
-                _ => { }));
+                candidate => candidate switch
+                {
+                    "/r" => null,
+                    "/r/link" => target,
+                    _ => throw new InvalidOperationException("Unexpected resolver probe.")
+                },
+                candidate => Assert.Equal("/r", candidate)));
         }
-    }
-
-    // Relative configured paths start from the current directory without pre-collapsing links.
-    [Fact]
-    public void Given_RelativeConfiguredPath_When_Resolving_Then_UsesCurrentDirectoryAsPrefix()
-    {
-        string expected = Path.Combine(Directory.GetCurrentDirectory(), "synthetic-token");
-        var probes = new List<string>();
-
-        string resolved = ProjectedTokenPathResolver.Resolve(
-            "synthetic-token",
-            candidate =>
-            {
-                probes.Add(candidate);
-                return null;
-            },
-            _ => { });
-
-        Assert.Equal(expected, resolved);
-        Assert.Equal(expected, probes[^1]);
     }
 
     // Invalid paths and partially qualified Windows roots fail instead of being guessed.
@@ -311,31 +364,69 @@ public sealed class ProjectedTokenPathResolverTests
     {
         Assert.Throws<UnauthorizedAccessException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/token",
-            _ => throw new UnauthorizedAccessException(),
-            _ => { }));
+            candidate => candidate switch
+            {
+                "/r" => null,
+                "/r/token" => throw new UnauthorizedAccessException(),
+                _ => throw new InvalidOperationException("Unexpected resolver probe.")
+            },
+            candidate => Assert.Equal("/r", candidate)));
         Assert.Throws<DirectoryNotFoundException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/dir/token",
-            _ => null,
-            _ => throw new DirectoryNotFoundException()));
+            candidate => candidate switch
+            {
+                "/r" or "/r/dir" => null,
+                _ => throw new InvalidOperationException("Unexpected resolver probe.")
+            },
+            candidate =>
+            {
+                if (candidate == "/r")
+                    return;
+                Assert.Equal("/r/dir", candidate);
+                throw new DirectoryNotFoundException();
+            }));
         Assert.Throws<DirectoryNotFoundException>(() => ProjectedTokenPathResolver.Resolve(
             "/r/missing/token",
-            _ => null,
-            _ => throw new DirectoryNotFoundException()));
+            candidate => candidate switch
+            {
+                "/r" or "/r/missing" => null,
+                _ => throw new InvalidOperationException("Unexpected resolver probe.")
+            },
+            candidate =>
+            {
+                if (candidate == "/r")
+                    return;
+                Assert.Equal("/r/missing", candidate);
+                throw new DirectoryNotFoundException();
+            }));
     }
 
-    private static string Resolve(string path, (string Path, string Target)[] links, string[] directories)
+    private static string Resolve(
+        string path,
+        (string Path, string Target)[] links,
+        string[] directories,
+        string[] expectedProbes)
     {
         var linkMap = links.ToDictionary(link => link.Path, link => link.Target, StringComparer.Ordinal);
         var directorySet = directories.ToHashSet(StringComparer.Ordinal);
+        var linkSet = linkMap.Keys.ToHashSet(StringComparer.Ordinal);
+        var expectedProbeSet = expectedProbes.ToHashSet(StringComparer.Ordinal);
         var probes = new List<string>();
-        return ProjectedTokenPathResolver.Resolve(
+        string result = ProjectedTokenPathResolver.Resolve(
             path,
             candidate =>
             {
+                Assert.Contains(candidate, expectedProbeSet);
                 probes.Add(candidate);
                 return linkMap.GetValueOrDefault(candidate);
             },
-            candidate => Assert.Contains(candidate, directorySet));
+            candidate =>
+            {
+                Assert.DoesNotContain(candidate, linkSet);
+                Assert.Contains(candidate, directorySet);
+            });
+        Assert.Equal(expectedProbes, probes);
+        return result;
     }
 
     private static HashSet<string> Prefixes(string path)

@@ -79,30 +79,37 @@ public sealed class ProjectedTokenFileObserverTests
     }
 
     // A metadata exception cannot leak its private path or replace the last stable tuple.
-    [Fact]
-    public void Given_MetadataReadFailureBetweenStableSnapshots_When_Observed_Then_RecoveryUsesLastStableTuple()
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    public void Given_MetadataReadFailureBetweenStableSnapshots_When_Observed_Then_RecoveryUsesLastStableTuple(bool changesPath, int recoveredGeneration)
     {
         var firstTuple = new ProjectedTokenFileMetadata("/synthetic/v1/token", 10, 20);
         var secondTuple = new ProjectedTokenFileMetadata("/synthetic/v2/token", 10, 20);
+        ProjectedTokenFileMetadata recoveredTuple = changesPath ? secondTuple : firstTuple;
         var reads = new Queue<Func<ProjectedTokenFileMetadata>>(
         [
             () => firstTuple, () => firstTuple,
             () => throw new IOException("private-path-sentinel"),
-            () => firstTuple, () => firstTuple,
-            () => secondTuple, () => secondTuple
+            () => recoveredTuple, () => recoveredTuple
         ]);
         var observer = NewObserver(() => reads.Dequeue()());
 
         ProjectedTokenFileObservation first = observer.Observe();
         ProjectedTokenFileObservation unavailable = observer.Observe();
-        ProjectedTokenFileObservation recoveredSame = observer.Observe();
-        ProjectedTokenFileObservation recoveredChanged = observer.Observe();
+        ProjectedTokenFileObservation recovered = observer.Observe();
 
+        Assert.Equal("observed", first.Status);
+        Assert.Equal(1, first.Sample);
         Assert.Equal(1, first.Generation);
         Assert.Equal("unavailable", unavailable.Status);
+        Assert.Equal(2, unavailable.Sample);
         Assert.Null(unavailable.Generation);
-        Assert.Equal(1, recoveredSame.Generation);
-        Assert.Equal(2, recoveredChanged.Generation);
+        Assert.Null(unavailable.ObservedAt);
+        Assert.Null(unavailable.Timestamp);
+        Assert.Equal("observed", recovered.Status);
+        Assert.Equal(3, recovered.Sample);
+        Assert.Equal(recoveredGeneration, recovered.Generation);
         Assert.DoesNotContain("private-path-sentinel", JsonSerializer.Serialize(unavailable), StringComparison.Ordinal);
     }
 
