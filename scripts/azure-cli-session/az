@@ -36,6 +36,42 @@ class SessionInterrupted(BaseException):
         self.signum = signum
 
 
+class SessionDiagnostics:
+    def __init__(self, enabled=False, monotonic=time.monotonic):
+        self.enabled = enabled
+        self.monotonic = monotonic
+        self.started = monotonic() if enabled else None
+
+    def emit(self, name, event, *, started=None, status=None):
+        if not self.enabled:
+            return
+        now = self.monotonic()
+        line = (f"azure_cli_session_stage pid={os.getpid()} stage={name} event={event} "
+                f"elapsed_ms={int((now - self.started) * 1000)}")
+        if started is not None:
+            line += f" stage_ms={int((now - started) * 1000)}"
+        if status is not None:
+            line += f" status={status}"
+        print(line, file=sys.stderr, flush=True)
+
+    @contextlib.contextmanager
+    def stage(self, name):
+        if not self.enabled:
+            yield
+            return
+        started = self.monotonic()
+        self.emit(name, "start")
+        event = "end"
+        try:
+            yield
+        except BaseException as error:
+            event = ("timeout" if isinstance(error, (TimeoutError, subprocess.TimeoutExpired))
+                     else "interrupted" if isinstance(error, SessionInterrupted) else "error")
+            raise
+        finally:
+            self.emit(name, event, started=started)
+
+
 @contextlib.contextmanager
 def signal_handlers():
     def interrupted(signum, _frame):
@@ -113,7 +149,8 @@ def stop_process(process):
             signal.signal(number, handler)
 
 
-def run_process(argv, timeout, quiet):
+def run_process(argv, timeout, quiet, *, diagnostics=None):
+    diagnostics = diagnostics if diagnostics is not None else SessionDiagnostics()
     started = time.monotonic()
     stream = subprocess.DEVNULL if quiet else None
     pending = []
@@ -135,7 +172,8 @@ def run_process(argv, timeout, quiet):
         return returncode if returncode >= 0 else 128 - returncode
     except BaseException:
         if process is not None:
-            stop_process(process)
+            with diagnostics.stage("cleanup"):
+                stop_process(process)
         raise
     finally:
         for number, handler in previous.items():
@@ -215,7 +253,8 @@ def configuration(argv, environ):
         raise SessionFailure("azure_cli_session_configuration_invalid") from None
 
 
-def refresh(state_path, environ, real_az, remaining, monotonic, utc, fetch, launch):
+def refresh(state_path, environ, real_az, remaining, monotonic, utc, fetch, launch, diagnostics=None):
+    diagnostics = diagnostics if diagnostics is not None else SessionDiagnostics()
     state_path.unlink(missing_ok=True)
     committed = False
     try:
@@ -231,7 +270,7 @@ def refresh(state_path, environ, real_az, remaining, monotonic, utc, fetch, laun
         url = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
         timeout = min(10, remaining())
         started = monotonic()
-        with request_timeout(timeout):
+        with diagnostics.stage("token_request"), request_timeout(timeout):
             body = fetch(url, {"Authorization": "Bearer " + bearer}, timeout)
         remaining()
         if len(body) > RESPONSE_LIMIT:
@@ -279,8 +318,18 @@ def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
          sleep=time.sleep, fetch=None, launch=None):
     environ = os.environ if environ is None else environ
     fetch = fetch_response if fetch is None else fetch
-    launch = run_process if launch is None else launch
+    diagnostics = SessionDiagnostics(argv[:3] == ["acr", "repository", "show"], monotonic)
+    if launch is None:
+        def launch(args, seconds, quiet):
+            return run_process(args, seconds, quiet, diagnostics=diagnostics)
     deadline = monotonic() + INVOCATION_SECONDS
+
+    def traced_launch(args, seconds, quiet):
+        name = ("login" if args[1] == "login" else "account_select") if quiet else "command"
+        with diagnostics.stage(name):
+            status = launch(args, seconds, quiet)
+            diagnostics.emit(name, "exit", status=status)
+            return status
 
     def remaining():
         seconds = deadline - monotonic()
@@ -293,18 +342,19 @@ def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
             real_az, session = configuration(argv, environ)
             descriptor = os.open(session / "lock", os.O_CREAT | os.O_RDWR, 0o600)
             with os.fdopen(descriptor, "a") as lock:
-                os.fchmod(lock.fileno(), 0o600)
-                while True:
-                    remaining()
-                    try:
-                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        break
-                    except BlockingIOError:
-                        sleep(min(LOCK_POLL_SECONDS, remaining()))
+                with diagnostics.stage("lock"):
+                    os.fchmod(lock.fileno(), 0o600)
+                    while True:
+                        remaining()
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except BlockingIOError:
+                            sleep(min(LOCK_POLL_SECONDS, remaining()))
                 state_path = session / "freshness.json"
                 if argv == ["account", "clear"]:
                     state_path.unlink(missing_ok=True)
-                    return launch([real_az] + argv, remaining(), False)
+                    return traced_launch([real_az] + argv, remaining(), False)
                 control_rejected = (
                     argv[0] in ("login", "logout")
                     or argv[:2] == ["account", "set"]
@@ -314,12 +364,13 @@ def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
                     raise SessionFailure("azure_cli_session_control_rejected")
                 state = load_state(state_path)
                 if not is_fresh(state, monotonic(), utc()):
-                    state = refresh(state_path, environ, real_az, remaining,
-                                    monotonic, utc, fetch, launch)
+                    with diagnostics.stage("authentication"):
+                        state = refresh(state_path, environ, real_az, remaining,
+                                        monotonic, utc, fetch, traced_launch, diagnostics)
                 if not is_fresh(state, monotonic(), utc()):
                     state_path.unlink(missing_ok=True)
                     raise SessionFailure("azure_cli_session_assertion_expired")
-                return launch([real_az] + argv, remaining(), False)
+                return traced_launch([real_az] + argv, remaining(), False)
     except SessionInterrupted as error:
         return 128 + error.signum
     except (TimeoutError, subprocess.TimeoutExpired):

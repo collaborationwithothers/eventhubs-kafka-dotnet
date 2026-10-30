@@ -230,6 +230,165 @@ class AzureCliSessionTests(unittest.TestCase):
         process.join(4)
         self.assertEqual(0, process.exitcode)
 
+    def registry_args(self):
+        return ['acr', 'repository', 'show', '--name', 'synthetic-registry',
+                '--image', 'synthetic-worker:synthetic-tag', '--query', 'digest', '--output', 'tsv']
+
+    def stage_rows(self, text):
+        rows = []
+        for line in text.splitlines():
+            if not line.startswith('azure_cli_session_stage '):
+                continue
+            self.assertRegex(line, r'^azure_cli_session_stage pid=[0-9]+ stage=[a-z_]+ '
+                             r'event=(start|end|exit|timeout|interrupted|error) elapsed_ms=[0-9]+'
+                             r'( stage_ms=[0-9]+)?( status=[0-9]+)?$')
+            rows.append(dict(field.split('=', 1) for field in line.split()[1:]))
+        self.assertTrue(rows, 'registry lookup emitted no stage diagnostics')
+        self.assertEqual(1, len({row['pid'] for row in rows}))
+        for value in [*self.env.values(), *self.registry_args()[4:]]:
+            if len(value) > 10:
+                self.assertNotIn(value, '\n'.join(line for line in text.splitlines()
+                                               if line.startswith('azure_cli_session_stage ')))
+        return rows
+
+    def test_registry_diagnostics_separate_auth_and_command(self):
+        self.assertEqual(0, self.invoke(self.registry_args()))
+        rows = self.stage_rows(self.diagnostics)
+        self.assertEqual(['lock', 'authentication', 'token_request', 'login', 'account_select', 'command'],
+                         [row['stage'] for row in rows if row['event'] == 'start'])
+        self.assertEqual(['0', '0', '0'], [row['status'] for row in rows if row['event'] == 'exit'])
+        self.assertEqual(1, len(self.requests))
+        self.assertEqual(3, len(self.calls))
+        self.assertEqual([self.cli.as_posix(), *self.registry_args()], self.calls[-1][0])
+        self.assertEqual([True, True, False], [call[2] for call in self.calls])
+
+    def test_registry_diagnostics_identify_lock_timeout(self):
+        with (self.private / 'lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            self.assertEqual(124, self.invoke(self.registry_args()))
+        rows = self.stage_rows(self.diagnostics)
+        self.assertEqual([('lock', 'start'), ('lock', 'timeout')],
+                         [(row['stage'], row['event']) for row in rows])
+        self.assertGreaterEqual(int(rows[-1]['stage_ms']), 60000)
+        self.assertEqual([], self.calls)
+        self.assertEqual([], self.requests)
+        self.assertIn('azure_cli_session_timeout\n', self.diagnostics)
+
+    def test_registry_diagnostics_identify_auth_failures_without_secrets(self):
+        for failed_stage in ('token_request', 'login', 'account_select'):
+            for failure in ('timeout', 'error', 'interrupted', 'nonzero'):
+                if failed_stage == 'token_request' and failure == 'nonzero':
+                    continue
+                with self.subTest(stage=failed_stage, failure=failure):
+                    self.reset()
+                    secret = 'synthetic-sensitive-exception ' + self.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN']
+                    def fail():
+                        self.clock.advance(0.25)
+                        if failure == 'timeout':
+                            raise subprocess.TimeoutExpired(secret, 0.25)
+                        if failure == 'interrupted':
+                            raise session.SessionInterrupted(signal.SIGTERM)
+                        if failure == 'error':
+                            raise RuntimeError(secret)
+                        return 17
+                    def fetch(*args):
+                        return fail() if failed_stage == 'token_request' else self.fetch(*args)
+                    def launch(argv, timeout, quiet):
+                        stage = 'login' if argv[1] == 'login' else 'account_select'
+                        return fail() if stage == failed_stage else self.launch(argv, timeout, quiet)
+                    expected = 124 if failure == 'timeout' else 143 if failure == 'interrupted' else 1
+                    self.assertEqual(expected, self.invoke(self.registry_args(), fetch=fetch, launch=launch))
+                    rows = self.stage_rows(self.diagnostics)
+                    event = 'exit' if failure == 'nonzero' else failure
+                    self.assertTrue(any(row['stage'] == failed_stage and row['event'] == event for row in rows))
+                    self.assertNotIn('command', [row['stage'] for row in rows])
+                    self.assertNotIn(secret, self.diagnostics)
+                    self.assertNotIn(self.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'], self.diagnostics)
+                    self.assertFalse(self.state.exists())
+                    if failure == 'nonzero':
+                        self.assertTrue(any(row.get('status') == '17' for row in rows))
+
+    def test_registry_diagnostics_identify_forwarded_failure_and_cancellation(self):
+        for outcome in (1, 124, 'timeout', 'interrupted'):
+            with self.subTest(outcome=outcome):
+                self.reset()
+                self.stamp()
+                def launch(argv, timeout, quiet):
+                    self.assertFalse(quiet)
+                    self.assertEqual(60, timeout)
+                    self.clock.advance(0.5)
+                    if outcome == 'timeout':
+                        raise subprocess.TimeoutExpired('synthetic-private-argv', timeout)
+                    if outcome == 'interrupted':
+                        raise session.SessionInterrupted(signal.SIGINT)
+                    return outcome
+                expected = 124 if outcome == 'timeout' else 130 if outcome == 'interrupted' else outcome
+                self.assertEqual(expected, self.invoke(self.registry_args(), launch=launch))
+                rows = self.stage_rows(self.diagnostics)
+                self.assertEqual(['lock', 'command'], [r['stage'] for r in rows if r['event'] == 'start'])
+                self.assertEqual('500', rows[-1]['stage_ms'])
+                self.assertEqual([], self.requests)
+                self.assertNotIn('synthetic-private-argv', self.diagnostics)
+
+    def test_registry_diagnostics_flush_before_real_command_timeout_and_cleanup(self):
+        self.registry_subprocess_diagnostics('timeout')
+
+    def test_registry_diagnostics_flush_before_external_cancellation_and_cleanup(self):
+        self.registry_subprocess_diagnostics('cancellation')
+
+    def registry_subprocess_diagnostics(self, termination):
+        self.cli.write_text('#!' + sys.executable + '\nimport sys,time\n'
+                            'if sys.argv[1:4] == ["acr", "repository", "show"]: time.sleep(30)\n')
+        driver = ('import importlib.machinery,json,os,time; '
+                  'm=importlib.machinery.SourceFileLoader("shim",os.environ["FIXTURE_WRAPPER"]).load_module(); '
+                  'm.INVOCATION_SECONDS=int(os.environ["FIXTURE_BUDGET"]); '
+                  'raise SystemExit(m.main(json.loads(os.environ["FIXTURE_ARGS"]), '
+                  'fetch=lambda *a: os.environ["FIXTURE_BODY"].encode()))')
+        env = dict(self.env, FIXTURE_WRAPPER=str(WRAPPER), FIXTURE_ARGS=json.dumps(self.registry_args()),
+                   FIXTURE_BODY=body(token(int(time.time()) + 600)).decode(),
+                   FIXTURE_BUDGET='1' if termination == 'timeout' else '60')
+        process = subprocess.Popen([sys.executable, '-c', driver], env=env,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+        def cleanup():
+            if process.poll() is None:
+                process.terminate()
+            process.communicate(timeout=4)
+        self.addCleanup(cleanup)
+        captured = b''
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stderr, selectors.EVENT_READ)
+            deadline = time.monotonic() + 3
+            while b'stage=command event=start' not in captured:
+                self.assertGreater(deadline - time.monotonic(), 0, 'no flushed command marker')
+                self.assertTrue(selector.select(max(0, deadline - time.monotonic())))
+                chunk = os.read(process.stderr.fileno(), 65536)
+                self.assertTrue(chunk, captured.decode())
+                captured += chunk
+        self.assertIsNone(process.poll(), 'marker only appeared after the process exited')
+        if termination == 'cancellation':
+            process.send_signal(signal.SIGTERM)
+        stdout, rest = process.communicate(timeout=4)
+        captured += rest
+        self.assertEqual(124 if termination == 'timeout' else 143, process.returncode)
+        self.assertEqual(b'', stdout)
+        rows = self.stage_rows(captured.decode())
+        self.assertEqual(['cleanup', 'command'], [r['stage'] for r in rows[-2:]])
+        self.assertEqual(['end', 'timeout' if termination == 'timeout' else 'interrupted'],
+                         [r['event'] for r in rows[-2:]])
+        self.assertTrue(any(r['stage'] == 'cleanup' and r['event'] == 'start' for r in rows))
+        self.assertNotIn(self.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'], captured.decode())
+
+    def test_registry_diagnostics_preserve_real_digest_stdout_and_cli_stderr(self):
+        digest = b'sha256:' + b'a' * 64 + b'\n'
+        self.configure_cli(stdout=digest, stderr=b'synthetic-cli-notice\n')
+        result = self.real(self.registry_args())
+        self.assertEqual(0, result.returncode)
+        self.assertEqual(digest, result.stdout)
+        self.assertEqual(1, result.stderr.count(b'synthetic-cli-notice\n'))
+        rows = self.stage_rows(result.stderr.decode())
+        self.assertEqual(['0', '0', '0'], [r['status'] for r in rows if r['event'] == 'exit'])
+        self.assertNotIn('cleanup', [r['stage'] for r in rows])
+
     def test_01_required_context_rejects_before_side_effects(self):
         mutations = [(key, None) for key in ('GITHUB_ACTIONS', 'GITHUB_REF', 'PARCHWELL_REAL_AZ', 'PARCHWELL_AZ_SESSION_DIRECTORY', 'AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID')]
         mutations += [('GITHUB_ACTIONS', 'false'), ('GITHUB_REF', 'refs/heads/topic'), ('PARCHWELL_REAL_AZ', 'az'), ('PARCHWELL_REAL_AZ', str(WRAPPER)), ('PARCHWELL_REAL_AZ', str(self.root / 'absent')), ('AZURE_CLIENT_ID', 'not-a-uuid')]
