@@ -14,6 +14,8 @@ public sealed class ProbeV2AuthenticationMetadataTests
     private static readonly DateTimeOffset Now = new(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset E0 = new(2030, 1, 1, 1, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset E1 = new(2030, 1, 1, 2, 0, 0, TimeSpan.Zero);
+    private static readonly string[] MetadataRootFields = ["schema_version", "mode", "synthetic", "run_id", "scenario_id", "configuration_id", "stage", "source_commit", "job_name", "pod_name", "pod_uid", "service_account", "repeat", "client_id", "action", "initial_installed_expires_on", "lifecycle", "projected_file_samples", "client_cleanup_completed", "capture_error"];
+    private static readonly string[] ScientificRepeatFields = ["repeat", "admission", "client_id", "action", "terminal", "elapsed_ms", "terminal_unix_ms", "settings", "omitted_keys", "metadata_partitions", "requested", "delivery", "read_observation", "result", "error", "client_errors", "statistics", "diagnostics"];
 
     [Fact]
     public void Given_OptionalFlag_When_Reading_Then_OnlyExactBooleansAreAccepted()
@@ -51,6 +53,9 @@ public sealed class ProbeV2AuthenticationMetadataTests
         KafkaAuthenticationLifecycleSnapshot noInstall = session.GetLifecycleSnapshot() with
         { Events = [new(1, 1, "initial", "acquisition_returned", Now, 1, E0, null, null)] };
         Assert.Null(FinishWithSnapshot(noInstall).InitialInstalledExpiresOn);
+        KafkaAuthenticationLifecycleSnapshot failedInitial = session.GetLifecycleSnapshot() with
+        { Events = [new(1, 1, "initial", "installation_failed", Now, 1, E0, null, "synthetic_failure")] };
+        Assert.Null(FinishWithSnapshot(failedInitial).InitialInstalledExpiresOn);
     }
 
     [Fact]
@@ -163,13 +168,27 @@ public sealed class ProbeV2AuthenticationMetadataTests
         }
     }
 
-    [Fact]
-    public void Given_NonAsciiPadding_When_Encoding_Then_Utf8ByteLimitIsEnforced()
+    [Theory]
+    [InlineData(262143)]
+    [InlineData(262144)]
+    [InlineData(262145)]
+    public void Given_NonAsciiPadding_When_Encoding_Then_Utf8ByteLimitIsEnforced(int size)
     {
-        ProbeV2AuthenticationMetadata value = SizedRecord(262144, nonAscii: true);
+        ProbeV2AuthenticationMetadata value = SizedRecord(size, nonAscii: true);
         byte[] original = JsonSerializer.SerializeToUtf8Bytes(value, ProbeV2Wire.JsonOptions);
-        Assert.Equal(262144, original.Length);
-        Assert.Equal(original, ProbeV2AuthenticationMetadataWriter.Encode(value));
+        Assert.Equal(size, original.Length);
+        byte[] encoded = ProbeV2AuthenticationMetadataWriter.Encode(value);
+        if (size <= 262144) Assert.Equal(original, encoded);
+        else
+        {
+            var fallback = ProbeV2Wire.Read<ProbeV2AuthenticationMetadata>(encoded, 262144);
+            Assert.Equal("serialization_limit", fallback.CaptureError);
+            Assert.Null(fallback.InitialInstalledExpiresOn);
+            Assert.Null(fallback.Lifecycle);
+            Assert.Empty(fallback.ProjectedFileSamples);
+            Assert.Equal(value.ClientId, fallback.ClientId);
+            Assert.True(fallback.ClientCleanupCompleted);
+        }
     }
 
     [Fact]
@@ -216,9 +235,18 @@ public sealed class ProbeV2AuthenticationMetadataTests
         await ProbeV2AuthenticationMetadataWriter.TryWriteAsync(success, BaseRecord(), 10, clock);
         Assert.Equal(1, success.WriteCalls);
         Assert.Equal(1, success.FlushCalls);
-        Assert.StartsWith(ProbeV2AuthenticationMetadataWriter.Marker, success.Content, StringComparison.Ordinal);
-        Assert.Contains("\"schema_version\"", success.Content, StringComparison.Ordinal);
+        string expectedJson = Encoding.UTF8.GetString(ProbeV2AuthenticationMetadataWriter.Encode(BaseRecord()));
+        Assert.Equal(ProbeV2AuthenticationMetadataWriter.Marker + expectedJson + Environment.NewLine, success.Content);
+        using (JsonDocument document = JsonDocument.Parse(success.Content[ProbeV2AuthenticationMetadataWriter.Marker.Length..]))
+            Assert.Equal(MetadataRootFields,
+                document.RootElement.EnumerateObject().Select(property => property.Name));
         Assert.DoesNotContain("SYNTHETIC_EXCEPTION_MUST_NOT_APPEAR", success.Content, StringComparison.Ordinal);
+
+        var encodeEmpty = new TrackingWriter();
+        await ProbeV2AuthenticationMetadataWriter.TryWriteAsync(encodeEmpty,
+            BaseRecord() with { ClientId = new string('x', 300000) }, 10, clock);
+        Assert.Equal(0, encodeEmpty.WriteCalls);
+        Assert.Equal(0, encodeEmpty.FlushCalls);
     }
 
     [Fact]
@@ -237,8 +265,10 @@ public sealed class ProbeV2AuthenticationMetadataTests
         ProbeV2Repeat scientific = enabled.Snapshot(1, "client", ProbeV2Stage.For("B08", "C0", "action"), new Dictionary<string, string>(), [], null,
             new("document-events", "automatic", null, null, "aw==", "dg=="));
         string json = JsonSerializer.Serialize(scientific, ProbeV2Wire.JsonOptions);
-        Assert.Contains("\"repeat\"", json, StringComparison.Ordinal);
-        Assert.DoesNotContain("authentication", json, StringComparison.OrdinalIgnoreCase);
+        using JsonDocument document = JsonDocument.Parse(json);
+        Assert.Equal(ScientificRepeatFields,
+            document.RootElement.EnumerateObject().Select(property => property.Name));
+        Assert.DoesNotContain(document.RootElement.EnumerateObject(), property => property.Name.Contains("authentication", StringComparison.OrdinalIgnoreCase));
     }
 
     private static ProbeV2Options Read(string? capture)
@@ -278,13 +308,11 @@ public sealed class ProbeV2AuthenticationMetadataTests
     private static ProbeV2AuthenticationMetadata SizedRecord(int target, bool nonAscii)
     {
         ProbeV2AuthenticationMetadata template = BaseRecord();
-        string prefix = nonAscii ? "é" : "";
-        for (int padding = 0; padding <= target; padding++)
-        {
-            var candidate = template with { ClientId = prefix + new string('x', padding) };
-            if (JsonSerializer.SerializeToUtf8Bytes(candidate, ProbeV2Wire.JsonOptions).Length == target) return candidate;
-        }
-        throw new InvalidOperationException("synthetic_size_not_reached");
+        string prefix = nonAscii ? "é" : string.Empty;
+        int baselineBytes = JsonSerializer.SerializeToUtf8Bytes(template with { ClientId = prefix }, ProbeV2Wire.JsonOptions).Length;
+        int padding = target - baselineBytes;
+        if (padding < 0) throw new InvalidOperationException("synthetic_size_below_baseline");
+        return template with { ClientId = prefix + new string('x', padding) };
     }
 
     private sealed class QueueProvider(params DateTimeOffset[] expiries) : IKafkaTokenProvider

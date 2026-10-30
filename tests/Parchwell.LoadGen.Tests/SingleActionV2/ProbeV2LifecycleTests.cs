@@ -18,6 +18,8 @@ namespace Parchwell.LoadGen.Tests.SingleActionV2;
 public sealed class ProbeV2LifecycleTests
 {
     private static readonly DateTimeOffset MetadataE0 = new(2030, 1, 1, 1, 0, 0, TimeSpan.Zero);
+    private static readonly string[] ScientificCaptureFields = ["schema_version", "mode", "synthetic", "run_id", "scenario_id", "configuration_id", "stage", "source_commit", "job_name", "pod_name", "pod_uid", "service_account", "managed_version", "native_version", "repeats", "handler_exit_code", "cleanup_completed", "host_cleanup_completed"];
+    private static readonly string[] ScientificRepeatFields = ["repeat", "admission", "client_id", "action", "terminal", "elapsed_ms", "terminal_unix_ms", "settings", "omitted_keys", "metadata_partitions", "requested", "delivery", "read_observation", "result", "error", "client_errors", "statistics", "diagnostics"];
 
     [Fact]
     public async Task Given_FiveMaximumSizedNativeStatistics_When_HostEnds_Then_FullCaptureFollowsCleanupAndIsExportable()
@@ -217,6 +219,12 @@ public sealed class ProbeV2LifecycleTests
         Assert.Equal(4, enabledCapture.Repeats.Skip(1).Count());
         Assert.All(disabledCapture.Repeats.Skip(1).Concat(enabledCapture.Repeats.Skip(1)), row => Assert.Equal("not_attempted_cleanup", row.Admission));
         Assert.Equal(JsonSerializer.Serialize(disabledCapture, ProbeV2Wire.JsonOptions), JsonSerializer.Serialize(enabledCapture, ProbeV2Wire.JsonOptions));
+        using (JsonDocument scientific = JsonDocument.Parse(JsonSerializer.Serialize(disabledCapture, ProbeV2Wire.JsonOptions)))
+            Assert.Equal(ScientificCaptureFields,
+                scientific.RootElement.EnumerateObject().Select(property => property.Name));
+        using (JsonDocument repeat = JsonDocument.Parse(JsonSerializer.Serialize(disabledCapture.Repeats[0], ProbeV2Wire.JsonOptions)))
+            Assert.Equal(ScientificRepeatFields,
+                repeat.RootElement.EnumerateObject().Select(property => property.Name));
         Assert.Empty(MetadataLines(disabled));
         Assert.Equal(0, disabled.SamplerCalls);
         var metadataLines = MetadataLines(enabled);

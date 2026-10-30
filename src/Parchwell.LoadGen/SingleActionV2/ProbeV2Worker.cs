@@ -31,6 +31,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         ProbeV2Requested requested, TextWriter logs, CancellationToken token)
     {
         long started = clock.GetTimestamp();
+        using var actionDeadline = new CancellationTokenSource(TimeSpan.FromMilliseconds(stage.WindowMs), clock);
+        using var actionCancellation = CancellationTokenSource.CreateLinkedTokenSource(token, actionDeadline.Token);
         var capture = new ProbeV2Capture(options.Limits, clock, started, stage.WindowMs, diagnosticBudget,
             $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ",
             options.CaptureAuthenticationMetadata);
@@ -52,8 +54,6 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         bool constructing = true;
         bool clientConstructed = false;
         bool clientCleanupCompleted = true;
-        using var actionDeadline = new CancellationTokenSource(TimeSpan.FromMilliseconds(stage.WindowMs), clock);
-        using var actionCancellation = CancellationTokenSource.CreateLinkedTokenSource(token, actionDeadline.Token);
         try
         {
             int settingsBytes = settings.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value));
