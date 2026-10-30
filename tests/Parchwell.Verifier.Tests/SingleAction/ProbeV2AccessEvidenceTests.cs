@@ -194,6 +194,46 @@ public sealed class ProbeV2AccessEvidenceTests
         if (accepted) Assert.Empty(result.Problems); else Assert.Equal(["v2_capture_limit"],result.Problems);
     }
     [Theory]
+    [InlineData(63,true)][InlineData(64,true)][InlineData(65,false)]
+    public void Given_GroupUnionAcrossBothAccounts_When_Checked_Then_UnionCapIsIndependentOfPerAccountCaps(int count,bool accepted)
+    {
+        var options = ProbeV2Fixture.Options("F06");
+        var access = Edit(Access(options),p =>
+        {
+            string[] aliases = ["loadgen","enrichment-consumer"];
+            for (int accountIndex = 0; accountIndex < aliases.Length; accountIndex++)
+            {
+                var owner = p["coverage"]!["accounts"]![aliases[accountIndex]]!;
+                var groups = owner["groups"]!.AsArray();
+                var collections = owner["assignment_collections"]!.AsArray();
+                for (int i = accountIndex; i < count; i += 2)
+                {
+                    string group = "group:" + Hash("union-group" + i);
+                    groups.Add(group);
+                    collections.Add(new JsonObject { ["subject"] = group,["complete"] = true,["pages"] = new JsonArray(Hash("union-collection" + i)) });
+                }
+                Assert.InRange(groups.Count,31,33);
+            }
+            p["observed"]!["requests"] = 6 + count;
+        });
+        Assert.InRange(Convert.FromBase64String(access.ProjectionBase64).Length,1,32768);
+        var result = Judge(options,access);
+        if (accepted) Assert.Empty(result.Problems); else Assert.Equal(["v2_capture_limit"],result.Problems);
+    }
+    [Fact]
+    public void Given_ValidEntryWithFormattingWhitespace_When_Checked_Then_EntryCapUsesCompactSerialization()
+    {
+        var options = ProbeV2Fixture.Options("F06");var access = Access(options);
+        byte[] original = Convert.FromBase64String(access.ProjectionBase64);
+        using var document = System.Text.Json.JsonDocument.Parse(original);
+        string entry = document.RootElement.GetProperty("entries")[0].GetRawText();
+        string paddedEntry = entry.Insert(1,new string(' ',1100));
+        byte[] bytes = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(original).Replace(entry,paddedEntry,StringComparison.Ordinal));
+        Assert.InRange(bytes.Length,1,32768);
+        access = access with { ProjectionBase64 = Convert.ToBase64String(bytes),ProjectionSha256 = Hash(bytes) };
+        Assert.Empty(Judge(options,access).Problems);
+    }
+    [Theory]
     [InlineData(22,true)][InlineData(23,true)][InlineData(24,false)]
     public void Given_ReasonCollectionBoundary_When_Checked_Then_ClosedVocabularyAndCardinalityApply(int count,bool withinBound)
     {
