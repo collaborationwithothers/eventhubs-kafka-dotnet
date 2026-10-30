@@ -38,6 +38,82 @@ public sealed class ProbeV2HandlerTests
             await File.WriteAllBytesAsync(Path.Combine(export,"judge-completion.json"),receiptBytes,TestContext.Current.CancellationToken);
         }
     }
+    [Fact]
+    public async Task Given_CompleteBatchInputs_When_HostRuns_Then_FinalAssessmentRequiresOwnSuccessfulReceipt()
+    {
+        var fixture = await Fixture.CreateAsync("C1","batch");
+        AddBatchPrior(fixture);
+        Assert.Equal(0,await ProbeV2Host.RunAsync(() => fixture.Host));
+        Assert.Equal(SuccessEvents,fixture.Events);
+        byte[] candidateBytes = fixture.Store.Files[fixture.Prefix + "candidate.json"];
+        byte[] receiptBytes = fixture.Store.Files[fixture.Prefix + "judge-completion.json"];
+        var candidate = ProbeV2Wire.Read<ProbeV2Candidate>(candidateBytes,16777216);
+        var receipt = ProbeV2Wire.Read<ProbeV2JudgeReceipt>(receiptBytes,65536);
+        Assert.Equal("confirmed",candidate.ItemAssessment?.Verdict);
+        Assert.Contains("full_experiment",candidate.Diagnostics);
+        Assert.DoesNotContain("smoke_only",candidate.Diagnostics);
+        Assert.True(SingleActionConfigurationJudgement.V2Published(fixture.Options,"C1",candidate,receipt,candidateBytes));
+        Assert.False(SingleActionConfigurationJudgement.V2Published(fixture.Options,"C1",candidate,null,candidateBytes));
+        Assert.False(SingleActionConfigurationJudgement.V2Published(fixture.Options,"C1",candidate,receipt with { HandlerExitCode = 1 },candidateBytes));
+        string? export = Environment.GetEnvironmentVariable("PARCHWELL_V2_BATCH_CONTRACT_EXPORT");
+        if (!string.IsNullOrEmpty(export))
+        {
+            Directory.CreateDirectory(export);
+            await File.WriteAllBytesAsync(Path.Combine(export,"candidate.json"),candidateBytes,TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(export,"judge-completion.json"),receiptBytes,TestContext.Current.CancellationToken);
+        }
+    }
+    [Fact]
+    public async Task Given_CompletePriorActionError_When_BatchHostJudges_Then_ReceiptBackedErrorSupportsUntestable()
+    {
+        var fixture = await Fixture.CreateAsync("C1","batch"); AddBatchPrior(fixture,true);
+        Assert.Equal(0,await ProbeV2Host.RunAsync(() => fixture.Host));
+        var candidate = ProbeV2Wire.Read<ProbeV2Candidate>(fixture.Store.Files[fixture.Prefix + "candidate.json"],16777216);
+        Assert.Equal("complete_valid",candidate.Status);
+        Assert.Equal("untestable",candidate.ItemAssessment?.Verdict);
+        Assert.Equal("action_error",candidate.ItemAssessment?.Reason);
+        Assert.DoesNotContain("v2_controls",candidate.Diagnostics);
+        Assert.DoesNotContain("smoke_controls_failed",candidate.Diagnostics);
+    }
+    [Theory]
+    [InlineData("missing")][InlineData("malformed")][InlineData("oversized")]
+    public async Task Given_ProposedBatchAssessment_When_LaterInputOverrideOccurs_Then_NoVerdictSurvives(string failure)
+    {
+        var fixture = await Fixture.CreateAsync("C1","batch"); AddBatchPrior(fixture);
+        const string scopePath = "/run/probe-inputs/scope/role-scope.json";
+        if (failure == "missing") fixture.Inputs.Files.Remove(scopePath);
+        if (failure == "malformed") fixture.Inputs.Files[scopePath] = "{}"u8.ToArray();
+        if (failure == "oversized") fixture.Inputs.Files[scopePath] = new byte[131073];
+        Assert.Equal(0,await ProbeV2Host.RunAsync(() => fixture.Host));
+        var candidate = ProbeV2Wire.Read<ProbeV2Candidate>(fixture.Store.Files[fixture.Prefix + "candidate.json"],16777216);
+        Assert.Null(candidate.ItemAssessment?.Verdict);
+        Assert.Equal("incomplete_configuration",candidate.ItemAssessment?.Reason);
+        Assert.Null(candidate.Deterministic);
+        Assert.All(candidate.Repeats,r => Assert.NotEqual("complete_valid",r.Status));
+    }
+    private static void AddBatchPrior(Fixture fixture,bool actionError = false)
+    {
+        var options = ProbeV2Fixture.Options(); options.RunKind = "batch";
+        var evidence = ProbeV2Fixture.Evidence(options);
+        if (actionError)
+        {
+            var action = evidence[("C0","action")];
+            evidence[("C0","action")] = action with { Capture = action.Capture! with { Repeats = action.Capture.Repeats.Select(row => row with { Result = "error",Delivery = null,Error = new(29,false,"broker","synthetic",10,1) }).ToArray() } };
+            var read = evidence[("C0","read")];
+            evidence[("C0","read")] = read with { Capture = read.Capture! with { Repeats = read.Capture.Repeats.Select(row => row with
+            {
+                Admission = "not_applicable_no_delivery",ClientId = null,Terminal = false,ElapsedMs = 0,TerminalUnixMs = null,Settings = new Dictionary<string,string>(StringComparer.Ordinal),OmittedKeys = [],MetadataPartitions = null,Requested = null,Delivery = null,
+                ReadObservation = new(0,0,null),Result = null,Error = null,ClientErrors = [],Statistics = [],Diagnostics = []
+            }).ToArray() } };
+        }
+        var candidate = SingleActionConfigurationJudgement.V2Candidate(options,evidence,ProbeV2Fixture.Check(options,evidence),ProbeV2Fixture.Scope(options),new Dictionary<string,ProbeV2Candidate>(StringComparer.Ordinal));
+        byte[] bytes = ProbeV2Wire.Write(candidate,16777216);
+        string prefix = ProbeV2Matrix.Prefix(options.RunId,"B08","C0");
+        string job = ProbeV2Matrix.Job(options.RunId,"B08","C0","judge");
+        var receipt = new ProbeV2JudgeReceipt(2,"single-action-v2-judge",options.RunId,"B08","C0",options.SourceCommit,job,job + "-abc","prior-uid",prefix + "candidate.json",Convert.ToHexStringLower(SHA256.HashData(bytes)),0,true);
+        fixture.Store.Files.Add(prefix + "candidate.json",bytes);
+        fixture.Store.Files.Add(prefix + "judge-completion.json",ProbeV2Wire.Write(receipt,65536));
+    }
     [Theory]
     [InlineData("stop")][InlineData("dispose")]
     public async Task Given_HostCleanupFailure_When_Publishing_Then_NoSuccessfulJudgeReceipt(string failure)
@@ -203,9 +279,9 @@ public sealed class ProbeV2HandlerTests
         internal Store Store { get; private set; } = null!;
         internal TestHost Host { get; private set; } = null!;
         internal string Prefix => ProbeV2Matrix.Prefix(Options.RunId,Options.ScenarioId,Options.ConfigurationId);
-        internal static async Task<Fixture> CreateAsync(string configuration = "C0")
+        internal static async Task<Fixture> CreateAsync(string configuration = "C0",string runKind = "smoke")
         {
-            var fixture = new Fixture { Options = ProbeV2Fixture.Options("B08",configuration) }; fixture.Store = new(fixture.Events);
+            var fixture = new Fixture { Options = ProbeV2Fixture.Options("B08",configuration) }; fixture.Store = new(fixture.Events); fixture.Options.RunKind = runKind;
             var loader = new ScenarioLoader(new FileSystemScenarioSource(AppContext.BaseDirectory),Microsoft.Extensions.Options.Options.Create(fixture.Options.ScenarioLoadOptions));
             var loaded = await loader.LoadAsync("B08",TestContext.Current.CancellationToken); var resolver = new ProbeV2Resolver(fixture.Options);
             foreach (var (_,evidence) in ProbeV2Fixture.Evidence(fixture.Options))

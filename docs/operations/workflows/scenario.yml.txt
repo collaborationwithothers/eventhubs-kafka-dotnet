@@ -22,7 +22,7 @@ on:
           - smoke
           - batch
       items:
-        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke with all only)"
+        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all; batch all or ordered B08,E01,F06)"
         type: string
         required: false
         default: all
@@ -723,7 +723,7 @@ jobs:
           S_EPHEMERAL_BACKEND: ${{ secrets.PARCHWELL_EPHEMERAL_BACKEND }}
           S_EPHEMERAL_TFVARS: ${{ secrets.PARCHWELL_EPHEMERAL_TFVARS }}
           S_PERSISTENT_OUTPUTS: ${{ secrets.PARCHWELL_PERSISTENT_OUTPUTS }}
-          S_PROBE_V2_EFFECTIVE_SCOPE: ${{ secrets.PARCHWELL_PROBE_V2_EFFECTIVE_SCOPE }}
+          S_PROBE_V2_EFFECTIVE_SCOPE: ${{ inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && secrets.PARCHWELL_PROBE_V2_EFFECTIVE_SCOPE || '' }}
         run: bash infra/scripts/phase/phase.sh prepare-batch
       - name: Existing environment OIDC login
         id: login
@@ -850,7 +850,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: always() && (inputs.scenario == 'probe-batch' || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'all'))
+    if: always() && (inputs.scenario == 'probe-batch' || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && inputs.items == 'all') || (inputs.run_kind == 'batch' && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360

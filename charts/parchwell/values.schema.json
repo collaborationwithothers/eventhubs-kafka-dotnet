@@ -586,6 +586,13 @@
         },
         "probe_namespace_data_roles": {
           "type": "boolean"
+        },
+        "run_kind": {
+          "type": "string",
+          "enum": [
+            "smoke",
+            "batch"
+          ]
         }
       },
       "allOf": [
@@ -605,7 +612,8 @@
               "action_role",
               "image_smoke",
               "stage",
-              "probe_namespace_data_roles"
+              "probe_namespace_data_roles",
+              "run_kind"
             ],
             "not": {
               "anyOf": [

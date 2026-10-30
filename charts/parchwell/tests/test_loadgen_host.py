@@ -96,6 +96,11 @@ def probe_v2_host_acceptance(td, loadgen_publish):
     environments = {}
     cases = list(probe_v2_cases())
     assert len(cases) == 49
+    batch_cases = list(probe_v2_cases())
+    for values in batch_cases:
+        values['runtime']['run_kind'] = 'batch'
+    cases.extend(batch_cases)
+    assert len(cases) == 98
     for index, values in enumerate(cases):
         fixture = td / f'v2-{index}.yaml'; with_case(values, fixture)
         rendered = rendered_environment(fixture, td, f'v2-{index}')
@@ -121,7 +126,17 @@ def probe_v2_host_acceptance(td, loadgen_publish):
             output = td / f'{mode}-{kind}.host.out'
             proc = bounded(60, host, output, env)
             assert proc.returncode == failure, (mode, kind, proc.returncode, proc.stderr)
-    print('probe V2 host checks passed: 49 rendered environments and 10 rejected input regressions')
+    judge_host, _, _, failure = hosts['single-action-v2-judge']
+    for mode in ('missing', 'empty', 'unknown', 'case'):
+        rendered = dict(environments['single-action-v2-judge'])
+        if mode == 'missing':
+            del rendered['ProbeV2Judge__RunKind']
+        else:
+            rendered['ProbeV2Judge__RunKind'] = {'empty': '', 'unknown': 'other', 'case': 'Batch'}[mode]
+        output = td / f'v2-run-kind-{mode}.host.out'
+        proc = bounded(60, judge_host, output, environment(rendered))
+        assert proc.returncode == failure, (mode, proc.returncode, proc.stderr)
+    print('probe V2 host checks passed: 98 rendered smoke/batch environments and 14 rejected input regressions')
 
 
 def main():

@@ -1,0 +1,76 @@
+schema_version: 1
+id: E01
+assessment_rules:
+  observation_unit: fresh_client_single_action
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  completion_checks:
+  - V1
+  - V2
+  - V3
+  - V4
+  - V5
+  - V6
+  - V7
+  - V8
+  - V9
+  - V10
+  - V11
+  - V12
+  outcome_class:
+  - result
+  - error_code
+  - is_fatal
+  - origin
+  require_one_class_in_all_five: true
+  unequal_classes: separate_full_plan_no_verdict
+  incomplete_configuration: no_verdict
+  construction_origin: untestable
+  failed_control: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+  semantic_comparison_fields:
+  - value_kind
+hypotheses:
+  H_transport:
+    question: Does independent readback preserve an empty value versus a genuine null tombstone after a non-null
+      seed?
+    configurations:
+    - C0
+    - C1
+    decision: C0 must have five complete successful empty reads. Otherwise, if all required evidence is complete/deterministic,
+      untestable, H_transport=undecided, reason `failed_control`. With that C0, five C1 successful exact null reads
+      -> holds/confirmed; five C1 exact empty or nonempty byte reads -> contradicted/contradicted. Complete deterministic
+      C1 errors -> undecided/untestable, `action_error`. Missing target record is incomplete, never contradiction.
+verdict:
+  decision: C0 must have five complete successful empty reads. Otherwise, if all required evidence is complete/deterministic,
+    untestable, H_transport=undecided, reason `failed_control`. With that C0, five C1 successful exact null reads
+    -> holds/confirmed; five C1 exact empty or nonempty byte reads -> contradicted/contradicted. Complete deterministic
+    C1 errors -> undecided/untestable, `action_error`. Missing target record is incomplete, never contradiction.
+  precedence: security finding -> null verdict, security_finding_requires_hari; missing required configuration ->
+    null, missing_configuration; any invalid/incomplete configuration or missing final receipt -> null, incomplete_configuration;
+    any complete unequal classes -> null, unequal_classes_separate_full_plan; complete deterministic construction-origin
+    outcome -> untestable, construction_origin; then the item rules.
+  no_verdict_when: Incomplete evidence, missing successful final receipt, missing configurations, unequal classes
+    or security finding; no pooling or replacement repeats.
+sources:
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_msg.c
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdmurmur2.c
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Serializers.cs
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/log-compaction
+  version: current
+  read_date: '2026-10-30'
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/authorize-access-azure-active-directory
+  version: current
+  read_date: '2026-10-30'
