@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -450,6 +451,52 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual([], self.delays)
         self.assertFalse(any(c[0][:4] == ['az', 'storage', 'blob', 'download'] for c in self.fake.calls))
 
+    def test_v2_image_readback_timeout_recovers_without_republishing(self):
+        self.prepare('probe')
+        state = phase.Phase().read('phase.json')
+        state['scenario'] = 'probe-batch-2'
+        state.pop('images')
+        phase.write_json(self.private / 'phase.json', state)
+        commands = self.root / 'commands'
+        commands.mkdir()
+        script = '''import json, os, sys, time
+from pathlib import Path
+root = Path(os.environ['IMAGE_FIXTURE_ROOT'])
+name, args = Path(sys.argv[0]).name, sys.argv[1:]
+with (root / 'image-calls.jsonl').open('a') as stream:
+    stream.write(json.dumps([name, args]) + '\\n')
+if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
+    verifier = 'parchwell/verifier' in args[args.index('--image') + 1]
+    marker = root / 'first-verifier-read'
+    if verifier and not marker.exists():
+        marker.touch()
+        print('sha256:' + 'd' * 64, flush=True)
+        time.sleep(30)
+    print('sha256:' + ('c' if verifier else 'b') * 64)
+'''
+        for name in ('az', 'dotnet'):
+            executable = commands / name
+            executable.write_text('#!' + sys.executable + '\n' + script)
+            executable.chmod(0o700)
+        real_run = phase.Phase.run
+        def bounded(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+            if args[:4] == ['az', 'acr', 'repository', 'show']:
+                seconds = 1
+            return real_run(instance, args, seconds, output, maximum)
+        with patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH'],
+                                     'IMAGE_FIXTURE_ROOT': str(self.root)}), patch.object(
+                phase.Phase, 'run', autospec=True, side_effect=bounded):
+            self.assertEqual(0, self.main('publish-images'))
+        calls = [json.loads(line) for line in (self.root / 'image-calls.jsonl').read_text().splitlines()]
+        self.assertEqual(2, sum(name == 'dotnet' for name, _ in calls))
+        reads = [args for name, args in calls if name == 'az' and args[:3] == ['acr', 'repository', 'show']]
+        self.assertEqual(3, len(reads))
+        self.assertEqual(reads[1], reads[2])
+        self.assertEqual(DIGESTS['verifier'], (self.private / 'verifier-digest.txt').read_text().strip())
+        self.assertFalse((self.private / 'verifier-digest.txt.incomplete').exists())
+        self.assertEqual(DIGESTS, {worker: value['digest'] for worker, value in phase.Phase().read('phase.json')['images'].items()})
+        self.assertEqual(f'loadgen_digest={DIGESTS["loadgen"]}\nverifier_digest={DIGESTS["verifier"]}\n', self.output_file.read_text())
+
     def test_publish_images_argv(self):
         self.prepare('probe')
         with self.mocked():
@@ -462,6 +509,82 @@ class PhaseTests(unittest.TestCase):
         self.fake.responses[tuple(expected[2])] = (0, 'sha256:XYZ\n')
         with self.mocked():
             self.assertEqual(1, self.main('publish-images'))
+
+    def test_v2_image_readback_failure_retries_only_the_read(self):
+        for status in (1, 124):
+            with self.subTest(status=status):
+                self.prepare('probe')
+                state = phase.Phase().read('phase.json')
+                state['scenario'] = 'probe-batch-2'
+                state.pop('images')
+                phase.write_json(self.private / 'phase.json', state)
+                self.fake.calls.clear()
+                reads = []
+                def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+                    if args[:4] == ['az', 'acr', 'repository', 'show'] and 'verifier' in args[7]:
+                        reads.append(list(args))
+                        if len(reads) == 1:
+                            self.fake.responses[tuple(args)] = (status, 'sha256:' + 'd' * 64)
+                            result = self.fake(instance, args, seconds, output, maximum)
+                            del self.fake.responses[tuple(args)]
+                            return result
+                    return self.fake(instance, args, seconds, output, maximum)
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=command):
+                    self.assertEqual(0, self.main('publish-images'))
+                self.assertEqual(2, len(reads))
+                self.assertEqual(reads[0], reads[1])
+                self.assertEqual(2, sum(call[0][:2] == ['dotnet', 'publish'] for call in self.fake.calls))
+                self.assertTrue(all(call[1] == 60 and call[3] == 4096 for call in self.fake.calls if call[0][:4] == ['az', 'acr', 'repository', 'show']))
+                self.assertEqual(DIGESTS['verifier'], phase.Phase().read('phase.json')['images']['verifier']['digest'])
+
+    def test_image_readback_exhaustion_preserves_status_and_never_publishes_partial_map(self):
+        for scenario, status, attempts in (('probe-batch-2', 1, 2), ('probe-batch-2', 124, 2),
+                                            ('probe-batch-2', 125, 1), ('probe-batch-2', 127, 1),
+                                            ('probe-batch-2', 130, 1), ('probe-batch-2', 143, 1),
+                                            ('A01', 124, 1), ('probe-batch', 124, 1)):
+            with self.subTest(scenario=scenario, status=status):
+                self.prepare('probe')
+                state = phase.Phase().read('phase.json')
+                state['scenario'] = scenario
+                state.pop('images')
+                phase.write_json(self.private / 'phase.json', state)
+                self.fake.calls.clear()
+                key = tuple(phase.Phase().image_command('verifier', ':' + SHA, PERSISTENT['acr']['value']))
+                self.fake.responses[key] = (status, 'partial')
+                self.output_file.write_text('')
+                diagnostics = io.StringIO()
+                with self.mocked(), contextlib.redirect_stderr(diagnostics):
+                    with self.assertRaisesRegex(phase.Failure, f'image readback failed: verifier.*exit={status}'):
+                        phase.Phase().publish_images()
+                del self.fake.responses[key]
+                self.assertEqual(attempts, sum(tuple(call[0]) == key for call in self.fake.calls))
+                self.assertEqual(2, sum(call[0][:2] == ['dotnet', 'publish'] for call in self.fake.calls))
+                self.assertNotIn('images', phase.Phase().read('phase.json'))
+                self.assertEqual('', self.output_file.read_text())
+                self.assertNotIn('partial', diagnostics.getvalue())
+
+    def test_v2_invalid_digest_or_publication_failure_does_not_retry(self):
+        for operation, content in (('read', ''), ('read', 'sha256:bad'), ('publish', '')):
+            with self.subTest(operation=operation, content=content):
+                self.prepare('probe')
+                state = phase.Phase().read('phase.json')
+                state['scenario'] = 'probe-batch-2'
+                state.pop('images')
+                phase.write_json(self.private / 'phase.json', state)
+                self.fake.calls.clear()
+                key = tuple(phase.Phase().image_command('loadgen', ':' + SHA, PERSISTENT['acr']['value']))
+                if operation == 'read':
+                    self.fake.responses[key] = (0, content)
+                else:
+                    def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+                        result = self.fake(instance, args, seconds, output, maximum)
+                        return 1 if args[:2] == ['dotnet', 'publish'] else result
+                with self.mocked() if operation == 'read' else patch.object(phase.Phase, 'run', autospec=True, side_effect=command):
+                    self.assertEqual(1, self.main('publish-images'))
+                self.fake.responses.pop(key, None)
+                self.assertEqual(1 if operation == 'read' else 0, sum(tuple(call[0]) == key for call in self.fake.calls))
+                self.assertEqual(1, sum(call[0][:2] == ['dotnet', 'publish'] for call in self.fake.calls))
+                self.assertNotIn('images', phase.Phase().read('phase.json'))
 
     def test_use_images(self):
         self.prepare()
