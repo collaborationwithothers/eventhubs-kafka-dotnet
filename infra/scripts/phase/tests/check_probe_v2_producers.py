@@ -86,9 +86,48 @@ def check_judge(directory):
         case.doCleanups()
 
 
+def check_metadata_actor(directory):
+    directory = Path(directory)
+    lines = (directory / 'actor.stdout').read_text(encoding='utf-8').splitlines()
+    marker = 'PARCHWELL_PROBE_V2_AUTHENTICATION_METADATA '
+    payloads = [line[len(marker):] for line in lines if line.startswith(marker)]
+    if len(payloads) != 5:
+        raise AssertionError('metadata actor must contain exactly five diagnostic rows')
+    expected_boundaries = ['before_client', 'after_client_cleanup']
+    expected_expiry = '2030-01-01T01:00:00+00:00'
+    for repeat, payload in enumerate(payloads, 1):
+        row = json.loads(payload)
+        if row.get('schema_version') != 1 or row.get('mode') != 'single-action-v2-authentication-metadata':
+            raise AssertionError('metadata actor schema or mode changed')
+        if row.get('repeat') != repeat or row.get('initial_installed_expires_on') != expected_expiry:
+            raise AssertionError('metadata actor repeat or fixed expiry changed')
+        if [sample.get('boundary') for sample in row.get('projected_file_samples', [])] != expected_boundaries:
+            raise AssertionError('metadata actor boundaries changed')
+
+    # Inspect serialized record fields only; settings below them contain native Kafka keys.
+    def is_diagnostic_field(key):
+        lowered = key.lower()
+        return ('authentication' in lowered or
+                ('metadata' in lowered and lowered != 'metadata_partitions') or
+                lowered in {'initial_installed_expires_on', 'lifecycle',
+                            'projected_file_samples', 'client_cleanup_completed', 'capture_error'})
+
+    for name in ('registration.json', 'capture.json'):
+        scientific = json.loads((directory / name).read_bytes())
+        if any(is_diagnostic_field(key) for key in scientific):
+            raise AssertionError('diagnostic fields leaked into scientific ' + name)
+        if name == 'capture.json' and any(
+            is_diagnostic_field(key) for repeat in scientific['repeats'] for key in repeat
+        ):
+            raise AssertionError('diagnostic fields leaked into scientific repeats')
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        raise SystemExit('usage: check_probe_v2_producers.py ACTOR_EXPORT JUDGE_EXPORT')
+    if len(sys.argv) not in (3, 4):
+        raise SystemExit('usage: check_probe_v2_producers.py ACTOR_EXPORT JUDGE_EXPORT [METADATA_ACTOR_EXPORT]')
     check_actor(Path(sys.argv[1]))
     check_judge(Path(sys.argv[2]))
+    if len(sys.argv) == 4:
+        check_metadata_actor(Path(sys.argv[3]))
+        check_actor(Path(sys.argv[3]))
     print('{"probe_v2_actual_producer_transport_valid":true}')

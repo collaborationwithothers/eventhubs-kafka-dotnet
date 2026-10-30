@@ -1,9 +1,10 @@
 using System.Text;
 using Confluent.Kafka;
+using Parchwell.Kafka.Authentication;
 
 namespace Parchwell.LoadGen.SingleActionV2;
 
-internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, long started, int windowMs, ProbeV2DiagnosticBudget? sharedBudget = null, string logContext = "")
+internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, long started, int windowMs, ProbeV2DiagnosticBudget? sharedBudget = null, string logContext = "", bool captureAuthenticationMetadata = false)
 {
     private readonly object gate = new();
     private readonly ProbeV2DiagnosticBudget diagnosticBudget = sharedBudget ?? new(limits.MaxDiagnostics);
@@ -20,6 +21,7 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     private long? terminalUnix;
     private string? result;
     private ProbeV2Error? terminalError;
+    private KafkaOAuthBearerSession? authenticationSession;
     private ProbeV2Delivery? delivery;
     private ProbeV2Record? record;
     private int recordsSeen;
@@ -28,6 +30,16 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     internal bool Terminal { get { lock (gate) return terminal; } }
     internal bool Limit { get { lock (gate) return limit; } }
     internal bool HasErrors { get { lock (gate) return errors.Count != 0; } }
+    internal bool CaptureAuthenticationMetadata => captureAuthenticationMetadata;
+    internal KafkaOAuthBearerSession? AuthenticationSession { get { lock (gate) return authenticationSession; } }
+
+    internal void AttachAuthentication(KafkaOAuthBearerSession session)
+    {
+        lock (gate)
+        {
+            if (captureAuthenticationMetadata) authenticationSession = session;
+        }
+    }
 
     internal void Error(Error error)
     {

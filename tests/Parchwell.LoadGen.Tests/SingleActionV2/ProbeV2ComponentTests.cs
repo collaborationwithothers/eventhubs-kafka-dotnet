@@ -14,6 +14,81 @@ namespace Parchwell.LoadGen.Tests.SingleActionV2;
 #pragma warning disable CA1707
 public sealed class ProbeV2ComponentTests
 {
+    private static readonly DateTimeOffset MetadataE0 = new(2030, 1, 1, 1, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task Given_MetadataOptInProducer_When_BackgroundPollRuns_Then_ObservedSessionRecordsInstall()
+    {
+        ProbeV2Options options = ProbeV2OptionsTests.Options("B08", "C0");
+        options.CaptureAuthenticationMetadata = true;
+        var services = new ServiceCollection();
+        services.AddSingleton<IKafkaTokenProvider, FixedE0TokenProvider>();
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, value =>
+        { value.NamespaceName = options.NamespaceName; value.ClientId = options.PodName; });
+        services.AddParchwellKafkaAuthentication(value =>
+        {
+            value.ClientId = options.WorkloadIdentityClientId;
+            value.TenantId = "00000000-0000-0000-0000-000000000004";
+            value.TokenFilePath = "/unopened/synthetic-token";
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaAuthenticationFactory authentication = provider.GetRequiredService<KafkaAuthenticationFactory>();
+        var settings = provider.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer().Configuration
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        settings["bootstrap.servers"] = "127.0.0.1:1";
+        settings["client.id"] = "synthetic-metadata-producer";
+        var factory = new ProbeV2SessionFactory(authentication, options);
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), TimeProvider.System, TimeProvider.System.GetTimestamp(), 5000,
+            captureAuthenticationMetadata: true);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        using IProducer<byte[], byte[]> producer = factory.Producer(settings, capture, deadline.Token);
+        KafkaOAuthBearerSession session = Assert.IsType<KafkaOAuthBearerSession>(capture.AuthenticationSession);
+        while (session.GetLifecycleSnapshot().Events.All(value => value.Stage != "installation_succeeded"))
+            await Task.Delay(20, deadline.Token);
+        KafkaAuthenticationLifecycleSnapshot snapshot = session.GetLifecycleSnapshot();
+        Assert.Equal("synthetic-metadata-producer", snapshot.Identity.ClientId);
+        Assert.Equal(MetadataE0, snapshot.Events.First(value => value.Stage == "installation_succeeded").InstalledExpiresOn);
+        Assert.Equal(MetadataE0, session.InstalledTokenExpiresOn);
+    }
+
+    [Fact]
+    public void Given_MetadataOptInConsumer_When_ConsumeRuns_Then_ObservedSessionRecordsInstall()
+    {
+        var options = ProbeV2OptionsTests.Options("B08", "C0", "read");
+        options.CaptureAuthenticationMetadata = true;
+        var services = new ServiceCollection();
+        services.AddSingleton<IKafkaTokenProvider, FixedE0TokenProvider>();
+        services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, value =>
+        { value.NamespaceName = options.NamespaceName; value.ClientId = options.PodName; });
+        services.AddParchwellKafkaAuthentication(value =>
+        {
+            value.ClientId = options.WorkloadIdentityClientId;
+            value.TenantId = "00000000-0000-0000-0000-000000000004";
+            value.TokenFilePath = "/unopened/synthetic-token";
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaAuthenticationFactory authentication = provider.GetRequiredService<KafkaAuthenticationFactory>();
+        var settings = provider.GetRequiredService<KafkaConfigurationFactory>().CreateVerifierConsumer().Configuration
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        settings["bootstrap.servers"] = "127.0.0.1:1";
+        settings["client.id"] = "synthetic-metadata-consumer";
+        var factory = new ProbeV2SessionFactory(authentication, options);
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), TimeProvider.System, TimeProvider.System.GetTimestamp(), 5000,
+            captureAuthenticationMetadata: true);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        var result = factory.Consumer(settings, capture, deadline.Token);
+        using IConsumer<byte[], byte[]> consumer = result.Client;
+        Assert.True(ProbeV2Worker.Bootstrap(consumer, () => result.Authentication.InstalledTokenExpiresOn is not null,
+            capture, new("document-events", "explicit", 30, 4, "aw==", "dg=="), 100, 5000, deadline.Token));
+        KafkaAuthenticationLifecycleSnapshot snapshot = result.Authentication.GetLifecycleSnapshot();
+        Assert.Same(result.Authentication, capture.AuthenticationSession);
+        Assert.Equal("synthetic-metadata-consumer", snapshot.Identity.ClientId);
+        Assert.Equal(MetadataE0, snapshot.Events.First(value => value.Stage == "installation_succeeded").InstalledExpiresOn);
+        Assert.Equal(MetadataE0, result.Authentication.InstalledTokenExpiresOn);
+    }
+
     [Fact]
     public void Given_RealNativeUnassignedConsumer_When_Bootstrapping_Then_ConsumeInstallsAttachedOAuthToken()
     {
@@ -96,6 +171,15 @@ public sealed class ProbeV2ComponentTests
             cancellationToken.ThrowIfCancellationRequested();
             Interlocked.Increment(ref Calls);
             return new("synthetic-token", TimeProvider.System.GetUtcNow().AddHours(1));
+        }
+    }
+
+    private sealed class FixedE0TokenProvider : IKafkaTokenProvider
+    {
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new("SYNTHETIC_TOKEN_MUST_NOT_APPEAR", MetadataE0);
         }
     }
 }

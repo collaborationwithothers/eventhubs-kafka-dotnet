@@ -64,6 +64,7 @@ internal sealed partial class ProbeV2Options
     public string ScenarioRoot { get; set; } = "";
     public string InputRoot { get; set; } = "";
     public string Stage { get; set; } = "";
+    public bool CaptureAuthenticationMetadata { get; set; }
     public ProbeV2Limits Limits { get; set; } = new();
     public ScenarioLoadOptions ScenarioLoadOptions { get; set; } = new();
     public int ProcessLifetimeSeconds { get; set; }
@@ -114,6 +115,16 @@ internal sealed partial class ProbeV2Options
         foreach (PropertyInfo property in target.GetType().GetProperties())
         {
             string key = prefix + property.Name;
+            if (target is ProbeV2Options && prefix.Length == 0 && property.Name == nameof(CaptureAuthenticationMetadata))
+            {
+                if (values.Remove(key, out string? raw))
+                {
+                    if (raw == "true") property.SetValue(target, true);
+                    else if (raw == "false") property.SetValue(target, false);
+                    else throw new InvalidOperationException("v2_authentication_capture_option");
+                }
+                continue;
+            }
             if (property.PropertyType == typeof(string) || property.PropertyType == typeof(int))
             {
                 if (!values.Remove(key, out string? raw) || string.IsNullOrWhiteSpace(raw) || raw.Contains('\r') || raw.Contains('\n'))
