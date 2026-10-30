@@ -44,3 +44,7 @@ The `phase` tag is `initial` until the first successful installation and `refres
 ## Evidence limits
 
 Local tests with synthetic token providers establish local callback, session, metric and run-bookkeeping behavior. They do not establish Entra federation, Event Hubs token acceptance, projected-token rotation, or authoritative message outcome totals. A successful credential call may use the SDK cache and is not evidence of a fresh exchange. Oracle eligibility and outcome totals remain subject to the independent evidence and late-write requirements in [ADR-012 and ADR-013](../blueprint.md#adr-012-the-oracle-is-a-per-message-ledger-joined-into-four-outcome-classes).
+
+## Lifecycle observation capability
+
+Opt-in lifecycle observations separate a native refresh callback, a credential return and a successful native token installation. The independent projected-file observer records filesystem generations without reading token contents. These are diagnostic capabilities; the [lifecycle observation contract](authentication-lifecycle-observation.md) defines their bounds and the live evidence still required.

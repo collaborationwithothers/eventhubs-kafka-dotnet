@@ -38,13 +38,40 @@ public sealed class KafkaAuthenticationFactory
     public KafkaOAuthBearerSession CreateSession(
         KafkaAuthenticationIdentity identity,
         CancellationToken cancellationToken = default)
+        => CreateSession(identity, captureLifecycle: false, cancellationToken: cancellationToken);
+
+    /// <summary>Creates a session with explicitly enabled bounded lifecycle observations.</summary>
+    /// <remarks>Observation is diagnostic only; it adds no scheduler or authentication decision.</remarks>
+    /// <param name="identity">The scenario, run, role and Kafka client identity for this native client.</param>
+    /// <param name="cancellationToken">Cancellation forwarded to synchronous token acquisition.</param>
+    /// <returns>A new observed session that should be attached to one native client.</returns>
+    public KafkaOAuthBearerSession CreateObservedSession(
+        KafkaAuthenticationIdentity identity,
+        CancellationToken cancellationToken = default)
+        => CreateSession(identity, captureLifecycle: true, cancellationToken: cancellationToken);
+
+    /// <summary>Creates an explicitly invoked observer for projected token file metadata.</summary>
+    /// <remarks>Creation performs no file read, scheduling or authentication decision.</remarks>
+    /// <returns>A new independent projected token file metadata observer.</returns>
+    /// <exception cref="InvalidOperationException">The workload identity token file path is missing.</exception>
+    public ProjectedTokenFileObserver CreateProjectedTokenFileObserver()
+    {
+        string tokenFilePath = identityOptions.TokenFilePath
+            ?? throw new InvalidOperationException("Kafka workload identity token file path is missing.");
+        return new ProjectedTokenFileObserver(tokenFilePath, timeProvider);
+    }
+
+    private KafkaOAuthBearerSession CreateSession(
+        KafkaAuthenticationIdentity identity,
+        bool captureLifecycle,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
         string scope = identityOptions.TokenScopeOverride ?? KafkaAuthenticationConfiguration.GetScope(baselineOptions.Get(identity.Role.ToString()));
         string principalName = identityOptions.ClientId
             ?? throw new InvalidOperationException("Kafka workload identity client ID is missing.");
         return new KafkaOAuthBearerSession(
-            identity, scope, principalName, tokenProvider, timeProvider, metrics, cancellationToken);
+            identity, scope, principalName, tokenProvider, timeProvider, metrics, cancellationToken, captureLifecycle);
     }
 
     /// <summary>Validates the approved OAuth bearer producer configuration without acquiring a token or creating a client.</summary>
