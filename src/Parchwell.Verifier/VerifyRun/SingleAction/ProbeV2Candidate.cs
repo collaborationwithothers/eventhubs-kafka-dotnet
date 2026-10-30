@@ -26,3 +26,22 @@ internal sealed record ProbeV2Assignment(string ServiceAccount, string RoleDefin
 internal sealed record ProbeV2Effective(int SchemaVersion, string NamespaceId,
     Dictionary<string,ProbeV2Confirmation> Accounts);
 internal sealed record ProbeV2Confirmation(string PrincipalId, bool NoAdditionalDataAccess);
+
+internal sealed record ProbeV2AccessEnvelope(int SchemaVersion, string Mode, string RunId, string SourceCommit,
+    string NamespaceId, Dictionary<string,string> Principals, Dictionary<string,string> Targets,
+    long StartedUnixMs, long CompletedUnixMs, string ProjectionBase64, string ProjectionSha256);
+internal sealed record ProbeV2AccessProjection(int SchemaVersion, string Mode, string RunId, string SourceCommit,
+    long StartedUnixMs, long CompletedUnixMs, string BindingSha256, string Status, string[] Reasons,
+    ProbeV2AccessObserved Observed, ProbeV2AccessCoverage Coverage, ProbeV2AccessEntry[] Entries,
+    ProbeV2AccessUnsupported[] Unsupported, Dictionary<string,long> SourceLimits);
+internal sealed record ProbeV2AccessObserved(int Requests, Dictionary<string,string> ApiVersions);
+internal sealed record ProbeV2AccessCoverage(Dictionary<string,ProbeV2AccessAccount> Accounts, string[] Targets,
+    ProbeV2AccessDefinition[] Definitions);
+internal sealed record ProbeV2AccessAccount(bool MembershipComplete, string[] MembershipPages, string[] Groups,
+    string[] DirectoryRoles, ProbeV2AccessCollection[] AssignmentCollections);
+internal sealed record ProbeV2AccessCollection(string Subject, bool Complete, string[] Pages);
+internal sealed record ProbeV2AccessDefinition(string Alias, string RawSha256);
+internal sealed record ProbeV2AccessEntry(string Account, string Subject, string Target, string Operation,
+    string Role, string AssignmentAlias, string DefinitionAlias, string ScopeClass);
+internal sealed record ProbeV2AccessUnsupported(string Account, string Subject, string ScopeClass, string Reason, string RawSha256);
+internal sealed record ProbeV2AccessResult(string[] Problems, string? AuditHash);

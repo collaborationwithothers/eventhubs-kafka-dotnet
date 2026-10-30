@@ -2,13 +2,13 @@
 
 This smoke runs the new partition, null-value and permission-scope clients through the real evidence path. It checks whether the infrastructure and harness can produce complete evidence. It does not produce a scientific verdict.
 
-The [build instruction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494085278) authorizes this prerequisite. The [smoke implementation plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494160519) limits its scope. The full experiment remains subject to the successful smoke and a plan refresh against the merged source.
+The [build instruction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494085278) authorizes this prerequisite. The [smoke implementation plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494160519) limits its scope. The completed smoke remains the operational prerequisite. The approved scientific implementation follows the [scientific contract](single-action-contract.md#scientific-assessment-and-permission-evidence); dispatch remains separately authorized.
 
 ## Dispatch and lifecycle
 
-The full V2 smoke uses the Scenario workflow on main with scenario=probe-batch-2, run_kind=smoke, items=all and capture_authentication_metadata=false. Unset items retains all. The separately authorized authentication metadata route uses the same scenario and run kind with items=authentication-controls and capture_authentication_metadata=true; it selects only F06 C6 and C9. Other V2 selections fail before private inputs or Azure access. The legacy probe batch retains its existing selectors and behavior with capture_authentication_metadata=false.
+The full V2 smoke uses the Scenario workflow on main with `scenario=probe-batch-2`, `run_kind=smoke`, `items=all` and `capture_authentication_metadata=false`. Unset items retains `all`. The separately authorized authentication metadata route uses the same scenario and run kind with `items=authentication-controls` and `capture_authentication_metadata=true`; it selects only F06 C6 and C9. Other V2 smoke selections fail before private inputs or Azure access. Scientific batch selection accepts `run_kind=batch`, capture=false, and `items=all` or an ordered B08,E01,F06 subset; assessment follows the [scientific contract](single-action-contract.md#scientific-assessment-and-permission-evidence). The legacy probe batch retains its existing selectors and behavior with capture=false.
 
-The stop job uses `always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))))`. Existing unconditional-cleanup behavior applies only to admitted routes; both older routes require capture=false, and selected authentication-controls requires capture=true.
+The stop job retains unconditional dispatch-end cleanup only for admitted routes. Both legacy routes require capture=false. The V2 smoke route admits all/false or authentication-controls/true; the V2 scientific batch route admits only its validated item selections with capture=false. Rejected selectors reach neither workload preparation nor cleanup Azure access. The exact workflow expression remains covered by the dispatch contract tests.
 
 The V2 smoke runs real `--single-action-v2` and `--single-action-v2-judge` Jobs, with `image_smoke=false`. An image startup marker cannot satisfy this smoke. The workflow owns all infrastructure commands, admission, collection and cleanup under [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). Workers do not orchestrate Kubernetes or processes.
 
@@ -36,7 +36,7 @@ The verifier owns the following evidence decisions. Workflow transport consumes 
 
 Actual main source commit, immutable image digests, owner-bound pod evidence, registrations, captures, candidates, final receipts and cleanup outcomes form the smoke evidence. Missing evidence cannot be replaced with successful fixture data, logs, or zero counts. Applicable hosted mutation acceptance remains required before a later scientific evidence pack under [the factory policy](../agents/factory.md#evidence-pack).
 
-## Private permission evidence
+## Historical smoke permission evidence
 
 The conditional namespace grants are the [ADR-003 test-only exception](../blueprint.md#adr-003-entra-only-authentication-with-aks-workload-identity-and-a-custom-oauthbearer-refresh-handler). The probe identity receives namespace Sender and Receiver only for the explicitly selected V2 environment. Existing control identities, verifier permissions, Blob grants and network isolation stay unchanged.
 
@@ -57,12 +57,14 @@ The confirmation covers both controls on all three targets, including direct, in
 
 The confirmation is bound to the namespace and the two principals it describes, not to a source commit, so a merge to `main` does not invalidate it. Hari re-issues it when either narrow identity, the namespace or the intended access of the narrow controls changes. It does not detect access added in Azure after it is signed. Version 1 confirmations, which carried `source_commit`, are rejected.
 
-The prepare step receives that secret only as `S_PROBE_V2_EFFECTIVE_SCOPE`. It keeps raw bytes private, validates the schema version, namespace and principals against deployed outputs, and records their SHA-256. The workflow materializes the bounded private role snapshot after namespace reset. Only judges mount it. Public candidates contain aliases and scope classes, never raw role material, tenant, subscription or principal identifiers.
+Only smoke preparation receives that secret as `S_PROBE_V2_EFFECTIVE_SCOPE`. It keeps raw bytes private, validates the schema version, namespace and principals against deployed outputs, and records their SHA-256. The workflow materializes the bounded private role snapshot after namespace reset. Only judges mount it. Public candidates contain aliases and scope classes, never raw role material, tenant, subscription or principal identifiers.
 
 ## Completion and subsequent work
 
-Protected workflow, identity, verifier and design changes reach main through Hari's merge. Dispatch uses main and retains the existing environment approval. The full experiment is replanned against the merged smoke support after a qualifying run; it does not inherit scientific approval from this prerequisite.
+Protected workflow, identity, verifier and design changes reach main through Hari's merge. Dispatch uses main and retains the existing environment approval. The full experiment has its own revision-specific implementation approval; it inherits no scientific dispatch authorization from this prerequisite.
 
-The [completed smoke receipt](evidence/issue-240/live-smoke-receipt.md) records the successful run on 2026-10-30, its candidate/final-receipt and pod evidence, and successful teardown and cluster stop. It completes this smoke prerequisite. Scientific item assessments remain null; the full experiment still needs its plan refresh and separate live authorization.
+The [completed smoke receipt](evidence/issue-240/live-smoke-receipt.md) records the successful run on 2026-10-30, its candidate/final-receipt and pod evidence, and successful teardown and cluster stop. It completes this smoke prerequisite. Scientific item assessments remain null; the scientific implementation has its own approval, while live execution still needs separate authorization.
 
 The [statistics repair](evidence/issue-240/statistics-repair-receipt.md) does not revise acceptance of the original failed smoke. Its local native and transport regressions establish harness feasibility, not Event Hubs acceptance. No replacement dispatch is authorized by that repair's task brief; another live smoke requires separate authorization and the existing protected environment approval.
+
+Scientific F06 uses the [measured permission inventory](single-action-contract.md#measured-permission-inventory-v8); the historical confirmation above is not a scientific fallback. Platform policy and the scoped Ubuntu exception belong to [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates).

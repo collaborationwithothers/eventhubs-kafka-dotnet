@@ -165,8 +165,8 @@ class ProbeV2Tests(unittest.TestCase):
             output.write_text('{}')
         return 0
 
-    def test_selection_is_smoke_all_only_and_legacy_seed_is_noop(self):
-        for kind, items, valid in [('smoke', 'all', True), ('batch', 'all', False), ('smoke', 'B08', False), ('smoke', '', False), ('unknown', 'all', False)]:
+    def test_selection_preserves_smoke_all_and_accepts_scientific_batch(self):
+        for kind, items, valid in [('smoke', 'all', True), ('batch', 'all', True), ('smoke', 'B08', False), ('smoke', '', False), ('unknown', 'all', False)]:
             with self.subTest(kind=kind, items=items), patch.dict(os.environ, PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items):
                 if valid:
                     self.assertEqual(0, self.p.validate_batch())
@@ -182,7 +182,8 @@ class ProbeV2Tests(unittest.TestCase):
 
     def selected_controls(self):
         phase_data = self.p.read('phase.json')
-        phase_data.update(items=['F06'], probe_v2_selection='authentication-controls', capture_authentication_metadata=True)
+        phase_data.update(run_kind='smoke', items=['F06'], probe_v2_selection='authentication-controls',
+                          capture_authentication_metadata=True)
         self.write(self.private / 'phase.json', phase_data)
         os.environ.update(PARCHWELL_BATCH_ITEMS='authentication-controls', PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='true')
 
@@ -417,6 +418,84 @@ class ProbeV2Tests(unittest.TestCase):
              patch.object(self.subject, 'run_stage', side_effect=AssertionError('no job')):
             with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
                 self.p.run_single_action_batch()
+    def batch_phase(self, items=('B08',)):
+        current = self.p.read('phase.json')
+        current.update(run_kind='batch', items=list(items))
+        self.write(self.private / 'phase.json', current)
+
+    def test_every_canonical_batch_selector_and_rejected_alias(self):
+        import itertools
+        for count in range(1, 4):
+            for selected in itertools.combinations(v2.ITEMS, count):
+                with patch.dict(os.environ, PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS=','.join(selected)):
+                    self.assertEqual(list(selected), phase.batch_items())
+        for selected in ('', 'B08,B08', 'F06,B08', 'B08, E01', 'F04', 'B08,F04', 'b08', 'B08,'):
+            with patch.dict(os.environ, PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS=selected):
+                with self.assertRaises(phase.Failure):
+                    phase.batch_items()
+
+    def test_selected_values_use_baseline_roles_only_for_partition_probe(self):
+        for items, roles in [(('B08',), False), (('E01',), True), (('F06',), True), (('B08', 'F06'), True)]:
+            self.batch_phase(items)
+            item = items[0]
+            for stage, account, _ in v2.stages(item, 'C0'):
+                runtime = self.subject.values(item, 'C0', stage, account)['runtime']
+                self.assertEqual('batch', runtime['run_kind'])
+                self.assertIs(roles, runtime['probe_namespace_data_roles'])
+
+    def test_batch_assessment_shape_final_mode_and_closed_fields(self):
+        value = candidate('B08', 'C1')
+        value['diagnostics'] = ['full_experiment']
+        assessment = {'verdict': 'confirmed', 'hypotheses': {'H_partition': 'holds'}, 'reason': None}
+        value['item_assessment'] = assessment
+        self.assertTrue(self.subject.candidate_shape(value, 'batch'))
+        self.assertFalse(self.subject.candidate_shape(value, 'smoke'))
+        for altered in [dict(assessment, proof=True), dict(assessment, hypotheses={'other': 'holds'}),
+                        dict(assessment, verdict='success'), dict(assessment, reason=3)]:
+            value['item_assessment'] = altered
+            self.assertFalse(self.subject.candidate_shape(value, 'batch'))
+        value['item_assessment'] = assessment
+        value['configuration_id'] = 'C0'
+        self.assertFalse(self.subject.candidate_shape(value, 'batch'))
+
+    def test_submission_freshness_is_checked_after_real_render_and_consumed_once(self):
+        self.batch_phase(('F06',))
+        for elapsed, permitted in [(59.999, True), (60, True), (60.001, False), (-0.001, False)]:
+            self.write(self.artifacts / 'phase-status.json', dict(self.state, modes=[], permission_audit={
+                'status': 'complete', 'run_id': RUN, 'clock': 'monotonic', 'boot_identity': 'synthetic-boot',
+                'completed_monotonic': 100, 'projection_sha256': 'a' * 64, 'first_submission_consumed': False}))
+            current = [100]
+            calls = []
+            def invoke(args, seconds, output=None, maximum=4194304):
+                calls.append(args)
+                if args[0] == 'helm':
+                    output.write_text('kind: Job\n  name: "' + v2.job_name(RUN, 'F06', 'C6', 'seed') + '"\n  activeDeadlineSeconds: 1980\n')
+                    current[0] = 100 + elapsed
+                return 0
+            with self.subTest(elapsed=elapsed), patch.object(v2.time, 'monotonic', side_effect=lambda: current[0]), patch.object(self.p, 'boot_identity', return_value='synthetic-boot'), patch.object(self.p, 'run', side_effect=invoke), patch.object(self.subject, 'wait', return_value=0), patch.object(self.subject, 'collect', return_value=(0, True)):
+                self.assertTrue(self.subject.access_admission())
+                record = self.subject.run_stage('F06', 'C6', 'seed', 'loadgen', 1980, 5000)
+                self.assertEqual(permitted, any(c[:2] == ['kubectl', 'apply'] for c in calls))
+                if permitted:
+                    audit = self.p.state()['permission_audit']
+                    self.assertTrue(audit['first_submission_consumed'])
+                    self.assertAlmostEqual(elapsed * 1000, audit['submission_age_ms'])
+                    current[0] = 10000
+                    self.assertTrue(self.subject.access_admission())
+                else:
+                    self.assertEqual(('not_attempted', 'permission_evidence_incomplete'), (record['outcome'], record['reason']))
+                    self.assertFalse(self.subject.access_admission())
+
+    def test_permission_clock_and_binding_gaps_block_admission(self):
+        self.batch_phase(('F06',))
+        audit = {'status': 'complete', 'run_id': RUN, 'clock': 'monotonic', 'boot_identity': 'synthetic-boot',
+                 'completed_monotonic': 100, 'projection_sha256': 'a' * 64}
+        for change in ({'run_id': 'wrong'}, {'clock': 'wall'}, {'boot_identity': None}, {'boot_identity': 'other'},
+                       {'completed_monotonic': True}, {'completed_monotonic': '100'}, {'status': 'mismatch'}, {'status': 'incomplete'}, {'projection_sha256': 'bad'}):
+            self.write(self.artifacts / 'phase-status.json', dict(self.state, permission_audit=dict(audit, **change)))
+            with patch.object(v2.time, 'monotonic', return_value=101), patch.object(self.p, 'boot_identity', return_value='synthetic-boot'):
+                self.assertFalse(self.subject.access_admission())
+                self.assertTrue(self.p.state()['permission_audit']['blocked'])
 
     def test_matrix_counts_and_runtime_are_fixed_for_every_stage(self):
         counts = {item: [] for item in v2.ITEMS}
@@ -438,6 +517,10 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(165, sum(stage != 'judge' for values in counts.values() for stage in values) * 5)
         with self.assertRaises(ValueError):
             self.subject.values('B08', 'C0', 'action', 'probe')
+
+    def test_actual_scientific_phase_values_render_all_stages_through_helm(self):
+        self.batch_phase(v2.ITEMS)
+        self.test_actual_phase_values_render_all_stages_through_helm()
 
     def test_actual_phase_values_render_all_stages_through_helm(self):
         runtime = yaml.safe_load((REPO / 'charts/parchwell/tests/fixture.yaml').read_text())['runtime']
@@ -472,6 +555,11 @@ class ProbeV2Tests(unittest.TestCase):
                     self.assertEqual(['--single-action-v2-judge' if stage == 'judge' else '--single-action-v2'], container['args'])
                     prefix = 'ProbeV2Judge__' if stage == 'judge' else 'ProbeV2__'
                     env = {e['name']: e for e in container['env']}
+                    if stage == 'judge':
+                        self.assertEqual(values['runtime']['run_kind'], env['ProbeV2Judge__RunKind']['value'])
+                    else:
+                        self.assertNotIn('ProbeV2__RunKind', env)
+                        self.assertNotIn('ProbeV2Judge__RunKind', env)
                     self.assertEqual(runtime['eventhubs']['namespace_name'], env[prefix + 'NamespaceName']['value'])
                     self.assertEqual(accounts[account]['client_id'], env[prefix + 'WorkloadIdentityClientId']['value'])
                     rendered_count += 1
@@ -742,15 +830,16 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertFalse(record['capture_complete'])
 
     def candidate_run(self, value=None, mutate_receipt=None, mutate_pod=None):
-        record = self.record('judge')
+        value = value or candidate()
+        record = self.record('judge', value['scenario_id'], value['configuration_id'])
         self.evidence(record)
         if mutate_pod:
             path = self.artifacts / record['job'] / 'pods.json'
             data = json.loads(path.read_text()); mutate_pod(data); self.write(path, data)
-        raw = json.dumps(value or candidate()).encode()
-        receipt = {'schema_version': 2, 'mode': 'single-action-v2-judge', 'run_id': RUN, 'scenario_id': 'B08', 'configuration_id': 'C0',
+        raw = json.dumps(value).encode()
+        receipt = {'schema_version': 2, 'mode': 'single-action-v2-judge', 'run_id': RUN, 'scenario_id': record['item'], 'configuration_id': record['configuration'],
                    'source_commit': SHA, 'job_name': record['job'], 'pod_name': record['job'] + '-pod', 'pod_uid': 'synthetic-pod-uid',
-                   'candidate_name': f'{RUN}/single-action-v2/B08/C0/candidate.json', 'candidate_sha256': hashlib.sha256(raw).hexdigest(),
+                   'candidate_name': f"{RUN}/single-action-v2/{record['item']}/{record['configuration']}/candidate.json", 'candidate_sha256': hashlib.sha256(raw).hexdigest(),
                    'handler_exit_code': 0, 'cleanup_completed': True}
         if mutate_receipt:
             mutate_receipt(receipt)
@@ -781,6 +870,40 @@ class ProbeV2Tests(unittest.TestCase):
         document = candidate(); document['item_assessment'] = {'verdict': 'confirmed', 'hypotheses': {}, 'reason': None}
         self.assertFalse(self.candidate_run(document))
         self.assertFalse(self.p.state()['candidates'][-1]['accepted'])
+
+    def test_batch_transport_retains_diagnostic_gaps_and_accepts_contrary_science(self):
+        self.batch_phase()
+        for verdict in ('confirmed', 'contradicted', 'untestable'):
+            value = candidate('B08', 'C1')
+            value['diagnostics'] = ['full_experiment']
+            value['item_assessment'] = {'verdict': verdict, 'hypotheses': {'H_partition': 'undecided'}, 'reason': None}
+            self.assertTrue(self.candidate_run(value))
+            self.assertTrue(self.p.state()['candidates'][-1]['accepted'])
+            self.assertFalse(self.p.state()['candidates'][-1]['smoke_valid'])
+        value['item_assessment']['verdict'] = None
+        self.assertFalse(self.candidate_run(value))
+        self.assertTrue(self.p.state()['candidates'][-1]['accepted'])
+        for diagnostics in (['smoke_only'], ['smoke_only', 'full_experiment'], ['full_experiment', 'full_experiment'], ['full_experiment', 'smoke_controls_failed']):
+            value['diagnostics'] = diagnostics
+            self.assertFalse(self.candidate_run(value))
+            self.assertFalse(self.p.state()['candidates'][-1]['accepted'])
+
+    def test_batch_permission_audit_reference_binds_exact_artifact_bytes(self):
+        self.batch_phase(('F06',))
+        raw = b'{"synthetic":"projection"}'
+        (self.artifacts / 'probe-v2-access-check.json').write_bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        value = candidate('F06', 'C11')
+        value['diagnostics'] = ['full_experiment', 'permission_audit_sha256:' + digest]
+        value['item_assessment'] = {'verdict': 'undocumented', 'hypotheses': {'H_positive_scope': 'holds', 'H_negative_surface': 'recorded_only'}, 'reason': None}
+        self.assertTrue(self.candidate_run(value))
+        for references in ([], ['permission_audit_sha256:' + '0' * 64], ['permission_audit_sha256:bad'], ['permission_audit_sha256:' + digest] * 2):
+            value['diagnostics'] = ['full_experiment'] + references
+            self.assertFalse(self.candidate_run(value))
+        value['item_assessment'] = {'verdict': None, 'hypotheses': {'H_positive_scope': 'undecided', 'H_negative_surface': 'recorded_only'}, 'reason': 'incomplete_configuration'}
+        value['diagnostics'] = ['full_experiment', 'v2_access_evidence']
+        self.assertFalse(self.candidate_run(value))
+        self.assertTrue(self.p.state()['candidates'][-1]['accepted'])
 
     def test_public_pod_redacts_identity_values_preserving_coordinates(self):
         value = pod(self.record())
@@ -875,6 +998,55 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(80, report['action_slots'])
         self.assertEqual(165, report['maximum_clients'])
         self.assertFalse(report['evidence_passed'])
+
+    def test_batch_selected_stage_counts_do_not_schedule_other_items(self):
+        import itertools
+        counts = {'B08': (6, 10, 20), 'E01': (10, 10, 40), 'F06': (33, 60, 105)}
+        for count in range(1, 4):
+            for items in itertools.combinations(v2.ITEMS, count):
+                self.batch_phase(items)
+                self.write(self.artifacts / 'phase-status.json', dict(self.state, modes=[]))
+                def run_stage(item, configuration, stage, role, seconds, deadline, skip):
+                    record = self.record(stage, item, configuration, role)
+                    if stage != 'judge':
+                        record.update(capture_complete=True, admitted_client_slots=5)
+                    state = self.p.state(); state['modes'].append(record); self.p.save_state(state)
+                    return record
+                def audit(_deadline):
+                    state = self.p.state()
+                    state['permission_audit'] = {'status': 'complete'}
+                    self.p.save_state(state)
+                    return 'complete'
+                def candidate(record, deadline):
+                    state = self.p.state()
+                    state.setdefault('candidates', []).append({'item': record['item'], 'configuration': record['configuration'],
+                        'accepted': True, 'smoke_valid': True})
+                    self.p.save_state(state)
+                    return True
+                with self.subTest(items=items), patch.object(self.subject, 'scope', return_value=True), patch.object(self.p, 'admission_allowed', return_value=True), patch.object(self.subject, 'run_stage', side_effect=run_stage), patch.object(self.subject, 'transfer', return_value=True), patch.object(self.subject, 'candidate', side_effect=candidate), patch.object(self.subject, 'collect_access', side_effect=audit) as collector, patch.object(self.subject, 'access_admission', return_value=True):
+                    self.assertEqual(0, self.subject.run_batch())
+                    self.assertEqual(int('F06' in items), collector.call_count)
+                report = json.loads((self.artifacts / 'probe-v2-batch.json').read_text())
+                self.assertEqual(sum(counts[i][0] for i in items), report['jobs'])
+                self.assertEqual(sum(counts[i][1] for i in items), report['action_slots'])
+                self.assertEqual(sum(counts[i][2] for i in items), report['maximum_clients'])
+                self.assertEqual(report['maximum_clients'], report['admitted_client_slots'])
+                self.assertEqual([i for i in v2.ITEMS if i not in items], self.p.state()['not_selected'])
+                self.assertEqual(set(items), {r['item'] for r in self.p.state()['modes']})
+
+    def test_access_gap_or_mismatch_blocks_every_f06_client_but_keeps_judges(self):
+        self.batch_phase(('F06',))
+        for status, reason in [('incomplete', 'permission_evidence_incomplete'), ('mismatch', 'permission_configuration_mismatch')]:
+            self.write(self.artifacts / 'phase-status.json', dict(self.state, modes=[]))
+            def audit(_deadline):
+                state = self.p.state(); state['permission_audit'] = {'status': status}; self.p.save_state(state)
+                return status
+            with patch.object(self.subject, 'scope', return_value=True), patch.object(self.subject, 'collect_access', side_effect=audit) as collector, patch.object(self.subject, 'run_stage', wraps=self.subject.run_stage) as runner, patch.object(self.p, 'run', side_effect=self.fake), patch.object(self.subject, 'candidate', return_value=False):
+                self.assertEqual(1, self.subject.run_batch())
+            clients = [r for r in self.p.state()['modes'] if r['stage'] != 'judge']
+            self.assertEqual(21, len(clients))
+            self.assertTrue(all(r['outcome'] == 'not_attempted' and r['reason'] == reason for r in clients))
+            self.assertEqual(1, collector.call_count)
 
     def run_admission_fixture(self, skipped_helper=False, missing_capture=False):
         def run_stage(item, configuration, stage, role, seconds, deadline, skip):

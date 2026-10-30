@@ -13,7 +13,7 @@ internal static class ProbeV2Fixture
         string job = $"run1-{item.ToLowerInvariant()}-{configuration.ToLowerInvariant()}-judge";
         return new()
         {
-            ScenarioId = item,ConfigurationId = configuration,RunId = "run1",SourceCommit = Source,JobName = job,PodName = job + "-abc",PodUid = "judge-uid",
+            RunKind = "smoke",ScenarioId = item,ConfigurationId = configuration,RunId = "run1",SourceCommit = Source,JobName = job,PodName = job + "-abc",PodUid = "judge-uid",
             NamespaceName = "synthetic-ns",ServiceAccount = "verifier",WorkloadIdentityClientId = "44444444-4444-4444-4444-444444444444",ScenarioRoot = "/app",InputRoot = "/run/probe-inputs",Stage = "judge",
             BlobServiceUri = "https://syntheticstore.blob.core.windows.net/",VerifierContainer = "verifier",
             LoadGenImage = "registry.test/parchwell/loadgen@sha256:" + new string('a',64),VerifierImage = "registry.test/parchwell/verifier@sha256:" + new string('b',64),

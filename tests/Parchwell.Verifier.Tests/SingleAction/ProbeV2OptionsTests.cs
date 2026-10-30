@@ -31,6 +31,20 @@ public sealed class ProbeV2OptionsTests
         if (delta == 0) Assert.NotNull(Read(values));
         else Assert.Throws<InvalidOperationException>(() => Read(values));
     }
+    [Theory]
+    [InlineData("smoke",true)][InlineData("batch",true)][InlineData("",false)][InlineData("Smoke",false)][InlineData("BATCH",false)][InlineData("other",false)]
+    public void Given_RunKind_When_Validated_Then_OnlyExactExplicitModesAreAccepted(string mode,bool valid)
+    {
+        var values = Values(); values["ProbeV2Judge:RunKind"] = mode;
+        if (valid) Assert.Equal(mode,Read(values).RunKind);
+        else Assert.Equal("v2_run_kind",Assert.Throws<InvalidOperationException>(() => Read(values)).Message);
+    }
+    [Fact]
+    public void Given_MissingRunKind_When_Validated_Then_NoDefaultModeIsSelected()
+    {
+        var values = Values(); values.Remove("ProbeV2Judge:RunKind");
+        Assert.Equal("v2_run_kind",Assert.Throws<InvalidOperationException>(() => Read(values)).Message);
+    }
     [Fact]
     public void Given_ExactInputs_When_ValidatedOffline_Then_NoEvidenceOrTokenFileIsOpened()
     {

@@ -39,7 +39,7 @@ def case(item, config, stage, role, image_smoke=False, namespace_roles=True):
     runtime = values['runtime']
     for key in ('repeat', 'loadgen_job_name'):
         runtime.pop(key)
-    runtime.update(run_id='probe-2-1', phase=config, stage=stage,
+    runtime.update(run_id='probe-2-1', phase=config, stage=stage, run_kind='smoke',
                    mode='single-action-v2-judge' if stage == 'judge' else 'single-action-v2',
                    action_role=role, image_smoke=image_smoke,
                    probe_namespace_data_roles=namespace_roles, bounds=deepcopy(DEFAULTS))
@@ -92,7 +92,7 @@ def expected_env(values):
     fields.update({'Limits__' + key: value for key, value in LIMITS['capture'].items()})
     fields.update({'ScenarioLoadOptions__' + key: value for key, value in LIMITS['parsing'].items()})
     if judge:
-        fields.update(BlobServiceUri=runtime['blob']['account_url'], VerifierContainer='verifier',
+        fields.update(RunKind=runtime['run_kind'], BlobServiceUri=runtime['blob']['account_url'], VerifierContainer='verifier',
                       LoadGenImage=runtime['loadgen_image'], VerifierImage=runtime['verifier_image'])
         fields.update({'JudgeLimits__' + key: value for key, value in LIMITS['judge'].items()})
     else:
@@ -160,6 +160,10 @@ def verify(document, values):
                 'items': [{'key': field, 'path': field} for field in fields]}})
         volumes.append({'name': name, 'projected': {'sources': sources}})
         mounts.append({'name': name, 'mountPath': '/run/probe-inputs/' + dependency, 'readOnly': True})
+    if judge and runtime['run_kind'] == 'batch' and values['scenario_id'] == 'F06':
+        volumes.append({'name': 'access-check', 'configMap': {'name': runtime['run_id'] + '-v2-access-check', 'optional': True,
+            'items': [{'key': 'access-check.json', 'path': 'access-check.json'}]}})
+        mounts.append({'name': 'access-check', 'mountPath': '/run/probe-inputs/access', 'readOnly': True})
     if judge:
         volumes.append({'name': 'role-scope', 'configMap': {'name': runtime['run_id'] + '-v2-role-scope', 'optional': True,
             'items': [{'key': 'role-scope.json', 'path': 'role-scope.json'}]}})
@@ -172,6 +176,10 @@ def main():
     assert DEFAULTS['probe_v2'] == LIMITS == schema['properties']['runtime']['properties']['bounds']['properties']['probe_v2']['const']
     cases = list(positive_cases()) + list(positive_cases(True))
     assert len(list(stages())) == 49 and len(cases) == 98
+    batch_cases = list(positive_cases())
+    for entry in batch_cases:
+        entry['runtime']['run_kind'] = 'batch'
+    cases.extend(batch_cases)
     cases.append(case('B08', 'C0', 'action', 'loadgen', namespace_roles=False))
     with tempfile.TemporaryDirectory(prefix='probe-v2-chart-') as name:
         directory = Path(name)

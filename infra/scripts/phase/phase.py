@@ -75,12 +75,16 @@ def batch_items():
     selected_scenario = os.environ.get('PARCHWELL_SCENARIO')
     capture = capture_authentication_metadata()
     if selected_scenario == 'probe-batch-2':
-        if os.environ.get('PARCHWELL_RUN_KIND') != 'smoke':
-            raise Failure('unsupported probe batch selection')
-        if value == 'all' and not capture:
-            return ['B08', 'E01', 'F06']
-        if value == 'authentication-controls' and capture:
+        kind = os.environ.get('PARCHWELL_RUN_KIND')
+        available = ['B08', 'E01', 'F06']
+        if kind == 'smoke' and value == 'all' and not capture:
+            return available
+        if kind == 'smoke' and value == 'authentication-controls' and capture:
             return ['F06']
+        if kind == 'batch' and not capture:
+            selected = available if value == 'all' else value.split(',')
+            if selected and selected == [item for item in available if item in selected]:
+                return selected
         raise Failure('unsupported probe batch selection')
     if capture:
         raise Failure('unsupported probe batch selection')
@@ -286,9 +290,13 @@ class Phase:
             expected_items = batch_items()
             selector = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
             expected_selection = 'authentication-controls' if capture else 'all'
-            if (metadata.get('run_kind') != 'smoke' or metadata.get('items') != expected_items
-                    or metadata.get('probe_v2_selection') != selector or selector != expected_selection
-                    or metadata.get('capture_authentication_metadata') is not capture):
+            run_kind = metadata.get('run_kind')
+            selection_valid = (run_kind == 'smoke' and selector == expected_selection
+                               or run_kind == 'batch' and selector in ('all', ','.join(expected_items)))
+            if (run_kind not in ('smoke', 'batch') or metadata.get('items') != expected_items
+                    or metadata.get('probe_v2_selection') != selector or not selection_valid
+                    or metadata.get('capture_authentication_metadata') is not capture
+                    or run_kind == 'batch' and capture):
                 raise Failure('unsupported probe batch selection')
         elif capture:
             raise Failure('unsupported probe batch selection')
@@ -312,7 +320,7 @@ class Phase:
             secrets[name] = value
         ephemeral_variables = strict_json(secrets["ephemeral_tfvars.tfvars.json"])
         if selected == "probe-batch-2":
-            ephemeral_variables["probe_namespace_data_roles"] = True
+            ephemeral_variables["probe_namespace_data_roles"] = any(item in metadata["items"] for item in ("E01", "F06"))
         elif ephemeral_variables.get("probe_namespace_data_roles", False) is not False:
             raise Failure("namespace probe roles require probe-batch-2")
         secrets["ephemeral_tfvars.tfvars.json"] = json.dumps(ephemeral_variables)
@@ -338,7 +346,7 @@ class Phase:
         status = {"phase": phase, "run_id": run, "modes": [], "candidate": None, "safety_stop": False}
         if selected in ("probe-batch", "probe-batch-2"):
             status["not_selected"] = []
-        if selected == "probe-batch-2":
+        if selected == "probe-batch-2" and metadata.get("run_kind") == "smoke":
             scope_directory = private / "probe-v2"
             scope_directory.mkdir(mode=0o700)
             confirmation = os.environ.get("S_PROBE_V2_EFFECTIVE_SCOPE", "")
@@ -356,6 +364,8 @@ class Phase:
         return 0
 
     def prepare_stop(self):
+        if scenario() == "probe-batch-2":
+            self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()
         private = Path(tempfile.mkdtemp(prefix="parchwell-stop-", dir=temporary)).resolve()
@@ -1055,8 +1065,12 @@ class Phase:
             state = self.state()
             lines += [f"{mode['job']}: {mode['outcome']}" for mode in state["modes"]]
             for skipped in state.get('not_selected', []):
-                lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
-            if self.read('phase.json').get('probe_v2_selection') == 'authentication-controls':
+                if isinstance(skipped, dict):
+                    lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
+                else:
+                    lines += [f"{skipped}: not selected"]
+            phase = self.read('phase.json')
+            if phase.get('scenario') == 'probe-batch-2' and phase.get('run_kind') == 'smoke' and phase.get('probe_v2_selection') == 'authentication-controls':
                 lines += ['Selected authentication controls: F06-C6,F06-C9']
             if state.get("seed_gap"):
                 lines += ["seed receipt gap"]

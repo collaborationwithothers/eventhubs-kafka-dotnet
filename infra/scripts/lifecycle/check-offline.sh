@@ -75,7 +75,7 @@ def check_workflows(repository):
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
-            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke with all or authentication-controls)', 'type': 'string', 'required': 'false', 'default': 'all'},
+            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06)', 'type': 'string', 'required': 'false', 'default': 'all'},
             'capture_authentication_metadata': {'description': 'Collect bounded authentication metadata (selected authentication controls only)', 'type': 'boolean', 'required': 'false', 'default': 'false'}}}},
         'sweeper.yml': {'workflow_dispatch': '', 'schedule': [{'cron': '*/15 * * * *'}]},
         'dotnet-verification.yml': {'pull_request': '', 'push': {'branches': ['main']}, 'workflow_dispatch': ''},
