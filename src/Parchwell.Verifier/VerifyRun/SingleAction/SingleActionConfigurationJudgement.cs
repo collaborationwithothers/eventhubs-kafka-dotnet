@@ -117,6 +117,7 @@ internal static class SingleActionConfigurationJudgement
             default:return Result(null,"unknown_item");
         }
     }
+    private static readonly string[] V2PositiveConfigurations = ["C0","C1","C3","C5","C6","C7","C8","C9"];
     private static readonly string[] V2ImageNames = ["loadgen", "verifier"], V2ControlNames = ["loadgen", "enrichment-consumer"];
 
     internal static bool V2Images(IReadOnlyDictionary<string,string> actual, IReadOnlyDictionary<string,string> expected) =>
@@ -200,7 +201,7 @@ internal static class SingleActionConfigurationJudgement
         if (deployed.Assignments.Count != expected.Count || expected.Any(x => !deployed.Assignments.TryGetValue(x.Key,out var actual) ||
             actual.ServiceAccount != x.Value.Account || actual.RoleDefinitionName != x.Value.Role ||
             !string.Equals(actual.Scope,x.Value.Scope,StringComparison.OrdinalIgnoreCase) || actual.PrincipalId != deployed.Accounts[x.Value.Account].PrincipalId)) return false;
-        if (options.ScenarioId != "F06") return true;
+        if (options.ScenarioId != "F06" || options.RunKind == "batch") return true;
         var confirmation = scope.EffectiveScope;
         return confirmation is not null && confirmation.SchemaVersion == 2 &&
             confirmation.NamespaceId == deployed.NamespaceId && confirmation.Accounts.Count == 2 &&
@@ -210,13 +211,14 @@ internal static class SingleActionConfigurationJudgement
 
     internal static ProbeV2Candidate V2Candidate(ProbeV2Options options, IReadOnlyDictionary<(string Configuration,string Stage),ProbeV2Evidence> evidence,
         IReadOnlyDictionary<(string Configuration,string Stage),ProbeV2RepeatProjection[]> checkedSlots, ProbeV2Scope? scope,
-        IReadOnlyDictionary<string,ProbeV2Candidate> previous)
+        IReadOnlyDictionary<string,ProbeV2Candidate> previous, ProbeV2AccessEnvelope? access = null)
     {
         var result = new List<ProbeV2RepeatProjection>();
         string item = options.ScenarioId, configuration = options.ConfigurationId;
         var actionKey = (configuration,"action");
         evidence.TryGetValue(actionKey,out var actionEvidence);
         bool scopeValid = V2Scope(options,scope);
+        var audit = item == "F06" && options.RunKind == "batch" ? V2AccessEvidence(options,scope,access) : new ProbeV2AccessResult([],null);
         var keys = ProbeV2Matrix.Dependencies(item,configuration);
         bool security = false, controls = true;
         for (int ordinal = 1; ordinal <= 5; ordinal++)
@@ -224,7 +226,8 @@ internal static class SingleActionConfigurationJudgement
             ProbeV2RepeatProjection action = Slot(actionKey,ordinal);
             ProbeV2Repeat? raw = Raw(actionKey,ordinal);
             var reasons = new List<string>(action.Reasons);
-            bool invalid = action.Status == "invalid";
+            reasons.AddRange(audit.Problems);
+            bool invalid = action.Status == "invalid" || audit.Problems.Any(x => x is "v2_wire" or "v2_identity");
             var clients = new List<ProbeV2Client>(action.Clients);
             var references = new List<ProbeV2Reference>();
             ProbeV2Reference? seedReference = null;
@@ -287,6 +290,7 @@ internal static class SingleActionConfigurationJudgement
                     record is null ? null : record.ValueBase64 == raw.Requested?.ValueBase64);
                 if (raw.Result == "success" && record is null) reasons.Add("v2_location");
             }
+            if (options.RunKind == "batch" && item == "B08" && raw?.Result == "success" && read?.Record is not null && semantic.ValueMatch == false) reasons.Add("v2_location");
             if (item == "E01")
             {
                 var seed = Raw((configuration,"seed"),ordinal); var seedread = Raw((configuration,"seedread"),ordinal);
@@ -313,17 +317,29 @@ internal static class SingleActionConfigurationJudgement
         }
         string status = result.Any(x => x.Status == "invalid") ? "invalid" : result.All(x => x.Status == "complete_valid") ? "complete_valid" : "incomplete";
         bool? deterministic = status == "complete_valid" ? result.All(x => V2Equal(item,configuration,result[0],x)) : null;
-        var diagnostics = new List<string> { "smoke_only" };
-        if (!controls) diagnostics.Add("smoke_controls_failed");
-        if (ProbeV2Matrix.Configurations(item).Last() == configuration)
+        var diagnostics = new List<string> { options.RunKind == "smoke" ? "smoke_only" : "full_experiment" };
+        if (options.RunKind == "smoke" && !controls) diagnostics.Add("smoke_controls_failed");
+        if (audit.AuditHash is string auditHash) diagnostics.Add("permission_audit_sha256:" + auditHash);
+        bool final = ProbeV2Matrix.Configurations(item).Last() == configuration;
+        if (final)
         {
             string[] prior = ProbeV2Matrix.Configurations(item).TakeWhile(x => x != configuration).ToArray();
             security |= previous.Values.Any(x => x.SecurityFinding);
-            if (prior.Any(x => !previous.TryGetValue(x,out var candidate) || !V2SmokeAccepted(candidate)))
-            { status = status == "invalid" ? status : "incomplete"; deterministic = null; diagnostics.Add("v2_controls"); }
+            if (prior.Any(x => !previous.TryGetValue(x,out var candidate) || options.RunKind == "smoke" && !V2SmokeAccepted(candidate)))
+            {
+                if (options.RunKind == "smoke") { status = status == "invalid" ? status : "incomplete"; deterministic = null; }
+                diagnostics.Add("v2_controls");
+            }
         }
-        return new(2,"single-action-v2",true,options.RunId,item,configuration,options.SourceCommit,actionEvidence?.Capture?.ManagedVersion,actionEvidence?.Capture?.NativeVersion,
+        var candidateResult = new ProbeV2Candidate(2,"single-action-v2",true,options.RunId,item,configuration,options.SourceCommit,actionEvidence?.Capture?.ManagedVersion,actionEvidence?.Capture?.NativeVersion,
             options.ImageDigests(),status,result.ToArray(),deterministic,deterministic == true ? result[0].OutcomeClass : null,"not_applicable",diagnostics.ToArray(),security,null);
+        if (final && options.RunKind == "batch")
+        {
+            var all = previous.ToDictionary(x => x.Key,x => x.Value,StringComparer.Ordinal);
+            all[configuration] = candidateResult;
+            candidateResult = candidateResult with { ItemAssessment = V2JudgeItem(item,all) };
+        }
+        return candidateResult;
 
         ProbeV2Repeat? Raw((string Configuration,string Stage) key,int ordinal) => evidence.TryGetValue(key,out var value) ? value.Capture?.Repeats.FirstOrDefault(x => x.Repeat == ordinal) : null;
         ProbeV2RepeatProjection Slot((string Configuration,string Stage) key,int ordinal) => checkedSlots.TryGetValue(key,out var value) && value.Length == 5 ? value[ordinal - 1] :
@@ -346,14 +362,68 @@ internal static class SingleActionConfigurationJudgement
     }
     internal static bool V2SmokeAccepted(ProbeV2Candidate candidate) => candidate.Status == "complete_valid" && candidate.Deterministic == true &&
         !candidate.SecurityFinding && candidate.ItemAssessment is null && candidate.Diagnostics.Contains("smoke_only",StringComparer.Ordinal) && !candidate.Diagnostics.Contains("smoke_controls_failed",StringComparer.Ordinal);
-    internal static bool V2Published(ProbeV2Options options,string configuration,ProbeV2Candidate? candidate,ProbeV2JudgeReceipt? receipt,byte[]? raw)
+    internal static SingleActionItemAssessment V2JudgeItem(string item,IReadOnlyDictionary<string,ProbeV2Candidate> candidates)
+    {
+        string[] labels = item switch { "B08" => ["H_partition"], "E01" => ["H_transport"], "F06" => ["H_positive_scope","H_negative_surface"], _ => [] };
+        var hypotheses = labels.ToDictionary(x => x,_ => "undecided",StringComparer.Ordinal);
+        SingleActionItemAssessment Result(string? verdict,string? reason = null) => new(verdict,hypotheses,reason);
+        string[] configurations = ProbeV2Matrix.Configurations(item);
+        if (candidates.Values.Any(x => x.SecurityFinding)) return Result(null,"security_finding_requires_hari");
+        if (configurations.Any(x => !candidates.ContainsKey(x))) return Result(null,"missing_configuration");
+        if (configurations.Any(x => candidates[x].Status != "complete_valid" || candidates[x].Diagnostics.Any(d => d is "v2_controls" or "v2_capture_limit" or "v2_access_evidence" or "v2_access_configuration"))) return Result(null,"incomplete_configuration");
+        if (configurations.Any(x => candidates[x].Deterministic != true || candidates[x].OutcomeClass is null)) return Result(null,"unequal_classes_separate_full_plan");
+        if (configurations.Any(x => candidates[x].OutcomeClass!.Origin == "construction")) return Result("untestable","construction_origin");
+        bool Success(string configuration) => candidates[configuration].OutcomeClass!.Result == "success";
+        if (item == "B08")
+        {
+            if (configurations.Any(x => !Success(x))) return Result("untestable","action_error");
+            bool holds = configurations.All(c => candidates[c].Repeats.All(r => r.SemanticOutcome.DeliveredPartition == (c == "C0" ? 30 : 2) && r.SemanticOutcome.ConsumedPartition == (c == "C0" ? 30 : 2) && r.SemanticOutcome.ValueMatch == true));
+            hypotheses["H_partition"] = holds ? "holds" : "contradicted";
+            return Result(holds ? "confirmed" : "contradicted");
+        }
+        if (item == "E01")
+        {
+            if (!Success("C0") || candidates["C0"].Repeats.Any(x => x.SemanticOutcome.ValueKind != "empty")) return Result("untestable","failed_control");
+            if (!Success("C1")) return Result("untestable","action_error");
+            bool holds = candidates["C1"].Repeats.All(x => x.SemanticOutcome.ValueKind == "null");
+            hypotheses["H_transport"] = holds ? "holds" : "contradicted";
+            return Result(holds ? "confirmed" : "contradicted");
+        }
+        if (item == "F06")
+        {
+            if (candidates.Values.Any(c => c.Diagnostics.Count(d => d.StartsWith("permission_audit_sha256:",StringComparison.Ordinal)) != 1) || candidates.Values.SelectMany(c => c.Diagnostics.Where(d => d.StartsWith("permission_audit_sha256:",StringComparison.Ordinal))).Distinct(StringComparer.Ordinal).Count() != 1) return Result(null,"incomplete_configuration");
+            if (V2PositiveConfigurations.Any(c => !Success(c))) return Result("untestable","failed_control");
+            hypotheses["H_positive_scope"] = "holds"; hypotheses["H_negative_surface"] = "recorded_only";
+            return Result("undocumented");
+        }
+        return Result(null,"unknown_item");
+    }
+    private static bool V2AssessmentShape(ProbeV2Options options,string configuration,ProbeV2Candidate candidate)
+    {
+        bool smoke = candidate.Diagnostics.Contains("smoke_only",StringComparer.Ordinal), batch = candidate.Diagnostics.Contains("full_experiment",StringComparer.Ordinal);
+        if (smoke == batch || smoke != (options.RunKind == "smoke")) return false;
+        if (options.RunKind == "smoke") return candidate.ItemAssessment is null;
+        if (candidate.Diagnostics.Contains("smoke_controls_failed",StringComparer.Ordinal)) return false;
+        var audit = candidate.Diagnostics.Where(x => x.StartsWith("permission_audit_sha256:",StringComparison.Ordinal)).ToArray();
+        if (audit.Length > 1 || audit.Any(x => options.ScenarioId != "F06" || x.Length != 88 || !x[24..].All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f'))) return false;
+        if (configuration != ProbeV2Matrix.Configurations(options.ScenarioId).Last()) return candidate.ItemAssessment is null;
+        var assessment = candidate.ItemAssessment;
+        if (assessment is null) return true;
+        string[] labels = options.ScenarioId switch { "B08" => ["H_partition"],"E01" => ["H_transport"],_ => ["H_negative_surface","H_positive_scope"] };
+        return assessment.Verdict is null or "confirmed" or "contradicted" or "undocumented" or "untestable" &&
+            assessment.Hypotheses.Keys.Order(StringComparer.Ordinal).SequenceEqual(labels,StringComparer.Ordinal) &&
+            assessment.Hypotheses.Values.All(x => x is "holds" or "contradicted" or "recorded_only" or "undecided") &&
+            assessment.Reason is null or "security_finding_requires_hari" or "missing_configuration" or "incomplete_configuration" or "unequal_classes_separate_full_plan" or "construction_origin" or "action_error" or "failed_control";
+    }
+    internal static bool V2Published(ProbeV2Options options,string configuration,ProbeV2Candidate? candidate,ProbeV2JudgeReceipt? receipt,byte[]? raw,string? auditHash = null)
     {
         if (candidate is null || receipt is null || raw is null) return false;
         string prefix = ProbeV2Matrix.Prefix(options.RunId,options.ScenarioId,configuration);
         string job = ProbeV2Matrix.Job(options.RunId,options.ScenarioId,configuration,"judge");
         return candidate.SchemaVersion == 2 && candidate.Mode == "single-action-v2" && candidate.Synthetic && candidate.RunId == options.RunId &&
             candidate.ScenarioId == options.ScenarioId && candidate.ConfigurationId == configuration && candidate.SourceCommit == options.SourceCommit &&
-            candidate.Adr012Counts == "not_applicable" && candidate.ItemAssessment is null && candidate.Repeats.Length == 5 &&
+            candidate.Adr012Counts == "not_applicable" && V2AssessmentShape(options,configuration,candidate) &&
+            (options.RunKind != "batch" || options.ScenarioId != "F06" || (auditHash is null ? candidate.ItemAssessment?.Verdict is null : candidate.Diagnostics.Contains("permission_audit_sha256:" + auditHash,StringComparer.Ordinal))) && candidate.Repeats.Length == 5 &&
             candidate.Repeats.All(x => x.Status is "invalid" or "incomplete" or "complete_valid") &&
             candidate.Status == (candidate.Repeats.Any(x => x.Status == "invalid") ? "invalid" : candidate.Repeats.All(x => x.Status == "complete_valid") ? "complete_valid" : "incomplete") &&
             candidate.Deterministic == (candidate.Status == "complete_valid" ? candidate.Repeats.All(x => V2Equal(options.ScenarioId,configuration,candidate.Repeats[0],x)) : (bool?)null) &&
@@ -362,5 +432,146 @@ internal static class SingleActionConfigurationJudgement
             receipt.RunId == options.RunId && receipt.ScenarioId == options.ScenarioId && receipt.ConfigurationId == configuration && receipt.SourceCommit == options.SourceCommit &&
             receipt.JobName == job && Pod(receipt.PodName,job) && SingleActionWire.Text(receipt.PodUid) && receipt.CandidateName == prefix + "candidate.json" &&
             receipt.CandidateSha256 == Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(raw)) && receipt.HandlerExitCode == 0 && receipt.CleanupCompleted;
+    }
+    internal static ProbeV2AccessResult V2AccessEvidence(ProbeV2Options options, ProbeV2Scope? scope, ProbeV2AccessEnvelope? access)
+    {
+        static ProbeV2AccessResult Fail(string reason) => new([reason],null);
+        if (access is null) return Fail("v2_access_evidence");
+        if (scope?.Deployed is null) return Fail("v2_identity");
+        string[] accounts = ["enrichment-consumer","loadgen"];
+        string[] topics = ["document-events","document-events-dlq","document-state"];
+        if (access.SchemaVersion != 1 || access.Mode != "azure_rbac_configuration_check") return Fail("v2_wire");
+        if (access.RunId != options.RunId || access.SourceCommit != options.SourceCommit || access.NamespaceId != scope.Deployed.NamespaceId ||
+            !access.Principals.Keys.Order(StringComparer.Ordinal).SequenceEqual(accounts) || !access.Targets.Keys.Order(StringComparer.Ordinal).SequenceEqual(topics) ||
+            accounts.Any(x => !scope.Deployed.Accounts.TryGetValue(x,out var a) || access.Principals[x] != a.PrincipalId) ||
+            topics.Any(x => !scope.Deployed.Topics.TryGetValue(x,out string? target) || access.Targets[x] != target)) return Fail("v2_identity");
+        if (access.StartedUnixMs < 0 || access.CompletedUnixMs < access.StartedUnixMs || access.CompletedUnixMs - access.StartedUnixMs > 600000) return Fail("v2_wire");
+        if (access.ProjectionBase64.Length > ((options.JudgeLimits.MaxEffectiveScopeBytes + 2) / 3) * 4) return Fail("v2_capture_limit");
+        byte[] bytes;
+        try { bytes = Convert.FromBase64String(access.ProjectionBase64); }
+        catch (FormatException) { return Fail("v2_wire"); }
+        if (bytes.Length > options.JudgeLimits.MaxEffectiveScopeBytes) return Fail("v2_capture_limit");
+        if (!V2AccessHash(access.ProjectionSha256) || access.ProjectionSha256 != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes))) return Fail("v2_identity");
+        ProbeV2AccessProjection projection;
+        try
+        {
+            using var document = JsonDocument.Parse(bytes,new JsonDocumentOptions { MaxDepth = 32 });
+            if (!V2AccessBounds(document.RootElement)) return Fail("v2_capture_limit");
+            projection = ProbeV2Wire.Read<ProbeV2AccessProjection>(bytes,options.JudgeLimits.MaxEffectiveScopeBytes);
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException or InvalidOperationException) { return Fail("v2_wire"); }
+        if (projection.SchemaVersion != 1 || projection.Mode != "azure_rbac_configuration_check" ||
+            projection.StartedUnixMs != access.StartedUnixMs || projection.CompletedUnixMs != access.CompletedUnixMs) return Fail("v2_wire");
+        string binding = "probe-v2-access-v1\n" + options.RunId + "\n" + options.SourceCommit + "\n" + scope.Deployed.NamespaceId.ToLowerInvariant() + "\n" +
+            "loadgen=" + access.Principals["loadgen"].ToLowerInvariant() + "\n" + "enrichment-consumer=" + access.Principals["enrichment-consumer"].ToLowerInvariant() + "\n" +
+            string.Concat(topics.Select(x => x + "=" + access.Targets[x].ToLowerInvariant() + "\n"));
+        if (projection.RunId != options.RunId || projection.SourceCommit != options.SourceCommit || !V2AccessHash(projection.BindingSha256) ||
+            projection.BindingSha256 != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(binding)))) return Fail("v2_identity");
+        string[] reasons = ["input_invalid","platform_unsupported","membership_unavailable","assignment_unavailable","definition_unavailable","membership_shape","assignment_shape","definition_shape","unsupported_grant","configuration_mismatch","pagination_invalid","request_limit","page_limit","group_limit","definition_limit","assignment_limit","private_file_limit","response_limit","raw_bytes_limit","projection_limit","time_limit","transport_failure","safety_stop"];
+        if (!projection.Reasons.SequenceEqual(projection.Reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)) || projection.Reasons.Any(x => !reasons.Contains(x,StringComparer.Ordinal)) ||
+            projection.Status is not ("complete" or "incomplete" or "mismatch") ||
+            (projection.Status == "complete" && projection.Reasons.Length != 0) ||
+            (projection.Status == "incomplete" && projection.Reasons.Length == 0) ||
+            (projection.Status == "mismatch" && !projection.Reasons.SequenceEqual(new[] { "configuration_mismatch" }))) return Fail("v2_wire");
+        Dictionary<string,long> limits = new(StringComparer.Ordinal)
+        {
+            ["audit_seconds"] = 600,["requests"] = 256,["pages_per_collection"] = 8,["groups"] = 64,["definitions"] = 64,["assignments"] = 4096,
+            ["private_files"] = 1024,["response_bytes"] = 1048576,["total_raw_bytes"] = 16777216,["projection_bytes"] = 32768,["automatic_retries"] = 0,["first_admission_age_ms"] = 60000
+        };
+        if (projection.SourceLimits.Count != limits.Count || limits.Any(x => !projection.SourceLimits.TryGetValue(x.Key,out long n) || x.Value != n) ||
+            projection.Observed.Requests < 0 || projection.Observed.Requests > 256 || projection.Observed.ApiVersions.Count != 2 ||
+            !projection.Observed.ApiVersions.TryGetValue("arm",out string? arm) || arm != "2022-04-01" ||
+            !projection.Observed.ApiVersions.TryGetValue("graph",out string? graph) || graph != "v1.0") return Fail("v2_wire");
+        var coverage = projection.Coverage;
+        if (!coverage.Accounts.Keys.Order(StringComparer.Ordinal).SequenceEqual(accounts) || !coverage.Targets.SequenceEqual(topics) ||
+            coverage.Definitions.Any(x => !V2AccessAlias(x.Alias,"role:") || !V2AccessHash(x.RawSha256)) ||
+            coverage.Definitions.Select(x => x.Alias).Distinct(StringComparer.Ordinal).Count() != coverage.Definitions.Length) return Fail("v2_wire");
+        bool completed = true;
+        int queryHashes = coverage.Definitions.Length;
+        var groups = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string account in accounts)
+        {
+            var value = coverage.Accounts[account];
+            if (value.Groups.Distinct(StringComparer.Ordinal).Count() != value.Groups.Length || value.DirectoryRoles.Distinct(StringComparer.Ordinal).Count() != value.DirectoryRoles.Length ||
+                value.Groups.Any(x => !V2AccessAlias(x,"group:")) || value.DirectoryRoles.Any(x => !V2AccessAlias(x,"directory_role:")) ||
+                value.MembershipPages.Any(x => !V2AccessHash(x))) return Fail("v2_wire");
+            groups.UnionWith(value.Groups);
+            queryHashes += value.MembershipPages.Length;
+            string[] subjects = [account,..value.Groups];
+            if (value.AssignmentCollections.Any(x => !subjects.Contains(x.Subject,StringComparer.Ordinal) || x.Pages.Any(y => !V2AccessHash(y))) ||
+                value.AssignmentCollections.Select(x => x.Subject).Distinct(StringComparer.Ordinal).Count() != value.AssignmentCollections.Length) return Fail("v2_wire");
+            bool accountComplete = value.MembershipComplete && value.MembershipPages.Length > 0 &&
+                value.AssignmentCollections.Length == subjects.Length && value.AssignmentCollections.All(x => x.Complete && x.Pages.Length > 0);
+            completed &= accountComplete;
+            queryHashes += value.AssignmentCollections.Sum(x => x.Pages.Length);
+        }
+        if (groups.Count > 64) return Fail("v2_capture_limit");
+        if (projection.Observed.Requests < queryHashes || (projection.Status != "incomplete" && projection.Observed.Requests == 0)) return Fail("v2_wire");
+        var entryIds = new HashSet<string>(StringComparer.Ordinal);
+        var assignmentBindings = new Dictionary<string,string>(StringComparer.Ordinal);
+        var table = new HashSet<string>(StringComparer.Ordinal);
+        string[] definitions = coverage.Definitions.Select(x => x.Alias).ToArray();
+        foreach (var entry in projection.Entries)
+        {
+            if (!accounts.Contains(entry.Account,StringComparer.Ordinal) || !topics.Contains(entry.Target,StringComparer.Ordinal) ||
+                !coverage.Accounts.TryGetValue(entry.Account,out var owner) || (entry.Subject != entry.Account && !owner.Groups.Contains(entry.Subject,StringComparer.Ordinal)) ||
+                entry.Operation is not ("send" or "receive") || entry.Role != (entry.Operation == "send" ? "sender" : "receiver") ||
+                entry.ScopeClass != "event_hub" || !definitions.Contains(entry.DefinitionAlias,StringComparer.Ordinal) ||
+                !V2AccessAlias(entry.AssignmentAlias,"assignment:")) return Fail("v2_wire");
+            string tuple = string.Join('|',entry.Account,entry.Subject,entry.Target,entry.Operation,entry.Role,entry.AssignmentAlias,entry.DefinitionAlias,entry.ScopeClass);
+            if (!entryIds.Add(tuple)) return Fail("v2_wire");
+            string assignment = entry.Account + "|" + entry.AssignmentAlias;
+            string interpretation = entry.Subject + "|" + entry.DefinitionAlias + "|" + entry.Target + "|" + entry.Operation;
+            if (assignmentBindings.TryGetValue(assignment,out string? old) && old != interpretation) return Fail("v2_wire");
+            assignmentBindings[assignment] = interpretation;
+            table.Add(entry.Account + "|" + entry.Target + "|" + entry.Operation);
+        }
+        string[] expected = ["loadgen|document-events|send","enrichment-consumer|document-events|receive","enrichment-consumer|document-state|send","enrichment-consumer|document-events-dlq|send"];
+        string[] unsupportedReasons = ["custom_role","condition","delegation","unfamiliar_operation","unmatched_scope","definition_shape","unexpected_grant"];
+        string[] scopeClasses = ["event_hub","consumer_group","namespace","resource_group","subscription","management_group","other"];
+        foreach (var entry in projection.Unsupported)
+            if (!accounts.Contains(entry.Account,StringComparer.Ordinal) ||
+                !coverage.Accounts.TryGetValue(entry.Account,out var owner) || (entry.Subject != entry.Account && !owner.Groups.Contains(entry.Subject,StringComparer.Ordinal)) ||
+                !scopeClasses.Contains(entry.ScopeClass,StringComparer.Ordinal) || !unsupportedReasons.Contains(entry.Reason,StringComparer.Ordinal) || !V2AccessHash(entry.RawSha256)) return Fail("v2_wire");
+        if (projection.Entries.Select(x => x.AssignmentAlias).Distinct(StringComparer.Ordinal).Count() > 4096) return Fail("v2_capture_limit");
+        bool tableMatches = table.SetEquals(expected);
+        if (projection.Status == "complete" && (!completed || projection.Unsupported.Length != 0 || !tableMatches)) return Fail("v2_wire");
+        if (projection.Status == "mismatch" && (!completed || (tableMatches && !projection.Unsupported.Any(x => x.Reason == "unexpected_grant")) ||
+            projection.Unsupported.Any(x => x.Reason != "unexpected_grant"))) return Fail("v2_wire");
+        if (projection.Status == "mismatch") return Fail("v2_access_configuration");
+        if (projection.Status == "incomplete")
+        {
+            string[] caps = ["request_limit","page_limit","group_limit","definition_limit","assignment_limit","private_file_limit","response_limit","raw_bytes_limit","projection_limit"];
+            return new(projection.Reasons.Select(x => caps.Contains(x,StringComparer.Ordinal) ? "v2_capture_limit" : "v2_access_evidence").Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),null);
+        }
+        return new([],access.ProjectionSha256);
+    }
+
+    private static bool V2AccessHash(string value) => value.Length == 64 && value.All(x => x is >= '0' and <= '9' or >= 'a' and <= 'f');
+    private static bool V2AccessAlias(string value,string prefix) => value.StartsWith(prefix,StringComparison.Ordinal) && V2AccessHash(value[prefix.Length..]);
+    private static bool V2AccessBounds(JsonElement value,string name = "",bool entry = false)
+    {
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            int maximum = name switch { "reasons" => 23,"entries" => 8192,"unsupported" => 4096,"groups" or "directory_roles" or "definitions" => 64,"assignment_collections" => 65,"membership_pages" or "pages" => 8,_ => int.MaxValue };
+            if (value.GetArrayLength() > maximum) return false;
+            foreach (var child in value.EnumerateArray())
+            {
+                bool isEntry = name == "entries";
+                if (isEntry && JsonSerializer.SerializeToUtf8Bytes(child).Length > 1024) return false;
+                if (!V2AccessBounds(child,name,isEntry)) return false;
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in value.EnumerateObject())
+                if (!V2AccessBounds(property.Value,property.Name,entry)) return false;
+        }
+        else if (value.ValueKind == JsonValueKind.String)
+        {
+            string text = value.GetString()!;
+            if (Encoding.UTF8.GetByteCount(text) > (entry ? 96 : 128) || (entry && (text.Length == 0 || text.Any(x => x > 127)))) return false;
+        }
+        return true;
     }
 }

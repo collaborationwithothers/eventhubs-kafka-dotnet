@@ -651,6 +651,32 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
         return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
 
+    def test_v2_preparation_selection_roles_and_smoke_only_private_confirmation(self):
+        for kind, items, roles in [('smoke', 'all', True), ('batch', 'B08', False), ('batch', 'E01', True),
+                                   ('batch', 'F06', True), ('batch', 'B08,F06', True)]:
+            with self.subTest(kind=kind, items=items), patch.dict(os.environ, {
+                    'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': kind,
+                    'PARCHWELL_BATCH_ITEMS': items, 'S_PROBE_V2_EFFECTIVE_SCOPE': 'private-confirmation'}):
+                self.env_file.write_text('')
+                self.assertEqual(0, self.main('prepare-batch'))
+                private = Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())['PARCHWELL_PRIVATE_DIRECTORY'])
+                self.assertIs(roles, json.loads((private / 'ephemeral_tfvars.tfvars.json').read_text())['probe_namespace_data_roles'])
+                confirmation = private / 'probe-v2/effective-scope.json'
+                self.assertEqual(kind == 'smoke', confirmation.exists())
+                if kind == 'smoke':
+                    self.assertEqual('private-confirmation', confirmation.read_text())
+                self.assertNotIn('private-confirmation', self.env_file.read_text())
+
+    def test_v2_invalid_selection_precedes_private_and_azure_work(self):
+        for kind, items in [('smoke', 'B08'), ('batch', ''), ('batch', 'F06,B08'), ('batch', 'B08,B08'),
+                            ('batch', 'B08, E01'), ('batch', 'F04'), ('unknown', 'all')]:
+            with self.subTest(kind=kind, items=items), patch.dict(os.environ, {
+                    'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': kind, 'PARCHWELL_BATCH_ITEMS': items}):
+                self.assertEqual(2, self.main('prepare-batch'))
+                self.assertEqual('', self.env_file.read_text())
+                self.assertEqual([], self.fake.calls)
+                self.assertEqual([], list(self.root.glob('parchwell-*')))
+
     def test_batch_selection_and_strict_command_arguments(self):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')
         with self.mocked():

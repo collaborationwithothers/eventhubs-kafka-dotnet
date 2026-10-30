@@ -1,4 +1,4 @@
-"""Bounded smoke-only transport for the second probe batch; no scientific verdicts."""
+"""Bounded transport for operational smoke and scientific second-batch evidence."""
 
 import hashlib
 import base64
@@ -150,8 +150,8 @@ class ProbeV2:
             raise ValueError("v2_stage")
         runtime = {
             "run_id": phase["run_id"], "phase": configuration, "mode": "single-action-v2-judge" if stage == "judge" else "single-action-v2",
-            "source_commit": phase["source_commit"], "stage": stage, "action_role": account, "image_smoke": False,
-            "probe_namespace_data_roles": True,
+            "source_commit": phase["source_commit"], "run_kind": phase["run_kind"], "stage": stage, "action_role": account, "image_smoke": False,
+            "probe_namespace_data_roles": any(i in phase["items"] for i in ("E01", "F06")),
             "loadgen_image": phase["images"]["loadgen"]["reference"], "verifier_image": phase["images"]["verifier"]["reference"],
             "service_accounts": {role: {key: accounts[role][key] for key in ("name", "client_id", "subject")} for role in ACCOUNTS},
             "eventhubs": unwrap(ephemeral["eventhubs"]), "blob": unwrap(ephemeral["blob"]),
@@ -167,7 +167,7 @@ class ProbeV2:
         if not closed(deployed, "namespace_id topics accounts assignments probe_namespace_data_roles"):
             raise ValueError("v2_role_shape")
         if (not text(deployed["namespace_id"]) or not closed(deployed["topics"], TOPICS)
-                or not closed(deployed["accounts"], ACCOUNTS) or deployed["probe_namespace_data_roles"] is not True
+                or not closed(deployed["accounts"], ACCOUNTS) or deployed["probe_namespace_data_roles"] is not any(i in phase["items"] for i in ("E01", "F06"))
                 or not isinstance(deployed["assignments"], dict)):
             raise ValueError("v2_role_shape")
         cluster_accounts = unwrap(self.p.read("cluster-output.json")["workload_identity"])["service_accounts"]
@@ -182,6 +182,8 @@ class ProbeV2:
                 raise ValueError("v2_role_assignment")
         confirmation = digest = None
         try:
+            if phase["run_kind"] != "smoke":
+                raise ValueError("v2_effective_scope_smoke_only")
             raw, candidate = read(self.p.private / "probe-v2/effective-scope.json", 32768)
             if (not closed(candidate, "schema_version namespace_id accounts") or type(candidate["schema_version"]) is not int
                     or candidate["schema_version"] != 2
@@ -496,6 +498,9 @@ class ProbeV2:
                     or found != [str(seconds)]):
                 record["outcome"] = "render_failed"
                 return record
+            if phase["run_kind"] == "batch" and item == "F06" and stage != "judge" and not self.access_admission(consume=True):
+                record["reason"] = "permission_evidence_incomplete"
+                return record
             record["apply"] = self.p.run(["kubectl", "apply", "-f", str(rendered), "--request-timeout=30s"], 60)
             save()
             if record["apply"]:
@@ -528,7 +533,7 @@ class ProbeV2:
             self.p.command_deadline = previous
 
     @staticmethod
-    def candidate_shape(candidate):
+    def candidate_shape(candidate, run_kind="smoke"):
         def strings(value):
             return isinstance(value, list) and all(isinstance(v, str) for v in value)
 
@@ -587,7 +592,7 @@ class ProbeV2:
         if (not closed(candidate, CANDIDATE_KEYS) or candidate["status"] not in ("complete_valid", "invalid", "incomplete")
                 or candidate["deterministic"] is not None and type(candidate["deterministic"]) is not bool
                 or type(candidate["security_finding"]) is not bool or not strings(candidate["diagnostics"])
-                or not outcome(candidate["outcome_class"]) or candidate["item_assessment"] is not None
+                or not outcome(candidate["outcome_class"]) or not ProbeV2.assessment_shape(candidate, run_kind)
                 or any(v is not None and not text(v) for v in (candidate["managed_version"], candidate["native_version"]))):
             return False
         repeats = candidate["repeats"]
@@ -617,11 +622,11 @@ class ProbeV2:
         receipt_target = self.p.candidates / f"{item}-{configuration}-judge-completion.json"
         candidate_bytes = self.p.download_blob(prefix + "candidate.json", target, 16777216, deadline)
         receipt_bytes = self.p.download_blob(prefix + "judge-completion.json", receipt_target, 65536, deadline)
-        accepted = smoke = False
+        accepted = smoke = evidence = False
         try:
             candidate, receipt = decode(candidate_bytes, 16777216), decode(receipt_bytes, 65536)
             pod = self.pod(record)
-            if not self.candidate_shape(candidate) or not closed(receipt, RECEIPT_KEYS):
+            if not self.candidate_shape(candidate, phase["run_kind"]) or not closed(receipt, RECEIPT_KEYS):
                 raise ValueError("v2_candidate_shape")
             for document in (candidate, receipt):
                 if (type(document["schema_version"]) is not int or document["schema_version"] != 2
@@ -635,7 +640,30 @@ class ProbeV2:
                     or receipt["job_name"] != record["job"] or receipt["pod_name"] != pod["pod_name"] or receipt["pod_uid"] != pod["pod_uid"]
                     or type(receipt["handler_exit_code"]) is not int or receipt["handler_exit_code"] != 0 or receipt["cleanup_completed"] is not True):
                 raise ValueError("v2_candidate_receipt")
+            diagnostics = candidate["diagnostics"]
+            if phase["run_kind"] == "smoke":
+                if diagnostics.count("smoke_only") != 1 or "full_experiment" in diagnostics:
+                    raise ValueError("v2_candidate_mode")
+            elif diagnostics.count("full_experiment") != 1 or "smoke_only" in diagnostics or "smoke_controls_failed" in diagnostics:
+                raise ValueError("v2_candidate_mode")
+            audit_valid = True
+            if phase["run_kind"] == "batch" and item == "F06":
+                references = [v for v in diagnostics if v.startswith("permission_audit_sha256:")]
+                audit_valid = False
+                if references:
+                    if len(references) != 1 or not re.fullmatch(r"permission_audit_sha256:[a-f0-9]{64}", references[0]):
+                        raise ValueError("v2_candidate_audit")
+                    raw, _ = read(self.p.artifacts / "probe-v2-access-check.json", 32768)
+                    if references[0] != "permission_audit_sha256:" + hashlib.sha256(raw).hexdigest():
+                        raise ValueError("v2_candidate_audit")
+                    audit_valid = True
+                if not audit_valid and candidate["item_assessment"] is not None and candidate["item_assessment"]["verdict"] is not None:
+                    raise ValueError("v2_candidate_audit")
             accepted = True
+            evidence = (candidate["status"] == "complete_valid" and candidate["deterministic"] is True
+                        and candidate["security_finding"] is False and audit_valid
+                        and (candidate["configuration_id"] != ("C11" if item == "F06" else "C1")
+                             or candidate["item_assessment"] is not None and candidate["item_assessment"]["verdict"] is not None))
             smoke = (candidate["status"] == "complete_valid" and candidate["deterministic"] is True
                      and candidate["security_finding"] is False and "smoke_only" in candidate["diagnostics"]
                      and "smoke_controls_failed" not in candidate["diagnostics"])
@@ -643,16 +671,16 @@ class ProbeV2:
             pass
         state = self.p.state()
         state.setdefault("candidates", []).append({"item": item, "configuration": configuration, "accepted": accepted,
-            "smoke_valid": smoke, "candidate": target.name if candidate_bytes else None, "judge_completion": receipt_target.name if receipt_bytes else None})
+            "smoke_valid": smoke, "evidence_valid": evidence, "candidate": target.name if candidate_bytes else None, "judge_completion": receipt_target.name if receipt_bytes else None})
         self.p.save_state(state)
         if not accepted:
             private_json(self.p.candidates / f"{item}-{configuration}-gap.json", {"item": item, "configuration": configuration, "reason": "v2_candidate_transport"})
-        return accepted and smoke
+        return accepted and (smoke if phase["run_kind"] == "smoke" else evidence)
 
     @staticmethod
-    def admitted_slots(state, run):
+    def admitted_slots(state, run, configurations=CONFIGURATIONS):
         """Count declared admissions only when every actor capture was transported and completed."""
-        expected = {job_name(run, item, configuration, stage) for item, configuration in CONFIGURATIONS
+        expected = {job_name(run, item, configuration, stage) for item, configuration in configurations
                     for stage, _, _ in stages(item, configuration) if stage != "judge"}
         actors = [record for record in state["modes"] if record.get("stage") != "judge"]
         if (len(actors) != len(expected) or {record["job"] for record in actors} != expected
@@ -661,10 +689,98 @@ class ProbeV2:
             return None
         return sum(record["admitted_client_slots"] for record in actors)
 
+    @staticmethod
+    def assessment_shape(candidate, run_kind):
+        assessment = candidate["item_assessment"]
+        if run_kind == "smoke":
+            return assessment is None
+        item = candidate["scenario_id"]
+        if item not in ITEMS or candidate["configuration_id"] != ("C11" if item == "F06" else "C1"):
+            return assessment is None
+        if assessment is None:
+            return True
+        labels = {"B08": {"H_partition"}, "E01": {"H_transport"}, "F06": {"H_positive_scope", "H_negative_surface"}}[item]
+        return (closed(assessment, "verdict hypotheses reason") and assessment["verdict"] in (None, "confirmed", "contradicted", "undocumented", "untestable")
+                and closed(assessment["hypotheses"], labels)
+                and all(v in ("holds", "contradicted", "recorded_only", "undecided") for v in assessment["hypotheses"].values())
+                and (assessment["reason"] is None or text(assessment["reason"])))
+
+    def access_admission(self, consume=False):
+        """Check the same-host snapshot immediately before first client submission."""
+        phase, state = self.p.read("phase.json"), self.p.state()
+        audit = state.get("permission_audit", {})
+        if audit.get("blocked"):
+            return False
+        if audit.get("first_submission_consumed") is True:
+            return True
+        now = time.monotonic()
+        completed = audit.get("completed_monotonic")
+        age = (now - completed) * 1000 if type(completed) in (int, float) else None
+        valid = (audit.get("status") == "complete" and audit.get("run_id") == phase["run_id"]
+                 and audit.get("boot_identity") is not None and audit.get("boot_identity") == self.p.boot_identity() and audit.get("clock") == "monotonic"
+                 and type(age) in (int, float) and math.isfinite(age) and 0 <= age <= 60000
+                 and isinstance(audit.get("projection_sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", audit["projection_sha256"]))
+        if not valid:
+            audit["blocked"] = True
+        elif consume:
+            audit.update(first_submission_consumed=True, submission_age_ms=age)
+        state["permission_audit"] = audit
+        self.p.save_state(state)
+        return bool(valid)
+
+    def collect_access(self, deadline):
+        phase = self.p.read("phase.json")
+        state = self.p.state()
+        if "permission_audit" in state:
+            return state["permission_audit"].get("status")
+        audit = {"status": "incomplete", "run_id": phase["run_id"], "boot_identity": self.p.boot_identity(),
+                 "clock": "monotonic", "first_submission_consumed": False}
+        state["permission_audit"] = audit
+        self.p.save_state(state)
+        previous = self.p.command_deadline
+        self.p.command_deadline = deadline
+        try:
+            code = self.p.run(["python3", "infra/scripts/phase/probe_v2_access.py", str(self.p.private)], 600)
+            if code in (124, 137):
+                state = self.p.state()
+                state["safety_stop"] = True
+                self.p.save_state(state)
+            audit["completed_monotonic"] = time.monotonic()
+            raw, envelope = read(self.p.private / "probe-v2/access-check.json", 131072)
+            projection_raw, projection = read(self.p.artifacts / "probe-v2-access-check.json", 32768)
+            if (envelope["run_id"] != phase["run_id"] or envelope["source_commit"] != phase["source_commit"]
+                    or envelope["projection_sha256"] != hashlib.sha256(projection_raw).hexdigest()
+                    or base64.b64decode(envelope["projection_base64"], validate=True) != projection_raw):
+                raise ValueError("v2_access_binding")
+            audit["projection_sha256"] = envelope["projection_sha256"]
+            if "safety_stop" in projection.get("reasons", []):
+                state = self.p.state()
+                state["safety_stop"] = True
+                self.p.save_state(state)
+            audit["status"] = projection["status"] if projection["status"] == "mismatch" or code == 0 and projection["status"] == "complete" else "incomplete"
+            if not self.configmap(phase["run_id"] + "-v2-access-check", {"access-check.json": raw.decode()}):
+                audit["status"] = "incomplete"
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError):
+            audit["status"] = "incomplete"
+        finally:
+            self.p.command_deadline = previous
+            state = self.p.state()
+            state["permission_audit"] = audit
+            self.p.save_state(state)
+        return audit["status"]
+
     def run_batch(self):
         phase = self.p.read("phase.json")
-        if phase.get("scenario") != "probe-batch-2" or phase.get("run_kind") != "smoke" or phase.get("items") != list(ITEMS):
-            raise ValueError("v2_smoke_selection")
+        items = phase.get("items")
+        if (phase.get("scenario") != "probe-batch-2" or phase.get("run_kind") not in ("smoke", "batch")
+                or not isinstance(items, list) or not items or items != [i for i in ITEMS if i in items]
+                or phase["run_kind"] == "smoke" and items != list(ITEMS)):
+            raise ValueError("v2_batch_selection")
+        configurations = tuple((i, c) for i, c in CONFIGURATIONS if i in items)
+        expected_jobs = sum(len(stages(i, c)) for i, c in configurations)
+        state = self.p.state()
+        state["not_selected"] = [i for i in ITEMS if i not in items]
+        self.p.save_state(state)
         clock = self.p.start_batch_clock()
         phase = self.p.read("phase.json")
         end = phase["batch_started_monotonic"] + 14400
@@ -678,13 +794,23 @@ class ProbeV2:
         finally:
             self.p.command_deadline = previous
         passed = clock and scope_valid
-        for item, configuration in CONFIGURATIONS:
+        for item, configuration in configurations:
+            if phase["run_kind"] == "batch" and item == "F06" and "permission_audit" not in self.p.state():
+                if clock and self.p.admission_allowed() and end - time.monotonic() >= 600 + sum(s + 120 for _, _, s in stages(item, configuration)):
+                    self.collect_access(end)
             selected = stages(item, configuration)
             reservation = sum(seconds + 120 for _, _, seconds in selected)
             reason = None if clock and self.p.admission_allowed() and end - time.monotonic() >= reservation else "start_cap"
             deadline = min(end, time.monotonic() + reservation)
             for stage, account, seconds in selected:
-                record = self.run_stage(item, configuration, stage, account, seconds, deadline, reason)
+                skip = reason
+                if phase["run_kind"] == "batch" and item == "F06" and stage != "judge":
+                    audit = self.p.state().get("permission_audit", {})
+                    if audit.get("status") == "mismatch":
+                        skip = "permission_configuration_mismatch"
+                    elif not self.access_admission():
+                        skip = "permission_evidence_incomplete"
+                record = self.run_stage(item, configuration, stage, account, seconds, deadline, skip)
                 if record["outcome"] != "complete" or record["collect"] != 0:
                     passed = False
                 if stage == "judge":
@@ -701,9 +827,9 @@ class ProbeV2:
                     finally:
                         self.p.command_deadline = previous
         state = self.p.state()
-        private_json(self.p.artifacts / "probe-v2-smoke.json", {"schema_version": 2, "mode": "smoke_only", "run_id": phase["run_id"],
+        private_json(self.p.artifacts / ("probe-v2-smoke.json" if phase["run_kind"] == "smoke" else "probe-v2-batch.json"), {"schema_version": 2, "mode": "smoke_only" if phase["run_kind"] == "smoke" else "full_experiment", "selected_items": items, "run_id": phase["run_id"],
             "source_commit": phase["source_commit"], "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
-            "jobs": len(state["modes"]), "action_slots": len(CONFIGURATIONS) * 5, "maximum_clients": sum(stage != "judge" for i, c in CONFIGURATIONS for stage, _, _ in stages(i, c)) * 5,
-            "admitted_client_slots": self.admitted_slots(state, phase["run_id"]),
-            "evidence_passed": passed and len(state["modes"]) == 49 and not state.get("safety_stop", False), "cleanup_required": True})
-        return int(not passed or len(state["modes"]) != 49 or state.get("safety_stop", False))
+            "jobs": len(state["modes"]), "action_slots": len(configurations) * 5, "maximum_clients": sum(stage != "judge" for i, c in configurations for stage, _, _ in stages(i, c)) * 5,
+            "admitted_client_slots": self.admitted_slots(state, phase["run_id"], configurations),
+            "evidence_passed": passed and len(state["modes"]) == expected_jobs and not state.get("safety_stop", False), "cleanup_required": True})
+        return int(not passed or len(state["modes"]) != expected_jobs or state.get("safety_stop", False))

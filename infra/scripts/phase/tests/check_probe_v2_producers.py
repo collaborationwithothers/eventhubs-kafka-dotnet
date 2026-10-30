@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check actual .NET test exports against Python transport, without a live service."""
+import argparse
 import json
 from pathlib import Path
 import sys
@@ -56,7 +57,7 @@ def check_actor(directory):
         case.doCleanups()
 
 
-def check_judge(directory):
+def check_judge(directory, run_kind="smoke"):
     case = ProbeV2Tests()
     case.setUp()
     try:
@@ -64,7 +65,7 @@ def check_judge(directory):
         receipt_bytes = (directory / 'judge-completion.json').read_bytes()
         candidate, receipt = json.loads(candidate_bytes), json.loads(receipt_bytes)
         phase = case.p.read('phase.json')
-        phase.update(run_id=candidate['run_id'], source_commit=candidate['source_commit'])
+        phase.update(run_id=candidate['run_id'], source_commit=candidate['source_commit'], run_kind=run_kind)
         phase['images'] = {name: {'digest': digest, 'reference': 'synthetic.azurecr.io/parchwell/' + name + '@' + digest} for name, digest in candidate['image_digests'].items()}
         case.write(case.private / 'phase.json', phase)
         record = {'job': receipt['job_name'], 'item': candidate['scenario_id'], 'configuration': candidate['configuration_id'],
@@ -80,7 +81,7 @@ def check_judge(directory):
         with patch.object(case.p, 'download_blob', side_effect=download):
             case.subject.candidate(record, time.monotonic() + 120)
         result = case.p.state()['candidates'][-1]
-        if result['accepted'] is not True or result['smoke_valid'] is not True:
+        if result['accepted'] is not True or result['smoke_valid' if run_kind == 'smoke' else 'evidence_valid'] is not True:
             raise AssertionError('actual happy-path judge candidate/receipt failed smoke transport')
     finally:
         case.doCleanups()
@@ -123,11 +124,17 @@ def check_metadata_actor(directory):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) not in (3, 4):
-        raise SystemExit('usage: check_probe_v2_producers.py ACTOR_EXPORT JUDGE_EXPORT [METADATA_ACTOR_EXPORT]')
-    check_actor(Path(sys.argv[1]))
-    check_judge(Path(sys.argv[2]))
-    if len(sys.argv) == 4:
-        check_metadata_actor(Path(sys.argv[3]))
-        check_actor(Path(sys.argv[3]))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('actor_export', type=Path)
+    parser.add_argument('judge_export', type=Path)
+    parser.add_argument('metadata_actor_export', type=Path, nargs='?')
+    parser.add_argument('--batch-judge-export', type=Path)
+    args = parser.parse_args()
+    check_actor(args.actor_export)
+    check_judge(args.judge_export)
+    if args.metadata_actor_export:
+        check_metadata_actor(args.metadata_actor_export)
+        check_actor(args.metadata_actor_export)
+    if args.batch_judge_export:
+        check_judge(args.batch_judge_export, 'batch')
     print('{"probe_v2_actual_producer_transport_valid":true}')

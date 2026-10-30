@@ -105,6 +105,10 @@ internal sealed class ProbeV2Handler(ProbeV2Options options, IProbeV2Inputs inpu
         }
         var scopeProblems = new List<string>();
         var scope = await Local<ProbeV2Scope>(Path.Combine(options.InputRoot,"scope","role-scope.json"),options.JudgeLimits.MaxRoleScopeBytes,scopeProblems).ConfigureAwait(false);
+        var accessProblems = new List<string>();
+        ProbeV2AccessEnvelope? access = null;
+        if (options.RunKind == "batch" && options.ScenarioId == "F06")
+            access = await Local<ProbeV2AccessEnvelope>(Path.Combine(options.InputRoot,"access","access-check.json"),options.JudgeLimits.MaxRoleScopeBytes,accessProblems).ConfigureAwait(false);
         LoadedScenario scenario = await loader.LoadAsync(options.ScenarioId,cancellationToken).ConfigureAwait(false);
         if (scenario.Definition.ProbeV2 is null) throw new InvalidOperationException("v2_declaration_required");
         var slots = new Dictionary<(string Configuration,string Stage),ProbeV2RepeatProjection[]>();
@@ -150,14 +154,33 @@ internal sealed class ProbeV2Handler(ProbeV2Options options, IProbeV2Inputs inpu
                     byte[]? receiptBytes = await Read(ct => store.ReadBoundedAsync(previousPrefix + "judge-completion.json",options.JudgeLimits.MaxJudgeReceiptBytes,ct),options.JudgeLimits.MaxJudgeReceiptBytes).ConfigureAwait(false);
                     var candidate = candidateBytes is null ? null : ProbeV2Wire.Read<ProbeV2Candidate>(candidateBytes,options.JudgeLimits.MaxCandidateBytes);
                     var receipt = receiptBytes is null ? null : ProbeV2Wire.Read<ProbeV2JudgeReceipt>(receiptBytes,options.JudgeLimits.MaxJudgeReceiptBytes);
-                    if (SingleActionConfigurationJudgement.V2Published(options,configuration,candidate,receipt,candidateBytes)) previous.Add(configuration,candidate!);
+                    if (SingleActionConfigurationJudgement.V2Published(options,configuration,candidate,receipt,candidateBytes,
+                        options.RunKind == "batch" && options.ScenarioId == "F06" ? SingleActionConfigurationJudgement.V2AccessEvidence(options,scope,access).AuditHash : null)) previous.Add(configuration,candidate!);
                 }
                 catch (Exception exception) when (Recoverable(exception,cancellationToken)) { previousLimited |= exception is InputLimitExceededException; }
             }
         }
-        var result = SingleActionConfigurationJudgement.V2Candidate(options,evidence,slots,scope,previous);
-        if (scopeProblems.Contains("v2_wire",StringComparer.Ordinal)) result = result with { Status = "invalid",Deterministic = null,OutcomeClass = null,Diagnostics = [..result.Diagnostics,"v2_wire"] };
-        if (previousLimited || scopeProblems.Contains("v2_capture_limit",StringComparer.Ordinal))
+        var result = SingleActionConfigurationJudgement.V2Candidate(options,evidence,slots,scope,previous,access);
+        if (options.RunKind == "batch")
+        {
+            string[] inputProblems = scopeProblems.Concat(accessProblems).Distinct(StringComparer.Ordinal).ToArray();
+            if (inputProblems.Length > 0)
+            {
+                var repeats = result.Repeats.Select(row => row with
+                {
+                    Status = row.Status == "invalid" || inputProblems.Any(x => x is "v2_wire" or "v2_identity") ? "invalid" : "incomplete",
+                    Reasons = row.Reasons.Concat(inputProblems).Distinct(StringComparer.Ordinal).ToArray()
+                }).ToArray();
+                result = result with { Repeats = repeats,Status = repeats.Any(row => row.Status == "invalid") ? "invalid" : "incomplete",Deterministic = null,OutcomeClass = null,
+                    Diagnostics = result.Diagnostics.Concat(inputProblems).Distinct(StringComparer.Ordinal).ToArray(),
+                    ItemAssessment = result.ItemAssessment is null ? null : result.ItemAssessment with { Verdict = null,Reason = result.SecurityFinding ? "security_finding_requires_hari" : "incomplete_configuration" } };
+            }
+            if (previousLimited)
+                result = result with { Diagnostics = [..result.Diagnostics,"v2_capture_limit"],
+                    ItemAssessment = result.ItemAssessment is null ? null : result.ItemAssessment with { Verdict = null,Reason = result.SecurityFinding ? "security_finding_requires_hari" : "incomplete_configuration" } };
+        }
+        if (options.RunKind == "smoke" && scopeProblems.Contains("v2_wire",StringComparer.Ordinal)) result = result with { Status = "invalid",Deterministic = null,OutcomeClass = null,Diagnostics = [..result.Diagnostics,"v2_wire"] };
+        if (options.RunKind == "smoke" && (previousLimited || scopeProblems.Contains("v2_capture_limit",StringComparer.Ordinal)))
             result = result with { Status = result.Status == "invalid" ? "invalid" : "incomplete",Deterministic = null,OutcomeClass = null,Diagnostics = [..result.Diagnostics,"v2_capture_limit"] };
         byte[] output = ProbeV2Wire.Write(result,options.JudgeLimits.MaxCandidateBytes);
         string name = ProbeV2Matrix.Prefix(options.RunId,options.ScenarioId,options.ConfigurationId) + "candidate.json";

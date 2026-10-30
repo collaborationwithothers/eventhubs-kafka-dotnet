@@ -1,0 +1,99 @@
+schema_version: 1
+id: F06
+assessment_rules:
+  observation_unit: fresh_client_single_action
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  completion_checks:
+  - V1
+  - V2
+  - V3
+  - V4
+  - V5
+  - V6
+  - V7
+  - V8
+  - V9
+  - V10
+  - V11
+  - V12
+  outcome_class:
+  - result
+  - error_code
+  - is_fatal
+  - origin
+  require_one_class_in_all_five: true
+  unequal_classes: separate_full_plan_no_verdict
+  incomplete_configuration: no_verdict
+  construction_origin: untestable
+  failed_control: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+  semantic_comparison_fields:
+  - consumed_partition
+  - value_kind
+  - value_match
+  producer_semantic_comparison_fields:
+  - delivered_partition
+  - consumed_partition
+  - value_kind
+  - value_match
+hypotheses:
+  H_positive_scope:
+    question: Do the exact positive send/read controls succeed under the documented role scopes?
+    configurations:
+    - C0
+    - C1
+    - C3
+    - C5
+    - C6
+    - C7
+    - C8
+    - C9
+    decision: all required configurations must be complete/deterministic. If any positive control above has a complete
+      observed failure, H_positive_scope=undecided, untestable, `failed_control`. Otherwise H_positive_scope=holds
+      and H_negative_surface=recorded_only, proposed verdict undocumented. Record each negative observation's native
+      class or the approved absence sentence; do not claim universal scope enforcement. A positive result with missing
+      private scope/control evidence is incomplete, not untestable.
+  H_negative_surface:
+    question: What is observed for the narrow identities outside their positive grants?
+    configurations:
+    - C2
+    - C4
+    - C10
+    - C11
+    decision: recorded_only; only C10/C11 may report no read and no error within the window. Silence never establishes
+      denial.
+verdict:
+  decision: all required configurations must be complete/deterministic. If any positive control above has a complete
+    observed failure, H_positive_scope=undecided, untestable, `failed_control`. Otherwise H_positive_scope=holds
+    and H_negative_surface=recorded_only, proposed verdict undocumented. Record each negative observation's native
+    class or the approved absence sentence; do not claim universal scope enforcement. A positive result with missing
+    private scope/control evidence is incomplete, not untestable.
+  precedence: security finding -> null verdict, security_finding_requires_hari; missing required configuration ->
+    null, missing_configuration; any invalid/incomplete configuration or missing final receipt -> null, incomplete_configuration;
+    any complete unequal classes -> null, unequal_classes_separate_full_plan; complete deterministic construction-origin
+    outcome -> untestable, construction_origin; then the item rules.
+  no_verdict_when: Incomplete evidence, missing successful final receipt, missing configurations, unequal classes
+    or security finding; no pooling or replacement repeats.
+sources:
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_msg.c
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdmurmur2.c
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Serializers.cs
+  version: v2.16.0
+  read_date: '2026-10-30'
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/log-compaction
+  version: current
+  read_date: '2026-10-30'
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/authorize-access-azure-active-directory
+  version: current
+  read_date: '2026-10-30'

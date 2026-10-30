@@ -64,9 +64,12 @@ def scenario():
 def batch_items():
     value = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
     if os.environ.get('PARCHWELL_SCENARIO') == 'probe-batch-2':
-        if value != 'all' or os.environ.get('PARCHWELL_RUN_KIND') != 'smoke':
+        kind = os.environ.get('PARCHWELL_RUN_KIND')
+        available = ['B08', 'E01', 'F06']
+        selected = available if value == 'all' else value.split(',')
+        if kind not in ('smoke', 'batch') or (kind == 'smoke' and value != 'all') or not selected or selected != [item for item in available if item in selected]:
             raise Failure('unsupported probe batch selection')
-        return ['B08', 'E01', 'F06']
+        return selected
     if value == 'all':
         return list(SINGLE_ACTION_ITEMS)
     selected = value.split(',')
@@ -276,7 +279,7 @@ class Phase:
             secrets[name] = value
         ephemeral_variables = strict_json(secrets["ephemeral_tfvars.tfvars.json"])
         if selected == "probe-batch-2":
-            ephemeral_variables["probe_namespace_data_roles"] = True
+            ephemeral_variables["probe_namespace_data_roles"] = any(item in metadata["items"] for item in ("E01", "F06"))
         elif ephemeral_variables.get("probe_namespace_data_roles", False) is not False:
             raise Failure("namespace probe roles require probe-batch-2")
         secrets["ephemeral_tfvars.tfvars.json"] = json.dumps(ephemeral_variables)
@@ -302,7 +305,7 @@ class Phase:
         status = {"phase": phase, "run_id": run, "modes": [], "candidate": None, "safety_stop": False}
         if selected in ("probe-batch", "probe-batch-2"):
             status["not_selected"] = []
-        if selected == "probe-batch-2":
+        if selected == "probe-batch-2" and metadata.get("run_kind") == "smoke":
             scope_directory = private / "probe-v2"
             scope_directory.mkdir(mode=0o700)
             confirmation = os.environ.get("S_PROBE_V2_EFFECTIVE_SCOPE", "")

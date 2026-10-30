@@ -75,6 +75,7 @@
 {{- range $key,$value := $bounds.capture }}{{ $_ := set $fields (printf "Limits__%s" $key) $value }}{{ end -}}
 {{- range $key,$value := $bounds.parsing }}{{ $_ := set $fields (printf "ScenarioLoadOptions__%s" $key) $value }}{{ end -}}
 {{- if $judge -}}
+{{- $_ := set $fields "RunKind" $r.run_kind -}}
 {{- $_ := set $fields "BlobServiceUri" $r.blob.account_url -}}
 {{- $_ := set $fields "VerifierContainer" "verifier" -}}
 {{- $_ := set $fields "LoadGenImage" $r.loadgen_image -}}
@@ -181,6 +182,11 @@ spec:
               readOnly: true
             {{- end }}
             {{- if $judge }}
+            {{- if and (eq $r.run_kind "batch") (eq .Values.scenario_id "F06") }}
+            - name: access-check
+              mountPath: /run/probe-inputs/access
+              readOnly: true
+            {{- end }}
             - name: role-scope
               mountPath: /run/probe-inputs/scope
               readOnly: true
@@ -207,6 +213,14 @@ spec:
               {{- end }}
         {{- end }}
         {{- if $judge }}
+        {{- if and (eq $r.run_kind "batch") (eq .Values.scenario_id "F06") }}
+        - name: access-check
+          configMap:
+            name: {{ printf "%s-v2-access-check" $r.run_id | quote }}
+            optional: true
+            items:
+              - {key: access-check.json, path: access-check.json}
+        {{- end }}
         - name: role-scope
           configMap:
             name: {{ printf "%s-v2-role-scope" $r.run_id | quote }}

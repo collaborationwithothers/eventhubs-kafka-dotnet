@@ -8,6 +8,7 @@ namespace Parchwell.Verifier.VerifyRun.SingleAction;
 
 internal sealed partial class ProbeV2Options
 {
+    public string RunKind { get; set; } = "";
     public string ScenarioId { get; set; } = "";
     public string ConfigurationId { get; set; } = "";
     public string RunId { get; set; } = "";
@@ -31,6 +32,7 @@ internal sealed partial class ProbeV2Options
 
     internal void Validate()
     {
+        if (RunKind is not ("smoke" or "batch")) throw new InvalidOperationException("v2_run_kind");
         _ = ProbeV2Matrix.For(ScenarioId, ConfigurationId, "action");
         if (!RunPattern().IsMatch(RunId) || !CommitPattern().IsMatch(SourceCommit) ||
             !DnsPattern().IsMatch(JobName) || !DnsPattern().IsMatch(PodName) ||
@@ -65,6 +67,7 @@ internal sealed partial class ProbeV2Options
             }
         }
         IConfigurationSection section = configuration.GetSection("ProbeV2Judge");
+        if (section["RunKind"] is not ("smoke" or "batch")) throw new InvalidOperationException("v2_run_kind");
         RequireLeaves(section, typeof(ProbeV2Options));
         var options = new ProbeV2Options();
         section.Bind(options, value => value.ErrorOnUnknownConfiguration = true);
