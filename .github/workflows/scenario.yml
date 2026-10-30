@@ -22,10 +22,15 @@ on:
           - smoke
           - batch
       items:
-        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all; batch all or ordered B08,E01,F06)"
+        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06)"
         type: string
         required: false
         default: all
+      capture_authentication_metadata:
+        description: Collect bounded authentication metadata (selected authentication controls only)
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
   id-token: write
@@ -52,6 +57,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}
     steps:
@@ -246,6 +252,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: C0
     steps:
@@ -439,6 +446,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C1' || 'C3' }}
     steps:
@@ -672,6 +680,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
@@ -850,7 +859,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: always() && (inputs.scenario == 'probe-batch' || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && inputs.items == 'all') || (inputs.run_kind == 'batch' && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))
+    if: always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -863,6 +872,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
+      PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}

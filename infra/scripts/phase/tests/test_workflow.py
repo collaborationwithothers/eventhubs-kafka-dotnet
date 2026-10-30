@@ -51,8 +51,10 @@ class WorkflowTests(unittest.TestCase):
             'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true',
                          'default': 'smoke', 'options': ['smoke', 'batch']},
-            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all; batch all or ordered B08,E01,F06)',
-                      'type': 'string', 'required': 'false', 'default': 'all'}}}}, self.workflow['on'])
+            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06)',
+                      'type': 'string', 'required': 'false', 'default': 'all'},
+            'capture_authentication_metadata': {'description': 'Collect bounded authentication metadata (selected authentication controls only)',
+                      'type': 'boolean', 'required': 'false', 'default': 'false'}}}}, self.workflow['on'])
         self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
         phase_spec = importlib.util.spec_from_file_location('phase_for_workflow', REPO / 'infra/scripts/phase/phase.py')
@@ -223,7 +225,7 @@ esac
         self.assertEqual("inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2'", batch['if'])
         self.assertNotIn('needs', batch)
         self.assertEqual(['batch'], stop['needs'])
-        self.assertEqual('always() && (inputs.scenario == \'probe-batch\' || (inputs.scenario == \'probe-batch-2\' && ((inputs.run_kind == \'smoke\' && inputs.items == \'all\') || (inputs.run_kind == \'batch\' && contains(fromJSON(\'["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]\'), inputs.items)))))', stop['if'])
+        self.assertEqual("always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))))", stop['if'])
         expected_ids = {
             'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
@@ -238,6 +240,7 @@ esac
             self.assertEqual('single-action', job['env']['PARCHWELL_PHASE'])
             self.assertEqual('${{ inputs.run_kind }}', job['env']['PARCHWELL_RUN_KIND'])
             self.assertEqual('${{ inputs.items }}', job['env']['PARCHWELL_BATCH_ITEMS'])
+            self.assertEqual("${{ inputs.capture_authentication_metadata && 'true' || 'false' }}", job['env']['PARCHWELL_CAPTURE_AUTHENTICATION_METADATA'])
             steps = self.steps(job)
             for ident in ('guard', 'checkout', 'login', 'azure_session'):
                 self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
@@ -329,20 +332,102 @@ esac
                      if 'S_PROBE_V2_EFFECTIVE_SCOPE' in step.get('env', {})]
         self.assertEqual([('batch', 'prepare')], locations)
         expression = self.all_jobs['batch-stop']['if']
-        for selected, kind, items, expected in [('probe-batch-2', 'smoke', 'all', True), ('probe-batch-2', 'batch', 'all', True),
-                ('probe-batch-2', 'smoke', '', False), ('probe-batch-2', 'smoke', 'B08', False), ('probe-batch', 'batch', 'F04', True),
-                ('A01', 'smoke', 'all', False), ('probe-batch-2', 'batch', 'b08', True),
-                ('probe-batch-2', 'Batch', 'B08', True), ('probe-batch-2', 'smoke', 'ALL', True)]:
+        for selected, kind, items, capture, expected in [
+                ('probe-batch-2', 'smoke', 'all', False, True), ('probe-batch-2', 'smoke', 'all', True, False),
+                ('probe-batch-2', 'batch', 'all', False, True), ('probe-batch-2', 'batch', 'B08', False, True),
+                ('probe-batch-2', 'batch', 'E01,F06', False, True), ('probe-batch-2', 'batch', 'F06,B08', False, False),
+                ('probe-batch-2', 'batch', 'all', True, False), ('probe-batch-2', 'smoke', '', False, False),
+                ('probe-batch-2', 'smoke', 'B08', False, False), ('probe-batch-2', 'smoke', 'authentication-controls', True, True),
+                ('probe-batch-2', 'smoke', 'authentication-controls', False, False), ('probe-batch', 'batch', 'F04', False, True),
+                ('probe-batch', 'batch', 'F04', True, False), ('A01', 'smoke', 'all', False, False),
+                ('probe-batch-2', 'batch', 'b08', False, True), ('probe-batch-2', 'Batch', 'B08', False, True),
+                ('probe-batch-2', 'smoke', 'ALL', False, True)]:
             evaluated = expression.replace('always()', 'True').replace('&&', ' and ').replace('||', ' or ')
+            evaluated = evaluated.replace('!inputs.capture_authentication_metadata', 'not capture').replace('&&', ' and ').replace('||', ' or ')
             for name, value in [('scenario', selected), ('run_kind', kind), ('items', items)]:
                 evaluated = evaluated.replace('inputs.' + name, repr(value.casefold()))
-            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: any(str(v).casefold() == str(value).casefold() for v in values), 'fromJSON': json.loads}, {}), (selected, kind, items))
+            evaluated = evaluated.replace('inputs.capture_authentication_metadata', 'capture')
+            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: any(str(v).casefold() == str(value).casefold() for v in values), 'fromJSON': json.loads}, {'capture': capture}), (selected, kind, items, capture))
         stop_steps = self.steps(self.all_jobs['batch-stop'])
         self.assertIn('prepare-stop', stop_steps['stop_prepare']['run'])
         self.assertLess(list(stop_steps).index('stop_prepare'), list(stop_steps).index('login'))
         self.assertIsNone(stop_steps['login'].get('if'))
         self.assertIn("steps.stop_prepare.outcome == 'success'", stop_steps['stop']['if'])
         self.assertEqual(['A01', 'B04', 'probe-batch'], self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'][:3])
+
+    def test_capture_validation_and_actual_stop_prerequisites(self):
+        def expression(source, inputs, outcomes):
+            evaluated = source.replace('always()', 'True').replace('!inputs.capture_authentication_metadata', 'not inputs.capture_authentication_metadata')
+            evaluated = evaluated.replace('&&', ' and ').replace('||', ' or ')
+            for name, value in inputs.items():
+                evaluated = evaluated.replace('inputs.' + name, repr(value))
+            for name, value in outcomes.items():
+                evaluated = evaluated.replace('steps.' + name + '.outcome', repr(value))
+            return bool(eval(evaluated, {'__builtins__': {}}, {}))
+
+        def simulate_cleanup(job, inputs, initial_outcomes=None, forced_results=None):
+            outcomes = dict(initial_outcomes or {})
+            forced_results = dict(forced_results or {})
+            invocations = []
+            for step in job['steps']:
+                identifier = step.get('id')
+                if identifier not in ('stop_prepare', 'login', 'azure_session', 'stop'):
+                    continue
+                condition = step.get('if')
+                admitted = (expression(condition, inputs, outcomes) if condition else
+                            all(outcome == 'success' for outcome in outcomes.values()))
+                if admitted:
+                    # The workflow declaration is the invocation source; commands/actions stay stubbed offline.
+                    invocations.append((identifier, step.get('run'), step.get('uses')))
+                    outcomes[identifier] = forced_results.get(identifier, 'success')
+                else:
+                    outcomes[identifier] = 'skipped'
+            return invocations, outcomes
+
+        select = self.steps(self.all_jobs['batch'])['select']['run']
+        valid = [('probe-batch', 'batch', 'all', 'false'),
+                 ('probe-batch-2', 'smoke', 'all', 'false'),
+                 ('probe-batch-2', 'smoke', 'authentication-controls', 'true')]
+        rejected = [('probe-batch', 'smoke', 'all', 'true'),
+                    ('probe-batch-2', 'smoke', 'all', 'true'),
+                    ('probe-batch-2', 'smoke', 'authentication-controls', 'false'),
+                    ('probe-batch-2', 'batch', 'authentication-controls', 'true'),
+                    ('probe-batch-2', 'smoke', 'B08', 'true'),
+                    ('A01', 'smoke', 'all', 'true'), ('B04', 'smoke', 'all', 'true')]
+        for case, expected in [(item, 0) for item in valid] + [(item, 2) for item in rejected]:
+            scenario, kind, items, capture = case
+            inputs = {'scenario': scenario, 'run_kind': kind, 'items': items, 'capture_authentication_metadata': capture == 'true'}
+            with self.subTest(case=case):
+                env = dict(os.environ, PARCHWELL_SCENARIO=scenario, PARCHWELL_RUN_KIND=kind,
+                           PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
+                command = select if scenario.startswith('probe-batch') else self.steps(self.jobs['full-C3'])['select']['run']
+                run = subprocess.run(['/bin/bash', '-c', command], cwd=REPO, env=env, text=True, capture_output=True)
+                self.assertEqual(expected, run.returncode, run.stderr)
+                job_gate = expression(self.all_jobs['batch-stop']['if'], inputs, {})
+                self.assertEqual(bool(expected == 0), job_gate)
+                invocations, _ = (simulate_cleanup(self.all_jobs['batch-stop'], inputs) if job_gate else ([], {}))
+                self.assertEqual(['stop_prepare', 'login', 'azure_session', 'stop'] if job_gate else [],
+                                 [name for name, _, _ in invocations])
+
+        full_c3 = self.jobs['full-C3']
+        for scenario in ('A01', 'B04'):
+            for capture, expected_select, expected_cleanup in (('true', 2, []), ('false', 0, ['stop_prepare', 'login', 'azure_session', 'stop'])):
+                inputs = {'scenario': scenario, 'run_kind': 'smoke', 'items': 'all',
+                          'capture_authentication_metadata': capture == 'true'}
+                env = dict(os.environ, PARCHWELL_SCENARIO=scenario, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
+                select_run = subprocess.run(['/bin/bash', '-c', self.steps(full_c3)['select']['run']], cwd=REPO,
+                                            env=env, text=True, capture_output=True)
+                self.assertEqual(expected_select, select_run.returncode, select_run.stderr)
+                initial = {'guard': 'success', 'checkout': 'success',
+                           'select': 'success' if select_run.returncode == 0 else 'failure'}
+                invocations, outcomes = simulate_cleanup(full_c3, inputs, initial)
+                self.assertEqual(expected_cleanup, [name for name, _, _ in invocations])
+                if expected_cleanup:
+                    self.assertEqual('success', outcomes['stop_prepare'])
+                    self.assertEqual('success', outcomes['azure_session'])
+                else:
+                    self.assertEqual('skipped', outcomes['stop_prepare'])
+                    self.assertEqual('skipped', outcomes['azure_session'])
 
     def test_bridge_discovery(self):
         suite = unittest.TestLoader().discover(str(REPO / 'infra/scripts/tests'), pattern='test_*.py')

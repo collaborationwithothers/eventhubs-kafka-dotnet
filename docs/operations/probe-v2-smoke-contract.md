@@ -6,7 +6,9 @@ The [build instruction](https://github.com/collaborationwithothers/eventhubs-kaf
 
 ## Dispatch and lifecycle
 
-Use the Scenario workflow on main with `scenario=probe-batch-2`, `run_kind=smoke`, and `items=all`. Unset items uses the workflow's existing `all` default. Reject a smoke subset before private inputs or Azure access. Scientific batch selection and assessment follow the [scientific contract](single-action-contract.md#scientific-assessment-and-permission-evidence). The legacy probe batch retains its existing selectors and behavior. Every admitted selection retains unconditional dispatch-end cleanup; rejected selectors reach neither workload preparation nor cleanup Azure access. The scientific contract owns batch selection, while this section retains smoke admission.
+The full V2 smoke uses the Scenario workflow on main with `scenario=probe-batch-2`, `run_kind=smoke`, `items=all` and `capture_authentication_metadata=false`. Unset items retains `all`. The separately authorized authentication metadata route uses the same scenario and run kind with `items=authentication-controls` and `capture_authentication_metadata=true`; it selects only F06 C6 and C9. Other V2 smoke selections fail before private inputs or Azure access. Scientific batch selection accepts `run_kind=batch`, capture=false, and `items=all` or an ordered B08,E01,F06 subset; assessment follows the [scientific contract](single-action-contract.md#scientific-assessment-and-permission-evidence). The legacy probe batch retains its existing selectors and behavior with capture=false.
+
+The stop job retains unconditional dispatch-end cleanup only for admitted routes. Both legacy routes require capture=false. The V2 smoke route admits all/false or authentication-controls/true; the V2 scientific batch route admits only its validated item selections with capture=false. Rejected selectors reach neither workload preparation nor cleanup Azure access. The exact workflow expression remains covered by the dispatch contract tests.
 
 The V2 smoke runs real `--single-action-v2` and `--single-action-v2-judge` Jobs, with `image_smoke=false`. An image startup marker cannot satisfy this smoke. The workflow owns all infrastructure commands, admission, collection and cleanup under [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). Workers do not orchestrate Kubernetes or processes.
 
@@ -19,6 +21,8 @@ The matrix has five action slots per configuration and no replacement repeats. I
 Worker deadlines, byte limits and queue bounds come from [probe-v2-runtime-limits.json](probe-v2-runtime-limits.json). They are chosen execution limits, not performance measurements. A bound or cleanup failure leaves incomplete evidence and fails smoke. It never silently replaces a slot or authorizes another dispatch. One live smoke is authorized by the interactive instruction once the support is merged and runnable; a failed smoke retains evidence for diagnosis.
 
 ## Smoke acceptance
+
+This section governs the full items=all smoke. The selected authentication-controls route does not establish full-smoke acceptance; its metadata acceptance, bounds and separate execution authorization are owned by the Short metadata collection card in [authentication-lifecycle-observation.md](authentication-lifecycle-observation.md#short-metadata-collection-card).
 
 The verifier owns the following evidence decisions. Workflow transport consumes the candidate and completion receipt; it does not reinterpret Kafka observations.
 

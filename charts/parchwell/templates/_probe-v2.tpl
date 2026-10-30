@@ -82,6 +82,7 @@
 {{- $_ := set $fields "VerifierImage" $r.verifier_image -}}
 {{- range $key,$value := $bounds.judge }}{{ $_ := set $fields (printf "JudgeLimits__%s" $key) $value }}{{ end -}}
 {{- else -}}
+{{- if eq $r.capture_authentication_metadata true }}{{- $_ := set $fields "CaptureAuthenticationMetadata" "true" }}{{- end -}}
 {{- $_ := set $fields "ProcessLifetimeSeconds" (ternary $bounds.execution.producer_process_seconds $bounds.execution.reader_process_seconds $spec.producer) -}}
 {{- end -}}
 apiVersion: batch/v1
