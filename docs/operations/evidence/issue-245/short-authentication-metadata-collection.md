@@ -11,7 +11,7 @@ Issue #245 adds a default-off V2 route that selects only F06 C6 and C9 for bound
 - **Exact verification commands:** `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'`; `bash infra/scripts/lifecycle/check-offline.sh`; `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt`; `npm run check:docs`; `git diff --check`.
 - **Earliest authorized publication checkpoint:** After implementation and all offline acceptance pass, changed-file documentation warnings have dispositions, and the required cold-review coverage is complete. The coordinator owns publication and final handoff.
 - **Implementation disposition caps:** At most ten changed-file documentation warnings and ten distinct failing-test root causes. At either cap, stop expanding work, record the remaining gap and push WIP / hand off to the next session as the approved plan directs. Runtime collection is not authorized.
-- **Review budget:** 1/2 comprehensive and 0/2 focused cold reviews used after the first report. Do not initiate cold review in this implementation session. Under AGENTS.md rule 8, if another required review would exceed either cumulative budget, or focus is unsafe, stop, preserve unpublished work under rule 12 and hand off to Hari with the unresolved gate, findings, reviewed revisions, cumulative counts and proposed next action. A third comprehensive pass requires Hari's explicit decision. The coordinator owns cumulative review accounting and reviews.
+- **Review budget:** 2/2 comprehensive and 0/2 focused cold reviews used after the second report. Do not initiate cold review in this implementation session. Under AGENTS.md rule 8, if another required review would exceed either cumulative budget, or focus is unsafe, stop, preserve unpublished work under rule 12 and hand off to Hari with the unresolved gate, findings, reviewed revisions, cumulative counts and proposed next action. A third comprehensive pass requires Hari's explicit decision. The coordinator owns cumulative review accounting and reviews.
 
 ## Predicate-to-test coverage map
 
@@ -41,7 +41,7 @@ The selected route has a fixed five-stage set, so no larger valid stage count ex
 | `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt` | Exit 0; copies are byte-identical. |
 | `git diff --check` | Exit 0. |
 
-The first comprehensive cold review was completed by the coordinator on `120f161c817deef7e5fb06f8a83805e960e61f09`; its complete report and accepted dispositions are attached below. It found four P1s grouped into two root causes: frozen V2 state was not authoritative in both entrypoints, and the planned tests did not cross the actual workflow/transport boundaries. All four findings were accepted and corrected in this revision. The coordinator owns the next cold review, cumulative budget, publication, hosted review and final handoff. No generated program output belongs in the authored diff.
+The coordinator completed a comprehensive review on `120f161c817deef7e5fb06f8a83805e960e61f09` and a consolidated comprehensive review on `4addc705473ea3dc349781177d1cf545341b441b`; both complete reports and dispositions are attached below. The first found four P1s, all accepted and corrected. The second found one prose-only P2, corrected below. Cumulative review use is now 2/2 comprehensive and 0/2 focused; the coordinator owns the required P2-correction focused review, publication, hosted review and final handoff. No generated program output belongs in the authored diff.
 
 ## Source verification
 
@@ -83,7 +83,7 @@ All four accepted P1 findings from the complete report below are corrected in th
 | `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt` | Exit 0; copies remain byte-identical. |
 | `git diff --check` | Exit 0. |
 
-The offline acceptance and full phase discovery passed after the code and regression corrections. The receipt and its attached complete review report are authored records. The cumulative cold-review budget is 1/2 comprehensive and 0/2 focused; the coordinator owns the next required comprehensive review before publication. Hosted PR CI, hosted final-head Codex review, and Hari's protected-path merge remain mandatory later gates.
+The offline acceptance and full phase discovery passed after the code and regression corrections. The receipt and its attached complete review reports are authored records. Cumulative cold-review use after the second report is 2/2 comprehensive and 0/2 focused; the coordinator owns the required P2-correction focused review that reports P0/P1 findings only. Hosted PR CI, hosted final-head Codex review, and Hari's protected-path merge remain mandatory later gates.
 
 ## Complete first comprehensive cold-review report and dispositions
 
@@ -155,4 +155,73 @@ Findings: 4 at P0 or P1
 Pre-existing (not blocking):
 
 None identified within the reviewed and affected context. The documentation scan's unchanged-file warnings are already covered by the receipt's blanket disposition and are not findings against this diff.
+```
+
+## Complete second comprehensive cold-review report and disposition
+
+Review mode: comprehensive, second and final pass. Reviewed revision: `4addc705473ea3dc349781177d1cf545341b441b`; comparison revision: `origin/main` at `c4a1724f9165397dd04f4e8df22acd9c8498ebd8`. Cumulative review counts after this report are 2/2 comprehensive and 0/2 focused. The sole P2 finding was accepted and corrected only in the already changed collection-card prose: token values remain prohibited, while token-file paths, identifiers and raw request bodies are excluded from the authored summary. The summary qualifier now preserves raw sanitized public pod projection evidence required by the card. No implementation behavior, test or scope changed. The coordinator owns the one required P2-correction focused review, reporting P0/P1 findings only.
+
+The report below is retained in full as authored review evidence.
+
+```text
+# Short authentication metadata wiring: cold review 2
+
+Mode: comprehensive, consolidated second/final pass.
+
+Report: complete
+
+Reviewed revision: `4addc705473ea3dc349781177d1cf545341b441b`. Comparison revision: `origin/main` at `c4a1724f9165397dd04f4e8df22acd9c8498ebd8`. Author inputs were the entire authored diff `/tmp/issue245-review-2.diff` and `docs/operations/evidence/issue-245/short-authentication-metadata-collection.md`. The checked-out HEAD matched the frozen reviewed revision. Cumulative use including this report is 2/2 comprehensive and 0/2 focused. This review made no repository edits, GitHub writes, additional delegations, Azure calls or live operations.
+
+The offline implementation meets the approved selected-route behavior and corrects the four prior P1 findings. One prose-only P2 remains in the future collection instructions. No P0 or P1, unsupported live conclusion, changed scientific judgement, identity/network expansion or scope creep was found.
+
+## Authority and governing rules
+
+I independently fetched the current issue body and all 45 comments through GitHub REST. The governing selected specification remains [short-authentication-metadata-collection, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525824679), updated `2026-10-30T15:11:34Z`. The [approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6526348889), created `2026-10-30T15:21:46Z`, explicitly approves that current revision for offline Codex implementation. The [next-collection decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525717035) and [wiring clarification](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525819641) define the candidate and exclusions. Decision/Approval comments were recognized in creation order under factory Item lifecycle step 3; earlier candidate approvals, plans, checks and handoffs were not substituted for current authority. No later Decision/Approval was present. This is no authorization for collection or dispatch.
+
+Every touched file received the universal rubric: AGENTS.md GOVERNANCE, including scope/deferred items, Code Review Rules, Before opening a pull request, Skills and Writing standards; CLAUDE.md; docs/agents/factory.md; and all blueprint ADRs. I verified that those files and `.agents/skills/repo-review/SKILL.md` are unchanged from `origin/main`, so their checked-out versions are the applicable main versions. Workflow changes additionally received hard safety rules 8 and 9 review. I read docs/engineering/dotnet.md Testing for the predicate/test comparison and docs/engineering/documentation-checks.md for the evidence contract. No changed engineering-standard, .NET, Terraform, Kafka-setting, scenario-definition, expected-outcome or results path invokes another rubric row. No fallback to a branch-only governing document was needed.
+
+## Every touched file and specification coverage
+
+| File | Review and specification result |
+| --- | --- |
+| `.github/workflows/scenario.yml` | Plan step 1: exact default-off Boolean input and revised items description; all five capture bindings; pre-login selection validation; literal batch-stop guard; unchanged main guards, triggers, protected environment, permissions, concurrency, image publishing, step order, uploads, deletion, destroy and stop predicates. The selected route uses existing jobs. |
+| `docs/operations/workflows/scenario.yml.txt` | Same complete workflow review; byte-for-byte comparison with the protected workflow passed. |
+| `charts/parchwell/templates/_probe-v2.tpl` | Plan step 4: only the existing non-judge branch emits literal `CaptureAuthenticationMetadata=true`; false/absence and judges emit none. Existing image, role, dependency, node-placement and deadline behavior remains intact. |
+| `charts/parchwell/values.schema.json` | Plan step 4: capture is an optional Boolean and the runtime object retains `additionalProperties: false`; no arbitrary environment or lifecycle override. |
+| `infra/scripts/lifecycle/check-offline.sh` | Plan step 5: only the expected dispatch-input map and approved description change; exact event/trigger auditing remains. |
+| `infra/scripts/phase/phase.py` | Plan step 2: strict absent/true/false parsing, closed route combinations, validation before materialization, exact saved V2 selector/Boolean/items/run kind, frozen-state routing in seed and batch entrypoints, seed no-op and literal selected summary. Current-environment changes do not replace a valid saved V2 tuple. Existing role enabling, publishing and cleanup remain. |
+| `infra/scripts/phase/probe_v2.py` | Plan step 3: saved scenario/type/value validation before scope or stages, fixed C6/C9 sequence, actor-only flag, unchanged transfer and candidate judgement, selection-derived admission actor set, exact Job/candidate completeness, ordered omitted configurations and separate diagnostic output. Full-route smoke schema and acceptance remain distinct. |
+| `infra/scripts/phase/tests/test_phase.py` | Plan step 6: exact persisted selector/Boolean/items, malformed-text and invalid-route failures, actual absent-input removal, no materialization/commands on rejection and literal report line. Existing assertions remain. |
+| `infra/scripts/phase/tests/test_probe_v2.py` | Plan step 6: five ordered selected stages, real actor transfer and candidate/receipt validation with downloads stubbed at the I/O boundary; both download pairs asserted; exact summary keys/constants; fourteen omissions; exhausted-admission gaps; 15/14 admission integrations; integer 0/5 and -1/6/Boolean boundaries; missing/duplicate/unexpected actors, stages and candidates; safety-stop rejection; frozen-state entrypoints and corrupt-state rejection. Actual-value Helm tests retain all 49 full-matrix renders and add the selected five, dependency mounts, accounts, immutable images, three actor flags, absent/Boolean-false omission and string rejection. |
+| `infra/scripts/phase/tests/test_workflow.py` | Plan step 6: exact dispatch contract and stop expression, selection subprocesses and truth-table cases, declared cleanup conditions with recorded synthetic invocations, rejected A01/B04 opt-ins and valid false cleanup paths. Existing upload/order/identity/destroy/stop assertions remain. The corrected test now evaluates the batch job-level guard and the actual full-C3 prerequisites. |
+| `docs/operations/probe-v2-smoke-contract.md` | Plan step 7: approved dispatch paragraph and exact stop expression, explicit separation of selected collection from full-smoke acceptance, linked collection card, unchanged full-smoke criteria/history. |
+| `docs/operations/authentication-lifecycle-observation.md` | Plan step 8: fixed selection/table, ordinary versus exception roles, service/dependency evidence, row/snapshot/file-sample acceptance, installed-expiry source, actual admitted projection context, bounded inspection, gaps, existing execution/cleanup limits and separate future authorization. Counts and dependency claims match pinned sources. One summary-publication qualifier was lost; see P2 below. |
+| `docs/operations/evidence/issue-245/short-authentication-metadata-collection.md` | Plan step 8 and AGENTS.md: execution card, current authority/base, exact acceptance commands/results, disposition caps, scientific predicate non-applicability, orchestration test map, complete first report and consolidated dispositions. Review/publication/hosted gates and cumulative budget ownership are recorded. The receipt appropriately records the first review count before this second review. No program output file is included in the authored diff. |
+
+Plan steps 1 through 8 and enforced checks 1 through 4 have implementation and test coverage. The first report's frozen-scenario omission is corrected by selection's explicit saved-scenario guard; the actual batch fallback under a valid V2 environment now reaches that guard before scope. The seed entrypoint consults valid frozen V2 state before current-environment validation. The workflow regression evaluates declared prerequisites instead of manufacturing skipped outcomes. The selected integration crosses transfer and candidate/receipt parsing, includes the 14-admission case, and renders explicit Boolean false separately from absence.
+
+The test map correctly distinguishes orchestration predicates from scientific verifier predicates. No verifier judgement or expectation changes make scientific boundary coverage applicable. Invalid saved selector/items/run-kind/capture/scenario fixtures reject before scope/stages; exact selected Job/candidate sets and actor counts bound the successful state. Existing scientific assertions were neither loosened nor replaced.
+
+## Source checks and verification
+
+I read the cited pinned executor, phase bridge, chart, runtime-limit document, verifier dependency matrix and aggregation handler. Source-derived counts were recalculated from the base executor using a script: five selected stages, three actors, fourteen omitted configurations, ten action slots, fifteen maximum metadata rows, 3932160 maximum JSON bytes, reservations C6=3360 seconds and C9=1260 seconds, totaling 4620 seconds. C9 consumes C6 seed/action; final-item aggregation applies to F06 C11, not the selected judges. I checked the metadata collector/writer shape against the card's marker, schema, sample boundaries, first successful installation and byte ceiling. The implementation does not convert callback return, token installation, generation changes or transport success into service acceptance, exchange provenance, renewal or rotation evidence.
+
+Independent checks on the frozen head:
+
+- Eleven targeted tests covering corrected preparation/frozen state, selected actor values, ordered transfer/candidate download pairs, exhaustion, 14 admissions, completeness/count boundaries, malformed saved state, actual cleanup prerequisites and report output: exit 0, `Ran 11 tests ... OK`.
+- `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt`: exit 0.
+- `git diff --check c4a1724f9165397dd04f4e8df22acd9c8498ebd8 4addc705473ea3dc349781177d1cf545341b441b`: exit 0.
+- Repository status remained clean; imports used `PYTHONDONTWRITEBYTECODE=1`.
+
+The receipt records the complete corrected 121-test discovery, passed pinned lifecycle/actionlint/ShellCheck/chart/kubeconform matrix and documentation scan. I inspected that evidence and relevant test implementations; no unresolved concern justified repeating the expensive complete lifecycle matrix. Its eight unchanged-document warnings retain the authored blanket disposition, with zero changed-Markdown warnings. Hosted final-head CI/review and Hari's protected-workflow merge remain subsequent gates. No dispatch is validated or authorized by this report.
+
+## Findings
+
+P2  docs/operations/authentication-lifecycle-observation.md:99  Approved Revision 3, Later collection card, Measures and retained evidence; AGENTS.md Code Review Rules P2 reader bar  Restore the phrase `in the authored summary` after the publication prohibition. The plan scopes omission of token-file paths and identifiers to the authored summary, while this sentence reads as a ban on their publication anywhere. A future collection operator could consequently redact or reject the raw public pod projection evidence that this same card requires preserving. Evidence: approved plan says `Do not publish ... in the authored summary`; card line 93 retains existing public pod uploads, line 99 requires actual token-file environment/mount/source inspection, and unchanged `probe_v2.py` public_pod retains token-file environment/mount/projection paths. This is a prose-only clarification in an already changed file and adds no check or scope.
+
+Findings: none at P0 or P1
+
+Pre-existing (not blocking):
+
+The eight documentation-scan warnings in four unchanged files are already covered by the receipt's blanket disposition. No additional pre-existing blocking issue was identified in the reviewed scope.
 ```
