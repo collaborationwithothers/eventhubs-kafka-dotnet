@@ -586,6 +586,9 @@
         },
         "probe_namespace_data_roles": {
           "type": "boolean"
+        },
+        "capture_authentication_metadata": {
+          "type": "boolean"
         }
       },
       "allOf": [

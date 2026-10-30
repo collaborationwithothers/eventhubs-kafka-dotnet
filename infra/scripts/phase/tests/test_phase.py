@@ -627,6 +627,13 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         self.assertEqual(0, self.main('report'))
         self.assertTrue(self.summary_file.read_text().startswith('## B04 C1: passed'))
 
+    def test_selected_metadata_summary_line(self):
+        self.prepare_v2_batch('authentication-controls', 'true')
+        os.environ.update(STEP_RESULTS='{}', JOB_STATUS='success', WORKLOAD='false', REQUIRED_STEPS='',
+                          WORKLOAD_STEPS='', PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_PHASE='single-action')
+        self.assertEqual(0, self.main('report'))
+        self.assertIn('Selected authentication controls: F06-C6,F06-C9', self.summary_file.read_text())
+
     def prepare_batch(self, items='all'):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS=items)
         self.assertEqual(0, self.main('prepare-batch'))
@@ -650,6 +657,68 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
     def batch_name(self, mode, item='B01', configuration='C0'):
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
         return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
+
+    def prepare_v2_batch(self, items='all', capture='false'):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='smoke',
+                          PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
+        self.assertEqual(0, self.main('prepare-batch'))
+        self.env_file_contents = self.env_file.read_text()
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file_contents.splitlines()))
+        self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
+        self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
+        self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
+        phase_data = json.loads((self.private / 'phase.json').read_text())
+        phase_data['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in BATCH_DIGESTS.items() if worker in ('loadgen', 'verifier')}
+        (self.private / 'phase.json').write_text(json.dumps(phase_data))
+        accounts = copy.deepcopy(ACCOUNTS)
+        for role in ('probe', 'enrichment-consumer'):
+            accounts[role] = {'name': role, 'client_id': 'synthetic-' + role, 'subject': 'system:serviceaccount:parchwell:' + role}
+        (self.private / 'cluster-output.json').write_text(json.dumps({'workload_identity': {'value': {'namespace': 'parchwell', 'service_accounts': accounts}}}))
+        ephemeral = copy.deepcopy(EPHEMERAL)
+        ephemeral['blob']['value']['containers']['single_action'] = 'single-action'
+        ephemeral['probe_v2_role_scope'] = {'value': {'namespace_id': 'synthetic', 'topics': {}, 'accounts': {}, 'assignments': {}, 'probe_namespace_data_roles': True}}
+        (self.private / 'ephemeral-output.json').write_text(json.dumps(ephemeral))
+        self.run_id = phase_data['run_id']
+        phase.Phase().start_batch_clock()
+
+    def test_v2_selection_values_are_frozen_and_exact(self):
+        with self.mocked():
+            for items, capture, expected in [('all', 'false', ['B08', 'E01', 'F06']),
+                                             ('authentication-controls', 'true', ['F06'])]:
+                self.env_file.write_text('')
+                self.prepare_v2_batch(items, capture)
+                saved = json.loads((self.private / 'phase.json').read_text())
+                self.assertEqual(items, saved['probe_v2_selection'])
+                self.assertIs(capture == 'true', saved['capture_authentication_metadata'])
+                self.assertEqual(expected, saved['items'])
+            for capture in ('TRUE', '', '1', ' true', 'false '):
+                self.env_file.write_text('')
+                os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='smoke',
+                                  PARCHWELL_BATCH_ITEMS='authentication-controls', PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
+                self.assertEqual(2, self.main('validate-batch'))
+                self.assertEqual(2, self.main('prepare-batch'))
+                self.assertEqual('', self.env_file.read_text())
+            for scenario, kind, items, capture in [
+                    ('A01', 'smoke', 'all', 'true'), ('B04', 'smoke', 'all', 'true'),
+                    ('probe-batch', 'smoke', 'all', 'true'), ('probe-batch-2', 'batch', 'all', 'true'),
+                    ('probe-batch-2', 'smoke', 'all', 'true'), ('probe-batch-2', 'smoke', 'authentication-controls', 'false'),
+                    ('probe-batch-2', 'smoke', 'authentication-controls', None), ('probe-batch-2', 'smoke', 'B08', 'false')]:
+                self.env_file.write_text('')
+                env = {'PARCHWELL_SCENARIO': scenario, 'PARCHWELL_RUN_KIND': kind, 'PARCHWELL_BATCH_ITEMS': items}
+                if capture is not None:
+                    env['PARCHWELL_CAPTURE_AUTHENTICATION_METADATA'] = capture
+                with self.subTest(case=(scenario, kind, items, capture)), patch.dict(os.environ, env):
+                    command = 'validate-scenario' if scenario in ('A01', 'B04') else 'validate-batch'
+                    self.assertEqual(2, self.main(command))
+                    if command == 'validate-batch':
+                        self.assertEqual(2, self.main('prepare-batch'))
+                    self.assertEqual('', self.env_file.read_text())
+                    self.assertEqual([], self.fake.calls)
+        self.env_file.write_text('')
+        with patch.dict(os.environ, {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true'}):
+            self.assertEqual(2, self.main('prepare', 'C0'))
+        self.assertEqual('', self.env_file.read_text())
+        self.assertEqual([], self.fake.calls)
 
     def test_batch_selection_and_strict_command_arguments(self):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')

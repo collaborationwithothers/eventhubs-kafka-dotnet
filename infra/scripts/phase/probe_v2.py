@@ -10,6 +10,7 @@ import re
 import time
 
 ITEMS = ("B08", "E01", "F06")
+AUTHENTICATION_CONTROLS = (("F06", "C6"), ("F06", "C9"))
 CONFIGURATIONS = tuple((item, f"C{number}") for item, count in (("B08", 2), ("E01", 2), ("F06", 12)) for number in range(count))
 ACCOUNTS = ("loadgen", "probe", "enrichment-consumer", "verifier")
 TOPICS = ("document-events", "document-state", "document-events-dlq")
@@ -141,6 +142,19 @@ class ProbeV2:
         self.p = phase
         self.limits = decode((phase.repo / "docs/operations/probe-v2-runtime-limits.json").read_bytes(), 65536)
 
+    def selection(self, phase=None):
+        phase = phase or self.p.read("phase.json")
+        selected = phase.get("probe_v2_selection", "all")
+        capture = phase.get("capture_authentication_metadata", False)
+        if type(capture) is not bool:
+            raise ValueError("v2_smoke_selection")
+        if selected == "all" and phase.get("items") == list(ITEMS) and phase.get("run_kind") == "smoke" and capture is False:
+            return selected, CONFIGURATIONS
+        if (selected == "authentication-controls" and phase.get("items") == ["F06"]
+                and phase.get("run_kind") == "smoke" and capture is True):
+            return selected, AUTHENTICATION_CONTROLS
+        raise ValueError("v2_smoke_selection")
+
     def values(self, item, configuration, stage, account):
         phase = self.p.read("phase.json")
         ephemeral = self.p.read("ephemeral-output.json")
@@ -148,6 +162,7 @@ class ProbeV2:
         accounts = unwrap(self.p.read("cluster-output.json")["workload_identity"])["service_accounts"]
         if not any(s == stage and a == account for s, a, _ in stages(item, configuration)):
             raise ValueError("v2_stage")
+        selection, configurations = self.selection(phase)
         runtime = {
             "run_id": phase["run_id"], "phase": configuration, "mode": "single-action-v2-judge" if stage == "judge" else "single-action-v2",
             "source_commit": phase["source_commit"], "stage": stage, "action_role": account, "image_smoke": False,
@@ -158,6 +173,8 @@ class ProbeV2:
             "eventhubs_ip": unwrap(ephemeral["private_endpoint_ips"])["eventhubs"], "blob_ip": unwrap(ephemeral["private_endpoint_ips"])["blob"],
             "application_insights_connection_string": unwrap(persistent["application_insights_connection_string"]),
             "bounds": {"probe_v2": self.limits}}
+        if selection == "authentication-controls" and (item, configuration) in configurations and stage != "judge":
+            runtime["capture_authentication_metadata"] = True
         return {"scenario_id": item, "configuration_id": configuration, "runtime": runtime}
 
     def scope(self):
@@ -650,9 +667,9 @@ class ProbeV2:
         return accepted and smoke
 
     @staticmethod
-    def admitted_slots(state, run):
+    def admitted_slots(state, run, configurations=CONFIGURATIONS):
         """Count declared admissions only when every actor capture was transported and completed."""
-        expected = {job_name(run, item, configuration, stage) for item, configuration in CONFIGURATIONS
+        expected = {job_name(run, item, configuration, stage) for item, configuration in configurations
                     for stage, _, _ in stages(item, configuration) if stage != "judge"}
         actors = [record for record in state["modes"] if record.get("stage") != "judge"]
         if (len(actors) != len(expected) or {record["job"] for record in actors} != expected
@@ -663,8 +680,7 @@ class ProbeV2:
 
     def run_batch(self):
         phase = self.p.read("phase.json")
-        if phase.get("scenario") != "probe-batch-2" or phase.get("run_kind") != "smoke" or phase.get("items") != list(ITEMS):
-            raise ValueError("v2_smoke_selection")
+        selection, configurations = self.selection(phase)
         clock = self.p.start_batch_clock()
         phase = self.p.read("phase.json")
         end = phase["batch_started_monotonic"] + 14400
@@ -678,12 +694,12 @@ class ProbeV2:
         finally:
             self.p.command_deadline = previous
         passed = clock and scope_valid
-        for item, configuration in CONFIGURATIONS:
-            selected = stages(item, configuration)
-            reservation = sum(seconds + 120 for _, _, seconds in selected)
+        for item, configuration in configurations:
+            selected_stages = stages(item, configuration)
+            reservation = sum(seconds + 120 for _, _, seconds in selected_stages)
             reason = None if clock and self.p.admission_allowed() and end - time.monotonic() >= reservation else "start_cap"
             deadline = min(end, time.monotonic() + reservation)
-            for stage, account, seconds in selected:
+            for stage, account, seconds in selected_stages:
                 record = self.run_stage(item, configuration, stage, account, seconds, deadline, reason)
                 if record["outcome"] != "complete" or record["collect"] != 0:
                     passed = False
@@ -701,9 +717,37 @@ class ProbeV2:
                     finally:
                         self.p.command_deadline = previous
         state = self.p.state()
-        private_json(self.p.artifacts / "probe-v2-smoke.json", {"schema_version": 2, "mode": "smoke_only", "run_id": phase["run_id"],
-            "source_commit": phase["source_commit"], "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
-            "jobs": len(state["modes"]), "action_slots": len(CONFIGURATIONS) * 5, "maximum_clients": sum(stage != "judge" for i, c in CONFIGURATIONS for stage, _, _ in stages(i, c)) * 5,
-            "admitted_client_slots": self.admitted_slots(state, phase["run_id"]),
-            "evidence_passed": passed and len(state["modes"]) == 49 and not state.get("safety_stop", False), "cleanup_required": True})
-        return int(not passed or len(state["modes"]) != 49 or state.get("safety_stop", False))
+        if selection == "all":
+            # Preserve the established full-matrix report and acceptance behavior.
+            state["not_selected"] = []
+            self.p.save_state(state)
+            private_json(self.p.artifacts / "probe-v2-smoke.json", {"schema_version": 2, "mode": "smoke_only", "run_id": phase["run_id"],
+                "source_commit": phase["source_commit"], "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
+                "jobs": len(state["modes"]), "action_slots": len(CONFIGURATIONS) * 5, "maximum_clients": sum(stage != "judge" for i, c in CONFIGURATIONS for stage, _, _ in stages(i, c)) * 5,
+                "admitted_client_slots": self.admitted_slots(state, phase["run_id"]),
+                "evidence_passed": passed and len(state["modes"]) == 49 and not state.get("safety_stop", False), "cleanup_required": True})
+            return int(not passed or len(state["modes"]) != 49 or state.get("safety_stop", False))
+        selected_jobs = {job_name(phase["run_id"], item, configuration, stage)
+                         for item, configuration in configurations for stage, _, _ in stages(item, configuration)}
+        actual_jobs = [record.get("job") for record in state["modes"]]
+        expected_candidates = {(item, configuration) for item, configuration in configurations}
+        candidates = state.get("candidates", [])
+        candidate_keys = [(candidate.get("item"), candidate.get("configuration")) for candidate in candidates]
+        complete = (len(actual_jobs) == len(selected_jobs) and set(actual_jobs) == selected_jobs
+                    and len(candidate_keys) == len(expected_candidates) and set(candidate_keys) == expected_candidates
+                    and all(candidate.get("accepted") is True and candidate.get("smoke_valid") is True for candidate in candidates))
+        if not complete or state.get("safety_stop", False):
+            passed = False
+        state["not_selected"] = [{"item": item, "configuration": configuration}
+                                  for item, configuration in CONFIGURATIONS if (item, configuration) not in configurations]
+        self.p.save_state(state)
+        transport_passed = bool(passed and complete)
+        private_json(self.p.artifacts / "authentication-metadata-collection.json", {
+            "schema_version": 1, "mode": "authentication_metadata_collection", "selection": "authentication-controls",
+            "run_id": phase["run_id"], "source_commit": phase["source_commit"],
+            "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
+            "configurations": [{"item": item, "configuration": configuration} for item, configuration in AUTHENTICATION_CONTROLS],
+            "jobs": len(state["modes"]), "action_slots": 10, "maximum_clients": 15,
+            "admitted_client_slots": self.admitted_slots(state, phase["run_id"], AUTHENTICATION_CONTROLS),
+            "transport_passed": transport_passed, "metadata_assessed": False, "cleanup_required": True})
+        return int(not transport_passed)

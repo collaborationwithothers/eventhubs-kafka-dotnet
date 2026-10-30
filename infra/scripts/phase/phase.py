@@ -61,12 +61,29 @@ def scenario():
     return selected
 
 
+def capture_authentication_metadata():
+    value = os.environ.get('PARCHWELL_CAPTURE_AUTHENTICATION_METADATA')
+    if value is None or value == 'false':
+        return False
+    if value == 'true':
+        return True
+    raise Failure('unsupported probe batch selection')
+
+
 def batch_items():
     value = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
-    if os.environ.get('PARCHWELL_SCENARIO') == 'probe-batch-2':
-        if value != 'all' or os.environ.get('PARCHWELL_RUN_KIND') != 'smoke':
+    selected_scenario = os.environ.get('PARCHWELL_SCENARIO')
+    capture = capture_authentication_metadata()
+    if selected_scenario == 'probe-batch-2':
+        if os.environ.get('PARCHWELL_RUN_KIND') != 'smoke':
             raise Failure('unsupported probe batch selection')
-        return ['B08', 'E01', 'F06']
+        if value == 'all' and not capture:
+            return ['B08', 'E01', 'F06']
+        if value == 'authentication-controls' and capture:
+            return ['F06']
+        raise Failure('unsupported probe batch selection')
+    if capture:
+        raise Failure('unsupported probe batch selection')
     if value == 'all':
         return list(SINGLE_ACTION_ITEMS)
     selected = value.split(',')
@@ -226,6 +243,8 @@ class Phase:
     def validate_scenario(self):
         if scenario() not in SCENARIOS:
             raise Failure("unsupported scenario")
+        if capture_authentication_metadata():
+            raise Failure('unsupported probe batch selection')
         return 0
 
     def validate_batch(self):
@@ -253,9 +272,26 @@ class Phase:
 
     def prepare_batch(self):
         self.validate_batch()
-        return self.prepare_shared(scenario(), "single-action", None, "probe", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=batch_items())
+        selected = scenario()
+        capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
+        metadata = {'run_kind': os.environ['PARCHWELL_RUN_KIND'], 'items': batch_items()}
+        if selected == 'probe-batch-2':
+            metadata.update(probe_v2_selection=os.environ.get('PARCHWELL_BATCH_ITEMS', 'all'),
+                            capture_authentication_metadata=capture)
+        return self.prepare_shared(selected, "single-action", None, "probe", **metadata)
 
     def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
+        capture = capture_authentication_metadata()
+        if selected == 'probe-batch-2':
+            expected_items = batch_items()
+            selector = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
+            expected_selection = 'authentication-controls' if capture else 'all'
+            if (metadata.get('run_kind') != 'smoke' or metadata.get('items') != expected_items
+                    or metadata.get('probe_v2_selection') != selector or selector != expected_selection
+                    or metadata.get('capture_authentication_metadata') is not capture):
+                raise Failure('unsupported probe batch selection')
+        elif capture:
+            raise Failure('unsupported probe batch selection')
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
         run = f"{prefix}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
         sha = require("GITHUB_SHA")
@@ -711,9 +747,19 @@ class Phase:
             self.command_deadline = None
 
     def single_action_seed(self):
-        self.validate_batch()
-        if scenario() == "probe-batch-2":
+        if scenario() == 'probe-batch-2':
+            self.validate_batch()
             return 0
+        frozen = None
+        if os.environ.get('PARCHWELL_PRIVATE_DIRECTORY'):
+            try:
+                frozen = self.read('phase.json')
+            except (OSError, Failure, ValueError, KeyError, TypeError, UnicodeError):
+                pass
+        if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
+            self.probe_v2().selection(frozen)
+            return 0
+        self.validate_batch()
         clock_available = self.start_batch_clock()
         if 'F04' not in self.read('phase.json')['items']:
             return 0
@@ -729,6 +775,14 @@ class Phase:
         return 0
 
     def run_single_action_batch(self):
+        frozen = None
+        try:
+            frozen = self.read('phase.json')
+        except (OSError, Failure, ValueError, KeyError, TypeError, UnicodeError):
+            pass
+        if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
+            self.probe_v2().selection(frozen)
+            return self.probe_v2().run_batch()
         self.validate_batch()
         if scenario() == "probe-batch-2":
             return self.probe_v2().run_batch()
@@ -1002,6 +1056,8 @@ class Phase:
             lines += [f"{mode['job']}: {mode['outcome']}" for mode in state["modes"]]
             for skipped in state.get('not_selected', []):
                 lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
+            if self.read('phase.json').get('probe_v2_selection') == 'authentication-controls':
+                lines += ['Selected authentication controls: F06-C6,F06-C9']
             if state.get("seed_gap"):
                 lines += ["seed receipt gap"]
             for candidate in state.get("candidates", []):
