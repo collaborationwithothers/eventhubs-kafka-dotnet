@@ -431,6 +431,28 @@ class AzureCliSessionTests(unittest.TestCase):
                                              monotonic=lambda: self.clock.now, utc=lambda: self.clock.epoch,
                                              launch=lambda *args: 17))
 
+    def test_registry_diagnostic_sink_failure_preserves_interpreter_exit(self):
+        self.cli.write_text('#!' + sys.executable + '\nimport json,os,sys\nfrom pathlib import Path\n'
+                            'sys.exit(json.loads((Path(os.environ["FIXTURE_DIR"])/"cli.json").read_text())["exit"])\n')
+        self.state.write_text(json.dumps({'request_started_monotonic': time.monotonic(),
+                                         'assertion_exp': int(time.time()) + 600}))
+        for sink_kind in ('full', 'broken_pipe'):
+            for intended in (0, 1, 17, 124):
+                for args in (['resource', 'list'], self.registry_args()):
+                    with self.subTest(sink=sink_kind, intended=intended, command=args[:3]), \
+                            contextlib.ExitStack() as stack:
+                        self.configure_cli(exit_code=intended)
+                        if sink_kind == 'full':
+                            failed = stack.enter_context(open('/dev/full', 'wb'))
+                        else:
+                            read_fd, write_fd = os.pipe()
+                            os.close(read_fd)
+                            failed = stack.enter_context(os.fdopen(write_fd, 'wb'))
+                        result = subprocess.run([sys.executable, str(WRAPPER), *args], env=self.env,
+                                                stdout=subprocess.PIPE, stderr=failed, timeout=5)
+                        self.assertEqual(intended, result.returncode)
+                        self.assertEqual(b'', result.stdout)
+
     def test_01_required_context_rejects_before_side_effects(self):
         mutations = [(key, None) for key in ('GITHUB_ACTIONS', 'GITHUB_REF', 'PARCHWELL_REAL_AZ', 'PARCHWELL_AZ_SESSION_DIRECTORY', 'AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID')]
         mutations += [('GITHUB_ACTIONS', 'false'), ('GITHUB_REF', 'refs/heads/topic'), ('PARCHWELL_REAL_AZ', 'az'), ('PARCHWELL_REAL_AZ', str(WRAPPER)), ('PARCHWELL_REAL_AZ', str(self.root / 'absent')), ('AZURE_CLIENT_ID', 'not-a-uuid')]
