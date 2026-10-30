@@ -389,6 +389,48 @@ class AzureCliSessionTests(unittest.TestCase):
         self.assertEqual(['0', '0', '0'], [r['status'] for r in rows if r['event'] == 'exit'])
         self.assertNotIn('cleanup', [r['stage'] for r in rows])
 
+    def test_registry_diagnostic_sink_failure_preserves_cleanup_and_outcome(self):
+        for failure_type in (BrokenPipeError, OSError, ValueError):
+            for sink_operation in ('write', 'flush'):
+                for original in (subprocess.TimeoutExpired('synthetic-cli', 1),
+                                 session.SessionInterrupted(signal.SIGTERM)):
+                    with self.subTest(failure=failure_type, operation=sink_operation,
+                                      original=type(original).__name__):
+                        class FailedSink(io.StringIO):
+                            marker = False
+                            def write(self, text):
+                                if text.startswith('azure_cli_session_stage '):
+                                    self.marker = True
+                                    if sink_operation == 'write':
+                                        raise failure_type('synthetic-log-sink-failure')
+                                return super().write(text)
+                            def flush(self):
+                                if self.marker and sink_operation == 'flush':
+                                    raise failure_type('synthetic-log-sink-failure')
+                                return super().flush()
+                        process = mock.Mock()
+                        process.wait.side_effect = original
+                        with mock.patch.object(session.subprocess, 'Popen', return_value=process), \
+                                mock.patch.object(session, 'stop_process') as stopped, \
+                                contextlib.redirect_stderr(FailedSink()):
+                            with self.assertRaises(type(original)) as raised:
+                                session.run_process(['synthetic-cli'], 1, False,
+                                                    diagnostics=session.SessionDiagnostics(True))
+                        self.assertIs(original, raised.exception)
+                        stopped.assert_called_once_with(process)
+
+    def test_registry_diagnostic_sink_failure_preserves_lookup_exit(self):
+        class FailedSink(io.StringIO):
+            def write(self, text):
+                if text.startswith('azure_cli_session_stage '):
+                    raise BrokenPipeError('synthetic-log-sink-failure')
+                return super().write(text)
+        self.stamp()
+        with contextlib.redirect_stderr(FailedSink()):
+            self.assertEqual(17, session.main(self.registry_args(), environ=self.env,
+                                             monotonic=lambda: self.clock.now, utc=lambda: self.clock.epoch,
+                                             launch=lambda *args: 17))
+
     def test_01_required_context_rejects_before_side_effects(self):
         mutations = [(key, None) for key in ('GITHUB_ACTIONS', 'GITHUB_REF', 'PARCHWELL_REAL_AZ', 'PARCHWELL_AZ_SESSION_DIRECTORY', 'AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID')]
         mutations += [('GITHUB_ACTIONS', 'false'), ('GITHUB_REF', 'refs/heads/topic'), ('PARCHWELL_REAL_AZ', 'az'), ('PARCHWELL_REAL_AZ', str(WRAPPER)), ('PARCHWELL_REAL_AZ', str(self.root / 'absent')), ('AZURE_CLIENT_ID', 'not-a-uuid')]

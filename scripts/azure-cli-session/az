@@ -52,7 +52,8 @@ class SessionDiagnostics:
             line += f" stage_ms={int((now - started) * 1000)}"
         if status is not None:
             line += f" status={status}"
-        print(line, file=sys.stderr, flush=True)
+        with contextlib.suppress(OSError, ValueError):
+            print(line, file=sys.stderr, flush=True)
 
     @contextlib.contextmanager
     def stage(self, name):
