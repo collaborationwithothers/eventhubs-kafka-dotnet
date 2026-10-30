@@ -59,4 +59,6 @@ The prepare step receives that secret only as `S_PROBE_V2_EFFECTIVE_SCOPE`. It k
 
 Protected workflow, identity, verifier and design changes reach main through Hari's merge. Dispatch uses main and retains the existing environment approval. The full experiment is replanned against the merged smoke support after a qualifying run; it does not inherit scientific approval from this prerequisite.
 
+The [completed smoke receipt](evidence/issue-240/live-smoke-receipt.md) records the successful run on 2026-10-30, its candidate/final-receipt and pod evidence, and successful teardown and cluster stop. It completes this smoke prerequisite. Scientific item assessments remain null; the full experiment still needs its plan refresh and separate live authorization.
+
 The [statistics repair](evidence/issue-240/statistics-repair-receipt.md) does not revise acceptance of the original failed smoke. Its local native and transport regressions establish harness feasibility, not Event Hubs acceptance. No replacement dispatch is authorized by that repair's task brief; another live smoke requires separate authorization and the existing protected environment approval.
