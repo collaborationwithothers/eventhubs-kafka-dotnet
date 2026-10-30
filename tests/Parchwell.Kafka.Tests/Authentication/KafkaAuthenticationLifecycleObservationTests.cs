@@ -1,5 +1,6 @@
-using System.Text.Json;
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using System.Text.Json;
 using Azure.Core;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,7 +99,9 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
     [Fact]
     public void Given_InitialAndRefreshFailures_When_Observed_Then_OnlySanitizedReasonsAreRecordedAndExpiryIsPreserved()
     {
-        List<(long Value, Dictionary<string, object?> Tags)> measurements = [];
+        const string isolatedRunId = "lifecycle-observation-metric-isolation";
+        KafkaAuthenticationIdentity isolatedIdentity = Identity with { RunId = isolatedRunId };
+        var measurements = new ConcurrentQueue<(long Value, Dictionary<string, object?> Tags)>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, meterListener) =>
         {
@@ -108,8 +111,8 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             Dictionary<string, object?> copiedTags = tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value);
-            if (Equals(copiedTags.GetValueOrDefault("run"), Identity.RunId))
-                measurements.Add((value, copiedTags));
+            if (Equals(copiedTags.GetValueOrDefault("run"), isolatedIdentity.RunId))
+                measurements.Enqueue((value, copiedTags));
         });
         listener.Start();
         using var metrics = new KafkaAuthenticationMetrics();
@@ -118,7 +121,7 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
             new AccessToken(string.Empty, E0),
             new AccessToken("synthetic-rejected-token", E0.AddHours(1)),
             new AccessToken("synthetic-installed-token", E0));
-        var initialSession = NewSession(initialProvider, metrics, new FixedTimeProvider(Now), captureLifecycle: true);
+        var initialSession = NewSession(initialProvider, metrics, new FixedTimeProvider(Now), captureLifecycle: true, identity: isolatedIdentity);
         int failureReports = 0;
 
         initialSession.Refresh((_, _, _) => Assert.Fail("Acquisition failure must not install."), _ => failureReports++);
@@ -137,7 +140,7 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
             new AccessToken(string.Empty, E0.AddHours(1)),
             new AccessToken("synthetic-rejected-token", E0.AddHours(1)),
             new AccessToken("synthetic-replacement-token", E0.AddHours(1)));
-        var refreshSession = NewSession(refreshProvider, metrics, new FixedTimeProvider(Now), captureLifecycle: true);
+        var refreshSession = NewSession(refreshProvider, metrics, new FixedTimeProvider(Now), captureLifecycle: true, identity: isolatedIdentity);
         refreshSession.Refresh((_, _, _) => { }, _ => Assert.Fail("Initial token should install."));
         refreshSession.Refresh((_, _, _) => Assert.Fail("Refresh acquisition failure must not install."), _ => failureReports++);
         refreshSession.Refresh((_, _, _) => Assert.Fail("Empty refresh token must not install."), _ => failureReports++);
@@ -302,8 +305,9 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
         IKafkaTokenProvider provider,
         KafkaAuthenticationMetrics metrics,
         TimeProvider clock,
-        bool captureLifecycle = false) =>
-        new(Identity, "https://synthetic-scope-secret/.default", "workload-principal-secret",
+        bool captureLifecycle = false,
+        KafkaAuthenticationIdentity? identity = null) =>
+        new(identity ?? Identity, "https://synthetic-scope-secret/.default", "workload-principal-secret",
             provider, clock, metrics, TestContext.Current.CancellationToken, captureLifecycle);
 
     private static ServiceProvider CreateServices(IKafkaTokenProvider tokenProvider)
