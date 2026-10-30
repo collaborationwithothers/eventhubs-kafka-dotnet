@@ -1,5 +1,6 @@
 using Azure.Core;
 using Confluent.Kafka;
+using System.Collections.ObjectModel;
 
 namespace Parchwell.Kafka.Authentication;
 
@@ -10,6 +11,7 @@ namespace Parchwell.Kafka.Authentication;
 /// </remarks>
 public sealed class KafkaOAuthBearerSession
 {
+    private const int MaximumObservedAttempts = 128;
     private readonly object _gate = new();
     private readonly object _attachmentGate = new();
     private readonly TaskCompletionSource<KafkaAuthenticationFailure> _initialFailureSignal =
@@ -21,10 +23,16 @@ public sealed class KafkaOAuthBearerSession
     private readonly TimeProvider _timeProvider;
     private readonly KafkaAuthenticationMetrics _metrics;
     private readonly CancellationToken _cancellationToken;
+    private readonly bool _captureLifecycle;
+    private readonly long _timestampFrequency;
+    private readonly List<KafkaAuthenticationLifecycleEvent> _lifecycleEvents = [];
     private DateTimeOffset? _installedTokenExpiresOn;
     private KafkaAuthenticationFailure? _initialFailure;
     private KafkaAuthenticationFailure? _latestFailure;
     private bool _attached;
+    private bool _attemptLimitReached;
+    private bool _observationClockUnavailable;
+    private int _observedAttempts;
     private Confluent.Kafka.IClient? _callbackClient;
 
     /// <summary>Creates a session for one native Kafka client.</summary>
@@ -35,6 +43,7 @@ public sealed class KafkaOAuthBearerSession
     /// <param name="timeProvider">The clock used to validate token expiry.</param>
     /// <param name="metrics">The authentication failure metrics recorder.</param>
     /// <param name="cancellationToken">The run cancellation token forwarded to acquisition.</param>
+    /// <param name="captureLifecycle">Whether to retain bounded diagnostic lifecycle observations.</param>
     internal KafkaOAuthBearerSession(
         KafkaAuthenticationIdentity identity,
         string scope,
@@ -42,7 +51,8 @@ public sealed class KafkaOAuthBearerSession
         IKafkaTokenProvider tokenProvider,
         TimeProvider timeProvider,
         KafkaAuthenticationMetrics metrics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool captureLifecycle = false)
     {
         _identity = identity ?? throw new ArgumentNullException(nameof(identity));
         _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -51,6 +61,18 @@ public sealed class KafkaOAuthBearerSession
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _cancellationToken = cancellationToken;
+        _captureLifecycle = captureLifecycle;
+        if (captureLifecycle)
+        {
+            try
+            {
+                _timestampFrequency = timeProvider.TimestampFrequency;
+            }
+            catch (Exception)
+            {
+                _observationClockUnavailable = true;
+            }
+        }
     }
 
     /// <summary>Gets the expiry of the last token successfully installed in the native client.</summary>
@@ -96,6 +118,30 @@ public sealed class KafkaOAuthBearerSession
             {
                 return _latestFailure;
             }
+        }
+    }
+
+    /// <summary>Gets a defensive snapshot of the opt-in callback observations for this session.</summary>
+    /// <remarks>Successful token installation is not evidence of broker acceptance.</remarks>
+    /// <returns>The current immutable observation snapshot.</returns>
+    public KafkaAuthenticationLifecycleSnapshot GetLifecycleSnapshot()
+    {
+        lock (_gate)
+        {
+            string? incompleteReason = !_captureLifecycle
+                ? "capture_disabled"
+                : _attemptLimitReached
+                    ? "attempt_limit"
+                    : _observationClockUnavailable ? "clock_unavailable" : null;
+            KafkaAuthenticationLifecycleEvent[] copy = _lifecycleEvents.ToArray();
+            ReadOnlyCollection<KafkaAuthenticationLifecycleEvent> events = Array.AsReadOnly(copy);
+            return new KafkaAuthenticationLifecycleSnapshot(
+                _captureLifecycle,
+                _captureLifecycle && incompleteReason is null,
+                incompleteReason,
+                _identity,
+                _timestampFrequency,
+                events);
         }
     }
 
@@ -152,6 +198,9 @@ public sealed class KafkaOAuthBearerSession
         lock (_gate)
         {
             string phase = _installedTokenExpiresOn is null ? "initial" : "refresh";
+            int attempt = BeginObservedAttempt();
+            DateTimeOffset? acquiredExpiresOn = null;
+            RecordLifecycleEvent(attempt, phase, "callback_started", null, null);
             AccessToken token;
             try
             {
@@ -159,9 +208,12 @@ public sealed class KafkaOAuthBearerSession
             }
             catch (Exception)
             {
-                Fail(phase, "acquisition", reportFailure);
+                Fail(phase, "acquisition", reportFailure, attempt, acquiredExpiresOn);
                 return;
             }
+
+            acquiredExpiresOn = token.ExpiresOn;
+            RecordLifecycleEvent(attempt, phase, "acquisition_returned", acquiredExpiresOn, null);
 
             DateTimeOffset now;
             try
@@ -170,13 +222,13 @@ public sealed class KafkaOAuthBearerSession
             }
             catch (Exception)
             {
-                Fail(phase, "token_validation", reportFailure);
+                Fail(phase, "token_validation", reportFailure, attempt, acquiredExpiresOn);
                 return;
             }
 
             if (string.IsNullOrEmpty(token.Token) || token.ExpiresOn <= now)
             {
-                Fail(phase, "token_validation", reportFailure);
+                Fail(phase, "token_validation", reportFailure, attempt, acquiredExpiresOn);
                 return;
             }
 
@@ -186,16 +238,74 @@ public sealed class KafkaOAuthBearerSession
             }
             catch (Exception)
             {
-                Fail(phase, "installation", reportFailure);
+                Fail(phase, "installation", reportFailure, attempt, acquiredExpiresOn);
                 return;
             }
 
             _installedTokenExpiresOn = token.ExpiresOn;
+            RecordLifecycleEvent(attempt, phase, "installation_succeeded", acquiredExpiresOn, null);
         }
     }
 
-    private void Fail(string phase, string reason, Action<string> reportFailure)
+    private int BeginObservedAttempt()
     {
+        if (!_captureLifecycle)
+            return 0;
+
+        if (_observedAttempts >= MaximumObservedAttempts)
+        {
+            _attemptLimitReached = true;
+            return 0;
+        }
+
+        _observedAttempts++;
+        return _observedAttempts;
+    }
+
+    private void RecordLifecycleEvent(
+        int attempt,
+        string phase,
+        string stage,
+        DateTimeOffset? acquiredExpiresOn,
+        string? failureReason)
+    {
+        if (attempt == 0)
+            return;
+
+        DateTimeOffset? observedAt = null;
+        long? timestamp = null;
+        try
+        {
+            observedAt = _timeProvider.GetUtcNow().ToUniversalTime();
+            timestamp = _timeProvider.GetTimestamp();
+        }
+        catch (Exception)
+        {
+            observedAt = null;
+            timestamp = null;
+            _observationClockUnavailable = true;
+        }
+
+        _lifecycleEvents.Add(new KafkaAuthenticationLifecycleEvent(
+            _lifecycleEvents.Count + 1,
+            attempt,
+            phase,
+            stage,
+            observedAt,
+            timestamp,
+            acquiredExpiresOn,
+            _installedTokenExpiresOn,
+            failureReason));
+    }
+
+    private void Fail(
+        string phase,
+        string reason,
+        Action<string> reportFailure,
+        int attempt,
+        DateTimeOffset? acquiredExpiresOn)
+    {
+        RecordLifecycleEvent(attempt, phase, "failed", acquiredExpiresOn, reason);
         KafkaAuthenticationFailure failure = new(_identity, phase, reason);
         _latestFailure = failure;
         if (StringComparer.Ordinal.Equals(phase, "initial"))
