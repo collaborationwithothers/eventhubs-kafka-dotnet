@@ -1,9 +1,11 @@
 using System.Reflection;
 using System.Text.Json;
+using Azure.Core;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.SingleActionV2;
 using Parchwell.Scenarios;
@@ -15,6 +17,8 @@ namespace Parchwell.LoadGen.Tests.SingleActionV2;
 #pragma warning disable CA1707
 public sealed class ProbeV2LifecycleTests
 {
+    private static readonly DateTimeOffset MetadataE0 = new(2030, 1, 1, 1, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public async Task Given_FiveMaximumSizedNativeStatistics_When_HostEnds_Then_FullCaptureFollowsCleanupAndIsExportable()
     {
@@ -67,6 +71,8 @@ public sealed class ProbeV2LifecycleTests
             Assert.Equal(Enumerable.Range(0, 32), value.MetadataPartitions!);
             Assert.Single(value.Statistics);
         });
+        Assert.Empty(MetadataLines(fixture));
+        Assert.Equal(0, fixture.SamplerCalls);
         string? directory = System.Environment.GetEnvironmentVariable("PARCHWELL_PROBE_V2_FIXTURE_DIRECTORY");
         if (directory is not null)
         {
@@ -78,6 +84,140 @@ public sealed class ProbeV2LifecycleTests
                 fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
                 "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536), TestContext.Current.CancellationToken);
         }
+    }
+
+    [Fact]
+    public async Task Given_MetadataOptIn_When_FiveClientsComplete_Then_FiveCorrelatedRowsPreserveServiceCapture()
+    {
+        using var fixture = new Fixture(captureAuthenticationMetadata: true);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs);
+        Assert.Equal(0, exit);
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(["registration", "client-1", "client-2", "client-3", "client-4", "client-5", "stop", "dispose", "capture"], fixture.Events);
+        Assert.Equal(5, fixture.Clients.Count);
+        Assert.All(fixture.Clients, client => { Assert.Equal(1, client.ProduceCalls); Assert.Equal(1, client.DisposeCalls); });
+        Assert.True(capture.CleanupCompleted && capture.HostCleanupCompleted);
+        Assert.Equal(0, capture.HandlerExitCode);
+        Assert.Equal([1, 2, 3, 4, 5], capture.Repeats.Select(row => row.Repeat));
+        Assert.All(capture.Repeats, row =>
+        {
+            Assert.Equal("success", row.Result);
+            Assert.Equal(31, row.Delivery!.Partition);
+            Assert.Equal("Persisted", row.Delivery.PersistenceStatus);
+            Assert.Single(row.Statistics);
+        });
+        var lines = MetadataLines(fixture);
+        Assert.Equal(5, lines.Count);
+        Assert.Equal(5, fixture.SamplerCalls);
+        for (int index = 0; index < lines.Count; index++)
+        {
+            ProbeV2AuthenticationMetadata row = ReadMetadata(lines[index]);
+            Assert.Equal(index + 1, row.Repeat);
+            Assert.Equal(fixture.Options.JobName, row.JobName);
+            Assert.Equal(fixture.Options.PodName, row.PodName);
+            Assert.Equal(fixture.Options.SourceCommit, row.SourceCommit);
+            Assert.Equal(fixture.Options.Stage, row.Stage);
+            Assert.Equal(fixture.Options.PodName + "-r" + (index + 1), row.ClientId);
+            Assert.Equal(MetadataE0, row.InitialInstalledExpiresOn);
+            Assert.Equal(["before_client", "after_client_cleanup"], row.ProjectedFileSamples.Select(sample => sample.Boundary));
+            Assert.True(row.ClientCleanupCompleted);
+            Assert.Null(row.CaptureError);
+        }
+        using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(capture, ProbeV2Wire.JsonOptions));
+        Assert.DoesNotContain(document.RootElement.EnumerateObject(), property => property.Name.Contains("authentication", StringComparison.OrdinalIgnoreCase));
+        string? directory = System.Environment.GetEnvironmentVariable("PARCHWELL_PROBE_V2_METADATA_FIXTURE_DIRECTORY");
+        if (directory is not null)
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "registration.json"), ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536), TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "capture.json"), ProbeV2Wire.Encode(capture, 524288), TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
+                fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
+                "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536), TestContext.Current.CancellationToken);
+            string stdout = string.Join('\n', new[]
+            {
+                "PARCHWELL_PROBE_V2_REGISTRATION " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536)),
+                .. lines,
+                "PARCHWELL_PROBE_V2_CAPTURE " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(capture, 524288))
+            }) + "\n";
+            await File.WriteAllTextAsync(Path.Combine(directory, "actor.stdout"), stdout, TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task Given_MetadataOptInAndClientCleanupFailure_When_HostEnds_Then_OnlyAttemptedSlotHasIncompleteMetadata()
+    {
+        using var fixture = new Fixture("client_cleanup", captureAuthenticationMetadata: true);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs);
+        Assert.Equal(1, exit);
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(1, capture.HandlerExitCode);
+        Assert.Single(MetadataLines(fixture));
+        ProbeV2AuthenticationMetadata row = ReadMetadata(Assert.Single(MetadataLines(fixture)));
+        Assert.False(row.ClientCleanupCompleted);
+        Assert.Equal("client_cleanup_incomplete", row.CaptureError);
+        Assert.Null(row.ProjectedFileSamples[1].Observation);
+        Assert.Null(row.Lifecycle);
+        Assert.Null(row.InitialInstalledExpiresOn);
+        Assert.Equal(1, fixture.SamplerCalls);
+        Assert.All(capture.Repeats.Skip(1), value =>
+        {
+            Assert.Equal("not_attempted_cleanup", value.Admission);
+            Assert.Null(value.ClientId);
+            Assert.Empty(value.Settings);
+        });
+    }
+
+    [Fact]
+    public async Task Given_MetadataWriterFailure_When_ServiceControlCompletes_Then_OriginalExitAndServiceEvidenceRemainSuccessful()
+    {
+        using var fixture = new Fixture(captureAuthenticationMetadata: true, logWriter: new MetadataFailingWriter());
+        Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs));
+        Assert.Empty(MetadataLines(fixture));
+        Assert.Equal(5, fixture.Clients.Count);
+        Assert.All(fixture.Clients, client => { Assert.Equal(1, client.ProduceCalls); Assert.Equal(1, client.DisposeCalls); });
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(0, capture.HandlerExitCode);
+        Assert.True(capture.CleanupCompleted && capture.HostCleanupCompleted);
+        Assert.All(capture.Repeats, row => Assert.Equal("success", row.Result));
+    }
+
+    [Fact]
+    public async Task Given_CancellationAfterFirstDelivery_When_MetadataIsEnabled_Then_OriginalCancellationAndCleanupArePreserved()
+    {
+        using var disabled = new Fixture("cancellation");
+        using var enabled = new Fixture("cancellation", captureAuthenticationMetadata: true);
+        Assert.Equal(1, await ProbeV2Host.RunAsync(hostFactory: () => disabled.Host, output: disabled.Output, logs: disabled.Logs));
+        Assert.Equal(1, await ProbeV2Host.RunAsync(hostFactory: () => enabled.Host, output: enabled.Output, logs: enabled.Logs));
+
+        ProbeV2CaptureFile disabledCapture = Capture(disabled);
+        ProbeV2CaptureFile enabledCapture = Capture(enabled);
+        Assert.Equal(1, disabledCapture.HandlerExitCode);
+        Assert.Equal(1, enabledCapture.HandlerExitCode);
+        Assert.True(disabledCapture.CleanupCompleted && disabledCapture.HostCleanupCompleted);
+        Assert.True(enabledCapture.CleanupCompleted && enabledCapture.HostCleanupCompleted);
+        Assert.Single(disabledCapture.Repeats);
+        Assert.Single(enabledCapture.Repeats);
+        Assert.Equal("success", disabledCapture.Repeats[0].Result);
+        Assert.Equal("success", enabledCapture.Repeats[0].Result);
+        Assert.Equal(31, disabledCapture.Repeats[0].Delivery!.Partition);
+        Assert.Equal(31, enabledCapture.Repeats[0].Delivery!.Partition);
+        Assert.Equal("Persisted", disabledCapture.Repeats[0].Delivery.PersistenceStatus);
+        Assert.Equal("Persisted", enabledCapture.Repeats[0].Delivery.PersistenceStatus);
+        Assert.Equal(4, disabledCapture.Repeats.Skip(1).Count());
+        Assert.Equal(4, enabledCapture.Repeats.Skip(1).Count());
+        Assert.All(disabledCapture.Repeats.Skip(1).Concat(enabledCapture.Repeats.Skip(1)), row => Assert.Equal("not_attempted_cleanup", row.Admission));
+        Assert.Equal(JsonSerializer.Serialize(disabledCapture, ProbeV2Wire.JsonOptions), JsonSerializer.Serialize(enabledCapture, ProbeV2Wire.JsonOptions));
+        Assert.Empty(MetadataLines(disabled));
+        Assert.Equal(0, disabled.SamplerCalls);
+        var metadataLines = MetadataLines(enabled);
+        ProbeV2AuthenticationMetadata row = ReadMetadata(Assert.Single(metadataLines));
+        Assert.Equal(1, row.Repeat);
+        Assert.True(row.ClientCleanupCompleted);
+        Assert.Null(row.CaptureError);
+        Assert.Equal(MetadataE0, row.InitialInstalledExpiresOn);
+        Assert.Equal("statistics:OperationCanceledException", enabledCapture.Repeats[0].Diagnostics.Last());
+        Assert.Equal(2, enabled.SamplerCalls);
     }
 
     [Theory]
@@ -124,27 +264,36 @@ public sealed class ProbeV2LifecycleTests
         string line = fixture.Output.ToString().Split('\n').Single(value => value.StartsWith("PARCHWELL_PROBE_V2_CAPTURE ", StringComparison.Ordinal));
         return ProbeV2Wire.Read<ProbeV2CaptureFile>(System.Text.Encoding.UTF8.GetBytes(line["PARCHWELL_PROBE_V2_CAPTURE ".Length..]), 524288);
     }
+    private static List<string> MetadataLines(Fixture fixture) => fixture.Logs.ToString().Split('\n')
+        .Where(line => line.StartsWith(ProbeV2AuthenticationMetadataWriter.Marker, StringComparison.Ordinal)).ToList();
+    private static ProbeV2AuthenticationMetadata ReadMetadata(string line) => ProbeV2Wire.Read<ProbeV2AuthenticationMetadata>(
+        System.Text.Encoding.UTF8.GetBytes(line[ProbeV2AuthenticationMetadataWriter.Marker.Length..]), 262144);
     private sealed class Fixture : IDisposable
     {
         internal List<string> Events { get; } = [];
         internal List<NativeProducer> Clients { get; } = [];
         internal ProbeV2Options Options { get; }
         internal RecordingWriter Output { get; }
-        internal StringWriter Logs { get; } = new();
+        internal TextWriter Logs { get; }
+        internal int SamplerCalls { get; private set; }
+        internal CancellationTokenSource Stopping { get; } = new();
         internal TestHost Host { get; }
-        internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null)
+        internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null,
+            bool captureAuthenticationMetadata = false, TextWriter? logWriter = null)
         {
             Options = ProbeV2OptionsTests.Options(item, configuration);
+            Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata;
             string root = AppContext.BaseDirectory;
             while (!File.Exists(Path.Combine(root, "Parchwell.slnx"))) root = Path.GetDirectoryName(root) ?? throw new DirectoryNotFoundException("repository_root");
             Options.ScenarioRoot = root;
             Output = new(Events, failure);
+            Logs = logWriter ?? new StringWriter();
             var clock = new TestClock();
             var services = new ServiceCollection();
             services.AddSingleton<IOptions<ProbeV2Options>>(Microsoft.Extensions.Options.Options.Create(Options));
             services.AddSingleton(Options);
             services.AddSingleton<TimeProvider>(clock);
-            services.AddSingleton<IHostApplicationLifetime, Lifetime>();
+            services.AddSingleton<IHostApplicationLifetime>(new Lifetime(Stopping.Token));
             services.AddParchwellScenarios(value =>
             {
                 value.MaxDocumentCharacters = 1048576; value.MaxNestingDepth = 32;
@@ -161,15 +310,27 @@ public sealed class ProbeV2LifecycleTests
                 proxy.Failure = failure;
                 proxy.Statistics = statistics;
                 proxy.Clock = clock;
+                proxy.Stopping = Stopping;
+                if (captureAuthenticationMetadata)
+                {
+                    using var metrics = new KafkaAuthenticationMetrics();
+                    var session = new KafkaOAuthBearerSession(new(Options.ScenarioId, Options.RunId, KafkaClientRole.LoadGenProducer, settingsClientId(capture, Clients.Count + 1)),
+                        "https://synthetic/.default", "synthetic-principal", new SyntheticTokenProvider(), clock, metrics,
+                        TestContext.Current.CancellationToken, captureLifecycle: true);
+                    session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic authentication must install."));
+                    capture.AttachAuthentication(session);
+                }
                 Clients.Add(proxy);
                 Events.Add("client-" + Clients.Count);
                 return producer;
-            }, (_, _, _) => throw new InvalidOperationException("unexpected_consumer"), (_, _, _) => Enumerable.Range(0, 32).ToArray()));
+            }, (_, _, _) => throw new InvalidOperationException("unexpected_consumer"), (_, _, _) => Enumerable.Range(0, 32).ToArray(),
+            () => () => { SamplerCalls++; return new(SamplerCalls, MetadataE0.AddMinutes(SamplerCalls), SamplerCalls, 1000, 1, "observed"); }));
             services.AddSingleton(new ProbeV2Inputs(Options, clock));
             services.AddSingleton<ProbeV2Worker>();
             Host = new(services.BuildServiceProvider(), Events, failure);
         }
-        public void Dispose() { Host.DisposeProvider(); Output.Dispose(); Logs.Dispose(); }
+        public void Dispose() { Host.DisposeProvider(); Output.Dispose(); if (Logs is IDisposable disposable) disposable.Dispose(); Stopping.Dispose(); }
+        private string settingsClientId(ProbeV2Capture _, int repeat) => Options.PodName + "-r" + repeat;
     }
     private sealed class RecordingWriter(List<string> events, string? failure) : StringWriter
     {
@@ -199,10 +360,10 @@ public sealed class ProbeV2LifecycleTests
         }
         internal void DisposeProvider() => services.Dispose();
     }
-    private sealed class Lifetime : IHostApplicationLifetime
+    private sealed class Lifetime(CancellationToken stopping) : IHostApplicationLifetime
     {
         public CancellationToken ApplicationStarted => CancellationToken.None;
-        public CancellationToken ApplicationStopping => CancellationToken.None;
+        public CancellationToken ApplicationStopping => stopping;
         public CancellationToken ApplicationStopped => CancellationToken.None;
         public void StopApplication() { }
     }
@@ -210,6 +371,7 @@ public sealed class ProbeV2LifecycleTests
     {
         internal ProbeV2Capture Capture = null!;
         internal TestClock Clock = null!;
+        internal CancellationTokenSource Stopping = null!;
         internal string? Failure;
         internal string? Statistics;
         internal int ProduceCalls, DisposeCalls;
@@ -230,6 +392,7 @@ public sealed class ProbeV2LifecycleTests
                     Error = new Error(broker ? ErrorCode.TopicAuthorizationFailed : ErrorCode.NoError)
                 });
                 Clock.OnDelay = () => Capture.Statistics(Statistics ?? "{\"time\":" + Clock.Milliseconds / 1000 + ",\"ts\":1,\"brokers\":{}}");
+                if (Failure == "cancellation") Stopping.Cancel();
                 return null;
             }
             if (targetMethod?.Name == "Dispose")
@@ -239,6 +402,21 @@ public sealed class ProbeV2LifecycleTests
                 return null;
             }
             throw new NotSupportedException(targetMethod?.Name);
+        }
+    }
+
+    private sealed class SyntheticTokenProvider : IKafkaTokenProvider
+    {
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken) => new("SYNTHETIC_TOKEN_MUST_NOT_APPEAR", MetadataE0);
+    }
+
+    private sealed class MetadataFailingWriter : StringWriter
+    {
+        public override Task WriteLineAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
+        {
+            if (buffer.Span.StartsWith(ProbeV2AuthenticationMetadataWriter.Marker, StringComparison.Ordinal))
+                throw new IOException("SYNTHETIC_EXCEPTION_MUST_NOT_APPEAR");
+            return base.WriteLineAsync(buffer, cancellationToken);
         }
     }
 }

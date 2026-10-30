@@ -32,8 +32,15 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
     {
         long started = clock.GetTimestamp();
         var capture = new ProbeV2Capture(options.Limits, clock, started, stage.WindowMs, diagnosticBudget,
-            $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ");
+            $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ",
+            options.CaptureAuthenticationMetadata);
         string clientId = $"{options.PodName}-r{repeat}";
+        ProbeV2AuthenticationMetadataCollector? metadataCollector = null;
+        if (options.CaptureAuthenticationMetadata)
+        {
+            metadataCollector = new(options, stage, repeat, clientId, sessions.CreateProjectedFileSampler);
+            metadataCollector.BeforeClient();
+        }
         var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
         settings["client.id"] = clientId;
         string[] omitted = resolved.Omissions.Select(value => value.Key).Concat(resolved.ScenarioOmissions.Select(value => value.Key))
@@ -43,6 +50,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         IConsumer<byte[], byte[]>? consumer = null;
         KafkaOAuthBearerSession? authentication = null;
         bool constructing = true;
+        bool clientConstructed = false;
+        bool clientCleanupCompleted = true;
         using var actionDeadline = new CancellationTokenSource(TimeSpan.FromMilliseconds(stage.WindowMs), clock);
         using var actionCancellation = CancellationTokenSource.CreateLinkedTokenSource(token, actionDeadline.Token);
         try
@@ -56,6 +65,7 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
             {
                 if (stage.Action == "produce_one") producer = sessions.Producer(settings, capture, actionCancellation.Token);
                 else (consumer, authentication) = sessions.Consumer(settings, capture, actionCancellation.Token);
+                clientConstructed = producer is not null || consumer is not null;
                 constructing = false;
                 if (options.ScenarioId == "B08")
                 {
@@ -132,8 +142,22 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                     if (consumer is not null) await Task.Run(consumer.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false);
                 }
                 catch (Exception exception)
-                { CleanupSucceeded = false; capture.Diagnostic("client_cleanup_failed:" + exception.GetType().Name); }
+                { CleanupSucceeded = false; clientCleanupCompleted = false; capture.Diagnostic("client_cleanup_failed:" + exception.GetType().Name); }
                 foreach (string line in capture.Logs()) await logs.WriteLineAsync(line.AsMemory(), CancellationToken.None).ConfigureAwait(false);
+                if (metadataCollector is not null)
+                {
+                    try
+                    {
+                        KafkaOAuthBearerSession? attached = clientConstructed && clientCleanupCompleted ? capture.AuthenticationSession : null;
+                        ProbeV2AuthenticationMetadata value = metadataCollector.Finish(clientConstructed, clientCleanupCompleted,
+                            attached is null ? null : attached.GetLifecycleSnapshot);
+                        await ProbeV2AuthenticationMetadataWriter.TryWriteAsync(logs, value, options.Limits.IoSeconds, clock).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        // Metadata capture is isolated from the service result and cleanup state.
+                    }
+                }
             }
         }
         return capture.Snapshot(repeat, clientId, stage, settings, omitted, metadata, requested);
