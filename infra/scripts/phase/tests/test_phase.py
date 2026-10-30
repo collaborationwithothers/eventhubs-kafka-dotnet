@@ -708,6 +708,8 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 if capture is not None:
                     env['PARCHWELL_CAPTURE_AUTHENTICATION_METADATA'] = capture
                 with self.subTest(case=(scenario, kind, items, capture)), patch.dict(os.environ, env):
+                    if capture is None:
+                        os.environ.pop('PARCHWELL_CAPTURE_AUTHENTICATION_METADATA', None)
                     command = 'validate-scenario' if scenario in ('A01', 'B04') else 'validate-batch'
                     self.assertEqual(2, self.main(command))
                     if command == 'validate-batch':

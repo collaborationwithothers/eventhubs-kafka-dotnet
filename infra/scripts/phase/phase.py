@@ -747,9 +747,6 @@ class Phase:
             self.command_deadline = None
 
     def single_action_seed(self):
-        if scenario() == 'probe-batch-2':
-            self.validate_batch()
-            return 0
         frozen = None
         if os.environ.get('PARCHWELL_PRIVATE_DIRECTORY'):
             try:
@@ -758,6 +755,9 @@ class Phase:
                 pass
         if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
             self.probe_v2().selection(frozen)
+            return 0
+        if scenario() == 'probe-batch-2':
+            self.validate_batch()
             return 0
         self.validate_batch()
         clock_available = self.start_batch_clock()

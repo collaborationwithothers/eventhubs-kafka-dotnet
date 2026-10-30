@@ -146,7 +146,7 @@ class ProbeV2:
         phase = phase or self.p.read("phase.json")
         selected = phase.get("probe_v2_selection", "all")
         capture = phase.get("capture_authentication_metadata", False)
-        if type(capture) is not bool:
+        if phase.get("scenario") != "probe-batch-2" or type(capture) is not bool:
             raise ValueError("v2_smoke_selection")
         if selected == "all" and phase.get("items") == list(ITEMS) and phase.get("run_kind") == "smoke" and capture is False:
             return selected, CONFIGURATIONS

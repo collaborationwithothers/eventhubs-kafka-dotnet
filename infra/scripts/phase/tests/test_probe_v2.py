@@ -126,6 +126,16 @@ class ProbeV2Tests(unittest.TestCase):
         log.write_bytes(v2.REGISTRATION_MARKER + raw_registration + b'\n' + v2.CAPTURE_MARKER + raw_capture + b'\n')
         return log, raw_registration, raw_capture
 
+    def selected_evidence(self, record, skipped_first=False):
+        log, raw_registration, raw_capture = self.evidence(record)
+        document = json.loads(raw_capture)
+        for slot in document['repeats']:
+            slot['admission'] = 'required'
+        if skipped_first:
+            document['repeats'][0]['admission'] = 'skipped'
+        log.write_bytes(v2.REGISTRATION_MARKER + raw_registration + b'\n' + v2.CAPTURE_MARKER
+                        + json.dumps(document).encode() + b'\n')
+
     def transported(self, record):
         payload = {}
         capture_parts = []
@@ -160,7 +170,8 @@ class ProbeV2Tests(unittest.TestCase):
             with self.subTest(kind=kind, items=items), patch.dict(os.environ, PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items):
                 if valid:
                     self.assertEqual(0, self.p.validate_batch())
-                    with patch.object(self.p, 'run', side_effect=self.fake), patch.object(self.p, 'read', side_effect=AssertionError('no private input')):
+                    with patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': ''}), \
+                         patch.object(self.p, 'run', side_effect=self.fake), patch.object(self.p, 'read', side_effect=AssertionError('no private input')):
                         self.assertEqual(0, self.p.single_action_seed())
                     self.assertEqual([], self.calls)
                 else:
@@ -192,31 +203,50 @@ class ProbeV2Tests(unittest.TestCase):
         self.write(self.private / 'phase.json', saved)
         with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
             self.subject.selection()
+        saved['capture_authentication_metadata'] = True
+        saved['scenario'] = 'A01'
+        self.write(self.private / 'phase.json', saved)
+        with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
+            self.subject.selection()
 
     def test_selected_batch_is_fixed_dependency_closed_and_separate_from_full_smoke(self):
         self.selected_controls()
         stages_seen = []
+        candidate_downloads = []
+        candidate_payloads = {}
+
+        def prepare_candidate(record):
+            prefix = f"{RUN}/single-action-v2/{record['item']}/{record['configuration']}/"
+            raw = json.dumps(candidate(record['item'], record['configuration'])).encode()
+            receipt = {'schema_version': 2, 'mode': 'single-action-v2-judge', 'run_id': RUN,
+                       'scenario_id': record['item'], 'configuration_id': record['configuration'],
+                       'source_commit': SHA, 'job_name': record['job'], 'pod_name': record['job'] + '-pod',
+                       'pod_uid': 'synthetic-pod-uid', 'candidate_name': prefix + 'candidate.json',
+                       'candidate_sha256': hashlib.sha256(raw).hexdigest(), 'handler_exit_code': 0,
+                       'cleanup_completed': True}
+            candidate_payloads[prefix + 'candidate.json'] = raw
+            candidate_payloads[prefix + 'judge-completion.json'] = json.dumps(receipt).encode()
+
+        def download(name, target, maximum, deadline):
+            candidate_downloads.append(name)
+            payload = candidate_payloads[name]
+            target.write_bytes(payload)
+            return payload
+
         def run_stage(item, configuration, stage, role, seconds, deadline, skip):
             stages_seen.append((item, configuration, stage, role))
             record = self.record(stage, item, configuration, role)
             state = self.p.state(); state['modes'].append(record); self.p.save_state(state)
+            if stage == 'judge':
+                self.evidence(record)
+            else:
+                self.selected_evidence(record)
+            if stage == 'judge':
+                prepare_candidate(record)
             return record
-        def transfer(record):
-            state = self.p.state()
-            saved = next(mode for mode in state['modes'] if mode['job'] == record['job'])
-            saved['capture_complete'] = True
-            saved['admitted_client_slots'] = 5
-            self.p.save_state(state)
-            return True
-        def candidate(record, deadline):
-            state = self.p.state()
-            state.setdefault('candidates', []).append({'item': record['item'], 'configuration': record['configuration'],
-                                                       'accepted': True, 'smoke_valid': True})
-            self.p.save_state(state)
-            return True
         with patch.object(self.subject, 'scope', return_value=True), patch.object(self.p, 'admission_allowed', return_value=True), \
-             patch.object(self.subject, 'run_stage', side_effect=run_stage), patch.object(self.subject, 'transfer', side_effect=transfer), \
-             patch.object(self.subject, 'candidate', side_effect=candidate):
+             patch.object(self.subject, 'run_stage', side_effect=run_stage), patch.object(self.p, 'run', side_effect=self.fake), \
+             patch.object(self.p, 'download_blob', side_effect=download):
             self.assertEqual(0, self.subject.run_batch())
         self.assertEqual([('F06', 'C6', 'seed', 'loadgen'), ('F06', 'C6', 'action', 'probe'),
                           ('F06', 'C6', 'judge', 'verifier'), ('F06', 'C9', 'action', 'enrichment-consumer'),
@@ -225,6 +255,9 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(5, len(state['modes']))
         self.assertEqual([('F06', 'C6'), ('F06', 'C9')],
                          [(candidate['item'], candidate['configuration']) for candidate in state['candidates']])
+        self.assertEqual([f'{RUN}/single-action-v2/{item}/{configuration}/{name}'
+                          for item, configuration in v2.AUTHENTICATION_CONTROLS
+                          for name in ('candidate.json', 'judge-completion.json')], candidate_downloads)
         self.assertEqual(14, len(state['not_selected']))
         self.assertEqual([(item, configuration) for item, configuration in v2.CONFIGURATIONS
                           if (item, configuration) not in v2.AUTHENTICATION_CONTROLS],
@@ -259,6 +292,40 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(['start_cap'] * 5, reasons)
         self.assertEqual(2, len(self.p.state()['candidates']))
         self.assertTrue(all(entry['accepted'] is False for entry in self.p.state()['candidates']))
+
+    def test_selected_valid_capture_with_one_skipped_slot_reports_fourteen_admissions(self):
+        self.selected_controls()
+        candidate_payloads = {}
+
+        def run_stage(item, configuration, stage, role, seconds, deadline, skip):
+            record = self.record(stage, item, configuration, role)
+            state = self.p.state(); state['modes'].append(record); self.p.save_state(state)
+            if stage == 'judge':
+                self.evidence(record)
+            else:
+                self.selected_evidence(record, skipped_first=item == 'F06' and configuration == 'C9')
+            if stage == 'judge':
+                prefix = f'{RUN}/single-action-v2/{item}/{configuration}/'
+                raw = json.dumps(candidate(item, configuration)).encode()
+                receipt = {'schema_version': 2, 'mode': 'single-action-v2-judge', 'run_id': RUN,
+                           'scenario_id': item, 'configuration_id': configuration, 'source_commit': SHA,
+                           'job_name': record['job'], 'pod_name': record['job'] + '-pod', 'pod_uid': 'synthetic-pod-uid',
+                           'candidate_name': prefix + 'candidate.json', 'candidate_sha256': hashlib.sha256(raw).hexdigest(),
+                           'handler_exit_code': 0, 'cleanup_completed': True}
+                candidate_payloads[prefix + 'candidate.json'] = raw
+                candidate_payloads[prefix + 'judge-completion.json'] = json.dumps(receipt).encode()
+            return record
+
+        def download(name, target, maximum, deadline):
+            payload = candidate_payloads[name]; target.write_bytes(payload); return payload
+
+        with patch.object(self.subject, 'scope', return_value=True), patch.object(self.p, 'admission_allowed', return_value=True), \
+             patch.object(self.subject, 'run_stage', side_effect=run_stage), patch.object(self.p, 'run', side_effect=self.fake), \
+             patch.object(self.p, 'download_blob', side_effect=download):
+            self.assertEqual(0, self.subject.run_batch())
+        report = json.loads((self.artifacts / 'authentication-metadata-collection.json').read_text())
+        self.assertTrue(report['transport_passed'])
+        self.assertEqual(14, report['admitted_client_slots'])
 
     def test_selected_completeness_rejects_missing_duplicate_extra_candidates_jobs_and_safety_stop(self):
         variants = ('missing_job', 'duplicate_job', 'extra_job', 'missing_candidate', 'duplicate_candidate',
@@ -324,17 +391,17 @@ class ProbeV2Tests(unittest.TestCase):
 
     def test_phase_entrypoints_use_frozen_v2_selection_after_environment_changes(self):
         self.selected_controls()
-        os.environ.update(PARCHWELL_SCENARIO='A01', PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS='all',
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS='all',
                           PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='false')
-        probe = type('ProbeStub', (), {'selection': lambda _self, saved: ('authentication-controls', v2.AUTHENTICATION_CONTROLS),
-                                       'run_batch': lambda _self: 7})()
-        with patch.object(self.p, 'probe_v2', return_value=probe):
+        probe = self.p.probe_v2()
+        with patch.object(probe, 'run_batch', return_value=7), patch.object(self.p, 'probe_v2', return_value=probe):
             self.assertEqual(0, self.p.single_action_seed())
             self.assertEqual(7, self.p.run_single_action_batch())
+        self.assertEqual([], self.calls)
 
     def test_corrupt_frozen_selection_fails_before_scope_or_jobs(self):
         for key, value in [('probe_v2_selection', 'subset'), ('capture_authentication_metadata', 'true'),
-                           ('items', ['B08']), ('run_kind', 'batch')]:
+                           ('items', ['B08']), ('run_kind', 'batch'), ('scenario', 'A01')]:
             with self.subTest(key=key, value=value):
                 self.selected_controls()
                 saved = self.p.read('phase.json'); saved[key] = value; self.write(self.private / 'phase.json', saved)
@@ -342,6 +409,14 @@ class ProbeV2Tests(unittest.TestCase):
                      patch.object(self.subject, 'run_stage', side_effect=AssertionError('no job')):
                     with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
                         self.subject.run_batch()
+        self.selected_controls()
+        saved = self.p.read('phase.json'); saved['scenario'] = 'A01'; self.write(self.private / 'phase.json', saved)
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='smoke',
+                          PARCHWELL_BATCH_ITEMS='authentication-controls', PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='true')
+        with patch.object(self.subject, 'scope', side_effect=AssertionError('scope must not run')), \
+             patch.object(self.subject, 'run_stage', side_effect=AssertionError('no job')):
+            with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
+                self.p.run_single_action_batch()
 
     def test_matrix_counts_and_runtime_are_fixed_for_every_stage(self):
         counts = {item: [] for item in v2.ITEMS}
@@ -445,8 +520,14 @@ class ProbeV2Tests(unittest.TestCase):
         path = self.private / 'invalid-selected-chart-values.json'; self.write(path, values)
         rejected = subprocess.run(['helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(path)], cwd=REPO, capture_output=True, text=True, timeout=60)
         self.assertNotEqual(0, rejected.returncode)
-        values['runtime'].pop('capture_authentication_metadata')
+        values['runtime']['capture_authentication_metadata'] = False
         path = self.private / 'false-selected-chart-values.json'; self.write(path, values)
+        rendered = subprocess.run(['helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(path)], cwd=REPO, capture_output=True, text=True, timeout=60)
+        self.assertEqual(0, rendered.returncode, rendered.stderr)
+        container = next(o for o in yaml.safe_load_all(rendered.stdout) if o and o['kind'] == 'Job')['spec']['template']['spec']['containers'][0]
+        self.assertNotIn('ProbeV2__CaptureAuthenticationMetadata', {e['name'] for e in container['env']})
+        values['runtime'].pop('capture_authentication_metadata')
+        path = self.private / 'absent-selected-chart-values.json'; self.write(path, values)
         rendered = subprocess.run(['helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(path)], cwd=REPO, capture_output=True, text=True, timeout=60)
         self.assertEqual(0, rendered.returncode, rendered.stderr)
         container = next(o for o in yaml.safe_load_all(rendered.stdout) if o and o['kind'] == 'Job')['spec']['template']['spec']['containers'][0]
