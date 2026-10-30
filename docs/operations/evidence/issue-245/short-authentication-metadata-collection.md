@@ -260,3 +260,81 @@ Pre-existing (not blocking):
 
 The eight documentation-scan warnings in four unchanged files are already covered by the receipt's blanket disposition. No additional pre-existing blocking issue was identified in the reviewed scope.
 ```
+
+
+## Final focused review report, unresolved findings and handoff
+
+The following complete focused report is retained as authored. Its two P1 findings are accepted and unresolved. This report supersedes the earlier continuation-card look-ahead that one focused round remained: cumulative cold-review use is now 2/2 comprehensive and 2/2 focused, with the review gate exhausted.
+
+```text
+# Authentication metadata wiring: focused conflict-resolution review
+
+Mode: focused correction/integration review. Report: complete.
+
+Reviewed revision: `de20b3df9d489dd1e48a913e901c5c353d27fdee`. Comparison revision: previously reviewed `cf273d4b27ff8695afda0a00fb031bc7133abce1`. Incoming main and second merge parent: `32babefac185b8e8a4855e4f3892c1772e431d29`; common base: `c4a1724f9165397dd04f4e8df22acd9c8498ebd8`. The checked-out HEAD and origin/main matched these frozen revisions. Cumulative use including this report is 2/2 comprehensive and 2/2 focused rounds.
+
+Inputs supplied by the author were `/tmp/issue245-conflict-full.diff`, `/tmp/issue245-conflict-since-reviewed.diff`, `/tmp/issue245-conflict-combined.diff`, and the authored receipt `docs/operations/evidence/issue-245/short-authentication-metadata-collection.md`. The full PR diff supplied context; this report does not repeat a comprehensive PR review. The focused scope is the authored conflict adapter, its changed receipt, and affected surrounding callers, tests and contracts. Incoming main's scientific implementation, access collector, expected outcomes and evidence are context rather than newly authored issue-245 changes. Earlier unchanged reviewed work retains coverage. The earlier receipt records no unresolved P0/P1 finding carried into this round.
+
+The scope can be reviewed safely as a bounded integration change. The two findings below are concrete adapter regressions; neither requires a new scientific design or a comprehensive repeat to identify. No source edits, GitHub writes, delegation, live operations, Azure commands, credential acquisition or token-content reads were performed. Review files and synthetic fixtures remained outside the repository; final repository status was clean.
+
+## Authority and rules
+
+The selected specification remains [short-authentication-metadata-collection, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525824679), GitHub updated_at `2026-10-30T15:11:34Z`, under [the explicit offline approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6526348889). The current issue body and comment pages were fetched with REST reads; recognized Decision/Approval comments were distinguished from proposals, checks and handoffs under `docs/agents/factory.md` Item lifecycle step 3. The latest comment is still that approval. The [selected-control decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525819641) and [current independent check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6526259257) retain the offline scope and separate later execution authorization. The receipt's continuation card requires preservation of incoming main's scientific batch selectors, permission-audit prerequisites and runtime behavior.
+
+Every scoped file received the universal rubric: AGENTS.md GOVERNANCE including scope/deferred work, Code Review Rules, Before opening a pull request, Skills and Writing standards; CLAUDE.md; docs/agents/factory.md; and docs/blueprint.md ADRs. Governing source versions are those on origin/main at the incoming main revision, including the current blueprint's scoped permission-audit exception. The repository-owned repo-review skill is unchanged against that main. Workflow files additionally received hard safety rules 8 and 9 review. The predicate/test comparison used docs/engineering/dotnet.md Testing. No authored .NET, Terraform, Kafka-setting, scenario-definition, expected-outcome or results change adds another rubric row. Incoming changes in those areas were not relabelled as issue-245 findings.
+
+## Focused file coverage
+
+| File | Scope and outcome |
+| --- | --- |
+| `.github/workflows/scenario.yml` | Composed dispatch description, closed capture/selector cleanup gate, unchanged step prerequisites and batch callers checked. Main's strict prepare-stop validation remains before login, including case-insensitive expression false positives. Trigger, identity, concurrency and cleanup policies are preserved. |
+| `charts/parchwell/values.schema.json` | Optional Boolean capture flag coexists with main's required smoke/batch run_kind enum and closed runtime object. The affected template retains actor-only capture and judge-only RunKind/access-check propagation. |
+| `docs/operations/probe-v2-smoke-contract.md` | Smoke and scientific-batch admission descriptions and cleanup distinction checked against actual validators/workflow. Its advertised explicit scientific selectors are broken by finding 1. |
+| `docs/operations/workflows/scenario.yml.txt` | Same adapter as protected workflow; independently compared byte for byte. |
+| `infra/scripts/lifecycle/check-offline.sh` | Combined literal dispatch input description and retained Boolean input checked against workflow declaration; exact event audit retained. |
+| `infra/scripts/phase/phase.py` | Composed parser/preparation checks, frozen selector producer, seed/batch execution consumers and mixed item/configuration report entries checked. Finding 1 occurs across preparation and the execution helper. Smoke-only effective-scope materialization and conditional namespace-role settings retain main's contracts. |
+| `infra/scripts/phase/probe_v2.py` | Selection, values, orchestration, scope/permission-admission callers and separate smoke/metadata/scientific reports checked. Findings 1 and 2 regress scientific execution. Selected five-stage and full-smoke output branches remain separated from batch reporting. |
+| `infra/scripts/phase/tests/test_phase.py` | Actual preparation, invalid-input, role/confirmation and summary cases checked. Preparation tests stop before consuming the newly saved selector, so they miss finding 1. |
+| `infra/scripts/phase/tests/test_probe_v2.py` | Selected route/frozen-state tests and affected incoming scientific stage-count, permission and render tests checked. `batch_phase` writes run_kind/items directly and omits probe_v2_selection, masking finding 1. Instant mocked audit collection masks finding 2. Required selected download/count/completeness assertions remain. |
+| `infra/scripts/phase/tests/test_workflow.py` | Composed exact expression, case-insensitive truth table and actual declared cleanup-step prerequisite simulation checked. Existing rejected capture routes and valid legacy/smoke cleanup behavior remain covered. |
+| `docs/operations/evidence/issue-245/short-authentication-metadata-collection.md` | New continuation authorization/boundary, merge rationale, frozen inputs, acceptance ledger and budget handoff checked. The assertion that scientific batch behavior and runtime reservations are preserved is incorrect for the two findings. Earlier reports are context, not new comprehensive review targets. |
+
+The affected chart template, runtime limits, phase state/clock and stop preparation, scientific contract, existing scientific batch test fixtures, and main's pre-merge run_batch implementation were read as surrounding contracts. The scientific verifier and access collector implementation are unchanged against incoming main. No identity permission, public result or scientific judgement change was found in the authored resolution.
+
+## Specification comparison and verification
+
+Approved Revision 3's default-off selected smoke tuple, five dependency-closed stages, frozen inputs, actor-only option, separate diagnostic output and cleanup boundary remain represented. The merged chart/schema and workflow expose both already approved routes without introducing a new route. Integration is nevertheless incomplete: explicit scientific item selections accepted by main's contract cannot execute, and the first F06 configuration no longer receives main's full post-audit reservation. These violate the continuation's preservation boundary and Revision 3's requirement to preserve existing routes and execution limits. No additional scientific requirement, expectation or deferred experiment is proposed.
+
+The receipt's 167-test phase-suite and full pinned offline acceptance results were read as authored evidence. Those expensive suites were not repeated. New bounded, synthetic probes independently checked the two material concerns:
+
+- Using the existing `PhaseTests` synthetic preparation fixture and real `Phase.prepare_batch`, the selectors `all`, `B08`, `F06`, `B08,F06`, and `B08,E01,F06` each prepared successfully. The saved selector exactly equalled its input. The real ProbeV2 selection helper accepted only `all`; each explicit selector raised `ValueError: v2_smoke_selection`. No commands were invoked. Both real seed and batch entrypoints call this helper on the frozen phase.
+- Using the existing `ProbeV2Tests` fixture with a valid `batch/all` frozen phase, a monotonic clock, stubbed scope/stages/transfers/candidates, and a synthetic access collector that advances that clock by 300 seconds, the first F06 C0 stage was handed only 3060 seconds of its 3360-second configuration reservation. Main at `32babef` performs collection before computing that deadline, retaining all 3360 seconds after collection. These durations are synthetic reproduction inputs and source-derived bounds, not live measurements.
+- `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt`: exit 0.
+- `git diff --check 32babef HEAD`: exit 0.
+- `git status --short`: empty after the probes.
+
+The synthetic probes used `PYTHONDONTWRITEBYTECODE=1` and the existing pinned-tools Python environment. They did not render or submit Jobs, execute the access collector, or contact Azure. Hosted final-head CI/review and Hari's protected-path merge remain separate pending gates.
+
+## Findings
+
+P1  infra/scripts/phase/probe_v2.py:152  Approved Revision 3 Exact offline implementation steps 2/6 and Enforced check 2; receipt Continuation execution card Resolution boundary; AGENTS.md Before opening a pull request rule 8  Accept the canonical frozen scientific selector produced by preparation. The new batch arm requires saved probe_v2_selection == all, but Phase.prepare_batch saves the literal input such as B08, F06 or B08,F06. Every explicit valid scientific selection therefore passes pre-login validation/preparation and then raises v2_smoke_selection from the seed/batch execution entrypoint, preventing the already merged scientific route from running. Evidence: phase.py lines 281-284 save the raw selector, ProbeV2.selection lines 152-160 reject it, and real synthetic preparation reproduced successful preparation followed by rejection for B08, F06, B08,F06 and B08,E01,F06; test_probe_v2.py batch_phase omits the selector and masks the mismatch.
+P1  infra/scripts/phase/probe_v2.py:825  Approved Revision 3 Finite work/exhaustion execution-limit preservation; receipt Continuation execution card Resolution boundary; AGENTS.md Before opening a pull request rule 8  Compute the first scientific F06 configuration deadline after the permission audit, as incoming main does. The resolution moves reservation/reason/deadline computation before collect_access, so the separately reserved audit consumes the client-stage and collection allowance. A permitted audit taking 300 seconds leaves 3060 of the existing 3360 seconds for F06 C0, and longer permitted audits can cut off otherwise in-bound stages or their evidence collection. Evidence: lines 822-828 set deadline before collection; incoming main run_batch sets it afterward; a valid synthetic batch/all run with a 300-second clock advance in the collector reproduced a 3060-second first-F06 budget. The scientific batch tests use an instantaneous audit and do not exercise this integration boundary.
+
+Findings: 2 at P0 or P1
+
+Pre-existing (not blocking):
+
+None identified within the focused and affected context. Existing unchanged-file documentation warnings remain covered by the receipt's blanket disposition.
+
+## Budget and handoff
+
+The applicable focused scope is complete, but the cold-review gate is unresolved because of the two P1 findings. This is the final allowed focused round: cumulative use is 2/2 comprehensive and 2/2 focused. Under AGENTS.md Before opening a pull request rule 8, further required review of corrections would exceed the budget. The coordinator must preserve unpublished work under rule 12 and hand off to Hari with these findings, frozen revisions and exhausted budget, requesting a decision on correction/review continuation. This report supplies no additional review allowance and authorizes no publication or live action.
+```
+
+### Required handoff
+
+The reviewed merge remains unpublished and unpushed. Under AGENTS.md Before opening a pull request rule 8, no further correction review can be initiated within the current budget. The coordinator must hand off to Hari, preserving the findings, reviewed revisions, full reports and exhausted 2/2 comprehensive plus 2/2 focused counts, and request an explicit decision authorizing the smallest continuation: (1) make the frozen scientific selector accept the canonical selector saved by Phase.prepare_batch, with regressions that run real preparation through the frozen selection helper and both execution entrypoints for all, B08, F06, B08,F06 and B08,E01,F06; (2) compute the F06 scientific configuration reservation after the permission collector, with a synthetic clock-advance regression proving the full reserved stage budget remains available; then (3) obtain Hari's explicit authorization for one focused correction review beyond the exhausted budget before proceeding to hosted CI/review and the protected-path merge. No implementation correction, push, review, or publication is authorized by this handoff itself.
+
+The coordinator also identified a preservation check for continuation: verify that main's full-smoke report retains its selected_items field in the current report path. The focused reviewer did not list this as a separate finding; check it as part of preserving main's output contract while correcting the two accepted findings.
+
+The documentation scan was rerun after adding this focused report: `npm run check:docs` exited 0, found no issue in the changed receipt, and reported the same eight warnings confined to four unchanged files.
