@@ -420,7 +420,9 @@ class ProbeV2Tests(unittest.TestCase):
                 self.p.run_single_action_batch()
     def batch_phase(self, items=('B08',)):
         current = self.p.read('phase.json')
-        current.update(run_kind='batch', items=list(items))
+        current.update(run_kind='batch', items=list(items),
+                       probe_v2_selection='all' if tuple(items) == tuple(v2.ITEMS) else ','.join(items),
+                       capture_authentication_metadata=False)
         self.write(self.private / 'phase.json', current)
 
     def test_every_canonical_batch_selector_and_rejected_alias(self):
@@ -433,6 +435,21 @@ class ProbeV2Tests(unittest.TestCase):
             with patch.dict(os.environ, PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS=selected):
                 with self.assertRaises(phase.Failure):
                     phase.batch_items()
+
+    def test_batch_frozen_selector_matches_canonical_items_with_legacy_default(self):
+        self.batch_phase(v2.ITEMS)
+        saved = self.p.read('phase.json')
+        saved.pop('probe_v2_selection')
+        self.write(self.private / 'phase.json', saved)
+        self.assertEqual(('batch', v2.CONFIGURATIONS), self.subject.selection())
+        for selector, items in [('B08', ['B08', 'F06']), ('all', ['B08']),
+                                ('B08,F06', ['F06', 'B08']), ('B08', ['B08', 'E01'])]:
+            with self.subTest(selector=selector, items=items):
+                saved = self.p.read('phase.json')
+                saved.update(probe_v2_selection=selector, items=items)
+                self.write(self.private / 'phase.json', saved)
+                with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
+                    self.subject.selection()
 
     def test_selected_values_use_baseline_roles_only_for_partition_probe(self):
         for items, roles in [(('B08',), False), (('E01',), True), (('F06',), True), (('B08', 'F06'), True)]:
@@ -995,6 +1012,7 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(49, len(self.p.state()['modes']))
         self.assertEqual(33, transfer.call_count)
         report = json.loads((self.artifacts / 'probe-v2-smoke.json').read_text())
+        self.assertEqual(list(v2.ITEMS), report['selected_items'])
         self.assertEqual(80, report['action_slots'])
         self.assertEqual(165, report['maximum_clients'])
         self.assertFalse(report['evidence_passed'])
@@ -1047,6 +1065,41 @@ class ProbeV2Tests(unittest.TestCase):
             self.assertEqual(21, len(clients))
             self.assertTrue(all(r['outcome'] == 'not_attempted' and r['reason'] == reason for r in clients))
             self.assertEqual(1, collector.call_count)
+
+    def test_f06_reservation_starts_after_permission_audit(self):
+        self.batch_phase(('F06',))
+        phase_data = self.p.read('phase.json')
+        phase_data['batch_started_monotonic'] = 1000.0
+        self.write(self.private / 'phase.json', phase_data)
+        clock = [1000.0]
+        first_f06_deadline = []
+
+        def audit(_deadline):
+            clock[0] += 300
+            state = self.p.state()
+            state['permission_audit'] = {'status': 'complete'}
+            self.p.save_state(state)
+            return 'complete'
+
+        def run_stage(item, configuration, stage, role, seconds, deadline, skip):
+            if item == 'F06' and configuration == 'C0' and not first_f06_deadline:
+                first_f06_deadline.append(deadline)
+            record = self.record(stage, item, configuration, role)
+            state = self.p.state(); state['modes'].append(record); self.p.save_state(state)
+            return record
+
+        with patch.object(self.p, 'start_batch_clock', return_value=True), \
+             patch.object(v2.time, 'monotonic', side_effect=lambda: clock[0]), \
+             patch.object(self.subject, 'scope', return_value=True), \
+             patch.object(self.p, 'admission_allowed', return_value=True), \
+             patch.object(self.subject, 'collect_access', side_effect=audit), \
+             patch.object(self.subject, 'run_stage', side_effect=run_stage), \
+             patch.object(self.subject, 'transfer', return_value=True), \
+             patch.object(self.subject, 'candidate', return_value=True), \
+             patch.object(self.subject, 'access_admission', return_value=True):
+            self.assertEqual(0, self.subject.run_batch())
+        expected_reservation = sum(seconds + 120 for _, _, seconds in v2.stages('F06', 'C0'))
+        self.assertEqual([1300.0 + expected_reservation], first_f06_deadline)
 
     def run_admission_fixture(self, skipped_helper=False, missing_capture=False):
         def run_stage(item, configuration, stage, role, seconds, deadline, skip):

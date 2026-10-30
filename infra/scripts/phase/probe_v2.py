@@ -149,8 +149,9 @@ class ProbeV2:
         if phase.get("scenario") != "probe-batch-2" or type(capture) is not bool:
             raise ValueError("v2_smoke_selection")
         items = phase.get("items")
-        if (phase.get("run_kind") == "batch" and selected == "all" and capture is False
-                and isinstance(items, list) and items and items == [item for item in ITEMS if item in items]):
+        if (phase.get("run_kind") == "batch" and capture is False
+                and isinstance(items, list) and items and items == [item for item in ITEMS if item in items]
+                and ((selected == "all" and items == list(ITEMS)) or selected == ",".join(items))):
             return "batch", tuple((item, configuration) for item, configuration in CONFIGURATIONS if item in items)
         if selected == "all" and phase.get("items") == list(ITEMS) and phase.get("run_kind") == "smoke" and capture is False:
             return selected, CONFIGURATIONS
@@ -820,12 +821,12 @@ class ProbeV2:
         passed = clock and scope_valid
         for item, configuration in configurations:
             selected_stages = stages(item, configuration)
+            if phase["run_kind"] == "batch" and item == "F06" and "permission_audit" not in self.p.state():
+                if clock and self.p.admission_allowed() and end - time.monotonic() >= 600 + sum(s + 120 for _, _, s in selected_stages):
+                    self.collect_access(end)
             reservation = sum(seconds + 120 for _, _, seconds in selected_stages)
             reason = None if clock and self.p.admission_allowed() and end - time.monotonic() >= reservation else "start_cap"
             deadline = min(end, time.monotonic() + reservation)
-            if phase["run_kind"] == "batch" and item == "F06" and "permission_audit" not in self.p.state():
-                if clock and self.p.admission_allowed() and end - time.monotonic() >= 600 + sum(s + 120 for _, _, s in stages(item, configuration)):
-                    self.collect_access(end)
             for stage, account, seconds in selected_stages:
                 skip = reason
                 if phase["run_kind"] == "batch" and item == "F06" and stage != "judge":
@@ -855,7 +856,7 @@ class ProbeV2:
             # Preserve the established full-matrix report and acceptance behavior.
             state["not_selected"] = []
             self.p.save_state(state)
-            private_json(self.p.artifacts / "probe-v2-smoke.json", {"schema_version": 2, "mode": "smoke_only", "run_id": phase["run_id"],
+            private_json(self.p.artifacts / "probe-v2-smoke.json", {"schema_version": 2, "mode": "smoke_only", "selected_items": items, "run_id": phase["run_id"],
                 "source_commit": phase["source_commit"], "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
                 "jobs": len(state["modes"]), "action_slots": len(CONFIGURATIONS) * 5, "maximum_clients": sum(stage != "judge" for i, c in CONFIGURATIONS for stage, _, _ in stages(i, c)) * 5,
                 "admitted_client_slots": self.admitted_slots(state, phase["run_id"]),

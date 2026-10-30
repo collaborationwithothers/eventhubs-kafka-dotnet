@@ -684,8 +684,8 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
         return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
 
-    def prepare_v2_batch(self, items='all', capture='false'):
-        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='smoke',
+    def prepare_v2_batch(self, items='all', capture='false', run_kind='smoke'):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND=run_kind,
                           PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
         self.assertEqual(0, self.main('prepare-batch'))
         self.env_file_contents = self.env_file.read_text()
@@ -789,6 +789,26 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 self.assertEqual('', self.env_file.read_text())
                 self.assertEqual([], self.fake.calls)
                 self.assertEqual([], list(self.root.glob('parchwell-*')))
+
+    def test_real_preparation_scientific_selectors_reach_selection_and_entrypoints(self):
+        with self.mocked():
+            for selector in ('all', 'B08', 'E01', 'F06', 'B08,E01', 'B08,F06', 'E01,F06', 'B08,E01,F06'):
+                with self.subTest(selector=selector):
+                    self.env_file.write_text('')
+                    self.prepare_v2_batch(selector, run_kind='batch')
+                    frozen = json.loads((self.private / 'phase.json').read_text())
+                    items = ['B08', 'E01', 'F06'] if selector == 'all' else selector.split(',')
+                    probe = phase.Phase().probe_v2()
+                    counts = {'B08': 2, 'E01': 2, 'F06': 12}
+                    expected = tuple((item, f'C{number}') for item in ('B08', 'E01', 'F06') if item in items
+                                     for number in range(counts[item]))
+                    self.assertEqual(items, frozen['items'])
+                    self.assertEqual(selector, frozen['probe_v2_selection'])
+                    self.assertEqual(('batch', expected), probe.selection(frozen))
+                    with patch.object(probe, 'run_batch', return_value=7), patch.object(phase.Phase, 'probe_v2', return_value=probe):
+                        self.assertEqual(0, phase.Phase().single_action_seed())
+                        self.assertEqual(7, phase.Phase().run_single_action_batch())
+            self.assertEqual([], self.fake.calls)
 
     def test_batch_selection_and_strict_command_arguments(self):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch', PARCHWELL_RUN_KIND='smoke')

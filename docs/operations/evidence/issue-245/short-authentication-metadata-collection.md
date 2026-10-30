@@ -11,7 +11,7 @@ Issue #245 adds a default-off V2 route that selects only F06 C6 and C9 for bound
 - **Exact verification commands:** `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'`; `bash infra/scripts/lifecycle/check-offline.sh`; `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt`; `npm run check:docs`; `git diff --check`.
 - **Earliest authorized publication checkpoint:** After implementation and all offline acceptance pass, changed-file documentation warnings have dispositions, and the required cold-review coverage is complete. The coordinator owns publication and final handoff.
 - **Implementation disposition caps:** At most ten changed-file documentation warnings and ten distinct failing-test root causes. At either cap, stop expanding work, record the remaining gap and push WIP / hand off to the next session as the approved plan directs. Runtime collection is not authorized.
-- **Review budget:** 2/2 comprehensive and 0/2 focused cold reviews used after the second report. Do not initiate cold review in this implementation session. Under AGENTS.md rule 8, if another required review would exceed either cumulative budget, or focus is unsafe, stop, preserve unpublished work under rule 12 and hand off to Hari with the unresolved gate, findings, reviewed revisions, cumulative counts and proposed next action. A third comprehensive pass requires Hari's explicit decision. The coordinator owns cumulative review accounting and reviews.
+- **Review budget:** The frozen conflict-resolution report used 2/2 comprehensive and 2/2 focused rounds. Hari explicitly authorized one additional focused correction review in [the continuation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6529038203); this is an exception beyond the existing budget and does not reset either count. The coordinator owns cumulative review accounting and reviews. This implementation session does not initiate review.
 
 ## Continuation execution card: merge PR #259 with full experiment PR #258
 
@@ -19,7 +19,7 @@ Issue #245 adds a default-off V2 route that selects only F06 C6 and C9 for bound
 - **Authority:** Hari's approval of [Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6525824679), with [independent checks](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6526259257). This continuation authorizes conflict resolution; publication and review ownership remain with the coordinator.
 - **Merge inputs:** issue #245 head `cf273d4b27ff8695afda0a00fb031bc7133abce1`; merge `origin/main` at `32babefac185b8e8a4855e4f3892c1772e431d29`; common base `c4a1724f9165397dd04f4e8df22acd9c8498ebd8`. Create a merge commit; do not rebase or force-push.
 - **Resolution boundary:** retain the default-off V2/smoke/authentication-controls/true tuple, frozen selection inputs, selection-aware transport/reporting and cleanup guard, alongside main's full-experiment batch route, `run_kind` schema and F06 access-check prerequisites. Keep `.github/workflows/scenario.yml` and `docs/operations/workflows/scenario.yml.txt` byte-identical. No scientific judgment, expected outcome, identity permission, credential or live behavior changes.
-- **Offline gates:** after resolution run the approved phase unittest discovery, pinned `check-offline.sh`, workflow mirror `cmp`, `npm run check:docs` and `git diff --check`; record exact commands and results in this receipt. Only one focused review remains across sessions, owned by the coordinator; this session does not initiate review.
+- **Offline gates:** after corrections run the approved phase unittest discovery, pinned `check-offline.sh`, workflow mirror `cmp`, `npm run check:docs` and `git diff --check`; record exact commands and results in this receipt. The authorized additional focused correction review remains for the coordinator; this session does not initiate review.
 - **Restrictions:** no GitHub writes, push, labels, dispatch, Azure access, credentials or token-content reads. Do not edit results, expected outcomes or verifier claims.
 
 ## Conflict resolution, validation and frozen review handoff
@@ -338,3 +338,25 @@ The reviewed merge remains unpublished and unpushed. Under AGENTS.md Before open
 The coordinator also identified a preservation check for continuation: verify that main's full-smoke report retains its selected_items field in the current report path. The focused reviewer did not list this as a separate finding; check it as part of preserving main's output contract while correcting the two accepted findings.
 
 The documentation scan was rerun after adding this focused report: `npm run check:docs` exited 0, found no issue in the changed receipt, and reported the same eight warnings confined to four unchanged files.
+
+## Authorized correction continuation
+
+Hari replied ["Yes fix them"](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6529038203) to the coordinator's request covering the two accepted P1 findings and one additional focused review. This authorizes the bounded offline corrections below and one focused correction review after them. The existing cold-review count remains 2/2 comprehensive and 2/2 focused; the authorized additional round is an exception, not a reset. It is not initiated by this implementation session.
+
+| Review concern | Root cause | Disposition and regression |
+| --- | --- | --- |
+| Canonical scientific selector rejected after real preparation | `Phase.prepare_batch` freezes the literal selector (`all`, `B08`, `F06`, `B08,F06`, etc.), while `ProbeV2.selection` accepted only `all` for `run_kind=batch`. The direct `batch_phase` fixture omitted this frozen field. | `ProbeV2.selection` now accepts `all` only with all three scientific items, or the exact canonical comma-joined frozen items; ordered item validation and capture-disabled checks remain. Test fixtures now write canonical selectors. A real `prepare-batch` integration regression passes `all` and every nonempty canonical subset of B08, E01 and F06 (eight cases total) through the real selection helper, `single_action_seed`, and `run_single_action_batch`. A separate regression verifies legacy missing-selector compatibility for `all` and rejects mismatched selectors, unordered items, and a partial subset paired with `all`. |
+| F06 C0 reservation shortened by audit time | The conflict adapter computed the F06 stage deadline before running `collect_access`, charging audit duration against the configuration reservation. | The first F06 permission audit now runs before reservation, reason, and deadline calculation, restoring main's post-audit reservation. A synthetic monotonic clock advances 300 seconds during audit and verifies the entire F06 C0 reservation remains available afterward. |
+| Full-smoke report omitted its established `selected_items` field | The conflict resolution's duplicated full-smoke report literal dropped the field while preserving the rest of the full-matrix report. | Restored `selected_items` from the frozen phase and added a regression assertion on the full-smoke report. |
+
+The exact five approved offline commands completed after the corrections:
+
+| Command | Result |
+| --- | --- |
+| `PYTHONDONTWRITEBYTECODE=1 PARCHWELL_TOOLS_DIRECTORY=/tmp/issue-245/tools PATH=/tmp/issue-245/tools:/tmp/issue-245/tools/venv/bin:$PATH python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'` | Exit 0; 170 tests passed, including actual Helm rendering and the new preparation, selector, reservation, and report regressions. |
+| `PARCHWELL_TOOLS_DIRECTORY=/tmp/issue-245/tools PATH=/tmp/issue-245/tools:/tmp/issue-245/tools/venv/bin:$PATH bash infra/scripts/lifecycle/check-offline.sh` | Exit 0. ShellCheck, workflow mirrors, actionlint, chart acceptance and strict kubeconform smoke renders passed. Chart acceptance: 25 positive, 32 negative, 4 worker-setting regressions; single-action: 66 positive, 14 negative; probe V2: 148 positive, 117 negative. |
+| `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt` | Exit 0; protected workflow and committed copy are byte-identical. |
+| `npm run check:docs` | Exit 0; eight warnings remain in unchanged files; no warnings in changed Markdown. |
+| `git diff --check` | Exit 0. |
+
+The protected workflow and its committed copy were left untouched by the correction. No scientific collector, verifier, expectation, result, permissions, or live behavior changed. Hosted final-head CI/review and Hari's protected-path merge remain subsequent gates.
