@@ -13,6 +13,7 @@ public sealed class ProjectedTokenFileObserverTests
     private static readonly ProjectedTokenFileMetadata A = new("/synthetic/path-secret-a", 10, 20);
     private static readonly ProjectedTokenFileMetadata B = new("/synthetic/path-secret-b", 11, 22);
 
+    // Matching metadata pairs advance generation only when the stable tuple changes.
     [Fact]
     public void Given_MatchingMetadataPairs_When_Observed_Then_GenerationTracksOnlyStableTupleChanges()
     {
@@ -29,6 +30,80 @@ public sealed class ProjectedTokenFileObserverTests
         Assert.Equal("1,2,3", string.Join(',', new[] { first.Timestamp, second.Timestamp, third.Timestamp }));
         Assert.Equal(Now, first.ObservedAt);
         Assert.Equal(1000, first.TimestampFrequency);
+    }
+
+    // A path-only tuple change must advance generation while public output remains an allowlist.
+    [Fact]
+    public void Given_PathOnlyStableTupleChanges_When_Observed_Then_GenerationAdvancesAndOutputStaysSanitized()
+    {
+        var firstTuple = new ProjectedTokenFileMetadata("/synthetic/v1/token", 10, 20);
+        var secondTuple = new ProjectedTokenFileMetadata("/synthetic/v2/token", 10, 20);
+        var reads = new Queue<ProjectedTokenFileMetadata>([firstTuple, firstTuple, firstTuple, firstTuple, secondTuple, secondTuple, secondTuple, secondTuple]);
+        var observer = NewObserver(() => reads.Dequeue());
+
+        ProjectedTokenFileObservation[] results = Enumerable.Range(0, 4).Select(_ => observer.Observe()).ToArray();
+
+        Assert.Equal(["observed", "observed", "observed", "observed"], results.Select(result => result.Status));
+        Assert.Equal([1, 1, 2, 2], results.Select(result => result.Generation));
+        Assert.Equal([1, 2, 3, 4], results.Select(result => result.Sample));
+        string json = JsonSerializer.Serialize(results[2]);
+        using JsonDocument document = JsonDocument.Parse(json);
+        Assert.Equal(
+            ["Generation", "ObservedAt", "Sample", "Status", "Timestamp", "TimestampFrequency"],
+            document.RootElement.EnumerateObject().Select(property => property.Name).OrderBy(name => name, StringComparer.Ordinal));
+        foreach (string privateValue in new[] { "/synthetic/v1/token", "/synthetic/v2/token", "synthetic-content", "synthetic-exception" })
+            Assert.DoesNotContain(privateValue, json, StringComparison.Ordinal);
+    }
+
+    // A mismatched pair consumes one sample without replacing the prior stable tuple.
+    [Fact]
+    public void Given_PathOnlyMismatchBetweenSnapshots_When_Observed_Then_UnavailablePreservesPriorStableGeneration()
+    {
+        var firstTuple = new ProjectedTokenFileMetadata("/synthetic/v1/token", 10, 20);
+        var secondTuple = new ProjectedTokenFileMetadata("/synthetic/v2/token", 10, 20);
+        var reads = new Queue<ProjectedTokenFileMetadata>([firstTuple, firstTuple, firstTuple, secondTuple, secondTuple, secondTuple]);
+        var observer = NewObserver(() => reads.Dequeue());
+
+        ProjectedTokenFileObservation stableBefore = observer.Observe();
+        ProjectedTokenFileObservation mismatch = observer.Observe();
+        ProjectedTokenFileObservation stableAfter = observer.Observe();
+
+        Assert.Equal("observed", stableBefore.Status);
+        Assert.Equal(1, stableBefore.Generation);
+        Assert.Equal("unavailable", mismatch.Status);
+        Assert.Null(mismatch.Generation);
+        Assert.Null(mismatch.ObservedAt);
+        Assert.Null(mismatch.Timestamp);
+        Assert.Equal("observed", stableAfter.Status);
+        Assert.Equal(2, stableAfter.Generation);
+    }
+
+    // A metadata exception cannot leak its private path or replace the last stable tuple.
+    [Fact]
+    public void Given_MetadataReadFailureBetweenStableSnapshots_When_Observed_Then_RecoveryUsesLastStableTuple()
+    {
+        var firstTuple = new ProjectedTokenFileMetadata("/synthetic/v1/token", 10, 20);
+        var secondTuple = new ProjectedTokenFileMetadata("/synthetic/v2/token", 10, 20);
+        var reads = new Queue<Func<ProjectedTokenFileMetadata>>(
+        [
+            () => firstTuple, () => firstTuple,
+            () => throw new IOException("private-path-sentinel"),
+            () => firstTuple, () => firstTuple,
+            () => secondTuple, () => secondTuple
+        ]);
+        var observer = NewObserver(() => reads.Dequeue()());
+
+        ProjectedTokenFileObservation first = observer.Observe();
+        ProjectedTokenFileObservation unavailable = observer.Observe();
+        ProjectedTokenFileObservation recoveredSame = observer.Observe();
+        ProjectedTokenFileObservation recoveredChanged = observer.Observe();
+
+        Assert.Equal(1, first.Generation);
+        Assert.Equal("unavailable", unavailable.Status);
+        Assert.Null(unavailable.Generation);
+        Assert.Equal(1, recoveredSame.Generation);
+        Assert.Equal(2, recoveredChanged.Generation);
+        Assert.DoesNotContain("private-path-sentinel", JsonSerializer.Serialize(unavailable), StringComparison.Ordinal);
     }
 
     [Fact]

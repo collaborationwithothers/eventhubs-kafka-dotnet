@@ -111,20 +111,22 @@ public sealed class ProjectedTokenFileObserver
 
     private static ProjectedTokenFileMetadata ReadProductionMetadata(string tokenFilePath)
     {
-        FileInfo configured = new(tokenFilePath);
-        configured.Refresh();
-        if (!configured.Exists)
-            throw new FileNotFoundException();
+        string resolved = ProjectedTokenPathResolver.Resolve(
+            tokenFilePath,
+            candidate => new FileInfo(candidate).LinkTarget,
+            candidate =>
+            {
+                if (!Directory.Exists(candidate))
+                    throw new DirectoryNotFoundException();
+            });
 
-        FileSystemInfo target = configured.LinkTarget is null
-            ? configured
-            : configured.ResolveLinkTarget(returnFinalTarget: true) ?? throw new FileNotFoundException();
-        target.Refresh();
-        if (target is not FileInfo targetFile || !targetFile.Exists)
+        FileInfo targetFile = new(resolved);
+        targetFile.Refresh();
+        if (!targetFile.Exists || (targetFile.Attributes & FileAttributes.Directory) != 0)
             throw new FileNotFoundException();
 
         return new ProjectedTokenFileMetadata(
-            Path.GetFullPath(targetFile.FullName),
+            resolved,
             targetFile.LastWriteTimeUtc.Ticks,
             targetFile.Length);
     }
