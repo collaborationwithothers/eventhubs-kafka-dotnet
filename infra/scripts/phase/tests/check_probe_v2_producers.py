@@ -103,13 +103,21 @@ def check_metadata_actor(directory):
             raise AssertionError('metadata actor repeat or fixed expiry changed')
         if [sample.get('boundary') for sample in row.get('projected_file_samples', [])] != expected_boundaries:
             raise AssertionError('metadata actor boundaries changed')
+
+    # Inspect serialized record fields only; settings below them contain native Kafka keys.
+    def is_diagnostic_field(key):
+        lowered = key.lower()
+        return ('authentication' in lowered or
+                ('metadata' in lowered and lowered != 'metadata_partitions') or
+                lowered in {'initial_installed_expires_on', 'lifecycle',
+                            'projected_file_samples', 'client_cleanup_completed', 'capture_error'})
+
     for name in ('registration.json', 'capture.json'):
         scientific = json.loads((directory / name).read_bytes())
-        if any('authentication' in key.lower() or 'metadata' in key.lower() for key in scientific):
+        if any(is_diagnostic_field(key) for key in scientific):
             raise AssertionError('diagnostic fields leaked into scientific ' + name)
         if name == 'capture.json' and any(
-            'authentication' in key.lower() or 'metadata' in key.lower()
-            for repeat in scientific['repeats'] for key in repeat
+            is_diagnostic_field(key) for repeat in scientific['repeats'] for key in repeat
         ):
             raise AssertionError('diagnostic fields leaked into scientific repeats')
 

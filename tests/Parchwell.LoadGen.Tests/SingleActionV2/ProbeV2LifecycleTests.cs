@@ -108,7 +108,7 @@ public sealed class ProbeV2LifecycleTests
         });
         var lines = MetadataLines(fixture);
         Assert.Equal(5, lines.Count);
-        Assert.Equal(5, fixture.SamplerCalls);
+        Assert.Equal(10, fixture.SamplerCalls);
         for (int index = 0; index < lines.Count; index++)
         {
             ProbeV2AuthenticationMetadata row = ReadMetadata(lines[index]);
@@ -134,12 +134,13 @@ public sealed class ProbeV2LifecycleTests
             await File.WriteAllBytesAsync(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
                 fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
                 "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536), TestContext.Current.CancellationToken);
-            string stdout = string.Join('\n', new[]
-            {
-                "PARCHWELL_PROBE_V2_REGISTRATION " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536)),
-                .. lines,
-                "PARCHWELL_PROBE_V2_CAPTURE " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(capture, 524288))
-            }) + "\n";
+            List<string> stdoutLines =
+            [
+                "PARCHWELL_PROBE_V2_REGISTRATION " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536))
+            ];
+            stdoutLines.AddRange(lines);
+            stdoutLines.Add("PARCHWELL_PROBE_V2_CAPTURE " + System.Text.Encoding.UTF8.GetString(ProbeV2Wire.Encode(capture, 524288)));
+            string stdout = string.Join('\n', stdoutLines) + "\n";
             await File.WriteAllTextAsync(Path.Combine(directory, "actor.stdout"), stdout, TestContext.Current.CancellationToken);
         }
     }
@@ -192,18 +193,26 @@ public sealed class ProbeV2LifecycleTests
 
         ProbeV2CaptureFile disabledCapture = Capture(disabled);
         ProbeV2CaptureFile enabledCapture = Capture(enabled);
+        Assert.Single(disabled.Clients);
+        Assert.Single(enabled.Clients);
+        Assert.Equal(1, disabled.Clients[0].ProduceCalls);
+        Assert.Equal(1, enabled.Clients[0].ProduceCalls);
+        Assert.Equal(1, disabled.Clients[0].DisposeCalls);
+        Assert.Equal(1, enabled.Clients[0].DisposeCalls);
         Assert.Equal(1, disabledCapture.HandlerExitCode);
         Assert.Equal(1, enabledCapture.HandlerExitCode);
         Assert.True(disabledCapture.CleanupCompleted && disabledCapture.HostCleanupCompleted);
         Assert.True(enabledCapture.CleanupCompleted && enabledCapture.HostCleanupCompleted);
-        Assert.Single(disabledCapture.Repeats);
-        Assert.Single(enabledCapture.Repeats);
+        Assert.Equal(5, disabledCapture.Repeats.Count);
+        Assert.Equal(5, enabledCapture.Repeats.Count);
         Assert.Equal("success", disabledCapture.Repeats[0].Result);
         Assert.Equal("success", enabledCapture.Repeats[0].Result);
-        Assert.Equal(31, disabledCapture.Repeats[0].Delivery!.Partition);
-        Assert.Equal(31, enabledCapture.Repeats[0].Delivery!.Partition);
-        Assert.Equal("Persisted", disabledCapture.Repeats[0].Delivery.PersistenceStatus);
-        Assert.Equal("Persisted", enabledCapture.Repeats[0].Delivery.PersistenceStatus);
+        ProbeV2Delivery disabledDelivery = Assert.IsType<ProbeV2Delivery>(disabledCapture.Repeats[0].Delivery);
+        ProbeV2Delivery enabledDelivery = Assert.IsType<ProbeV2Delivery>(enabledCapture.Repeats[0].Delivery);
+        Assert.Equal(31, disabledDelivery.Partition);
+        Assert.Equal(31, enabledDelivery.Partition);
+        Assert.Equal("Persisted", disabledDelivery.PersistenceStatus);
+        Assert.Equal("Persisted", enabledDelivery.PersistenceStatus);
         Assert.Equal(4, disabledCapture.Repeats.Skip(1).Count());
         Assert.Equal(4, enabledCapture.Repeats.Skip(1).Count());
         Assert.All(disabledCapture.Repeats.Skip(1).Concat(enabledCapture.Repeats.Skip(1)), row => Assert.Equal("not_attempted_cleanup", row.Admission));
@@ -216,8 +225,9 @@ public sealed class ProbeV2LifecycleTests
         Assert.True(row.ClientCleanupCompleted);
         Assert.Null(row.CaptureError);
         Assert.Equal(MetadataE0, row.InitialInstalledExpiresOn);
-        Assert.Equal("statistics:OperationCanceledException", enabledCapture.Repeats[0].Diagnostics.Last());
+        Assert.Equal("statistics:OperationCanceledException", enabledCapture.Repeats[0].Diagnostics[^1]);
         Assert.Equal(2, enabled.SamplerCalls);
+        Assert.Equal(["before_client", "after_client_cleanup"], row.ProjectedFileSamples.Select(sample => sample.Boundary));
     }
 
     [Theory]
@@ -264,7 +274,7 @@ public sealed class ProbeV2LifecycleTests
         string line = fixture.Output.ToString().Split('\n').Single(value => value.StartsWith("PARCHWELL_PROBE_V2_CAPTURE ", StringComparison.Ordinal));
         return ProbeV2Wire.Read<ProbeV2CaptureFile>(System.Text.Encoding.UTF8.GetBytes(line["PARCHWELL_PROBE_V2_CAPTURE ".Length..]), 524288);
     }
-    private static List<string> MetadataLines(Fixture fixture) => fixture.Logs.ToString().Split('\n')
+    private static List<string> MetadataLines(Fixture fixture) => (fixture.Logs.ToString() ?? string.Empty).Split('\n')
         .Where(line => line.StartsWith(ProbeV2AuthenticationMetadataWriter.Marker, StringComparison.Ordinal)).ToList();
     private static ProbeV2AuthenticationMetadata ReadMetadata(string line) => ProbeV2Wire.Read<ProbeV2AuthenticationMetadata>(
         System.Text.Encoding.UTF8.GetBytes(line[ProbeV2AuthenticationMetadataWriter.Marker.Length..]), 262144);
