@@ -233,6 +233,62 @@ public sealed class ProbeV2ScientificAssessmentTests
         AssertAssessment(final,"untestable","H_positive_scope","undecided","failed_control");
     }
 
+    [Theory]
+    [InlineData("C0")][InlineData("C1")][InlineData("C3")][InlineData("C5")]
+    [InlineData("C6")][InlineData("C7")][InlineData("C8")][InlineData("C9")]
+    public void Given_CompleteDeterministicWrongPositiveControlValue_When_FinalScopeJudged_Then_FailedControlIsUntestable(string configuration)
+    {
+        var failed = Candidate("F06",configuration,e => WrongPositiveValue(e,configuration,5));
+        Assert.Equal("complete_valid",failed.Status); Assert.True(failed.Deterministic);
+        Assert.All(failed.Repeats,row => Assert.False(row.SemanticOutcome.ValueMatch));
+        Assert.DoesNotContain("smoke_controls_failed",failed.Diagnostics);
+        var previous = ProbeV2Matrix.Configurations("F06").Take(11).ToDictionary(c => c,c => Candidate("F06",c),StringComparer.Ordinal);
+        previous[configuration] = failed;
+        var final = Candidate("F06","C11",previous:previous);
+        AssertAssessment(final,"untestable","H_positive_scope","undecided","failed_control");
+        Assert.Equal("undecided",final.ItemAssessment!.Hypotheses["H_negative_surface"]);
+    }
+
+    [Theory]
+    [InlineData("C0")][InlineData("C1")][InlineData("C3")][InlineData("C5")]
+    [InlineData("C6")][InlineData("C7")][InlineData("C8")][InlineData("C9")]
+    public void Given_MixedWrongAndExactPositiveControlValues_When_FinalScopeJudged_Then_UnequalClassesPrecedeFailedControl(string configuration)
+    {
+        var mixed = Candidate("F06",configuration,e => WrongPositiveValue(e,configuration,1));
+        Assert.Equal("complete_valid",mixed.Status); Assert.False(mixed.Deterministic); Assert.Null(mixed.OutcomeClass);
+        Assert.False(mixed.Repeats[0].SemanticOutcome.ValueMatch);
+        Assert.All(mixed.Repeats.Skip(1),row => Assert.True(row.SemanticOutcome.ValueMatch));
+        var previous = ProbeV2Matrix.Configurations("F06").Take(11).ToDictionary(c => c,c => Candidate("F06",c),StringComparer.Ordinal);
+        previous[configuration] = mixed;
+        var final = Candidate("F06","C11",previous:previous);
+        AssertAssessment(final,null,"H_positive_scope","undecided","unequal_classes_separate_full_plan");
+        Assert.Equal("undecided",final.ItemAssessment!.Hypotheses["H_negative_surface"]);
+    }
+
+    [Theory]
+    [InlineData("C0")][InlineData("C1")][InlineData("C3")][InlineData("C5")]
+    [InlineData("C6")][InlineData("C7")][InlineData("C8")][InlineData("C9")]
+    public void Given_MissingPositiveControlRecord_When_FinalScopeJudged_Then_IncompleteEvidencePrecedesFailedControl(string configuration)
+    {
+        string stage = configuration is "C0" or "C1" or "C3" or "C5" ? "read" : "action";
+        var missing = Candidate("F06",configuration,e => Change(e,(configuration,stage),row => row with { ReadObservation = new(0,0,null) }));
+        Assert.Equal("incomplete",missing.Status); Assert.Null(missing.Deterministic);
+        Assert.All(missing.Repeats,row => Assert.Null(row.SemanticOutcome.ValueMatch));
+        var previous = ProbeV2Matrix.Configurations("F06").Take(11).ToDictionary(c => c,c => Candidate("F06",c),StringComparer.Ordinal);
+        previous[configuration] = missing;
+        var final = Candidate("F06","C11",previous:previous);
+        AssertAssessment(final,null,"H_positive_scope","undecided","incomplete_configuration");
+    }
+
+    private static void WrongPositiveValue(Dictionary<(string Configuration,string Stage),ProbeV2Evidence> evidence,string configuration,int count)
+    {
+        string stage = configuration is "C0" or "C1" or "C3" or "C5" ? "read" : "action";
+        Change(evidence,(configuration,stage),row => row.Repeat <= count ? row with
+        {
+            ReadObservation = row.ReadObservation with { Record = row.ReadObservation.Record! with { ValueBase64 = "d3Jvbmc=" } }
+        } : row);
+    }
+
     [Fact]
     public void Given_InvalidAndIncompleteRepeatEvidence_When_FinalJudged_Then_InvalidStatusPrecedesIncomplete()
     {

@@ -273,6 +273,32 @@ class PhaseTests(unittest.TestCase):
         with self.assertRaises(phase.Failure):
             phase.Phase().check_candidate(json.dumps(candidate).encode())
 
+    def test_v2_stop_rejects_case_variants_and_invalid_selection_before_private_or_azure_work(self):
+        rejected = [('probe-batch-2', 'batch', 'b08'), ('probe-batch-2', 'batch', 'B08,e01'),
+                    ('probe-batch-2', 'batch', 'F06,B08'), ('probe-batch-2', 'Batch', 'B08'),
+                    ('probe-batch-2', 'smoke', 'ALL'), ('PROBE-BATCH-2', 'batch', 'B08')]
+        for selected, kind, items in rejected:
+            with self.subTest(selected=selected, kind=kind, items=items), patch.dict(os.environ,
+                    PARCHWELL_SCENARIO=selected, PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items):
+                before = set(self.root.iterdir())
+                environment_before, output_before = self.env_file.read_bytes(), self.output_file.read_bytes()
+                with patch.object(phase.Phase, 'run') as run:
+                    self.assertEqual(2, self.main('prepare-stop'))
+                    run.assert_not_called()
+                self.assertEqual(before, set(self.root.iterdir()))
+                self.assertEqual(environment_before, self.env_file.read_bytes())
+                self.assertEqual(output_before, self.output_file.read_bytes())
+
+    def test_v2_stop_accepts_each_admitted_selector_independently_of_workload_failure(self):
+        for kind, items in [('smoke', 'all'), *[('batch', v) for v in
+                ('all', 'B08', 'E01', 'F06', 'B08,E01', 'B08,F06', 'E01,F06', 'B08,E01,F06')]]:
+            with self.subTest(kind=kind, items=items), patch.dict(os.environ,
+                    PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items):
+                with patch.object(phase.Phase, 'run') as run:
+                    self.assertEqual(0, self.main('prepare-stop'))
+                    run.assert_not_called()
+                self.assertIn('private_directory=', self.output_file.read_text())
+
     def test_prepare_stop(self):
         env = {key: os.environ[key] for key in ('RUNNER_TEMP', 'GITHUB_ENV', 'GITHUB_OUTPUT', 'PARCHWELL_CLUSTER_RESOURCE_ID')}
         with patch.dict(os.environ, env, clear=True):
@@ -650,6 +676,22 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
     def batch_name(self, mode, item='B01', configuration='C0'):
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
         return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
+
+    def test_v2_subset_report_retains_unselected_item_aliases(self):
+        os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS='B08')
+        self.assertEqual(0, self.main('prepare-batch'))
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
+        instance = phase.Phase()
+        state = instance.state()
+        state['not_selected'] = ['E01', 'F06']
+        instance.save_state(state)
+        os.environ.update(STEP_RESULTS='{}', JOB_STATUS='success', WORKLOAD='false', REQUIRED_STEPS='')
+        self.assertEqual(0, self.main('report'))
+        summary = self.summary_file.read_text()
+        self.assertIn('E01: not selected', summary)
+        self.assertIn('F06: not selected', summary)
+        self.assertEqual(['E01', 'F06'], instance.state()['not_selected'])
+        self.assertEqual([], self.fake.calls)
 
     def test_v2_preparation_selection_roles_and_smoke_only_private_confirmation(self):
         for kind, items, roles in [('smoke', 'all', True), ('batch', 'B08', False), ('batch', 'E01', True),

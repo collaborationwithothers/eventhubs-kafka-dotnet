@@ -331,11 +331,17 @@ esac
         expression = self.all_jobs['batch-stop']['if']
         for selected, kind, items, expected in [('probe-batch-2', 'smoke', 'all', True), ('probe-batch-2', 'batch', 'all', True),
                 ('probe-batch-2', 'smoke', '', False), ('probe-batch-2', 'smoke', 'B08', False), ('probe-batch', 'batch', 'F04', True),
-                ('A01', 'smoke', 'all', False)]:
+                ('A01', 'smoke', 'all', False), ('probe-batch-2', 'batch', 'b08', True),
+                ('probe-batch-2', 'Batch', 'B08', True), ('probe-batch-2', 'smoke', 'ALL', True)]:
             evaluated = expression.replace('always()', 'True').replace('&&', ' and ').replace('||', ' or ')
             for name, value in [('scenario', selected), ('run_kind', kind), ('items', items)]:
-                evaluated = evaluated.replace('inputs.' + name, repr(value))
-            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: value in values, 'fromJSON': json.loads}, {}), (selected, kind, items))
+                evaluated = evaluated.replace('inputs.' + name, repr(value.casefold()))
+            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: any(str(v).casefold() == str(value).casefold() for v in values), 'fromJSON': json.loads}, {}), (selected, kind, items))
+        stop_steps = self.steps(self.all_jobs['batch-stop'])
+        self.assertIn('prepare-stop', stop_steps['stop_prepare']['run'])
+        self.assertLess(list(stop_steps).index('stop_prepare'), list(stop_steps).index('login'))
+        self.assertIsNone(stop_steps['login'].get('if'))
+        self.assertIn("steps.stop_prepare.outcome == 'success'", stop_steps['stop']['if'])
         self.assertEqual(['A01', 'B04', 'probe-batch'], self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'][:3])
 
     def test_bridge_discovery(self):

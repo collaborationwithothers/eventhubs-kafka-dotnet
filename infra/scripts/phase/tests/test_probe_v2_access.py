@@ -100,6 +100,36 @@ class AccessInventoryTests(unittest.TestCase):
             (path / 'access-check.json').write_bytes(audit.encoded(envelope))
             (path / 'probe-v2-access-check.json').write_bytes(raw)
 
+    def test_tenant_level_builtin_definition_ids_are_resolved(self):
+        grants = fixtures()
+        definitions = {}
+        for role in ('sender', 'receiver'):
+            document = definition(role)
+            document['id'] = '/providers/Microsoft.Authorization/roleDefinitions/' + audit.ROLE_GUIDS[role]
+            definitions[document['id'].lower()] = document
+        for rows in grants.values():
+            for row in rows:
+                row['properties']['roleDefinitionId'] = '/providers/Microsoft.Authorization/roleDefinitions/' + row['properties']['roleDefinitionId'].rsplit('/', 1)[1]
+        reader = Reader(grants=grants, definitions=definitions)
+        value = self.projection(reader)
+        self.assertEqual('complete', value['status'])
+        self.assertEqual([], value['reasons'])
+        self.assertEqual(6, value['observed']['requests'])
+        self.assertEqual(4, len(value['entries']))
+        for document in definitions.values():
+            self.assertIn((audit.ARM + document['id'] + '?api-version=' + audit.VERSION, audit.ARM), reader.calls)
+
+    def test_tenant_definition_path_suffix_injection_is_rejected_before_get(self):
+        for suffix in ('?injected=true', '#fragment', '/extra'):
+            with self.subTest(suffix=suffix):
+                grants = fixtures()
+                grants['loadgen'][0]['properties']['roleDefinitionId'] = '/providers/Microsoft.Authorization/roleDefinitions/' + audit.ROLE_GUIDS['sender'] + suffix
+                reader = Reader(grants=grants)
+                value = self.projection(reader)
+                self.assertEqual('incomplete', value['status'])
+                self.assertEqual(['assignment_shape'], value['reasons'])
+                self.assertFalse(any('/roleDefinitions/' in url for url, _ in reader.calls))
+
     def test_nested_group_memberships_and_directory_roles(self):
         grants = fixtures()
         grants[GROUP] = [assignment('loadgen', 'document-events', 'sender', 7, GROUP)]

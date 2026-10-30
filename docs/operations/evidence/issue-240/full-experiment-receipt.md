@@ -21,7 +21,7 @@ Hari's [resume decision](https://github.com/collaborationwithothers/eventhubs-ka
 
 The compact-entry count now measures serialized compact JSON. A regression preserves acceptance despite wire whitespace. Isolated cross-account group-union fixtures cover 63, 64 and 65 groups with unrelated per-account bounds valid. The final collector source regenerates its actual producer bytes during the full phase suite.
 
-Current source before resumed changes: 34568450786bc5c70fcabc41488ec24185d1c982. Review mode: initial comprehensive; reviewed revision is the local frozen commit containing this receipt; exact SHA is supplied with the review diff. Comparison revision: main c4a1724f9165397dd04f4e8df22acd9c8498ebd8. Cumulative completed cold comprehensive/focused counts before review: 0/0. Hosted review requests before publication: 0. No review has started during implementation corrections.
+Resumed work starts from backup commit 34568450786bc5c70fcabc41488ec24185d1c982. The first comprehensive review covered c5372b0aa05b4fe5fbb9893ac84adcbc436f9c3b. Current review mode: consolidated comprehensive re-review of the full authored diff against main c4a1724f9165397dd04f4e8df22acd9c8498ebd8; the frozen input commit is supplied with that diff. Cumulative completed comprehensive/focused counts before this re-review: 1/0. Hosted review requests before publication: 0.
 
 ### Acceptance ledger
 
@@ -40,14 +40,14 @@ cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt
 git diff --check
 ```
 
-- Collector targeted command: earlier second attempt passed 18 tests; subsequent focused boundary run passed 11 tests. Resumed full phase suite passed all 151 tests, including the final collector source and regenerated actual exports. Scope-only tests are retained as part of that full-suite result.
+- Collector targeted command: latest run passed 31 tests, with actual serialized exports regenerated after the tenant-ID correction. The latest full phase suite passed all 156 tests, including collector, strict cleanup admission and partial-selection reporting.
 - Lifecycle acceptance: earlier 183 tests passed; unaffected by resumed .NET corrections.
 - Offline acceptance: earlier passed for the current workflow/chart/phase source; unaffected by resumed .NET corrections.
-- Scoped verifier build: passed, zero warnings/errors. All 1646 SingleAction tests passed, including actual Python access import.
-- Full .NET acceptance is running; the scoped unfiltered verifier run first exposed a 60-second component-fixture startup timeout while pulling the pinned Kafka image. That image is now cached. No whole-suite pass is claimed before the command finishes.
+- Scoped verifier build: passed, zero warnings/errors. After the scientific correction, all 1670 SingleAction tests passed, including actual Python access import and all 24 added positive-control cases.
+- Full .NET acceptance after the scientific correction passed on the correction working tree based on c5372b0aa05b4fe5fbb9893ac84adcbc436f9c3b: architecture 12, enrichment 56, Kafka 460, loadgen 674, scenarios 239 and verifier 4423 tests, total 5864 computed from the checked reports. Locked restore/build, analyzers, XML inventory, reports and warning-as-error controls passed. An earlier scoped unfiltered verifier run timed out while pulling the pinned Kafka image; the successful full runs used the cached image.
 - Rendered host acceptance: first resumed run passed the existing 49 V2 smoke cases; the test was extended to include scientific mode through the real host validator. The necessary rerun passed 98 V2 smoke/batch environments and 14 rejected-input cases, retaining all existing assertions.
-- Cross-language transport remains pending the full .NET producer exports. Publication remains blocked until all acceptance gates finish.
-- Eight earlier documentation warnings are in unchanged files and remain outside this PR's scope. The final pre-review scan will include this tracked receipt.
+- Actual .NET actor/smoke/batch host bytes passed Python transport with probe_v2_actual_producer_transport_valid=true after the correction. Actual Python collector bytes passed the .NET bounded reader and access judge in the full suite. No hand-invented future payload substitutes for these producer exports.
+- Documentation scans completed with eight existing warnings in unchanged files, outside this PR's scope. The required pre-review scan includes this tracked receipt. Workflow mirror equality and whitespace checks are repeated before the frozen review checkpoint.
 
 ### Review preparation
 
@@ -59,7 +59,7 @@ Implementation is saved as unreviewed work in progress. Verification stopped und
 
 ### Stop and process breach
 
-The exact listed command `git diff --check` was independently invoked by the primary session, the verifier agent and its scientific-test helper. All three invocations failed on the same newly introduced trailing blank line in single-action-contract.md. This exceeds the plan's shared two-attempt allowance. The blank line was removed, but there is no authorized passing final check; no fourth invocation was made. The primary session failed to allocate this command centrally before delegation. This is a process breach, not a scientific result or a review finding.
+The exact listed command `git diff --check` was independently invoked by the primary session, the verifier agent and its scientific-test helper. All three invocations failed on the same newly introduced trailing blank line in single-action-contract.md. This exceeds the plan's shared two-attempt allowance. The blank line was removed, but there is no authorized passing final check; the primary session did not make a further invocation before its backup handoff. The primary session failed to allocate this command centrally before delegation. A later phase-agent report also records a passing diff check; the overlapping prior ledger is preserved rather than treated as a new allowance. This is a process breach, not a scientific result or a review finding.
 
 Revision 7, Finite work and later execution gates, states: "Implementation verification: at most two attempts per listed command including diagnosis/retry; after exhaustion record failure and hand off without publication." AGENTS.md Before opening a pull request rule 12 allows the backup push without cold review. The protected files and expected specifications require Hari's decision on continuation under rule 11. No allowance resets on another session.
 
@@ -72,7 +72,7 @@ Revision 7, Finite work and later execution gates, states: "Implementation verif
 - .NET full acceptance attempt 1: cancelled with SIGTERM (exit 143) at the governed stop while Kafka tests were running; the whole acceptance is incomplete. Locked restore, solution build, Kafka XML inventory, architecture tests (12) and enrichment tests (56) passed before stop was recognized. This is not a passing whole-suite claim.
 - Documentation command: first failed before dependencies were installed; second completed with eight warnings in unchanged files. Those existing warnings are left unchanged. The new untracked receipt was not included in that tracked-file scan; no later documentation scan is claimed.
 - Scoped phase transport suite passed 34 tests; workflow suite passed 13 tests. Additional selection, freshness and preparation tests passed as described in the predicate map. No full phase acceptance, chart/host acceptance or final actual-producer transport acceptance command was started by the primary session.
-- No cold review, hosted review, final-head CI, mutation campaign, Azure read or workflow dispatch was performed. Cumulative comprehensive/focused/hosted review counts: 0/0/0.
+- At the prior stop, no cold review, hosted review, final-head CI, mutation campaign, Azure read or workflow dispatch had occurred; review counts were 0/0/0.
 
 ### Work outstanding at the prior stop
 
@@ -86,7 +86,7 @@ The session fetched the 18 official source URLs in the approved plan on 2026-10-
 
 Authority was refreshed before the backup push: issue body, all comment IDs/revisions and all six external linked comment revisions. Revision 7 and its specific approval remained current. The source branch still starts from c4a1724f9165397dd04f4e8df22acd9c8498ebd8.
 
-Models: Codex implementation sessions; exact model names and effort settings were not exposed. No cold reviewer or hosted review was started.
+Models: Codex implementation sessions; exact model names and effort settings were not exposed. At the prior stop no reviewer had started; the current cold reviews explicitly request high effort. Exact implementation/reviewer model names were not exposed.
 
 
 ## Scientific predicate map
@@ -126,7 +126,7 @@ Models: Codex implementation sessions; exact model names and effort settings wer
 - GET/page/group/definition/assignment workload below/at/above declared caps: test_budgets_requests_pages_groups_definitions_assignments, test_runtime_counts_below_at_above_policy, test_groups_below_at_above, test_multipage_collection_boundaries. Audit time just below/at/above 600 s: test_time_boundary.
 - Both output stream limits, stdout 1023/1024/1025 bytes, file budget below/at/above and raw-byte budget preflight: test_both_streams_capped, test_stdout_byte_boundary, test_private_file_admission_boundary, test_file_and_byte_budgets_checked_before_launch.
 - Timeout and real nested cancellation cleanup: test_deadline_nested_subprocess_cleanup, test_signal_propagates_to_nested_command_and_child_cleanup. Real failing stderr device: test_real_failing_stderr_sink_remains_private. Raw identifiers/argv/errors remain private: test_raw_identifiers_not_in_public_projection, test_actual_subprocess_output_stays_private.
-- Projection overflow never truncates: test_projection_limit_gap_not_truncation. Normalizer-produced strings have closed enums, aliases and SHA lengths, so arbitrary 95/96/97 byte strings and 1023/1024/1025 byte entries are not reachable from valid raw input; judge wire tests exercise those malicious-input boundaries. Large collection combinations exceeding the 32768-byte projection cap are gap-only and never materialized as complete; judge structural tests must isolate their own predicates per the approved plan.
+- Projection overflow never truncates: test_projection_limit_gap_not_truncation. Normalizer-produced strings have closed enums, aliases and SHA lengths, so arbitrary 95/96/97 byte strings and 1023/1024/1025 byte entries are not reachable from valid raw input; the judge map records these fixed-format sizes as unreachable valid inputs; no isolated 95/96/97-string or 1023/1024/1025-compact-entry test is claimed. Large collection combinations exceeding the 32768-byte projection cap are gap-only and never materialized as complete; judge structural tests must isolate their own predicates per the approved plan.
 
 
 ## Phase predicate map
@@ -146,3 +146,23 @@ Additional verification after integrated environment setup:
 - Workflow mirror cmp and git diff --check passed.
 - New test_phase.py rejects invalid selection before private directory creation/Azure commands; preparation smoke-only secret/conditional-role regression passed.
 - Safety-stop reasons from the collector and outer helper timeout status retain phase safety_stop and block subsequent admission.
+
+## Consolidated corrections after comprehensive review 1
+
+The first comprehensive report was complete for c5372b0aa05b4fe5fbb9893ac84adcbc436f9c3b against main c4a1724f9165397dd04f4e8df22acd9c8498ebd8. It covered all 33 touched files under repo-review, the approved Revision 7 and the recognized decisions. Its raw result was six P0/P1 findings: three protected expected-file additions retained under the approved-plan exception and three substantive P1 findings. It also reported one P2 coverage overstatement. No edits began until its complete report was available.
+
+| Finding | Disposition and regression evidence |
+| --- | --- |
+| P0: scenarios/B08/expected.yaml, scenarios/E01/expected.yaml, scenarios/F06/expected.yaml | Retained because Revision 7 Exact remaining changes item 1 explicitly requires these assessment specifications. List these escalations in the PR under AGENTS.md rule 8 and leave merge to Hari. No result or scientific verdict is published. |
+| P1: F06 successful outcome alone could mark a wrong-value positive control as holds | Fixed V2JudgeItem to require success and exact ValueMatch=true for every repeat in each of the eight positive configurations. Twenty-four added cases cover all-five wrong values (complete failed_control), one wrong among four exact values (unequal-class precedence), and missing records (incomplete precedence). Existing smoke and E01/B08 behavior is retained. Scoped SingleAction suite passed 1670 tests after a zero-warning build. |
+| P1: ROLE_ID rejected documented tenant-level definition IDs | The collector now accepts and resolves `/providers/Microsoft.Authorization/roleDefinitions/<guid>`, in addition to the existing scope-prefixed form. test_tenant_level_builtin_definition_ids_are_resolved requires actual definition GETs, complete inventory, six requests and the exact four grant entries. test_tenant_definition_path_suffix_injection_is_rejected_before_get retains query/fragment/extra-path rejection. Official Get By ID and List For Scope sources already cited by the contract document this form. |
+| P1: case-insensitive GitHub expression admitted rejected selectors to cleanup Azure access | Retained the exact approved job condition. prepare_stop now reuses the strict selector validator before creating private stop state, so the existing default-success login step is skipped on rejection; the final stop also requires successful preparation. This fixes the semantic requirement without a plan-expression amendment. Workflow tests model case-insensitive comparisons/contains; phase tests reject lowercase/mixed-case selectors, reversed selection, wrong-case mode/scenario and smoke ALL before state writes or commands, and admit every valid selection independently of workload failure. Source: https://docs.github.com/en/actions/reference/workflows-and-actions/expressions, read 2026-10-30. |
+| P2: collector map claimed malicious fixed-format boundary tests that do not exist | Corrected the map to agree with the actual unreachable-case explanation; no 95/96/97-string or 1023/1024/1025-compact-entry fixtures are claimed. |
+
+The author also found the new V2 not_selected string aliases were passed to the legacy dictionary formatter in Phase.report. The V2 report now retains item aliases without changing legacy configuration reporting; test_v2_subset_report_retains_unselected_item_aliases exercises the report and preserves the state. This completes the plan's partial-selection reporting requirement.
+
+Correction verification ledger: the first phase run failed newly added stop-test assumptions about pre-existing empty fixture files and an incorrect fake-command member; the second failed a new tenant-ID test that expected lowercased rather than preserved URI spelling. Those fixture expectations were corrected without changing old assertions. The third run passed 155 tests. After adding the subset-report regression, the fourth full phase run passed 156 tests and regenerated actual collector exports. One scoped .NET build encountered MSB4166 worker termination; an isolated serial build with node reuse disabled passed, followed by all 1670 SingleAction tests. These necessary reruns use the recorded resume authorization.
+
+Full .NET verification after the scientific correction passed (5864 tests); actual-producer transport passed with its expected marker. The final source is frozen only after the documentation and whitespace/mirror checks. The complete review reports are retained in the PR self-review record, with this table providing the first report's full finding dispositions. Cumulative comprehensive/focused counts are 1/0 completed; the next frozen input is the second and final comprehensive allowance. No hosted review has been requested yet.
+
+The added scientific test members are Given_CompleteDeterministicWrongPositiveControlValue_When_FinalScopeJudged_Then_FailedControlIsUntestable, Given_MixedWrongAndExactPositiveControlValues_When_FinalScopeJudged_Then_UnequalClassesPrecedeFailedControl, and Given_MissingPositiveControlRecord_When_FinalScopeJudged_Then_IncompleteEvidencePrecedesFailedControl. Each has one literal case for every positive configuration; unrelated location, settings, seed, statistics and access evidence remain valid. The Phase.report correction is covered by test_v2_subset_report_retains_unselected_item_aliases; cleanup admission is covered by test_v2_stop_rejects_case_variants_and_invalid_selection_before_private_or_azure_work and test_v2_stop_accepts_each_admitted_selector_independently_of_workload_failure, with workflow step ordering/default-success checks.

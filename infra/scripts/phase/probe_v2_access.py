@@ -23,7 +23,7 @@ VERSION = '2022-04-01'
 MODE = 'azure_rbac_configuration_check'
 GUID = r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'
 NAMESPACE = rf'/subscriptions/{GUID}/resourceGroups/[A-Za-z0-9_.()-]+/providers/Microsoft.EventHub/namespaces/[A-Za-z0-9-]+'
-ROLE_ID = rf'/(?:subscriptions/{GUID}|providers/Microsoft.Management/managementGroups/[A-Za-z0-9_.()-]+)(?:/resourceGroups/[A-Za-z0-9_.()-]+)?/providers/Microsoft.Authorization/roleDefinitions/{GUID}'
+ROLE_ID = rf'(?:/(?:subscriptions/{GUID}|providers/Microsoft.Management/managementGroups/[A-Za-z0-9_.()-]+)(?:/resourceGroups/[A-Za-z0-9_.()-]+)?)?/providers/Microsoft.Authorization/roleDefinitions/{GUID}'
 ROLE_GUIDS = {'sender': '2b629674-e913-4c01-ae53-ef4638d8f975', 'receiver': 'a638d3c7-ab3a-418d-83e6-5f17a39d4fde'}
 OPERATIONS = {'sender': 'send', 'receiver': 'receive'}
 LIMITS = dict(audit_seconds=600, requests=256, pages_per_collection=8, groups=64,

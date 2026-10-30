@@ -392,7 +392,7 @@ internal static class SingleActionConfigurationJudgement
         if (item == "F06")
         {
             if (candidates.Values.Any(c => c.Diagnostics.Count(d => d.StartsWith("permission_audit_sha256:",StringComparison.Ordinal)) != 1) || candidates.Values.SelectMany(c => c.Diagnostics.Where(d => d.StartsWith("permission_audit_sha256:",StringComparison.Ordinal))).Distinct(StringComparer.Ordinal).Count() != 1) return Result(null,"incomplete_configuration");
-            if (V2PositiveConfigurations.Any(c => !Success(c))) return Result("untestable","failed_control");
+            if (V2PositiveConfigurations.Any(c => !Success(c) || candidates[c].Repeats.Any(r => r.SemanticOutcome.ValueMatch != true))) return Result("untestable","failed_control");
             hypotheses["H_positive_scope"] = "holds"; hypotheses["H_negative_surface"] = "recorded_only";
             return Result("undocumented");
         }

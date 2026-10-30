@@ -323,6 +323,8 @@ class Phase:
         return 0
 
     def prepare_stop(self):
+        if scenario() == "probe-batch-2":
+            self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()
         private = Path(tempfile.mkdtemp(prefix="parchwell-stop-", dir=temporary)).resolve()
@@ -1004,7 +1006,10 @@ class Phase:
             state = self.state()
             lines += [f"{mode['job']}: {mode['outcome']}" for mode in state["modes"]]
             for skipped in state.get('not_selected', []):
-                lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
+                if scenario() == 'probe-batch-2':
+                    lines += [f"{skipped}: not selected"]
+                else:
+                    lines += [f"{skipped['item']}-{skipped['configuration']}: not selected"]
             if state.get("seed_gap"):
                 lines += ["seed receipt gap"]
             for candidate in state.get("candidates", []):
