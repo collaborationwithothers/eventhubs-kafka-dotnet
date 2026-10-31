@@ -336,15 +336,17 @@ class AzureCliSessionTests(unittest.TestCase):
     def test_registry_diagnostics_flush_before_external_cancellation_and_cleanup(self):
         self.registry_subprocess_diagnostics('cancellation')
 
-    def registry_subprocess_diagnostics(self, termination):
+    def registry_subprocess_diagnostics(self, termination, args=None):
+        args = self.registry_args() if args is None else args
         self.cli.write_text('#!' + sys.executable + '\nimport sys,time\n'
-                            'if sys.argv[1:4] == ["acr", "repository", "show"]: time.sleep(30)\n')
+                            'if (sys.argv[1:4] == ["acr", "repository", "show"] or '
+                            'sys.argv[1:3] in (["aks", "show"], ["aks", "start"], ["aks", "stop"])): time.sleep(30)\n')
         driver = ('import importlib.machinery,json,os,time; '
                   'm=importlib.machinery.SourceFileLoader("shim",os.environ["FIXTURE_WRAPPER"]).load_module(); '
                   'm.INVOCATION_SECONDS=int(os.environ["FIXTURE_BUDGET"]); '
                   'raise SystemExit(m.main(json.loads(os.environ["FIXTURE_ARGS"]), '
                   'fetch=lambda *a: os.environ["FIXTURE_BODY"].encode()))')
-        env = dict(self.env, FIXTURE_WRAPPER=str(WRAPPER), FIXTURE_ARGS=json.dumps(self.registry_args()),
+        env = dict(self.env, FIXTURE_WRAPPER=str(WRAPPER), FIXTURE_ARGS=json.dumps(args),
                    FIXTURE_BODY=body(token(int(time.time()) + 600)).decode(),
                    FIXTURE_BUDGET='1' if termination == 'timeout' else '60')
         process = subprocess.Popen([sys.executable, '-c', driver], env=env,
@@ -377,6 +379,174 @@ class AzureCliSessionTests(unittest.TestCase):
                          [r['event'] for r in rows[-2:]])
         self.assertTrue(any(r['stage'] == 'cleanup' and r['event'] == 'start' for r in rows))
         self.assertNotIn(self.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'], captured.decode())
+        if args[:2] in (['aks', 'show'], ['aks', 'start'], ['aks', 'stop']):
+            self.assert_aks_marker_privacy(captured.decode())
+
+    def aks_args(self, verb):
+        args = ['aks', verb, '--resource-group', 'synthetic-resource-group',
+                '--name', 'synthetic-cluster', '--subscription', self.env['AZURE_SUBSCRIPTION_ID']]
+        return args + (['-o', 'json'] if verb == 'show' else ['--no-wait'])
+
+    def assert_aks_marker_privacy(self, text):
+        forbidden = [
+            'synthetic-resource-group', 'synthetic-cluster', self.env['AZURE_SUBSCRIPTION_ID'],
+            self.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'], self.env['ACTIONS_ID_TOKEN_REQUEST_URL'],
+            token(self.clock.epoch + 600, '1'), 'synthetic-sensitive-exception',
+            'synthetic-private-argv',
+        ]
+        markers = '\n'.join(line for line in text.splitlines()
+                            if line.startswith('azure_cli_session_stage '))
+        for value in forbidden:
+            self.assertNotIn(value, markers)
+
+    def test_aks_diagnostics_cold_and_fresh_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            with self.subTest(verb=verb):
+                self.reset()
+                args = self.aks_args(verb)
+                self.assertEqual(0, self.invoke(args))
+                rows = self.stage_rows(self.diagnostics)
+                self.assertEqual(['lock', 'authentication', 'token_request', 'login', 'account_select', 'command'],
+                                 [r['stage'] for r in rows if r['event'] == 'start'])
+                self.assertEqual([30, 10, 60], [c[1] for c in self.calls])
+                self.assertEqual([True, True, False], [c[2] for c in self.calls])
+                self.assertEqual(1, len(self.requests))
+                self.assertEqual(3, len(self.calls))
+                self.assertEqual([str(self.cli), *args], self.calls[-1][0])
+                self.assertEqual(['0', '0', '0'], [r['status'] for r in rows if r['event'] == 'exit'])
+                self.assert_aks_marker_privacy(self.diagnostics)
+                self.reset()
+                self.stamp()
+                self.assertEqual(0, self.invoke(args))
+                rows = self.stage_rows(self.diagnostics)
+                self.assertEqual(['lock', 'command'], [r['stage'] for r in rows if r['event'] == 'start'])
+                self.assertEqual([60], [c[1] for c in self.calls])
+                self.assertEqual([False], [c[2] for c in self.calls])
+                self.assertEqual([], self.requests)
+                self.assertEqual(1, len(self.calls))
+                self.assertEqual([str(self.cli), *args], self.calls[0][0])
+                self.assert_aks_marker_privacy(self.diagnostics)
+
+    def test_aks_diagnostics_lock_timeout_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            with self.subTest(verb=verb), (self.private / 'lock').open('a') as lock:
+                self.reset()
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                self.assertEqual(124, self.invoke(self.aks_args(verb)))
+                rows = self.stage_rows(self.diagnostics)
+                self.assertEqual([('lock', 'start'), ('lock', 'timeout')],
+                                 [(r['stage'], r['event']) for r in rows])
+                self.assertGreaterEqual(int(rows[-1]['stage_ms']), 60000)
+                self.assertEqual([], self.calls)
+                self.assertEqual([], self.requests)
+                self.assertIn('azure_cli_session_timeout\n', self.diagnostics)
+                self.assert_aks_marker_privacy(self.diagnostics)
+
+    def test_aks_diagnostics_authentication_timeout_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            for failed_stage in ('token_request', 'login', 'account_select'):
+                with self.subTest(verb=verb, stage=failed_stage):
+                    self.reset()
+                    secret = 'synthetic-sensitive-exception synthetic-bearer-secret synthetic-assertion'
+                    def fail():
+                        raise subprocess.TimeoutExpired(secret, 1)
+                    def fetch(*args):
+                        return fail() if failed_stage == 'token_request' else self.fetch(*args)
+                    def launch(argv, timeout, quiet):
+                        target = 'login' if argv[1] == 'login' else 'account_select'
+                        return fail() if target == failed_stage else self.launch(argv, timeout, quiet)
+                    self.assertEqual(124, self.invoke(self.aks_args(verb), fetch=fetch, launch=launch))
+                    rows = self.stage_rows(self.diagnostics)
+                    expected_starts = ['lock', 'authentication']
+                    if failed_stage == 'token_request':
+                        expected_starts.append('token_request')
+                    elif failed_stage == 'login':
+                        expected_starts.extend(['token_request', 'login'])
+                    else:
+                        expected_starts.extend(['token_request', 'login', 'account_select'])
+                    self.assertEqual(expected_starts,
+                                     [r['stage'] for r in rows if r['event'] == 'start'])
+                    self.assertTrue(any(r['stage'] == failed_stage and r['event'] == 'timeout' for r in rows))
+                    self.assertTrue(any(r['stage'] == 'authentication' and r['event'] == 'timeout' for r in rows))
+                    self.assertNotIn('command', [r['stage'] for r in rows])
+                    self.assertFalse(self.state.exists())
+                    self.assertNotIn(secret, self.diagnostics)
+                    self.assert_aks_marker_privacy(self.diagnostics)
+
+    def test_aks_diagnostics_forwarded_outcomes_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            for outcome in (1, 124, 'timeout', 'interrupted'):
+                with self.subTest(verb=verb, outcome=outcome):
+                    self.reset()
+                    self.stamp()
+                    def launch(argv, timeout, quiet):
+                        self.calls.append((argv, timeout, quiet))
+                        self.assertEqual((60, False), (timeout, quiet))
+                        if outcome == 'timeout':
+                            raise subprocess.TimeoutExpired('synthetic-sensitive-exception', timeout)
+                        if outcome == 'interrupted':
+                            raise session.SessionInterrupted(signal.SIGINT)
+                        return outcome
+                    expected = 124 if outcome == 'timeout' else 130 if outcome == 'interrupted' else outcome
+                    self.assertEqual(expected, self.invoke(self.aks_args(verb), launch=launch))
+                    rows = self.stage_rows(self.diagnostics)
+                    self.assertEqual(['lock', 'command'], [r['stage'] for r in rows if r['event'] == 'start'])
+                    if outcome == 124:
+                        self.assertEqual(['start', 'exit', 'end'], [r['event'] for r in rows if r['stage'] == 'command'])
+                        self.assertEqual('124', next(r['status'] for r in rows
+                                                     if r['stage'] == 'command' and r['event'] == 'exit'))
+                    if outcome == 'timeout':
+                        self.assertEqual(['start', 'timeout'], [r['event'] for r in rows if r['stage'] == 'command'])
+                    if outcome == 'interrupted':
+                        self.assertEqual('interrupted', [r['event'] for r in rows if r['stage'] == 'command'][-1])
+                    self.assertEqual(1, len(self.calls))
+                    self.assert_aks_marker_privacy(self.diagnostics)
+
+    def test_aks_diagnostics_preserve_real_streams_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            for status in (0, 17):
+                with self.subTest(verb=verb, status=status):
+                    self.state.write_text(json.dumps({'request_started_monotonic': time.monotonic(),
+                                                      'assertion_exp': int(time.time()) + 600}))
+                    self.state.chmod(0o600)
+                    stdout = b'synthetic-stdout\x00\n'
+                    stderr = b'synthetic-cli-notice\n'
+                    self.configure_cli(stdout, stderr, status)
+                    result = self.real(self.aks_args(verb))
+                    self.assertEqual(status, result.returncode)
+                    self.assertEqual(stdout, result.stdout)
+                    self.assertEqual(1, result.stderr.count(stderr))
+                    rows = self.stage_rows(result.stderr.decode())
+                    self.assertEqual(['lock', 'command'], [r['stage'] for r in rows if r['event'] == 'start'])
+                    self.assertNotIn('cleanup', [r['stage'] for r in rows])
+                    self.assert_aks_marker_privacy(result.stderr.decode())
+
+    def test_aks_diagnostics_exact_selector_and_disabled_near_matches(self):
+        for verb in ('show', 'start', 'stop'):
+            self.reset()
+            self.stamp()
+            self.assertEqual(0, self.invoke(self.aks_args(verb)))
+            self.stage_rows(self.diagnostics)
+        disabled = (['aks'], ['aks', 'restart'], ['aks', 'get-credentials'], ['aks', 'showcase'],
+                    ['aks', 'start-operation'], ['AKS', 'show'], ['resource', 'list'],
+                    ['acr', 'repository', 'list'])
+        for args in disabled:
+            with self.subTest(args=args):
+                self.reset()
+                self.stamp()
+                self.configure_cli(exit_code=17)
+                def launch(argv, timeout, quiet):
+                    self.calls.append((argv, timeout, quiet))
+                    return 17
+                self.assertEqual(17, self.invoke(args, launch=launch))
+                self.assertEqual([str(self.cli), *args], self.calls[-1][0])
+                self.assertNotIn('azure_cli_session_stage ', self.diagnostics)
+
+    def test_aks_diagnostics_real_timeout_and_cancellation_cleanup_matrix(self):
+        for verb in ('show', 'start', 'stop'):
+            for termination in ('timeout', 'cancellation'):
+                with self.subTest(verb=verb, termination=termination):
+                    self.registry_subprocess_diagnostics(termination, self.aks_args(verb))
 
     def test_registry_diagnostics_preserve_real_digest_stdout_and_cli_stderr(self):
         digest = b'sha256:' + b'a' * 64 + b'\n'

@@ -329,7 +329,11 @@ def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
          sleep=time.sleep, fetch=None, launch=None):
     environ = os.environ if environ is None else environ
     fetch = fetch_response if fetch is None else fetch
-    diagnostics = SessionDiagnostics(argv[:3] == ["acr", "repository", "show"], monotonic)
+    diagnostics = SessionDiagnostics(
+        argv[:3] == ["acr", "repository", "show"]
+        or argv[:2] in (
+            ["aks", "show"], ["aks", "start"], ["aks", "stop"]),
+        monotonic)
     if launch is None:
         def launch(args, seconds, quiet):
             return run_process(args, seconds, quiet, diagnostics=diagnostics)
