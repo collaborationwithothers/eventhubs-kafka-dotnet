@@ -1,5 +1,5 @@
 # State: #268 C5 mutation: sort 149 survivors exposed after the timeout repair
-Covers: comment 6546005921 created 2026-10-31T16:21:55Z; read at READ_AT
+Covers: comment 6546005921 created 2026-10-31T16:21:55Z; read at 2026-10-31T17:07:00Z
 Parent items: none
 Item plan: none
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent`; Claude Code by default. [Approval 6546005921](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/268#issuecomment-6546005921) also names Claude Code.

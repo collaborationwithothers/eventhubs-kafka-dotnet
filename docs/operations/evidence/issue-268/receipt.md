@@ -32,12 +32,24 @@ Source commit: `2cc756be989b1f6352446c3e1c52dd47d4e6cef1` (`main`). Its diff fro
 | `ParchwellVerifierMutationOnly=true dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release` | `total: 3975`, `failed: 0`, `succeeded: 3975`, `skipped: 0`. |
 | `./scripts/verify-dotnet.sh` | Not run: Docker is not available in this container. The hosted `dotnet-verification` run on the pull request is the evidence, as the plan allows. |
 | Artifact download loop (plan "Acceptance commands") | Four reports. SHA-256 `51c2b2bf4c26262cabd2f0da5c9f8db910f6b84c614d3d85b3ec2a5f8e4c2be7` (phase), `262ffb95e6a1a1f8362632d4b258b69354ff63013957ac47b2aab3a5fa241ac2` (publication), `86184deea45521b85e3f16a50c42f6ae463c6fb9be3b9aa21cd0c79a3c3eb967` (a01), `9056569722f55b72f3f58ff8ffc6c51ffe5cb84f5e803b9e3a612a6a54ff22eb` (repeat), equal to the values pinned in `replay.py`. |
-| `replay.py run` with three workers, then `replay.py check` | REPLAY_RESULT |
+| `replay.py run` with three workers, then `replay.py check` | `check` printed `rows 149 results 149 problems 0` and exited 0. Wall time 39.4 minutes, 16:26:13Z to 17:05:36Z on 2026-10-31. |
 | `git diff --check origin/main` | Exit 0, no output. |
-| `npm run check:docs` | DOCS_RESULT |
+| `npm run check:docs` | 8 warnings, none in a file this change touches. Before the receipt existed, docs/operations/verifier-mutation.md had one more, `Cannot find file evidence/issue-268/receipt.md`, which this file clears. |
 
 No Stryker command ran and no workflow was dispatched.
 
 ## Replay
 
-REPLAY_DETAIL
+Replay statuses, counted by script against the disposition table:
+
+| Disposition | Rows | Replay status |
+| --- | ---: | --- |
+| missing test | 119 | 119 killed, each by its named new test and by no existing test |
+| equivalent | 25 | 24 survived; 1 compile error (14288, E11) |
+| killed on replay | 5 | 5 killed by existing tests |
+
+Totals: 124 killed, 24 survived, 1 compile error, as the plan states. The output files stay outside the repository. Their SHA-256 values:
+
+- `out0.jsonl` `9c5118f6fbee1d34161448a12f5e7640b8ec92dbf36bc7d474636b9c3960effe`
+- `out1.jsonl` `affab82506057a2bd22f88ff7bc845b9e53074c23df6233c36a0277dc94be2bd`
+- `out2.jsonl` `cc8bb9fe378603e0824c7223ba5e9697ce76603d80ce6810c50b3d5412ec2b66`
