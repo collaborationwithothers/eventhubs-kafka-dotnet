@@ -11,7 +11,7 @@ This receipt records the first governance change from the factory-cost redesign.
   2. Who commits updates: "Implementer only". The implementing session writes the file inside its implementation pull request. Planning and plan-check sessions stay read-only.
 - Mandatory gates: `git diff --check`, `npm run check:docs`, one fresh-context cold review under AGENTS.md "Before opening a pull request" rule 8, CI, hosted Codex review, and Hari's merge, because AGENTS.md, docs/agents/ and `.agents/` are protected paths.
 - Publication checkpoint: open a draft pull request after the first cold review with no P0 or P1.
-- Review budget: rule 8 as written. Exhaustion action: rule 8's review-budget handoff to Hari. The budget ran out after focused round 2 with one P1 open. Hari then authorized one extra focused round, in the interactive session on 2026-10-31 ("Fix + 1 extra round"). If that round reports a P0 or P1, the handoff to Hari applies. That round was clean. Codex review of `54159ea` then raised one P2: after an explicit approval, the implementation list did not read the plan check, so `apply in implementation` fixes could be missed. Hari authorized one more focused round for its fix.
+- Review budget: rule 8 as written. Exhaustion action: rule 8's review-budget handoff to Hari. The budget ran out after focused round 2 with one P1 open. Hari then authorized one extra focused round, in the interactive session on 2026-10-31 ("Fix + 1 extra round"). If that round reports a P0 or P1, the handoff to Hari applies. That round was clean. Codex review of `54159ea` then raised one P2: after an explicit approval, the implementation list did not read the plan check, so `apply in implementation` fixes could be missed. Hari authorized one more focused round for its fix. That round was clean. A third Codex review, of `021239b`, raised one more P2: a covered decision comment edited to drop its heading would be skipped by a plan check while the state file still listed it. Hari authorized one more focused round for that fix.
 - Predicate-to-test map: not applicable; no verifier work.
 
 ## Changes, by decision part
@@ -39,8 +39,8 @@ Choices made in this change that the decision did not state. Each is open to Har
 | Command or inspection | Observed result |
 | --- | --- |
 | `git diff --check` | Exit 0, no output. |
-| `npm run check:docs`, on source commit and on the change | 8 warnings in both, the same 8. Two are in docs/agents/factory.md, `Undefined identifier: S0`, in the #211 amendment sentence and the "Evidence pack" bullet; this change does not touch either text. The other six are in files this change does not touch. |
-| Word count, Python `str.split()`, source commit to the commit after `54159ea` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6772. |
+| `npm run check:docs`, on the source commit and on each reviewed revision through the commit after `021239b` | 8 warnings in both, the same 8. Two are in docs/agents/factory.md, `Undefined identifier: S0`, in the #211 amendment sentence and the "Evidence pack" bullet; this change does not touch either text. The other six are in files this change does not touch. |
+| Word count, Python `str.split()`, source commit to the commit after `021239b` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6823. |
 | `grep -rn -i "every comment\|full thread\|whole thread\|comment page"` over Markdown outside docs/operations/evidence | Before the change, one match: the old "Authority reads" first-read sentence. After, one match: the catch-up's "every comment's ID", which lists metadata only. |
 | Ruleset patterns in factory.md "Ruleset" and `.github/CODEOWNERS` | No pattern matches `items/`. |
 
