@@ -55,6 +55,28 @@ Numeric export bounds are maintenance policy choices owned by the helper: 4096 t
 
 Actual exported-project acceptance used code commit `940019aba67c529b36211d82f301cb1dd45826a9`, SDK 10.0.402, and `ParchwellVerifierMutationOnly=true`. Locked restore, Release build and the full mutation-only MTP suite passed on their first .NET invocations. Build recorded zero warnings/errors; XML records 3908 passed, zero failed/skipped/errors/not-run. The manifest recorded 2277 committed inputs, 81 excluded-source prefixes and identical projected before/after maps. Source, command logs, XML and manifest remain under `/tmp/repair-261/project-acceptance-2`. This establishes buildability and unchanged-test acceptance for the commented source, not instrumented runtime.
 
+The exact acceptance entry point was `PYTHONDONTWRITEBYTECODE=1 python /tmp/repair-261/project-acceptance-2.py`, launched from `/workspace/eventhubs-kafka-dotnet`. The retained wrapper loaded `tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py` from that checkout, created the empty root below, and executed this export/validation procedure:
+
+```python
+repository = Path("/workspace/eventhubs-kafka-dotnet")
+base = Path("/tmp/repair-261/project-acceptance-2")
+root = base / "repository"
+manifest = projection.prepare(repository, root,
+    "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", base / "projection-src")
+# Run the three commands below, then retain and validate the unchanged projection.
+projection.finish(root, manifest, base / "projection.json")
+projection.validate(manifest, base / "projection-src",
+    "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", {})
+```
+
+All three actual command invocations used cwd `/tmp/repair-261/project-acceptance-2/repository` and inherited the process environment with `PATH=/tmp/repair-261/dotnet:<inherited PATH>`, `DOTNET_ROOT=/tmp/repair-261/dotnet`, and `ParchwellVerifierMutationOnly=true`. No JIT override was added. Each argv was passed to `subprocess.run(..., cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=1800)`; a nonzero exit stops later commands. The helper separately enforces the 60-second `git archive HEAD` export deadline.
+
+```bash
+dotnet restore tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --locked-mode
+dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-restore
+dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-build --minimum-expected-tests 3908 --results-directory /tmp/repair-261/project-acceptance-2/results -- --report-xunit-xml --report-xunit-xml-filename results.xml
+```
+
 The preceding export attempt failed before any .NET command because it tried to read a tracked skill-directory symlink as a regular file. The correction hashes Git symlink payload bytes and preserves those links; a real symlink fixture covers the repair. Verifier source symlinks are unsupported and rejected before launch. That failed export remains retained under `/tmp/repair-261/project-acceptance`.
 
 The final Python suite passed 36 tests, covering the projection and existing runner/aggregation behavior. `git diff --check` passed. Documentation checks passed with eight existing warnings in unchanged files; neither changed Markdown file had a warning. The PR description holds complete cold-review reports, cumulative counts, final-head CI and hosted reviews. Initial comprehensive review uses the full authored diff against `8cbde949d8fca424dda33accbd01c1a995495678`; comparison revision is that base. No receipt-only commit is required for its own head.
