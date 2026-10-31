@@ -40,12 +40,11 @@ Source commit: `8cbde949d8fca424dda33accbd01c1a995495678`.
 
 ## Cold review
 
-Comparison revision for every round: origin/main `8cbde949d8fca424dda33accbd01c1a995495678`.
-
-| Round | Mode | Input revision | Result |
-| --- | --- | --- | --- |
-| 1 | Comprehensive, pass 1 of 2 | `70f91bfab1c769af5d9209b75ce292fd5c467fd7` | 5 P1, 2 P2. All fixed in `6264d30`. |
-| 2 | Comprehensive, pass 2 of 2 | `6264d30` | 2 P1, 2 P2, all in this receipt or the AGENTS.md pointer sentence. All fixed in the next commit. |
-| 3 | Focused, 1 of 2 | The commit after `6264d30` | Reviews the round 2 fixes, with the full PR diff as context. |
+| Round | Mode | Input revision | Comparison revision | Result |
+| --- | --- | --- | --- | --- |
+| 1 | Comprehensive, pass 1 of 2 | `70f91bfab1c769af5d9209b75ce292fd5c467fd7` | origin/main `8cbde949d8fca424dda33accbd01c1a995495678` | 5 P1, 2 P2. All fixed in `6264d30`. |
+| 2 | Comprehensive, pass 2 of 2 | `6264d30` | origin/main `8cbde949d8fca424dda33accbd01c1a995495678` | 2 P1, 2 P2, all in this receipt or the AGENTS.md pointer sentence. All fixed in `70202b1`. |
+| 3 | Focused, 1 of 2 | `70202b1` | `6264d30` | 1 P1: this table lacked per-round comparison revisions. Fixed in the next commit. |
+| 4 | Focused, 2 of 2 | The commit after `70202b1` | `70202b1` | Reviews the round 3 fix, with the full PR diff as context. |
 
 Complete reports and dispositions are in the pull request's self-review record.
