@@ -127,6 +127,193 @@ The [approved S2 plan](https://github.com/collaborationwithothers/eventhubs-kafk
 
 After protected merge, a main-only hosted campaign must include the changed verifier commit and every shard of all six targets. Publication requires `measurement_complete: true` and `break_passed: true`; an incomplete or failed run cannot be waived by local unit tests. Survivor review is capped at 50 with exhaustion action `record the gap and continue`; unreviewed remainder is recorded as `unreviewed_beyond_cap`, without changing raw scoring. No passing six-shard mutation result is claimed by the implementation PR.
 
+## Issue 268 survivor dispositions
+
+The first C5 run after the [issue 261 repair](#issue-261-excluded-source-instrumentation-repair), [run 41183628251](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41183628251), left 149 surviving mutants in four targets. The run is incomplete and is not acceptance evidence. This section gives each survivor one disposition under the [issue 268 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/268#issuecomment-6544994859); raw Stryker statuses and scores are unchanged. Survivors of `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` are unknown until a complete run exists and are not covered.
+
+- Missing test: a test added for issue 268 passes on `main` and fails on the replayed mutant, and no existing test fails on it.
+- Equivalent: no input can change observable behaviour. The proof is in E1 to E11, and the mutant also survives replay.
+- Killed on replay: existing tests fail on the replayed mutant, though Stryker reported it survived (R1).
+
+Test aliases:
+
+- PJ1 `Given_PhaseEvidenceCase_When_Judged_Then_ReturnsExactStatusGateAndReasons`; PJ2 `Given_TrustedWorkloadObservation_When_Judged_Then_PreservesEachRepeatObservation`; PJ3 `Given_NullEvidence_When_Judged_Then_ThrowsForEvidenceParameter`; PJ4 `Given_UnsupportedPhase_When_Judged_Then_ThrowsWithPhaseMessage` (all `PhaseJudgeTests`).
+- PA1 `PublicationAcceptanceTests.Given_SingleAcceptanceFault_When_Accepting_Then_ReturnsExactCodesAndCompleteness`.
+- A1 `A01EvidenceRecorderTests.Given_NegativePlannedAttemptCount_When_Recorded_Then_RetainsWorkloadDiagnostic`.
+- SA1 to SA14, in `ProbeV2ComparatorAuditTests`, in the order of file change 4. SB1 `SingleActionJudgementBoundaryAuditTests.Given_ReportHiddenBehindWrapSeparatorOrLaterRow_When_Judged_Then_P6GapRemains`.
+
+Equivalence proofs (line numbers in this section are in the target files at b79acb256d09ea29e493acc460ebbe2c9c59aa4f):
+
+- E1 (`PhaseJudge.cs` 4992, 4994, 4995, 4998). Line 76 adds `j1_repeat_slots` only when a slot is extra or duplicated. In each such case some slot has `j1` false at line 46 and line 55 has already added the same reason; line 99 removes duplicates. The mutants add it in a subset of those cases or never.
+- E2 (`PhaseJudge.cs` 5013 to 5018). The line 81 condition requires every repeat to be `complete_valid`, which line 62 sets only when `j1` to `j6` are all true, and `repeats` always has five entries (line 42). Any weakening of the line 80 conjunction is therefore never decisive.
+- E3 (`PhaseJudge.cs` 5028 to 5038). Each `checked(...)` on line 86 wraps only a method call. Per the C# specification, these operators "have no effect on function members that are invoked as a result of evaluating the contained expression" ([section 12.8.20](https://learn.microsoft.com/dotnet/csharp/language-reference/language-specification/expressions#12820-the-checked-and-unchecked-operators)). `Enumerable.Sum<TSource>(IEnumerable<TSource>, Func<TSource,Int64>)` throws `OverflowException` itself ([API reference](https://learn.microsoft.com/dotnet/api/system.linq.enumerable.sum?view=net-10.0)).
+- E4 (`PublicationAcceptance.cs` 10008). Every `DescriptorNames` entry is in `PublicationNames` (lines 19 and 20). When line 61 finds a payload absent or null, line 46 has already added `publication_object_missing` for the same name, and line 81 removes duplicates. (Mutant 10010 on the same line sets `incomplete` back to false, so it is not equivalent; PA1 kills it.)
+- E5 (`SingleActionRepeatJudgement.cs` 13447). `Error` has one caller (line 52). Every `return false` path discards `fatal`; the only `return true` path (line 69) follows the assignment at line 66.
+- E6 (13530, 14193). The `"statistics"` label passed to `StrictJson.ParseDocument` (lines 101, 277) is used only in messages and `StructuralProblem` values. Both callers read only `IsSuccess` and catch the exceptions into `null`.
+- E7 (13836). `nullable` is read only when the text is null (line 257). The line 175 caller then evaluates `&& vl` with `vl` already false.
+- E8 (14123). Line 245 is reached only for a terminal row (line 214) with no observations, so `Error` is null (lines 238 to 242), and `Result` is not `"no_outcome"` (line 244). The mutant then differs only when `Result` is not `"success"` and there is no delivery or record. Such a row matches none of lines 203, 209 and 210, so line 213 already calls `Bad("v2_terminal")`; line 224's `Distinct` removes the repeat.
+- E9 (14129). Line 245 returns when there are no observations, so `First` and `FirstOrDefault` at line 246 return the same element.
+- E10 (14286). Inside the try at lines 275 to 296, only `OverflowException` (line 286) and `InputLimitExceededException` can be thrown: the Base64 text was already decoded at line 272, `ParseDocument` converts its own JSON failures, and each `GetString` is guarded by a kind check. Inferred, not proven: this assumes `StrictJson` converts every `JsonElement.GetString` decode failure, as its own comment states.
+- E11 (14288). Given E10, only `OverflowException` reaches the line 299 catch. Inferred, not proven: Stryker 5.0.0 ends a non-void method whose block was emptied with `return default;`, and `default` of the nullable tuple is `null`, the original return value. Source replay of `{}` cannot compile (CS0161), so replay does not test this one.
+
+Killed on replay:
+
+- R1 (`PublicationAcceptance.cs` 9918, 9920, 9922, 9924, 9926). These mutate the `static readonly` arrays `PublicationNames` and `DescriptorNames` (lines 19, 20). On replay, 37 existing test methods fail for each, including methods in `PublicationAcceptanceTests`, `C3HandlerTests` and `VerifyRunDiagnosticTests`. The other six literals in the same arrays are reported killed by 89 tests each. Inferred, not proven: Stryker's survived status here comes from how it activates mutants in static initializers, not from a missing test. No test is added.
+
+| File | Mutant | Line | Mutator | Disposition | Test or proof |
+| --- | ---: | ---: | --- | --- | --- |
+| `PhaseJudge.cs` | 4850 | 36 | Statement | missing test | PJ3 |
+| `PhaseJudge.cs` | 4852 | 37 | Statement | missing test | PJ4 |
+| `PhaseJudge.cs` | 4853 | 37 | String | missing test | PJ4 |
+| `PhaseJudge.cs` | 4899 | 55 | Logical not | missing test | PJ1 |
+| `PhaseJudge.cs` | 4914 | 60 | Logical not | missing test | PJ1 |
+| `PhaseJudge.cs` | 4915 | 60 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 4916 | 60 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 4948 | 63 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 4949 | 63 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 4965 | 68 | Conditional false | missing test | PJ2 |
+| `PhaseJudge.cs` | 4967 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4968 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4969 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4970 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4971 | 69 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4972 | 69 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4992 | 76 | Logical | equivalent | E1 |
+| `PhaseJudge.cs` | 4993 | 76 | Negate | missing test | PJ1 |
+| `PhaseJudge.cs` | 4994 | 76 | Linq Any to All | equivalent | E1 |
+| `PhaseJudge.cs` | 4995 | 76 | Equality | equivalent | E1 |
+| `PhaseJudge.cs` | 4996 | 76 | Equality | missing test | PJ1 |
+| `PhaseJudge.cs` | 4998 | 76 | Statement | equivalent | E1 |
+| `PhaseJudge.cs` | 4999 | 76 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5013 | 80 | Linq All to Any | equivalent | E2 |
+| `PhaseJudge.cs` | 5014 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5015 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5016 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5017 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5018 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5022 | 81 | Logical | missing test | PJ1 |
+| `PhaseJudge.cs` | 5028 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5030 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5032 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5034 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5036 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5038 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5044 | 90 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 5045 | 90 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5054 | 96 | Linq Any to All | missing test | PJ1 |
+| `PhaseJudge.cs` | 5059 | 97 | Equality | missing test | PJ1 |
+| `PhaseJudge.cs` | 5060 | 97 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5061 | 97 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 5062 | 97 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5064 | 99 | Linq Order to OrderDescending | missing test | PJ1 |
+| `A01EvidenceRecorder.cs` | 6967 | 50 | Statement | missing test | A1 |
+| `PublicationAcceptance.cs` | 9918 | 19 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9920 | 19 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9922 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9924 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9926 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9931 | 33 | Null coalescing | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9945 | 40 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9947 | 40 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9955 | 46 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9957 | 46 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9959 | 47 | Arithmetic | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9961 | 48 | Equality | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9963 | 48 | Linq Min to Max | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9965 | 48 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9970 | 52 | Equality | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9972 | 52 | Linq Min to Max | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9974 | 52 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9977 | 53 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9979 | 53 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9982 | 56 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10000 | 58 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10003 | 61 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10008 | 61 | Statement | equivalent | E4 |
+| `PublicationAcceptance.cs` | 10010 | 61 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10021 | 66 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10025 | 67 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10030 | 68 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10037 | 72 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10048 | 74 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10050 | 75 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10054 | 75 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10056 | 76 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10062 | 77 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10067 | 81 | Linq Order to OrderDescending | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10077 | 90 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10110 | 101 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10112 | 102 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10114 | 103 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10116 | 103 | String | missing test | PA1 |
+| `SingleActionRepeatJudgement.cs` | 13447 | 62 | Boolean | equivalent | E5 |
+| `SingleActionRepeatJudgement.cs` | 13530 | 101 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 13563 | 106 | String | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13617 | 119 | Checked | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13626 | 122 | Block | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13730 | 156 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13746 | 157 | Logical | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13747 | 157 | Logical | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13776 | 162 | Statement | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13777 | 162 | Conditional true | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13778 | 162 | Conditional false | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13779 | 162 | Equality | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13780 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13781 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13782 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13786 | 163 | Conditional true | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13791 | 163 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13809 | 168 | Linq Any to All | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13836 | 175 | Boolean | equivalent | E7 |
+| `SingleActionRepeatJudgement.cs` | 13837 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13838 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13839 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13840 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13845 | 178 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13854 | 181 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13855 | 181 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13892 | 191 | Statement | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13893 | 191 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13896 | 192 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13898 | 194 | Statement | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13899 | 194 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13923 | 197 | Logical | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13924 | 197 | String | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13925 | 197 | String | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13970 | 206 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13972 | 206 | Statement | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13973 | 206 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13977 | 207 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13979 | 207 | Statement | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13980 | 207 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13994 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 13995 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 13996 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14015 | 211 | Equality | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14019 | 213 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14034 | 215 | Linq Any to All | missing test | SA7 |
+| `SingleActionRepeatJudgement.cs` | 14054 | 222 | Conditional true | missing test | SA8 |
+| `SingleActionRepeatJudgement.cs` | 14058 | 222 | String | missing test | SA8 |
+| `SingleActionRepeatJudgement.cs` | 14074 | 226 | Conditional false | missing test | SA9 |
+| `SingleActionRepeatJudgement.cs` | 14098 | 236 | Equality | missing test | SA10 |
+| `SingleActionRepeatJudgement.cs` | 14123 | 245 | Logical | equivalent | E8 |
+| `SingleActionRepeatJudgement.cs` | 14129 | 246 | Linq First to FirstOrDefault | equivalent | E9 |
+| `SingleActionRepeatJudgement.cs` | 14166 | 261 | Boolean | missing test | SA11 |
+| `SingleActionRepeatJudgement.cs` | 14179 | 272 | Logical | missing test | SA11 |
+| `SingleActionRepeatJudgement.cs` | 14186 | 273 | Equality | missing test | SA12 |
+| `SingleActionRepeatJudgement.cs` | 14193 | 277 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 14217 | 282 | Logical | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14218 | 282 | Logical | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14225 | 282 | String | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14246 | 286 | Checked | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14270 | 294 | Logical | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14276 | 294 | String | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14277 | 294 | String | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14286 | 299 | Logical | equivalent | E10 |
+| `SingleActionRepeatJudgement.cs` | 14288 | 299 | Block | equivalent | E11 |
+
+The [receipt](evidence/issue-268/receipt.md) records the source-edit replay of every survivor with `evidence/issue-268/replay.py`. A replay is diagnostic evidence, not C5 acceptance. The next complete hosted run on `main` measures these targets under [Issue 187 hosted C5 measurement](#issue-187-hosted-c5-measurement).
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.

@@ -347,6 +347,16 @@ public sealed class SingleActionJudgementBoundaryAuditTests
         var aggregate=SingleActionConfigurationJudgement.Aggregate(result);Assert.Equal("incomplete",aggregate.Status);Assert.Null(aggregate.Deterministic);Assert.Null(aggregate.Outcome);
     }
 
+    [Theory]
+    [InlineData("wrapped_seconds")][InlineData("missing_kind_separator")][InlineData("earlier_malformed")]
+    public void Given_ReportHiddenBehindWrapSeparatorOrLaterRow_When_Judged_Then_P6GapRemains(string mutation)
+    {
+        var repeat=SingleActionFixture.Repeat();var row=repeat.Statistics[0];string raw=Encoding.UTF8.GetString(Convert.FromBase64String(row.RawBase64));
+        Assert.Contains("#producer-1",raw,StringComparison.Ordinal);
+        SingleActionStatistic[] statistics=mutation switch{"wrapped_seconds"=>[SingleActionFixture.Statistic(repeat.ClientId,18446744073709553,1,1)],"missing_kind_separator"=>[row with{RawBase64=Convert.ToBase64String(Encoding.UTF8.GetBytes(raw.Replace("#producer-1","#producer1",StringComparison.Ordinal)))}],_=>[row with{RawBase64="?"},SingleActionFixture.Statistic(repeat.ClientId,1,1,2)]};
+        AssertStatistics(SingleActionFixture.Judge(repeat with{Statistics=statistics}),false);
+    }
+
     private static string Utf8Text(int bytes)=>new string('é',bytes/2)+(bytes%2==1?"s":string.Empty);
     private static void AssertStatistics(SingleActionRepeatProjection result,bool accepted)
     {
