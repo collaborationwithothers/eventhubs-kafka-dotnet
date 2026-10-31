@@ -810,9 +810,13 @@ if mode == 'extra-source':
 if mode == 'config':
     with args.config_file.open('a') as config:
         config.write(' ')
+if mode == 'no-report':
+    sys.exit(0)
 report = args.output / 'reports/mutation-report.json'
 report.parent.mkdir(parents=True)
 report.write_text('{}')
+if mode == 'report-then-hang':
+    time.sleep(60)
 sys.exit(int(mode) if mode in ('0', '1', '2') else 0)
 '''
 
@@ -1062,11 +1066,11 @@ class RunnerTests(unittest.TestCase):
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
         os.environ["GITHUB_SHA"] = commit
 
-    def local_check(self, name, target=CONFIGURATION, span="26..52", timeout=5):
+    def local_check(self, name, target=CONFIGURATION, span="26..52", timeout=5, mode="0"):
         output = self.root / name
         with contextlib.redirect_stdout(io.StringIO()) as printed:
             result = workflow.local_check(target, span, output, timeout=timeout, repository=self.root,
-                                          command_prefix=[sys.executable, str(self.child), "0"])
+                                          command_prefix=[sys.executable, str(self.child), mode])
         return result, output, printed.getvalue()
 
     def test_span_shard_config_is_computed_from_projected_target(self):
@@ -1099,23 +1103,67 @@ class RunnerTests(unittest.TestCase):
 
     def test_local_check_rejects_invalid_input_without_launch(self):
         self.commit_configuration(SOURCE)
+        boundary = "span must start and end at member boundaries"
+        order = "span must satisfy START < END <= 2147483647"
+        timeout = "timeout must be above 0 and at most 16200 seconds"
+        # (arguments, expected message, whether the output directory is created before the check)
         cases = {
-            "off-boundary-start": {"span": "27..52"}, "reversed": {"span": "52..26"},
-            "end-too-large": {"span": "0..2147483648"}, "not-numbers": {"span": "a..b"},
-            "timeout-zero": {"timeout": 0}, "timeout-over": {"timeout": 16200.5},
-            "timeout-bool": {"timeout": True}, "unknown-target": {"target": "Judge/Other.cs"},
+            "off-boundary-start": ({"span": "27..52"}, boundary, True),
+            "off-boundary-end": ({"span": "0..53"}, boundary, True),
+            "reversed": ({"span": "52..26"}, order, False),
+            "empty": ({"span": "26..26"}, order, False),
+            "end-too-large": ({"span": "0..2147483648"}, order, False),
+            "not-numbers": ({"span": "a..b"}, "span must be START..END", False),
+            "timeout-zero": ({"timeout": 0}, timeout, False),
+            "timeout-over": ({"timeout": 16200.5}, timeout, False),
+            "timeout-bool": ({"timeout": True}, timeout, False),
+            "unknown-target": ({"target": "Judge/Other.cs"}, "unknown C5 target", False),
         }
-        for name, arguments in cases.items():
+        for name, (arguments, message, created) in cases.items():
             with self.subTest(name=name):
-                result, output, _ = self.local_check(name, **arguments)
+                result, output, printed = self.local_check(name, **arguments)
                 self.assertEqual(1, result)
+                self.assertIn(message, printed)
+                self.assertEqual(created, output.exists())
         with self.subTest(name="existing-output"):
             (self.root / "existing-output").mkdir()
-            self.assertEqual(1, self.local_check("existing-output")[0])
+            result, _, printed = self.local_check("existing-output")
+            self.assertEqual(1, result)
+            self.assertIn("output directory already exists", printed)
         with self.subTest(name="dirty"):
             (self.root / "src/input.cs").write_text("dirty")
-            self.assertEqual(1, self.local_check("dirty")[0])
+            result, output, printed = self.local_check("dirty")
+            self.assertEqual(1, result)
+            self.assertIn("local check requires a clean tracked checkout", printed)
+            self.assertFalse(output.exists())
         self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_local_check_result_needs_completed_child_and_report(self):
+        self.commit_configuration(SOURCE)
+        # (child mode, timeout, expected result, child exit, termination reason, report expected)
+        cases = (("2", 5, 0, 2, None, True), ("1", 5, 1, 1, None, True),
+                 ("report-then-hang", 0.5, 1, -9, "time_cap_exceeded", True), ("no-report", 5, 1, 0, None, False))
+        for mode, limit, expected, child_exit, reason, report in cases:
+            with self.subTest(mode=mode):
+                result, output, _ = self.local_check("result-" + mode, timeout=limit, mode=mode)
+                self.assertEqual(expected, result)
+                receipt = json.loads((output / "local-receipt.json").read_text())
+                self.assertEqual(child_exit, receipt["child_exit_code"])
+                self.assertEqual(reason, receipt["termination_reason"])
+                self.assertEqual(report, receipt["report_sha256"] is not None)
+                self.assertFalse((output / "receipt.json").exists())
+        launch = workflow.launch
+
+        def interrupted_after_clean_exit(*arguments):
+            child_exit, _ = launch(*arguments)
+            return child_exit, "interrupted"
+
+        with self.subTest(mode="interrupted"), patch.object(workflow, "launch", interrupted_after_clean_exit):
+            result, output, _ = self.local_check("result-interrupted")
+            self.assertEqual(1, result)
+            receipt = json.loads((output / "local-receipt.json").read_text())
+            self.assertEqual((0, "interrupted"), (receipt["child_exit_code"], receipt["termination_reason"]))
+            self.assertIsNotNone(receipt["report_sha256"])
 
     def test_local_check_accepts_whole_file_and_timeout_limit(self):
         self.commit_configuration(SOURCE)
