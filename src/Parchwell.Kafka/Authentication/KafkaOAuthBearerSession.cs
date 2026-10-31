@@ -316,6 +316,12 @@ public sealed class KafkaOAuthBearerSession
         if (attempt == 0)
             return;
 
+        if (_testExpiryCapMilliseconds is null)
+        {
+            effectiveExpiresOn = null;
+            capComputedAt = null;
+        }
+
         DateTimeOffset? observedAt = null;
         long? timestamp = null;
         try

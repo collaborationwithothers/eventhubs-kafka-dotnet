@@ -48,7 +48,8 @@ public sealed class KafkaAuthenticationDependencyInjectionTests
         refreshPath.Refresh((_, _, _) => { }, _ => Assert.Fail("synthetic test token must install"));
         Assert.True(refreshPath.InstalledTokenExpiresOn <= TimeProvider.System.GetUtcNow().AddMilliseconds(5000));
         foreach (int cap in new[] { 0, -1, 4999, 5001 })
-            Assert.Throws<ArgumentOutOfRangeException>(() => factory.CreateRefreshPathTestSession(identity, cap));
+            Assert.Throws<ArgumentOutOfRangeException>(() => factory.CreateRefreshPathTestSession(identity, cap,
+                TestContext.Current.CancellationToken));
     }
 
     [Fact]

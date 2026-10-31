@@ -137,13 +137,14 @@ public sealed class OAuthBearerSessionTests
     }
 
     [Theory]
-    [InlineData(1, 1700000000001)]
-    [InlineData(3000, 1700000003000)]
-    [InlineData(5000, 1700000005000)]
-    public void GivenActualExpiryAtOrBeforeCap_When_Refreshing_Then_NeverExtendsSdkExpiry(int actualMilliseconds, long expected)
+    [InlineData(1)]
+    [InlineData(3000)]
+    [InlineData(5000)]
+    public void GivenActualExpiryAtOrBeforeCap_When_Refreshing_Then_NeverExtendsSdkExpiry(int actualMilliseconds)
     {
         DateTimeOffset now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
-        var provider = new ObservedStubTokenProvider(new AccessToken("synthetic", DateTimeOffset.FromUnixTimeMilliseconds(expected)));
+        long actualExpiryMilliseconds = 1700000000000L + actualMilliseconds;
+        var provider = new ObservedStubTokenProvider(new AccessToken("synthetic", DateTimeOffset.FromUnixTimeMilliseconds(actualExpiryMilliseconds)));
         using var metrics = new KafkaAuthenticationMetrics();
         var session = new KafkaOAuthBearerSession(Identity, "scope", "principal", provider,
             new MutableTimeProvider(now), metrics, TestContext.Current.CancellationToken,
@@ -152,8 +153,8 @@ public sealed class OAuthBearerSessionTests
 
         session.Refresh((_, expiry, _) => installed = expiry, _ => Assert.Fail("unexpected failure"));
 
-        Assert.Equal(expected, installed);
-        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(expected), session.InstalledTokenExpiresOn);
+        Assert.Equal(actualExpiryMilliseconds, installed);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(actualExpiryMilliseconds), session.InstalledTokenExpiresOn);
     }
 
     [Fact]

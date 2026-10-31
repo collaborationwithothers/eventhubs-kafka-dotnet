@@ -84,6 +84,12 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
         Assert.Equal("installation_succeeded", snapshot.Events[8].Stage);
         Assert.Equal(new DateTimeOffset(2026, 10, 17, 14, 0, 0, TimeSpan.Zero), snapshot.Events[8].AcquiredExpiresOn);
         Assert.Equal(new DateTimeOffset(2026, 10, 17, 14, 0, 0, TimeSpan.Zero), snapshot.Events[8].InstalledExpiresOn);
+        Assert.All(snapshot.Events, item =>
+        {
+            Assert.Null(item.EffectiveExpiresOn);
+            Assert.Null(item.CapComputedAt);
+            Assert.Null(item.TestExpiryCapMilliseconds);
+        });
         Assert.IsAssignableFrom<IList<KafkaAuthenticationLifecycleEvent>>(snapshot.Events);
         Assert.Throws<NotSupportedException>(() => ((IList<KafkaAuthenticationLifecycleEvent>)snapshot.Events)[0] = snapshot.Events[1]);
         Assert.Equal("initial,initial,initial,refresh,refresh,refresh,refresh,refresh,refresh", string.Join(',', snapshot.Events.Select(item => item.Phase)));

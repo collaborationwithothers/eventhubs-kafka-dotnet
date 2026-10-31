@@ -9,8 +9,10 @@ internal sealed class ProbeV2SessionFactory
     private readonly Func<IReadOnlyDictionary<string, string>, ProbeV2Capture, CancellationToken, (IConsumer<byte[], byte[]> Client, KafkaOAuthBearerSession Authentication)> consumer;
     private readonly Func<IClient, string, TimeSpan, int[]> metadata;
     private readonly Func<Func<ProjectedTokenFileObservation>> createProjectedFileSampler;
+    private readonly bool testHandlerRefreshPath;
     internal ProbeV2SessionFactory(KafkaAuthenticationFactory authentication, ProbeV2Options options)
     {
+        testHandlerRefreshPath = options.TestHandlerRefreshPath;
         ProbeV2Stage stage = ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage);
         producer = (settings, capture, cancellation) =>
         {
@@ -54,10 +56,12 @@ internal sealed class ProbeV2SessionFactory
         Func<IReadOnlyDictionary<string, string>, ProbeV2Capture, CancellationToken, IProducer<byte[], byte[]>> producer,
         Func<IReadOnlyDictionary<string, string>, ProbeV2Capture, CancellationToken, (IConsumer<byte[], byte[]> Client, KafkaOAuthBearerSession Authentication)> consumer,
         Func<IClient, string, TimeSpan, int[]> metadata,
-        Func<Func<ProjectedTokenFileObservation>>? projectedFileSampler = null)
+        Func<Func<ProjectedTokenFileObservation>>? projectedFileSampler = null,
+        bool testHandlerRefreshPath = false)
     {
         this.producer = producer; this.consumer = consumer; this.metadata = metadata;
         createProjectedFileSampler = projectedFileSampler ?? (() => throw new InvalidOperationException("v2_projected_sampler_unavailable"));
+        this.testHandlerRefreshPath = testHandlerRefreshPath;
     }
     internal IProducer<byte[], byte[]> Producer(IReadOnlyDictionary<string, string> settings, ProbeV2Capture capture, CancellationToken token) => producer(settings, capture, token);
     internal (IConsumer<byte[], byte[]> Client, KafkaOAuthBearerSession Authentication) Consumer(IReadOnlyDictionary<string, string> settings, ProbeV2Capture capture, CancellationToken token) => consumer(settings, capture, token);
@@ -65,7 +69,7 @@ internal sealed class ProbeV2SessionFactory
     internal Func<ProjectedTokenFileObservation> CreateProjectedFileSampler() => createProjectedFileSampler();
     internal ProbeV2HandlerRefreshPath CreateHandlerRefreshPath(TimeProvider clock, int repeat, string clientId)
     {
-        if (!options.TestHandlerRefreshPath) throw new InvalidOperationException("v2_handler_refresh_disabled");
+        if (!testHandlerRefreshPath) throw new InvalidOperationException("v2_handler_refresh_disabled");
         return new(clock, repeat, clientId);
     }
 }

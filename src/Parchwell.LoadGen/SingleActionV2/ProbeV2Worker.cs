@@ -251,7 +251,7 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                 refreshPath.SeekReturned();
                 while (refreshPath.CanContinue(token))
                 {
-                    TimeSpan diagnosticSlice = refreshPath.Slice(token, options.Limits.PollSliceMs);
+                    TimeSpan diagnosticSlice = refreshPath.Slice(options.Limits.PollSliceMs, token);
                     if (diagnosticSlice <= TimeSpan.Zero) break;
                     try
                     {

@@ -129,7 +129,7 @@ internal sealed class ProbeV2HandlerRefreshPath(TimeProvider clock, int repeat, 
         return Volatile.Read(ref captureLimitReached) == 0 && Volatile.Read(ref clockUnavailable) == 0 && WithinWindow();
     }
 
-    internal TimeSpan Slice(CancellationToken callerToken, int pollSliceMs)
+    internal TimeSpan Slice(int pollSliceMs, CancellationToken callerToken)
     {
         if (!CanContinue(callerToken)) return TimeSpan.Zero;
         try
@@ -184,7 +184,7 @@ internal sealed class ProbeV2HandlerRefreshPath(TimeProvider clock, int repeat, 
             return;
         }
         ClockSample sample = SampleClock();
-        errors.Add(new((int)error.Code, error.IsFatal, sample.UtcTicks, sample.Timestamp));
+        errors.Add(new((int)error.Code, error.IsFatal, ToDateTimeOffset(sample.UtcTicks), sample.Timestamp));
         if (errors.Count >= MaximumErrors) SetCaptureLimit();
     }
 
@@ -234,7 +234,7 @@ internal sealed class ProbeV2HandlerRefreshPath(TimeProvider clock, int repeat, 
     {
         ClockSample sample = SampleClock();
         return new(action, clientId, repeat, report.Topic, report.Partition.Value, report.Offset.Value,
-            sample.UtcTicks, sample.Timestamp, report.Status.ToString(), (int)report.Error.Code,
+            ToDateTimeOffset(sample.UtcTicks), sample.Timestamp, report.Status.ToString(), (int)report.Error.Code,
             report.Error.IsFatal, null, null);
     }
 
@@ -245,12 +245,12 @@ internal sealed class ProbeV2HandlerRefreshPath(TimeProvider clock, int repeat, 
         byte[]? value = result.Message?.Value;
         if (key is { Length: > 4096 } || value is { Length: > 4096 }) SetCaptureLimit();
         return new(action, clientId, repeat, result.Topic, result.Partition.Value, result.Offset.Value,
-            sample.UtcTicks, sample.Timestamp, null, null, null,
+            ToDateTimeOffset(sample.UtcTicks), sample.Timestamp, null, null, null,
             key is null || key.Length > 4096 ? null : Convert.ToBase64String(key),
             value is null || value.Length > 4096 ? null : Convert.ToBase64String(value));
     }
 
-    private bool Matches(ConsumeResult<byte[], byte[]>? result, ProbeV2Requested requested) =>
+    private static bool Matches(ConsumeResult<byte[], byte[]>? result, ProbeV2Requested requested) =>
         result is not null && !result.IsPartitionEOF && result.Topic == requested.Topic &&
         result.Partition.Value == requested.Partition && result.Offset.Value == requested.Offset;
 

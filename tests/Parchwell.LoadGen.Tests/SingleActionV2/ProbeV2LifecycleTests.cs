@@ -496,7 +496,8 @@ public sealed class ProbeV2LifecycleTests
                 ConsumerClients.Add(proxy); Events.Add("client-" + (Clients.Count + ConsumerClients.Count));
                 return (consumer, session);
             }, (_, _, _) => Enumerable.Range(0, 32).ToArray(),
-            () => () => { SamplerCalls++; return new(SamplerCalls, MetadataE0.AddMinutes(SamplerCalls), SamplerCalls, 1000, 1, "observed"); }));
+            () => () => { SamplerCalls++; return new(SamplerCalls, MetadataE0.AddMinutes(SamplerCalls), SamplerCalls, 1000, 1, "observed"); },
+            testHandlerRefreshPath));
             services.AddSingleton(new ProbeV2Inputs(Options, clock));
             services.AddSingleton<ProbeV2Worker>();
             Host = new(services.BuildServiceProvider(), Events, failure);
