@@ -23,9 +23,23 @@ jobs:
             target: VerifyRun/A01/A01EvidenceRecorder.cs
           - shard: workload
             target: VerifyRun/A01/WorkloadRecorder.cs
-          - shard: single-action-repeat
+          - shard: single-action-repeat-p1
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
-          - shard: single-action-configuration
+          - shard: single-action-repeat-p2
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p3
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-configuration-p1
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p2
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p3
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p4
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p5
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p6
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
@@ -50,8 +64,18 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
-          path: ${{ env.C5_OUTPUT }}
+          path: |
+            ${{ env.C5_OUTPUT }}
+            !${{ env.C5_OUTPUT }}/stryker/logs/**
           if-no-files-found: error
+          retention-days: 90
+      - name: Retain shard Stryker logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c5-logs-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: ${{ env.C5_OUTPUT }}/stryker/logs
+          if-no-files-found: ignore
           retention-days: 90
 
   aggregate:
