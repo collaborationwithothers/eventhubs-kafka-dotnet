@@ -41,7 +41,7 @@ Round-17 Fix confirmation: both authorized campaigns remain exhausted and incomp
 
 The [manual hosted workflow](../../.github/workflows/verifier-c5-mutation.yml) provides the next C5 measurement method under [Hari's latest decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400987342). This PR provides tooling and no complete mutation result. The [authored receipt](evidence/issue-187/receipt.md) records the helper repair and local tooling validation.
 
-A mutation result is not required before gate 2 (#163), which publishes no result. The original first-A01 publication gate required a complete coverage-off measurement of four C5 targets at break 60. The current scope is extended by the [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) to six targets. The manual hosted workflow partitions the current scope across six parallel jobs and applies the threshold to their combined raw populations.
+A mutation result is not required before gate 2 (#163), which publishes no result. The original first-A01 publication gate required a complete coverage-off measurement of four C5 targets at break 60. The current scope is extended by the [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) to six targets. The manual hosted workflow partitions the current scope across parallel jobs, one or more per target as [Issue 267 span shards](#issue-267-span-shards) describes, and applies the threshold to their combined raw populations.
 
 The existing full-scope result, 922/934 on e592713 (#93), and the accepted survivors in #108 stand for code outside the four targets. That result predates C5. PR #176 changed other verifier files, and those changes are accepted without remeasurement for the first A01 publication. The A01 evidence pack must state this limitation. docs/engineering/dotnet.md Testing is unchanged; its scope applies to later publications unless Hari decides otherwise.
 
@@ -54,7 +54,7 @@ The historical inputs remain in the [#93 receipt](evidence/issue-93/child-c/rece
 - `VerifyRun/SingleAction/SingleActionRepeatJudgement.cs`
 - `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs`
 
-The workflow uses six parallel standard `ubuntu-24.04` hosted jobs, with no Azure identity. Only `workflow_dispatch` triggers it, and its jobs require `main`. After Hari merges this protected-path PR, a later authorized dispatch selects the final verifier commit on main. No agent waits on or polls that run. GitHub documents [hosted job limits](https://docs.github.com/en/actions/reference/limits) and [billing for public repositories and larger runners](https://docs.github.com/en/billing/concepts/product-billing/github-actions); this workflow selects no larger runner.
+The workflow uses 13 parallel standard `ubuntu-24.04` hosted jobs, with no Azure identity. Only `workflow_dispatch` triggers it, and its jobs require `main`. After Hari merges this protected-path PR, a later authorized dispatch selects the final verifier commit on main. No agent waits on or polls that run. GitHub documents [hosted job limits](https://docs.github.com/en/actions/reference/limits) and [billing for public repositories and larger runners](https://docs.github.com/en/billing/concepts/product-billing/github-actions); this workflow selects no larger runner.
 
 Each shard uses SDK 10.0.402, Stryker 5.0.0, MTP, Release/net10.0 and the existing mutation-only test population. Coverage off skips coverage capture and assigns all tests to each mutant; bail behavior remains. The [pinned configuration reference](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/docs/configuration.md) and [pre-run lookup](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400504166) explain this method. It can increase test execution work. No incremental baseline, new exclusion or concurrency setting is used.
 
@@ -65,13 +65,13 @@ python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py run-shard --shard
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py aggregate --input-dir DIRECTORY --expected-commit SHA --run-id ID --run-attempt ATTEMPT --output-dir DIRECTORY
 ```
 
-The original shard IDs are `phase`, `publication`, `a01` and `workload`; the two single-action IDs are declared alongside them in the runner and workflow matrix. The runner retains the actual invocation, source/config hashes before and after, commit/tree, timing, child exit, termination, command log and report hash. Its single child has a 16200-second bound, inside a 300-minute hosted job. A timeout records the gap and continues to receipt and artifact upload; it produces an incomplete measurement. These are execution limits, not duration predictions. There is no retry.
+The original shard IDs are `phase`, `publication`, `a01` and `workload`; the single-action targets run as span shards `single-action-repeat-p1` to `single-action-repeat-p3` and `single-action-configuration-p1` to `single-action-configuration-p6`, declared in the runner and workflow matrix. The runner retains the actual invocation, source/config hashes before and after, commit/tree, timing, child exit, termination, command log and report hash. Its single child has a 16200-second bound, inside a 300-minute hosted job. A timeout records the gap and continues to receipt and artifact upload; it produces an incomplete measurement. These are execution limits, not duration predictions. There is no retry.
 
-Each shard uploads `c5-mutation-RUN_ID-RUN_ATTEMPT-ID`, including `receipt.json`, `shard-config.json`, `command.log`, `projection.json`, retained verifier source under `projection-src/`, and the native Stryker output. Aggregation downloads those six separate artifact directories from the current run. The summary artifact is `c5-summary-RUN_ID-RUN_ATTEMPT`, containing `summary.json`, `summary.md` and `survivors.json`. Upload retention is 90 days; preserve needed evidence before expiry. These artifacts become downloadable only after an actual dispatch.
+Each shard uploads `c5-mutation-RUN_ID-RUN_ATTEMPT-ID`, including `receipt.json`, `shard-config.json`, `command.log`, `projection.json`, retained verifier source under `projection-src/`, and the native Stryker output except `stryker/logs/`, which each shard uploads separately as `c5-logs-RUN_ID-RUN_ATTEMPT-ID`. Aggregation downloads one `c5-mutation-` artifact directory per shard from the current run, and never the `c5-logs-` artifacts. The summary artifact is `c5-summary-RUN_ID-RUN_ATTEMPT`, containing `summary.json`, `summary.md` and `survivors.json`. Upload retention is 90 days; preserve needed evidence before expiry. These artifacts become downloadable only after an actual dispatch.
 
 Completed child exits 0 and 2 are candidates for aggregation: pinned [Stryker exit codes](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Configuration/ExitCodes.cs) define 2 as a threshold violation. An individual below-threshold file may still contribute to a passing combined score. Missing shards or reports, execution errors, termination, changed inputs and malformed or unfinished populations cannot supply a passing result.
 
-Aggregation sums assigned-target raw populations across the six reports. The numerator is `Killed + Timeout`; the denominator is `Killed + Timeout + Survived + NoCoverage`. `CompileError`, `RuntimeError` and `Ignored` remain visible but outside the denominator, following pinned [ProjectComponent.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs). Break success requires `100 * numerator >= 60 * denominator`, with a positive denominator in every target. Percentages are not averaged. Native [JSON reports](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs) contain high/low thresholds, without break; the committed configuration supplies break 60. Excluded-file placeholders follow pinned [SourceFile.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/SourceFiles/SourceFile.cs).
+Aggregation reconciles each split target's span shards, then sums the six assigned-target raw populations. The numerator is `Killed + Timeout`; the denominator is `Killed + Timeout + Survived + NoCoverage`. `CompileError`, `RuntimeError` and `Ignored` remain visible but outside the denominator, following pinned [ProjectComponent.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponent.cs). Break success requires `100 * numerator >= 60 * denominator`, with a positive denominator in every target. Percentages are not averaged. Native [JSON reports](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs) contain high/low thresholds, without break; the committed configuration supplies break 60. Excluded-file placeholders follow pinned [SourceFile.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/SourceFiles/SourceFile.cs).
 
 An incomplete summary has `measurement_complete=false` and `break_passed=null`. A complete below-threshold result remains a complete failing measurement. Neither synthetic tooling tests nor an artifact listing satisfies the publication requirement. The later completed run's survivors are dispositioned under this mutation record: cap 50, then `record the gap and continue`. The automatic first-50 listing is not a human disposition and never changes raw scoring. No survivor review or replay occurs in this PR.
 
@@ -87,11 +87,232 @@ The [projection helper](../../tests/Parchwell.Verifier.Tests/Mutation/c5_project
 
 The [repair receipt](evidence/issue-261/receipt.md) records the bounded reproductions, tooling acceptance and limitations. No post-repair instrumented runtime or complete passing campaign is claimed. Another hosted campaign needs separate authorization; scientific evidence-pack publication remains blocked by the incomplete latest applicable measurement.
 
+## Issue 267 span shards
+
+Large C5 targets run as several parallel jobs, each limited to one span of the target's text. Every mutant that a job tests is owned by exactly one job, and aggregation rejects any gap or overlap. Compile errors, and mutants that every job reports with the same `Ignored` reason other than the mutate filter, count once for the target and belong to no job. Targets, tests, thresholds, coverage-off and the post-merge gate are unchanged ([issue 267](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/267)).
+
+A span is a `mutate` pattern suffix `{start..end}`. In pinned Stryker 5.0.0, [ExclusionPattern.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Configuration/ExclusionPattern.cs) parses it and [FilePattern.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Configuration/FilePattern.cs) keeps a mutant only when a span fully contains it. Positions are character offsets, not line numbers, and Roslyn's [TextSpan.Contains](https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.text.textspan.contains) treats the end as exclusive. [FilePatternMutantFilter.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/MutantFilters/FilePatternMutantFilter.cs) tests the span of the mutant's original syntax node, and [BroadcastMutantFilter.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/MutantFilters/BroadcastMutantFilter.cs) marks a filtered mutant `Ignored` with reason `Removed by mutate filter`. A mutant whose node crosses a span boundary is in no span.
+
+The runner splits a target only at member boundaries: the start of a line that follows a line of exactly four spaces and `}`. Method-body block-removal mutants cover whole bodies, so a boundary inside a method would leave them in no span. Offsets are counted in UTF-16 code units after removing a UTF-8 byte order mark. The runner picks the boundaries that make the longest span shortest; the first span starts at 0 and the last ends at 2147483647. `phase`, `publication`, `a01` and `workload` keep one whole-file job. `SingleActionRepeatJudgement.cs` has 3 spans and `SingleActionConfigurationJudgement.cs` has 6, so the workflow runs 13 jobs. Measured by text length, more spans would not shorten the longest one, because a single method holds the largest share of each file; measured by mutant count, the longest job can differ.
+
+Each span job's report still lists the target's whole mutant inventory. [JsonReport.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/JsonReport.cs) writes a full entry for every file that [ProjectComponentsExtensions.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/ProjectComponents/ProjectComponentsExtensions.cs) does not exclude, and a file with an included span and no excluded span is not excluded. [SourceFile.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/Reporters/Json/SourceFiles/SourceFile.cs) then writes every mutant in the file. Compile errors are final before filtering ([CsharpMutationProcess.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/MutationTest/CsharpMutationProcess.cs)), so they appear in every span job. Aggregation reconciles each split target before scoring:
+
+- every job lists the same mutant ids, with the same mutator, replacement and location;
+- a mutant counts once when every job reports the same compile error, or the same `Ignored` reason other than the mutate filter;
+- otherwise exactly one job reports it as anything other than `Ignored` by the mutate filter, and that job's status counts;
+- a mutant with no such job crossed a boundary, and one with two overlapped; either makes the measurement incomplete.
+
+Boundary placement can change how long each job takes, never the score. `summary.json` keeps one entry per job under `shards`, adds the reconciled `targets`, and lists under `rebalance_needed` every job whose `elapsed_seconds` exceeded 7200, with its part and span. For a job that failed aggregation's checks, such as one stopped at the child limit, the span comes from its retained `shard-config.json` and is marked unverified. That list is recorded only and never changes `measurement_complete` or `break_passed`. 7200 seconds is a maintenance policy choice, under half the unchanged 16200-second child limit. Splitting a listed span further needs a reviewed change to the part count.
+
+Each job uploads its Stryker logs under `stryker/logs/` as a separate artifact, `c5-logs-RUN_ID-RUN_ATTEMPT-ID`, retained 90 days like the evidence artifact. Aggregation reads none of them and downloads only the `c5-mutation-` artifacts, because the logs grow with the number of mutants tested and make up most of each artifact's extracted size. GitHub's [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) lists 14 GB SSD for the standard Linux runner. The evidence upload excludes the logs with a `!` path, as the pinned [upload-artifact README](https://github.com/actions/upload-artifact/blob/ea165f8d65b6e75b540449e92b4886f43607fa02/README.md) documents under "Upload using Multiple Paths and Exclusions".
+
+### Local span check
+
+`local-check` runs one span of one target on the committed `HEAD`, with the same source projection, configuration and mutation-only test population as a hosted job. It is for iterating on a fix. It is never acceptance evidence: [factory.md "Evidence pack"](../agents/factory.md#evidence-pack) still requires the post-merge hosted run. Commit the change locally, install the SDK named in `global.json`, run `dotnet tool restore`, then from the repository root:
+
+```text
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py member-boundaries --target TARGET
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py local-check --target TARGET --span START..END --output-dir ABSOLUTE_DIRECTORY --timeout SECONDS
+```
+
+The first command prints each member boundary's offset and the line that starts there. START and END must each be 0, 2147483647 or one of those offsets. Choose the boundaries around the changed member. The timeout is at most 16200 seconds. The output holds `local-receipt.json`, whose `purpose` says it is diagnostic only, and the native Stryker output.
+
+`--since` is not used. In pinned [SinceMutantFilter.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/MutantFilters/SinceMutantFilter.cs), a changed source file returns all of its mutants, so editing a target re-tests the whole target. The [configuration reference](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/docs/configuration.md) says "For changes on test project files all mutants covered by tests in that file will be seen as changed". Inferred, not verified: with coverage off every test covers every mutant, so a test change gives no speed-up either.
+
+The [issue 267 receipt](evidence/issue-267/receipt.md) records the bounded pre-merge span validation and its limits.
+
 ## Issue 213 single-action targets
 
 The [approved S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) adds the repeat and configuration judgement files above, including seed semantic checks, to the existing C5 mutation scope. The runner, committed configuration, workflow matrix and independent literal test fixtures must agree on all six targets. This changes the executable measurement scope, not the historical measurements in this document.
 
-After protected merge, a main-only hosted campaign must include the changed verifier commit and all six shards. Publication requires `measurement_complete: true` and `break_passed: true`; an incomplete or failed run cannot be waived by local unit tests. Survivor review is capped at 50 with exhaustion action `record the gap and continue`; unreviewed remainder is recorded as `unreviewed_beyond_cap`, without changing raw scoring. No passing six-shard mutation result is claimed by the implementation PR.
+After protected merge, a main-only hosted campaign must include the changed verifier commit and every shard of all six targets. Publication requires `measurement_complete: true` and `break_passed: true`; an incomplete or failed run cannot be waived by local unit tests. Survivor review is capped at 50 with exhaustion action `record the gap and continue`; unreviewed remainder is recorded as `unreviewed_beyond_cap`, without changing raw scoring. No passing six-shard mutation result is claimed by the implementation PR.
+
+## Issue 268 survivor dispositions
+
+The first C5 run after the [issue 261 repair](#issue-261-excluded-source-instrumentation-repair), [run 41183628251](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41183628251), left 149 surviving mutants in four targets. The run is incomplete and is not acceptance evidence. This section gives each survivor one disposition under the [issue 268 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/268#issuecomment-6544994859); raw Stryker statuses and scores are unchanged. Survivors of `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` are unknown until a complete run exists and are not covered.
+
+- Missing test: a test added for issue 268 passes on `main` and fails on the replayed mutant, and no existing test fails on it.
+- Equivalent: no input can change observable behaviour. The proof is in E1 to E11, and the mutant also survives replay.
+- Killed on replay: existing tests fail on the replayed mutant, though Stryker reported it survived (R1).
+
+Test aliases:
+
+- PJ1 `Given_PhaseEvidenceCase_When_Judged_Then_ReturnsExactStatusGateAndReasons`; PJ2 `Given_TrustedWorkloadObservation_When_Judged_Then_PreservesEachRepeatObservation`; PJ3 `Given_NullEvidence_When_Judged_Then_ThrowsForEvidenceParameter`; PJ4 `Given_UnsupportedPhase_When_Judged_Then_ThrowsWithPhaseMessage` (all `PhaseJudgeTests`).
+- PA1 `PublicationAcceptanceTests.Given_SingleAcceptanceFault_When_Accepting_Then_ReturnsExactCodesAndCompleteness`.
+- A1 `A01EvidenceRecorderTests.Given_NegativePlannedAttemptCount_When_Recorded_Then_RetainsWorkloadDiagnostic`.
+- SA1 to SA14, in `ProbeV2ComparatorAuditTests`, in the order of file change 4. SB1 `SingleActionJudgementBoundaryAuditTests.Given_ReportHiddenBehindWrapSeparatorOrLaterRow_When_Judged_Then_P6GapRemains`.
+
+Equivalence proofs (line numbers in this section are in the target files at b79acb256d09ea29e493acc460ebbe2c9c59aa4f):
+
+- E1 (`PhaseJudge.cs` 4992, 4994, 4995, 4998). Line 76 adds `j1_repeat_slots` only when a slot is extra or duplicated. In each such case some slot has `j1` false at line 46 and line 55 has already added the same reason; line 99 removes duplicates. The mutants add it in a subset of those cases or never.
+- E2 (`PhaseJudge.cs` 5013 to 5018). The line 81 condition requires every repeat to be `complete_valid`, which line 62 sets only when `j1` to `j6` are all true, and `repeats` always has five entries (line 42). Any weakening of the line 80 conjunction is therefore never decisive.
+- E3 (`PhaseJudge.cs` 5028 to 5038). Each `checked(...)` on line 86 wraps only a method call. Per the C# specification, these operators "have no effect on function members that are invoked as a result of evaluating the contained expression" ([section 12.8.20](https://learn.microsoft.com/dotnet/csharp/language-reference/language-specification/expressions#12820-the-checked-and-unchecked-operators)). `Enumerable.Sum<TSource>(IEnumerable<TSource>, Func<TSource,Int64>)` throws `OverflowException` itself ([API reference](https://learn.microsoft.com/dotnet/api/system.linq.enumerable.sum?view=net-10.0)).
+- E4 (`PublicationAcceptance.cs` 10008). Every `DescriptorNames` entry is in `PublicationNames` (lines 19 and 20). When line 61 finds a payload absent or null, line 46 has already added `publication_object_missing` for the same name, and line 81 removes duplicates. (Mutant 10010 on the same line sets `incomplete` back to false, so it is not equivalent; PA1 kills it.)
+- E5 (`SingleActionRepeatJudgement.cs` 13447). `Error` has one caller (line 52). Every `return false` path discards `fatal`; the only `return true` path (line 69) follows the assignment at line 66.
+- E6 (13530, 14193). The `"statistics"` label passed to `StrictJson.ParseDocument` (lines 101, 277) is used only in messages and `StructuralProblem` values. Both callers read only `IsSuccess` and catch the exceptions into `null`.
+- E7 (13836). `nullable` is read only when the text is null (line 257). The line 175 caller then evaluates `&& vl` with `vl` already false.
+- E8 (14123). Line 245 is reached only for a terminal row (line 214) with no observations, so `Error` is null (lines 238 to 242), and `Result` is not `"no_outcome"` (line 244). The mutant then differs only when `Result` is not `"success"` and there is no delivery or record. Such a row matches none of lines 203, 209 and 210, so line 213 already calls `Bad("v2_terminal")`; line 224's `Distinct` removes the repeat.
+- E9 (14129). Line 245 returns when there are no observations, so `First` and `FirstOrDefault` at line 246 return the same element.
+- E10 (14286). Inside the try at lines 275 to 296, only `OverflowException` (line 286) and `InputLimitExceededException` can be thrown: the Base64 text was already decoded at line 272, `ParseDocument` converts its own JSON failures, and each `GetString` is guarded by a kind check. Inferred, not proven: this assumes `StrictJson` converts every `JsonElement.GetString` decode failure, as its own comment states.
+- E11 (14288). Given E10, only `OverflowException` reaches the line 299 catch. Inferred, not proven: Stryker 5.0.0 ends a non-void method whose block was emptied with `return default;`, and `default` of the nullable tuple is `null`, the original return value. Source replay of `{}` cannot compile (CS0161), so replay does not test this one.
+
+Killed on replay:
+
+- R1 (`PublicationAcceptance.cs` 9918, 9920, 9922, 9924, 9926). These mutate the `static readonly` arrays `PublicationNames` and `DescriptorNames` (lines 19, 20). On replay, 37 existing test methods fail for each, including methods in `PublicationAcceptanceTests`, `C3HandlerTests` and `VerifyRunDiagnosticTests`. The other six literals in the same arrays are reported killed by 89 tests each. Inferred, not proven: Stryker's survived status here comes from how it activates mutants in static initializers, not from a missing test. No test is added.
+
+| File | Mutant | Line | Mutator | Disposition | Test or proof |
+| --- | ---: | ---: | --- | --- | --- |
+| `PhaseJudge.cs` | 4850 | 36 | Statement | missing test | PJ3 |
+| `PhaseJudge.cs` | 4852 | 37 | Statement | missing test | PJ4 |
+| `PhaseJudge.cs` | 4853 | 37 | String | missing test | PJ4 |
+| `PhaseJudge.cs` | 4899 | 55 | Logical not | missing test | PJ1 |
+| `PhaseJudge.cs` | 4914 | 60 | Logical not | missing test | PJ1 |
+| `PhaseJudge.cs` | 4915 | 60 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 4916 | 60 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 4948 | 63 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 4949 | 63 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 4965 | 68 | Conditional false | missing test | PJ2 |
+| `PhaseJudge.cs` | 4967 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4968 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4969 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4970 | 68 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4971 | 69 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4972 | 69 | Boolean | missing test | PJ2 |
+| `PhaseJudge.cs` | 4992 | 76 | Logical | equivalent | E1 |
+| `PhaseJudge.cs` | 4993 | 76 | Negate | missing test | PJ1 |
+| `PhaseJudge.cs` | 4994 | 76 | Linq Any to All | equivalent | E1 |
+| `PhaseJudge.cs` | 4995 | 76 | Equality | equivalent | E1 |
+| `PhaseJudge.cs` | 4996 | 76 | Equality | missing test | PJ1 |
+| `PhaseJudge.cs` | 4998 | 76 | Statement | equivalent | E1 |
+| `PhaseJudge.cs` | 4999 | 76 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5013 | 80 | Linq All to Any | equivalent | E2 |
+| `PhaseJudge.cs` | 5014 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5015 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5016 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5017 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5018 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5022 | 81 | Logical | missing test | PJ1 |
+| `PhaseJudge.cs` | 5028 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5030 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5032 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5034 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5036 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5038 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5044 | 90 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 5045 | 90 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5054 | 96 | Linq Any to All | missing test | PJ1 |
+| `PhaseJudge.cs` | 5059 | 97 | Equality | missing test | PJ1 |
+| `PhaseJudge.cs` | 5060 | 97 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5061 | 97 | Statement | missing test | PJ1 |
+| `PhaseJudge.cs` | 5062 | 97 | String | missing test | PJ1 |
+| `PhaseJudge.cs` | 5064 | 99 | Linq Order to OrderDescending | missing test | PJ1 |
+| `A01EvidenceRecorder.cs` | 6967 | 50 | Statement | missing test | A1 |
+| `PublicationAcceptance.cs` | 9918 | 19 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9920 | 19 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9922 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9924 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9926 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9931 | 33 | Null coalescing | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9945 | 40 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9947 | 40 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9955 | 46 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9957 | 46 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9959 | 47 | Arithmetic | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9961 | 48 | Equality | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9963 | 48 | Linq Min to Max | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9965 | 48 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9970 | 52 | Equality | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9972 | 52 | Linq Min to Max | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9974 | 52 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9977 | 53 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9979 | 53 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 9982 | 56 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10000 | 58 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10003 | 61 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10008 | 61 | Statement | equivalent | E4 |
+| `PublicationAcceptance.cs` | 10010 | 61 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10021 | 66 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10025 | 67 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10030 | 68 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10037 | 72 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10048 | 74 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10050 | 75 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10054 | 75 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10056 | 76 | Logical | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10062 | 77 | Statement | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10067 | 81 | Linq Order to OrderDescending | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10077 | 90 | Boolean | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10110 | 101 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10112 | 102 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10114 | 103 | String | missing test | PA1 |
+| `PublicationAcceptance.cs` | 10116 | 103 | String | missing test | PA1 |
+| `SingleActionRepeatJudgement.cs` | 13447 | 62 | Boolean | equivalent | E5 |
+| `SingleActionRepeatJudgement.cs` | 13530 | 101 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 13563 | 106 | String | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13617 | 119 | Checked | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13626 | 122 | Block | missing test | SB1 |
+| `SingleActionRepeatJudgement.cs` | 13730 | 156 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13746 | 157 | Logical | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13747 | 157 | Logical | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13776 | 162 | Statement | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13777 | 162 | Conditional true | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13778 | 162 | Conditional false | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13779 | 162 | Equality | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13780 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13781 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13782 | 162 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13786 | 163 | Conditional true | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13791 | 163 | String | missing test | SA1 |
+| `SingleActionRepeatJudgement.cs` | 13809 | 168 | Linq Any to All | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13836 | 175 | Boolean | equivalent | E7 |
+| `SingleActionRepeatJudgement.cs` | 13837 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13838 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13839 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13840 | 176 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13845 | 178 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13854 | 181 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13855 | 181 | Logical | missing test | SA2 |
+| `SingleActionRepeatJudgement.cs` | 13892 | 191 | Statement | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13893 | 191 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13896 | 192 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13898 | 194 | Statement | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13899 | 194 | String | missing test | SA3 |
+| `SingleActionRepeatJudgement.cs` | 13923 | 197 | Logical | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13924 | 197 | String | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13925 | 197 | String | missing test | SA4 |
+| `SingleActionRepeatJudgement.cs` | 13970 | 206 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13972 | 206 | Statement | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13973 | 206 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13977 | 207 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13979 | 207 | Statement | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13980 | 207 | String | missing test | SA5 |
+| `SingleActionRepeatJudgement.cs` | 13994 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 13995 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 13996 | 210 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14015 | 211 | Equality | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14019 | 213 | Logical | missing test | SA6 |
+| `SingleActionRepeatJudgement.cs` | 14034 | 215 | Linq Any to All | missing test | SA7 |
+| `SingleActionRepeatJudgement.cs` | 14054 | 222 | Conditional true | missing test | SA8 |
+| `SingleActionRepeatJudgement.cs` | 14058 | 222 | String | missing test | SA8 |
+| `SingleActionRepeatJudgement.cs` | 14074 | 226 | Conditional false | missing test | SA9 |
+| `SingleActionRepeatJudgement.cs` | 14098 | 236 | Equality | missing test | SA10 |
+| `SingleActionRepeatJudgement.cs` | 14123 | 245 | Logical | equivalent | E8 |
+| `SingleActionRepeatJudgement.cs` | 14129 | 246 | Linq First to FirstOrDefault | equivalent | E9 |
+| `SingleActionRepeatJudgement.cs` | 14166 | 261 | Boolean | missing test | SA11 |
+| `SingleActionRepeatJudgement.cs` | 14179 | 272 | Logical | missing test | SA11 |
+| `SingleActionRepeatJudgement.cs` | 14186 | 273 | Equality | missing test | SA12 |
+| `SingleActionRepeatJudgement.cs` | 14193 | 277 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 14217 | 282 | Logical | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14218 | 282 | Logical | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14225 | 282 | String | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14246 | 286 | Checked | missing test | SA13 |
+| `SingleActionRepeatJudgement.cs` | 14270 | 294 | Logical | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14276 | 294 | String | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14277 | 294 | String | missing test | SA14 |
+| `SingleActionRepeatJudgement.cs` | 14286 | 299 | Logical | equivalent | E10 |
+| `SingleActionRepeatJudgement.cs` | 14288 | 299 | Block | equivalent | E11 |
+
+The [receipt](evidence/issue-268/receipt.md) records the source-edit replay of every survivor with `evidence/issue-268/replay.py`. A replay is diagnostic evidence, not C5 acceptance. The next complete hosted run on `main` measures these targets under [Issue 187 hosted C5 measurement](#issue-187-hosted-c5-measurement).
 
 ## Issue 93 closure measurement
 

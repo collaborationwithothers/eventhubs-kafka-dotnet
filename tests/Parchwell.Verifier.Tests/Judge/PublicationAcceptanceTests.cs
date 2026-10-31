@@ -112,6 +112,65 @@ public sealed class PublicationAcceptanceTests
         Assert.Contains("producer_completion_invalid",result.RejectionCodes);
     }
 
+    [Theory]
+    [InlineData("listing-prefix-escape", "listing_prefix_escape", false)]
+    [InlineData("member-missing", "publication_incomplete", true)]
+    [InlineData("index-payload-absent", "publication_object_missing", true)]
+    [InlineData("ledger-payload-null", "publication_object_missing", true)]
+    [InlineData("object-at-limit", "", false)]
+    [InlineData("object-over-limit", "publication_object_oversized", false)]
+    [InlineData("aggregate-at-limit", "", false)]
+    [InlineData("aggregate-over-limit", "publication_aggregate_oversized", false)]
+    [InlineData("index-null", "publication_index_unavailable", true)]
+    [InlineData("index-identity", "publication_identity_invalid", false)]
+    [InlineData("descriptor-count", "publication_descriptors_invalid", false)]
+    [InlineData("manifest-null", "publication_manifest_unavailable", true)]
+    [InlineData("manifest-identity", "publication_manifest_identity_invalid", false)]
+    [InlineData("receipt-null", "producer_completion_unavailable", true)]
+    [InlineData("start-null", "start_line_unavailable", true)]
+    [InlineData("inventory-null", "broker_inventory_unavailable", true)]
+    [InlineData("inventory-commit", "broker_inventory_invalid", false)]
+    [InlineData("start-reference-run", "publication_source_invalid", false)]
+    [InlineData("manifest-and-start-null", "publication_manifest_unavailable,start_line_unavailable", true)]
+    [InlineData("producer-reference-null", "publication_reference_unavailable", true)]
+    public void Given_SingleAcceptanceFault_When_Accepting_Then_ReturnsExactCodesAndCompleteness(string fault, string codes, bool incomplete)
+    {
+        var f=Build();
+        var payloads=f.Payloads.ToDictionary(p=>p.Key,p=>(byte[]?)p.Value,StringComparer.Ordinal);
+        long objectLimit=1024;
+        long aggregateLimit=1024;
+        switch(fault)
+        {
+            case "listing-prefix-escape": f=f with{Listing=new(f.Listing.Names,1,false,"listing_prefix_escape")}; break;
+            case "member-missing": f=f with{Listing=new(f.Listing.Names.Where(n=>!n.EndsWith("/capabilities.json",StringComparison.Ordinal)).ToArray(),1,true)}; break;
+            case "index-payload-absent": payloads.Remove("index.json"); break;
+            case "ledger-payload-null": payloads["ledger.jsonl"]=null; break;
+            case "object-at-limit": objectLimit=1; break;
+            case "object-over-limit": objectLimit=0; break;
+            case "aggregate-at-limit": aggregateLimit=6; break;
+            case "aggregate-over-limit": aggregateLimit=5; break;
+            case "index-null": f=f with{Index=null!}; break;
+            case "index-identity": f=f with{Index=f.Index with{Identity=ProducerIdentity with{ClientId="foreign-client"}}}; break;
+            case "descriptor-count": f=f with{Index=f.Index with{Artifacts=f.Index.Artifacts.Take(4).ToArray()}}; break;
+            case "manifest-null": f=f with{Manifest=null!}; break;
+            case "manifest-identity": f=f with{Manifest=f.Manifest with{Identity=ProducerIdentity with{ClientId="foreign-client"}}}; break;
+            case "receipt-null": f=f with{ProducerReceipt=null!}; break;
+            case "start-null": f=f with{StartLine=null!}; break;
+            case "inventory-null": f=f with{Inventory=null!}; break;
+            case "inventory-commit": f=f with{Inventory=f.Inventory with{SourceCommit=new string('b',40)}}; break;
+            case "start-reference-run": f=f with{StartReference=f.StartReference with{Name="foreign-run/start-line.json"}}; break;
+            case "manifest-and-start-null": f=f with{Manifest=null!,StartLine=null!}; break;
+            case "producer-reference-null": f=f with{ProducerReference=null}; break;
+            default: throw new ArgumentOutOfRangeException(nameof(fault));
+        }
+        PublicationReadOutcome result=PublicationAcceptance.Evaluate(f.Listing,f.Prefix,payloads,ProducerRegistration(),f.ProducerReceipt,f.Index,f.Manifest,
+            f.StartLine,f.Inventory,Commit,f.StartReference,f.InventoryReference,f.ProducerReference,objectLimit,aggregateLimit);
+        string[] expected=codes.Split(',',StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(expected,result.RejectionCodes);
+        Assert.Equal(incomplete,result.Incomplete);
+        Assert.Equal(expected.Length==0,result.Accepted);
+    }
+
     private static Fixture Build()
     {
         string prefix=PhasePaths.ProducerPrefix(Run,Phase,Repeat,Instance);

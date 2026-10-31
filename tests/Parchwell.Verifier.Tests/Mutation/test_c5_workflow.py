@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -23,6 +25,11 @@ TREE = "2" * 40
 RUN_ID = "12345"
 ATTEMPT = "2"
 STATUSES = ("Killed", "Timeout", "Survived", "NoCoverage", "CompileError", "RuntimeError", "Ignored")
+SPAN_END = 2147483647
+SOURCE = "".join(f"    void M{i}()\n    {{\n    }}\n" for i in range(8)).encode()
+FILTERED = {"status": "Ignored", "statusReason": "Removed by mutate filter"}
+REPEAT = "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs"
+CONFIGURATION = "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
 
 
 def digest(path):
@@ -50,20 +57,19 @@ class AggregateFixture:
         self.paths = {}
         self.receipts = {}
         self.reports = {}
-        populations = populations or [["Killed"] for _ in workflow.SHARDS]
-        for (shard, target), population in zip(workflow.SHARDS.items(), populations, strict=True):
+        populations = populations or [["Killed"] for _ in workflow.TARGETS]
+        for shard, target in workflow.SHARDS.items():
             artifact = self.input / f"c5-mutation-{RUN_ID}-{ATTEMPT}-{shard}"
             artifact.mkdir()
             self.paths[shard] = artifact
-            write_json(artifact / "shard-config.json", workflow.shard_config(shard))
+            write_json(artifact / "shard-config.json", workflow.shard_config(shard, SOURCE))
             (artifact / "command.log").write_bytes(b"synthetic output\n")
             report = {
                 "schemaVersion": "2", "projectRoot": "/synthetic/src/Parchwell.Verifier",
                 "thresholds": {"high": 80, "low": 60},
                 "files": {
                     "/synthetic/src/Parchwell.Verifier/" + target: {
-                        "language": "cs", "source": "if (value) return true;",
-                        "mutants": [mutant(i, status) for i, status in enumerate(population)],
+                        "language": "cs", "source": SOURCE.decode(), "mutants": [],
                     },
                     "/synthetic/src/Parchwell.Verifier/Other.cs": {
                         "language": "none", "source": "File ignored by mutate filter", "mutants": [],
@@ -71,7 +77,7 @@ class AggregateFixture:
                 },
             }
             self.reports[shard] = report
-            original = {projection.VERIFIER + name: b"if (value) return true;" for name in workflow.SHARDS.values()}
+            original = {projection.VERIFIER + name: SOURCE for name in workflow.SHARDS.values()}
             original["tests/Parchwell.Verifier.Tests/SyntheticTests.cs"] = b"synthetic test source"
             source = {name: projection.digest(data) for name, data in original.items()}
             disabled = sorted(name for name in original if name.startswith(projection.VERIFIER) and name != projection.VERIFIER + target)
@@ -95,7 +101,7 @@ class AggregateFixture:
                 "environment_overrides": {"ParchwellVerifierMutationOnly": "true"},
                 "started_at_utc": "2026-10-25T18:00:00+00:00",
                 "finished_at_utc": "2026-10-25T18:00:01+00:00", "elapsed_seconds": 1.0,
-                "child_exit_code": 0 if "Killed" in population else 2,
+                "child_exit_code": 0,
                 "termination_reason": None, "command_completed": True,
                 "source_sha256_before": dict(source), "source_sha256_after": dict(source),
                 "tracked_clean_before": True, "tracked_clean_after": True,
@@ -103,6 +109,28 @@ class AggregateFixture:
                 "report_sha256": None, "command_log_sha256": None,
                 "projection_manifest_sha256": digest(artifact / "projection.json"),
             }
+            self.save(shard)
+        for (key, _), population in zip(workflow.TARGETS.items(), populations, strict=True):
+            self.add_owned(key, [mutant(i, status) for i, status in enumerate(population)])
+            for shard in self.members(key):
+                self.receipts[shard]["child_exit_code"] = 0 if "Killed" in population else 2
+                self.save(shard)
+
+    def members(self, key):
+        return [shard for shard, (part_key, _, _) in workflow.PARTS.items() if part_key == key]
+
+    def add_owned(self, key, rows):
+        members = self.members(key)
+        for number, row in enumerate(rows):
+            for index, shard in enumerate(members):
+                self.target_rows(shard).append(copy.deepcopy(row) if index == number % len(members)
+                                               else {**row, **FILTERED})
+        for shard in members:
+            self.save(shard)
+
+    def add_shared(self, key, rows):
+        for shard in self.members(key):
+            self.target_rows(shard).extend(copy.deepcopy(row) for row in rows)
             self.save(shard)
 
     def target_rows(self, shard):
@@ -131,24 +159,197 @@ class AggregateFixture:
 
 
 class CommittedContractTests(unittest.TestCase):
-    def test_six_literal_targets_match_code_config_and_workflow(self):
-        expected = {
+    def test_literal_targets_parts_and_shards_match_code_config_and_workflow(self):
+        targets = {
+            "phase": ("Judge/PhaseJudge.cs", 1),
+            "publication": ("VerifyRun/Publication/PublicationAcceptance.cs", 1),
+            "a01": ("VerifyRun/A01/A01EvidenceRecorder.cs", 1),
+            "workload": ("VerifyRun/A01/WorkloadRecorder.cs", 1),
+            "single-action-repeat": (REPEAT, 3),
+            "single-action-configuration": (CONFIGURATION, 6),
+        }
+        shards = {
             "phase": "Judge/PhaseJudge.cs",
             "publication": "VerifyRun/Publication/PublicationAcceptance.cs",
             "a01": "VerifyRun/A01/A01EvidenceRecorder.cs",
             "workload": "VerifyRun/A01/WorkloadRecorder.cs",
-            "single-action-repeat": "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
-            "single-action-configuration": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+            "single-action-repeat-p1": REPEAT,
+            "single-action-repeat-p2": REPEAT,
+            "single-action-repeat-p3": REPEAT,
+            "single-action-configuration-p1": CONFIGURATION,
+            "single-action-configuration-p2": CONFIGURATION,
+            "single-action-configuration-p3": CONFIGURATION,
+            "single-action-configuration-p4": CONFIGURATION,
+            "single-action-configuration-p5": CONFIGURATION,
+            "single-action-configuration-p6": CONFIGURATION,
         }
         root = Path(__file__).resolve().parents[3]
-        self.assertEqual(expected, workflow.SHARDS)
-        self.assertEqual(list(expected.values()), workflow.BASE_CONFIG["stryker-config"]["mutate"])
+        self.assertEqual(targets, workflow.TARGETS)
+        self.assertEqual(shards, workflow.SHARDS)
+        self.assertEqual([target for target, _ in targets.values()], workflow.BASE_CONFIG["stryker-config"]["mutate"])
         committed = json.loads((root / "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json").read_text())
-        self.assertEqual(list(expected.values()), committed["stryker-config"]["mutate"])
+        self.assertEqual(workflow.BASE_CONFIG, committed)
         # PyYAML is supplied by the pinned lifecycle tooling; this checks actual matrix data.
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
-        self.assertEqual(expected, {row["shard"]: row["target"] for row in matrix})
+        self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
+        self.assertEqual(13, len(matrix))
+
+    def test_workflow_keeps_stryker_logs_out_of_aggregate_input(self):
+        import yaml
+        root = Path(__file__).resolve().parents[3]
+        jobs = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]
+        mutation_steps = jobs["mutation"]["steps"]
+        steps = {step["name"]: step for step in mutation_steps}
+        upload = "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+        evidence, logs = steps["Retain shard evidence"], steps["Retain shard Stryker logs"]
+        self.assertEqual({
+            "name": "c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}",
+            "path": "${{ env.C5_OUTPUT }}\n!${{ env.C5_OUTPUT }}/stryker/logs/**\n",
+            "if-no-files-found": "error", "retention-days": 90}, evidence["with"])
+        self.assertEqual({
+            "name": "c5-logs-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}",
+            "path": "${{ env.C5_OUTPUT }}/stryker/logs",
+            "if-no-files-found": "ignore", "retention-days": 90}, logs["with"])
+        for step in (evidence, logs):
+            self.assertEqual("always()", step["if"])
+            self.assertEqual(upload, step["uses"])
+        self.assertEqual(mutation_steps.index(evidence) + 1, mutation_steps.index(logs))
+        download = {step["name"]: step for step in jobs["aggregate"]["steps"]}["Download shard evidence"]
+        self.assertEqual("c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*", download["with"]["pattern"])
+
+    def test_committed_split_targets_have_enough_member_boundaries(self):
+        root = Path(__file__).resolve().parents[3]
+        for key, (target, count) in workflow.TARGETS.items():
+            with self.subTest(target=key):
+                text = workflow.target_text((root / "src/Parchwell.Verifier" / target).read_bytes())
+                selected = workflow.spans(text, count)
+                self.assertEqual(count, len(selected))
+                self.assertEqual(0, selected[0][0])
+                self.assertEqual(SPAN_END, selected[-1][1])
+
+
+class SpanTests(unittest.TestCase):
+    TEXT = "namespace N;\n\npublic sealed class C\n{\n    void A()\n    {\n    }\n\n    void B()\n    {\n    }\n}\n"
+
+    def test_member_boundaries_follow_exact_member_closing_lines(self):
+        self.assertEqual([(63, 8), (89, 12)], workflow.member_boundaries(self.TEXT))
+        self.assertEqual([], workflow.member_boundaries("     }\n\t}\n    } \n   }\n    };\nx\n"))
+        self.assertEqual([(7, 2)], workflow.member_boundaries("    }\r\nx\r\n"))
+        self.assertEqual([], workflow.member_boundaries("    }\n"))
+        self.assertEqual([], workflow.member_boundaries(""))
+
+    def test_span_count_below_at_and_above_boundary_limit(self):
+        self.assertEqual([(0, SPAN_END)], workflow.spans(self.TEXT, 1))
+        self.assertEqual([(0, 63), (63, SPAN_END)], workflow.spans(self.TEXT, 2))
+        self.assertEqual([(0, 63), (63, 89), (89, SPAN_END)], workflow.spans(self.TEXT, 3))
+        with self.assertRaisesRegex(ValueError, "too few member boundaries for span count"):
+            workflow.spans(self.TEXT, 4)
+        with self.assertRaisesRegex(ValueError, "too few member boundaries for span count"):
+            workflow.spans("", 2)
+        self.assertEqual([(0, SPAN_END)], workflow.spans("", 1))
+        for count in (0, -1, True, "2", 1.0):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "span count must be a positive integer"):
+                workflow.spans(self.TEXT, count)
+
+    def test_spans_minimize_the_longest_span_and_break_ties_low(self):
+        self.assertEqual([(0, 6), (6, SPAN_END)], workflow.spans("    }\n    }\nabcde\n", 2))
+        self.assertEqual([(0, 52), (52, 130), (130, SPAN_END)], workflow.spans(SOURCE.decode(), 3))
+        self.assertEqual([(0, 26), (26, 52), (52, 78), (78, 104), (104, 156), (156, SPAN_END)],
+                         workflow.spans(SOURCE.decode(), 6))
+
+    def test_offsets_are_utf16_code_units_after_bom_removal(self):
+        text = "\U0001F600\n    }\nx\n"
+        self.assertEqual([(9, 3)], workflow.member_boundaries(text))
+        self.assertEqual([(0, 9), (9, SPAN_END)], workflow.spans(text, 2))
+        stripped = workflow.target_text(b"\xef\xbb\xbf    }\nx\n")
+        self.assertEqual("    }\nx\n", stripped)
+        self.assertEqual([(6, 2)], workflow.member_boundaries(stripped))
+        with self.assertRaises(ValueError):
+            workflow.target_text(b"\xff")
+
+    def test_target_length_limit(self):
+        with patch.object(workflow, "SPAN_END", 92):
+            self.assertEqual([(0, 92)], workflow.spans(self.TEXT, 1))
+        with patch.object(workflow, "SPAN_END", 91), self.assertRaisesRegex(ValueError, "target too long for span selection"):
+            workflow.spans(self.TEXT, 1)
+
+    def test_span_shard_configs(self):
+        expected = {
+            "single-action-repeat-p1": REPEAT + "{0..52}",
+            "single-action-repeat-p2": REPEAT + "{52..130}",
+            "single-action-repeat-p3": REPEAT + "{130..2147483647}",
+            "single-action-configuration-p1": CONFIGURATION + "{0..26}",
+            "single-action-configuration-p2": CONFIGURATION + "{26..52}",
+            "single-action-configuration-p3": CONFIGURATION + "{52..78}",
+            "single-action-configuration-p4": CONFIGURATION + "{78..104}",
+            "single-action-configuration-p5": CONFIGURATION + "{104..156}",
+            "single-action-configuration-p6": CONFIGURATION + "{156..2147483647}",
+        }
+        for shard in workflow.PARTS:
+            with self.subTest(shard=shard):
+                config = workflow.shard_config(shard, SOURCE)
+                self.assertEqual([expected.get(shard, workflow.SHARDS[shard])], config["stryker-config"]["mutate"])
+                config["stryker-config"]["mutate"] = workflow.BASE_CONFIG["stryker-config"]["mutate"]
+                self.assertEqual(workflow.BASE_CONFIG, config)
+        self.assertEqual(workflow.shard_config("phase"), workflow.shard_config("phase", b"ignored"))
+        with self.assertRaisesRegex(ValueError, "span shard requires target source"):
+            workflow.shard_config("single-action-repeat-p1")
+        with self.assertRaisesRegex(ValueError, "too few member boundaries for span count"):
+            workflow.shard_config("single-action-repeat-p1", b"if (value) return true;")
+
+
+def row(identifier, status, reason=None, **changes):
+    value = {**mutant(identifier, status), **changes}
+    if reason is not None:
+        value["statusReason"] = reason
+    return value
+
+
+def filtered(identifier, **changes):
+    return {**row(identifier, "Ignored", **changes), **FILTERED}
+
+
+class ReconcileTests(unittest.TestCase):
+    def test_single_part_passes_records_through(self):
+        rows = [row(1, "Killed"), filtered(2)]
+        self.assertEqual(([rows], rows), workflow.reconcile([rows]))
+
+    def test_each_mutant_is_taken_from_its_one_owner(self):
+        first = [row(1, "Killed"), filtered(2), row(3, "Ignored", "Removed by block already covered filter")]
+        second = [filtered(1), row(2, "Survived"), filtered(3)]
+        owned, population = workflow.reconcile([first, second])
+        self.assertEqual([["1", "3"], ["2"]], [[record["id"] for record in rows] for rows in owned])
+        self.assertEqual([("1", "Killed"), ("2", "Survived"), ("3", "Ignored")],
+                         [(record["id"], record["status"]) for record in population])
+
+    def test_identical_compile_errors_and_early_ignores_count_once(self):
+        def part():
+            return [row(1, "CompileError"), row(2, "Ignored", "Removed by ignore mutation filter")]
+        owned, population = workflow.reconcile([part(), part()])
+        self.assertEqual([[], []], owned)
+        self.assertEqual(part(), population)
+
+    def test_gaps_overlaps_and_inconsistent_inventories_fail(self):
+        block = "Removed by block already covered filter"
+        location = {"start": {"line": 2, "column": 1}, "end": {"line": 2, "column": 2}}
+        cases = {
+            "has no owning span": [[filtered(1)], [filtered(1)]],
+            "more than one owning span": [[row(1, "Killed")], [row(1, "Killed")]],
+            "more than one owning span ": [[row(1, "Killed")], [row(1, "Ignored", block)]],
+            "compile error differs across spans": [[row(1, "CompileError")], [filtered(1)]],
+            "compile error differs across spans ": [[row(1, "CompileError", "a")], [row(1, "CompileError", "b")]],
+            "span inventories differ": [[row(1, "Killed")], [row(1, "Killed"), filtered(2)]],
+            "span inventories differ ": [[row(1, "Killed")], [filtered(2)]],
+            "identity differs across spans": [[row(1, "Killed")], [filtered(1, replacement="true")]],
+            "identity differs across spans ": [[row(1, "Killed")], [filtered(1, mutatorName="Other")]],
+            "identity differs across spans  ": [[row(1, "Killed")], [filtered(1, location=location)]],
+        }
+        for message, parts in cases.items():
+            with self.subTest(message=message, parts=parts), self.assertRaisesRegex(ValueError, message.strip()):
+                workflow.reconcile(parts)
+        self.assertEqual(([[], []], []), workflow.reconcile([[], []]))
+
 
 class AggregationTests(unittest.TestCase):
     def setUp(self):
@@ -168,10 +369,9 @@ class AggregationTests(unittest.TestCase):
     def test_combined_threshold_keeps_below_threshold_shards(self):
         populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"]]
         fixture = AggregateFixture(self.directory, populations)
-        for shard in workflow.SHARDS:
-            fixture.target_rows(shard).extend(mutant("extra-" + status, status)
-                                               for status in ("CompileError", "RuntimeError", "Ignored"))
-            fixture.save(shard)
+        for key in workflow.TARGETS:
+            fixture.add_shared(key, [mutant("extra-CompileError", "CompileError"), mutant("extra-Ignored", "Ignored")])
+            fixture.add_owned(key, [mutant("extra-RuntimeError", "RuntimeError")])
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
@@ -232,10 +432,9 @@ class AggregationTests(unittest.TestCase):
             ["Survived"], ["Killed", "Killed", "Survived"], ["Killed"],
             ["Killed", "Killed", "Survived", "Survived", "Survived"], ["Survived"], ["Survived"],
         ])
-        for shard in workflow.SHARDS:
-            fixture.target_rows(shard).extend(mutant("extra-" + status, status)
-                                               for status in ("CompileError", "RuntimeError", "Ignored"))
-            fixture.save(shard)
+        for key in workflow.TARGETS:
+            fixture.add_shared(key, [mutant("extra-CompileError", "CompileError"), mutant("extra-Ignored", "Ignored")])
+            fixture.add_owned(key, [mutant("extra-RuntimeError", "RuntimeError")])
         result, summary = fixture.invoke()
         self.assertEqual(1, result)
         self.assertIs(summary["measurement_complete"], True)
@@ -406,6 +605,8 @@ class AggregationTests(unittest.TestCase):
                 summary = json.loads((fixture.output / "summary.json").read_text())
                 self.assertNotIn("phase", summary["shards"])
                 self.assertIn("phase: foreign mutant with disallowed status", summary["incomplete_reasons"])
+                self.assertNotIn("phase: target incomplete because a span shard is incomplete",
+                                 summary["incomplete_reasons"])
 
     def test_actual_config_is_checked_even_when_hashes_match(self):
         fixture = AggregateFixture(self.directory)
@@ -439,6 +640,144 @@ class AggregationTests(unittest.TestCase):
         saved = {path.name: path.read_bytes() for path in fixture.output.iterdir()}
         self.assertEqual(1, workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output))
         self.assertEqual(saved, {path.name: path.read_bytes() for path in fixture.output.iterdir()})
+
+    def test_span_shards_combine_into_one_target_population(self):
+        fixture = AggregateFixture(self.directory, [["Killed"]] * 4 + [
+            ["Killed", "Survived", "Killed"], ["Killed"] * 6 + ["Survived"] * 2])
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertEqual((12, 15), (summary["numerator"], summary["denominator"]))
+        target = summary["targets"]["single-action-configuration"]
+        self.assertEqual(6, target["parts"])
+        self.assertEqual((6, 2), (target["status_counts"]["Killed"], target["status_counts"]["Survived"]))
+        self.assertEqual((6, 8), (target["numerator"], target["denominator"]))
+        self.assertEqual([2, 2, 1, 1, 1, 1], [summary["shards"][f"single-action-configuration-p{i}"]["denominator"]
+                                              for i in range(1, 7)])
+        self.assertEqual([104, 156], summary["shards"]["single-action-configuration-p5"]["span"])
+        self.assertIsNone(summary["shards"]["phase"]["span"])
+        self.assertEqual(13, len(summary["shards"]))
+        self.assertEqual([], summary["rebalance_needed"])
+        self.assertEqual(7200, summary["rebalance_threshold_seconds"])
+
+    def test_span_reconciliation_failures_are_incomplete(self):
+        def make_gap(fixture):
+            fixture.target_rows("single-action-repeat-p1")[0].update(FILTERED)
+
+        def make_overlap(fixture):
+            fixture.target_rows("single-action-repeat-p2")[0] = mutant(0, "Killed")
+
+        def make_compile_error(fixture):
+            fixture.target_rows("single-action-repeat-p1")[0] = mutant(0, "CompileError")
+
+        def add_extra_id(fixture):
+            fixture.target_rows("single-action-repeat-p3").append({**mutant(99, "Ignored"), **FILTERED})
+
+        for change in (make_gap, make_overlap, make_compile_error, add_extra_id):
+            with self.subTest(change=change.__name__), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = AggregateFixture(Path(directory))
+                change(fixture)
+                for shard in fixture.members("single-action-repeat"):
+                    fixture.save(shard)
+                result, summary = fixture.invoke()
+                self.assertEqual(1, result)
+                self.assertIs(summary["measurement_complete"], False)
+                self.assertNotIn("single-action-repeat", summary["targets"])
+                self.assertEqual(1, len([reason for reason in summary["incomplete_reasons"]
+                                         if reason.startswith("single-action-repeat: ")]))
+
+    def test_failed_span_shard_blocks_its_target(self):
+        fixture = AggregateFixture(self.directory)
+        (fixture.paths["single-action-configuration-p3"] / "command.log").unlink()
+        result, summary = fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertIn("single-action-configuration: target incomplete because a span shard is incomplete",
+                      summary["incomplete_reasons"])
+        self.assertNotIn("single-action-configuration-p3", summary["shards"])
+        self.assertNotIn("single-action-configuration", summary["targets"])
+        self.assertIn("phase", summary["targets"])
+
+    def test_span_config_must_match_recomputed_member_span(self):
+        for mutate in (CONFIGURATION + "{26..53}", CONFIGURATION, CONFIGURATION + "{0..26}"):
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = AggregateFixture(Path(directory))
+                path = fixture.paths["single-action-configuration-p2"] / "shard-config.json"
+                config = json.loads(path.read_text())
+                config["stryker-config"]["mutate"] = [mutate]
+                write_json(path, config)
+                fixture.save("single-action-configuration-p2")
+                self.assert_incomplete(fixture)
+
+    def test_elapsed_time_must_be_a_nonnegative_number(self):
+        for value in (-0.001, "1", True, None):
+            with self.subTest(value=value), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = AggregateFixture(Path(directory))
+                fixture.receipts["phase"]["elapsed_seconds"] = value
+                fixture.save("phase")
+                self.assert_incomplete(fixture)
+        fixture = AggregateFixture(self.directory)
+        fixture.receipts["phase"]["elapsed_seconds"] = 0
+        fixture.save("phase")
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertIs(summary["measurement_complete"], True)
+
+    def test_rebalance_lists_slow_shards_without_changing_the_result(self):
+        fixture = AggregateFixture(self.directory)
+        for shard, elapsed in (("phase", 7199), ("single-action-configuration-p4", 7200),
+                               ("single-action-configuration-p5", 7200.001)):
+            fixture.receipts[shard]["elapsed_seconds"] = elapsed
+            fixture.save(shard)
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertIs(summary["break_passed"], True)
+        self.assertEqual([{"shard": "single-action-configuration-p5", "target": CONFIGURATION, "part": 5,
+                           "parts": 6, "span": [104, 156], "span_verified": True,
+                           "elapsed_seconds": 7200.001}], summary["rebalance_needed"])
+        self.assertIn("- `single-action-configuration-p5` took 7200 s, over 7200 s: split part 5 of 6 of "
+                      f"`{CONFIGURATION}`, span 104..156.", (fixture.output / "summary.md").read_text())
+
+    def time_out(self, fixture, shard="single-action-repeat-p2"):
+        fixture.receipts[shard].update(elapsed_seconds=16200.02, termination_reason="time_cap_exceeded",
+                                       command_completed=False, child_exit_code=-9)
+        fixture.save(shard)
+
+    def test_timed_out_shard_is_listed_for_rebalance(self):
+        fixture = AggregateFixture(self.directory)
+        self.time_out(fixture)
+        result, summary = fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertIs(summary["measurement_complete"], False)
+        self.assertEqual([{"shard": "single-action-repeat-p2", "target": REPEAT, "part": 2, "parts": 3,
+                           "span": [52, 130], "span_verified": False, "elapsed_seconds": 16200.02}],
+                         summary["rebalance_needed"])
+        self.assertIn(f"split part 2 of 3 of `{REPEAT}`, span 52..130 (unverified).",
+                      (fixture.output / "summary.md").read_text())
+
+    def test_rebalance_span_of_unreadable_config_is_unknown(self):
+        # Each retained mutate value is otherwise valid evidence with one shape fault.
+        mutates = {
+            "missing": None, "no-span": [REPEAT], "empty-list": [],
+            "two-entries": [REPEAT + "{52..130}", REPEAT + "{52..130}"],
+            "not-string": [52], "other-target": [CONFIGURATION + "{52..130}"],
+            "trailing-text": [REPEAT + "{52..130}x"],
+        }
+        for name, mutate in mutates.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = AggregateFixture(Path(directory))
+                path = fixture.paths["single-action-repeat-p2"] / "shard-config.json"
+                if mutate is not None:
+                    config = json.loads(path.read_text())
+                    config["stryker-config"]["mutate"] = mutate
+                    write_json(path, config)
+                self.time_out(fixture)
+                if name == "missing":
+                    path.unlink()
+                result, summary = fixture.invoke()
+                self.assertEqual(1, result)
+                self.assertEqual([{"shard": "single-action-repeat-p2", "target": REPEAT, "part": 2, "parts": 3,
+                                   "span": None, "span_verified": False, "elapsed_seconds": 16200.02}],
+                                 summary["rebalance_needed"])
+                self.assertIn(f"split part 2 of 3 of `{REPEAT}`.\n", (fixture.output / "summary.md").read_text())
 
 
 CHILD = r'''
@@ -478,9 +817,13 @@ if mode == 'extra-source':
 if mode == 'config':
     with args.config_file.open('a') as config:
         config.write(' ')
+if mode == 'no-report':
+    sys.exit(0)
 report = args.output / 'reports/mutation-report.json'
 report.parent.mkdir(parents=True)
 report.write_text('{}')
+if mode == 'report-then-hang':
+    time.sleep(60)
 sys.exit(int(mode) if mode in ('0', '1', '2') else 0)
 '''
 
@@ -554,21 +897,24 @@ class RunnerTests(unittest.TestCase):
         self.patch.start()
         self.addCleanup(self.patch.stop)
 
-    def invoke(self, mode="0", output=None, **overrides):
+    def invoke(self, mode="0", output=None, shard="phase", **overrides):
         output = output or self.root / ("output-" + mode)
         values = {"repository": self.root, "command_prefix": [sys.executable, str(self.child), mode], "timeout": 5}
         values.update(overrides)
-        result = workflow.run_shard("phase", output, **values)
+        result = workflow.run_shard(shard, output, **values)
         receipt_path = output / "receipt.json"
         receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else None
         return result, receipt, output
 
     def test_singleton_configs_preserve_all_other_values(self):
-        for shard, target in workflow.SHARDS.items():
+        for shard, (_, _, count) in workflow.PARTS.items():
+            if count != 1:
+                continue
+            target = workflow.SHARDS[shard]
             with self.subTest(shard=shard):
                 config = workflow.shard_config(shard)
                 self.assertEqual([target], config["stryker-config"]["mutate"])
-                config["stryker-config"]["mutate"] = list(workflow.SHARDS.values())
+                config["stryker-config"]["mutate"] = workflow.BASE_CONFIG["stryker-config"]["mutate"]
                 self.assertEqual(workflow.BASE_CONFIG, config)
                 self.assertEqual({"high": 80, "low": 60, "break": 60}, config["stryker-config"]["thresholds"])
                 self.assertEqual("off", config["stryker-config"]["coverage-analysis"])
@@ -717,6 +1063,131 @@ class RunnerTests(unittest.TestCase):
         result, _, _ = self.invoke()
         self.assertEqual(1, result)
         self.assertFalse((self.root / "calls.txt").exists())
+
+    def commit_configuration(self, data):
+        path = self.root / "src/Parchwell.Verifier" / CONFIGURATION
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Configuration fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        os.environ["GITHUB_SHA"] = commit
+
+    def local_check(self, name, target=CONFIGURATION, span="26..52", timeout=5, mode="0"):
+        output = self.root / name
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            result = workflow.local_check(target, span, output, timeout=timeout, repository=self.root,
+                                          command_prefix=[sys.executable, str(self.child), mode])
+        return result, output, printed.getvalue()
+
+    def test_span_shard_config_is_computed_from_projected_target(self):
+        self.commit_configuration(SOURCE)
+        result, receipt, output = self.invoke(shard="single-action-configuration-p2")
+        self.assertEqual(0, result)
+        self.assertEqual([CONFIGURATION + "{26..52}"],
+                         json.loads((output / "shard-config.json").read_text())["stryker-config"]["mutate"])
+
+    def test_span_selection_failure_launches_nothing(self):
+        self.commit_configuration(b"if (value) return true;")
+        result, receipt, _ = self.invoke(shard="single-action-configuration-p2")
+        self.assertEqual(1, result)
+        self.assertIsNone(receipt)
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_local_check_runs_one_member_span_and_marks_it_diagnostic(self):
+        self.commit_configuration(SOURCE)
+        result, output, printed = self.local_check("local")
+        self.assertEqual(0, result)
+        self.assertIn(workflow.LOCAL_PURPOSE, printed)
+        self.assertEqual([CONFIGURATION + "{26..52}"],
+                         json.loads((output / "local-config.json").read_text())["stryker-config"]["mutate"])
+        receipt = json.loads((output / "local-receipt.json").read_text())
+        self.assertEqual("Local C5 check: diagnostic only, never acceptance evidence.", receipt["purpose"])
+        self.assertEqual([26, 52], receipt["span"])
+        self.assertIsNone(receipt["termination_reason"])
+        self.assertEqual(0, receipt["child_exit_code"])
+        self.assertFalse((output / "receipt.json").exists())
+
+    def test_local_check_rejects_invalid_input_without_launch(self):
+        self.commit_configuration(SOURCE)
+        boundary = "span must start and end at member boundaries"
+        order = "span must satisfy START < END <= 2147483647"
+        timeout = "timeout must be above 0 and at most 16200 seconds"
+        # (arguments, expected message, whether the output directory is created before the check)
+        cases = {
+            "off-boundary-start": ({"span": "27..52"}, boundary, True),
+            "off-boundary-end": ({"span": "0..53"}, boundary, True),
+            "reversed": ({"span": "52..26"}, order, False),
+            "empty": ({"span": "26..26"}, order, False),
+            "end-too-large": ({"span": "0..2147483648"}, order, False),
+            "not-numbers": ({"span": "a..b"}, "span must be START..END", False),
+            "empty-span": ({"span": ""}, "span must be START..END", False),
+            "trailing-text": ({"span": "26..52x"}, "span must be START..END", False),
+            "timeout-zero": ({"timeout": 0}, timeout, False),
+            "timeout-over": ({"timeout": 16200.5}, timeout, False),
+            "timeout-bool": ({"timeout": True}, timeout, False),
+            "unknown-target": ({"target": "Judge/Other.cs"}, "unknown C5 target", False),
+        }
+        for name, (arguments, message, created) in cases.items():
+            with self.subTest(name=name):
+                result, output, printed = self.local_check(name, **arguments)
+                self.assertEqual(1, result)
+                self.assertIn(message, printed)
+                self.assertEqual(created, output.exists())
+        with self.subTest(name="existing-output"):
+            (self.root / "existing-output").mkdir()
+            result, _, printed = self.local_check("existing-output")
+            self.assertEqual(1, result)
+            self.assertIn("output directory already exists", printed)
+        with self.subTest(name="dirty"):
+            (self.root / "src/input.cs").write_text("dirty")
+            result, output, printed = self.local_check("dirty")
+            self.assertEqual(1, result)
+            self.assertIn("local check requires a clean tracked checkout", printed)
+            self.assertFalse(output.exists())
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_local_check_result_needs_completed_child_and_report(self):
+        self.commit_configuration(SOURCE)
+        # (child mode, timeout, expected result, child exit, termination reason, report expected)
+        cases = (("2", 5, 0, 2, None, True), ("1", 5, 1, 1, None, True),
+                 ("report-then-hang", 0.5, 1, -9, "time_cap_exceeded", True), ("no-report", 5, 1, 0, None, False))
+        for mode, limit, expected, child_exit, reason, report in cases:
+            with self.subTest(mode=mode):
+                result, output, _ = self.local_check("result-" + mode, timeout=limit, mode=mode)
+                self.assertEqual(expected, result)
+                receipt = json.loads((output / "local-receipt.json").read_text())
+                self.assertEqual(child_exit, receipt["child_exit_code"])
+                self.assertEqual(reason, receipt["termination_reason"])
+                self.assertEqual(report, receipt["report_sha256"] is not None)
+                self.assertFalse((output / "receipt.json").exists())
+        launch = workflow.launch
+
+        def interrupted_after_clean_exit(*arguments):
+            child_exit, _ = launch(*arguments)
+            return child_exit, "interrupted"
+
+        with self.subTest(mode="interrupted"), patch.object(workflow, "launch", interrupted_after_clean_exit):
+            result, output, _ = self.local_check("result-interrupted")
+            self.assertEqual(1, result)
+            receipt = json.loads((output / "local-receipt.json").read_text())
+            self.assertEqual((0, "interrupted"), (receipt["child_exit_code"], receipt["termination_reason"]))
+            self.assertIsNotNone(receipt["report_sha256"])
+
+    def test_local_check_accepts_whole_file_and_timeout_limit(self):
+        self.commit_configuration(SOURCE)
+        self.assertEqual(0, self.local_check("whole-file", span="0..2147483647", timeout=5)[0])
+        self.assertEqual(0, self.local_check("timeout-limit", span="0..26", timeout=16200)[0])
+
+    def test_member_boundaries_command_prints_offsets_and_lines(self):
+        self.commit_configuration(SOURCE)
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            self.assertEqual(0, workflow.print_member_boundaries(CONFIGURATION, self.root))
+        self.assertEqual("26 4\n52 7\n78 10\n104 13\n130 16\n156 19\n182 22\n", printed.getvalue())
+        # Excluded.cs exists in the synthetic repository, so only the target check can reject it.
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            self.assertEqual(1, workflow.print_member_boundaries("Excluded.cs", self.root))
+        self.assertIn("unknown C5 target", printed.getvalue())
 
 
 if __name__ == "__main__":
