@@ -754,13 +754,20 @@ class AggregationTests(unittest.TestCase):
                       (fixture.output / "summary.md").read_text())
 
     def test_rebalance_span_of_unreadable_config_is_unknown(self):
-        for name in ("missing", "no-span"):
+        # Each retained mutate value is otherwise valid evidence with one shape fault.
+        mutates = {
+            "missing": None, "no-span": [REPEAT], "empty-list": [],
+            "two-entries": [REPEAT + "{52..130}", REPEAT + "{52..130}"],
+            "not-string": [52], "other-target": [CONFIGURATION + "{52..130}"],
+            "trailing-text": [REPEAT + "{52..130}x"],
+        }
+        for name, mutate in mutates.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory(dir=self.directory) as directory:
                 fixture = AggregateFixture(Path(directory))
                 path = fixture.paths["single-action-repeat-p2"] / "shard-config.json"
-                if name == "no-span":
+                if mutate is not None:
                     config = json.loads(path.read_text())
-                    config["stryker-config"]["mutate"] = [REPEAT]
+                    config["stryker-config"]["mutate"] = mutate
                     write_json(path, config)
                 self.time_out(fixture)
                 if name == "missing":
@@ -1114,6 +1121,8 @@ class RunnerTests(unittest.TestCase):
             "empty": ({"span": "26..26"}, order, False),
             "end-too-large": ({"span": "0..2147483648"}, order, False),
             "not-numbers": ({"span": "a..b"}, "span must be START..END", False),
+            "empty-span": ({"span": ""}, "span must be START..END", False),
+            "trailing-text": ({"span": "26..52x"}, "span must be START..END", False),
             "timeout-zero": ({"timeout": 0}, timeout, False),
             "timeout-over": ({"timeout": 16200.5}, timeout, False),
             "timeout-bool": ({"timeout": True}, timeout, False),
@@ -1175,8 +1184,10 @@ class RunnerTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as printed:
             self.assertEqual(0, workflow.print_member_boundaries(CONFIGURATION, self.root))
         self.assertEqual("26 4\n52 7\n78 10\n104 13\n130 16\n156 19\n182 22\n", printed.getvalue())
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(1, workflow.print_member_boundaries("Judge/Other.cs", self.root))
+        # Excluded.cs exists in the synthetic repository, so only the target check can reject it.
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            self.assertEqual(1, workflow.print_member_boundaries("Excluded.cs", self.root))
+        self.assertIn("unknown C5 target", printed.getvalue())
 
 
 if __name__ == "__main__":
