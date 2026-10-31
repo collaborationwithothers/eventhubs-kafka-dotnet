@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Parchwell.LoadGen.SingleActionV2;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.SingleActionV2;

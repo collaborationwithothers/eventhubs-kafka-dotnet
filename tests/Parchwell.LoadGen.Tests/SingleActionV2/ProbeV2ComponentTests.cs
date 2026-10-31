@@ -222,7 +222,7 @@ public sealed class ProbeV2ComponentTests
             consumerPath.SeekReturned();
             while (consumerPath.CanContinue(observationDeadline.Token))
             {
-                TimeSpan slice = consumerPath.Slice(observationDeadline.Token, 100);
+                TimeSpan slice = consumerPath.Slice(100, observationDeadline.Token);
                 if (slice <= TimeSpan.Zero) break;
                 ConsumeResult<byte[], byte[]>? reread = consumer.Consume(slice);
                 if (consumerPath.ObserveDiagnosticRead(reread, requested)) break;

@@ -156,7 +156,7 @@ public sealed class ProbeV2LifecycleTests
         using var fixture = new Fixture(item: "F06", configuration: configuration, stage: stage,
             captureAuthenticationMetadata: true, testHandlerRefreshPath: true);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
-            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+            logs: fixture.Logs);
         Assert.Equal(0, exit);
         ProbeV2CaptureFile capture = Capture(fixture);
         Assert.Equal(5, fixture.Clients.Count + fixture.ConsumerClients.Count);
@@ -210,7 +210,7 @@ public sealed class ProbeV2LifecycleTests
             captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
             advanceClockOnSeekMilliseconds: 20001);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
-            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+            logs: fixture.Logs);
 
         Assert.Equal(0, exit);
         Assert.Equal(5, fixture.ConsumerClients.Count);
@@ -243,7 +243,7 @@ public sealed class ProbeV2LifecycleTests
             captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
             nonmatchingDiagnosticRead: true);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
-            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+            logs: fixture.Logs);
 
         Assert.Equal(0, exit);
         Assert.All(fixture.ConsumerClients, client =>
@@ -655,7 +655,7 @@ public sealed class ProbeV2LifecycleTests
                 byte[]? value = stage.Value(Options, repeat);
                 return new ConsumeResult<byte[], byte[]>
                 {
-                    Topic = Assigned.Value.Topic, Partition = Assigned.Value.Partition, Offset = Assigned.Value.Offset,
+                    Topic = Assigned.Topic, Partition = Assigned.Partition, Offset = Assigned.Offset,
                     Message = new Message<byte[], byte[]> { Key = key, Value = value! }
                 };
             }
