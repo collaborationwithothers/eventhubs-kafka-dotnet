@@ -536,6 +536,7 @@ public sealed class ProbeV2LifecycleTests
                 IConsumer<byte[], byte[]> consumer = DispatchProxy.Create<IConsumer<byte[], byte[]>, NativeConsumer>();
                 var proxy = (NativeConsumer)(object)consumer;
                 proxy.Clock = clock; proxy.Capture = capture; proxy.Session = session; proxy.Requested = Options.Stage;
+                proxy.Repeat = ConsumerClients.Count + 1;
                 proxy.RefreshOnSecondConsume = testHandlerRefreshPath;
                 proxy.AdvanceClockOnSeekMilliseconds = advanceClockOnSeekMilliseconds;
                 proxy.NonmatchingDiagnosticRead = nonmatchingDiagnosticRead;
@@ -661,6 +662,7 @@ public sealed class ProbeV2LifecycleTests
         internal ProbeV2Options Options = null!;
         internal CancellationTokenSource Stopping = null!;
         internal string Requested = "";
+        internal int Repeat;
         internal bool RefreshOnSecondConsume;
         internal int ConsumeCalls, SeekCalls, DisposeCalls;
         internal int PostSeekConsumeCalls;
@@ -691,11 +693,15 @@ public sealed class ProbeV2LifecycleTests
                         Message = new Message<byte[], byte[]> { Key = [], Value = [] }
                     };
                 if (SeekCalls > 0 && NonmatchingAfterFirstPostSeek && PostSeekConsumeCalls > 1)
+                {
+                    TimeSpan timeout = args![0] is TimeSpan duration ? duration : TimeSpan.FromMilliseconds(100);
+                    Clock.Milliseconds += (long)Math.Max(1, timeout.TotalMilliseconds);
                     return new ConsumeResult<byte[], byte[]>
                     {
                         Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),
                         Message = new Message<byte[], byte[]> { Key = [], Value = [] }
                     };
+                }
                 if (RefreshOnSecondConsume && ConsumeCalls == 2)
                 {
                     Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
@@ -705,7 +711,6 @@ public sealed class ProbeV2LifecycleTests
                 TimeSpan timeout = args![0] is TimeSpan duration ? duration : TimeSpan.FromMilliseconds(100);
                 Clock.Milliseconds += (long)Math.Max(1, timeout.TotalMilliseconds);
                 if (Assigned is null) return null;
-                int repeat = int.Parse(Options.PodName[(Options.PodName.LastIndexOf('-') + 1)..], System.Globalization.CultureInfo.InvariantCulture);
                 ProbeV2Stage stage = ProbeV2Stage.For(Options.ScenarioId, Options.ConfigurationId, Options.Stage);
                 ProbeV2Options messageOptions = Options;
                 if (Options.ScenarioId == "F06" && stage.SourceConfiguration is { } sourceConfiguration &&
@@ -713,9 +718,10 @@ public sealed class ProbeV2LifecycleTests
                 {
                     stage = ProbeV2Stage.For(Options.ScenarioId, sourceConfiguration, sourceStage);
                     messageOptions = ProbeV2OptionsTests.Options(Options.ScenarioId, sourceConfiguration, sourceStage);
+                    messageOptions.RunId = Options.RunId;
                 }
-                byte[] key = stage.Key(messageOptions, repeat);
-                byte[]? value = stage.Value(messageOptions, repeat);
+                byte[] key = stage.Key(messageOptions, Repeat);
+                byte[]? value = stage.Value(messageOptions, Repeat);
                 return new ConsumeResult<byte[], byte[]>
                 {
                     Topic = Assigned.Topic, Partition = Assigned.Partition, Offset = Assigned.Offset,

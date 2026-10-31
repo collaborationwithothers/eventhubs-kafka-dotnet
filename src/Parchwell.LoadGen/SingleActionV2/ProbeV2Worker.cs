@@ -38,13 +38,15 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
             : null;
         CancellationTokenSource? refreshSessionCancellation = refreshPath is null
             ? null : CancellationTokenSource.CreateLinkedTokenSource(token);
+        TimeSpan initialRefreshCancellationDue = TimeSpan.FromMilliseconds(stage.WindowMs + 20000) - clock.GetElapsedTime(started);
+        if (initialRefreshCancellationDue < TimeSpan.Zero) initialRefreshCancellationDue = TimeSpan.Zero;
         ITimer? refreshCancellationTimer = refreshSessionCancellation is null ? null : clock.CreateTimer(
             static state =>
             {
                 try { ((CancellationTokenSource)state!).Cancel(); }
                 catch (ObjectDisposedException) { }
             }, refreshSessionCancellation,
-            TimeSpan.FromMilliseconds(stage.WindowMs + 20000), Timeout.InfiniteTimeSpan);
+            initialRefreshCancellationDue, Timeout.InfiniteTimeSpan);
         CancellationToken sessionToken = refreshSessionCancellation?.Token ?? actionCancellation.Token;
         var capture = new ProbeV2Capture(options.Limits, clock, started, stage.WindowMs, diagnosticBudget,
             $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ",
