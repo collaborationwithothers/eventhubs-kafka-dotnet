@@ -31,7 +31,8 @@ Choices made in this change that the decision did not state. Each is open to Har
 4. "Decisions in force" starts with the issue body, because "Item lifecycle" step 3 says authority starts there.
 5. A child issue reads and refreshes its listed parent items' bodies and their decision and approval comments, not their other comments. "Item lifecycle" step 3 uses the parent items for item approval and split checks, and a parent decision changes a child only when a child comment adopts it.
 6. Each step also reads the AGENTS.md and factory.md sections its skill cites. The decision's table lists neither file; skills cite factory.md sections for selection and authority rules.
-7. "Use subagents at high effort for reading" is kept in `plan-pr` and `plan-check`. The results' decision rule 5 (subagents dominating tokens) held for runs 1 and 4, but the first change does not include it.
+7. The state file adds "Item plan" and "Implementing tool" fields, and the reading lists name the approved item plan or parent plan and the tool-naming comment. Neither is a decision or approval comment, yet the plan-check questions in "Item lifecycle" step 1 and the tool check in step 2 depend on them.
+8. "Use subagents at high effort for reading" is kept in `plan-pr` and `plan-check`. The results' decision rule 5 (subagents dominating tokens) held for runs 1 and 4, but the first change does not include it.
 
 ## Verification
 
@@ -39,8 +40,8 @@ Choices made in this change that the decision did not state. Each is open to Har
 | --- | --- |
 | `git diff --check` | Exit 0, no output. |
 | `npm run check:docs`, on source commit and on the change | 8 warnings in both, the same 8. Two are in docs/agents/factory.md, `Undefined identifier: S0`, in the #211 amendment sentence and the "Evidence pack" bullet; this change does not touch either text. The other six are in files this change does not touch. |
-| Word count, Python `str.split()` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6444. |
-| `grep -rn -i "every comment\|full thread\|whole thread\|comment page"` over Markdown outside docs/operations/evidence | Before the change, one match: the old "Authority reads" first-read sentence. |
+| Word count, Python `str.split()`, source commit to the working tree before the commit that follows `592b3ed` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6695. |
+| `grep -rn -i "every comment\|full thread\|whole thread\|comment page"` over Markdown outside docs/operations/evidence | Before the change, one match: the old "Authority reads" first-read sentence. After, one match: the catch-up's "every comment's ID", which lists metadata only. |
 | Ruleset patterns in factory.md "Ruleset" and `.github/CODEOWNERS` | No pattern matches `items/`. |
 
 Source commit: `b79acb256d09ea29e493acc460ebbe2c9c59aa4f`.

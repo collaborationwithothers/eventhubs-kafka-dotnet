@@ -44,9 +44,9 @@ Each step reads a defined list, not the whole issue thread. Authority, its recog
 
 | Step | Reads |
 |---|---|
-| Planning (`plan-pr`) | The item state file and its catch-up, the docs/blueprint.md sections the plan depends on, and on `main` every file the plan will change. For a revision, also the current plan comment and its newest `## Plan check`. |
-| Plan check (`plan-check`) | The selected plan comment, the item state file and its catch-up, every file the plan changes and every source the plan cites. Not the rest of the thread and not the author's handoffs. |
-| Implementation (`implement-plan`) | The approved plan comment, the approval or standing-approval plan check that approves it, the item state file and its catch-up, and every file the plan changes. |
+| Planning (`plan-pr`) | The item state file and its catch-up, the approved item plan ("Item lifecycle" steps 1 and 2) or, for a child issue, the parent plan its body or approval links, the docs/blueprint.md sections the plan depends on, and on `main` every file the plan will change. For a revision, also the current plan comment and its newest `## Plan check`. |
+| Plan check (`plan-check`) | The selected plan comment, the item state file and its catch-up, the approved item plan or parent plan as in the planning row, every file the plan changes and every source the plan cites. Not the rest of the thread and not the author's handoffs. |
+| Implementation (`implement-plan`) | The approved plan comment, the approval or standing-approval plan check that approves it, each comment that names the implementing tool under "Item lifecycle" step 2, found by script, the item state file and its catch-up, and every file the plan changes. |
 | Cold review | Unchanged: the review diff and the authored receipt (AGENTS.md "Before opening a pull request" rule 8). |
 
 Every step also reads the AGENTS.md and factory.md sections its skill cites. Where its work depends on the exact text of a decision the state file lists, it reads that decision in full.
@@ -72,6 +72,8 @@ The file holds these fields, in this order:
 # State: #<issue number> <issue title>
 Covers: comment <ID> created <created_at>; read at <UTC timestamp>
 Parent items: <links, for a child issue; otherwise "none">
+Item plan: <link to the approved item plan, or for a child issue the parent plan; or "none">
+Implementing tool: <Claude Code or Codex>. Source: <link to the comment naming it, or "no comment; Claude Code by default">
 Approved plan: <link to the plan comment and its revision label; or "none">
 Decisions in force:
 - <one line>. Source: <link>
@@ -82,7 +84,7 @@ Next action: <one line>
 
 "Decisions in force" starts with the issue body, then lists each decision or approval recognized under "Item lifecycle" step 3, in creation order, that still applies. Each line states only what its source says and links that source. A line does not replace reading its source when work depends on the source's exact text.
 
-The implementing session is the only writer. It creates or updates the file in its implementation pull request, after the catch-up that precedes opening the pull request, so the file goes through that pull request's cold review and Codex review. It may update the file again in a later push of the same pull request. Planning and plan-check sessions do not write it; their comments reach the next session through the catch-up. After the issue closes, any later pull request may delete its file.
+The implementing session is the only writer. It creates or updates the file in its implementation pull request, after the catch-up of `implement-plan` step 1 and before the cold review, so the file goes through that pull request's cold review and Codex review. A later change to the file is an authored change under AGENTS.md "Before opening a pull request" rule 8. Planning and plan-check sessions do not write it; their comments reach the next session through the catch-up. After the issue closes, any later pull request may delete its file.
 
 Accepted risk: the comment check catches a stale file, not a wrong one. A wrong line misleads every later session until someone checks it against its linked source.
 

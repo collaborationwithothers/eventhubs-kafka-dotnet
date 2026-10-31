@@ -13,7 +13,7 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 
 ## Steps
 
-1. Read the selected plan comment and the item state file, and catch up on the issue under factory.md "Authority reads", using its plan-check reading list, including any parent items for a child issue. Read the AGENTS.md and factory.md sections this skill cites. Do not read the rest of the thread or the author's handoffs. Use subagents at high effort for reading. Done when the initial read and snapshot are complete, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
+1. Read the selected plan comment and the item state file, and catch up on the issue under factory.md "Authority reads", using its plan-check reading list, including any parent items for a child issue. Use subagents at high effort for reading. Done when the initial read and snapshot are complete, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
 2. Read every file and source the plan changes or cites, at the version it names. For each file the plan changes, read it on `main` at each place the plan changes it, under factory.md "Item lifecycle" step 1. Done when each one is read and each change is checked against the text around it.
 3. Check the selected plan against factory.md "Plan template" for an item plan, or "Item lifecycle" step 3 for an implementation-grade plan. Check every claim against its source. Done when every field or requirement, and every claim, has a verdict with evidence.
 4. Answer the three plan-check questions in factory.md "Item lifecycle" step 1. Done when each answer cites the plan line and the evidence.
