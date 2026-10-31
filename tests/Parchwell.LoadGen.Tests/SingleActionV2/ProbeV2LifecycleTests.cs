@@ -249,6 +249,153 @@ public sealed class ProbeV2LifecycleTests
         Assert.All(timers, timer => Assert.True(timer.IsDisposed));
     }
 
+    [Theory]
+    [InlineData(7, 7, false)]
+    [InlineData(8, 8, true)]
+    [InlineData(9, 8, true)]
+    public async Task GivenDiagnosticConsumeThrows_WhenWorkerRuns_ThenErrorsStayRawAndConsumeStopsAtEight(
+        int configuredErrors, int retainedErrors, bool captureLimitReached)
+    {
+        using var inputs = await CreateF06ConsumerInputsAsync();
+        using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            diagnosticConsumeErrors: configuredErrors, inputRoot: inputs.Path);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.ConsumerClients.Count);
+        List<string> metadataLines = MetadataLines(fixture);
+        Assert.Equal(5, metadataLines.Count);
+        Assert.All(fixture.ConsumerClients, client => Assert.Equal(1, client.SeekCalls));
+        foreach (NativeConsumer client in fixture.ConsumerClients)
+        {
+            Assert.Equal(retainedErrors, client.DiagnosticConsumeErrorsThrown);
+            if (captureLimitReached)
+            {
+                Assert.Equal(8, client.PostSeekConsumeCalls);
+                Assert.Equal(8, client.DiagnosticConsumeErrorsThrown);
+            }
+            else
+            {
+                Assert.True(client.PostSeekConsumeCalls > client.DiagnosticConsumeErrorsThrown);
+            }
+        }
+        foreach (string line in metadataLines)
+        {
+            ProbeV2AuthenticationMetadata row = ReadMetadata(line);
+            ProbeV2HandlerRefreshMetadata handler = row.HandlerRefresh!;
+            Assert.Equal(retainedErrors, handler.DiagnosticErrors.Count);
+            Assert.All(handler.DiagnosticErrors, error => Assert.Equal((int)ErrorCode.TopicAuthorizationFailed, error.Code));
+            Assert.Equal(captureLimitReached, handler.CaptureLimitReached);
+            Assert.Equal(3, handler.TriggerAttempt);
+            Assert.NotNull(handler.BeforeService);
+            if (captureLimitReached) Assert.Null(handler.AfterService);
+            else Assert.NotNull(handler.AfterService);
+        }
+
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(5, capture.Repeats.Count);
+        using (JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(capture, ProbeV2Wire.JsonOptions)))
+            Assert.Equal(ScientificCaptureFields.Order(StringComparer.Ordinal),
+                document.RootElement.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        Assert.All(capture.Repeats, repeat =>
+        {
+            Assert.Null(repeat.Error);
+            Assert.Empty(repeat.ClientErrors);
+            ProbeV2Record original = Assert.IsType<ProbeV2Record>(repeat.ReadObservation.Record);
+            Assert.Equal(repeat.Requested!.Topic, original.Topic);
+            Assert.Equal(repeat.Requested.Partition, original.Partition);
+            Assert.Equal(repeat.Requested.Offset, original.Offset);
+            Assert.Equal(repeat.Requested.KeyBase64, original.KeyBase64);
+            Assert.Equal(repeat.Requested.ValueBase64, original.ValueBase64);
+        });
+    }
+
+    [Theory]
+    [InlineData(19999, true, 1)]
+    [InlineData(20000, false, 0)]
+    [InlineData(20001, false, 0)]
+    public async Task GivenSynchronousConsumeReturnsAtCutoff_WhenWorkerRuns_ThenNoLateDiagnosticOperationIsAdmitted(
+        int elapsedMilliseconds, bool operationAdmitted, int expectedPostSeekConsumes)
+    {
+        using var inputs = await CreateF06ConsumerInputsAsync();
+        using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            advanceClockOnSecondConsumeMilliseconds: elapsedMilliseconds, inputRoot: inputs.Path);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.ConsumerClients.Count);
+        List<string> metadataLines = MetadataLines(fixture);
+        Assert.Equal(5, metadataLines.Count);
+        Assert.All(fixture.ConsumerClients, client =>
+        {
+            Assert.Equal(2 + expectedPostSeekConsumes, client.ConsumeCalls);
+            Assert.Equal(operationAdmitted ? 1 : 0, client.SeekCalls);
+            Assert.Equal(expectedPostSeekConsumes, client.PostSeekConsumeCalls);
+        });
+        foreach (string line in metadataLines)
+        {
+            ProbeV2HandlerRefreshMetadata handler = ReadMetadata(line).HandlerRefresh!;
+            Assert.Equal(operationAdmitted, handler.OperationAttempted);
+            Assert.Equal(elapsedMilliseconds >= 20000 ? null : 3, handler.TriggerAttempt);
+            Assert.NotNull(handler.StartedTimestamp);
+            Assert.NotNull(handler.EndedTimestamp);
+            Assert.Equal(handler.StartedTimestamp.Value + Math.Max(20000, elapsedMilliseconds), handler.EndedTimestamp.Value);
+            if (operationAdmitted)
+            {
+                Assert.NotNull(handler.OperationAdmittedTimestamp);
+                Assert.Equal(handler.StartedTimestamp.Value, handler.OperationAdmittedTimestamp.Value);
+                Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.EndedTimestamp.Value);
+            }
+            else
+            {
+                Assert.Null(handler.OperationAdmittedTimestamp);
+                Assert.Null(handler.AfterService);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(19999, 1)]
+    [InlineData(20000, 0)]
+    [InlineData(20001, 0)]
+    public async Task GivenSynchronousSeekReturnsAtCutoff_WhenWorkerRuns_ThenLateReturnStopsFurtherConsumeAdmission(
+        int elapsedMilliseconds, int expectedPostSeekConsumes)
+    {
+        using var inputs = await CreateF06ConsumerInputsAsync();
+        using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            advanceClockOnSeekMilliseconds: elapsedMilliseconds, inputRoot: inputs.Path);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.ConsumerClients.Count);
+        List<string> metadataLines = MetadataLines(fixture);
+        Assert.Equal(5, metadataLines.Count);
+        Assert.All(fixture.ConsumerClients, client =>
+        {
+            Assert.Equal(1, client.SeekCalls);
+            Assert.Equal(expectedPostSeekConsumes, client.PostSeekConsumeCalls);
+        });
+        foreach (string line in metadataLines)
+        {
+            ProbeV2HandlerRefreshMetadata handler = ReadMetadata(line).HandlerRefresh!;
+            Assert.True(handler.OperationAttempted);
+            Assert.NotNull(handler.StartedTimestamp);
+            Assert.NotNull(handler.SeekReturnedTimestamp);
+            Assert.Equal(handler.StartedTimestamp.Value + elapsedMilliseconds, handler.SeekReturnedTimestamp.Value);
+            Assert.Equal(handler.StartedTimestamp.Value + Math.Max(20000, elapsedMilliseconds), handler.EndedTimestamp);
+            if (elapsedMilliseconds < 20000)
+                Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.EndedTimestamp);
+            else
+                Assert.Null(handler.AfterService);
+        }
+    }
+
     [Fact]
     public async Task GivenNonmatchingDiagnosticReadsReachWorkerCap_WhenWorkerRuns_ThenNoFurtherConsumeIsAdmitted()
     {
@@ -494,7 +641,8 @@ public sealed class ProbeV2LifecycleTests
         internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null,
             bool captureAuthenticationMetadata = false, TextWriter? logWriter = null, string stage = "action",
             bool testHandlerRefreshPath = false, int advanceClockOnSeekMilliseconds = 0,
-            bool nonmatchingDiagnosticRead = false, bool nonmatchingAfterFirstPostSeek = false, string? inputRoot = null)
+            bool nonmatchingDiagnosticRead = false, bool nonmatchingAfterFirstPostSeek = false, string? inputRoot = null,
+            int diagnosticConsumeErrors = 0, int advanceClockOnSecondConsumeMilliseconds = 0)
         {
             Options = ProbeV2OptionsTests.Options(item, configuration, stage);
             Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata || testHandlerRefreshPath;
@@ -558,6 +706,8 @@ public sealed class ProbeV2LifecycleTests
                 proxy.Repeat = ConsumerClients.Count + 1;
                 proxy.RefreshOnSecondConsume = testHandlerRefreshPath;
                 proxy.AdvanceClockOnSeekMilliseconds = advanceClockOnSeekMilliseconds;
+                proxy.AdvanceClockOnSecondConsumeMilliseconds = advanceClockOnSecondConsumeMilliseconds;
+                proxy.DiagnosticConsumeErrors = diagnosticConsumeErrors;
                 proxy.NonmatchingDiagnosticRead = nonmatchingDiagnosticRead;
                 proxy.NonmatchingAfterFirstPostSeek = nonmatchingAfterFirstPostSeek;
                 proxy.SessionCancellationToken = cancellation;
@@ -686,6 +836,9 @@ public sealed class ProbeV2LifecycleTests
         internal int ConsumeCalls, SeekCalls, DisposeCalls;
         internal int PostSeekConsumeCalls;
         internal int AdvanceClockOnSeekMilliseconds;
+        internal int AdvanceClockOnSecondConsumeMilliseconds;
+        internal int DiagnosticConsumeErrors;
+        internal int DiagnosticConsumeErrorsThrown;
         internal bool NonmatchingDiagnosticRead;
         internal bool NonmatchingAfterFirstPostSeek;
         internal CancellationToken SessionCancellationToken;
@@ -705,6 +858,20 @@ public sealed class ProbeV2LifecycleTests
             {
                 ConsumeCalls++;
                 if (SeekCalls > 0) PostSeekConsumeCalls++;
+                if (RefreshOnSecondConsume && ConsumeCalls == 2)
+                {
+                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
+                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
+                    Clock.Milliseconds += AdvanceClockOnSecondConsumeMilliseconds;
+                    return null;
+                }
+                if (SeekCalls > 0 && DiagnosticConsumeErrorsThrown < DiagnosticConsumeErrors)
+                {
+                    DiagnosticConsumeErrorsThrown++;
+                    TimeSpan errorPollTimeout = args![0] is TimeSpan errorPollDuration ? errorPollDuration : TimeSpan.FromMilliseconds(100);
+                    Clock.Milliseconds += (long)Math.Max(1, errorPollTimeout.TotalMilliseconds);
+                    throw new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.TopicAuthorizationFailed));
+                }
                 if (SeekCalls > 0 && NonmatchingDiagnosticRead)
                     return new ConsumeResult<byte[], byte[]>
                     {
@@ -720,12 +887,6 @@ public sealed class ProbeV2LifecycleTests
                         Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),
                         Message = new Message<byte[], byte[]> { Key = [], Value = [] }
                     };
-                }
-                if (RefreshOnSecondConsume && ConsumeCalls == 2)
-                {
-                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
-                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
-                    return null;
                 }
                 TimeSpan timeout = args![0] is TimeSpan duration ? duration : TimeSpan.FromMilliseconds(100);
                 Clock.Milliseconds += (long)Math.Max(1, timeout.TotalMilliseconds);
