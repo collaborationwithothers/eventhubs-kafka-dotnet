@@ -17,7 +17,7 @@ This receipt records a documentation-only change that shortens AGENTS.md without
 The diff removes these kinds of text:
 
 1. The GOVERNANCE status paragraph's approval and amendment history. It is replaced by one sentence that keeps its operative content: AGENTS.md is protected and changes reach `main` only through Hari's merge.
-2. "Basis:" sentences and links to the decisions that adopted a rule, in the #138 transition (including its "#85 record" link), Verdict integrity, Skills, Code Review Rules, Writing standards, and "Before opening a pull request" rules 5, 6, 8, 10, 11 and 13. Citations of factual claims stay where a claim stays: hard safety rule 6 (the 60-minute interval and the lookup interface) and hard safety rule 10 (the connector replies). The "governance choice, not a measurement" labels on rule 6's threshold and rule 8's review budget stay.
+2. "Basis:" sentences and links to the decisions that adopted a rule, in the #138 transition (including its "#85 record" link), Verdict integrity, Skills, Code Review Rules, Writing standards, and "Before opening a pull request" rules 6, 8, 10, 11, 12 and 13. Rule 12 loses "Basis: #85 decision 5; validated commits were lost when a Codex session resumed in a fresh workspace." Citations of factual claims stay where a claim stays: hard safety rule 6 (the 60-minute interval and the lookup interface) and hard safety rule 10 (the connector replies). The "governance choice, not a measurement" labels on rule 6's threshold and rule 8's review budget stay.
 3. The section "Workflow summary" and its heading. It restated docs/agents/factory.md "Item lifecycle" in short, and no file cites it.
 4. In "Implementer and reviewer": the label-application condition, the re-check on every push, and the undetected-cases sentence for the planned merge workflow. factory.md "Escalation" keeps the condition and re-check, and states "Neither the label nor the workflow exists yet." The words "for readers" on the branch-prefix bullet.
 5. In "Skills": "An implementation prompt names `implement-plan` and the issue number.", which repeats the bullet above it.
@@ -32,12 +32,20 @@ The rationale and history stay reachable through the new pointer to AGENTS.md at
 | --- | --- |
 | `git diff --check` | Exit 0, no output. |
 | `npm ci --ignore-scripts` then `npm run check:docs` | Completed with `Documentation scan completed. Warnings are advisory; external URLs were not checked.` No issues in AGENTS.md. 8 warnings, all in files this change does not touch: docs/agents/factory.md, docs/operations/evidence/issue-124/README.md, issue-140/README.md, issue-211/receipt.md. |
-| Word count, scripted with Python `str.split()` | AGENTS.md: 4884 words on the source commit, 4438 after. |
-| `grep -rn "Workflow summary"` over Markdown, shell, Python, JavaScript and JSON files, excluding node_modules | No matches. |
+| Word count, scripted with Python `str.split()` | AGENTS.md: 4884 words on the source commit, 4450 after. |
+| `grep -rn "Workflow summary"` over Markdown, shell, Python, JavaScript and JSON files, excluding node_modules | No matches outside this receipt. |
 | Section headings and rule numbers, compared by script against the source commit | Rule numbers unchanged. One heading removed: "Workflow summary". |
 
 Source commit: `8cbde949d8fca424dda33accbd01c1a995495678`.
 
 ## Cold review
 
-Results are recorded in the pull request's self-review record.
+Comparison revision for every round: origin/main `8cbde949d8fca424dda33accbd01c1a995495678`.
+
+| Round | Mode | Input revision | Result |
+| --- | --- | --- | --- |
+| 1 | Comprehensive, pass 1 of 2 | `70f91bfab1c769af5d9209b75ce292fd5c467fd7` | 5 P1, 2 P2. All fixed in `6264d30`. |
+| 2 | Comprehensive, pass 2 of 2 | `6264d30` | 2 P1, 2 P2, all in this receipt or the AGENTS.md pointer sentence. All fixed in the next commit. |
+| 3 | Focused, 1 of 2 | The commit after `6264d30` | Reviews the round 2 fixes, with the full PR diff as context. |
+
+Complete reports and dispositions are in the pull request's self-review record.

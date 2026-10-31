@@ -6,7 +6,7 @@ Rules for every AI agent working in this repository, whatever the tool.
 - Codex reads it natively, including the `## Code Review Rules` section when reviewing pull requests.
 - docs/blueprint.md is the design authority. Read it before planning any work. If this file and the blueprint disagree on design, the blueprint wins. If they disagree on process, this file wins.
 
-How the factory runs, step by step, is in docs/agents/factory.md. Engineering standards are in docs/engineering/. The basis, citations and decision history of each rule here are in [AGENTS.md at 8cbde949d8fca424dda33accbd01c1a995495678](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/8cbde949d8fca424dda33accbd01c1a995495678/AGENTS.md) and later Git history. Read them only when a rule's basis is in question.
+How the factory runs, step by step, is in docs/agents/factory.md. Engineering standards are in docs/engineering/. The basis, citations and decision history of the rules here, where recorded, are in [factory record](docs/agents/factory.md#hard-safety-rule-8-basis-and-decision-history) for hard safety rule 8, and otherwise in [AGENTS.md at 8cbde949d8fca424dda33accbd01c1a995495678](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/8cbde949d8fca424dda33accbd01c1a995495678/AGENTS.md) and later Git history. Read them only when a rule's basis is in question.
 
 ## GOVERNANCE (approved by Hari; agents may propose changes in a pull request, which only Hari merges)
 
