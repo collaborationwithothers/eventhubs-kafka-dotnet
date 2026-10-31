@@ -422,6 +422,161 @@ public sealed class ProbeV2ComparatorAuditTests
         Assert.Equal(observed > 120000 ? Array.Empty<string>() : ["v2_terminal"],result.Reasons);
     }
 
+    [Theory]
+    [InlineData("not_attempted_dependency",false,"incomplete","v2_location")]
+    [InlineData("not_attempted_cleanup",false,"incomplete","v2_completion")]
+    [InlineData("not_applicable_no_delivery",true,"invalid","v2_wire")]
+    public void Given_UnconstructedSlotAdmission_When_Checked_Then_ReasonFollowsAdmission(string admission,bool clientId,string status,string reason)
+    {
+        var (options,evidence,row) = Fixture("read");
+        var slot = new ProbeV2Repeat(row.Repeat,admission,clientId ? row.ClientId : null,row.Action,false,0,null,new Dictionary<string,string>(StringComparer.Ordinal),[],null,null,null,
+            new(0,0,null),null,null,[],[],admission == "not_applicable_no_delivery" ? Array.Empty<string>() : [admission]);
+        var result = Judge(options,evidence,slot);
+        Assert.Equal(status,result.Status); Assert.Equal([reason],result.Reasons); Assert.Null(result.OutcomeClass);
+    }
+
+    [Theory]
+    [InlineData("setting_value")][InlineData("requested_topic")][InlineData("partition_mode")]
+    public void Given_ConfigurationOutsideDeclaration_When_Checked_Then_FidelityFails(string field)
+    {
+        var (options,evidence,row) = Fixture(); var expected = row.Settings.ToDictionary(x => x.Key,x => x.Value,StringComparer.Ordinal);
+        if (field == "setting_value") expected["synthetic"] = "different";
+        if (field == "requested_topic") row = row with { Requested = row.Requested! with { Topic = "document-state" } };
+        if (field == "partition_mode") row = row with { Requested = row.Requested! with { PartitionMode = "explicit" } };
+        var result = SingleActionRepeatJudgement.JudgeV2Slot(options,evidence,row,expected,[]);
+        Assert.Equal("invalid",result.Status); Assert.Equal(["v2_configuration"],result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("B08",null,"incomplete","v2_partition_input")][InlineData("B08",31,"invalid","v2_partition_input")][InlineData("E01",32,"invalid","v2_wire")]
+    public void Given_MetadataPartitionDefect_When_Checked_Then_DefectKeepsItsOwnReason(string item,int? count,string status,string reason)
+    {
+        var options = ProbeV2Fixture.Options(item); var evidence = ProbeV2Fixture.Evidence(options,"C0","action");
+        var row = evidence.Capture!.Repeats[0] with { MetadataPartitions = count is int value ? Enumerable.Range(0,value).ToArray() : null };
+        var result = Judge(options,evidence,row);
+        Assert.Equal(status,result.Status); Assert.Equal([reason],result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("NotPersisted",true)][InlineData("PossiblyPersisted",true)][InlineData("Persisted",true)][InlineData("persisted",false)]
+    public void Given_FailedDeliveryPersistenceStatus_When_Checked_Then_OnlyDeclaredStatusNamesAreWellFormed(string status,bool valid)
+    {
+        var (options,evidence,row) = Fixture(); var error = new ProbeV2Error(-1,false,"local","synthetic",10,1);
+        row = row with { Result = "error",Error = error,Delivery = row.Delivery! with { Error = error,PersistenceStatus = status } };
+        var result = Judge(options,evidence,row);
+        Assert.Equal(valid ? "complete_valid" : "invalid",result.Status); Assert.Equal(valid ? Array.Empty<string>() : ["v2_wire"],result.Reasons);
+        Assert.Equal(new SingleActionOutcome("error",-1,false,"local"),result.OutcomeClass);
+    }
+
+    [Theory]
+    [InlineData("action")][InlineData("read")]
+    public void Given_SuccessWithoutObservedLocation_When_Checked_Then_LocationGapIsIncomplete(string stage)
+    {
+        var (options,evidence,row) = Fixture(stage);
+        row = stage == "action" ? row with { Delivery = null } : row with { ReadObservation = new(0,0,null) };
+        var result = Judge(options,evidence,row);
+        Assert.Equal("incomplete",result.Status); Assert.Equal(["v2_location"],result.Reasons); Assert.Equal("success",result.OutcomeClass!.Result);
+    }
+
+    [Theory]
+    [InlineData("unterminated_error")][InlineData("record_at_window_edge")]
+    public void Given_SilencePreconditionFails_When_Judged_Then_NoAbsenceOutcomeIsAssigned(string defect)
+    {
+        var options = ProbeV2Fixture.Options("F06","C10"); var evidence = ProbeV2Fixture.Evidence(options,"C10","action"); var row = evidence.Capture!.Repeats[0];
+        row = defect == "unterminated_error" ? row with { Terminal = false,TerminalUnixMs = null,Result = "error" } :
+            row with { ReadObservation = new(1,0,new(row.Requested!.Topic,0,row.Requested.Offset!.Value,row.Requested.KeyBase64,row.Requested.ValueBase64,120000,1)) };
+        var result = Judge(options,evidence,row);
+        string[] reasons = defect == "unterminated_error" ? ["v2_terminal","v2_statistics"] : ["v2_terminal"];
+        Assert.Equal("invalid",result.Status); Assert.Equal(reasons,result.Reasons); Assert.Null(result.OutcomeClass);
+    }
+
+    [Fact]
+    public void Given_CleanupFailureAmongOtherDiagnostics_When_Checked_Then_CompletionGapIsKept()
+    {
+        var (options,evidence,row) = Fixture();
+        var result = Judge(options,evidence,row with { Diagnostics = ["capture_limit","client_cleanup_failed:TimeoutException"] });
+        Assert.Equal("incomplete",result.Status); Assert.Equal(["v2_completion"],result.Reasons);
+    }
+
+    [Fact]
+    public void Given_NonemptyRecordValue_When_Checked_Then_ValueKindIsBytes()
+    {
+        var (options,evidence,row) = Fixture("read");
+        var result = Judge(options,evidence,row);
+        Assert.Equal("complete_valid",result.Status); Assert.Equal("bytes",result.SemanticOutcome.ValueKind); Assert.True(result.SemanticOutcome.ValueMatch);
+    }
+
+    [Fact]
+    public void Given_RequiredSlotWithoutClientIdentity_When_Checked_Then_NoClientIsInvented()
+    {
+        var (options,evidence,row) = Fixture();
+        var result = Judge(options,evidence,row with { ClientId = null });
+        Assert.Equal("invalid",result.Status); Assert.Equal(["v2_identity","v2_statistics"],result.Reasons); Assert.Empty(result.Clients);
+    }
+
+    [Theory]
+    [InlineData(329999)][InlineData(330000)][InlineData(330001)]
+    public void Given_FatalCallbackAroundActionWindow_When_Checked_Then_OnlyLaterCallbackCannotPrecedeDelivery(long observed)
+    {
+        var (options,evidence,row) = Fixture();
+        var result = Judge(options,evidence,row with { ClientErrors = [new(-150,true,"local","synthetic",observed,0)] });
+        Assert.Equal(observed > 330000 ? "complete_valid" : "invalid",result.Status);
+        Assert.Equal(observed > 330000 ? Array.Empty<string>() : ["v2_terminal"],result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("record_key")][InlineData("statistics")]
+    public void Given_Base64WithIgnoredWhitespace_When_Checked_Then_NoncanonicalPayloadIsMalformed(string field)
+    {
+        var (options,evidence,row) = Fixture(field == "record_key" ? "read" : "action");
+        row = field == "record_key"
+            ? row with { ReadObservation = row.ReadObservation with { Record = row.ReadObservation.Record! with { KeyBase64 = row.ReadObservation.Record.KeyBase64.Insert(4," ") } } }
+            : row with { Statistics = [row.Statistics[0] with { RawBase64 = row.Statistics[0].RawBase64.Insert(4," ") }] };
+        var result = Judge(options,evidence,row);
+        string[] reasons = field == "record_key" ? ["v2_wire"] : ["v2_wire","v2_statistics"];
+        Assert.Equal("invalid",result.Status); Assert.Equal(reasons,result.Reasons);
+        if (field == "statistics") Assert.Null(result.BrokerCount);
+    }
+
+    [Theory]
+    [InlineData(-1)][InlineData(0)][InlineData(1)]
+    public void Given_SilenceStatisticsSequenceAroundZero_When_Checked_Then_OnlyNegativeIsMalformed(long sequence)
+    {
+        var options = ProbeV2Fixture.Options("F06","C10"); var evidence = ProbeV2Fixture.Evidence(options,"C10","action"); var row = evidence.Capture!.Repeats[0];
+        var result = Judge(options,evidence,row with { Statistics = [row.Statistics[0] with { Sequence = sequence }] });
+        Assert.Equal(sequence < 0 ? "invalid" : "complete_valid",result.Status);
+        Assert.Equal(sequence < 0 ? ["v2_wire","v2_statistics"] : Array.Empty<string>(),result.Reasons);
+        Assert.Equal(sequence < 0,result.StatisticsReference is null);
+    }
+
+    [Theory]
+    [InlineData("null_name")][InlineData("other_client_name")][InlineData("missing_kind_separator")][InlineData("wrapped_seconds")]
+    public void Given_UnusableNativeReport_When_Checked_Then_NoBrokerCountIsInvented(string defect)
+    {
+        var (options,evidence,row) = Fixture(); var report = row.Statistics[0];
+        string raw = Encoding.UTF8.GetString(Convert.FromBase64String(report.RawBase64)), name = "\"name\":\"" + row.ClientId + "#producer-1\"";
+        Assert.Contains(name,raw,StringComparison.Ordinal);
+        report = defect switch
+        {
+            "null_name" => report with { RawBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw.Replace(name,"\"name\":null",StringComparison.Ordinal))) },
+            "other_client_name" => report with { RawBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw.Replace(name,"\"name\":\"other#producer-1\"",StringComparison.Ordinal))) },
+            "missing_kind_separator" => report with { RawBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw.Replace(name,"\"name\":\"" + row.ClientId + "#producer1\"",StringComparison.Ordinal))) },
+            _ => ProbeV2Fixture.Statistic(row.ClientId!,row.Action,18446744073709553)
+        };
+        var result = Judge(options,evidence,row with { Statistics = [report] });
+        Assert.Equal("incomplete",result.Status); Assert.Equal(["v2_statistics"],result.Reasons);
+        Assert.Null(result.BrokerCount); Assert.Null(result.StatisticsReference);
+    }
+
+    [Fact]
+    public void Given_BrokerSourcesAndStates_When_Checked_Then_OnlyThreeUpSourcesCount()
+    {
+        const string brokers = """{"a":{"source":"learned","state":"UP"},"b":{"source":"configured","state":"UP"},"c":{"source":"logical","state":"UP"},"d":{"source":"learned","state":"DOWN"},"e":{"source":"internal","state":"UP"}}""";
+        var (options,evidence,row) = Fixture();
+        var result = Judge(options,evidence,row with { Statistics = [ProbeV2Fixture.Statistic(row.ClientId!,row.Action,1,11,brokers)] });
+        Assert.Equal("complete_valid",result.Status); Assert.Equal(3,result.BrokerCount);
+    }
+
     private static void Resize<T>(Dictionary<string,T> values,int count)
     {
         T first = values.First().Value;

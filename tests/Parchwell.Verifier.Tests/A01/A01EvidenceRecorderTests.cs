@@ -241,6 +241,15 @@ public sealed class A01EvidenceRecorderTests
         Assert.Equal([0L, 1L, 2L], Record([Report(90, Broker()), Report(100, Broker()), Report(110, Broker())]).RecordedEvidence!.Windows!.Select(w => w.ReportIndex));
     }
 
+    [Fact]
+    public void Given_NegativePlannedAttemptCount_When_Recorded_Then_RetainsWorkloadDiagnostic()
+    {
+        RunJudgementRequest request = Request([]);
+        request = request with { Manifest = ParseResult<SealedRunManifest>.Success(request.Manifest.Value! with { PlannedAttemptCount = -1 }) };
+        A01EvidenceRecording recording = A01EvidenceRecorder.Record(request, Judgement());
+        Assert.Equal([new ResultDiagnostic(29, "workload_summary_overflow", "manifest.json", null, null, null)], recording.Diagnostics);
+    }
+
     private static void AssertUnusable(ProbeRepeatObservation observation)
     {
         Assert.False(observation.Usable); Assert.False(observation.Qualifying);

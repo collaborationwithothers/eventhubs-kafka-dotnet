@@ -267,6 +267,59 @@ public sealed class PhaseJudgeTests
         Assert.Equal(new OutcomeCounts(5, 10, 15, 20, 25, 30), result.Counts);
     }
 
+    [Theory]
+    [InlineData("C0", "none", "complete_valid", null, "")]
+    [InlineData("probe", "none", "complete_valid", "pass", "")]
+    [InlineData("C0", "duplicate-3", "incomplete", null, "j1_repeat_slots,j2_publication_unaccepted,j3_verifier_receipt,j4_producer_job_binding,j5_registered_producer_count,j6_broker_inventory_coverage,j7_counts_unavailable")]
+    [InlineData("probe", "inventory-false-4", "invalid", "inconclusive", "j6_broker_inventory_coverage,j7_counts_unavailable,j8_probe_inconclusive")]
+    [InlineData("C0", "known-invalid-2", "invalid", null, "j7_counts_unavailable,trusted_result_invalid")]
+    [InlineData("C0", "counts-null-5", "complete_valid", null, "j7_counts_unavailable")]
+    [InlineData("probe", "qualifying-1-only", "complete_valid", "pass", "")]
+    public void Given_PhaseEvidenceCase_When_Judged_Then_ReturnsExactStatusGateAndReasons(string phase, string change, string status, string? gate, string reasons)
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,new(true,true,"broker",0,1,20_001))).ToArray();
+        evidence=change switch
+        {
+            "none"=>evidence,
+            "duplicate-3"=>evidence.Append(evidence[2]).ToArray(),
+            "inventory-false-4"=>evidence.Select(e=>e.Repeat==4?e with{InventoryCoveragePass=false}:e).ToArray(),
+            "known-invalid-2"=>evidence.Select(e=>e.Repeat==2?e with{KnownInvalid=true}:e).ToArray(),
+            "counts-null-5"=>evidence.Select(e=>e.Repeat==5?e with{Counts=null}:e).ToArray(),
+            "qualifying-1-only"=>evidence.Select(e=>e.Repeat==1?e:e with{ProbeObservation=new(true,false,null,null,null,null)}).ToArray(),
+            _=>throw new ArgumentOutOfRangeException(nameof(change))
+        };
+        PhaseJudgement result=PhaseJudge.Evaluate(phase,evidence);
+        Assert.Equal(status,result.Status);
+        Assert.Equal(gate,result.Gate);
+        Assert.Equal(reasons.Split(',',StringSplitOptions.RemoveEmptyEntries),result.Reasons);
+        if(change=="counts-null-5") Assert.Null(result.Counts);
+    }
+
+    [Fact]
+    public void Given_TrustedWorkloadObservation_When_Judged_Then_PreservesEachRepeatObservation()
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with
+        { WorkloadObservation=new(true,i,i,i,true,null,null) }).ToArray();
+        PhaseJudgement result=PhaseJudge.Evaluate("C0",evidence);
+        for(int i=0;i<5;i++) Assert.Equal(evidence[i].WorkloadObservation,result.Repeats[i].WorkloadObservation);
+    }
+
+    [Fact]
+    public void Given_NullEvidence_When_Judged_Then_ThrowsForEvidenceParameter()
+    {
+        ArgumentNullException error=Assert.Throws<ArgumentNullException>(()=>PhaseJudge.Evaluate("C0",null!));
+        Assert.Equal("evidence",error.ParamName);
+    }
+
+    [Fact]
+    public void Given_UnsupportedPhase_When_Judged_Then_ThrowsWithPhaseMessage()
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null)).ToArray();
+        ArgumentException error=Assert.Throws<ArgumentException>(()=>PhaseJudge.Evaluate("C2",evidence));
+        Assert.Equal("phase",error.ParamName);
+        Assert.Equal("Unsupported phase. (Parameter 'phase')",error.Message);
+    }
+
     private static PhaseRepeatEvidence[] MeasuredRepeats() => Enumerable.Range(1, 5).Select(i =>
         Complete(i, new(true, true, "broker", 0, 1, 20_001)) with
         {
