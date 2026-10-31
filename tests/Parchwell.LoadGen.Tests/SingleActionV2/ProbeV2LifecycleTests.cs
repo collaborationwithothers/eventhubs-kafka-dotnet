@@ -347,8 +347,10 @@ public sealed class ProbeV2LifecycleTests
             if (operationAdmitted)
             {
                 Assert.NotNull(handler.OperationAdmittedTimestamp);
-                Assert.Equal(handler.StartedTimestamp.Value, handler.OperationAdmittedTimestamp.Value);
+                Assert.Equal(handler.StartedTimestamp.Value + elapsedMilliseconds, handler.OperationAdmittedTimestamp.Value);
                 Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.EndedTimestamp.Value);
+                Assert.NotNull(handler.AfterService);
+                Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.AfterService.Timestamp);
             }
             else
             {
@@ -390,7 +392,11 @@ public sealed class ProbeV2LifecycleTests
             Assert.Equal(handler.StartedTimestamp.Value + elapsedMilliseconds, handler.SeekReturnedTimestamp.Value);
             Assert.Equal(handler.StartedTimestamp.Value + Math.Max(20000, elapsedMilliseconds), handler.EndedTimestamp);
             if (elapsedMilliseconds < 20000)
+            {
                 Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.EndedTimestamp);
+                Assert.NotNull(handler.AfterService);
+                Assert.Equal(handler.StartedTimestamp.Value + 20000, handler.AfterService.Timestamp);
+            }
             else
                 Assert.Null(handler.AfterService);
         }

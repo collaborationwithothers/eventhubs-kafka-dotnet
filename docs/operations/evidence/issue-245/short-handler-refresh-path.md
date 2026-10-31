@@ -1,8 +1,8 @@
 # Issue 245: short-handler-refresh-path execution receipt
 
-The approved Revision 2 implementation and its offline acceptance gates passed. Comprehensive cold review round 1 reviewed revision `2fa772133d8c98e5fe27914321689581be41facb` and reported two P1 findings and one P2 finding; all three findings are fixed in the staged grouped corrections. Comprehensive round 2 is pending on the next frozen head containing those corrections. The full pull request comparison base is `8cbde949d8fca424dda33accbd01c1a995495678`.
+The approved Revision 2 implementation and its offline acceptance gates passed. Comprehensive cold review round 1 reviewed revision `2fa772133d8c98e5fe27914321689581be41facb` and reported two P1 findings and one P2 finding; all three findings are fixed. Comprehensive round 2 reviewed revision `9377ebf5d41d71391af1336f5f22b5e0f0d4f52a` and reported one P1 worker-coverage finding; the authorized lifecycle tests now cover it and pass. All blocking review findings are corrected and verified. The coordinator owns freezing the new head, focused review round 1 and publication. The full pull request comparison base is `8cbde949d8fca424dda33accbd01c1a995495678`.
 
-The coordinator owns cold review, GitHub publication, hosted CI and hosted code/security reviews. This receipt records the completed R1 findings, grouped corrections and affected verification; no commit or push was made by this correction session. Cumulative cold-review counts are 1/2 comprehensive and 0/2 focused.
+The coordinator owns cold review, GitHub publication, hosted CI and hosted code/security reviews. This receipt records the completed R1 and R2 findings, their corrections and affected verification; no commit or push was made by this correction session. Cumulative cold-review counts are 2/2 comprehensive and 0/2 focused; focused correction review round 1 is pending with the coordinator. Its prior-reviewed revision is `9377ebf5d41d71391af1336f5f22b5e0f0d4f52a`, and the full pull request comparison base is `8cbde949d8fca424dda33accbd01c1a995495678`; the coordinator records the next frozen commit SHA.
 
 Base revision: `203d1fd59b6faaa8c80f309f93bcb49d473db070`
 Branch: `codex/issue-245-short-handler-refresh-path`
@@ -14,6 +14,36 @@ Implementation model: **gpt-6-luna, high reasoning effort**. Current completion 
 Deliverable: one implementation pull request for the exact Revision 2 plan at [issue comment 6532455703](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6532455703), body SHA-256 `82d125c082cbc0b96fbda64643481966309172a1b4ba60f4391f5bf7e0adea9b`. The independent plan check is [comment 6540399226](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6540399226), updated `2026-10-31T07:04:15Z`, with no blocking findings and the required workflow-selector P2 correction. Scope decisions are [consolidated decision 6532364305](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6532364305) and [workload/isolation decision 6540257398](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6540257398). Hari's exact Revision 2 implementation and offline-only approval is recorded at [approval comment 6540478275](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6540478275).
 
 The authorized work is implementation plus offline verification. Preserve the plan's safety and claim boundaries: no workflow dispatch, live collection or manual smoke, Azure action, credential acquisition, token-content read, live spend, governance or label change, scientific schema/expected/results change, or whole-archive load. The future live test remains separately gated. The workflow copies remain byte-identical; Hari merges protected workflow files.
+
+### Focused R2 assertion continuation (2026-10-31)
+
+- **Deliverable:** Correct only the admitted-operation timestamp expectation and add the specified late-service timestamp assertions in the existing Consume/Seek cutoff cases in `ProbeV2LifecycleTests.cs`; update this receipt with the result. No production edits or additional review findings are in scope.
+- **Current authorization:** Exact Revision 2 plan comment 6532455703 (body SHA-256 `82d125c082cbc0b96fbda64643481966309172a1b4ba60f4391f5bf7e0adea9b`), matching check 6540399226, approval 6540478275 and current handoff 6532466928 authorize this offline continuation. The coordinator owns freeze, commit, push, review and publication.
+- **Mandatory gate:** Run only `ProbeV2LifecycleTests` once through `infra/scripts/lifecycle/command.py` with a fresh result directory, inspect the xUnit XML for 24 passed, 0 failed and 0 skipped, then run staged `npm run check:docs` and `git diff --check`. No full acceptance matrix, Kafka rerun, live action or result publication.
+- **Review state:** Comprehensive rounds used 2/2; focused rounds used 0/2. Focused correction review round 1 is pending for the coordinator; it compares the next frozen commit containing this receipt with prior-reviewed revision `9377ebf5d41d71391af1336f5f22b5e0f0d4f52a`, using full pull request base `8cbde949d8fca424dda33accbd01c1a995495678`. The coordinator records the next frozen commit SHA. No third comprehensive review is authorized here.
+- **Checkpoint:** This continuation started at clean `fcc654c36a2e9d9e1ed8e115bc5f365bd4e77374`. Prior R2 verification remains 23 passed, 1 failed, 0 skipped; the single failure is the 19999 ms synchronous Consume case, whose operation admission occurs at `StartedTimestamp + 19999`. Earlier historical outcomes and review counts remain intact below.
+
+### R2 worker-coverage disposition and focused verification
+
+The complete R2 report remains `/tmp/issue245/cold-r2-report.md`, for reviewed revision `9377ebf5d41d71391af1336f5f22b5e0f0d4f52a`; its reviewed diff SHA-256 is `148f7640147fce6b96e9473381a7b1ad6e05a65e1375ff0fb30b174bdf0cfebe`. The single P1 required the error cap and synchronous Consume/Seek cutoff to be exercised through admitted C9 workers, including retained raw service timing. Disposition: the worker cases and exact assertions below now cover the finding; the focused lifecycle class passes.
+
+| Predicate | Below boundary | At boundary | Above boundary | Verified behavior |
+| --- | --- | --- | --- | --- |
+| Diagnostic worker errors, cap 8 | 7 errors | 8 errors | 9 errors | The error theory runs through admitted C9 consumers, retains at most 8 errors, stops further Consume admission at/above the cap, and keeps diagnostic errors outside scientific capture. |
+| Synchronous Consume return, cutoff 20000 ms | 19999 ms | 20000 ms | 20001 ms | An admitted diagnostic operation records its admission timestamp at `StartedTimestamp + elapsedMilliseconds`; only the below-cutoff case admits Seek and its remaining-slice Consume. The late raw service timestamp is asserted at `StartedTimestamp + 20000`. |
+| Synchronous Seek return, cutoff 20000 ms | 19999 ms | 20000 ms | 20001 ms | Only the below-cutoff case admits the remaining-slice Consume and records the service timestamp at `StartedTimestamp + 20000`; at/above cutoff, no post-seek Consume or service observation is admitted. |
+
+Each worker case uses five admitted F06/C9 consumer clients and asserts five metadata rows. Existing original marker, requested location, scientific capture fields, and the 20001 ms Seek assertions remain in place. No production code changed.
+
+Exact focused command, bounded by 600 seconds:
+
+```bash
+DOTNET_ROOT=/tmp/issue245/dotnet PATH=/tmp/issue245/tools:/tmp/issue245/tools/venv/bin:/tmp/issue245/dotnet:$PATH PARCHWELL_TOOLS_DIRECTORY=/tmp/issue245/tools python3 infra/scripts/lifecycle/command.py 600 -- dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release --minimum-expected-tests 1 --results-directory /tmp/issue245/cutoff-assertion-completion/test -- --filter-method 'Parchwell.LoadGen.Tests.SingleActionV2.ProbeV2LifecycleTests.*' --report-xunit-xml --report-xunit-xml-filename results.xml
+```
+
+Result: passed; the console reported 24 passed, 0 failed, 0 skipped, and xUnit XML independently reports the same counts. XML is `/tmp/issue245/cutoff-assertion-completion/test/results.xml`. Comprehensive rounds used remain 2/2; focused rounds used remain 0/2, with focused correction review round 1 pending for the coordinator on its newly frozen head.
+
+The staged `npm run check:docs` reported no issues in either changed path and eight advisory warnings in unchanged files: two in `docs/agents/factory.md`, one in `docs/operations/evidence/issue-124/README.md`, two in `docs/operations/evidence/issue-140/README.md`, and three in `docs/operations/evidence/issue-211/receipt.md`. Those warnings have the blanket unchanged-file disposition under AGENTS.md "Before opening a pull request" rule 8. The staged `git diff --check` is run after this receipt update.
 
 ## Execution card
 
