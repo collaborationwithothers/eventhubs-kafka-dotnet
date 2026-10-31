@@ -36,9 +36,10 @@ The plan's section 3 map, with the test that covers each predicate in `tests/Par
 | Rebalance span for a failed shard | timed out with readable configuration (unverified span); missing configuration; configuration without span | `AggregationTests.test_timed_out_shard_is_listed_for_rebalance`, `test_rebalance_span_of_unreadable_config_is_unknown` |
 | Combined span population | 6-part target sums owned rows; per-part denominators; 13 shard entries | `AggregationTests.test_span_shards_combine_into_one_target_population` |
 | Runner span selection | span computed from the projected target; selection failure launches nothing | `RunnerTests.test_span_shard_config_is_computed_from_projected_target`, `test_span_selection_failure_launches_nothing` |
-| Local check timeout | `0`, `16200.5`, `True` rejected; `16200` and `5` accepted | `RunnerTests.test_local_check_rejects_invalid_input_without_launch`, `test_local_check_accepts_whole_file_and_timeout_limit` |
-| Local check span | start one past a boundary, reversed, end `2147483648`, not numbers rejected; on-boundary span and `0..2147483647` accepted | same two tests, `test_local_check_runs_one_member_span_and_marks_it_diagnostic` |
-| Local check other inputs | unknown target, existing output directory, dirty checkout | `RunnerTests.test_local_check_rejects_invalid_input_without_launch` |
+| Local check timeout | `0`, `16200.5`, `True` rejected with the timeout message and no output directory; `16200` and `5` accepted | `RunnerTests.test_local_check_rejects_invalid_input_without_launch`, `test_local_check_accepts_whole_file_and_timeout_limit` |
+| Local check span | `START = END` (`26..26`), reversed, end `2147483648`, not numbers rejected before the output directory exists; start one past a boundary (`27..52`) and end off a boundary (`0..53`) rejected with the boundary message; on-boundary span and `0..2147483647` accepted | same two tests, `test_local_check_runs_one_member_span_and_marks_it_diagnostic` |
+| Local check other inputs | unknown target, existing output directory, dirty checkout, each with its own message, so a later check cannot mask it | `RunnerTests.test_local_check_rejects_invalid_input_without_launch` |
+| Local check result | exit 2 accepted; exit 1, a child stopped at the timeout after writing its report, a missing report, and an interruption after a clean exit rejected | `RunnerTests.test_local_check_result_needs_completed_child_and_report` |
 | Artifact upload contract | both upload steps, their order, unchanged download pattern | `CommittedContractTests.test_workflow_keeps_stryker_logs_out_of_aggregate_input` |
 
 Unreachable: a part report with no mutants reaches `reconcile` only if `report_records` accepts it, and `report_records` rejects an empty target mutant list. `reconcile([[], []])` covers the function directly.
@@ -181,11 +182,11 @@ if __name__ == "__main__":
 
 ## Verification
 
-Run from the repository root on code commit `b291b270099d5e8e22e216d5312c684b22ae8ed0` (the receipt commit changes no code). Pinned lifecycle tools were installed with `bash infra/scripts/lifecycle/install-tools.sh /tmp/c5-267/tools ci`, using Python 3.12 because the pinned PyYAML wheel requires CPython 3.12. Commands ran with `PARCHWELL_TOOLS_DIRECTORY=/tmp/c5-267/tools` and that directory and its `venv/bin` first on `PATH`.
+Run from the repository root on commit `c5b55e8c79dc4428f3d9bb64032614b26e8330fc`, which holds the cold review round 1 test corrections. The runner, the workflow and `src/` are unchanged since `b291b270099d5e8e22e216d5312c684b22ae8ed0`, where the section 6 Stryker runs ran. Pinned lifecycle tools were installed with `bash infra/scripts/lifecycle/install-tools.sh /tmp/c5-267/tools ci`, using Python 3.12 because the pinned PyYAML wheel requires CPython 3.12. Commands ran with `PARCHWELL_TOOLS_DIRECTORY=/tmp/c5-267/tools` and that directory and its `venv/bin` first on `PATH`.
 
 | Command | Result |
 | --- | --- |
-| `python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p 'test_c5_workflow.py' -v` | 62 tests, OK: the 36 existing tests, as modified, and 26 new. |
+| `python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p 'test_c5_workflow.py' -v` | 63 tests, OK: the 36 existing tests, as modified, the plan's 26 new tests, and `test_local_check_result_needs_completed_child_and_report`, added for cold review round 1. The plan's figure was 62. |
 | `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py member-boundaries --target VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` | 15 lines, from `2904 32` to `53758 577`. |
 | The plan's spans one-liner | repeat `[(0, 8969), (8969, 18594), (18594, 2147483647)]`; configuration `[(0, 11134), (11134, 20406), (20406, 31533), (31533, 40525), (40525, 52156), (52156, 2147483647)]`. |
 | `bash infra/scripts/lifecycle/check-offline.sh` | Exit 0, including `actionlint .github/workflows/verifier-c5-mutation.yml` and the trigger check. |
