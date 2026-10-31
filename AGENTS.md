@@ -12,8 +12,6 @@ How the factory runs, step by step, is in docs/agents/factory.md. Engineering st
 
 AGENTS.md is a protected path, so each governance change reaches `main` only through Hari's merge.
 
-**#138 transition.** The #138 rule and design amendments follow its adopted requirements and [adoption](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383731545). Its entry evidence is [failed run 40089161816](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/40089161816) and the [#154 source diagnosis](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/154); no published A01 result or #154 diagnostic sequence is required for entry. The C0 exception to the governance freeze is the one adopted in the [entry decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6384675649). It preserves the existing workflow exception and all other freeze scope. The implementation prerequisites and smoke-gate sequence are in docs/agents/factory.md "Item lifecycle".
-
 ### What this repo is
 
 A public portfolio repository under Hari's name. It tests Microsoft's guidance for Kafka clients on Azure Event Hubs, using Confluent.Kafka on .NET 10, and publishes what actually happens. Its product is the results in `results/`, not the code. A wrong published result costs more than a slow one.

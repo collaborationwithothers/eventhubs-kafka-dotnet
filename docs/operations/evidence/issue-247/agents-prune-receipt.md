@@ -23,6 +23,7 @@ The diff removes these kinds of text:
 5. In "Skills": "An implementation prompt names `implement-plan` and the issue number.", which repeats the bullet above it.
 6. The opening history sentence of "Before opening a pull request" about PR #6.
 7. Rule 12's evidence sentence now pins the source commit instead of `0e9b78be2a3a175c6a27926479fe5cfe96ab1888`. The trigger description is kept and was rechecked on the source commit.
+8. The "#138 transition" paragraph under GOVERNANCE, removed on Hari's instruction of 2026-10-31 after he confirmed the governance freeze has ended. Its pointer to the prerequisites and smoke-gate sequence in docs/agents/factory.md "Item lifecycle" is not needed, because factory.md is read by every session under "Authority reads".
 
 The rationale and history stay reachable through the new pointer to AGENTS.md at the source commit, in the introduction.
 
@@ -32,7 +33,7 @@ The rationale and history stay reachable through the new pointer to AGENTS.md at
 | --- | --- |
 | `git diff --check` | Exit 0, no output. |
 | `npm ci --ignore-scripts` then `npm run check:docs` | Completed with `Documentation scan completed. Warnings are advisory; external URLs were not checked.` No issues in AGENTS.md. 8 warnings, all in files this change does not touch: docs/agents/factory.md, docs/operations/evidence/issue-124/README.md, issue-140/README.md, issue-211/receipt.md. |
-| Word count, scripted with Python `str.split()` | AGENTS.md: 4884 words on the source commit, 4450 after. |
+| Word count, scripted with Python `str.split()` | AGENTS.md: 4884 words on the source commit, 4375 after. |
 | `grep -rn "Workflow summary"` over Markdown, shell, Python, JavaScript and JSON files, excluding node_modules | No matches outside this receipt. |
 | Section headings and rule numbers, compared by script against the source commit | Rule numbers unchanged. One heading removed: "Workflow summary". |
 
