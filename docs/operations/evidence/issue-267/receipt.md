@@ -43,7 +43,7 @@ The plan's section 3 map, with the test that covers each predicate in `tests/Par
 | `member-boundaries` command | offsets and lines printed; an existing file that is not a C5 target rejected with the target message | `RunnerTests.test_member_boundaries_command_prints_offsets_and_lines` |
 | Artifact upload contract | both upload steps, their order, unchanged download pattern | `CommittedContractTests.test_workflow_keeps_stryker_logs_out_of_aggregate_input` |
 
-After cold review rounds 1 and 2 each found predicates the tests did not isolate, a hand-made mutant sweep covered every predicate this pull request adds to `c5_workflow.py`: 48 mutants, each run in a scratch copy against the span, reconcile, aggregation, projection and runner tests (the committed-contract tests need the real repository root). An unchanged control copy passed. After the round 2 corrections, 45 mutants fail the tests and 3 survive as equivalent: reading the span-selection target from the checkout instead of the projected copy (the projection never changes the assigned target), accepting a `bool` elapsed time in the rebalance list (`True` cannot exceed 7200), and taking a passing shard's rebalance span from its retained configuration (aggregation has already checked that configuration equals the verified span). The sweep is diagnostic, not acceptance.
+After cold review rounds 1 and 2 each found predicates the tests did not isolate, a hand-made mutant sweep covered the 53 predicates that `sweep.py` (under "Mutant sweep" below) lists from `c5_workflow.py`; it is not every predicate in the file. It ran on the files of commit `8c82309ed91bcc9ac2f15ec3c754044a694a218c`, whose `tests/` is unchanged at this receipt's commit. Each mutant runs in a scratch copy against the span, reconcile, aggregation, projection and runner tests; the committed-contract tests need the real repository root and are excluded. An unchanged control copy passed. Result: 50 mutants fail the tests and 3 survive. Before the round 2 corrections, 9 of the first 48 survived. The 3 survivors are equivalent, which cold review round 3 confirmed: mutant 15 reads the span-selection target from the checkout instead of the projected copy, and the projection never changes the assigned target; mutant 32 accepts a `bool` elapsed time in the rebalance list, and `True` cannot exceed 7200; mutant 34 takes a passing shard's rebalance span from its retained configuration, which aggregation has already checked equals the verified span. The sweep is diagnostic, not acceptance.
 
 Unreachable: a part report with no mutants reaches `reconcile` only if `report_records` accepts it, and `report_records` rejects an empty target mutant list. `reconcile([[], []])` covers the function directly.
 
@@ -181,6 +181,114 @@ if __name__ == "__main__":
         print(json.dumps(inventory(args[0], args[1], args[2], int(args[3]), float(args[4])), indent=2))
     else:
         print(json.dumps(pair(*args), indent=2))
+```
+
+### Mutant sweep
+
+Run with `python3 -I sweep.py <empty scratch directory>`, from outside the repository. It reads `c5_workflow.py` and the tests from the working tree. Output summary: control `0` survives; mutants `15`, `32` and `34` survive; the other 50 are killed.
+
+```python
+"""Hand-made mutant sweep over the predicates this PR adds to c5_workflow.py. Scratch copies only."""
+import concurrent.futures
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/home/user/eventhubs-kafka-dotnet/tests/Parchwell.Verifier.Tests/Mutation")
+BASE = Path(sys.argv[1])
+CLASSES = [f"test_c5_workflow.{name}" for name in ("SpanTests", "ReconcileTests", "AggregationTests", "ProjectionTests", "RunnerTests")]
+CODE = (SRC / "c5_workflow.py").read_text()
+
+M = [
+    ("LOCAL_PURPOSE = ", "LOCAL_PURPOSE = "),  # baseline: no change, must survive
+    # target_text / boundaries
+    ("data[len(UTF8_BOM):] if data.startswith(UTF8_BOM) else data", "data"),
+    ('if line.removesuffix("\\r") == "    }" and position < total:', 'if line == "    }" and position < total:'),
+    ('if line.removesuffix("\\r") == "    }" and position < total:', 'if line.removesuffix("\\r") == "    }":'),
+    ('if line.removesuffix("\\r") == "    }" and position < total:', 'if line.removesuffix("\\r").strip() == "}" and position < total:'),
+    ("position += utf16_length(line) + 1", "position += len(line) + 1"),
+    # spans
+    ("if type(count) is not int or count < 1:", "if count < 1:"),
+    ("if type(count) is not int or count < 1:", "if type(count) is not int or count < 0:"),
+    ("if length >= SPAN_END:", "if length > SPAN_END:"),
+    ("if count > chunks:", "if count > chunks + 1:"),
+    ("        return min(options)", "        return max(options)"),
+    ("options.append((max(edges[cut] - edges[first], largest), (edges[cut], *rest)))", "options.append((edges[cut] - edges[first], (edges[cut], *rest)))"),
+    # shard_span / config
+    ("    if count == 1:\n        return None\n", ""),
+    ('    if source is None:\n        raise ValueError("span shard requires target source")\n', ""),
+    ("return spans(target_text(source), count)[index - 1]", "return spans(target_text(source), count)[index % count]"),
+    # run_shard span selection
+    ("config = shard_config(shard, (staging_root / (projection.VERIFIER + target)).read_bytes())", "config = shard_config(shard, (repository / (projection.VERIFIER + target)).read_bytes())"),
+    # reconcile
+    ("    if len(parts) == 1:\n        return [list(parts[0])], list(parts[0])\n", ""),
+    ('    if any(set(rows) != set(order) for rows in indexed):\n        raise ValueError("span inventories differ")\n', ""),
+    ("if any([row.get(field) for field in IDENTITY] != [rows[0].get(field) for field in IDENTITY]", "if any([row.get(field) for field in IDENTITY[:1]] != [rows[0].get(field) for field in IDENTITY[:1]]"),
+    ('if len(dispositions) == 1 and rows[0]["status"] == "CompileError":', 'if rows[0]["status"] == "CompileError":'),
+    ('elif len(dispositions) == 1 and rows[0]["status"] == "Ignored" and owners:', 'elif len(dispositions) == 1 and rows[0]["status"] == "Ignored":'),
+    ('elif len(dispositions) == 1 and rows[0]["status"] == "Ignored" and owners:', 'elif rows[0]["status"] == "Ignored" and owners:'),
+    ("elif len(owners) > 1:", "elif len(owners) > 2:"),
+    # retained_span
+    ("if not (isinstance(mutate, list) and len(mutate) == 1 and isinstance(mutate[0], str)):", "if not (isinstance(mutate, list) and isinstance(mutate[0], str)):"),
+    ("if not (isinstance(mutate, list) and len(mutate) == 1 and isinstance(mutate[0], str)):", "if not (isinstance(mutate, list) and len(mutate) == 1):"),
+    ('match = re.fullmatch(re.escape(target) + r"\\{(\\d+)\\.\\.(\\d+)\\}", mutate[0])', 'match = re.search(r"\\{(\\d+)\\.\\.(\\d+)\\}", mutate[0])'),
+    ('match = re.fullmatch(re.escape(target) + r"\\{(\\d+)\\.\\.(\\d+)\\}", mutate[0])', 'match = re.match(re.escape(target) + r"\\{(\\d+)\\.\\.(\\d+)\\}", mutate[0])'),
+    # aggregate
+    ('require(type(elapsed) in (int, float) and elapsed >= 0, "malformed elapsed time")', 'require(type(elapsed) in (int, float), "malformed elapsed time")'),
+    ('require(type(elapsed) in (int, float) and elapsed >= 0, "malformed elapsed time")', 'require(isinstance(elapsed, (int, float)) and elapsed >= 0, "malformed elapsed time")'),
+    ('require(type(elapsed) in (int, float) and elapsed >= 0, "malformed elapsed time")', 'require(type(elapsed) in (int, float) and elapsed > 0, "malformed elapsed time")'),
+    ("            if count > 1:\n                reasons.append", "            if count >= 1:\n                reasons.append"),
+    ('require(target_denominator > 0, "assigned target has no score population")', 'require(target_denominator >= 0, "assigned target has no score population")'),
+    ("if type(elapsed) in (int, float) and elapsed > REBALANCE_SECONDS:", "if isinstance(elapsed, (int, float)) and elapsed > REBALANCE_SECONDS:"),
+    ("if type(elapsed) in (int, float) and elapsed > REBALANCE_SECONDS:", "if type(elapsed) in (int, float) and elapsed >= REBALANCE_SECONDS:"),
+    ('span, verified = shards[shard]["span"], True', 'span, verified = retained_span(directory, target), True'),
+    ("for shard, rows in zip(members, owned, strict=True):\n            part_counts, part_numerator, part_denominator = populations(rows)",
+     "for shard, rows in zip(members, owned, strict=True):\n            part_counts, part_numerator, part_denominator = populations(reconciled)"),
+    ("        records.extend(reconciled)\n    rebalance", "        records.extend(owned[0])\n    rebalance"),
+    ('                if entry["span_verified"] is False:\n', '                if True:\n'),
+    # added after cold review round 3
+    ('        elif any(row["status"] == "CompileError" for row in rows):\n            raise ValueError(f"mutant {identifier} compile error differs across spans")\n', ""),
+    ('        elif not owners:\n            raise ValueError(f"mutant {identifier} has no owning span")\n', ""),
+    ("        if any(shard not in part_records for shard in members):", "        if all(shard not in part_records for shard in members):"),
+    ("if not start < end <= SPAN_END:", "if not end <= SPAN_END:"),
+    ('        require(clean, "local check requires a clean tracked checkout")\n', ""),
+    # parse_span
+    ('match = re.fullmatch(r"(\\d+)\\.\\.(\\d+)", value)', 'match = re.match(r"(\\d+)\\.\\.(\\d+)", value)'),
+    ("if not start < end <= SPAN_END:", "if not start < end:"),
+    # member boundaries command
+    ('        require(target in BASE_CONFIG["stryker-config"]["mutate"], "unknown C5 target")\n        text = target_text', '        text = target_text'),
+    # local_check
+    ('        require(target in BASE_CONFIG["stryker-config"]["mutate"], "unknown C5 target")\n        require(type(timeout)', '        require(type(timeout)'),
+    ("require(type(timeout) in (int, float) and 0 < timeout <= 16200,", "require(isinstance(timeout, (int, float)) and 0 < timeout <= 16200,"),
+    ("require(type(timeout) in (int, float) and 0 < timeout <= 16200,", "require(type(timeout) in (int, float) and 0 < timeout < 16200,"),
+    ('        if output_dir.exists():\n            raise FileExistsError("output directory already exists")\n        commit, tree, clean = identity(repository)\n        require(clean',
+     '        commit, tree, clean = identity(repository)\n        require(clean'),
+    ("allowed = {0, SPAN_END, *(offset for offset, _ in member_boundaries(text))}", "allowed = {SPAN_END, *(offset for offset, _ in member_boundaries(text))}"),
+    ("allowed = {0, SPAN_END, *(offset for offset, _ in member_boundaries(text))}", "allowed = {0, *(offset for offset, _ in member_boundaries(text))}"),
+    ('config["stryker-config"]["mutate"] = [f"{target}{{{start}..{end}}}"]', 'config["stryker-config"]["mutate"] = [target]'),
+    ('"purpose": LOCAL_PURPOSE, "target": target, "span": [start, end],', '"purpose": LOCAL_PURPOSE, "target": target, "span": [start, start],'),
+]
+
+
+def run(item):
+    index, (old, new) = item
+    if CODE.count(old) != 1:
+        return index, "BAD-ANCHOR", old
+    directory = BASE / f"m{index}"
+    shutil.copytree(SRC, directory, ignore=shutil.ignore_patterns("__pycache__"))
+    (directory / "c5_workflow.py").write_text(CODE.replace(old, new))
+    result = subprocess.run([sys.executable, "-m", "unittest", *CLASSES],
+                            cwd=directory, capture_output=True, text=True,
+                            env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"})
+    shutil.rmtree(directory)
+    return index, "killed" if result.returncode else "SURVIVED", new.strip().splitlines()[0][:90] if new.strip() else "(deleted) " + old.strip().splitlines()[0][:80]
+
+
+BASE.mkdir(parents=True, exist_ok=True)
+with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+    for index, status, label in sorted(pool.map(run, enumerate(M))):
+        print(index, status, label)
 ```
 
 ## Verification
