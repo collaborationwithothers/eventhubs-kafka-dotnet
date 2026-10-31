@@ -11,7 +11,7 @@ This receipt records the first governance change from the factory-cost redesign.
   2. Who commits updates: "Implementer only". The implementing session writes the file inside its implementation pull request. Planning and plan-check sessions stay read-only.
 - Mandatory gates: `git diff --check`, `npm run check:docs`, one fresh-context cold review under AGENTS.md "Before opening a pull request" rule 8, CI, hosted Codex review, and Hari's merge, because AGENTS.md, docs/agents/ and `.agents/` are protected paths.
 - Publication checkpoint: open a draft pull request after the first cold review with no P0 or P1.
-- Review budget: rule 8 as written. Exhaustion action: rule 8's review-budget handoff to Hari.
+- Review budget: rule 8 as written. Exhaustion action: rule 8's review-budget handoff to Hari. The budget ran out after focused round 2 with one P1 open. Hari then authorized one extra focused round, in the interactive session on 2026-10-31 ("Fix + 1 extra round"). If that round reports a P0 or P1, the handoff to Hari applies.
 - Predicate-to-test map: not applicable; no verifier work.
 
 ## Changes, by decision part
@@ -29,9 +29,9 @@ Choices made in this change that the decision did not state. Each is open to Har
 2. The plan check reads no new comment body except decisions, approvals, the decisions they link and adopt, the selected plan, and the approved item plan or parent plan (choice 7). This follows the decision's "Not the thread, not the author's handoffs". A script may extract plan and plan-check headings, links, revision labels and timestamps for candidate selection without the bodies entering context. Planning and implementation read every new comment body when a state file exists, because a handoff to the next session (AGENTS.md rule 11) carries the continuation.
 3. With no state file, every comment is new, but no step reads the whole thread. Each reads the issue body, every decision and approval comment and the decisions they adopt, and the comments its row names. Planning and implementation also read the newest comment that is not a decision, approval, plan or plan check, to get the latest handoff. Under Hari's "implementer only" answer, a state file first reaches `main` when an item's first implementation pull request merges, so this fallback is the normal path for an item's first planning, check and implementation sessions, and for every single-pull-request child issue. The decision's table lists no thread reading for any step, so the fallback follows it.
 4. "Decisions in force" starts with the issue body, because "Item lifecycle" step 3 says authority starts there.
-5. A child issue reads and refreshes its listed parent items' bodies and their decision and approval comments, not their other comments. "Item lifecycle" step 3 uses the parent items for item approval and split checks, and a parent decision changes a child only when a child comment adopts it.
+5. A child issue reads and refreshes its listed parent items' bodies and their decision and approval comments, and for implementation their tool-naming comments and `ready-for-agent` label events, not their other comments. "Item lifecycle" step 3 uses the parent items for item approval and split checks, and a parent decision changes a child only when a child comment adopts it.
 6. Each step also reads the AGENTS.md and factory.md sections its skill cites. The decision's table lists neither file; skills cite factory.md sections for selection and authority rules.
-7. The state file adds "Item plan" and "Implementing tool" fields, and the reading lists name the approved item plan or parent plan and the tool-naming comment. Neither is a decision or approval comment, yet the plan-check questions in "Item lifecycle" step 1 and the tool check in step 2 depend on them.
+7. The state file adds "Item plan" and "Implementing tool" fields, and the reading lists name the approved item plan or parent plan and the tool-naming comment. Neither is a decision or approval comment, yet the plan-check questions in "Item lifecycle" step 1 and the tool check in step 2 depend on them. For the same tool check, implementation also reads when `ready-for-agent` was applied, from the issue's events or, for a child issue, its listed parents' events, because step 2's default applies only when no tool comment existed at that time.
 8. "Use subagents at high effort for reading" is kept in `plan-pr` and `plan-check`. The results' decision rule 5 (subagents dominating tokens) held for runs 1 and 4, but the first change does not include it.
 
 ## Verification
@@ -40,7 +40,7 @@ Choices made in this change that the decision did not state. Each is open to Har
 | --- | --- |
 | `git diff --check` | Exit 0, no output. |
 | `npm run check:docs`, on source commit and on the change | 8 warnings in both, the same 8. Two are in docs/agents/factory.md, `Undefined identifier: S0`, in the #211 amendment sentence and the "Evidence pack" bullet; this change does not touch either text. The other six are in files this change does not touch. |
-| Word count, Python `str.split()`, source commit to the commit after `6ac82a1` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6731. |
+| Word count, Python `str.split()`, source commit to the commit after `d2272b9` | AGENTS.md 4375 to 4377. docs/agents/factory.md 5693 to 6747. |
 | `grep -rn -i "every comment\|full thread\|whole thread\|comment page"` over Markdown outside docs/operations/evidence | Before the change, one match: the old "Authority reads" first-read sentence. After, one match: the catch-up's "every comment's ID", which lists metadata only. |
 | Ruleset patterns in factory.md "Ruleset" and `.github/CODEOWNERS` | No pattern matches `items/`. |
 
