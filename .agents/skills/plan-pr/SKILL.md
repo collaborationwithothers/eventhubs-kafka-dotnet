@@ -13,7 +13,7 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 
 ## Steps
 
-1. Read AGENTS.md, docs/agents/factory.md and the issue under factory.md "Authority reads", including any parent items for a child issue. Use subagents at high effort for reading. Done when the initial read and snapshot are complete, the authorities are listed in creation order, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
+1. Read the item state file and catch up on the issue under factory.md "Authority reads", using its planning reading list, including any parent items for a child issue. Use subagents at high effort for reading. Done when the initial read and snapshot are complete, the authorities are listed in creation order, and candidate selection under factory.md "Item lifecycle" step 3 is complete.
 2. Name the selected pull request, or retain its name for a revision, and read on `main` every file the plan will change. Done when each change you plan has its current text in hand.
 3. Write the plan to factory.md "Item lifecycle" step 3's definition of implementation-grade. Done when every part of that definition is met, each plan-check question in step 1 has an answer, and every point the authorities leave open is under "Open questions for Hari", which states `None` when nothing is open.
 4. Refresh authority under factory.md "Authority reads". Done when candidate selection and the plan reflect every addition, edit and deletion since the last read.
