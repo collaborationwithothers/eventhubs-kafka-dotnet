@@ -302,6 +302,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         reasons.append(f"cannot enumerate shard directory: {error}")
     reference_sources = None
     reference_tree = None
+    reference_projection_sources = None
     shards = {}
     records = []
     for shard, target in SHARDS.items():
@@ -353,8 +354,12 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             projection_path = directory / "projection.json"
             require(sha256(projection_path) == receipt["projection_manifest_sha256"],
                     "projection manifest hash mismatch")
-            target_hash = projection.validate(json.loads(projection_path.read_text()),
-                                              directory / "projection-src", target, sources)
+            projection_manifest = json.loads(projection_path.read_text())
+            target_hash = projection.validate(projection_manifest, directory / "projection-src", target, sources)
+            full_sources = projection_manifest["original_sha256"]
+            require(reference_projection_sources is None or full_sources == reference_projection_sources,
+                    "cross-shard projection input mismatch")
+            reference_projection_sources = full_sources
             selected = report_records(report, target, source_sha256=target_hash)
             counts, numerator, denominator = populations(selected)
             require(denominator > 0, "assigned target has no score population")

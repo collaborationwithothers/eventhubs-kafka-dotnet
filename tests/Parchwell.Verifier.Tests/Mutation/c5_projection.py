@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
@@ -22,6 +23,10 @@ FIELDS = {"policy", "target", "original_sha256", "before_sha256", "after_sha256"
 
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def file_bytes(path: Path) -> bytes:
+    return os.fsencode(os.readlink(path)) if path.is_symlink() else path.read_bytes()
 
 
 def prefixed(data: bytes) -> bytes:
@@ -47,18 +52,20 @@ def capture(root: Path, names: list[str]) -> dict[str, str]:
               if not {"bin", "obj"}.intersection(path.relative_to(root).parts)}
     if actual != expected:
         raise ValueError("projection compile-source inventory changed")
-    return {name: digest((root / name).read_bytes()) for name in names}
+    return {name: digest(file_bytes(root / name)) for name in names}
 
 
 def prepare(repository: Path, root: Path, target: str, retained: Path) -> dict:
     names = subprocess.check_output(["git", "-C", str(repository), "ls-files", "-z"]).decode().split("\0")
     names = sorted(name for name in names if name)
-    if len(names) > MAX_FILES or sum((repository / name).stat().st_size for name in names) > MAX_BYTES:
+    if len(names) > MAX_FILES or sum((repository / name).lstat().st_size for name in names) > MAX_BYTES:
         raise ValueError("projection export bound exceeded")
     sources = source_names(names)
     assigned = VERIFIER + target
     if not sources or len(sources) > MAX_VERIFIER_FILES or assigned not in sources:
         raise ValueError("projection target/source inventory invalid")
+    if any((repository / name).is_symlink() for name in sources):
+        raise ValueError("verifier source symlink is unsupported")
     archive = root.parent / "source.tar"
     with archive.open("xb") as stream:
         subprocess.run(["git", "-C", str(repository), "archive", "HEAD"], stdout=stream, check=True, timeout=60)
@@ -66,7 +73,7 @@ def prepare(repository: Path, root: Path, target: str, retained: Path) -> dict:
         stream.extractall(root, filter="data")
     archive.unlink()
     hashes = capture(root, names)
-    if hashes != {name: digest((repository / name).read_bytes()) for name in names}:
+    if hashes != {name: digest(file_bytes(repository / name)) for name in names}:
         raise ValueError("projection differs from measured checkout")
     disabled = [name for name in sources if name != assigned]
     for name in disabled:

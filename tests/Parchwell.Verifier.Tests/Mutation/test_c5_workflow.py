@@ -184,6 +184,18 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
+    def test_cross_shard_projection_inputs_must_match(self):
+        fixture = AggregateFixture(self.directory)
+        artifact = fixture.paths["publication"]
+        path = artifact / "projection.json"
+        manifest = json.loads(path.read_text())
+        for field in ("original_sha256", "before_sha256", "after_sha256"):
+            manifest[field]["scenarios/extra.json"] = "f" * 64
+        write_json(path, manifest)
+        fixture.receipts["publication"]["projection_manifest_sha256"] = digest(path)
+        fixture.save("publication")
+        self.assert_incomplete(fixture)
+
     def test_projection_or_report_tampering_is_incomplete(self):
         cases = ("missing", "hash", "policy", "target", "target-bytes", "excluded-bytes", "test-bytes", "drift", "disabled", "report-source")
         for case in cases:
@@ -620,6 +632,19 @@ class RunnerTests(unittest.TestCase):
                 with self.subTest(setting=setting, adjustment=adjustment), patch.object(projection, setting, cap + adjustment):
                     result, _, _ = self.invoke(output=self.root / (setting + str(adjustment)))
                     self.assertEqual(expected, result)
+
+    def test_tracked_directory_symlinks_are_preserved(self):
+        folder = self.root / ".claude/skills"
+        folder.mkdir(parents=True)
+        (folder / "test-link").symlink_to("../../tests", target_is_directory=True)
+        subprocess.run(["git", "add", ".claude"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Symlink fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        with patch.dict(os.environ, {"GITHUB_SHA": commit}):
+            result, _, output = self.invoke()
+        self.assertEqual(0, result)
+        manifest = json.loads((output / "projection.json").read_text())
+        self.assertEqual(projection.digest(b"../../tests"), manifest["original_sha256"][".claude/skills/test-link"])
 
     def test_failed_launch_has_explicit_receipt(self):
         result, receipt, _ = self.invoke(command_prefix=[str(self.root / "missing")])
