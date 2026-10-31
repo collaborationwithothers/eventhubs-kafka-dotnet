@@ -306,11 +306,15 @@ public sealed class ProbeV2AuthenticationMetadataTests
         ProbeV2HandlerRefreshMetadata handler = new(5000, 20000, Now, E0, Now, E1,
             10, 20, 11, 21, 1000, true, 3, null, null, 0, [], false, false,
             false, false, false, null, true);
+        handler = handler with
+        {
+            BeforeService = new("delivery", "client", 1, "document-events", 0, 7, Now, 10,
+                "Persisted", 0, false, new string('A', 300000), null)
+        };
         ProbeV2AuthenticationMetadata oversized = BaseRecord() with
         {
             SchemaVersion = 2,
             Mode = "single-action-v2-handler-refresh-path",
-            ClientId = new string('x', 300000),
             HandlerRefresh = handler
         };
 

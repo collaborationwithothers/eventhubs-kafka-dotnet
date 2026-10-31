@@ -153,8 +153,10 @@ public sealed class ProbeV2LifecycleTests
     public async Task GivenHandlerRefreshPathOptIn_When_FiveSlotsRun_Then_ActualHostOutputCarriesBoundedV2Rows(
         string configuration, string stage, string actor)
     {
+        using var inputs = actor == "consumer" ? await CreateF06ConsumerInputsAsync() : null;
         using var fixture = new Fixture(item: "F06", configuration: configuration, stage: stage,
-            captureAuthenticationMetadata: true, testHandlerRefreshPath: true);
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            nonmatchingAfterFirstPostSeek: actor == "consumer", inputRoot: inputs?.Path);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
             logs: fixture.Logs);
         Assert.Equal(0, exit);
@@ -191,7 +193,11 @@ public sealed class ProbeV2LifecycleTests
             else
             {
                 Assert.Equal(1, fixture.ConsumerClients[row.Repeat - 1].SeekCalls);
-                Assert.Equal(1, fixture.ConsumerClients[row.Repeat - 1].PostSeekConsumeCalls);
+                Assert.True(fixture.ConsumerClients[row.Repeat - 1].PostSeekConsumeCalls > 1);
+                Assert.Equal(0, row.HandlerRefresh.DiagnosticNonmatches);
+                Assert.NotNull(row.HandlerRefresh.StartedTimestamp);
+                Assert.NotNull(row.HandlerRefresh.EndedTimestamp);
+                Assert.True(row.HandlerRefresh.EndedTimestamp.Value >= row.HandlerRefresh.StartedTimestamp.Value + 20000);
                 Assert.Equal("read", row.HandlerRefresh.BeforeService.Action);
                 Assert.Equal("read", row.HandlerRefresh.AfterService.Action);
                 Assert.NotNull(row.HandlerRefresh.SeekReturnedAt);
@@ -199,16 +205,21 @@ public sealed class ProbeV2LifecycleTests
             }
         }
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(capture, ProbeV2Wire.JsonOptions));
-        Assert.DoesNotContain(document.RootElement.EnumerateObject(), property => property.Name.Contains("handler", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(ScientificCaptureFields.Order(StringComparer.Ordinal),
+            document.RootElement.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        foreach (JsonElement repeat in document.RootElement.GetProperty("repeats").EnumerateArray())
+            Assert.Equal(ScientificRepeatFields.Order(StringComparer.Ordinal),
+                repeat.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
         ExportHandlerRefreshFixture(actor, fixture, capture);
     }
 
     [Fact]
     public async Task GivenConsumerSeekReturnsAfterObservationCutoff_WhenWorkerRuns_ThenNoPostSeekConsumeIsAdmitted()
     {
+        using var inputs = await CreateF06ConsumerInputsAsync();
         using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
             captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
-            advanceClockOnSeekMilliseconds: 20001);
+            advanceClockOnSeekMilliseconds: 20001, inputRoot: inputs.Path);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
             logs: fixture.Logs);
 
@@ -412,6 +423,42 @@ public sealed class ProbeV2LifecycleTests
             fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
             "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536));
     }
+    private static async Task<TemporaryInputDirectory> CreateF06ConsumerInputsAsync()
+    {
+        var inputs = new TemporaryInputDirectory();
+        try
+        {
+            using var seed = new Fixture(item: "F06", configuration: "C6", stage: "seed", inputRoot: inputs.Path);
+            Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => seed.Host, output: seed.Output, logs: seed.Logs));
+            WriteDependencyFiles(seed, inputs.Path);
+
+            using var action = new Fixture(item: "F06", configuration: "C6", stage: "action", inputRoot: inputs.Path);
+            Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => action.Host, output: action.Output, logs: action.Logs));
+            WriteDependencyFiles(action, inputs.Path);
+            return inputs;
+        }
+        catch
+        {
+            inputs.Dispose();
+            throw;
+        }
+    }
+    private static void WriteDependencyFiles(Fixture fixture, string inputRoot)
+    {
+        string directory = Path.Combine(inputRoot, fixture.Options.JobName);
+        Directory.CreateDirectory(directory);
+        File.WriteAllBytes(Path.Combine(directory, "registration.json"),
+            ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536));
+        File.WriteAllBytes(Path.Combine(directory, "capture.json"), ProbeV2Wire.Encode(Capture(fixture), 524288));
+        File.WriteAllBytes(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
+            fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
+            "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536));
+    }
+    private sealed class TemporaryInputDirectory : IDisposable
+    {
+        internal string Path { get; } = Directory.CreateTempSubdirectory("parchwell-f06-consumer-inputs-").FullName;
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
     private sealed class Fixture : IDisposable
     {
         internal List<string> Events { get; } = [];
@@ -428,11 +475,12 @@ public sealed class ProbeV2LifecycleTests
         internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null,
             bool captureAuthenticationMetadata = false, TextWriter? logWriter = null, string stage = "action",
             bool testHandlerRefreshPath = false, int advanceClockOnSeekMilliseconds = 0,
-            bool nonmatchingDiagnosticRead = false)
+            bool nonmatchingDiagnosticRead = false, bool nonmatchingAfterFirstPostSeek = false, string? inputRoot = null)
         {
             Options = ProbeV2OptionsTests.Options(item, configuration, stage);
             Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata || testHandlerRefreshPath;
             Options.TestHandlerRefreshPath = testHandlerRefreshPath;
+            Options.InputRoot = inputRoot ?? Options.InputRoot;
             string root = AppContext.BaseDirectory;
             while (!File.Exists(Path.Combine(root, "Parchwell.slnx"))) root = Path.GetDirectoryName(root) ?? throw new DirectoryNotFoundException("repository_root");
             Options.ScenarioRoot = root;
@@ -491,6 +539,7 @@ public sealed class ProbeV2LifecycleTests
                 proxy.RefreshOnSecondConsume = testHandlerRefreshPath;
                 proxy.AdvanceClockOnSeekMilliseconds = advanceClockOnSeekMilliseconds;
                 proxy.NonmatchingDiagnosticRead = nonmatchingDiagnosticRead;
+                proxy.NonmatchingAfterFirstPostSeek = nonmatchingAfterFirstPostSeek;
                 proxy.SessionCancellationToken = cancellation;
                 proxy.Options = Options; proxy.Stopping = Stopping;
                 ConsumerClients.Add(proxy); Events.Add("client-" + (Clients.Count + ConsumerClients.Count));
@@ -617,6 +666,7 @@ public sealed class ProbeV2LifecycleTests
         internal int PostSeekConsumeCalls;
         internal int AdvanceClockOnSeekMilliseconds;
         internal bool NonmatchingDiagnosticRead;
+        internal bool NonmatchingAfterFirstPostSeek;
         internal CancellationToken SessionCancellationToken;
         internal bool SessionCancelledAtDispose;
         internal TopicPartitionOffset? Assigned;
@@ -640,6 +690,12 @@ public sealed class ProbeV2LifecycleTests
                         Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),
                         Message = new Message<byte[], byte[]> { Key = [], Value = [] }
                     };
+                if (SeekCalls > 0 && NonmatchingAfterFirstPostSeek && PostSeekConsumeCalls > 1)
+                    return new ConsumeResult<byte[], byte[]>
+                    {
+                        Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),
+                        Message = new Message<byte[], byte[]> { Key = [], Value = [] }
+                    };
                 if (RefreshOnSecondConsume && ConsumeCalls == 2)
                 {
                     Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
@@ -651,8 +707,15 @@ public sealed class ProbeV2LifecycleTests
                 if (Assigned is null) return null;
                 int repeat = int.Parse(Options.PodName[(Options.PodName.LastIndexOf('-') + 1)..], System.Globalization.CultureInfo.InvariantCulture);
                 ProbeV2Stage stage = ProbeV2Stage.For(Options.ScenarioId, Options.ConfigurationId, Options.Stage);
-                byte[] key = stage.Key(Options, repeat);
-                byte[]? value = stage.Value(Options, repeat);
+                ProbeV2Options messageOptions = Options;
+                if (Options.ScenarioId == "F06" && stage.SourceConfiguration is { } sourceConfiguration &&
+                    stage.SourceStage is { } sourceStage)
+                {
+                    stage = ProbeV2Stage.For(Options.ScenarioId, sourceConfiguration, sourceStage);
+                    messageOptions = ProbeV2OptionsTests.Options(Options.ScenarioId, sourceConfiguration, sourceStage);
+                }
+                byte[] key = stage.Key(messageOptions, repeat);
+                byte[]? value = stage.Value(messageOptions, repeat);
                 return new ConsumeResult<byte[], byte[]>
                 {
                     Topic = Assigned.Topic, Partition = Assigned.Partition, Offset = Assigned.Offset,

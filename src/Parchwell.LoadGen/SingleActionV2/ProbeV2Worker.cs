@@ -151,7 +151,7 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                                 authentication?.HandlerRefreshProgress.ThirdSuccessfulAttempt, token))
                         {
                             RunDiagnosticOperation();
-                            if (diagnosticConsumerOperationStarted || !refreshPath.CanContinue(token)) break;
+                            if (!refreshPath.CanContinue(token)) break;
                         }
                         TimeSpan remaining = TimeSpan.FromSeconds(options.Limits.PostTerminalStatisticsSeconds) - clock.GetElapsedTime(statisticsStarted);
                         TimeSpan slice = TimeSpan.FromMilliseconds(Math.Min(options.Limits.PollSliceMs, remaining.TotalMilliseconds));
