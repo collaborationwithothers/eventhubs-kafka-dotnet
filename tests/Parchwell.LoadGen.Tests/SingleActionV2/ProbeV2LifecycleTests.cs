@@ -225,6 +225,8 @@ public sealed class ProbeV2LifecycleTests
 
         Assert.Equal(0, exit);
         Assert.Equal(5, fixture.ConsumerClients.Count);
+        List<string> metadataLines = MetadataLines(fixture);
+        Assert.Equal(5, metadataLines.Count);
         Assert.All(fixture.ConsumerClients, client =>
         {
             Assert.Equal(1, client.SeekCalls);
@@ -232,7 +234,7 @@ public sealed class ProbeV2LifecycleTests
             Assert.True(client.SessionCancellationToken.IsCancellationRequested);
             Assert.True(client.SessionCancelledAtDispose);
         });
-        foreach (string line in MetadataLines(fixture))
+        foreach (string line in metadataLines)
         {
             ProbeV2AuthenticationMetadata row = ReadMetadata(line);
             Assert.True(row.HandlerRefresh!.OperationAttempted);
@@ -250,19 +252,23 @@ public sealed class ProbeV2LifecycleTests
     [Fact]
     public async Task GivenNonmatchingDiagnosticReadsReachWorkerCap_WhenWorkerRuns_ThenNoFurtherConsumeIsAdmitted()
     {
+        using var inputs = await CreateF06ConsumerInputsAsync();
         using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
             captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
-            nonmatchingDiagnosticRead: true);
+            nonmatchingDiagnosticRead: true, inputRoot: inputs.Path);
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
             logs: fixture.Logs);
 
         Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.ConsumerClients.Count);
+        List<string> metadataLines = MetadataLines(fixture);
+        Assert.Equal(5, metadataLines.Count);
         Assert.All(fixture.ConsumerClients, client =>
         {
             Assert.Equal(4096, client.PostSeekConsumeCalls);
             Assert.Equal(1, client.SeekCalls);
         });
-        foreach (string line in MetadataLines(fixture))
+        foreach (string line in metadataLines)
         {
             ProbeV2HandlerRefreshMetadata handler = ReadMetadata(line).HandlerRefresh!;
             Assert.Equal(4096, handler.DiagnosticNonmatches);

@@ -118,8 +118,8 @@ class WorkflowTests(unittest.TestCase):
         batch = self.all_jobs['batch']
         self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor}", batch['if'])
         stop = self.all_jobs['batch-stop']
-        self.assertTrue(stop['if'].startswith('(always() && ((inputs.scenario =='))
-        self.assertTrue(stop['if'].endswith(' && ' + factor))
+        expected_stop = "always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))))"
+        self.assertEqual(f"({expected_stop}) && {factor}", stop['if'])
         self.assertIn('PARCHWELL_TEST_HANDLER_REFRESH_PATH', batch['env'])
         steps = self.steps(batch)
         self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", steps['destroy']['if'])
@@ -274,8 +274,8 @@ esac
         self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor}", batch['if'])
         self.assertNotIn('needs', batch)
         self.assertEqual(['batch'], stop['needs'])
-        self.assertTrue(stop['if'].startswith('(always() && ((inputs.scenario =='))
-        self.assertTrue(stop['if'].endswith(' && ' + factor))
+        expected_stop = "always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))))"
+        self.assertEqual(f"({expected_stop}) && {factor}", stop['if'])
         expected_ids = {
             'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
