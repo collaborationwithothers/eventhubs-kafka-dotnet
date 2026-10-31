@@ -431,10 +431,12 @@ public sealed class ProbeV2LifecycleTests
             using var seed = new Fixture(item: "F06", configuration: "C6", stage: "seed", inputRoot: inputs.Path);
             Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => seed.Host, output: seed.Output, logs: seed.Logs));
             WriteDependencyFiles(seed, inputs.Path);
+            PreserveF06DependencyOutput(seed, "C6-seed");
 
             using var action = new Fixture(item: "F06", configuration: "C6", stage: "action", inputRoot: inputs.Path);
             Assert.Equal(0, await ProbeV2Host.RunAsync(hostFactory: () => action.Host, output: action.Output, logs: action.Logs));
             WriteDependencyFiles(action, inputs.Path);
+            PreserveF06DependencyOutput(action, "C6-action");
             return inputs;
         }
         catch
@@ -453,6 +455,17 @@ public sealed class ProbeV2LifecycleTests
         File.WriteAllBytes(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
             fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
             "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536));
+    }
+    private static void PreserveF06DependencyOutput(Fixture fixture, string dependency)
+    {
+        string? root = Environment.GetEnvironmentVariable("PARCHWELL_PROBE_V2_HANDLER_REFRESH_FIXTURE_DIRECTORY");
+        if (root is null) return;
+        string directory = Path.Combine(root, "dependencies", dependency);
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "actor.stdout"), fixture.Output + fixture.Logs.ToString());
+        File.Copy(Path.Combine(fixture.Options.InputRoot!, fixture.Options.JobName, "registration.json"), Path.Combine(directory, "registration.json"), overwrite: true);
+        File.Copy(Path.Combine(fixture.Options.InputRoot!, fixture.Options.JobName, "capture.json"), Path.Combine(directory, "capture.json"), overwrite: true);
+        File.Copy(Path.Combine(fixture.Options.InputRoot!, fixture.Options.JobName, "pod.json"), Path.Combine(directory, "pod.json"), overwrite: true);
     }
     private sealed class TemporaryInputDirectory : IDisposable
     {
@@ -694,8 +707,8 @@ public sealed class ProbeV2LifecycleTests
                     };
                 if (SeekCalls > 0 && NonmatchingAfterFirstPostSeek && PostSeekConsumeCalls > 1)
                 {
-                    TimeSpan timeout = args![0] is TimeSpan duration ? duration : TimeSpan.FromMilliseconds(100);
-                    Clock.Milliseconds += (long)Math.Max(1, timeout.TotalMilliseconds);
+                    TimeSpan postSeekPollTimeout = args![0] is TimeSpan postSeekPollDuration ? postSeekPollDuration : TimeSpan.FromMilliseconds(100);
+                    Clock.Milliseconds += (long)Math.Max(1, postSeekPollTimeout.TotalMilliseconds);
                     return new ConsumeResult<byte[], byte[]>
                     {
                         Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),

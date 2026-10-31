@@ -1,7 +1,13 @@
 # Issue 245: short-handler-refresh-path execution receipt
 
-Source commit: `8cbde949d8fca424dda33accbd01c1a995495678`
+The approved Revision 2 implementation is complete on branch `codex/issue-245-short-handler-refresh-path`, based on commit `203d1fd59b6faaa8c80f309f93bcb49d473db070`. The focused suite and every approved local offline acceptance gate passed on the finished source tree.
+
+The coordinator owns cold review, GitHub publication, hosted CI and hosted code/security reviews. This receipt describes the current local diff; no commit, push or pull request was made by this implementation session. Comprehensive cold review round 1 is pending and has not started; cumulative review counts remain 0/2 comprehensive and 0/2 focused.
+
+Base revision: `203d1fd59b6faaa8c80f309f93bcb49d473db070`
 Branch: `codex/issue-245-short-handler-refresh-path`
+
+Implementation model: **gpt-6-luna, high reasoning effort**. Current completion status supersedes earlier historical handoffs and pending-gate statements below. Those records are retained to preserve measured failures, corrections and cumulative budgets.
 
 ## Authority and scope
 
@@ -14,7 +20,7 @@ The authorized work is implementation plus offline verification. Preserve the pl
 - **Deliverable:** all files, APIs, tests, operations documentation and bounded diagnostic behavior specified by the approved Revision 2 plan, including the exact P2 correction in the plan check: wrap each complete existing workflow job selector as `(P) && F` in both workflow copies; specifically parenthesize the `probe-batch || probe-batch-2` selector. Retain admitted-run teardown/stop predicates.
 - **Current authorization:** Hari approved the exact plan revision for implementation and offline checks only. This does not authorize dispatch, live work, Azure access, credentials, token-content inspection, or spend.
 - **Mandatory gates:** finish implementation before acceptance testing; run each approved plan command once on the finished diff, with fresh export directories and tests without skips; complete the existing build/analyzer/architecture, coverage, worker-image, offline shell/chart/docs and mirror checks. Record actual commands, source revisions and results here. No generated output is committed. Coordinator owns authority freshness, cold reviews, publication, push and handoff; no commit or push before the coordinator checkpoint. Hari merges protected workflow changes. Hosted final-head CI and code/security reviews remain separate mandatory publication gates.
-- **Exact verification commands:** the commands below are from plan section “Commands from repo root”; replace only `<installed-dotnet-coverage-18.12.0-path>` with the already installed documented executable path. Run the complete list once after implementation, using a new `mktemp` export directory.
+- **Exact verification commands:** the commands below are from plan section "Commands from repo root"; replace only `<installed-dotnet-coverage-18.12.0-path>` with the already installed documented executable path. Run the complete list once after implementation, using a new `mktemp` export directory.
 
 ```bash
 handler_acceptance_dir=$(mktemp -d /tmp/issue245-handler-acceptance.XXXXXXXX)
@@ -41,7 +47,9 @@ git diff --check
 - **Earliest authorized publication checkpoint:** after implementation is complete and all listed offline gates pass, provide the finished diff, receipt and results to the coordinator for the required cold-review process and publication decision. This receipt does not authorize a push or publication by the implementer.
 - **Review and correction budget:** at most two comprehensive and two focused cold-review rounds cumulatively; coordinator manages reviews. Offline verification allows one consolidated correction batch of at most ten root causes. If another gate fails after that batch, a failure needs new scope, or review budget/focus is exhausted, preserve work on the permitted `-wip` path only when directed by the coordinator and hand off with the unresolved gate and evidence. No live acceptance work is in this authorization.
 
-## Authorized continuation
+## Historical continuation and verification record
+
+The snapshots below retain each prior continuation's state at that point in time. Pending-gate and no-PR statements are historical, not current completion status; later sections supersede them. Interim diagnoses are identified as hypotheses where applicable.
 
 The continuation resumed from clean local HEAD `d6d6a8f867f88f4bf8232e27778c5a9a739f01f5` on the branch above, after the preceding session's one correction batch (1/1) failed its next build and stopped. The user explicitly authorized continuing issue #245 under the existing approval. The coordinator refreshed authority and source review before release; the exact Revision 2 approval, offline-only boundary, and current decisions remain in force. This continuation preserves the earlier batch and stopped build as recorded below; it does not reset the correction or cold-review budgets. Cold-review counts remain 0/2 comprehensive and 0/2 focused; no hosted final-head checks have run.
 
@@ -97,7 +105,7 @@ One consolidated correction batch addressed those six roots. The immediate post-
 
 - xUnit1051 cancellation-token analyzer failure in `KafkaAuthenticationDependencyInjectionTests.cs`;
 - xUnit1026 unused `actualMilliseconds` in the capped expiry theory;
-- three CS1503 mismatches between raw monotonic timestamps and UTC `DateTimeOffset` helper fields;
+- three CS1503 mismatches from passing nullable UTC wall-clock `ClockSample.UtcTicks` values to nullable `DateTimeOffset` helper fields; the separate monotonic `Timestamp` remains an integer and was not reinterpreted as UTC;
 - `ProbeV2SessionFactory.CreateHandlerRefreshPath` references an unavailable `options` identifier and has a CA1822 static-member finding;
 - CA1068 ordering on the helper `Slice` cancellation-token parameter; and
 - CA1822 on the helper `Matches` method.
@@ -196,3 +204,46 @@ Both bounded corrections are now applied locally: the nonmatching fake branch ad
 ### Bounded focused rerun stop (2026-10-31)
 
 The five-minute-wrapped focused gate used fresh exports at `/tmp/issue245-focused-loadgen-bounded.b5GjVHn` and stopped during compilation in 2 seconds. It reported two CS0136 diagnostics at `ProbeV2LifecycleTests.cs:697`: the new `timeout` and `duration` locals in `NonmatchingAfterFirstPostSeek` conflict with later locals of those names in the enclosing `Consume` block. Raw output: `/tmp/issue245/fixture-completion/focused-loadgen.log`. This is a failing gate after the bounded correction batch. No further source correction or verification was run in this continuation; the coordinator owns the automatic rule 11 handoff. All prior failed, interrupted and passing runs remain recorded separately; this does not establish a focused pass. No collector, full verification, coverage, worker image, hosted review, push or PR was performed.
+
+### Fresh continuation card (2026-10-31, focused build repair)
+
+- **Deliverable:** Finish the approved Revision 2 implementation and all required offline verification, preserving the prior run history and cumulative limits in this receipt. Coordinator owns GitHub authority refresh, publication, reviews, push, PR and handoff; this implementation session makes only local edits and runs the approved gates.
+- **Current authorization:** Hari's exact Revision 2 approval and offline-only implementation authorization remain in force. The coordinator's current handoff [6532466928](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/245#issuecomment-6532466928) authorizes this fresh continuation under AGENTS.md "Before opening a pull request" rule 11. No live dispatch/collection, Azure, credential/token-content action, spend, governance/label change, protected workflow merge, scientific schema/expected/results change, generated-output commit, commit or push.
+- **Current baseline:** branch `codex/issue-245-short-handler-refresh-path`, clean HEAD `203d1fd59b6faaa8c80f309f93bcb49d473db070`. The exact plan/check/approval and source receipts remain as recorded above. Cold review counts remain 0/2 comprehensive and 0/2 focused; hosted final-head checks have not run. Cumulative cold-review and correction budgets are not reset.
+- **Named repair scope:** In `ProbeV2LifecycleTests.NativeConsumer.Invoke`, rename both nested branch locals in `NonmatchingAfterFirstPostSeek` to `postSeekPollTimeout` and `postSeekPollDuration`, preserving the existing fake-clock advance. In `ProbeV2Worker.CaptureAsync`, initialize the refresh cancellation due time to `TimeSpan.Zero` and compute/clamp `stage.WindowMs + 20000 - clock.GetElapsedTime(started)` only when `refreshSessionCancellation` is non-null. Keep the existing timer and deadline-shortening behavior. Audit changed scopes for local-name conflicts before verification.
+- **Focused gate:** Run the focused SingleActionV2 Microsoft.Testing.Platform command from the preceding focused checkpoint once with fresh actor/judge/metadata/handler export directories and the finite existing command wrapper. Preserve actual C6 seed/action and C9 admission output/dependency bytes; inspect the passing upstream captures. The historical 137/137 partial run and 2 compile errors are not a pass. If the focused gate fails, record bounded roots and outputs for the coordinator's automatic rule 11 continuation without another correction loop.
+- **Remaining mandatory gates:** If focused verification passes, run the full approved Revision 2 command list in the execution card above, once on the finished source, with fresh exports, configured SDK/tool paths and coverage 18.12. Run collector with `--handler-refresh-actor-export`, full `verify-dotnet.sh`, coverage, worker images, phase/script suites, offline lifecycle, chart, host, npm/docs, workflow mirror and diff checks. Preserve the existing cumulative cold-review counts and advisory-disposition cap of ten changed-doc warnings. Any gate failure after the authorized bounded correction batch ends this session for automatic coordinator handoff.
+- **Earliest authorized publication checkpoint:** after all offline gates pass, return the frozen diff, receipt and actual evidence to the coordinator for required cold review and publication. No publication action is owned by this implementing session.
+
+### Focused verification after the fresh continuation repairs
+
+The first focused run after the two named code repairs passed 147 tests, 0 failed, 0 skipped in 38.7 seconds. Its log is `/tmp/issue245/verification-completion/focused-loadgen.log`, XML and output exports are under `/tmp/issue245-focused-loadgen-final.vTDBwjp1`. The initial passing output contained the C6 seed producer and C9 consumer actor captures, but the helper's temporary C6 seed/action dependency tree was disposed without preserving its actual host outputs.
+
+To retain the actual C6 seed/action host output and dependency bytes required for review, the test helper now copies those real `ProbeV2Host` outputs to the opt-in handler export directory under `dependencies/C6-seed` and `dependencies/C6-action`. The first run with this evidence export failed in the cutoff test because its second invocation wrote the same C6 files without overwrite. Its captured xUnit XML at `/tmp/issue245-focused-loadgen-final2.iuCLT6zb/test/results.xml` records 147 total, 146 passed, 1 failed and 0 skipped. The shared raw log path `/tmp/issue245/verification-completion/focused-loadgen-final.log` was overwritten by the later passing rerun and does not contain that failed run. One bounded correction made the output copies overwrite existing files. The fresh focused rerun passed 147 tests, 0 failed, 0 skipped in 39.6 seconds; raw output `/tmp/issue245/verification-completion/focused-loadgen-final.log`, status `/tmp/issue245/verification-completion/focused-loadgen-final.status`, XML `/tmp/issue245-focused-loadgen-final3.YTyMHqUN/test/results.xml`, fresh export root `/tmp/issue245-focused-loadgen-final3.YTyMHqUN`.
+
+The retained C6 seed and action exports both have five successful repeats, handler exit code 0, and completed cleanup. The C6 action capture has 201 reads per first two inspected repeats and carries the produced record at offset 7. The retained C9 consumer capture has five successful repeats, one read record per inspected repeat, and offset 7. Raw C6 seed/action outputs and their registration/capture/pod dependency files are in `/tmp/issue245-focused-loadgen-final3.YTyMHqUN/handler-actors/dependencies/`; the C9 registration/capture/pod and combined stdout are in `/tmp/issue245-focused-loadgen-final3.YTyMHqUN/handler-actors/consumer/`. SHA-256 values were recorded externally by the verification command output. This is synthetic local host output only and makes no live service claim.
+
+### Final local acceptance status (2026-10-31)
+
+The final focused run passed 147 tests, 0 failed and 0 skipped in 39.6 seconds. Full acceptance ran once on the finished source with fresh actor exports under `/tmp/issue245-handler-acceptance.yl2xwHyI`; all command exit statuses are recorded in `/tmp/issue245/acceptance-logs-final/status.txt` and each command's raw output is in the corresponding log under `/tmp/issue245/acceptance-logs-final/`.
+
+| Gate | Final measured result |
+| --- | --- |
+| `./scripts/verify-dotnet.sh` | Passed. Architecture 13, enrichment 56, Kafka 478, LoadGen 704, scenarios 239 and verifier 4423 tests passed; warning-control checks passed. No skips. |
+| Producer/actor collector with `--handler-refresh-actor-export` | Passed; output `/tmp/issue245/acceptance-logs-final/probe-v2-producers.log`. |
+| `verify-kafka-coverage.sh` | Passed with installed coverage 18.12.0; output `/tmp/issue245/acceptance-logs-final/kafka-coverage.log`. |
+| `verify-worker-images.sh` | Passed both worker image smokes; output `/tmp/issue245/acceptance-logs-final/worker-images.log`. |
+| Phase and script Python suites | Passed 176 and 224 tests respectively; zero failures. |
+| Offline lifecycle gate | Passed workflow contract checks, shell checks, actionlint, workflow mirrors and chart acceptance (25 positive, 32 negative, 4 worker-setting regressions). |
+| Standalone probe-v2 chart matrix | Passed 150 positive and 125 negative cases. |
+| LoadGen host check | Passed under the 900-second wrapper. |
+| `npm ci --ignore-scripts` and `npm run test:docs` | Passed; documentation tests 28 passed, 0 failed, 0 skipped. |
+| First final-tree `npm run check:docs` | Passed with 9 advisory warnings, 1 in this changed receipt for curly punctuation and 8 in unchanged files. External URLs were not checked. The receipt punctuation has since been changed to ASCII. |
+| Final staged `npm run check:docs` | Passed with 8 advisory warnings, all in unchanged files; the changed receipt has no warnings. External URLs were not checked. The unchanged warnings have the blanket disposition under AGENTS.md "Before opening a pull request" rule 8. |
+| Workflow mirror `cmp` and staged `git diff --check` | Passed after receipt normalization. |
+
+The retained C6 seed/action and C9 consumer output described above is synthetic host output only. The current source tree passed local offline acceptance; hosted final-head CI, hosted code/security review and cold review are still pending. This session made no commit, push, pull request, workflow dispatch, live collection, Azure action, credential/token action, spend or scientific result publication.
+
+The measured source diff across `src/Parchwell.LoadGen/SingleActionV2/ProbeV2Worker.cs` and `tests/Parchwell.LoadGen.Tests/SingleActionV2/ProbeV2LifecycleTests.cs`, relative to the base revision and excluding this receipt, had SHA-256 `6376cba4f4a76977d7b356f7ce3da4ee710d42f51f8a16b83c23f667032eafc0` when computed with `git diff --binary -- <two paths> | sha256sum`. The full diff is ready for coordinator freeze and comprehensive round 1 review; no review report is claimed by this author.
+
+Before cold review, the coordinator refreshed `origin/main` to `461f4a5ee2d3928aaf40a40839501b6614e40ee1` after unrelated PR #262 files changed. The approved comparison merge-base remains `8cbde949d8fca424dda33accbd01c1a995495678`; the refreshed files do not overlap this issue's diff. No rebase or implementation edit is needed. The coordinator will record the frozen branch head alongside this comparison base when committing and preparing cold review.

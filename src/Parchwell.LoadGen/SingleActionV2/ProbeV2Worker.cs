@@ -38,8 +38,12 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
             : null;
         CancellationTokenSource? refreshSessionCancellation = refreshPath is null
             ? null : CancellationTokenSource.CreateLinkedTokenSource(token);
-        TimeSpan initialRefreshCancellationDue = TimeSpan.FromMilliseconds(stage.WindowMs + 20000) - clock.GetElapsedTime(started);
-        if (initialRefreshCancellationDue < TimeSpan.Zero) initialRefreshCancellationDue = TimeSpan.Zero;
+        TimeSpan initialRefreshCancellationDue = TimeSpan.Zero;
+        if (refreshSessionCancellation is not null)
+        {
+            initialRefreshCancellationDue = TimeSpan.FromMilliseconds(stage.WindowMs + 20000) - clock.GetElapsedTime(started);
+            if (initialRefreshCancellationDue < TimeSpan.Zero) initialRefreshCancellationDue = TimeSpan.Zero;
+        }
         ITimer? refreshCancellationTimer = refreshSessionCancellation is null ? null : clock.CreateTimer(
             static state =>
             {
