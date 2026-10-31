@@ -13,6 +13,9 @@ from pathlib import Path
 import signal
 import subprocess
 import time
+import tempfile
+
+import c5_projection as projection
 
 
 SHARDS = {
@@ -42,7 +45,7 @@ RECEIPT_FIELDS = set("""shard target commit tree run_id run_attempt argv cwd
     environment_overrides started_at_utc finished_at_utc elapsed_seconds
     child_exit_code termination_reason command_completed source_sha256_before
     source_sha256_after tracked_clean_before tracked_clean_after config_sha256_before
-    config_sha256_after report_sha256 command_log_sha256""".split())
+    config_sha256_after report_sha256 command_log_sha256 projection_manifest_sha256""".split())
 
 
 def sha256(path: Path) -> str:
@@ -113,6 +116,15 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
         print(f"C5 preparation failed: {error}")
         return 1
 
+    staging = tempfile.TemporaryDirectory(prefix="c5-source-")
+    staging_root = Path(staging.name) / "repository"
+    staging_root.mkdir()
+    try:
+        projected = projection.prepare(repository, staging_root, target, output_dir / "projection-src")
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        staging.cleanup()
+        print(f"C5 projection failed: {error}")
+        return 1
     config_path = output_dir / "shard-config.json"
     log_path = output_dir / "command.log"
     report_path = output_dir / REPORT_PATH
@@ -120,7 +132,7 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
     config_before = sha256(config_path)
     argv = [*(command_prefix or ["dotnet", "stryker"]), "--config-file", str(config_path),
             "--output", str(output_dir / "stryker"), "--log-to-file", "--verbosity", "debug"]
-    cwd = repository / "tests/Parchwell.Verifier.Tests"
+    cwd = staging_root / "tests/Parchwell.Verifier.Tests"
     started = utc_now()
     start = time.monotonic()
     process = None
@@ -169,6 +181,15 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
         if not unchanged_identity:
             clean_after = False
         config_after = sha256(config_path) if config_path.is_file() else None
+        projection_path = output_dir / "projection.json"
+        projection.finish(staging_root, projected, projection_path)
+        projection_valid = False
+        try:
+            projection.validate(projected, output_dir / "projection-src", target, before)
+            projection_valid = True
+        except (OSError, ValueError, TypeError, KeyError):
+            pass
+        staging.cleanup()
         receipt = {
             "shard": shard, "target": target, "commit": commit, "tree": tree,
             "run_id": os.environ.get("GITHUB_RUN_ID"),
@@ -182,12 +203,13 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
             "tracked_clean_before": clean, "tracked_clean_after": clean_after,
             "config_sha256_before": config_before, "config_sha256_after": config_after,
             "report_sha256": sha256(report_path) if report_path.is_file() else None,
+            "projection_manifest_sha256": sha256(projection_path),
             "command_log_sha256": sha256(log_path) if log_path.is_file() else None,
         }
         write_json(output_dir / "receipt.json", receipt)
     return 0 if (receipt["command_completed"] and child_exit in (0, 2)
                  and clean_after and before == after and before
-                 and config_before == config_after and receipt["report_sha256"]) else 1
+                 and projection_valid and config_before == config_after and receipt["report_sha256"]) else 1
 
 
 def require(condition: object, message: str) -> None:
@@ -195,7 +217,7 @@ def require(condition: object, message: str) -> None:
         raise ValueError(message)
 
 
-def report_records(report: dict, target: str) -> list[dict]:
+def report_records(report: dict, target: str, *, source_sha256: str | None = None) -> list[dict]:
     require(isinstance(report, dict) and report.get("schemaVersion") == "2",
             "unsupported report schema")
     root = report.get("projectRoot")
@@ -227,6 +249,9 @@ def report_records(report: dict, target: str) -> list[dict]:
                                 and row.get("status") in ("Ignored", "CompileError")
                                 for row in source["mutants"]),
                 "foreign mutant with disallowed status")
+    if source_sha256 is not None:
+        require(hashlib.sha256(assigned["source"].encode()).hexdigest() == source_sha256,
+                "report target source mismatch")
     records = []
     seen = set()
     for mutant in assigned["mutants"]:
@@ -325,7 +350,12 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(report_hash == receipt.get("report_sha256"), "report hash mismatch")
             require(sha256(directory / "command.log") == receipt.get("command_log_sha256"),
                     "command log hash mismatch")
-            selected = report_records(report, target)
+            projection_path = directory / "projection.json"
+            require(sha256(projection_path) == receipt["projection_manifest_sha256"],
+                    "projection manifest hash mismatch")
+            target_hash = projection.validate(json.loads(projection_path.read_text()),
+                                              directory / "projection-src", target, sources)
+            selected = report_records(report, target, source_sha256=target_hash)
             counts, numerator, denominator = populations(selected)
             require(denominator > 0, "assigned target has no score population")
             shards[shard] = {"target": target, "status_counts": counts,
