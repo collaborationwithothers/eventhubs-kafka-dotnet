@@ -33,6 +33,15 @@
 {{- if or (eq $role "") (ne $r.action_role $role) (ne $r.phase $configuration) (ne $r.mode (ternary "single-action-v2-judge" "single-action-v2" (eq $stage "judge"))) -}}
 {{- fail "probe-v2 mode/item/configuration/stage/role mismatch" -}}
 {{- end -}}
+{{- if hasKey $r "test_handler_refresh_path" -}}
+{{- if not (kindIs "bool" $r.test_handler_refresh_path) }}{{ fail "probe-v2 handler refresh flag must be boolean" }}{{ end -}}
+{{- end -}}
+{{- $refreshProducer := and (eq $item "F06") (eq $configuration "C6") (eq $stage "seed") (eq $role "loadgen") -}}
+{{- $refreshConsumer := and (eq $item "F06") (eq $configuration "C9") (eq $stage "action") (eq $role "enrichment-consumer") -}}
+{{- $refreshTuple := or $refreshProducer $refreshConsumer -}}
+{{- if eq (default false $r.test_handler_refresh_path) true -}}
+{{- if or (not $refreshTuple) (ne $r.run_kind "smoke") (ne (default false $r.capture_authentication_metadata) true) }}{{ fail "probe-v2 handler refresh selection mismatch" }}{{ end -}}
+{{- end -}}
 {{- $dependencies := list -}}
 {{- $prefix := printf "%s-%s-%s-" $r.run_id (lower $item) (lower $configuration) -}}
 {{- if eq $stage "judge" -}}
@@ -71,6 +80,15 @@
 {{- $deadline := ternary $bounds.execution.producer_job_seconds $bounds.execution.reader_job_seconds $spec.producer -}}
 {{- if $judge }}{{ $deadline = $bounds.execution.judge_job_seconds }}{{ end -}}
 {{- $prefix := ternary "ProbeV2Judge" "ProbeV2" $judge -}}
+{{- $refreshProducer := and (eq .Values.scenario_id "F06") (eq .Values.configuration_id "C6") (eq $r.stage "seed") (eq $role "loadgen") -}}
+{{- $refreshConsumer := and (eq .Values.scenario_id "F06") (eq .Values.configuration_id "C9") (eq $r.stage "action") (eq $role "enrichment-consumer") -}}
+{{- $refreshTuple := or $refreshProducer $refreshConsumer -}}
+{{- if hasKey $r "test_handler_refresh_path" -}}
+{{- if not (kindIs "bool" $r.test_handler_refresh_path) }}{{ fail "probe-v2 handler refresh flag must be boolean" }}{{ end -}}
+{{- end -}}
+{{- if eq (default false $r.test_handler_refresh_path) true -}}
+{{- if or (not $refreshTuple) (ne .Values.scenario_id "F06") (ne $r.run_kind "smoke") (ne (default false $r.capture_authentication_metadata) true) }}{{ fail "probe-v2 handler refresh selection mismatch" }}{{ end -}}
+{{- end -}}
 {{- $fields := dict "ScenarioId" .Values.scenario_id "ConfigurationId" .Values.configuration_id "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "ServiceAccount" $account.name "WorkloadIdentityClientId" $account.client_id "ScenarioRoot" "/app" "InputRoot" "/run/probe-inputs" "Stage" $r.stage -}}
 {{- range $key,$value := $bounds.capture }}{{ $_ := set $fields (printf "Limits__%s" $key) $value }}{{ end -}}
 {{- range $key,$value := $bounds.parsing }}{{ $_ := set $fields (printf "ScenarioLoadOptions__%s" $key) $value }}{{ end -}}
@@ -83,6 +101,7 @@
 {{- range $key,$value := $bounds.judge }}{{ $_ := set $fields (printf "JudgeLimits__%s" $key) $value }}{{ end -}}
 {{- else -}}
 {{- if eq $r.capture_authentication_metadata true }}{{- $_ := set $fields "CaptureAuthenticationMetadata" "true" }}{{- end -}}
+{{- if and (eq (default false $r.test_handler_refresh_path) true) $refreshTuple }}{{- $_ := set $fields "TestHandlerRefreshPath" "true" }}{{- end -}}
 {{- $_ := set $fields "ProcessLifetimeSeconds" (ternary $bounds.execution.producer_process_seconds $bounds.execution.reader_process_seconds $spec.producer) -}}
 {{- end -}}
 apiVersion: batch/v1

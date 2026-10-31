@@ -50,6 +50,22 @@ public sealed class KafkaAuthenticationFactory
         CancellationToken cancellationToken = default)
         => CreateSession(identity, captureLifecycle: true, cancellationToken: cancellationToken);
 
+    /// <summary>Creates a bounded session for the explicitly selected handler refresh-path diagnostic.</summary>
+    /// <param name="identity">The scenario, run, role and Kafka client identity for this native client.</param>
+    /// <param name="expiryCapMilliseconds">The only supported diagnostic cap, 5000 milliseconds.</param>
+    /// <param name="cancellationToken">Cancellation forwarded to synchronous token acquisition.</param>
+    /// <returns>A capped, observed session that should be attached to one native client.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The cap is not exactly 5000 milliseconds.</exception>
+    public KafkaOAuthBearerSession CreateRefreshPathTestSession(
+        KafkaAuthenticationIdentity identity,
+        int expiryCapMilliseconds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(expiryCapMilliseconds, 5000);
+        return CreateSession(identity, captureLifecycle: true, cancellationToken: cancellationToken,
+            testExpiryCapMilliseconds: expiryCapMilliseconds);
+    }
+
     /// <summary>Creates an explicitly invoked observer for projected token file metadata.</summary>
     /// <remarks>Creation performs no file read, scheduling or authentication decision.</remarks>
     /// <returns>A new independent projected token file metadata observer.</returns>
@@ -64,14 +80,16 @@ public sealed class KafkaAuthenticationFactory
     private KafkaOAuthBearerSession CreateSession(
         KafkaAuthenticationIdentity identity,
         bool captureLifecycle,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? testExpiryCapMilliseconds = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         string scope = identityOptions.TokenScopeOverride ?? KafkaAuthenticationConfiguration.GetScope(baselineOptions.Get(identity.Role.ToString()));
         string principalName = identityOptions.ClientId
             ?? throw new InvalidOperationException("Kafka workload identity client ID is missing.");
         return new KafkaOAuthBearerSession(
-            identity, scope, principalName, tokenProvider, timeProvider, metrics, cancellationToken, captureLifecycle);
+            identity, scope, principalName, tokenProvider, timeProvider, metrics, cancellationToken, captureLifecycle,
+            testExpiryCapMilliseconds);
     }
 
     /// <summary>Validates the approved OAuth bearer producer configuration without acquiring a token or creating a client.</summary>

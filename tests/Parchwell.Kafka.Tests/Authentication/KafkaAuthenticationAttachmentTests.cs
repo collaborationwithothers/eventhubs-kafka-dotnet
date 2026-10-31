@@ -71,6 +71,25 @@ public sealed class KafkaAuthenticationAttachmentTests
         Assert.Equal(0, tokenProvider.Calls);
     }
 
+    [Fact]
+    public void GivenRefreshPathSessionAttachedOnce_WhenSecondBuilderAttaches_ThenSameClientGuardStillRejects()
+    {
+        var tokenProvider = new CountingTokenProvider();
+        using ServiceProvider services = CreateServices(tokenProvider);
+        KafkaAuthenticationFactory factory = services.GetRequiredService<KafkaAuthenticationFactory>();
+        KafkaConfigurationFactory configurations = services.GetRequiredService<KafkaConfigurationFactory>();
+        KafkaOAuthBearerSession session = factory.CreateRefreshPathTestSession(
+            Identity(KafkaClientRole.LoadGenProducer), 5000, TestContext.Current.CancellationToken);
+
+        Attach(factory, configurations, session, producer: true);
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => Attach(factory, configurations, session, producer: true));
+
+        Assert.Equal("OAuth bearer session is already attached to a native client.", exception.Message);
+        Assert.Equal(0, tokenProvider.Calls);
+        Assert.Null(session.InstalledTokenExpiresOn);
+    }
+
     private static Exception? TryAttach(Barrier barrier, Action attach)
     {
         barrier.SignalAndWait(TestContext.Current.CancellationToken);

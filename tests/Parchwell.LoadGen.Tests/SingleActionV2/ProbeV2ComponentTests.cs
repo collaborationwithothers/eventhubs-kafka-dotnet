@@ -163,6 +163,86 @@ public sealed class ProbeV2ComponentTests
             Assert.Equal(value is null ? null : "", decoded.ReadObservation.Record.ValueBase64);
         }
     }
+
+    [Fact]
+    public async Task Given_LocalKafka_When_SameClientsProduceAndSeekReread_ThenRawHandlerDiagnosticRetainsServiceOperations()
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromMinutes(2));
+        await using LocalKafkaFixture broker = await LocalKafkaFixture.StartAsync(deadline.Token);
+        foreach (byte[]? value in new byte[]?[] { [], null })
+        {
+            string topic = "probe-v2-refresh-" + Guid.NewGuid().ToString("N");
+            using (IAdminClient admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = broker.BootstrapServers }).Build())
+                await admin.CreateTopicsAsync([new TopicSpecification { Name = topic, NumPartitions = 1, ReplicationFactor = 1 }],
+                    new CreateTopicsOptions { RequestTimeout = TimeSpan.FromSeconds(20), OperationTimeout = TimeSpan.FromSeconds(20) }).WaitAsync(deadline.Token);
+            byte[] key = Encoding.UTF8.GetBytes("synthetic-original-key");
+            var producerPath = new ProbeV2HandlerRefreshPath(TimeProvider.System, 1, "synthetic-producer");
+            using IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(new ProducerConfig
+            { BootstrapServers = broker.BootstrapServers, Acks = Acks.All, MessageTimeoutMs = 10000 }).Build();
+            var firstDelivery = new TaskCompletionSource<DeliveryReport<byte[], byte[]>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            producer.Produce(topic, new Message<byte[], byte[]> { Key = key, Value = value! }, report =>
+            { producerPath.ObserveBeforeDelivery(report); firstDelivery.TrySetResult(report); });
+            DeliveryReport<byte[], byte[]> original = await firstDelivery.Task.WaitAsync(TimeSpan.FromSeconds(15), deadline.Token);
+            Assert.False(original.Error.IsError);
+            Assert.Equal(PersistenceStatus.Persisted, original.Status);
+
+            var consumerPath = new ProbeV2HandlerRefreshPath(TimeProvider.System, 1, "synthetic-consumer");
+            using IConsumer<byte[], byte[]> consumer = new ConsumerBuilder<byte[], byte[]>(new ConsumerConfig
+            { BootstrapServers = broker.BootstrapServers, GroupId = "probe-v2-refresh-" + Guid.NewGuid().ToString("N"), EnableAutoCommit = false }).Build();
+            consumer.Assign(new TopicPartitionOffset(original.TopicPartition, original.Offset));
+            var requested = new ProbeV2Requested(topic, "explicit", original.Partition.Value, original.Offset.Value,
+                Convert.ToBase64String(key), value is null ? null : Convert.ToBase64String(value));
+            ConsumeResult<byte[], byte[]>? initialRead = consumer.Consume(TimeSpan.FromSeconds(15));
+            Assert.NotNull(initialRead);
+            var scientificCapture = new ProbeV2Capture(ProbeV2Limits.Fixed(), TimeProvider.System,
+                TimeProvider.System.GetTimestamp(), 120000);
+            scientificCapture.Read(initialRead, requested);
+            consumerPath.ObserveBeforeRead(initialRead, requested);
+
+            producerPath.StartWindow(TimeProvider.System.GetTimestamp());
+            consumerPath.StartWindow(TimeProvider.System.GetTimestamp());
+            using var observationDeadline = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+            observationDeadline.CancelAfter(TimeSpan.FromSeconds(20));
+            Assert.True(producerPath.TryAdmit(3, observationDeadline.Token));
+            Assert.True(consumerPath.TryAdmit(3, observationDeadline.Token));
+            var secondDelivery = new TaskCompletionSource<DeliveryReport<byte[], byte[]>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            byte[] diagnosticKey = Encoding.UTF8.GetBytes("handler-refresh:run-1:C6:1");
+            byte[] diagnosticValue = Encoding.UTF8.GetBytes("synthetic-handler-refresh-path");
+            producer.Produce(new TopicPartition(topic, original.Partition),
+                new Message<byte[], byte[]> { Key = diagnosticKey, Value = diagnosticValue }, report =>
+                { producerPath.ObserveAfterDelivery(report); secondDelivery.TrySetResult(report); });
+            DeliveryReport<byte[], byte[]> diagnostic = await secondDelivery.Task.WaitAsync(observationDeadline.Token);
+            Assert.False(diagnostic.Error.IsError);
+            Assert.Equal(PersistenceStatus.Persisted, diagnostic.Status);
+            Assert.Equal(topic, diagnostic.Topic);
+            Assert.Equal(original.Partition, diagnostic.Partition);
+
+            consumer.Seek(new TopicPartitionOffset(original.TopicPartition, original.Offset));
+            consumerPath.SeekReturned();
+            while (consumerPath.CanContinue(observationDeadline.Token))
+            {
+                TimeSpan slice = consumerPath.Slice(100, observationDeadline.Token);
+                if (slice <= TimeSpan.Zero) break;
+                ConsumeResult<byte[], byte[]>? reread = consumer.Consume(slice);
+                if (consumerPath.ObserveDiagnosticRead(reread, requested)) break;
+            }
+            ProbeV2HandlerRefreshMetadata producerMetadata = producerPath.Finish(true, false);
+            ProbeV2HandlerRefreshMetadata consumerMetadata = consumerPath.Finish(true, false);
+            Assert.Equal("delivery", producerMetadata.BeforeService!.Action);
+            Assert.Equal("Persisted", producerMetadata.AfterService!.PersistenceStatus);
+            Assert.Equal(Convert.ToBase64String(diagnosticKey), Convert.ToBase64String(diagnostic.Message.Key));
+            Assert.Equal(Convert.ToBase64String(diagnosticValue), Convert.ToBase64String(diagnostic.Message.Value));
+            Assert.Equal("read", consumerMetadata.BeforeService!.Action);
+            Assert.Equal("read", consumerMetadata.AfterService!.Action);
+            Assert.Equal(original.Offset.Value, consumerMetadata.AfterService.Offset);
+            Assert.Equal(requested.KeyBase64, consumerMetadata.AfterService.KeyBase64);
+            Assert.Equal(requested.ValueBase64, consumerMetadata.AfterService.ValueBase64);
+            ProbeV2Repeat originalCapture = scientificCapture.Snapshot(1, "synthetic-consumer", ProbeV2Stage.For("E01", "C1", "read"),
+                new Dictionary<string, string>(), [], null, requested);
+            Assert.Equal(requested.ValueBase64, originalCapture.ReadObservation.Record!.ValueBase64);
+        }
+    }
     private sealed class SyntheticTokenProvider : IKafkaTokenProvider
     {
         internal int Calls;

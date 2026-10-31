@@ -74,6 +74,20 @@ public sealed class WorkflowAuthenticationContractTests
         Assert.Contains("\n  if: always()\n", steps[setupIndex + 4], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void GivenRefreshPathWorkflowFlag_When_Dispatched_Then_DefaultOffTupleGatesEntryAndStop()
+    {
+        string[] lines = File.ReadAllLines(Path.Combine(RepositoryRoot, "docs/operations/workflows", "scenario.yml.txt"));
+        const string factor = "(!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))";
+        Assert.Contains("      test_handler_refresh_path:", lines);
+        Assert.Contains("        description: Test our handler refresh path with a 5000 ms advertised expiry cap (selected authentication controls only)", lines);
+        Assert.Equal(5, lines.Count(line => line == "      PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}"));
+        Assert.Contains("    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && " + factor, lines);
+        Assert.Contains(lines, line => line.StartsWith("    if: (always() && ((inputs.scenario ==", StringComparison.Ordinal) && line.EndsWith(" && " + factor, StringComparison.Ordinal));
+        Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", lines);
+        Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'", lines);
+    }
+
     private static string[] ReadJob(string file, string job)
     {
         string[] lines = File.ReadAllLines(Path.Combine(RepositoryRoot, "docs/operations/workflows", file));

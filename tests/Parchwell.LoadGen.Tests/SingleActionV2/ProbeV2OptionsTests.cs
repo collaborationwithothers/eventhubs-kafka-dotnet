@@ -51,6 +51,48 @@ public sealed class ProbeV2OptionsTests
             Assert.Throws<InvalidOperationException>(options.Validate);
         }
     }
+
+    [Theory]
+    [InlineData("C6", "seed")]
+    [InlineData("C9", "action")]
+    public void GivenEnabledRefreshPathFlag_When_UsingOrdinaryActorTuple_Then_AcceptsStrictBoolean(string configuration, string stage)
+    {
+        ProbeV2Options options = Options("F06", configuration, stage);
+        options.CaptureAuthenticationMetadata = true;
+        options.TestHandlerRefreshPath = true;
+        var environment = Environment(options);
+
+        ProbeV2Options parsed = ProbeV2Options.Read(environment);
+
+        Assert.True(parsed.TestHandlerRefreshPath);
+        Assert.True(parsed.CaptureAuthenticationMetadata);
+    }
+
+    [Theory]
+    [InlineData("B08", "C0", "action", true)]
+    [InlineData("F06", "C0", "action", true)]
+    [InlineData("F06", "C6", "action", true)]
+    [InlineData("F06", "C6", "seed", false)]
+    public void GivenEnabledRefreshPathFlag_When_TupleOrCaptureIsInvalid_Then_Rejects(string item, string configuration, string stage, bool capture)
+    {
+        ProbeV2Options options = OptionsForTuple(item, configuration, stage);
+        options.CaptureAuthenticationMetadata = capture;
+        options.TestHandlerRefreshPath = true;
+        Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options)));
+    }
+
+    [Theory]
+    [InlineData("TRUE")]
+    [InlineData("True")]
+    [InlineData("yes")]
+    public void GivenMalformedRefreshPathFlag_When_ReadingOptions_Then_Rejects(string value)
+    {
+        ProbeV2Options options = Options("F06", "C6", "seed");
+        options.CaptureAuthenticationMetadata = true;
+        Dictionary<string, string> environment = Environment(options);
+        environment["ProbeV2__TestHandlerRefreshPath"] = value;
+        Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(environment));
+    }
     [Fact]
     public void Given_AllDeclaredActorStages_When_DerivingMatrix_Then_ThereAreThirtyThreeJobsWithCorrectActors()
     {
@@ -82,6 +124,19 @@ public sealed class ProbeV2OptionsTests
             ScenarioLoadOptions = new() { MaxDocumentCharacters = 1048576, MaxNestingDepth = 32, MaxScalarCharacters = 65536, MaxParserEvents = 100000 }
         };
     }
+    private static ProbeV2Options OptionsForTuple(string item, string config, string stage)
+    {
+        ProbeV2Stage selected = ProbeV2Stage.For(item, config, stage);
+        ProbeV2Options options = Options();
+        options.ScenarioId = item;
+        options.ConfigurationId = config;
+        options.Stage = stage;
+        options.ServiceAccount = selected.Account;
+        options.JobName = ProbeV2Options.Job(options.RunId, item, config, stage);
+        options.PodName = options.JobName + "-pod";
+        options.ProcessLifetimeSeconds = selected.Action == "produce_one" ? 1920 : 840;
+        return options;
+    }
     internal static Dictionary<string, string> Environment(ProbeV2Options options)
     {
         var env = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -99,7 +154,10 @@ public sealed class ProbeV2OptionsTests
             foreach (System.Reflection.PropertyInfo property in value.GetType().GetProperties())
             {
                 object nested = property.GetValue(value)!;
-                if (nested is string or int) env[prefix + property.Name] = Convert.ToString(nested, CultureInfo.InvariantCulture)!;
+                if (nested is string or int or bool)
+                    env[prefix + property.Name] = nested is bool boolean
+                        ? boolean ? "true" : "false"
+                        : Convert.ToString(nested, CultureInfo.InvariantCulture)!;
                 else Flatten(nested, prefix + property.Name + "__");
             }
         }

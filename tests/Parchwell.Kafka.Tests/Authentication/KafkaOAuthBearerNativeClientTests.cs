@@ -15,6 +15,75 @@ namespace Parchwell.Kafka.Tests.Authentication;
 public sealed class KafkaOAuthBearerNativeClientTests
 {
     [Fact]
+    public void GivenProducerAndConsumerNativeClients_WhenCappedExpiryRefreshes_ThenBothReenterAndInstallOnSameClients()
+    {
+        DateTimeOffset actualExpiry = TimeProvider.System.GetUtcNow().AddHours(1);
+        var credential = new CountingSyntheticCredential(new AccessToken("synthetic-cached-token", actualExpiry));
+        using ServiceProvider services = CreateServices(new WorkloadIdentityTokenProvider(credential));
+        KafkaAuthenticationFactory factory = services.GetRequiredService<KafkaAuthenticationFactory>();
+        ProducerConfig producerConfiguration = services.GetRequiredService<KafkaConfigurationFactory>()
+            .CreateLoadGenProducer().Configuration;
+        producerConfiguration.BootstrapServers = "127.0.0.1:1";
+        ConsumerConfig consumerConfiguration = services.GetRequiredService<KafkaConfigurationFactory>()
+            .CreateVerifierConsumer().Configuration;
+        consumerConfiguration.BootstrapServers = "127.0.0.1:1";
+        Stopwatch deadline = Stopwatch.StartNew();
+        var producerSession = factory.CreateRefreshPathTestSession(Identity(KafkaClientRole.LoadGenProducer), 5000,
+            TestContext.Current.CancellationToken);
+        var consumerSession = factory.CreateRefreshPathTestSession(Identity(KafkaClientRole.VerifierConsumer), 5000,
+            TestContext.Current.CancellationToken);
+        IProducer<Null, string> producer = factory.CreateProducerBuilder<Null, string>(producerConfiguration, producerSession).Build();
+        IConsumer<Ignore, string> consumer = factory.CreateConsumerBuilder<Ignore, string>(consumerConfiguration, consumerSession).Build();
+
+        try
+        {
+            while (deadline.Elapsed < TimeSpan.FromSeconds(20) &&
+                   (producerSession.HandlerRefreshProgress.SuccessfulObservedInstallations < 3 ||
+                    consumerSession.HandlerRefreshProgress.SuccessfulObservedInstallations < 3))
+            {
+                try { consumer.Consume(TimeSpan.FromMilliseconds(100)); }
+                catch (KafkaException) { }
+            }
+
+            Assert.True(producerSession.HandlerRefreshProgress.SuccessfulObservedInstallations >= 3,
+                "The native producer did not schedule two refresh callbacks after initial installation within 20 seconds.");
+            Assert.True(consumerSession.HandlerRefreshProgress.SuccessfulObservedInstallations >= 3,
+                "The native consumer did not schedule two refresh callbacks after initial installation within 20 seconds.");
+            Assert.True(credential.Calls >= 6);
+        }
+        finally
+        {
+            consumer.Dispose();
+            producer.Dispose();
+        }
+        KafkaAuthenticationLifecycleSnapshot producerSnapshot = producerSession.GetLifecycleSnapshot();
+        KafkaAuthenticationLifecycleSnapshot consumerSnapshot = consumerSession.GetLifecycleSnapshot();
+        static void AssertCappedExpiry(KafkaAuthenticationLifecycleSnapshot snapshot, DateTimeOffset actualExpiry)
+        {
+            foreach (KafkaAuthenticationLifecycleEvent install in snapshot.Events.Where(value => value.Stage == "installation_succeeded"))
+            {
+                Assert.Equal(actualExpiry, install.AcquiredExpiresOn);
+                Assert.True(install.EffectiveExpiresOn <= install.AcquiredExpiresOn);
+                Assert.Equal(5000, install.TestExpiryCapMilliseconds);
+            }
+        }
+
+        static void AssertChains(KafkaAuthenticationLifecycleSnapshot snapshot)
+        {
+            foreach (IGrouping<int, KafkaAuthenticationLifecycleEvent> attempt in snapshot.Events
+                         .GroupBy(value => value.Attempt).Where(group => group.Any(value => value.Stage == "installation_succeeded")).Take(3))
+                Assert.Equal(["callback_started", "sdk_get_token_invoked", "sdk_get_token_returned", "acquisition_returned", "installation_succeeded"],
+                    attempt.Select(value => value.Stage));
+        }
+
+        // These clients use an unreachable loopback endpoint: this proves native scheduling/install wiring only.
+        AssertCappedExpiry(producerSnapshot, actualExpiry);
+        AssertCappedExpiry(consumerSnapshot, actualExpiry);
+        AssertChains(producerSnapshot);
+        AssertChains(consumerSnapshot);
+    }
+
+    [Fact]
     public void Given_ProducerBuilderWithSession_When_NativeClientPolls_Then_RealTokenInstallSucceeds()
     {
         var tokenProvider = new SyntheticTokenProvider(() => new AccessToken(
@@ -317,7 +386,7 @@ public sealed class KafkaOAuthBearerNativeClientTests
         Assert.Null(session.LatestFailure);
     }
 
-    private static ServiceProvider CreateServices(SyntheticTokenProvider tokenProvider)
+    private static ServiceProvider CreateServices(IKafkaTokenProvider tokenProvider)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
@@ -383,5 +452,19 @@ public sealed class KafkaOAuthBearerNativeClientTests
             int call = Interlocked.Increment(ref _calls);
             return results[Math.Min(call - 1, results.Length - 1)]();
         }
+    }
+
+    private sealed class CountingSyntheticCredential(AccessToken token) : TokenCredential
+    {
+        private int calls;
+        internal int Calls => Volatile.Read(ref calls);
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Interlocked.Increment(ref calls);
+            return token;
+        }
+        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+            ValueTask.FromException<AccessToken>(new InvalidOperationException("Asynchronous token acquisition was not expected."));
     }
 }

@@ -84,6 +84,12 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
         Assert.Equal("installation_succeeded", snapshot.Events[8].Stage);
         Assert.Equal(new DateTimeOffset(2026, 10, 17, 14, 0, 0, TimeSpan.Zero), snapshot.Events[8].AcquiredExpiresOn);
         Assert.Equal(new DateTimeOffset(2026, 10, 17, 14, 0, 0, TimeSpan.Zero), snapshot.Events[8].InstalledExpiresOn);
+        Assert.All(snapshot.Events, item =>
+        {
+            Assert.Null(item.EffectiveExpiresOn);
+            Assert.Null(item.CapComputedAt);
+            Assert.Null(item.TestExpiryCapMilliseconds);
+        });
         Assert.IsAssignableFrom<IList<KafkaAuthenticationLifecycleEvent>>(snapshot.Events);
         Assert.Throws<NotSupportedException>(() => ((IList<KafkaAuthenticationLifecycleEvent>)snapshot.Events)[0] = snapshot.Events[1]);
         Assert.Equal("initial,initial,initial,refresh,refresh,refresh,refresh,refresh,refresh", string.Join(',', snapshot.Events.Select(item => item.Phase)));
@@ -94,6 +100,32 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
         Assert.DoesNotContain("synthetic-scope-secret", json, StringComparison.Ordinal);
         Assert.DoesNotContain("exchange", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("cache", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("EffectiveExpiresOn", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("CapComputedAt", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("TestExpiryCapMilliseconds", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenRefreshPathTestSession_When128AttemptsAreObserved_ThenRetains640RawEventsAndStopsProgressAtCap()
+    {
+        using var metrics = new KafkaAuthenticationMetrics();
+        var provider = new ObservedTokenProvider(new AccessToken("synthetic", E0));
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal", provider,
+            new FixedTimeProvider(Now), metrics, TestContext.Current.CancellationToken,
+            captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+
+        for (int attempt = 0; attempt < 129; attempt++)
+            session.Refresh((_, _, _) => { }, _ => Assert.Fail("Unexpected failure."));
+
+        KafkaAuthenticationLifecycleSnapshot snapshot = session.GetLifecycleSnapshot();
+        Assert.False(snapshot.Complete);
+        Assert.Equal("attempt_limit", snapshot.IncompleteReason);
+        Assert.Equal(640, snapshot.Events.Count);
+        Assert.Equal(128, snapshot.Events.Select(item => item.Attempt).Distinct().Count());
+        Assert.Equal(5, snapshot.Events.GroupBy(item => item.Attempt).Max(group => group.Count()));
+        Assert.Equal(new KafkaHandlerRefreshProgress(128, 128, 3), session.HandlerRefreshProgress);
+        Assert.Equal("callback_started,sdk_get_token_invoked,sdk_get_token_returned,acquisition_returned,installation_succeeded",
+            string.Join(',', snapshot.Events.Take(5).Select(item => item.Stage)));
     }
 
     [Fact]
@@ -350,6 +382,17 @@ public sealed class KafkaAuthenticationLifecycleObservationTests
                 Exception exception => throw exception,
                 _ => throw new InvalidOperationException("Unsupported synthetic result.")
             };
+        }
+    }
+
+    private sealed class ObservedTokenProvider(AccessToken token) : IKafkaTokenProvider, IObservedKafkaTokenProvider
+    {
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken) => token;
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken, Action<string> observe)
+        {
+            observe("sdk_get_token_invoked");
+            observe("sdk_get_token_returned");
+            return token;
         }
     }
 

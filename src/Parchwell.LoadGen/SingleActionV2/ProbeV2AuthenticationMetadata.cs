@@ -12,7 +12,11 @@ internal sealed record ProbeV2AuthenticationMetadata(
     DateTimeOffset? InitialInstalledExpiresOn,
     KafkaAuthenticationLifecycleSnapshot? Lifecycle,
     IReadOnlyList<ProbeV2ProjectedFileSample> ProjectedFileSamples,
-    bool ClientCleanupCompleted, string? CaptureError);
+    bool ClientCleanupCompleted, string? CaptureError)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ProbeV2HandlerRefreshMetadata? HandlerRefresh { get; init; }
+}
 
 /// <summary>Names one explicit projected-file metadata sample boundary.</summary>
 internal sealed record ProbeV2ProjectedFileSample(
@@ -55,7 +59,8 @@ internal sealed class ProbeV2AuthenticationMetadataCollector
     }
 
     internal ProbeV2AuthenticationMetadata Finish(bool clientConstructed, bool cleanupCompleted,
-        Func<KafkaAuthenticationLifecycleSnapshot>? readLifecycle)
+        Func<KafkaAuthenticationLifecycleSnapshot>? readLifecycle,
+        ProbeV2HandlerRefreshMetadata? handlerRefresh = null)
     {
         KafkaAuthenticationLifecycleSnapshot? lifecycle = null;
         DateTimeOffset? initialInstalledExpiresOn = null;
@@ -94,11 +99,13 @@ internal sealed class ProbeV2AuthenticationMetadataCollector
             }
         }
 
-        return new(1, "single-action-v2-authentication-metadata", true,
+        return new(options.TestHandlerRefreshPath ? 2 : 1,
+            options.TestHandlerRefreshPath ? "single-action-v2-handler-refresh-path" : "single-action-v2-authentication-metadata", true,
             options.RunId, options.ScenarioId, options.ConfigurationId, options.Stage,
             options.SourceCommit, options.JobName, options.PodName, options.PodUid,
             options.ServiceAccount, repeat, clientId, stage.Action,
-            initialInstalledExpiresOn, lifecycle, samples.ToArray(), cleanupCompleted, captureError);
+            initialInstalledExpiresOn, lifecycle, samples.ToArray(), cleanupCompleted, captureError)
+        { HandlerRefresh = options.TestHandlerRefreshPath ? handlerRefresh : null };
     }
 }
 
@@ -147,6 +154,7 @@ internal static class ProbeV2AuthenticationMetadataWriter
             {
                 InitialInstalledExpiresOn = null,
                 Lifecycle = null,
+                HandlerRefresh = null,
                 ProjectedFileSamples = Array.Empty<ProbeV2ProjectedFileSample>(),
                 CaptureError = error
             }, ProbeV2Wire.JsonOptions);
