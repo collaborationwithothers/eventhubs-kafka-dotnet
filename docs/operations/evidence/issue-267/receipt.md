@@ -43,7 +43,7 @@ The plan's section 3 map, with the test that covers each predicate in `tests/Par
 | `member-boundaries` command | offsets and lines printed; an existing file that is not a C5 target rejected with the target message | `RunnerTests.test_member_boundaries_command_prints_offsets_and_lines` |
 | Artifact upload contract | both upload steps, their order, unchanged download pattern | `CommittedContractTests.test_workflow_keeps_stryker_logs_out_of_aggregate_input` |
 
-After cold review rounds 1 and 2 each found predicates the tests did not isolate, a hand-made mutant sweep covered the 53 predicates that `sweep.py` (under "Mutant sweep" below) lists from `c5_workflow.py`; it is not every predicate in the file. It ran on the files of commit `8c82309ed91bcc9ac2f15ec3c754044a694a218c`, whose `tests/` is unchanged at this receipt's commit. Each mutant runs in a scratch copy against the span, reconcile, aggregation, projection and runner tests; the committed-contract tests need the real repository root and are excluded. An unchanged control copy passed. Result: 50 mutants fail the tests and 3 survive. Before the round 2 corrections, 9 of the first 48 survived. The 3 survivors are equivalent, which cold review round 3 confirmed: mutant 15 reads the span-selection target from the checkout instead of the projected copy, and the projection never changes the assigned target; mutant 32 accepts a `bool` elapsed time in the rebalance list, and `True` cannot exceed 7200; mutant 34 takes a passing shard's rebalance span from its retained configuration, which aggregation has already checked equals the verified span. The sweep is diagnostic, not acceptance.
+After cold review rounds 1 and 2 each found predicates the tests did not isolate, a hand-made mutant sweep ran the 53 mutants that `sweep.py` (under "Mutant sweep" below) lists, on 41 source lines of `c5_workflow.py`. Some lines carry two or three mutants, and some mutants delete a whole statement. The sweep does not cover every predicate in the file. It ran on the files of commit `8c82309ed91bcc9ac2f15ec3c754044a694a218c`, whose `tests/` is unchanged at this receipt's commit. Each mutant runs in a scratch copy against the span, reconcile, aggregation, projection and runner tests; the committed-contract tests need the real repository root and are excluded. An unchanged control copy passed. Result: 50 mutants fail the tests and 3 survive. Before the round 2 corrections, 9 of the first 48 survived. The 3 survivors are equivalent, which cold review round 3 confirmed: mutant 15 reads the span-selection target from the checkout instead of the projected copy, and the projection never changes the assigned target; mutant 32 accepts a `bool` elapsed time in the rebalance list, and `True` cannot exceed 7200; mutant 34 takes a passing shard's rebalance span from its retained configuration, which aggregation has already checked equals the verified span. The sweep is diagnostic, not acceptance.
 
 Unreachable: a part report with no mutants reaches `reconcile` only if `report_records` accepts it, and `report_records` rejects an empty target mutant list. `reconcile([[], []])` covers the function directly.
 
@@ -185,10 +185,10 @@ if __name__ == "__main__":
 
 ### Mutant sweep
 
-Run with `python3 -I sweep.py <empty scratch directory>`, from outside the repository. It reads `c5_workflow.py` and the tests from the working tree. Output summary: control `0` survives; mutants `15`, `32` and `34` survive; the other 50 are killed.
+Run with `python3 -I sweep.py <empty scratch directory>`, from outside the repository. It reads `c5_workflow.py` and the tests from the working tree at the path in `SRC`; edit `SRC` for another checkout. Output summary: control `0` survives; mutants `15`, `32` and `34` survive; the other 50 are killed.
 
 ```python
-"""Hand-made mutant sweep over the predicates this PR adds to c5_workflow.py. Scratch copies only."""
+"""Hand-made mutant sweep: the mutants listed in M, on lines this PR adds to c5_workflow.py. Scratch copies only."""
 import concurrent.futures
 import shutil
 import subprocess
