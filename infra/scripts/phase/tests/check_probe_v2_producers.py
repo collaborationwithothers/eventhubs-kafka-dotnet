@@ -123,12 +123,67 @@ def check_metadata_actor(directory):
             raise AssertionError('diagnostic fields leaked into scientific repeats')
 
 
+def check_handler_refresh_actor_export(directory):
+    directory = Path(directory)
+    expected_identity = {
+        'producer': ('F06', 'C6', 'seed', 'loadgen'),
+        'consumer': ('F06', 'C9', 'action', 'enrichment-consumer'),
+    }
+    metadata_fields = set('test_expiry_cap_ms observation_limit_ms started_at ended_at operation_admitted_at seek_returned_at started_timestamp ended_timestamp operation_admitted_timestamp seek_returned_timestamp timestamp_frequency operation_attempted trigger_attempt before_service after_service diagnostic_nonmatches diagnostic_errors observation_clock_unavailable capture_limit_reached duplicate_before_observation duplicate_after_observation cancelled operation_exception_type client_cleanup_completed'.split())
+    service_fields = set('action client_id repeat topic partition offset observed_at timestamp persistence_status error_code error_is_fatal key_base64 value_base64'.split())
+    registration_fields = set('schema_version mode synthetic run_id scenario_id configuration_id stage source_commit job_name pod_name pod_uid service_account'.split())
+    capture_fields = set('schema_version mode synthetic run_id scenario_id configuration_id stage source_commit job_name pod_name pod_uid service_account managed_version native_version repeats handler_exit_code cleanup_completed host_cleanup_completed'.split())
+    repeat_fields = set('repeat admission client_id action terminal elapsed_ms terminal_unix_ms settings omitted_keys metadata_partitions requested delivery read_observation result error client_errors statistics diagnostics'.split())
+    for actor, identity in expected_identity.items():
+        path = directory / actor
+        if not path.is_dir():
+            raise AssertionError('handler refresh actor export missing ' + actor)
+        check_actor(path)
+        registration = json.loads((path / 'registration.json').read_bytes())
+        capture = json.loads((path / 'capture.json').read_bytes())
+        if set(registration) != registration_fields or set(capture) != capture_fields:
+            raise AssertionError('handler refresh scientific root fields changed')
+        if (registration['scenario_id'], registration['configuration_id'], registration['stage'], registration['service_account']) != identity:
+            raise AssertionError('handler refresh actor identity changed')
+        if any(set(row) != repeat_fields for row in capture['repeats']):
+            raise AssertionError('handler refresh scientific repeat fields changed')
+        lines = (path / 'actor.stdout').read_text(encoding='utf-8').splitlines()
+        marker = 'PARCHWELL_PROBE_V2_AUTHENTICATION_METADATA '
+        payloads = [line[len(marker):] for line in lines if line.startswith(marker)]
+        if len(payloads) != 5:
+            raise AssertionError('handler refresh actor must contain exactly five metadata rows')
+        for repeat, payload in enumerate(payloads, 1):
+            row = json.loads(payload)
+            if row.get('schema_version') != 2 or row.get('mode') != 'single-action-v2-handler-refresh-path':
+                raise AssertionError('handler refresh metadata mode or schema changed')
+            if (row.get('scenario_id'), row.get('configuration_id'), row.get('stage'), row.get('service_account'), row.get('repeat')) != (*identity, repeat):
+                raise AssertionError('handler refresh metadata identity or repeat changed')
+            diagnostic = row.get('handler_refresh')
+            if not isinstance(diagnostic, dict) or set(diagnostic) != metadata_fields:
+                raise AssertionError('handler refresh raw metadata fields changed')
+            if diagnostic.get('test_expiry_cap_ms') != 5000 or diagnostic.get('observation_limit_ms') != 20000:
+                raise AssertionError('handler refresh cap or observation boundary changed')
+            if type(diagnostic.get('operation_attempted')) is not bool or diagnostic.get('trigger_attempt') != 3:
+                raise AssertionError('handler refresh attempt bookkeeping changed')
+            if type(diagnostic.get('client_cleanup_completed')) is not bool:
+                raise AssertionError('handler refresh cleanup bookkeeping changed')
+            for name in ('before_service', 'after_service'):
+                observation = diagnostic.get(name)
+                if observation is not None and set(observation) != service_fields:
+                    raise AssertionError('handler refresh service observation fields changed')
+            if len(diagnostic.get('diagnostic_errors', [])) > 8:
+                raise AssertionError('handler refresh diagnostic error bound exceeded')
+            if any(key in diagnostic for key in ('complete', 'exact_match', 'pass', 'incomplete_reason')):
+                raise AssertionError('handler refresh raw payload contains a semantic judgement')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('actor_export', type=Path)
     parser.add_argument('judge_export', type=Path)
     parser.add_argument('metadata_actor_export', type=Path, nargs='?')
     parser.add_argument('--batch-judge-export', type=Path)
+    parser.add_argument('--handler-refresh-actor-export', type=Path)
     args = parser.parse_args()
     check_actor(args.actor_export)
     check_judge(args.judge_export)
@@ -137,4 +192,6 @@ if __name__ == '__main__':
         check_actor(args.metadata_actor_export)
     if args.batch_judge_export:
         check_judge(args.batch_judge_export, 'batch')
+    if args.handler_refresh_actor_export:
+        check_handler_refresh_actor_export(args.handler_refresh_actor_export)
     print('{"probe_v2_actual_producer_transport_valid":true}')

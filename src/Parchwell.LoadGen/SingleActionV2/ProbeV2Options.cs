@@ -65,6 +65,7 @@ internal sealed partial class ProbeV2Options
     public string InputRoot { get; set; } = "";
     public string Stage { get; set; } = "";
     public bool CaptureAuthenticationMetadata { get; set; }
+    public bool TestHandlerRefreshPath { get; set; }
     public ProbeV2Limits Limits { get; set; } = new();
     public ScenarioLoadOptions ScenarioLoadOptions { get; set; } = new();
     public int ProcessLifetimeSeconds { get; set; }
@@ -79,6 +80,11 @@ internal sealed partial class ProbeV2Options
             !PodName.StartsWith(JobName + "-", StringComparison.Ordinal) || ScenarioRoot != "/app" || InputRoot != "/run/probe-inputs" ||
             ProcessLifetimeSeconds != (stage.Action == "produce_one" ? 1920 : 840))
             throw new InvalidOperationException("v2_identity");
+        if (TestHandlerRefreshPath && (!CaptureAuthenticationMetadata || ScenarioId != "F06" ||
+            ConfigurationId == "C6" && !(Stage == "seed" && stage.Account == "loadgen") ||
+            ConfigurationId == "C9" && !(Stage == "action" && stage.Account == "enrichment-consumer") ||
+            ConfigurationId is not ("C6" or "C9")))
+            throw new InvalidOperationException("v2_handler_refresh_selection");
         Limits.Validate();
         if (ScenarioLoadOptions.MaxDocumentCharacters != 1048576 || ScenarioLoadOptions.MaxNestingDepth != 32 ||
             ScenarioLoadOptions.MaxScalarCharacters != 65536 || ScenarioLoadOptions.MaxParserEvents != 100000)
@@ -115,7 +121,7 @@ internal sealed partial class ProbeV2Options
         foreach (PropertyInfo property in target.GetType().GetProperties())
         {
             string key = prefix + property.Name;
-            if (target is ProbeV2Options && prefix.Length == 0 && property.Name == nameof(CaptureAuthenticationMetadata))
+            if (target is ProbeV2Options && prefix.Length == 0 && property.Name is nameof(CaptureAuthenticationMetadata) or nameof(TestHandlerRefreshPath))
             {
                 if (values.Remove(key, out string? raw))
                 {

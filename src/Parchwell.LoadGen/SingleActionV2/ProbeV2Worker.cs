@@ -33,6 +33,19 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         long started = clock.GetTimestamp();
         using var actionDeadline = new CancellationTokenSource(TimeSpan.FromMilliseconds(stage.WindowMs), clock);
         using var actionCancellation = CancellationTokenSource.CreateLinkedTokenSource(token, actionDeadline.Token);
+        ProbeV2HandlerRefreshPath? refreshPath = options.TestHandlerRefreshPath
+            ? sessions.CreateHandlerRefreshPath(clock, repeat, $"{options.PodName}-r{repeat}")
+            : null;
+        CancellationTokenSource? refreshSessionCancellation = refreshPath is null
+            ? null : CancellationTokenSource.CreateLinkedTokenSource(token);
+        ITimer? refreshCancellationTimer = refreshSessionCancellation is null ? null : clock.CreateTimer(
+            static state =>
+            {
+                try { ((CancellationTokenSource)state!).Cancel(); }
+                catch (ObjectDisposedException) { }
+            }, refreshSessionCancellation,
+            TimeSpan.FromMilliseconds(stage.WindowMs + 20000), Timeout.InfiniteTimeSpan);
+        CancellationToken sessionToken = refreshSessionCancellation?.Token ?? actionCancellation.Token;
         var capture = new ProbeV2Capture(options.Limits, clock, started, stage.WindowMs, diagnosticBudget,
             $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ",
             options.CaptureAuthenticationMetadata);
@@ -54,6 +67,7 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         bool constructing = true;
         bool clientConstructed = false;
         bool clientCleanupCompleted = true;
+        bool diagnosticConsumerOperationStarted = false;
         try
         {
             int settingsBytes = settings.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value));
@@ -63,8 +77,12 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                 capture.CaptureLimit(nameof(options.Limits.MaxSettingsBytes), settingsBytes, options.Limits.MaxSettingsBytes);
             else
             {
-                if (stage.Action == "produce_one") producer = sessions.Producer(settings, capture, actionCancellation.Token);
-                else (consumer, authentication) = sessions.Consumer(settings, capture, actionCancellation.Token);
+                if (stage.Action == "produce_one")
+                {
+                    producer = sessions.Producer(settings, capture, sessionToken);
+                    authentication = capture.AuthenticationSession;
+                }
+                else (consumer, authentication) = sessions.Consumer(settings, capture, sessionToken);
                 clientConstructed = producer is not null || consumer is not null;
                 constructing = false;
                 if (options.ScenarioId == "B08")
@@ -89,8 +107,11 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                             Key = Convert.FromBase64String(requested.KeyBase64),
                             Value = requested.ValueBase64 is null ? null! : Convert.FromBase64String(requested.ValueBase64)
                         };
-                        if (stage.PartitionMode == "automatic") producer.Produce(stage.Topic, message, capture.Delivery);
-                        else producer.Produce(new TopicPartition(stage.Topic, new Partition(requested.Partition!.Value)), message, capture.Delivery);
+                        Action<DeliveryReport<byte[], byte[]>> delivery = refreshPath is null
+                            ? capture.Delivery
+                            : report => { capture.Delivery(report); refreshPath.ObserveBeforeDelivery(report); };
+                        if (stage.PartitionMode == "automatic") producer.Produce(stage.Topic, message, delivery);
+                        else producer.Produce(new TopicPartition(stage.Topic, new Partition(requested.Partition!.Value)), message, delivery);
                         while (Continue())
                             await Task.Delay(Slice(), clock, token).ConfigureAwait(false);
                     }
@@ -100,7 +121,9 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                         while (Continue())
                         {
                             token.ThrowIfCancellationRequested();
-                            capture.Read(consumer.Consume(Slice()), requested);
+                            ConsumeResult<byte[], byte[]>? result = consumer.Consume(Slice());
+                            capture.Read(result, requested);
+                            refreshPath?.ObserveBeforeRead(result, requested);
                         }
                         if (options.ScenarioId == "F06" && options.ConfigurationId is "C10" or "C11") capture.NoOutcome();
                     }
@@ -118,15 +141,31 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                 if (capture.Terminal && !capture.Limit)
                 {
                     long statisticsStarted = clock.GetTimestamp();
+                    refreshPath?.StartWindow(statisticsStarted);
+                    ShortenRefreshCancellationDeadline();
                     while (clock.GetElapsedTime(statisticsStarted) < TimeSpan.FromSeconds(options.Limits.PostTerminalStatisticsSeconds) && !capture.Limit)
                     {
                         token.ThrowIfCancellationRequested();
+                        if (refreshPath is not null && !refreshPath.CanContinue(token)) break;
+                        if (refreshPath is not null && refreshPath.TryAdmit(
+                                authentication?.HandlerRefreshProgress.ThirdSuccessfulAttempt, token))
+                        {
+                            RunDiagnosticOperation();
+                            if (diagnosticConsumerOperationStarted || !refreshPath.CanContinue(token)) break;
+                        }
                         TimeSpan remaining = TimeSpan.FromSeconds(options.Limits.PostTerminalStatisticsSeconds) - clock.GetElapsedTime(statisticsStarted);
                         TimeSpan slice = TimeSpan.FromMilliseconds(Math.Min(options.Limits.PollSliceMs, remaining.TotalMilliseconds));
                         if (consumer is not null)
                         {
-                            try { capture.Read(consumer.Consume(slice), requested); }
-                            catch (ConsumeException exception) { capture.Error(exception.Error); }
+                            try
+                            {
+                                ConsumeResult<byte[], byte[]>? result = consumer.Consume(slice);
+                                if (!diagnosticConsumerOperationStarted) capture.Read(result, requested);
+                            }
+                            catch (ConsumeException exception)
+                            {
+                                if (!diagnosticConsumerOperationStarted) capture.Error(exception.Error);
+                            }
                         }
                         else await Task.Delay(slice, clock, token).ConfigureAwait(false);
                     }
@@ -135,6 +174,13 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
             catch (Exception exception) { capture.Diagnostic("statistics:" + exception.GetType().Name); }
             finally
             {
+                refreshPath?.EndWindow();
+                try
+                {
+                    refreshCancellationTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                    refreshSessionCancellation?.Cancel();
+                }
+                catch (Exception) { }
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options.Limits.CleanupSeconds), clock);
                 try
                 {
@@ -143,6 +189,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                 }
                 catch (Exception exception)
                 { CleanupSucceeded = false; clientCleanupCompleted = false; capture.Diagnostic("client_cleanup_failed:" + exception.GetType().Name); }
+                refreshCancellationTimer?.Dispose();
+                refreshSessionCancellation?.Dispose();
                 foreach (string line in capture.Logs()) await logs.WriteLineAsync(line.AsMemory(), CancellationToken.None).ConfigureAwait(false);
                 if (metadataCollector is not null)
                 {
@@ -150,7 +198,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                     {
                         KafkaOAuthBearerSession? attached = clientConstructed && clientCleanupCompleted ? capture.AuthenticationSession : null;
                         ProbeV2AuthenticationMetadata value = metadataCollector.Finish(clientConstructed, clientCleanupCompleted,
-                            attached is null ? null : attached.GetLifecycleSnapshot);
+                            attached is null ? null : attached.GetLifecycleSnapshot,
+                            refreshPath?.Finish(clientCleanupCompleted, token.IsCancellationRequested));
                         await ProbeV2AuthenticationMetadataWriter.TryWriteAsync(logs, value, options.Limits.IoSeconds, clock).ConfigureAwait(false);
                     }
                     catch (Exception)
@@ -165,6 +214,59 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         long Remaining() => Math.Max(0, stage.WindowMs - capture.ElapsedMs);
         bool Continue() => !capture.Terminal && !capture.Limit && Remaining() > 0;
         TimeSpan Slice() => TimeSpan.FromMilliseconds(Math.Min(options.Limits.PollSliceMs, Remaining()));
+
+        void ShortenRefreshCancellationDeadline()
+        {
+            if (refreshCancellationTimer is null) return;
+            try
+            {
+                TimeSpan priorRemaining = TimeSpan.FromMilliseconds(stage.WindowMs + 20000) - clock.GetElapsedTime(started);
+                TimeSpan dueTime = priorRemaining < TimeSpan.FromMilliseconds(20000)
+                    ? (priorRemaining > TimeSpan.Zero ? priorRemaining : TimeSpan.Zero)
+                    : TimeSpan.FromMilliseconds(20000);
+                refreshCancellationTimer.Change(dueTime, Timeout.InfiniteTimeSpan);
+            }
+            catch (Exception) { refreshPath?.RecordClockUnavailable(); }
+        }
+
+        void RunDiagnosticOperation()
+        {
+            if (refreshPath is null) return;
+            try
+            {
+                if (producer is not null)
+                {
+                    byte[] key = Encoding.UTF8.GetBytes($"handler-refresh:{options.RunId}:{options.ConfigurationId}:{repeat}");
+                    byte[] value = Encoding.UTF8.GetBytes("synthetic-handler-refresh-path");
+                    var message = new Message<byte[], byte[]> { Key = key, Value = value };
+                    Action<DeliveryReport<byte[], byte[]>> callback = refreshPath.ObserveAfterDelivery;
+                    if (stage.PartitionMode == "automatic") producer.Produce(stage.Topic, message, callback);
+                    else producer.Produce(new TopicPartition(stage.Topic, new Partition(requested.Partition!.Value)), message, callback);
+                    return;
+                }
+
+                diagnosticConsumerOperationStarted = true;
+                consumer!.Seek(new TopicPartitionOffset(requested.Topic,
+                    new Partition(requested.Partition!.Value), new Offset(requested.Offset!.Value)));
+                refreshPath.SeekReturned();
+                while (refreshPath.CanContinue(token))
+                {
+                    TimeSpan diagnosticSlice = refreshPath.Slice(token, options.Limits.PollSliceMs);
+                    if (diagnosticSlice <= TimeSpan.Zero) break;
+                    try
+                    {
+                        ConsumeResult<byte[], byte[]>? result = consumer.Consume(diagnosticSlice);
+                        if (refreshPath.ObserveDiagnosticRead(result, requested)) break;
+                    }
+                    catch (ConsumeException exception)
+                    {
+                        refreshPath.RecordError(exception.Error);
+                        if (!refreshPath.CanContinue(token)) break;
+                    }
+                }
+            }
+            catch (Exception exception) { refreshPath.RecordOperationException(exception); }
+        }
     }
     internal static bool Bootstrap(IConsumer<byte[], byte[]> consumer, Func<bool> tokenInstalled,
         ProbeV2Capture capture, ProbeV2Requested requested, int pollSliceMs, int windowMs, CancellationToken token)

@@ -210,6 +210,32 @@ class ProbeV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
             self.subject.selection()
 
+    def test_handler_refresh_flag_is_frozen_and_only_reaches_two_ordinary_actor_tuples(self):
+        self.selected_controls()
+        saved = self.p.read('phase.json')
+        saved['test_handler_refresh_path'] = True
+        self.write(self.private / 'phase.json', saved)
+        self.assertEqual(('authentication-controls', v2.AUTHENTICATION_CONTROLS), self.subject.selection())
+        enabled = []
+        for item, configuration in v2.AUTHENTICATION_CONTROLS:
+            for stage, role, _ in v2.stages(item, configuration):
+                runtime = self.subject.values(item, configuration, stage, role)['runtime']
+                expected = (item, configuration, stage, role) in (
+                    ('F06', 'C6', 'seed', 'loadgen'),
+                    ('F06', 'C9', 'action', 'enrichment-consumer'))
+                self.assertEqual(expected, runtime.get('test_handler_refresh_path', False))
+                if expected:
+                    self.assertIs(runtime['capture_authentication_metadata'], True)
+                    enabled.append((item, configuration, stage, role))
+        self.assertEqual([('F06', 'C6', 'seed', 'loadgen'), ('F06', 'C9', 'action', 'enrichment-consumer')], enabled)
+        for field, invalid in [('test_handler_refresh_path', 'true'), ('items', ['B08']), ('run_kind', 'batch'),
+                               ('capture_authentication_metadata', False), ('probe_v2_selection', 'all')]:
+            corrupted = dict(saved)
+            corrupted[field] = invalid
+            self.write(self.private / 'phase.json', corrupted)
+            with self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
+                self.subject.selection()
+
     def test_selected_batch_is_fixed_dependency_closed_and_separate_from_full_smoke(self):
         self.selected_controls()
         stages_seen = []
@@ -392,8 +418,11 @@ class ProbeV2Tests(unittest.TestCase):
 
     def test_phase_entrypoints_use_frozen_v2_selection_after_environment_changes(self):
         self.selected_controls()
+        frozen = self.p.read('phase.json')
+        frozen['test_handler_refresh_path'] = True
+        self.write(self.private / 'phase.json', frozen)
         os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS='all',
-                          PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='false')
+                          PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='false', PARCHWELL_TEST_HANDLER_REFRESH_PATH='false')
         probe = self.p.probe_v2()
         with patch.object(probe, 'run_batch', return_value=7), patch.object(self.p, 'probe_v2', return_value=probe):
             self.assertEqual(0, self.p.single_action_seed())

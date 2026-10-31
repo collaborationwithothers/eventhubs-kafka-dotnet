@@ -299,6 +299,64 @@ class PhaseTests(unittest.TestCase):
                     run.assert_not_called()
                 self.assertIn('private_directory=', self.output_file.read_text())
 
+    def test_handler_refresh_flag_requires_exact_tuple_before_prepare_or_stop_side_effects(self):
+        valid = {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke',
+                 'PARCHWELL_BATCH_ITEMS': 'authentication-controls',
+                 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true',
+                 'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'}
+        with patch.dict(os.environ, valid):
+            self.assertEqual(0, self.main('validate-batch'))
+            with self.mocked():
+                self.assertEqual(0, self.main('prepare-batch'))
+                saved = json.loads((Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())[
+                    'PARCHWELL_PRIVATE_DIRECTORY']) / 'phase.json').read_text())
+                self.assertIs(True, saved['test_handler_refresh_path'])
+
+        rejected = [
+            {'PARCHWELL_SCENARIO': 'probe-batch', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'},
+            {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'batch', 'PARCHWELL_BATCH_ITEMS': 'F06'},
+            {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'},
+            {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'authentication-controls', 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'false'},
+            {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'authentication-controls'},
+        ]
+        for case in rejected:
+            env = {**case, 'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'}
+            with self.subTest(env=env), patch.dict(os.environ, env, clear=False):
+                before = set(self.root.iterdir())
+                self.env_file.write_text('')
+                self.assertEqual(2, self.main('validate-batch') if env['PARCHWELL_SCENARIO'].startswith('probe-') else self.main('validate-scenario'))
+                with patch.object(phase.Phase, 'run') as run:
+                    self.assertEqual(2, self.main('prepare-stop'))
+                    run.assert_not_called()
+                self.assertEqual('', self.env_file.read_text())
+                self.assertLessEqual(set(self.root.iterdir()), before | {self.env_file, self.output_file, self.summary_file})
+
+    def test_handler_refresh_preparation_rejects_requested_vs_frozen_flag_mismatch_before_side_effects(self):
+        env = {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke',
+               'PARCHWELL_BATCH_ITEMS': 'authentication-controls',
+               'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true',
+               'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'}
+        metadata = {'run_kind': 'smoke', 'items': ['F06'], 'probe_v2_selection': 'authentication-controls',
+                    'capture_authentication_metadata': True, 'test_handler_refresh_path': False}
+        with patch.dict(os.environ, env):
+            before = set(self.root.iterdir())
+            with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
+                phase.Phase().prepare_shared('probe-batch-2', 'single-action', None, 'probe', **metadata)
+            self.assertEqual('', self.env_file.read_text())
+            self.assertEqual(before, set(self.root.iterdir()))
+
+    def test_handler_refresh_parser_is_strict_and_old_absence_defaults_false(self):
+        for value, expected in [(None, False), ('false', False), ('true', True)]:
+            with self.subTest(value=value), patch.dict(os.environ, {}, clear=False):
+                os.environ.pop('PARCHWELL_TEST_HANDLER_REFRESH_PATH', None)
+                if value is not None:
+                    os.environ['PARCHWELL_TEST_HANDLER_REFRESH_PATH'] = value
+                self.assertIs(expected, phase.test_handler_refresh_path())
+        for value in ('TRUE', 'True', 'yes', '', '1'):
+            with self.subTest(value=value), patch.dict(os.environ, {'PARCHWELL_TEST_HANDLER_REFRESH_PATH': value}):
+                with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
+                    phase.test_handler_refresh_path()
+
     def test_prepare_stop(self):
         env = {key: os.environ[key] for key in ('RUNNER_TEMP', 'GITHUB_ENV', 'GITHUB_OUTPUT', 'PARCHWELL_CLUSTER_RESOURCE_ID')}
         with patch.dict(os.environ, env, clear=True):
@@ -684,9 +742,10 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         suffix = 'single-judge' if mode == 'single-action-judge' else 'single'
         return self.run_id + ('-f04-seed' if mode == 'single-action-seed' else f'-{item.lower()}-{configuration.lower()}-{suffix}')
 
-    def prepare_v2_batch(self, items='all', capture='false', run_kind='smoke'):
+    def prepare_v2_batch(self, items='all', capture='false', run_kind='smoke', refresh='false'):
         os.environ.update(PARCHWELL_SCENARIO='probe-batch-2', PARCHWELL_RUN_KIND=run_kind,
-                          PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
+                          PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture,
+                          PARCHWELL_TEST_HANDLER_REFRESH_PATH=refresh)
         self.assertEqual(0, self.main('prepare-batch'))
         self.env_file_contents = self.env_file.read_text()
         os.environ.update(dict(line.split('=', 1) for line in self.env_file_contents.splitlines()))

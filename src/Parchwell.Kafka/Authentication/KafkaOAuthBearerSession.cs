@@ -24,6 +24,7 @@ public sealed class KafkaOAuthBearerSession
     private readonly KafkaAuthenticationMetrics _metrics;
     private readonly CancellationToken _cancellationToken;
     private readonly bool _captureLifecycle;
+    private readonly int? _testExpiryCapMilliseconds;
     private readonly long _timestampFrequency;
     private readonly List<KafkaAuthenticationLifecycleEvent> _lifecycleEvents = [];
     private DateTimeOffset? _installedTokenExpiresOn;
@@ -33,6 +34,7 @@ public sealed class KafkaOAuthBearerSession
     private bool _attemptLimitReached;
     private bool _observationClockUnavailable;
     private int _observedAttempts;
+    private KafkaHandlerRefreshProgress _handlerRefreshProgress = new(0, 0, null);
     private Confluent.Kafka.IClient? _callbackClient;
 
     /// <summary>Creates a session for one native Kafka client.</summary>
@@ -44,6 +46,7 @@ public sealed class KafkaOAuthBearerSession
     /// <param name="metrics">The authentication failure metrics recorder.</param>
     /// <param name="cancellationToken">The run cancellation token forwarded to acquisition.</param>
     /// <param name="captureLifecycle">Whether to retain bounded diagnostic lifecycle observations.</param>
+    /// <param name="testExpiryCapMilliseconds">The fixed diagnostic-only advertised expiry cap, when enabled.</param>
     internal KafkaOAuthBearerSession(
         KafkaAuthenticationIdentity identity,
         string scope,
@@ -52,7 +55,8 @@ public sealed class KafkaOAuthBearerSession
         TimeProvider timeProvider,
         KafkaAuthenticationMetrics metrics,
         CancellationToken cancellationToken,
-        bool captureLifecycle = false)
+        bool captureLifecycle = false,
+        int? testExpiryCapMilliseconds = null)
     {
         _identity = identity ?? throw new ArgumentNullException(nameof(identity));
         _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -62,6 +66,9 @@ public sealed class KafkaOAuthBearerSession
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _cancellationToken = cancellationToken;
         _captureLifecycle = captureLifecycle;
+        if (testExpiryCapMilliseconds is not null && (!captureLifecycle || testExpiryCapMilliseconds != 5000))
+            throw new ArgumentOutOfRangeException(nameof(testExpiryCapMilliseconds));
+        _testExpiryCapMilliseconds = testExpiryCapMilliseconds;
         if (captureLifecycle)
         {
             try
@@ -86,6 +93,9 @@ public sealed class KafkaOAuthBearerSession
             }
         }
     }
+
+    /// <summary>Gets callback progress for the explicitly enabled refresh-path diagnostic without taking the session gate.</summary>
+    public KafkaHandlerRefreshProgress HandlerRefreshProgress => Volatile.Read(ref _handlerRefreshProgress);
 
     /// <summary>Gets the sticky first failure before any token was successfully installed.</summary>
     /// <remarks>A later successful installation does not clear this failure.</remarks>
@@ -200,11 +210,27 @@ public sealed class KafkaOAuthBearerSession
             string phase = _installedTokenExpiresOn is null ? "initial" : "refresh";
             int attempt = BeginObservedAttempt();
             DateTimeOffset? acquiredExpiresOn = null;
+            DateTimeOffset? effectiveExpiresOn = null;
+            DateTimeOffset? capComputedAt = null;
+            bool sdkInvoked = false;
+            bool sdkReturned = false;
             RecordLifecycleEvent(attempt, phase, "callback_started", null, null);
             AccessToken token;
             try
             {
-                token = _tokenProvider.GetToken(_scope, _cancellationToken);
+                if (_testExpiryCapMilliseconds is not null && _tokenProvider is IObservedKafkaTokenProvider observedProvider)
+                {
+                    token = observedProvider.GetToken(_scope, _cancellationToken, stage =>
+                    {
+                        if (stage == "sdk_get_token_invoked") sdkInvoked = true;
+                        if (stage == "sdk_get_token_returned") sdkReturned = true;
+                        RecordLifecycleEvent(attempt, phase, stage, null, null);
+                    });
+                }
+                else
+                {
+                    token = _tokenProvider.GetToken(_scope, _cancellationToken);
+                }
             }
             catch (Exception)
             {
@@ -232,18 +258,34 @@ public sealed class KafkaOAuthBearerSession
                 return;
             }
 
+            capComputedAt = _testExpiryCapMilliseconds is null ? null : now;
+            effectiveExpiresOn = _testExpiryCapMilliseconds is null
+                ? token.ExpiresOn
+                : token.ExpiresOn <= now.AddMilliseconds(_testExpiryCapMilliseconds.Value)
+                    ? token.ExpiresOn
+                    : now.AddMilliseconds(_testExpiryCapMilliseconds.Value);
+
             try
             {
-                install(token.Token, token.ExpiresOn.ToUnixTimeMilliseconds(), _principalName);
+                install(token.Token, effectiveExpiresOn.Value.ToUnixTimeMilliseconds(), _principalName);
             }
             catch (Exception)
             {
-                Fail(phase, "installation", reportFailure, attempt, acquiredExpiresOn);
+                Fail(phase, "installation", reportFailure, attempt, acquiredExpiresOn,
+                    effectiveExpiresOn, capComputedAt);
                 return;
             }
 
-            _installedTokenExpiresOn = token.ExpiresOn;
-            RecordLifecycleEvent(attempt, phase, "installation_succeeded", acquiredExpiresOn, null);
+            _installedTokenExpiresOn = effectiveExpiresOn;
+            RecordLifecycleEvent(attempt, phase, "installation_succeeded", acquiredExpiresOn, null,
+                effectiveExpiresOn, capComputedAt);
+            if (_testExpiryCapMilliseconds is not null && attempt != 0 && sdkInvoked && sdkReturned)
+            {
+                KafkaHandlerRefreshProgress previous = Volatile.Read(ref _handlerRefreshProgress);
+                int count = previous.SuccessfulObservedInstallations + 1;
+                Volatile.Write(ref _handlerRefreshProgress,
+                    new(count, attempt, count == 3 ? attempt : previous.ThirdSuccessfulAttempt));
+            }
         }
     }
 
@@ -267,7 +309,9 @@ public sealed class KafkaOAuthBearerSession
         string phase,
         string stage,
         DateTimeOffset? acquiredExpiresOn,
-        string? failureReason)
+        string? failureReason,
+        DateTimeOffset? effectiveExpiresOn = null,
+        DateTimeOffset? capComputedAt = null)
     {
         if (attempt == 0)
             return;
@@ -295,7 +339,10 @@ public sealed class KafkaOAuthBearerSession
             timestamp,
             acquiredExpiresOn,
             _installedTokenExpiresOn,
-            failureReason));
+            failureReason,
+            effectiveExpiresOn,
+            capComputedAt,
+            effectiveExpiresOn is null ? null : _testExpiryCapMilliseconds));
     }
 
     private void Fail(
@@ -303,9 +350,11 @@ public sealed class KafkaOAuthBearerSession
         string reason,
         Action<string> reportFailure,
         int attempt,
-        DateTimeOffset? acquiredExpiresOn)
+        DateTimeOffset? acquiredExpiresOn,
+        DateTimeOffset? effectiveExpiresOn = null,
+        DateTimeOffset? capComputedAt = null)
     {
-        RecordLifecycleEvent(attempt, phase, "failed", acquiredExpiresOn, reason);
+        RecordLifecycleEvent(attempt, phase, "failed", acquiredExpiresOn, reason, effectiveExpiresOn, capComputedAt);
         KafkaAuthenticationFailure failure = new(_identity, phase, reason);
         _latestFailure = failure;
         if (StringComparer.Ordinal.Equals(phase, "initial"))

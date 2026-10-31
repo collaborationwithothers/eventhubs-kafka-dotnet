@@ -147,6 +147,119 @@ public sealed class ProbeV2LifecycleTests
         }
     }
 
+    [Theory]
+    [InlineData("C6", "seed", "producer")]
+    [InlineData("C9", "action", "consumer")]
+    public async Task GivenHandlerRefreshPathOptIn_When_FiveSlotsRun_Then_ActualHostOutputCarriesBoundedV2Rows(
+        string configuration, string stage, string actor)
+    {
+        using var fixture = new Fixture(item: "F06", configuration: configuration, stage: stage,
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+        Assert.Equal(0, exit);
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(5, fixture.Clients.Count + fixture.ConsumerClients.Count);
+        Assert.True(capture.CleanupCompleted && capture.HostCleanupCompleted);
+        Assert.Equal(0, capture.HandlerExitCode);
+        Assert.Equal(5, capture.Repeats.Count);
+        List<string> lines = MetadataLines(fixture);
+        Assert.Equal(5, lines.Count);
+        foreach (string line in lines)
+        {
+            ProbeV2AuthenticationMetadata row = ReadMetadata(line);
+            Assert.Equal(2, row.SchemaVersion);
+            Assert.Equal("single-action-v2-handler-refresh-path", row.Mode);
+            Assert.NotNull(row.HandlerRefresh);
+            Assert.True(row.HandlerRefresh.OperationAttempted);
+            Assert.Equal(3, row.HandlerRefresh.TriggerAttempt);
+            Assert.NotNull(row.HandlerRefresh.BeforeService);
+            Assert.NotNull(row.HandlerRefresh.AfterService);
+            Assert.True(row.HandlerRefresh.ClientCleanupCompleted);
+            Assert.Equal(20000, row.HandlerRefresh.ObservationLimitMs);
+            Assert.Equal(5000, row.HandlerRefresh.TestExpiryCapMs);
+            Assert.Equal(3, row.Lifecycle!.Events.Count(value => value.Stage == "installation_succeeded"));
+            Assert.Contains(row.Lifecycle.Events, value => value.Stage == "installation_succeeded" &&
+                value.AcquiredExpiresOn != value.EffectiveExpiresOn && value.TestExpiryCapMilliseconds == 5000);
+            if (actor == "producer")
+            {
+                Assert.Equal(2, fixture.Clients[row.Repeat - 1].ProduceCalls);
+                Assert.Equal(7, capture.Repeats[row.Repeat - 1].Delivery!.Offset);
+                Assert.Equal("delivery", row.HandlerRefresh.BeforeService.Action);
+                Assert.Equal("delivery", row.HandlerRefresh.AfterService.Action);
+            }
+            else
+            {
+                Assert.Equal(1, fixture.ConsumerClients[row.Repeat - 1].SeekCalls);
+                Assert.Equal(1, fixture.ConsumerClients[row.Repeat - 1].PostSeekConsumeCalls);
+                Assert.Equal("read", row.HandlerRefresh.BeforeService.Action);
+                Assert.Equal("read", row.HandlerRefresh.AfterService.Action);
+                Assert.NotNull(row.HandlerRefresh.SeekReturnedAt);
+                Assert.NotNull(capture.Repeats[row.Repeat - 1].ReadObservation.Record);
+            }
+        }
+        using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(capture, ProbeV2Wire.JsonOptions));
+        Assert.DoesNotContain(document.RootElement.EnumerateObject(), property => property.Name.Contains("handler", StringComparison.OrdinalIgnoreCase));
+        ExportHandlerRefreshFixture(actor, fixture, capture);
+    }
+
+    [Fact]
+    public async Task GivenConsumerSeekReturnsAfterObservationCutoff_WhenWorkerRuns_ThenNoPostSeekConsumeIsAdmitted()
+    {
+        using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            advanceClockOnSeekMilliseconds: 20001);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(5, fixture.ConsumerClients.Count);
+        Assert.All(fixture.ConsumerClients, client =>
+        {
+            Assert.Equal(1, client.SeekCalls);
+            Assert.Equal(0, client.PostSeekConsumeCalls);
+            Assert.True(client.SessionCancellationToken.IsCancellationRequested);
+            Assert.True(client.SessionCancelledAtDispose);
+        });
+        foreach (string line in MetadataLines(fixture))
+        {
+            ProbeV2AuthenticationMetadata row = ReadMetadata(line);
+            Assert.True(row.HandlerRefresh!.OperationAttempted);
+            Assert.NotNull(row.HandlerRefresh.SeekReturnedTimestamp);
+            Assert.NotNull(row.HandlerRefresh.StartedTimestamp);
+            Assert.True(row.HandlerRefresh.SeekReturnedTimestamp.Value >= row.HandlerRefresh.StartedTimestamp.Value + 20001);
+            Assert.Null(row.HandlerRefresh.AfterService);
+        }
+        TestClock.TimerStub[] timers = fixture.Clock.Timers.Where(value =>
+            value.InitialDueTime > TimeSpan.FromSeconds(20) && value.ChangedDueTimes.Contains(TimeSpan.FromSeconds(20))).ToArray();
+        Assert.Equal(5, timers.Length);
+        Assert.All(timers, timer => Assert.True(timer.IsDisposed));
+    }
+
+    [Fact]
+    public async Task GivenNonmatchingDiagnosticReadsReachWorkerCap_WhenWorkerRuns_ThenNoFurtherConsumeIsAdmitted()
+    {
+        using var fixture = new Fixture(item: "F06", configuration: "C9", stage: "action",
+            captureAuthenticationMetadata: true, testHandlerRefreshPath: true,
+            nonmatchingDiagnosticRead: true);
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output,
+            logs: fixture.Logs, cancellationToken: fixture.Stopping.Token);
+
+        Assert.Equal(0, exit);
+        Assert.All(fixture.ConsumerClients, client =>
+        {
+            Assert.Equal(4096, client.PostSeekConsumeCalls);
+            Assert.Equal(1, client.SeekCalls);
+        });
+        foreach (string line in MetadataLines(fixture))
+        {
+            ProbeV2HandlerRefreshMetadata handler = ReadMetadata(line).HandlerRefresh!;
+            Assert.Equal(4096, handler.DiagnosticNonmatches);
+            Assert.True(handler.CaptureLimitReached);
+            Assert.Null(handler.AfterService);
+        }
+    }
+
     [Fact]
     public async Task Given_MetadataOptInAndClientCleanupFailure_When_HostEnds_Then_OnlyAttemptedSlotHasIncompleteMetadata()
     {
@@ -286,27 +399,46 @@ public sealed class ProbeV2LifecycleTests
         .Where(line => line.StartsWith(ProbeV2AuthenticationMetadataWriter.Marker, StringComparison.Ordinal)).ToList();
     private static ProbeV2AuthenticationMetadata ReadMetadata(string line) => ProbeV2Wire.Read<ProbeV2AuthenticationMetadata>(
         System.Text.Encoding.UTF8.GetBytes(line[ProbeV2AuthenticationMetadataWriter.Marker.Length..]), 262144);
+    private static void ExportHandlerRefreshFixture(string actor, Fixture fixture, ProbeV2CaptureFile capture)
+    {
+        string? root = System.Environment.GetEnvironmentVariable("PARCHWELL_PROBE_V2_HANDLER_REFRESH_FIXTURE_DIRECTORY");
+        if (root is null) return;
+        string directory = Path.Combine(root, actor);
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "actor.stdout"), fixture.Output + fixture.Logs.ToString());
+        File.WriteAllBytes(Path.Combine(directory, "registration.json"), ProbeV2Wire.Encode(ProbeV2Wire.Registration(fixture.Options), 65536));
+        File.WriteAllBytes(Path.Combine(directory, "capture.json"), ProbeV2Wire.Encode(capture, 524288));
+        File.WriteAllBytes(Path.Combine(directory, "pod.json"), ProbeV2Wire.Encode(new ProbeV2Pod(2,
+            fixture.Options.JobName, fixture.Options.PodName, fixture.Options.PodUid, fixture.Options.ServiceAccount,
+            "Job", fixture.Options.JobName, "sha256:" + new string('a', 64)), 65536));
+    }
     private sealed class Fixture : IDisposable
     {
         internal List<string> Events { get; } = [];
         internal List<NativeProducer> Clients { get; } = [];
+        internal List<NativeConsumer> ConsumerClients { get; } = [];
+        internal List<KafkaAuthenticationMetrics> Metrics { get; } = [];
         internal ProbeV2Options Options { get; }
+        internal TestClock Clock { get; } = new();
         internal RecordingWriter Output { get; }
         internal TextWriter Logs { get; }
         internal int SamplerCalls { get; private set; }
         internal CancellationTokenSource Stopping { get; } = new();
         internal TestHost Host { get; }
         internal Fixture(string? failure = null, string item = "B08", string configuration = "C0", string? statistics = null,
-            bool captureAuthenticationMetadata = false, TextWriter? logWriter = null)
+            bool captureAuthenticationMetadata = false, TextWriter? logWriter = null, string stage = "action",
+            bool testHandlerRefreshPath = false, int advanceClockOnSeekMilliseconds = 0,
+            bool nonmatchingDiagnosticRead = false)
         {
-            Options = ProbeV2OptionsTests.Options(item, configuration);
-            Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata;
+            Options = ProbeV2OptionsTests.Options(item, configuration, stage);
+            Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata || testHandlerRefreshPath;
+            Options.TestHandlerRefreshPath = testHandlerRefreshPath;
             string root = AppContext.BaseDirectory;
             while (!File.Exists(Path.Combine(root, "Parchwell.slnx"))) root = Path.GetDirectoryName(root) ?? throw new DirectoryNotFoundException("repository_root");
             Options.ScenarioRoot = root;
             Output = new(Events, failure);
             Logs = logWriter ?? new StringWriter();
-            var clock = new TestClock();
+            TestClock clock = Clock;
             var services = new ServiceCollection();
             services.AddSingleton<IOptions<ProbeV2Options>>(Microsoft.Extensions.Options.Options.Create(Options));
             services.AddSingleton(Options);
@@ -320,7 +452,7 @@ public sealed class ProbeV2LifecycleTests
             services.AddSingleton<IScenarioSource>(new ProbeV2ScenarioSource(root));
             foreach (KafkaClientRole role in Enum.GetValues<KafkaClientRole>()) services.AddParchwellKafka(role, value =>
             { value.NamespaceName = Options.NamespaceName; value.ClientId = Options.PodName; value.EnrichmentGroupId = "probe-v2-group"; });
-            services.AddSingleton(new ProbeV2SessionFactory((_, capture, _) =>
+            services.AddSingleton(new ProbeV2SessionFactory((_, capture, cancellation) =>
             {
                 IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProducer>();
                 var proxy = (NativeProducer)(object)producer;
@@ -329,25 +461,56 @@ public sealed class ProbeV2LifecycleTests
                 proxy.Statistics = statistics;
                 proxy.Clock = clock;
                 proxy.Stopping = Stopping;
-                if (captureAuthenticationMetadata)
+                proxy.RefreshOnDelay = testHandlerRefreshPath;
+                if (capture.CaptureAuthenticationMetadata)
                 {
                     using var metrics = new KafkaAuthenticationMetrics();
+                    IKafkaTokenProvider provider = TestTokenProvider(testHandlerRefreshPath);
                     var session = new KafkaOAuthBearerSession(new(Options.ScenarioId, Options.RunId, KafkaClientRole.LoadGenProducer, settingsClientId(capture, Clients.Count + 1)),
-                        "https://synthetic/.default", "synthetic-principal", new SyntheticTokenProvider(), clock, metrics,
-                        TestContext.Current.CancellationToken, captureLifecycle: true);
+                        "https://synthetic/.default", "synthetic-principal", provider, clock, metrics,
+                        cancellation, captureLifecycle: true, testExpiryCapMilliseconds: testHandlerRefreshPath ? 5000 : null);
                     session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic authentication must install."));
                     capture.AttachAuthentication(session);
+                    proxy.Session = session;
+                    proxy.SessionCancellationToken = cancellation;
                 }
                 Clients.Add(proxy);
                 Events.Add("client-" + Clients.Count);
                 return producer;
-            }, (_, _, _) => throw new InvalidOperationException("unexpected_consumer"), (_, _, _) => Enumerable.Range(0, 32).ToArray(),
+            }, (_, capture, cancellation) =>
+            {
+                var session = new KafkaOAuthBearerSession(new(Options.ScenarioId, Options.RunId, KafkaClientRole.VerifierConsumer,
+                    Options.PodName + "-r" + (ConsumerClients.Count + 1)), "https://synthetic/.default", "synthetic-principal",
+                    TestTokenProvider(testHandlerRefreshPath), clock, AddMetrics(), cancellation,
+                    captureLifecycle: true, testExpiryCapMilliseconds: testHandlerRefreshPath ? 5000 : null);
+                session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer authentication must install."));
+                capture.AttachAuthentication(session);
+                IConsumer<byte[], byte[]> consumer = DispatchProxy.Create<IConsumer<byte[], byte[]>, NativeConsumer>();
+                var proxy = (NativeConsumer)(object)consumer;
+                proxy.Clock = clock; proxy.Capture = capture; proxy.Session = session; proxy.Requested = Options.Stage;
+                proxy.RefreshOnSecondConsume = testHandlerRefreshPath;
+                proxy.AdvanceClockOnSeekMilliseconds = advanceClockOnSeekMilliseconds;
+                proxy.NonmatchingDiagnosticRead = nonmatchingDiagnosticRead;
+                proxy.SessionCancellationToken = cancellation;
+                proxy.Options = Options; proxy.Stopping = Stopping;
+                ConsumerClients.Add(proxy); Events.Add("client-" + (Clients.Count + ConsumerClients.Count));
+                return (consumer, session);
+            }, (_, _, _) => Enumerable.Range(0, 32).ToArray(),
             () => () => { SamplerCalls++; return new(SamplerCalls, MetadataE0.AddMinutes(SamplerCalls), SamplerCalls, 1000, 1, "observed"); }));
             services.AddSingleton(new ProbeV2Inputs(Options, clock));
             services.AddSingleton<ProbeV2Worker>();
             Host = new(services.BuildServiceProvider(), Events, failure);
         }
-        public void Dispose() { Host.DisposeProvider(); Output.Dispose(); if (Logs is IDisposable disposable) disposable.Dispose(); Stopping.Dispose(); }
+        private KafkaAuthenticationMetrics AddMetrics()
+        {
+            var metrics = new KafkaAuthenticationMetrics();
+            Metrics.Add(metrics);
+            return metrics;
+        }
+        private static IKafkaTokenProvider TestTokenProvider(bool observed) => observed
+            ? new WorkloadIdentityTokenProvider(new SyntheticCredential())
+            : new SyntheticTokenProvider();
+        public void Dispose() { Host.DisposeProvider(); Output.Dispose(); if (Logs is IDisposable disposable) disposable.Dispose(); Stopping.Dispose(); foreach (KafkaAuthenticationMetrics metrics in Metrics) metrics.Dispose(); }
         private string settingsClientId(ProbeV2Capture _, int repeat) => Options.PodName + "-r" + repeat;
     }
     private sealed class RecordingWriter(List<string> events, string? failure) : StringWriter
@@ -392,6 +555,10 @@ public sealed class ProbeV2LifecycleTests
         internal CancellationTokenSource Stopping = null!;
         internal string? Failure;
         internal string? Statistics;
+        internal KafkaOAuthBearerSession? Session;
+        internal CancellationToken SessionCancellationToken;
+        internal bool RefreshOnDelay;
+        private bool Refreshed;
         internal int ProduceCalls, DisposeCalls;
         internal object? Destination;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -404,12 +571,22 @@ public sealed class ProbeV2LifecycleTests
                 bool broker = Failure == "broker";
                 ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new()
                 {
-                    Topic = broker ? "document-state" : "document-events", Partition = broker ? Partition.Any : new Partition(31),
-                    Offset = broker ? Offset.Unset : new Offset(7), Message = message,
+                    Topic = broker ? "document-state" : DestinationTopic(args[0], "document-events"),
+                    Partition = broker ? Partition.Any : DestinationPartition(args[0], 31),
+                    Offset = broker ? Offset.Unset : new Offset(ProduceCalls == 1 ? 7 : 8), Message = message,
                     Status = broker ? PersistenceStatus.NotPersisted : PersistenceStatus.Persisted,
                     Error = new Error(broker ? ErrorCode.TopicAuthorizationFailed : ErrorCode.NoError)
                 });
-                Clock.OnDelay = () => Capture.Statistics(Statistics ?? "{\"time\":" + Clock.Milliseconds / 1000 + ",\"ts\":1,\"brokers\":{}}");
+                Clock.OnDelay = () =>
+                {
+                    if (RefreshOnDelay && Session is not null && !Refreshed)
+                    {
+                        Refreshed = true;
+                        Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic refresh must install."));
+                        Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic refresh must install."));
+                    }
+                    Capture.Statistics(Statistics ?? "{\"time\":" + Clock.Milliseconds / 1000 + ",\"ts\":1,\"brokers\":{}}");
+                };
                 if (Failure == "cancellation") Stopping.Cancel();
                 return null;
             }
@@ -421,11 +598,87 @@ public sealed class ProbeV2LifecycleTests
             }
             throw new NotSupportedException(targetMethod?.Name);
         }
+
+        private static string DestinationTopic(object? destination, string fallback) => destination is TopicPartition topicPartition ? topicPartition.Topic : fallback;
+        private static Partition DestinationPartition(object? destination, int fallback) => destination is TopicPartition topicPartition ? topicPartition.Partition : new Partition(fallback);
+    }
+
+    public class NativeConsumer : DispatchProxy
+    {
+        internal ProbeV2Capture Capture = null!;
+        internal TestClock Clock = null!;
+        internal KafkaOAuthBearerSession Session = null!;
+        internal ProbeV2Options Options = null!;
+        internal CancellationTokenSource Stopping = null!;
+        internal string Requested = "";
+        internal bool RefreshOnSecondConsume;
+        internal int ConsumeCalls, SeekCalls, DisposeCalls;
+        internal int PostSeekConsumeCalls;
+        internal int AdvanceClockOnSeekMilliseconds;
+        internal bool NonmatchingDiagnosticRead;
+        internal CancellationToken SessionCancellationToken;
+        internal bool SessionCancelledAtDispose;
+        internal TopicPartitionOffset? Assigned;
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod?.Name == "Assign") { Assigned = (TopicPartitionOffset)args![0]!; return null; }
+            if (targetMethod?.Name == "Seek")
+            {
+                Assigned = (TopicPartitionOffset)args![0]!;
+                SeekCalls++;
+                Clock.Milliseconds += AdvanceClockOnSeekMilliseconds;
+                return null;
+            }
+            if (targetMethod?.Name == "Consume")
+            {
+                ConsumeCalls++;
+                if (SeekCalls > 0) PostSeekConsumeCalls++;
+                if (SeekCalls > 0 && NonmatchingDiagnosticRead)
+                    return new ConsumeResult<byte[], byte[]>
+                    {
+                        Topic = "document-other", Partition = new Partition(0), Offset = new Offset(999),
+                        Message = new Message<byte[], byte[]> { Key = [], Value = [] }
+                    };
+                if (RefreshOnSecondConsume && ConsumeCalls == 2)
+                {
+                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
+                    Session.Refresh((_, _, _) => { }, _ => Assert.Fail("Synthetic consumer refresh must install."));
+                    return null;
+                }
+                TimeSpan timeout = args![0] is TimeSpan duration ? duration : TimeSpan.FromMilliseconds(100);
+                Clock.Milliseconds += (long)Math.Max(1, timeout.TotalMilliseconds);
+                if (Assigned is null) return null;
+                int repeat = int.Parse(Options.PodName[(Options.PodName.LastIndexOf('-') + 1)..], System.Globalization.CultureInfo.InvariantCulture);
+                ProbeV2Stage stage = ProbeV2Stage.For(Options.ScenarioId, Options.ConfigurationId, Options.Stage);
+                byte[] key = stage.Key(Options, repeat);
+                byte[]? value = stage.Value(Options, repeat);
+                return new ConsumeResult<byte[], byte[]>
+                {
+                    Topic = Assigned.Value.Topic, Partition = Assigned.Value.Partition, Offset = Assigned.Value.Offset,
+                    Message = new Message<byte[], byte[]> { Key = key, Value = value! }
+                };
+            }
+            if (targetMethod?.Name == "Dispose")
+            {
+                DisposeCalls++;
+                SessionCancelledAtDispose = SessionCancellationToken.IsCancellationRequested;
+                return null;
+            }
+            throw new NotSupportedException(targetMethod?.Name);
+        }
     }
 
     private sealed class SyntheticTokenProvider : IKafkaTokenProvider
     {
         public AccessToken GetToken(string scope, CancellationToken cancellationToken) => new("SYNTHETIC_TOKEN_MUST_NOT_APPEAR", MetadataE0);
+    }
+
+    private sealed class SyntheticCredential : TokenCredential
+    {
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+            new("SYNTHETIC_TOKEN_MUST_NOT_APPEAR", MetadataE0);
+        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+            ValueTask.FromException<AccessToken>(new InvalidOperationException("Synthetic credential async path was not expected."));
     }
 
     private sealed class MetadataFailingWriter : StringWriter

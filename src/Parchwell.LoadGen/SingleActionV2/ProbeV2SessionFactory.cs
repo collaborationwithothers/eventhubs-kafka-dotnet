@@ -14,9 +14,12 @@ internal sealed class ProbeV2SessionFactory
         ProbeV2Stage stage = ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage);
         producer = (settings, capture, cancellation) =>
         {
-            KafkaOAuthBearerSession session = capture.CaptureAuthenticationMetadata
-                ? authentication.CreateObservedSession(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]), cancellation)
-                : authentication.CreateSession(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]), cancellation);
+            var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
+            KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
+                ? authentication.CreateRefreshPathTestSession(identity, 5000, cancellation)
+                : capture.CaptureAuthenticationMetadata
+                    ? authentication.CreateObservedSession(identity, cancellation)
+                    : authentication.CreateSession(identity, cancellation);
             capture.AttachAuthentication(session);
             return authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
@@ -24,9 +27,12 @@ internal sealed class ProbeV2SessionFactory
         };
         consumer = (settings, capture, cancellation) =>
         {
-            KafkaOAuthBearerSession session = capture.CaptureAuthenticationMetadata
-                ? authentication.CreateObservedSession(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]), cancellation)
-                : authentication.CreateSession(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]), cancellation);
+            var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
+            KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
+                ? authentication.CreateRefreshPathTestSession(identity, 5000, cancellation)
+                : capture.CaptureAuthenticationMetadata
+                    ? authentication.CreateObservedSession(identity, cancellation)
+                    : authentication.CreateSession(identity, cancellation);
             capture.AttachAuthentication(session);
             IConsumer<byte[], byte[]> client = authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
@@ -57,4 +63,9 @@ internal sealed class ProbeV2SessionFactory
     internal (IConsumer<byte[], byte[]> Client, KafkaOAuthBearerSession Authentication) Consumer(IReadOnlyDictionary<string, string> settings, ProbeV2Capture capture, CancellationToken token) => consumer(settings, capture, token);
     internal int[] Metadata(IClient client, string topic, TimeSpan timeout) => metadata(client, topic, timeout);
     internal Func<ProjectedTokenFileObservation> CreateProjectedFileSampler() => createProjectedFileSampler();
+    internal ProbeV2HandlerRefreshPath CreateHandlerRefreshPath(TimeProvider clock, int repeat, string clientId)
+    {
+        if (!options.TestHandlerRefreshPath) throw new InvalidOperationException("v2_handler_refresh_disabled");
+        return new(clock, repeat, clientId);
+    }
 }

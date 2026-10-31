@@ -590,6 +590,10 @@
         "capture_authentication_metadata": {
           "type": "boolean"
         },
+        "test_handler_refresh_path": {
+          "type": "boolean",
+          "default": false
+        },
         "run_kind": {
           "type": "string",
           "enum": [
@@ -853,6 +857,59 @@
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "test_handler_refresh_path": {
+                "const": true
+              }
+            },
+            "required": [
+              "test_handler_refresh_path"
+            ]
+          }
+        },
+        "required": [
+          "runtime"
+        ]
+      },
+      "then": {
+        "oneOf": [
+          {
+            "properties": {
+              "scenario_id": { "const": "F06" },
+              "configuration_id": { "const": "C6" },
+              "runtime": {
+                "properties": {
+                  "stage": { "const": "seed" },
+                  "action_role": { "const": "loadgen" },
+                  "run_kind": { "const": "smoke" },
+                  "capture_authentication_metadata": { "const": true }
+                },
+                "required": ["stage", "action_role", "run_kind", "capture_authentication_metadata"]
+              }
+            }
+          },
+          {
+            "properties": {
+              "scenario_id": { "const": "F06" },
+              "configuration_id": { "const": "C9" },
+              "runtime": {
+                "properties": {
+                  "stage": { "const": "action" },
+                  "action_role": { "const": "enrichment-consumer" },
+                  "run_kind": { "const": "smoke" },
+                  "capture_authentication_metadata": { "const": true }
+                },
+                "required": ["stage", "action_role", "run_kind", "capture_authentication_metadata"]
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "if": {
         "properties": {

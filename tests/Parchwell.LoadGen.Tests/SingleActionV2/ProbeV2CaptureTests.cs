@@ -212,6 +212,7 @@ public sealed class ProbeV2CaptureTests
 
 internal sealed class TestClock : TimeProvider
 {
+    internal List<TimerStub> Timers { get; } = [];
     internal long Milliseconds;
     internal Action? OnDelay;
     public override long TimestampFrequency => 1000;
@@ -225,12 +226,17 @@ internal sealed class TestClock : TimeProvider
             Action? action = OnDelay; OnDelay = null; action?.Invoke();
             callback(state);
         }
-        return new TimerStub();
+        var timer = new TimerStub(dueTime);
+        Timers.Add(timer);
+        return timer;
     }
-    private sealed class TimerStub : ITimer
+    internal sealed class TimerStub(TimeSpan initialDueTime) : ITimer
     {
-        public bool Change(TimeSpan dueTime, TimeSpan period) => true;
-        public void Dispose() { }
+        internal TimeSpan InitialDueTime { get; } = initialDueTime;
+        internal List<TimeSpan> ChangedDueTimes { get; } = [];
+        internal bool IsDisposed { get; private set; }
+        public bool Change(TimeSpan dueTime, TimeSpan period) { ChangedDueTimes.Add(dueTime); return true; }
+        public void Dispose() => IsDisposed = true;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

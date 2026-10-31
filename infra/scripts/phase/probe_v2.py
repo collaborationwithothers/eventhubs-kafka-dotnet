@@ -146,7 +146,12 @@ class ProbeV2:
         phase = phase or self.p.read("phase.json")
         selected = phase.get("probe_v2_selection", "all")
         capture = phase.get("capture_authentication_metadata", False)
-        if phase.get("scenario") != "probe-batch-2" or type(capture) is not bool:
+        refresh_test = phase.get("test_handler_refresh_path", False)
+        if (phase.get("scenario") != "probe-batch-2" or type(capture) is not bool
+                or type(refresh_test) is not bool):
+            raise ValueError("v2_smoke_selection")
+        if refresh_test and not (selected == "authentication-controls" and phase.get("items") == ["F06"]
+                                 and phase.get("run_kind") == "smoke" and capture):
             raise ValueError("v2_smoke_selection")
         items = phase.get("items")
         if (phase.get("run_kind") == "batch" and capture is False
@@ -180,6 +185,11 @@ class ProbeV2:
             "bounds": {"probe_v2": self.limits}}
         if selection == "authentication-controls" and (item, configuration) in configurations and stage != "judge":
             runtime["capture_authentication_metadata"] = True
+            if phase.get("test_handler_refresh_path", False) and (
+                    (item, configuration, stage, account) in (
+                        ("F06", "C6", "seed", "loadgen"),
+                        ("F06", "C9", "action", "enrichment-consumer"))):
+                runtime["test_handler_refresh_path"] = True
         return {"scenario_id": item, "configuration_id": configuration, "runtime": runtime}
 
     def scope(self):

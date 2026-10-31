@@ -97,6 +97,156 @@ public sealed class OAuthBearerSessionTests
         Assert.Null(session.LatestFailure);
     }
 
+    [Fact]
+    public void Given_RefreshPathCap_When_RefreshingCachedTokenTwice_Then_AdvertisesFreshAbsoluteExpiryEachTime()
+    {
+        DateTimeOffset now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
+        AccessToken cached = new("synthetic-cached-token", DateTimeOffset.FromUnixTimeMilliseconds(1700003600000));
+        var provider = new ObservedStubTokenProvider(cached, cached);
+        using var metrics = new KafkaAuthenticationMetrics();
+        var clock = new MutableTimeProvider(now);
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal", provider, clock, metrics,
+            TestContext.Current.CancellationToken, captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+        var expiries = new List<long>();
+
+        session.Refresh((_, expiry, _) => expiries.Add(expiry), _ => Assert.Fail("unexpected failure"));
+        clock.Now = now.AddMilliseconds(6000);
+        session.Refresh((_, expiry, _) => expiries.Add(expiry), _ => Assert.Fail("unexpected failure"));
+
+        Assert.Equal([1700000005000, 1700000011000], expiries);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1700000011000), session.InstalledTokenExpiresOn);
+        var events = session.GetLifecycleSnapshot().Events;
+        Assert.Equal(2, events.Count(value => value.Stage == "sdk_get_token_invoked"));
+        Assert.Equal(2, events.Count(value => value.Stage == "sdk_get_token_returned"));
+        Assert.Equal(2, events.Count(value => value.Stage == "installation_succeeded" &&
+            value.AcquiredExpiresOn == cached.ExpiresOn && value.EffectiveExpiresOn is not null &&
+            value.CapComputedAt is not null && value.TestExpiryCapMilliseconds == 5000));
+    }
+
+    [Fact]
+    public void GivenCappedSessionWithoutObservedProvider_WhenRefreshing_ThenProgressDoesNotInferSdkStages()
+    {
+        using var metrics = new KafkaAuthenticationMetrics();
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal",
+            new StubTokenProvider(new AccessToken("synthetic", Now.AddHours(1))), new FixedTimeProvider(Now), metrics,
+            TestContext.Current.CancellationToken, captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+
+        session.Refresh((_, _, _) => { }, _ => Assert.Fail("unexpected failure"));
+
+        Assert.Equal(new KafkaHandlerRefreshProgress(0, 0, null), session.HandlerRefreshProgress);
+    }
+
+    [Theory]
+    [InlineData(1, 1700000000001)]
+    [InlineData(3000, 1700000003000)]
+    [InlineData(5000, 1700000005000)]
+    public void GivenActualExpiryAtOrBeforeCap_When_Refreshing_Then_NeverExtendsSdkExpiry(int actualMilliseconds, long expected)
+    {
+        DateTimeOffset now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
+        var provider = new ObservedStubTokenProvider(new AccessToken("synthetic", DateTimeOffset.FromUnixTimeMilliseconds(expected)));
+        using var metrics = new KafkaAuthenticationMetrics();
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal", provider,
+            new MutableTimeProvider(now), metrics, TestContext.Current.CancellationToken,
+            captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+        long installed = 0;
+
+        session.Refresh((_, expiry, _) => installed = expiry, _ => Assert.Fail("unexpected failure"));
+
+        Assert.Equal(expected, installed);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(expected), session.InstalledTokenExpiresOn);
+    }
+
+    [Fact]
+    public void GivenActualExpiryExactlyNowInCappedMode_When_Refreshing_Then_ExistingValidationStillRejectsIt()
+    {
+        DateTimeOffset now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
+        using var metrics = new KafkaAuthenticationMetrics();
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal",
+            new ObservedStubTokenProvider(new AccessToken("synthetic", now)), new MutableTimeProvider(now), metrics,
+            TestContext.Current.CancellationToken, captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+        string? failure = null;
+
+        session.Refresh((_, _, _) => Assert.Fail("expired token must not install"), value => failure = value);
+
+        Assert.Equal("token_validation", failure);
+        Assert.Null(session.InstalledTokenExpiresOn);
+        Assert.Equal(new KafkaHandlerRefreshProgress(0, 0, null), session.HandlerRefreshProgress);
+        KafkaAuthenticationLifecycleEvent failed = Assert.Single(session.GetLifecycleSnapshot().Events,
+            value => value.Stage == "failed");
+        Assert.Null(failed.EffectiveExpiresOn);
+        Assert.Null(failed.CapComputedAt);
+    }
+
+    [Fact]
+    public void GivenCappedInstallThenReplacementInstallThrows_When_Refreshing_ThenPreviousAdvertisedExpiryRemainsInstalled()
+    {
+        DateTimeOffset now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
+        using var metrics = new KafkaAuthenticationMetrics();
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal",
+            new ObservedStubTokenProvider(
+                new AccessToken("first", DateTimeOffset.FromUnixTimeMilliseconds(1700003600000)),
+                new AccessToken("replacement", DateTimeOffset.FromUnixTimeMilliseconds(1700007200000))),
+            new MutableTimeProvider(now), metrics, TestContext.Current.CancellationToken,
+            captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+        session.Refresh((_, _, _) => { }, _ => Assert.Fail("first install must succeed"));
+        DateTimeOffset firstInstalled = DateTimeOffset.FromUnixTimeMilliseconds(1700000005000);
+        Assert.Equal(firstInstalled, session.InstalledTokenExpiresOn);
+
+        session.Refresh((_, _, _) => throw new InvalidOperationException("synthetic native install failure"), _ => { });
+
+        Assert.Equal(firstInstalled, session.InstalledTokenExpiresOn);
+        KafkaAuthenticationLifecycleEvent failed = Assert.Single(session.GetLifecycleSnapshot().Events,
+            value => value.Stage == "failed");
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1700007200000), failed.AcquiredExpiresOn);
+        Assert.Equal(firstInstalled, failed.InstalledExpiresOn);
+        Assert.Equal(firstInstalled, failed.EffectiveExpiresOn);
+        Assert.Equal(5000, failed.TestExpiryCapMilliseconds);
+        Assert.Equal(new KafkaHandlerRefreshProgress(1, 1, null), session.HandlerRefreshProgress);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(4999)]
+    [InlineData(5001)]
+    public void GivenUnsupportedRefreshPathCap_When_CreatingSession_Then_Rejects(int cap)
+    {
+        using var metrics = new KafkaAuthenticationMetrics();
+        Assert.Throws<ArgumentOutOfRangeException>(() => new KafkaOAuthBearerSession(Identity, "scope", "principal",
+            new ObservedStubTokenProvider(new AccessToken("synthetic", Now.AddHours(1))), new FixedTimeProvider(Now),
+            metrics, TestContext.Current.CancellationToken, captureLifecycle: true, testExpiryCapMilliseconds: cap));
+    }
+
+    [Fact]
+    public async Task GivenObservedSdkAcquisitionBlocks_WhenReadingRefreshProgress_ThenReadDoesNotWaitForSessionGate()
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var metrics = new KafkaAuthenticationMetrics();
+        var provider = new ObservedStubTokenProvider((_, _, _) =>
+        {
+            entered.Set();
+            release.Wait(TestContext.Current.CancellationToken);
+            return new AccessToken("synthetic", Now.AddHours(1));
+        });
+        var session = new KafkaOAuthBearerSession(Identity, "scope", "principal", provider, new FixedTimeProvider(Now),
+            metrics, TestContext.Current.CancellationToken, captureLifecycle: true, testExpiryCapMilliseconds: 5000);
+        Task refresh = Task.Run(() => session.Refresh((_, _, _) => { }, _ => { }), TestContext.Current.CancellationToken);
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        Task<KafkaHandlerRefreshProgress> read = Task.Run(() => session.HandlerRefreshProgress, TestContext.Current.CancellationToken);
+        try
+        {
+            Assert.Same(read, await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken)));
+            Assert.Equal(new KafkaHandlerRefreshProgress(0, 0, null), await read);
+        }
+        finally
+        {
+            release.Set();
+            await refresh;
+        }
+    }
+
     [Theory]
     [InlineData("empty")]
     [InlineData("expired")]
@@ -280,5 +430,34 @@ public sealed class OAuthBearerSessionTests
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class MutableTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        internal DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class ObservedStubTokenProvider(params object[] results) : IKafkaTokenProvider, IObservedKafkaTokenProvider
+    {
+        private readonly Queue<Func<string, CancellationToken, AccessToken>> queue = new(results.Select<object, Func<string, CancellationToken, AccessToken>>(result => result switch
+        {
+            AccessToken token => (_, _) => token,
+            Func<string, CancellationToken, Action<string>, AccessToken> observed => (scope, cancellation) => observed(scope, cancellation, _ => { }),
+            _ => throw new ArgumentException("Unsupported synthetic observed token result.", nameof(results))
+        }));
+
+        internal ObservedStubTokenProvider(Func<string, CancellationToken, Action<string>, AccessToken> result)
+            : this((object)result) { }
+
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken) => queue.Dequeue()(scope, cancellationToken);
+
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken, Action<string> observe)
+        {
+            observe("sdk_get_token_invoked");
+            AccessToken token = queue.Dequeue()(scope, cancellationToken);
+            observe("sdk_get_token_returned");
+            return token;
+        }
     }
 }

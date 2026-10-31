@@ -48,3 +48,5 @@ Local tests with synthetic token providers establish local callback, session, me
 ## Lifecycle observation capability
 
 Opt-in lifecycle observations separate a native refresh callback, a credential return and a successful native token installation. The independent projected-file observer records filesystem generations without reading token contents. These are diagnostic capabilities; the [lifecycle observation contract](authentication-lifecycle-observation.md) defines their bounds and the live evidence still required.
+
+The explicitly selected handler refresh-path diagnostic adds separate synthetic service operations within the existing statistics window; its contract is in [Authentication lifecycle observations](authentication-lifecycle-observation.md). Scientific capture and judgement are unchanged.

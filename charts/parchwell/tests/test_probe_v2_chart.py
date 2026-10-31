@@ -96,6 +96,10 @@ def expected_env(values):
                       LoadGenImage=runtime['loadgen_image'], VerifierImage=runtime['verifier_image'])
         fields.update({'JudgeLimits__' + key: value for key, value in LIMITS['judge'].items()})
     else:
+        if runtime.get('capture_authentication_metadata', False):
+            fields['CaptureAuthenticationMetadata'] = 'true'
+        if runtime.get('test_handler_refresh_path', False):
+            fields['TestHandlerRefreshPath'] = 'true'
         fields['ProcessLifetimeSeconds'] = 1920 if producer else 840
     result = {prefix + key: {'value': str(value)} for key, value in fields.items()}
     result.update({
@@ -181,6 +185,12 @@ def main():
         entry['runtime']['run_kind'] = 'batch'
     cases.extend(batch_cases)
     cases.append(case('B08', 'C0', 'action', 'loadgen', namespace_roles=False))
+    refresh_cases = [case('F06', 'C6', 'seed', 'loadgen'),
+                     case('F06', 'C9', 'action', 'enrichment-consumer')]
+    for values in refresh_cases:
+        values['runtime']['capture_authentication_metadata'] = True
+        values['runtime']['test_handler_refresh_path'] = True
+    cases.extend(refresh_cases)
     with tempfile.TemporaryDirectory(prefix='probe-v2-chart-') as name:
         directory = Path(name)
         for index, values in enumerate(cases):
@@ -198,6 +208,19 @@ def main():
         legacy['runtime']['probe_namespace_data_roles'] = True
         negatives.append(legacy)
         source = case('E01', 'C0', 'action', 'probe')
+        refresh_source = deepcopy(refresh_cases[0])
+        refresh_invalid = [
+            lambda v: v.update(scenario_id='E01'),
+            lambda v: v.update(configuration_id='C9'),
+            lambda v: v['runtime'].update(stage='action'),
+            lambda v: v['runtime'].update(action_role='probe'),
+            lambda v: v['runtime'].update(capture_authentication_metadata=False),
+            lambda v: v['runtime'].update(run_kind='batch'),
+            lambda v: v['runtime'].update(test_handler_refresh_path='true'),
+            lambda v: v['runtime'].pop('capture_authentication_metadata'),
+        ]
+        for mutation in refresh_invalid:
+            bad = deepcopy(refresh_source); mutation(bad); negatives.append(bad)
         mutations = [lambda v: v['runtime'].update(stage='unknown'), lambda v: v['runtime'].update(phase='C1'),
             lambda v: v['runtime'].update(probe_namespace_data_roles=False), lambda v: v.update(scenario_id='F04'),
             lambda v: v['runtime'].update(mode='single-action-v2-judge'), lambda v: v['runtime'].update(image_smoke='false')]

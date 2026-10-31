@@ -271,6 +271,58 @@ public sealed class ProbeV2AuthenticationMetadataTests
         Assert.DoesNotContain(document.RootElement.EnumerateObject(), property => property.Name.Contains("authentication", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Given_HandlerRefreshMetadata_When_Encoding_Then_V2FieldsAreRawAndDisabledV1OmitsThem()
+    {
+        ProbeV2AuthenticationMetadata disabled = BaseRecord();
+        string v1Json = Encoding.UTF8.GetString(ProbeV2AuthenticationMetadataWriter.Encode(disabled));
+        Assert.DoesNotContain("handler_refresh", v1Json, StringComparison.Ordinal);
+        Assert.DoesNotContain("effective_expires_on", v1Json, StringComparison.Ordinal);
+
+        var handler = new ProbeV2HandlerRefreshMetadata(5000, 20000, Now, E0, Now, E1,
+            10, 20, 11, 21, 1000, true, 3,
+            new("delivery", "client", 1, "document-events", 0, 7, Now, 10, "Persisted", 0, false, null, null),
+            new("delivery", "client", 1, "document-events", 0, 8, E0, 20, "Persisted", 0, false, null, null),
+            0, [], false, false, false, false, false, null, true);
+        ProbeV2AuthenticationMetadata enabled = disabled with
+        { SchemaVersion = 2, Mode = "single-action-v2-handler-refresh-path", HandlerRefresh = handler };
+        string json = Encoding.UTF8.GetString(ProbeV2AuthenticationMetadataWriter.Encode(enabled));
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement root = document.RootElement;
+        Assert.Equal(2, root.GetProperty("schema_version").GetInt32());
+        JsonElement raw = root.GetProperty("handler_refresh");
+        Assert.Equal(5000, raw.GetProperty("test_expiry_cap_ms").GetInt32());
+        Assert.Equal(20000, raw.GetProperty("observation_limit_ms").GetInt32());
+        Assert.Equal(3, raw.GetProperty("trigger_attempt").GetInt32());
+        Assert.Equal("delivery", raw.GetProperty("before_service").GetProperty("action").GetString());
+        Assert.Equal("delivery", raw.GetProperty("after_service").GetProperty("action").GetString());
+        Assert.DoesNotContain("token", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("sdk", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Given_EnabledV2RowExceedsLimit_When_Encoding_Then_FallbackDropsRawHandlerState()
+    {
+        ProbeV2HandlerRefreshMetadata handler = new(5000, 20000, Now, E0, Now, E1,
+            10, 20, 11, 21, 1000, true, 3, null, null, 0, [], false, false,
+            false, false, false, null, true);
+        ProbeV2AuthenticationMetadata oversized = BaseRecord() with
+        {
+            SchemaVersion = 2,
+            Mode = "single-action-v2-handler-refresh-path",
+            ClientId = new string('x', 300000),
+            HandlerRefresh = handler
+        };
+
+        ProbeV2AuthenticationMetadata fallback = ProbeV2Wire.Read<ProbeV2AuthenticationMetadata>(
+            ProbeV2AuthenticationMetadataWriter.Encode(oversized), ProbeV2AuthenticationMetadataWriter.MaximumJsonBytes);
+
+        Assert.Equal(2, fallback.SchemaVersion);
+        Assert.Equal("serialization_limit", fallback.CaptureError);
+        Assert.Null(fallback.HandlerRefresh);
+        Assert.Null(fallback.Lifecycle);
+    }
+
     private static ProbeV2Options Read(string? capture)
     {
         Dictionary<string, string> environment = ProbeV2OptionsTests.Environment(ProbeV2OptionsTests.Options());

@@ -42,6 +42,13 @@ public sealed class KafkaAuthenticationDependencyInjectionTests
         session.Refresh((_, _, _) => { }, _ => { });
         Assert.NotNull(session.InstalledTokenExpiresOn);
         Assert.Equal("https://synthetic-namespace.servicebus.windows.net/.default", tokenProvider.Scope);
+
+        KafkaAuthenticationIdentity identity = new("synthetic-scenario", "synthetic-run", KafkaClientRole.LoadGenProducer, "synthetic-kafka-client");
+        KafkaOAuthBearerSession refreshPath = factory.CreateRefreshPathTestSession(identity, 5000, TestContext.Current.CancellationToken);
+        refreshPath.Refresh((_, _, _) => { }, _ => Assert.Fail("synthetic test token must install"));
+        Assert.True(refreshPath.InstalledTokenExpiresOn <= TimeProvider.System.GetUtcNow().AddMilliseconds(5000));
+        foreach (int cap in new[] { 0, -1, 4999, 5001 })
+            Assert.Throws<ArgumentOutOfRangeException>(() => factory.CreateRefreshPathTestSession(identity, cap));
     }
 
     [Fact]

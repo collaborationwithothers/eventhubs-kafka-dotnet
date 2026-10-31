@@ -51,6 +51,48 @@ public sealed class ProbeV2OptionsTests
             Assert.Throws<InvalidOperationException>(options.Validate);
         }
     }
+
+    [Theory]
+    [InlineData("C6", "seed")]
+    [InlineData("C9", "action")]
+    public void GivenEnabledRefreshPathFlag_When_UsingOrdinaryActorTuple_Then_AcceptsStrictBoolean(string configuration, string stage)
+    {
+        ProbeV2Options options = Options("F06", configuration, stage);
+        options.CaptureAuthenticationMetadata = true;
+        options.TestHandlerRefreshPath = true;
+        var environment = Environment(options);
+
+        ProbeV2Options parsed = ProbeV2Options.Read(environment);
+
+        Assert.True(parsed.TestHandlerRefreshPath);
+        Assert.True(parsed.CaptureAuthenticationMetadata);
+    }
+
+    [Theory]
+    [InlineData("A01", "C0", "action", true)]
+    [InlineData("F06", "C6", "action", true)]
+    [InlineData("F06", "C9", "seed", true)]
+    [InlineData("F06", "C6", "seed", false)]
+    public void GivenEnabledRefreshPathFlag_When_TupleOrCaptureIsInvalid_Then_Rejects(string item, string configuration, string stage, bool capture)
+    {
+        ProbeV2Options options = Options(item, configuration, stage);
+        options.CaptureAuthenticationMetadata = capture;
+        options.TestHandlerRefreshPath = true;
+        Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options)));
+    }
+
+    [Theory]
+    [InlineData("TRUE")]
+    [InlineData("True")]
+    [InlineData("yes")]
+    public void GivenMalformedRefreshPathFlag_When_ReadingOptions_Then_Rejects(string value)
+    {
+        ProbeV2Options options = Options("F06", "C6", "seed");
+        options.CaptureAuthenticationMetadata = true;
+        Dictionary<string, string> environment = Environment(options);
+        environment["ProbeV2__TestHandlerRefreshPath"] = value;
+        Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(environment));
+    }
     [Fact]
     public void Given_AllDeclaredActorStages_When_DerivingMatrix_Then_ThereAreThirtyThreeJobsWithCorrectActors()
     {
