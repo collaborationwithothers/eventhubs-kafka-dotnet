@@ -646,6 +646,18 @@ class RunnerTests(unittest.TestCase):
         manifest = json.loads((output / "projection.json").read_text())
         self.assertEqual(projection.digest(b"../../tests"), manifest["original_sha256"][".claude/skills/test-link"])
 
+    def test_verifier_source_symlink_is_rejected_without_launch(self):
+        path = self.root / "src/Parchwell.Verifier/Judge/PhaseJudge.cs"
+        path.unlink()
+        path.symlink_to("../Excluded.cs")
+        subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Source symlink fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        with patch.dict(os.environ, {"GITHUB_SHA": commit}):
+            result, _, _ = self.invoke()
+        self.assertEqual(1, result)
+        self.assertFalse((self.root / "calls.txt").exists())
+
     def test_failed_launch_has_explicit_receipt(self):
         result, receipt, _ = self.invoke(command_prefix=[str(self.root / "missing")])
         self.assertEqual(1, result)

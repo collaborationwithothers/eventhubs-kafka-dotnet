@@ -44,6 +44,7 @@ The temporary export uses only committed files. `projection.json` retains origin
 | Original/projected maps, policy, target and exact excluded list agree | Positive six-shard fixtures plus isolated policy/target/list, missing/hash, drift, target/excluded byte and report-source failures |
 | Test or other input drift cannot pass | Isolated changed test hash; source-changing child; added compile-source child |
 | Existing disabling/restoring directives cannot re-enable excluded source | Committed restore-directive fixture is rejected before child launch |
+| Tracked links retain Git identity; verifier source links are unsupported | Real tracked directory-link export passes; verifier source-link fixture fails before launch |
 | Export bounds and source inventories | Below/at/above file-count, source-count and byte bounds; empty maps/lists and unsafe path/hash cases |
 | Original byte sequence, BOM and line count survive prefix removal | Empty, LF and BOM/CRLF cases, plus missing-prefix rejection |
 | Existing process and score rules still apply | Existing exit/error/timeout/descendant, scope/config/source, complete/incomplete and aggregate threshold regressions |
@@ -52,6 +53,10 @@ Numeric export bounds are maintenance policy choices owned by the helper: 4096 t
 
 ## Verification and review
 
-Implementation verification is pending at this receipt revision. The final receipt update records tested source, commands and outcomes before cold review. The PR description holds complete cold-review reports, cumulative counts, final-head CI and hosted reviews; no receipt-only commit is required for its own head.
+Actual exported-project acceptance used code commit `940019aba67c529b36211d82f301cb1dd45826a9`, SDK 10.0.402, and `ParchwellVerifierMutationOnly=true`. Locked restore, Release build and the full mutation-only MTP suite passed on their first .NET invocations. Build recorded zero warnings/errors; XML records 3908 passed, zero failed/skipped/errors/not-run. The manifest recorded 2277 committed inputs, 81 excluded-source prefixes and identical projected before/after maps. Source, command logs, XML and manifest remain under `/tmp/repair-261/project-acceptance-2`. This establishes buildability and unchanged-test acceptance for the commented source, not instrumented runtime.
+
+The preceding export attempt failed before any .NET command because it tried to read a tracked skill-directory symlink as a regular file. The correction hashes Git symlink payload bytes and preserves those links; a real symlink fixture covers the repair. Verifier source symlinks are unsupported and rejected before launch. That failed export remains retained under `/tmp/repair-261/project-acceptance`.
+
+The final Python suite passed 36 tests, covering the projection and existing runner/aggregation behavior. `git diff --check` passed. Documentation checks passed with eight existing warnings in unchanged files; neither changed Markdown file had a warning. The PR description holds complete cold-review reports, cumulative counts, final-head CI and hosted reviews. Initial comprehensive review uses the full authored diff against `8cbde949d8fca424dda33accbd01c1a995495678`; comparison revision is that base. No receipt-only commit is required for its own head.
 
 The incomplete hosted measurement continues to block scientific evidence-pack publication. This repair has no measured post-repair instrumented runtime, whole-target completion estimate or passing campaign. A future campaign must independently establish all configured populations, `measurement_complete:true` and `break_passed:true` on main containing this repair. No campaign, Azure/scientific dispatch, paid runner, permission change, result or verdict is authorized or produced here.
