@@ -15,6 +15,7 @@ import unittest
 from unittest.mock import patch
 
 import c5_workflow as workflow
+import c5_projection as projection
 
 
 COMMIT = "1" * 40
@@ -70,7 +71,21 @@ class AggregateFixture:
                 },
             }
             self.reports[shard] = report
-            source = {"src/Parchwell.Verifier/Synthetic.cs": "a" * 64}
+            original = {projection.VERIFIER + name: b"if (value) return true;" for name in workflow.SHARDS.values()}
+            original["tests/Parchwell.Verifier.Tests/SyntheticTests.cs"] = b"synthetic test source"
+            source = {name: projection.digest(data) for name, data in original.items()}
+            disabled = sorted(name for name in original if name.startswith(projection.VERIFIER) and name != projection.VERIFIER + target)
+            transformed = {name: projection.prefixed(data) if name in disabled else data for name, data in original.items()}
+            projected = {name: projection.digest(data) for name, data in transformed.items()}
+            for name, data in transformed.items():
+                if name.startswith(projection.VERIFIER):
+                    path = artifact / "projection-src" / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(data)
+            write_json(artifact / "projection.json", {
+                "policy": projection.POLICY, "target": target, "disabled": disabled,
+                "original_sha256": source, "before_sha256": projected, "after_sha256": projected,
+            })
             self.receipts[shard] = {
                 "shard": shard, "target": target, "commit": COMMIT, "tree": TREE,
                 "run_id": RUN_ID, "run_attempt": ATTEMPT,
@@ -86,6 +101,7 @@ class AggregateFixture:
                 "tracked_clean_before": True, "tracked_clean_after": True,
                 "config_sha256_before": None, "config_sha256_after": None,
                 "report_sha256": None, "command_log_sha256": None,
+                "projection_manifest_sha256": digest(artifact / "projection.json"),
             }
             self.save(shard)
 
@@ -167,6 +183,49 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(2, fixture.receipts["phase"]["child_exit_code"])
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
+
+    def test_cross_shard_projection_inputs_must_match(self):
+        fixture = AggregateFixture(self.directory)
+        artifact = fixture.paths["publication"]
+        path = artifact / "projection.json"
+        manifest = json.loads(path.read_text())
+        for field in ("original_sha256", "before_sha256", "after_sha256"):
+            manifest[field]["scenarios/extra.json"] = "f" * 64
+        write_json(path, manifest)
+        fixture.receipts["publication"]["projection_manifest_sha256"] = digest(path)
+        fixture.save("publication")
+        self.assert_incomplete(fixture)
+
+    def test_projection_or_report_tampering_is_incomplete(self):
+        cases = ("missing", "hash", "policy", "target", "target-bytes", "excluded-bytes", "test-bytes", "drift", "disabled", "report-source")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
+                fixture = AggregateFixture(Path(temp))
+                artifact = fixture.paths["phase"]
+                path = artifact / "projection.json"
+                manifest = json.loads(path.read_text())
+                if case == "missing":
+                    path.unlink()
+                elif case == "hash":
+                    path.write_text("{}")
+                elif case == "target-bytes":
+                    (artifact / "projection-src/src/Parchwell.Verifier/Judge/PhaseJudge.cs").write_text("changed")
+                elif case == "excluded-bytes":
+                    (artifact / "projection-src/src/Parchwell.Verifier/VerifyRun/A01/WorkloadRecorder.cs").write_text("changed")
+                elif case == "report-source":
+                    fixture.reports["phase"]["files"]["/synthetic/src/Parchwell.Verifier/Judge/PhaseJudge.cs"]["source"] = "changed"
+                else:
+                    if case == "policy": manifest["policy"] = "other"
+                    elif case == "target": manifest["target"] = workflow.SHARDS["publication"]
+                    elif case == "disabled": manifest["disabled"].clear()
+                    elif case == "drift": manifest["after_sha256"] = None
+                    else:
+                        manifest["before_sha256"]["tests/Parchwell.Verifier.Tests/SyntheticTests.cs"] = "f" * 64
+                        manifest["after_sha256"] = dict(manifest["before_sha256"])
+                    write_json(path, manifest)
+                    fixture.receipts["phase"]["projection_manifest_sha256"] = digest(path)
+                fixture.save("phase")
+                self.assert_incomplete(fixture)
 
     def test_complete_below_threshold_stays_complete(self):
         fixture = AggregateFixture(self.directory, [
@@ -399,16 +458,23 @@ parser.add_argument('--log-to-file', action='store_true')
 parser.add_argument('--verbosity')
 args = parser.parse_args(sys.argv[2:])
 root = Path.cwd().parents[1]
-with (root / 'calls.txt').open('a') as calls:
+observed = Path(os.environ['SYNTHETIC_ROOT'])
+with (observed / 'calls.txt').open('a') as calls:
     calls.write('called\n')
 os.write(1, b'\xffstdout\n')
 os.write(2, b'\xfestderr\n')
 if mode == 'timeout':
     child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
-    (root / 'descendant.pid').write_text(str(child.pid))
+    (observed / 'descendant.pid').write_text(str(child.pid))
     time.sleep(60)
 if mode == 'source':
     (root / 'src/input.cs').write_text('modified')
+if mode == 'proof':
+    assert (root / 'src/Parchwell.Verifier/Judge/PhaseJudge.cs').read_bytes() == b'if (value) return true;'
+    assert (root / 'src/Parchwell.Verifier/Excluded.cs').read_bytes().startswith(b'/* Stryker disable all : ')
+    assert (root / 'tests/Parchwell.Verifier.Tests/fixture.py').read_bytes() == Path(__file__).read_bytes()
+if mode == 'extra-source':
+    (root / 'src/Parchwell.Verifier/Unexpected.cs').write_text('return false;')
 if mode == 'config':
     with args.config_file.open('a') as config:
         config.write(' ')
@@ -417,6 +483,46 @@ report.parent.mkdir(parents=True)
 report.write_text('{}')
 sys.exit(int(mode) if mode in ('0', '1', '2') else 0)
 '''
+
+
+class ProjectionTests(unittest.TestCase):
+    def test_projection_preserves_bom_original_bytes_and_line_count(self):
+        for data in (b"", b"using System;\nreturn false;\n", b"\xef\xbb\xbfusing System;\r\nreturn false;\r\n"):
+            with self.subTest(data=data):
+                transformed = projection.prefixed(data)
+                self.assertEqual(data, projection.original(transformed))
+                self.assertEqual(data.count(b"\n"), transformed.count(b"\n"))
+        with self.assertRaisesRegex(ValueError, "missing projection pragma"):
+            projection.original(b"return false;")
+
+    def test_manifest_count_boundaries_and_invalid_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = AggregateFixture(Path(temp))
+            root = fixture.paths["phase"]
+            valid = json.loads((root / "projection.json").read_text())
+            original = valid["original_sha256"]
+            for bound, accepted in ((len(original) - 1, False), (len(original), True), (len(original) + 1, True)):
+                with self.subTest(bound=bound), patch.object(projection, "MAX_FILES", bound):
+                    if accepted: projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "invalid projection inventory"):
+                            projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
+            for bound, accepted in ((5, False), (6, True), (7, True)):
+                with self.subTest(source_bound=bound), patch.object(projection, "MAX_VERIFIER_FILES", bound):
+                    if accepted: projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "projection scope/drift"):
+                            projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
+            for name, value in (("../escape.cs", "a" * 64), ("/absolute.cs", "a" * 64), ("bad\\path.cs", "a" * 64), ("", "a" * 64), ("bad.cs", ""), ("bad.cs", True)):
+                manifest = copy.deepcopy(valid)
+                manifest["original_sha256"][name] = value
+                with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, "invalid projection source/hash"):
+                    projection.validate(manifest, root / "projection-src", workflow.SHARDS["phase"], original)
+            for field in ("original_sha256", "before_sha256", "after_sha256", "disabled"):
+                manifest = copy.deepcopy(valid)
+                manifest[field] = {} if field != "disabled" else []
+                with self.subTest(empty=field), self.assertRaises(ValueError):
+                    projection.validate(manifest, root / "projection-src", workflow.SHARDS["phase"], original)
 
 
 class RunnerTests(unittest.TestCase):
@@ -428,6 +534,10 @@ class RunnerTests(unittest.TestCase):
         (test_root / "Mutation").mkdir(parents=True)
         (self.root / "src").mkdir()
         (self.root / "src/input.cs").write_text("unchanged")
+        assigned = self.root / "src/Parchwell.Verifier/Judge/PhaseJudge.cs"
+        assigned.parent.mkdir(parents=True)
+        assigned.write_bytes(b"if (value) return true;")
+        (self.root / "src/Parchwell.Verifier/Excluded.cs").write_bytes(b"return false;")
         write_json(test_root / "Mutation/stryker-c5-config.json", workflow.BASE_CONFIG)
         self.child = test_root / "fixture.py"
         self.child.write_text(CHILD)
@@ -438,7 +548,8 @@ class RunnerTests(unittest.TestCase):
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
         self.environment = {"GITHUB_SHA": commit, "GITHUB_REF": "refs/heads/main",
                             "GITHUB_RUN_ID": RUN_ID, "GITHUB_RUN_ATTEMPT": ATTEMPT,
-                            "SYNTHETIC_SECRET": "must-not-be-in-receipt"}
+                            "SYNTHETIC_SECRET": "must-not-be-in-receipt",
+                            "SYNTHETIC_ROOT": str(self.root)}
         self.patch = patch.dict(os.environ, self.environment)
         self.patch.start()
         self.addCleanup(self.patch.stop)
@@ -477,6 +588,76 @@ class RunnerTests(unittest.TestCase):
                 self.assertNotIn("SYNTHETIC_SECRET", json.dumps(receipt))
         self.assertEqual(["called"] * 3, (self.root / "calls.txt").read_text().splitlines())
 
+    def test_actual_child_uses_projection_and_original_checkout_stays_identical(self):
+        before = workflow.snapshot(self.root)
+        result, receipt, output = self.invoke("proof")
+        self.assertEqual(0, result)
+        self.assertEqual(before, workflow.snapshot(self.root))
+        self.assertNotEqual(str(self.root / "tests/Parchwell.Verifier.Tests"), receipt["cwd"])
+        self.assertFalse(Path(receipt["cwd"]).exists(), "temporary source must be removed")
+        manifest = json.loads((output / "projection.json").read_text())
+        self.assertEqual("src/Parchwell.Verifier/Judge/PhaseJudge.cs", projection.VERIFIER + manifest["target"])
+        self.assertEqual(["src/Parchwell.Verifier/Excluded.cs"], manifest["disabled"])
+        self.assertEqual(digest(output / "projection.json"), receipt["projection_manifest_sha256"])
+
+    def test_new_compile_source_fails_candidate(self):
+        result, receipt, output = self.invoke("extra-source")
+        self.assertEqual(1, result)
+        self.assertTrue(receipt["command_completed"])
+        self.assertIsNone(json.loads((output / "projection.json").read_text())["after_sha256"])
+
+    def test_existing_directive_is_rejected_without_launch(self):
+        (self.root / "src/Parchwell.Verifier/Excluded.cs").write_text("// Stryker restore all\nreturn false;")
+        subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Directive fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        with patch.dict(os.environ, {"GITHUB_SHA": commit}):
+            result, _, _ = self.invoke()
+        self.assertEqual(1, result)
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_export_byte_bound_below_at_and_above(self):
+        names = subprocess.check_output(["git", "ls-files", "-z"], cwd=self.root).decode().split("\0")
+        size = sum((self.root / name).stat().st_size for name in names if name)
+        for adjustment, expected in ((-1, 1), (0, 0), (1, 0)):
+            with self.subTest(adjustment=adjustment), patch.object(projection, "MAX_BYTES", size + adjustment):
+                result, _, _ = self.invoke(output=self.root / ("byte-bound-" + str(adjustment)))
+                self.assertEqual(expected, result)
+
+    def test_export_inventory_bounds_below_at_and_above(self):
+        names = subprocess.check_output(["git", "ls-files", "-z"], cwd=self.root).decode().split("\0")
+        count = len([name for name in names if name])
+        for setting, cap in (("MAX_FILES", count), ("MAX_VERIFIER_FILES", 2)):
+            for adjustment, expected in ((-1, 1), (0, 0), (1, 0)):
+                with self.subTest(setting=setting, adjustment=adjustment), patch.object(projection, setting, cap + adjustment):
+                    result, _, _ = self.invoke(output=self.root / (setting + str(adjustment)))
+                    self.assertEqual(expected, result)
+
+    def test_tracked_directory_symlinks_are_preserved(self):
+        folder = self.root / ".claude/skills"
+        folder.mkdir(parents=True)
+        (folder / "test-link").symlink_to("../../tests", target_is_directory=True)
+        subprocess.run(["git", "add", ".claude"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Symlink fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        with patch.dict(os.environ, {"GITHUB_SHA": commit}):
+            result, _, output = self.invoke()
+        self.assertEqual(0, result)
+        manifest = json.loads((output / "projection.json").read_text())
+        self.assertEqual(projection.digest(b"../../tests"), manifest["original_sha256"][".claude/skills/test-link"])
+
+    def test_verifier_source_symlink_is_rejected_without_launch(self):
+        path = self.root / "src/Parchwell.Verifier/Judge/PhaseJudge.cs"
+        path.unlink()
+        path.symlink_to("../Excluded.cs")
+        subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Source symlink fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        with patch.dict(os.environ, {"GITHUB_SHA": commit}):
+            result, _, _ = self.invoke()
+        self.assertEqual(1, result)
+        self.assertFalse((self.root / "calls.txt").exists())
+
     def test_failed_launch_has_explicit_receipt(self):
         result, receipt, _ = self.invoke(command_prefix=[str(self.root / "missing")])
         self.assertEqual(1, result)
@@ -509,7 +690,9 @@ class RunnerTests(unittest.TestCase):
                 if mode == "config":
                     self.assertNotEqual(receipt["config_sha256_before"], receipt["config_sha256_after"])
                 else:
-                    self.assertNotEqual(receipt["source_sha256_before"], receipt["source_sha256_after"])
+                    self.assertEqual(receipt["source_sha256_before"], receipt["source_sha256_after"])
+                    manifest = json.loads((self.root / ("output-" + mode) / "projection.json").read_text())
+                    self.assertNotEqual(manifest["before_sha256"], manifest["after_sha256"])
 
     def test_unknown_shard_and_existing_output_launch_nothing(self):
         with patch.object(subprocess, "Popen") as launch:
