@@ -7,7 +7,7 @@ This receipt records the second governance change of issue #264. It limits what 
 - Deliverable: a "Reader subagents" rule in docs/agents/factory.md "Authority reads", which owns the reading lists. The `plan-pr`, `plan-check` and `implement-plan` skills cite it where they spawn readers. AGENTS.md "Before opening a pull request" rule 13 also links the [second-change decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/264#issuecomment-6548603494), because its decision 3 amends the per-item measurement that rule 13 points to.
 - Authorization: [decision 6548603494](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/264#issuecomment-6548603494), decision 2: "one governance pull request linked to this issue, merged by Hari, which defines the narrowing". The session prompt: "plan and implement the second governance change defined in decision 6548603494". Directly authorized governance work without an approved item plan; no plan approval is claimed.
 - Codex cost: the decision's "Not decided here" leaves it to this pull request to propose whether the change targets Codex sessions. Proposal: it does. See "Codex proposal" below. Hari decides.
-- Mandatory gates: `git diff --check`, `npm run check:docs`, the cold review under AGENTS.md "Before opening a pull request" rule 8, CI, hosted Codex review, and Hari's merge, because every changed file is a protected path.
+- Mandatory gates: `git diff --check`, `npm run check:docs`, the cold review under AGENTS.md "Before opening a pull request" rule 8, CI, hosted Codex review, and Hari's merge, because every changed file except this receipt is a protected path (`.github/CODEOWNERS` lists `/docs/operations/` with no owner).
 - Publication checkpoint: open the pull request as a draft after the first cold review round with no P0 or P1.
 - Review budget: rule 8 as written, no rounds used before this pull request. Exhaustion action: rule 8's review-budget handoff to Hari.
 - Predicate-to-test map: not applicable; no verifier work.
@@ -44,10 +44,12 @@ Basis: the rule 5 condition the decision relies on was observed in Codex replays
 | --- | --- |
 | `grep -rn "subagents at high effort" .agents/skills`, before the change | Three matches: `plan-pr` step 1, `plan-check` step 1, `implement-plan` step 2. |
 | `git diff --check` | Exit 0, no output. |
-| `npm run check:docs` | 8 warnings, the same count and files as on the source commit. Two are in docs/agents/factory.md, "Undefined identifier: S0" at the document's line 7 and in "Item lifecycle", outside the lines this change adds; they stand because this change does not touch that text. The other six are in evidence files under issues 124, 140 and 211, which this change does not touch. |
+| `npm run check:docs` | 8 warnings, the same count and files as on the source commit. Two are undefined-identifier warnings in docs/agents/factory.md, at its line 7 and in "Evidence pack", outside the lines this change adds; they stand because this change does not touch that text. The other six are in evidence files under issues 124, 140 and 211, which this change does not touch. |
 
 Source commit: `622620c`.
 
 ## Cold review
 
 Comprehensive round 1: input is the staged diff against `origin/main` at `622620c`. Report and dispositions are in the pull request's self-review record.
+
+Comprehensive round 2, the consolidated re-review: input is the staged diff against `origin/main` at `622620c`, after the fixes for round 1's one P1 and three P2 findings, all fixed. Cumulative: 2 comprehensive, 0 focused.
