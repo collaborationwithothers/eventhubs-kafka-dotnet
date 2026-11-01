@@ -62,6 +62,20 @@
         "updated_at": "2026-11-01T17:22:41Z",
         "approval": "comment 6561311090 item 2",
         "pull_request": null
+      },
+      {
+        "tag": "EP",
+        "comment": "docs/agents/factory.md \"Evidence pack\" at 99131dee48677b971f0b2299d243779151ebe700",
+        "updated_at": null,
+        "approval": null,
+        "pull_request": null
+      },
+      {
+        "tag": "MODES",
+        "comment": "docs/agents/factory.md \"Modes of work\" at 99131dee48677b971f0b2299d243779151ebe700",
+        "updated_at": null,
+        "approval": null,
+        "pull_request": null
       }
     ],
     "control": [
@@ -125,10 +139,8 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "supports",
-          "H-ca": "supports"
+          "H-ca": "supports",
+          "H-jwt": "supports"
         }
       },
       {
@@ -164,10 +176,8 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "supports",
-          "H-ca": "supports"
+          "H-ca": "supports",
+          "H-jwt": "supports"
         }
       },
       {
@@ -203,10 +213,8 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "supports",
-          "H-ca": "supports"
+          "H-ca": "supports",
+          "H-jwt": "supports"
         }
       },
       {
@@ -242,10 +250,8 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "supports",
-          "H-ca": "supports"
+          "H-ca": "supports",
+          "H-jwt": "supports"
         }
       },
       {
@@ -281,10 +287,8 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "supports",
-          "H-ca": "supports"
+          "H-ca": "supports",
+          "H-jwt": "supports"
         }
       },
       {
@@ -317,10 +321,7 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "undecided",
-          "H-ca": "supports"
+          "H-imds-workload": "supports"
         }
       },
       {
@@ -353,10 +354,7 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "undecided",
-          "H-ca": "supports"
+          "H-imds-workload": "supports"
         }
       },
       {
@@ -389,10 +387,7 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "undecided",
-          "H-ca": "supports"
+          "H-imds-workload": "supports"
         }
       },
       {
@@ -425,10 +420,7 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "undecided",
-          "H-ca": "supports"
+          "H-imds-workload": "supports"
         }
       },
       {
@@ -461,10 +453,7 @@
         "terminal": false,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "undecided",
-          "H-jwt": "undecided",
-          "H-ca": "supports"
+          "H-imds-workload": "supports"
         }
       },
       {
@@ -498,10 +487,7 @@
         "terminal": true,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "supports",
-          "H-jwt": "contradicts",
-          "H-ca": "undecided"
+          "H-imds-default": "supports"
         }
       },
       {
@@ -535,10 +521,7 @@
         "terminal": true,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "supports",
-          "H-jwt": "contradicts",
-          "H-ca": "undecided"
+          "H-imds-default": "supports"
         }
       },
       {
@@ -572,10 +555,7 @@
         "terminal": true,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "supports",
-          "H-jwt": "contradicts",
-          "H-ca": "undecided"
+          "H-imds-default": "supports"
         }
       },
       {
@@ -609,10 +589,7 @@
         "terminal": true,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "supports",
-          "H-jwt": "contradicts",
-          "H-ca": "undecided"
+          "H-imds-default": "supports"
         }
       },
       {
@@ -646,10 +623,7 @@
         "terminal": true,
         "trust_anchor_lines": 0,
         "decisions": {
-          "H-imds-workload": "supports",
-          "H-imds-default": "supports",
-          "H-jwt": "contradicts",
-          "H-ca": "undecided"
+          "H-imds-default": "supports"
         }
       }
     ],

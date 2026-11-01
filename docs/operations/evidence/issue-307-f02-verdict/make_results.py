@@ -132,6 +132,10 @@ RULE_SOURCES = [
      "approval": "comment 6561311090 item 1 at 2026-11-01T17:22:41Z", "pull_request": None},
     {"tag": "DISP", "comment": "issue 307 comment 6561311090 item 2", "updated_at": "2026-11-01T17:22:41Z",
      "approval": "comment 6561311090 item 2", "pull_request": None},
+    {"tag": "EP", "comment": "docs/agents/factory.md \"Evidence pack\" at " + SOURCE, "updated_at": None,
+     "approval": None, "pull_request": None},
+    {"tag": "MODES", "comment": "docs/agents/factory.md \"Modes of work\" at " + SOURCE, "updated_at": None,
+     "approval": None, "pull_request": None},
 ]
 
 EXPECTED_CONTROL = ["Persisted"] * 5
@@ -817,7 +821,8 @@ def build_result(ctx):
             "principals": s["principals"], "http_statuses": s["http_statuses"], "aadsts": s["aadsts"],
             "first_token_endpoint_body": s["first_token_endpoint_body"], "error": s["error"],
             "diagnostics": s["diagnostics"], "elapsed_ms": s["elapsed_ms"], "terminal": s["terminal"],
-            "trust_anchor_lines": s["trust_anchor_lines"], "decisions": d})
+            "trust_anchor_lines": s["trust_anchor_lines"],
+            "decisions": {h: d[h] for h, st in HYPOTHESES if st == s["stage"]}})
     parts = VERDICT_PARAGRAPH.split(". ", 3)
     basis = parts[1] + ". " + parts[2] + "."
     run_url = REPO + "/actions/runs/%d" % RUN
@@ -1095,7 +1100,7 @@ def self_test(base):
         s = evidence(["SASL authentication error: Authentication failed"])
         assert s["class"] == "2.4" and s["lines_for_class"] == 1
         s = evidence(["SASL authentication error: Authentication failed", "x: SASL OAUTHBEARER authentication successful (principal=[other])"])
-        assert s["class"] == "2.3" and ("2.4", 0) not in s["other_classes"]
+        assert s["class"] == "2.3" and all(c != "2.4" for c, _n in s["other_classes"])
     case("2.4 marker and 2.3 precedence", marker24)
 
     def multiple():
@@ -1146,6 +1151,7 @@ def self_test(base):
         rep = json.loads(json.dumps({"repeat": 1, "client_id": "x", "client_errors": [], "error": None, "delivery": None}))
         assert eval_slot("nativeimds", rep, "", LOG_LIMIT - 1)["lower_bound"] is False
         assert eval_slot("nativeimds", rep, "", LOG_LIMIT)["lower_bound"] is True
+        assert eval_slot("nativeimds", rep, "", LOG_LIMIT + 1)["lower_bound"] is True
     case("lower bound at LOG_LIMIT - 1 and LOG_LIMIT", lower_bound)
 
     def agreement():

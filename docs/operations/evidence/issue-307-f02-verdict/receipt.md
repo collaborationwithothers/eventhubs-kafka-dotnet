@@ -13,7 +13,7 @@ This receipt records preparation of the proposed F02 verdict from authentication
 
 ## Predicate map and generator
 
-[`make_results.py`](make_results.py) judges the F02 native slots. It is the only judgement of those slots; the verifier judged only the F06 candidates. Decision 6562091612 accepts it for F02 only. Checks G1 to G12 and their `--self-test` cases (31 cases, one `PASS` line each):
+[`make_results.py`](make_results.py) judges the F02 native slots. It is the only judgement of those slots; the verifier judged only the F06 candidates. Decision 6562091612 accepts it for F02 only. Checks G1 to G12 and their `--self-test` cases (27 cases, one `PASS` line each; several cases group the sub-cases the plan lists for one check):
 
 | Check | What it enforces | Self-test cases |
 | --- | --- | --- |
@@ -71,7 +71,7 @@ Inputs are extracted under the session scratchpad. `W` is that directory.
 | `python3 -I .../make_results.py --candidates W/cand --pods W/pods --batch-log W/batch.log --stop-log W/stop.log --c5-summary W/c5/summary.json` | Exit 0; wrote `results/F02/2026-11-01.json` only. |
 | The same with `--tables` | Exit 0; six blocks; `slots`, `decisions` and `broker-counts` equal the plan's blocks. |
 | The same with `--check` | Exit 0 (`check passed`). |
-| The same with `--self-test` | Exit 0; 31 `PASS` lines, one per case. |
+| The same with `--self-test` | Exit 0; 27 `PASS` lines, one per case. |
 | `sha256sum scenarios/F02/expected.yaml docs/operations/probe-v2-smoke-contract.md` | `392ffbe2...6d8796` and `a90ab930...88bf` (case B), as pinned. |
 | `yaml.safe_load` of `scenarios/F02/expected.yaml` | Parses. |
 | Mutation-section hash command | `e904cd3ca5b6e2f8e85bf5a13d305633651581e3be336e19fb17d94be765da7b 4045`. |
@@ -87,7 +87,16 @@ Cumulative budget before round 1: 0 comprehensive, 0 focused.
 
 Rounds are recorded below as they complete.
 
-- Round 1 (in progress): mode comprehensive, input revision the staged tree on top of `1f361d6`, comparison revision `1f361d6` (`origin/main`). Specification sources: plan Revision 3 (issue 307 comment 6562030111, `updated_at` 2026-11-01T18:42:56Z), its approval 6562348532, plan check 6562327602 (findings 1 to 3 apply), approval 6561311090, decisions 6562091612 and 6562117618, decisions 6558920636 and 6560081575 on issue 302. The full plan text is not part of the diff; the sources above are the issue comments.
+- Round 1: mode comprehensive, input revision `cdd0fab` (the staged tree, committed as a backup), comparison revision `1f361d6` (`origin/main`). Specification sources: plan Revision 3 (issue 307 comment 6562030111, `updated_at` 2026-11-01T18:42:56Z), its approval 6562348532, plan check 6562327602 (findings 1 to 3 apply), approval 6561311090, decisions 6562091612 and 6562117618, decisions 6558920636 and 6560081575 on issue 302. The reviewer ran without a `model` parameter and reported `claude-opus-5-5`. Findings: four P0, three P1, two P2. Dispositions:
+  - The four P0 (`scenarios/F02/expected.yaml`, both `results/F02` files, the README row) are the Code Review Rules for expected outcomes, `results/` and verdicts, raised as if the `verdict` label were absent. The plan requires each file and the pull request carries the label. Kept; listed in the pull request description for Hari.
+  - P1 published per-slot decisions covered hypotheses of other stages: fixed; each slot now publishes only the hypotheses of its own stage (`HYPOTHESES`). The tables and G11 are unchanged.
+  - P1 self-test count: the receipt said 31; the measured count is 27 (`grep -c PASS`). Corrected.
+  - P1 2.4 assertion could not fail: now asserts that no `other_classes` entry is class 2.4.
+  - P2 `rule_sources` omitted the tags EP and MODES: added.
+  - P2 boundary above the line: added `LOG_LIMIT + 1` to the lower-bound case. The status-boundary cases keep 399, 400 and 500; the Multiple-identities case stays at 399 and 400 because the plan lists only those, and the status comparison is one expression shared with the tested cases.
+  - Reviewer's scope notes: the extra bullets of "Assessment against expected.yaml" are disclosed above; the state file `Next action` adds a clause to the plan's fixed text without changing its meaning. Both kept.
+  - Cumulative budget after round 1: 1 comprehensive, 0 focused. A consolidated comprehensive re-review of the corrections follows.
+- Round 2 (in progress): mode comprehensive, input revision the staged tree on top of `cdd0fab` (the corrections above only), comparison revision `1f361d6`, previous reviewed revision `cdd0fab`. Same specification sources as round 1.
 
 ## Remaining approval
 
