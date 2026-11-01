@@ -70,6 +70,8 @@ Source commits: the Python, chart, host, `verify-dotnet.sh` and docs runs were m
 
 Run in this session's container (Linux, .NET SDK 10.0.402 installed from the official script, Helm 4.3.1 and kubeconform 0.8.0 with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`).
 
+Results on the tree that became `d6127a0`:
+
 | Command | Result |
 |---|---|
 | `python -m unittest discover -s infra/scripts/phase/tests` | 185 run; 1 failure and 1 error, both `test_probe_v2_access.ProductionReaderTests.test_both_streams_capped`, which fails the same way on a clean checkout of `origin/main` in this container; `main`'s CI run 41245270515 (`.NET verification` on `a3b9e10`) succeeded, so the cause looks specific to this container and was not investigated |
@@ -81,6 +83,15 @@ Run in this session's container (Linux, .NET SDK 10.0.402 installed from the off
 | `npm run test:docs` / `npm run check:docs` | tests pass; 8 advisory warnings, none in files this pull request changes |
 | `cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt` | silent |
 | `git diff --check origin/main` | clean |
+
+Reruns on the tree that became `43df08a` (after the 24 test renames), each with `PATH=/opt/dotnet:$PATH` and `DOTNET_ROOT=/opt/dotnet`:
+
+| Command | Result |
+|---|---|
+| `dotnet build Parchwell.slnx --configuration Release` | 0 warnings, 0 errors |
+| `dotnet test --project tests/Parchwell.LoadGen.Tests --configuration Release --no-build --minimum-expected-tests 1` | total 760, succeeded 756, failed 4, skipped 0; the 4 failures are the same Docker-dependent `LocalKafka` tests as on `d6127a0` |
+| `PARCHWELL_REPOSITORY_ROOT=$PWD dotnet test --project tests/Parchwell.ArchitectureTests --configuration Release --no-build --filter-class "*WorkflowAuthenticationContractTests"` | total 3, succeeded 3, failed 0 (without the variable all 3 fail with `Missing repository root`) |
+| `npm run check:docs` | 8 advisory warnings, none in files this pull request changes; the receipt and `items/244/state.md` report no issues |
 
 Not run here, to be covered by CI: `./scripts/verify-worker-images.sh` and the LoadGen Docker tests (no Docker daemon); `check-offline.sh` as a whole (its `shellcheck` stage; the implementing subagent ran its embedded structural check, which includes the workflow input check, with exit 0); the remaining test projects after `Parchwell.Kafka.Tests` in `verify-dotnet.sh`. `actionlint` reports `unexpected key "queue" for "concurrency"`, identically on `origin/main`'s copy of the file.
 
@@ -102,3 +113,7 @@ Round 2: comprehensive (2 of 2). Input: the staged diff against `origin/main` at
 Round 2 result: reviewed tree of commit `43df08a` against `a3b9e10`; 1 P1, 1 P2. Dispositions: P1 (the verification record named no commit for its results): fixed by the "Source commits" paragraph under "Verification record". P2 (a blank line split the predicate-map table): fixed.
 
 Round 3: focused (1 of 2). Input: the change since `43df08a`, which edits only this receipt. Comparison revision: `43df08a`. The full pull request diff against `a3b9e10` is context. Cumulative before this round: 2 comprehensive, 0 focused. The comprehensive budget is spent; this round reports only unresolved findings and the corrections.
+
+Round 3 result: reviewed the change since `43df08a` (receipt edit, committed as `a7b8715`); 1 P1 (the reruns on `43df08a` had no stated results and the results table named no commit). Fixed by labelling both tables above with their commits and recording each rerun's command and result.
+
+Round 4: focused (2 of 2, the last the budget allows). Input: the change since `a7b8715`, which edits only this receipt. Comparison revision: `a7b8715`. The full pull request diff against `a3b9e10` is context. Cumulative before this round: 2 comprehensive, 1 focused.
