@@ -22,7 +22,7 @@ This receipt records preparation of the proposed F02 verdict from authentication
 | G3 | Capture identity, pod binding, repeats 1 to 5, client_id, image digest | sixth repeat; repeats 1,1,3,4,5; repeat 2 `-r3`; second capture line; no capture line |
 | G4 | Literal native settings per stage | `nativejwt` without `https.ca.location`; `nativeimds` with an added client ID |
 | G5 | Control; a failed control marks every native slot not decisive | seed repeat 3 `PossiblyPersisted` |
-| G6 | Slot evidence, class, lower bound, answers, principals | token-endpoint line without its status; lower bound at `LOG_LIMIT - 1` and `LOG_LIMIT` |
+| G6 | Slot evidence, class, lower bound, answers, principals | token-endpoint line without its status; lower bound at `LOG_LIMIT - 1`, `LOG_LIMIT` and `LOG_LIMIT + 1` (the case is named for the first two) |
 | G7 | Per-slot decisions for the four hypotheses | status 399, 400, 500; class precedence 2.3, 2.2, 2.1; principals `[workload]`, `[empty]`, none; 2.4 marker and 2.3 precedence; `Multiple user assigned identities exist` at 400 and 399; H-jwt and H-ca rules 7 and 8 |
 | G8 | Run agreement | one slot undecided; `not_attempted_cleanup`; all five agree |
 | G9 | Candidates, receipts, broker counts | receipt hash digit changed; conflicting C9 broker count |
@@ -39,7 +39,7 @@ The pinned tables are checked by the generator itself: `slots`, `decisions` and 
 
 - `scenarios/F02/expected.yaml` is the plan's exact text (SHA-256 `392ffbe2653d1539b069564a9cdd85aebb63d5bbc2a087f51e5a481f496d8796`, 8064 bytes, 67 lines).
 - The summary, the verdict paragraph, the "Not tested" list and the README row were extracted from the plan comment by script and written unchanged. The "Not tested" source sentence applies plan check finding 1.
-- The report adds one sentence the plan does not pin, in "Assessment against expected.yaml": decision 6562091612 was recorded after the run, and it supplied the rules that let the run decide H-jwt and H-ca. This is the point of the later independent read (comment 6562376463, finding 6); it is a disclosure, adds no number, and changes no decision. Hari can remove it. The same read's findings 1 to 5 are recorded for Hari and not acted on: they concern enforced checks or the pinned `expected.yaml` and need an amendment.
+- The report adds three bullets the plan does not pin to "Assessment against expected.yaml": (1) "Timing of the rules": decision 6562091612 was recorded after the run, and it supplied the rules that let the run decide H-jwt and H-ca; (2) a bullet that a pinned script, not the verifier, classified the native slots, which restates decision 6562091612 point 2; (3) "Reruns: none", which restates approval 6561311090 item 2. Bullet (1) acts on finding 6 of the later independent read (comment 6562376463), which is not authority. The bullets add no number and change no decision. Hari can remove them. The same read's findings 1 to 5 are recorded for Hari and not acted on: they concern enforced checks or the pinned `expected.yaml` and need an amendment.
 - The smoke contract has the case B sentence (SHA-256 `a90ab93058add4fd79d496254917ccd02c12a1c372e5d411c92cfcd2bc9788bf`, 12910 bytes), because the F01 pull request merged.
 - The mutation section is the F06 section with the plan's four replacements (19 lines, 4045 bytes, `e904cd3ca5b6e2f8e85bf5a13d305633651581e3be336e19fb17d94be765da7b`), the last section of the report.
 - The `slots`, `decisions` and `broker-counts` blocks the generator produces equal the plan's expected blocks. No finding for Hari arises from G11.
@@ -93,10 +93,15 @@ Rounds are recorded below as they complete.
   - P1 self-test count: the receipt said 31; the measured count is 27 (`grep -c PASS`). Corrected.
   - P1 2.4 assertion could not fail: now asserts that no `other_classes` entry is class 2.4.
   - P2 `rule_sources` omitted the tags EP and MODES: added.
-  - P2 boundary above the line: added `LOG_LIMIT + 1` to the lower-bound case. The status-boundary cases keep 399, 400 and 500; the Multiple-identities case stays at 399 and 400 because the plan lists only those, and the status comparison is one expression shared with the tested cases.
+  - P2 boundary above the line: added `LOG_LIMIT + 1` to the lower-bound case. The status-boundary cases keep 399, 400 and 500. The Multiple-identities case stays at 399 and 400, as the plan lists; its status comparison (`s >= 400` inside `any()` in `hyp_decisions`) is separate from the one the boundary cases test, so a change of `>=` to `==` there is not caught above 400. That is a test beyond the plan's list, so it is recorded as a gap and not added (rule 10).
   - Reviewer's scope notes: the extra bullets of "Assessment against expected.yaml" are disclosed above; the state file `Next action` adds a clause to the plan's fixed text without changing its meaning. Both kept.
   - Cumulative budget after round 1: 1 comprehensive, 0 focused. A consolidated comprehensive re-review of the corrections follows.
-- Round 2 (in progress): mode comprehensive, input revision the staged tree on top of `cdd0fab` (the corrections above only), comparison revision `1f361d6`, previous reviewed revision `cdd0fab`. Same specification sources as round 1.
+- Round 2: mode comprehensive, input revision `71a3979`, comparison revision `1f361d6`, previous reviewed revision `cdd0fab`. Same specification sources. Reviewer model reported: `claude-opus-5-5`. Findings: no P0 or P1 beyond the four label-dependent P0 of round 1, three P2. Dispositions, all prose in this receipt:
+  - P2 Multiple-identities boundary: the round 1 reason was wrong; corrected to state the gap and answer it under rule 10.
+  - P2 G6 row and case name: the row now names `LOG_LIMIT + 1`; the case label in the script is left as is, and the row says so.
+  - P2 scope disclosure: now lists all three added bullets.
+  - Cumulative budget after round 2: 2 comprehensive, 0 focused.
+- Round 3 (in progress): mode focused P2-correction under rule 8 (reports only P0 or P1), input revision the staged tree on top of `71a3979` (receipt prose only), comparison revision `71a3979`, full pull request diff supplied as context. Specification sources as above.
 
 ## Remaining approval
 
