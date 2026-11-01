@@ -57,7 +57,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | E04 | Adding partitions to a compacted hub | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | E05 | Trace: compacted partition capacity | Not run: beyond build scale. | untestable | [Report](results/E05/2026-10-27.md) |
 | E06 | Legal hold race | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| F01 | Workload identity authentication | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| F01 | Workload identity authentication | With the token expiry passed to Kafka capped at 5 s for the test, librdkafka called our refresh handler again on the same clients, the Identity SDK returned a token that installed, and delivery and reads continued, in all five producer and five consumer repeats. The SDK returned a token with the same expiry each time; natural expiry, new token issuance, assertion rotation and broker re-authentication were not tested. | undocumented | [Report](results/F01/2026-10-31.md) |
 | F02 | Built-in IMDS authentication | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | F03 | Token refresh failures | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | F04 | Missing-role and wrong-resource-token errors | Missing-role produce returned broker error 29; assigned consume had "no read and no error within the window", establishing neither denial nor success. A wrong-resource token returned local error -169. | undocumented | [Report](results/F04/2026-10-28.md) |

@@ -2,6 +2,8 @@
 
 This smoke runs the new partition, null-value and permission-scope clients through the real evidence path. It checks whether the infrastructure and harness can produce complete evidence. It does not produce a scientific verdict.
 
+The one exception is the published F01 result: a later verdict pull request judged the retained handler rows of authentication-controls smoke run 41201284963 with a pinned script, under [decision 6558920636](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/302#issuecomment-6558920636) on issue 302 and [decision 6561458447](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561458447) on issue 306.
+
 The [build instruction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494085278) authorizes this prerequisite. The [smoke implementation plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6494160519) limits its scope. The completed smoke remains the operational prerequisite. The approved scientific implementation follows the [scientific contract](single-action-contract.md#scientific-assessment-and-permission-evidence); dispatch remains separately authorized.
 
 ## Dispatch and lifecycle
