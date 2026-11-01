@@ -18,17 +18,17 @@ Predicate map: no verifier predicate changes. The table in [Issue 281 survivor d
 
 ## Commands and results
 
-Run from the repository root with SDK 10.0.402 on 2026-11-01.
+Run from the repository root with SDK 10.0.402 on 2026-11-01. The acceptance commands are those of the plan's "Acceptance commands and required evidence" block. Files 1 and 2 were committed before `run`, as that block requires. `D` is `/tmp/r281`.
 
 | Command | Literal result |
 | --- | --- |
 | `git diff --quiet 2dc9715e3de176f7e1cd55eee9c251e43c29c746 origin/main -- src/Parchwell.Verifier tests/Parchwell.Verifier.Tests && echo unchanged` | `unchanged` |
 | `ParchwellVerifierMutationOnly=true dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release` | `total: 4011`, `failed: 0`, `succeeded: 4011`, `skipped: 0` |
-| `sha256sum` of the artifact ZIP 13056428027 | `f0168953c73bd791b2b68a8cef0b7c175dcfd6d28826b67c746315e7e7cd88e1` |
-| `sha256sum` of `mutation-report.json` | `2ff2f83ba833de08d4652fe83f24ef4041554b30e689bd2e47864d777c76ff8b` |
-| `replay.py run` (3 workers) | 63 records: 61 killed, 2 survived (11923 and 12277). Wall time 1043 s, from 11:37:36Z to 11:54:59Z, on a 4-CPU container. |
-| `replay.py check` | `rows 63 results 63 problems 0`, exit 0 |
-| `git diff --name-only origin/main` (after `git add -N`) | the five files the plan lists |
+| `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/13056428027/zip > "$D/p3.zip"; sha256sum "$D/p3.zip"` | `f0168953c73bd791b2b68a8cef0b7c175dcfd6d28826b67c746315e7e7cd88e1  /tmp/r281/p3.zip` |
+| `unzip -p "$D/p3.zip" stryker/reports/mutation-report.json > "$D/p3.json"; sha256sum "$D/p3.json"` | `2ff2f83ba833de08d4652fe83f24ef4041554b30e689bd2e47864d777c76ff8b  /tmp/r281/p3.json` |
+| `for k in 0 1 2; do python3 docs/operations/evidence/issue-281/replay.py run "$D/p3.json" "$D/out$k.jsonl" $k/3 & done; wait` | 63 records in `out0.jsonl` to `out2.jsonl`: `killed` 61, `survived` 2 (`11923`, `12277`). Wall time 1043 s, from 11:37:36Z to 11:54:59Z, on a 4-CPU container. |
+| `python3 docs/operations/evidence/issue-281/replay.py check "$D"/out*.jsonl` | `rows 63 results 63 problems 0`, exit 0 |
+| `git add -N docs/operations/evidence/issue-281 items/281 && git diff --name-only origin/main` | `docs/operations/evidence/issue-281/receipt.md`, `docs/operations/evidence/issue-281/replay.py`, `docs/operations/verifier-mutation.md`, `items/281/state.md`, `tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2CandidateProjectionAuditTests.cs` |
 | `git diff --check origin/main` | exit 0, no output |
-| `npm run check:docs` | `8 warnings`, none in a changed file: the baseline set (`docs/agents/factory.md` 2, `issue-124/README.md` 1, `issue-140/README.md` 2, `issue-211/receipt.md` 3) |
+| `npm ci --ignore-scripts && npm run check:docs` | `8 warnings`, none in a changed file: `docs/agents/factory.md` 2, `docs/operations/evidence/issue-124/README.md` 1, `docs/operations/evidence/issue-140/README.md` 2, `docs/operations/evidence/issue-211/receipt.md` 3 |
 | `./scripts/verify-dotnet.sh` | not run: Docker is not running in this session. The hosted `dotnet-verification` run on the pull request is the evidence. |
