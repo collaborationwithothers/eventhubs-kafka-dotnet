@@ -51,7 +51,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | D03 | Namespace partition quota | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | D04 | Trace: brokered connection quota | Not run: requires connection counts beyond build scale. | untestable | [Report](results/D04/2026-10-27.md) |
 | D05 | Trace: event hub quota | Not run: documentation trace only. | untestable | [Report](results/D05/2026-10-27.md) |
-| E01 | Tombstone handling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| E01 | Tombstone handling | A produce with a null value read back as null, and a produce with an empty value read back as empty, in all five repeats each, after a non-null seed on the same key and partition. Only transport on one partition was tested; compaction, retention and deletion were not. | confirmed | [Report](results/E01/2026-11-01.md) |
 | E02 | Values between compaction runs | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | E03 | Tombstone retention and offline consumers | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | E04 | Adding partitions to a compacted hub | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
