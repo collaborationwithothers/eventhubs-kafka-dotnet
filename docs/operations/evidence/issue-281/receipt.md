@@ -2,7 +2,7 @@
 
 This receipt records the tests added for the 63 shard p3 survivors of C5 run 41232286130 and the disposition of each. It claims no C5 score, because the replay is diagnostic and the next complete hosted C5 run on `main` measures the target.
 
-Source commit for the commands below: `6af54492ea699719bbb93525c6379e7501cc362e` (the tests, `replay.py` and the dispositions section) on `origin/main` `b358c58`. The replay tested exactly that commit.
+Source commit for the commands below: `6af54492ea699719bbb93525c6379e7501cc362e` (the tests, `replay.py` and the dispositions section) on `origin/main` `b358c58`. The replay tested exactly that commit. The branch was then rebased onto `origin/main` `f231fa6`, which leaves `src/Parchwell.Verifier` and `tests/Parchwell.Verifier.Tests` unchanged since `2dc9715e3de176f7e1cd55eee9c251e43c29c746` (the `unchanged` check below). The rebased commit hashes differ.
 
 ## Execution card
 
