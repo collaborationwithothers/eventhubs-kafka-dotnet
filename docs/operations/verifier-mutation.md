@@ -565,6 +565,132 @@ Notes on two missing-test rows. Line numbers in this section are in the files at
 
 The [receipt](evidence/issue-282/receipt.md) records the source-edit replay of all 94 survivors with `evidence/issue-282/replay.py`, on a branch cut from `main` at `0db2375a23605ea2ce9c7d6185886d7436d51d00`. A replay is diagnostic evidence, not C5 acceptance.
 
+## Issue 283 survivor dispositions
+
+[C5 run 41232286130](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130), attempt 1 on `main` at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, left 260 surviving mutants in `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` ([issue 277](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277)). This section gives one disposition to each of the 103 in span shards p5 and p6 (character spans 40525..52156 and 52156..end), in the members `V2AccessEvidence`, `V2AccessHash` and `V2AccessBounds`, under the [issue 283 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/283#issuecomment-6557767125); raw Stryker statuses and scores are unchanged. The other 157 belong to issues 281 and 282.
+
+- Missing test: a test added for issue 283 passes on `main` and fails on the replayed mutant, and no test that existed at the measured commit fails on it.
+- Equivalent: no input reachable from the production caller can change observable behaviour. The proof is in EQ1, EQ2 or EQ3, and the mutant also survives replay.
+- Killed on replay: tests that existed at the measured commit fail on the replayed mutant, though Stryker reported it survived.
+
+Scripted counts: 97 missing test, 6 equivalent, 0 killed on replay, 0 accepted gap. No verifier source changes and no assertion is loosened.
+
+Test aliases, all in `ProbeV2AccessEvidenceAuditTests`: AE1 `Given_EnvelopeDefect_When_Checked_Then_ExactProblemIsReturned`; AE2 `Given_StatusOrLimitDefect_When_Checked_Then_ExactProblemsAreReturned`; AE3 `Given_CoverageDefect_When_Checked_Then_WireIsRejected`; AE4 `Given_CompleteStatus_When_CoverageIsChecked_Then_EveryCollectionMustBeComplete`; AE5 `Given_IncompleteAuditWithEntryDefect_When_Checked_Then_WireIsRejected`; AE6 `Given_IncompleteAuditWithUnsupportedGrant_When_Checked_Then_ClosedVocabularyApplies`; AE7 `Given_MismatchWithMatchingTable_When_Checked_Then_OnlyUnexpectedGrantExplainsIt`; AE8 `Given_ProjectionBoundsCase_When_Checked_Then_CapturePrecedesWireParsing`.
+
+Equivalence proofs (line numbers are in the target file on `main`):
+
+- EQ1 (12991, line 523, the `"|"` in `entry.Account + "|" + entry.AssignmentAlias` to `""`). Line 520 has already required `V2AccessAlias(entry.AssignmentAlias,"assignment:")`, so every alias is `assignment:` plus 64 lowercase hexadecimal characters, 75 characters in all (lines 550 and 551). `assignment` is used only as a key of `assignmentBindings` (lines 525 and 526), which is never returned. Without the separator, the last 75 characters of the key are the alias and the rest is the account, so two entries share a key exactly when they shared it before. No output changes and nothing throws.
+- EQ2 (12995, 12996 and 12997, line 524, the first, second and third `"|"` in `interpretation` to `""`). Lines 516 to 520 have already required: `Subject` is the account (`loadgen` or `enrichment-consumer`) or one of the owner's groups, each `group:` plus 64 hexadecimal characters (lines 496 and 551); `DefinitionAlias` is one of `definitions`, each `role:` plus 64 hexadecimal characters, 69 characters in all (lines 487 and 513); `Target` is one of the three topics (line 442); `Operation` is `send` or `receive`. None of these contains `|`. `interpretation` is used only in the ordinal comparison at line 525 and as a stored value. Without the first separator, `Subject` and `DefinitionAlias` join, and the joined part ends with the 69-character alias. Without the second, `DefinitionAlias` and `Target` join, and the joined part starts with it. Without the third, `Target` and `Operation` join; the six joined strings are all different, because neither operation starts with `-dlq`. In each case the mutated string still determines the four fields, so two entries compare equal under the mutant exactly when they did before.
+- EQ3 (13041, line 536, `> 4096` to `>= 4096`, and 13044, its `"v2_capture_limit"` to `""`). Line 453 returns before line 536 when the projection has more than `MaxEffectiveScopeBytes` bytes. Production options come from `ProbeV2Options.Read`, which calls `Validate` (ProbeV2Options.cs line 74), which calls `JudgeLimits.Validate` (line 49); that throws unless `MaxEffectiveScopeBytes` is 32768 (line 186). `ProbeV2Host` registers that validated object (ProbeV2Host.cs lines 30 and 34). `ProbeV2Handler` passes it to `V2AccessEvidence` directly (ProbeV2Handler.cs line 158) and through `V2Candidate` (ProbeV2Handler.cs line 163; target line 221), the only two callers. Each distinct alias appears literally in the projection: line 460 reads it with `ProbeV2Wire.Read`, which delegates to `SingleActionWire.Read` (ProbeV2Wire.cs line 30), and that uses System.Text.Json with no custom converter. 4096 distinct 75-character aliases need at least 307200 bytes, more than 32768, so the count at line 536 never reaches 4096 and that return never runs. A direct call with options that skip `Validate` could tell them apart; no production path makes one.
+
+| Mutant | Line | Mutator | Disposition | Test or proof |
+| ---: | ---: | --- | --- | --- |
+| 12672 | 440 | String | missing test | AE1 |
+| 12678 | 443 | Logical | missing test | AE1 |
+| 12683 | 443 | String | missing test | AE1 |
+| 12698 | 446 | Linq Any to All | missing test | AE1 |
+| 12702 | 447 | Linq Any to All | missing test | AE1 |
+| 12722 | 449 | Arithmetic | missing test | AE1 |
+| 12724 | 449 | String | missing test | AE1 |
+| 12727 | 452 | String | missing test | AE1 |
+| 12738 | 458 | Object initializer | missing test | AE1 |
+| 12755 | 464 | String | missing test | AE1 |
+| 12825 | 473 | String | missing test | AE2 |
+| 12829 | 474 | String | missing test | AE2 |
+| 12833 | 475 | String | missing test | AE2 |
+| 12856 | 481 | Logical | missing test | AE2 |
+| 12857 | 481 | Logical | missing test | AE2 |
+| 12861 | 481 | Linq Any to All | missing test | AE2 |
+| 12866 | 482 | Equality | missing test | AE2 |
+| 12880 | 486 | Logical | missing test | AE3 |
+| 12882 | 486 | Logical | missing test | AE3 |
+| 12883 | 486 | Logical | missing test | AE3 |
+| 12887 | 487 | Linq Any to All | missing test | AE3 |
+| 12888 | 487 | Logical | missing test | AE3 |
+| 12894 | 488 | String | missing test | AE3 |
+| 12897 | 495 | Logical | missing test | AE3 |
+| 12899 | 495 | Logical | missing test | AE3 |
+| 12900 | 495 | Logical | missing test | AE3 |
+| 12901 | 495 | Logical | missing test | AE3 |
+| 12912 | 497 | Linq Any to All | missing test | AE3 |
+| 12914 | 497 | String | missing test | AE3 |
+| 12917 | 501 | Logical | missing test | AE3 |
+| 12919 | 501 | Linq Any to All | missing test | AE3 |
+| 12920 | 501 | Logical | missing test | AE3 |
+| 12922 | 501 | Linq Any to All | missing test | AE3 |
+| 12926 | 502 | String | missing test | AE3 |
+| 12933 | 504 | Linq All to Any | missing test | AE4 |
+| 12934 | 504 | Logical | missing test | AE4 |
+| 12936 | 504 | Equality | missing test | AE4 |
+| 12938 | 505 | AndAssignment to ExclusiveOrAssignment | missing test | AE4 |
+| 12940 | 506 | Linq Sum to Max | missing test | AE4 |
+| 12951 | 509 | Equality | missing test | AE2 |
+| 12952 | 509 | String | missing test | AE2 |
+| 12964 | 516 | Logical | missing test | AE5 |
+| 12991 | 523 | String | equivalent | EQ1 |
+| 12995 | 524 | String | equivalent | EQ2 |
+| 12996 | 524 | String | equivalent | EQ2 |
+| 12997 | 524 | String | equivalent | EQ2 |
+| 13000 | 525 | Equality | missing test | AE5 |
+| 13001 | 525 | String | missing test | AE5 |
+| 13011 | 530 | String | missing test | AE6 |
+| 13012 | 530 | String | missing test | AE6 |
+| 13013 | 530 | String | missing test | AE6 |
+| 13014 | 530 | String | missing test | AE6 |
+| 13015 | 530 | String | missing test | AE6 |
+| 13016 | 530 | String | missing test | AE6 |
+| 13017 | 530 | String | missing test | AE6 |
+| 13018 | 531 | String | missing test | AE6 |
+| 13019 | 531 | String | missing test | AE6 |
+| 13020 | 531 | String | missing test | AE6 |
+| 13021 | 531 | String | missing test | AE6 |
+| 13022 | 531 | String | missing test | AE6 |
+| 13023 | 531 | String | missing test | AE6 |
+| 13024 | 531 | String | missing test | AE6 |
+| 13031 | 533 | Logical not | missing test | AE6 |
+| 13033 | 534 | Logical | missing test | AE6 |
+| 13034 | 534 | Equality | missing test | AE6 |
+| 13035 | 534 | Logical not | missing test | AE6 |
+| 13036 | 535 | Logical not | missing test | AE6 |
+| 13037 | 535 | Logical not | missing test | AE6 |
+| 13038 | 535 | Logical not | missing test | AE6 |
+| 13039 | 535 | String | missing test | AE6 |
+| 13041 | 536 | Equality | equivalent | EQ3 |
+| 13044 | 536 | String | equivalent | EQ3 |
+| 13058 | 539 | String | missing test | AE7 |
+| 13059 | 539 | Logical | missing test | AE7 |
+| 13060 | 539 | Logical | missing test | AE7 |
+| 13063 | 539 | Logical not | missing test | AE7 |
+| 13064 | 539 | Linq Any to All | missing test | AE7 |
+| 13065 | 539 | Equality | missing test | AE7 |
+| 13066 | 539 | String | missing test | AE7 |
+| 13068 | 540 | Equality | missing test | AE7 |
+| 13069 | 540 | String | missing test | AE7 |
+| 13070 | 540 | String | missing test | AE7 |
+| 13086 | 545 | Linq Order to OrderDescending | missing test | AE2 |
+| 13091 | 550 | Logical | missing test | AE3 |
+| 13093 | 550 | Linq All to Any | missing test | AE3 |
+| 13096 | 550 | Logical | missing test | AE3 |
+| 13101 | 550 | Logical | missing test | AE3 |
+| 13111 | 556 | String | missing test | AE8 |
+| 13112 | 556 | String | missing test | AE8 |
+| 13115 | 556 | String | missing test | AE8 |
+| 13118 | 556 | String | missing test | AE8 |
+| 13127 | 560 | Equality | missing test | AE8 |
+| 13128 | 560 | String | missing test | AE8 |
+| 13132 | 561 | Equality | missing test | AE8 |
+| 13133 | 561 | Boolean | missing test | AE8 |
+| 13142 | 573 | Logical | missing test | AE8 |
+| 13145 | 573 | Equality | missing test | AE8 |
+| 13146 | 573 | Conditional true | missing test | AE8 |
+| 13147 | 573 | Conditional false | missing test | AE8 |
+| 13149 | 573 | Logical | missing test | AE8 |
+| 13151 | 573 | Linq Any to All | missing test | AE8 |
+| 13153 | 573 | Equality | missing test | AE8 |
+| 13154 | 573 | Boolean | missing test | AE8 |
+
+The [receipt](evidence/issue-283/receipt.md) records the source-edit replay of all 103 survivors with `evidence/issue-283/replay.py`. A replay is diagnostic evidence, not C5 acceptance.
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
