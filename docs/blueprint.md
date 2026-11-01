@@ -1180,7 +1180,7 @@ Captured 2026-10-11. "Updated" is the page's own last-updated date.
 | S3 | [Azure Event Hubs quotas and limits](https://learn.microsoft.com/en-us/azure/event-hubs/event-hubs-quotas) | 2026-02-06 |
 | S4 | [Azure Event Hubs Premium overview](https://learn.microsoft.com/en-us/azure/event-hubs/event-hubs-premium-overview) | 2025-07-28 |
 | S5 | [Dynamically add partitions to an event hub](https://learn.microsoft.com/en-us/azure/event-hubs/dynamically-add-partitions) | 2023-10-16 |
-| S6 | [librdkafka CONFIGURATION.md](https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md) | master, read 2026-10-11 |
+| S6 | [librdkafka v2.16.0 CONFIGURATION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md), the same document as S25 | tag v2.16.0 (commit c6c9973cf1b25394c58e0cade13a36f386856f77); re-pinned from master on 2026-11-01; the settings, defaults and option values cited to S6 were rechecked against it, as the issue 244 S6 re-pin receipt lists |
 | S7 | [librdkafka STATISTICS.md](https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md) | master, read 2026-10-11 |
 | S8 | Azure Retail Prices API, Event Hubs and Virtual Machines, UK South, GBP | read 2026-10-11 |
 | S9 | Azure Retail Prices API, Log Analytics, UK South, GBP | read 2026-10-11 |
