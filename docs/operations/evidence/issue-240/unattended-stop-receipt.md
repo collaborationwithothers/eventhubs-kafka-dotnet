@@ -10,7 +10,7 @@ Directly authorized governance and workflow work for issue #240. It amends the a
 
 - Deliverable: `batch-stop` environment change, its byte-identical mirror, the matching phase workflow test, and the two docs that describe the gate.
 - Mandatory gates: `cmp` of the workflow mirror, the phase workflow tests, `check-offline.sh`, `npm run check:docs`, one comprehensive cold review, Codex review, Hari's merge.
-- Earliest publication checkpoint: draft pull request after the first clean cold review.
+- Earliest publication checkpoint: draft pull request after the first cold review with no P0 or P1 other than approval-only findings.
 - Review budget: AGENTS.md "Before opening a pull request" rule 8. Exhaustion action: hand off to Hari.
 - Predicate-to-test map: not applicable. No verifier predicate changes.
 
@@ -52,6 +52,19 @@ Round 1, comprehensive, on the staged diff against `6ebaed0` (backup commit `2bb
 - P2, no test pins "reads no secrets". Fixed: `test_batch_topology_and_exact_steps` asserts that `batch-stop` has no `secrets.` reference.
 - Pre-existing: `probe-v2-smoke-contract.md` said a dispatch keeps "the existing environment approval". Fixed to name the `batch` job. The failing `test_both_streams_capped` is unchanged by this pull request.
 
-Cumulative count: 1 comprehensive pass, 0 focused rounds.
+Cumulative count after round 1: 1 comprehensive pass, 0 focused rounds.
 
-Round 2, consolidated comprehensive re-review, on the full staged diff against `6ebaed0`. Changes since round 1 are those after backup commit `2bb00ac`.
+Round 2, consolidated comprehensive re-review, of commit `823db1d` against `6ebaed0`, with changes since `2bb00ac`. Report complete. Findings and dispositions:
+
+- P0, identity scope: the same finding as round 1, counted once. Disposition: approval-only under rule 8, third paragraph, by Hari's [decision #240/6557004111](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6557004111). Kept, listed in the pull request description, excluded from round limits; Hari merges.
+- P1, the round 1 P0 disposition was not one rule 8 allows. Fixed: Hari's decision #240/6557004111 makes the P0 approval-only, as #114/6336121859 did.
+- P2, the no-secrets test caught only `secrets.`. Fixed: it now matches the bare `secrets` context name.
+- P2, round 2's input named no revision. Fixed: this entry names `823db1d`.
+
+Cumulative count after round 2: 2 comprehensive passes, 0 focused rounds.
+
+Round 3, focused, of the changes after `823db1d`, with the full diff against `6ebaed0` as context. Report complete, no P0 or P1. Its two P2s touch only this receipt's prose and are fixed: round 1's entry is restored to its text at `823db1d`, and the test re-run below is recorded. A focused P2-correction round covers those fixes.
+
+After the round 2 fixes, `python3 -m unittest infra/scripts/phase/tests/test_workflow.py` passed again: 16 tests, on the tree reviewed in round 3.
+
+Cumulative count after round 3: 2 comprehensive passes, 1 focused round.
