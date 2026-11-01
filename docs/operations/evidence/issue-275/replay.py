@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Replays the 30 C5 survivors and the one Timeout of run 41232286130 as source edits (issue 275).
 
-Diagnostic evidence only; never C5 acceptance. From the repository root, on any checkout whose three
-target files equal the source text the reports recorded; run stops otherwise:
+Diagnostic evidence only; never C5 acceptance. From the repository root, on any commit whose three
+target files at HEAD equal the source text the reports recorded; run stops otherwise:
   replay.py map NEW_DIR OLD_DIR            compare each selected mutant with the issue 268 reports
   replay.py run NEW_DIR OUTPUT_JSONL K/N   replay every Nth selected mutant from K (0-based)
   replay.py check OUTPUT_JSONL...          compare results with the disposition table
 NEW_DIR holds phase.json, publication.json and repeat-p1.json to repeat-p3.json from
 run 41232286130; OLD_DIR holds phase.json, publication.json and repeat.json from run
 41183628251. Write output outside the repository.
+run replays the tree committed at HEAD (git archive HEAD), not the working copy, and runs the
+tests committed there, which may differ from the tests of run 41232286130. A difference from the
+recorded dispositions is expected when the verifier source or tests have changed since that run.
 """
 import hashlib, json, os, re, signal, subprocess, sys, tempfile, threading, time
 
@@ -41,6 +44,8 @@ HEAP = "0x100000000"
 LIMIT = 900
 TABLE = "docs/operations/verifier-mutation.md"
 HEADING = "## Issue 275 survivor dispositions"
+NOTICE = ("run replays the tests committed at HEAD, which may differ from the tests of run 41232286130; a difference "
+          "from the recorded dispositions is expected when the verifier source or tests have changed since that run")
 
 
 def entries(report_dir, reports):
@@ -91,13 +96,16 @@ def map_old(new_dir, old_dir):
 
 
 def run(report_dir, output, part):
-    stale = [t for t, files in entries(report_dir, NEW).items() for e in files
-             if open(os.path.join("src/Parchwell.Verifier", t), newline="").read() != e["source"]]
-    if stale:
-        sys.exit(f"{sorted(set(stale))} differ from the source the report measured; the mutant locations no longer apply")
+    print(NOTICE, flush=True)
+    recorded = entries(report_dir, NEW)
     k, n = (int(x) for x in part.split("/"))
     work = tempfile.mkdtemp(prefix="issue-275-replay-")
     subprocess.run(f"git archive HEAD | tar -x -C {work}", shell=True, check=True)
+    stale = [t for t, files in recorded.items() for e in files
+             if open(os.path.join(work, "src/Parchwell.Verifier", t), newline="").read() != e["source"]]
+    if stale:
+        sys.exit(f"{sorted(set(stale))} at HEAD differ from the source the report measured; "
+                 "the mutant locations no longer apply")
     env = dict(os.environ, ParchwellVerifierMutationOnly="true")
     for target, mutant, measured in survivors(report_dir)[k::n]:
         path = os.path.join(work, "src/Parchwell.Verifier", target)
