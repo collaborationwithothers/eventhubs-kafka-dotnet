@@ -1,6 +1,6 @@
 # Issue 244: state file removal receipt
 
-This pull request deletes `items/244/state.md`, the item state file of issue 244, because the issue is closed. It changes nothing else.
+This pull request deletes `items/244/state.md`, the item state file of issue 244, because the issue is closed. The only other change is this receipt.
 
 Base revision: `f231fa6`
 Branch: `claude/issue-244-remove-state`
@@ -9,12 +9,13 @@ Branch: `claude/issue-244-remove-state`
 
 There is no approved item plan. It is directly authorized work. Hari instructed this in an interactive session on 2026-11-01: "delete the state file and the wip branches". The rule that permits it is docs/agents/factory.md "Item state file": "After the issue closes, any later pull request may delete its file." Issue 244 was closed as completed on 2026-11-01 after Hari's [decision comment 6557527220](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6557527220). `items/` is not listed in `.github/CODEOWNERS`, so it is not a protected path. The implementing tool is Claude Code.
 
-The wip branches part of the instruction is not in this pull request. Deleting a branch is blocked from the cloud session (HTTP 403 from the proxy on both the REST route and `git push --delete`); Hari deletes them by hand.
+The wip branches part of the instruction is not in this pull request. The backup push for this change created one more branch, `claude/issue-244-remove-state-wip`, which Hari deletes with the others. Deleting a branch is blocked from the cloud session (HTTP 403 from the proxy on both the REST route and `git push --delete`); Hari deletes them by hand.
 
 ## Execution card
 
 - Deliverable: delete `items/244/state.md`; add this receipt.
 - Current authorization: the instruction above, for a deletion of one file.
+- Earliest authorized publication checkpoint: after the first comprehensive cold review and its corrections.
 - Mandatory gates: AGENTS.md "Before opening a pull request" rule 8 (cold review), hosted Codex review, CI.
 - Verification: the commands in "Verification record".
 - Review budget: rule 8's, 2 comprehensive and 2 focused rounds. Exhaustion action: hand off to Hari.
@@ -41,7 +42,7 @@ Every hit is in one of the three earlier receipts under `docs/operations/evidenc
 
 ## Verification record
 
-Run in this session's container on the working tree that became the first commit of the branch.
+Run in this session's container on the working tree that became commit `6ddb049`; `check:docs` was rerun after each later commit, which changed only this receipt.
 
 | Command | Result |
 |---|---|
@@ -52,4 +53,9 @@ No code or test is changed, so no .NET, Python or chart suite was run.
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 0 of 2, focused 0 of 2. Round 1 is pending: comprehensive, input revision the commit that adds this receipt, comparison revision `f231fa6`. Reports and dispositions are recorded in the pull request self-review record.
+Cumulative counts at the time of writing: comprehensive 1 of 2 reported and the second pending, focused 0 of 2. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
+
+| Round | Mode | Input revision | Comparison revision | Findings | Disposition |
+|---|---|---|---|---|---|
+| 1 | comprehensive | `6ddb049` | `f231fa6` | P1: the execution card had no earliest authorized publication checkpoint. P2: the opening said the pull request changes nothing else, but it also adds this receipt | Fixed in the commit that adds row 2: the card has the field and the opening names the receipt; the receipt also now names the extra backup branch and the commit its check ran on |
+| 2 | comprehensive (consolidated re-review) | the commit that adds this row | `f231fa6` | Pending; recorded in the pull request self-review record | Not applicable |
