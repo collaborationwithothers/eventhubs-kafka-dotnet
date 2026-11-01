@@ -1,5 +1,5 @@
 # State: #275 C5 mutation: update the mutation gate in eight evidence packs from the post-repair run
-Covers: comment 6554921033 created 2026-11-01T07:23:19Z; read at 2026-11-01T07:40:00Z
+Covers: comment 6555017710 created 2026-11-01T07:34:06Z; read at 2026-11-01T07:44:07Z
 Parent items: none
 Item plan: none
 Implementing tool: Claude Code. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6554921033
