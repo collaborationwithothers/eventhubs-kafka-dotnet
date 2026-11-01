@@ -6,13 +6,18 @@ Claude Code entry point. The first line imports AGENTS.md, which holds every too
 
 ## Model bindings
 
-Status: approved by Hari on 2026-10-12. Each workflow pins its model with `claude_args: --model <id>`.
+Status: approved by Hari on 2026-10-12. The pull request for issue #286 amends this section (spawned sessions, and the Haiku row); Hari's merge of that pull request is the approval of the amendment. Each workflow pins its model with `claude_args: --model <id>`.
 
 | Role | Model |
 |---|---|
 | Plan drafting | `claude-opus-5-5` |
 | Implementation | `claude-sonnet-5-5` |
 | Self-review against docs/engineering/ before opening a pull request | `claude-opus-5-5` |
+| Tool-verified mechanical work (task list below) | `claude-haiku-5-5` |
+
+The Haiku row covers only these tasks, and only when a deterministic tool or script verifies the output afterwards: running the repository's checks and reporting their output; byte-equality checks between workflow files and their committed copies; ASCII and punctuation scans; counts and totals computed by script; fetching run logs and artifacts; polling run status. Work that needs judgement, or whose output no tool verifies, stays on Sonnet or Opus under the other rows. The Haiku row is a governance policy choice by Hari, decided on 2026-11-01 without measurement; it is not a measured result (AGENTS.md hard safety rule 11).
+
+A session started with the `create_session` tool sets `model` to the identifier in this table for the role it will perform. Without `model`, the tool gives the new session the calling session's model, so an Opus session would start an implementation session on Opus. Source: the `model` parameter description of the `create_session` tool in this repository's Claude Code cloud sessions, read 2026-11-01: "Model ID for the new session. Defaults to the calling session's model." It is tool metadata, not official documentation; no official documentation of `create_session` was found.
 
 Codex's review model is set in Codex's own settings, not in this repository.
 
@@ -32,7 +37,7 @@ AGENTS.md's "Before opening a pull request" applies in full. In addition:
 
 ## Subagents
 
-- Research and design subagents run on Opus; mechanical work (bulk edits, renames, checks) on Sonnet. In workflows, pin the exact identifiers from the model bindings table (`claude-opus-5-5`, `claude-sonnet-5-5`). In interactive sessions the subagent tool accepts only the aliases `opus` and `sonnet`, which select the latest model of that family; set one explicitly on every spawn and record the resolved model when it is reported.
+- Research and design subagents run on Opus. Mechanical work that needs judgement or that no tool verifies (bulk edits, renames) runs on Sonnet. Mechanical work in the Haiku row's task list, verified by a tool afterwards, runs on Haiku. In workflows, pin the exact identifiers from the model bindings table (`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`). In interactive sessions the Agent tool's `model` parameter accepts the aliases `sonnet`, `opus`, `haiku` and `fable` (observed in the tool definition on 2026-11-01; the official page lists the same four, https://code.claude.com/docs/en/sub-agents, "Choose a model"). An alias selects the latest model of that family. Set one explicitly on every spawn and record the resolved model when it is reported.
 - A subagent's output is unverified input. Check its claims against their sources before anything built on them is committed.
 
 ## Handoffs
