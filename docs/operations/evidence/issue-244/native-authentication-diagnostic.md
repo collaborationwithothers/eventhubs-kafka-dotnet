@@ -14,7 +14,7 @@ Recognized later decisions, in creation order:
 2. [Decision 6548960917](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6548960917): native stages after the C6 judge, the GUID rule in `Validate`, and the Revision 3 P2s folded in.
 3. [Approval 6554645171](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6554645171), posted after the plan's latest edit and naming Revision 4 and its `updated_at`, in light of the [Revision 4 plan check 6554607130](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6554607130) (`Blocking findings: none`). It orders the check's two `apply in implementation` P2s applied as written.
 
-The implementing tool is Claude Code ([tool comment 6554652156](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6554652156)); `ready-for-agent` was applied at 2026-11-01T06:53:28Z.
+The implementing tool is Claude Code. [Comment 6547412843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547412843) (2026-10-31T18:25:50Z) names it before `ready-for-agent` was applied at 2026-11-01T06:53:28Z; [comment 6554652156](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6554652156) (06:53:38Z) repeats it ten seconds after the label, and a missing comment at label time would also mean Claude Code.
 
 Nothing here authorizes a dispatch, an Azure action or spend (approval 6554645171; decision 6547412663, answer 8).
 
@@ -56,6 +56,13 @@ No difference between the plan and the repository changed any meaning. No `resul
 | `Redact` | each rewrite in the plan's list, including empty `FederatedTokenFile` and `TenantId` | `ProbeV2NativeAuthenticationTests` |
 | Capture redaction | `Log`, `Error`, `Exception`, `Delivery`; null `redact` records raw text | `ProbeV2CaptureTests` |
 
+| `ProcessLifetimeSeconds` (`produce_one && WindowMs == 330000`) | native stage (`WindowMs` 120000) needs 840; existing `produce_one` stages still need 1920 | `ProbeV2OptionsTests` |
+| `ProbeV2Stage.For` native arm (`number == 6`) | C6 accepted; C9 rejected as `v2_stage`; no C7 or below-boundary case, because configuration validity (`v2_configuration`) runs first and the chart rejects other configurations | `ProbeV2OptionsTests`, `test_probe_v2_chart.py` |
+| `stages(..., native)` C6-only gate | C6 gains three stages; C9 and every other configuration equal `main` | `test_probe_v2.py` |
+| `__NativePrincipalId` redaction suffix | value becomes `[redacted]`; `__PrincipalId` still matches separately | `test_probe_v2.py` |
+
+The `v2_native_consumer` guard in `ProbeV2SessionFactory` has no test and is unreachable through the worker, because every native stage is `produce_one`. It guards a future misuse only.
+
 In `batch_items`, only the `not refresh_test` factor of the native check is independently reachable. The `kind`, `value` and `capture` factors repeat routing at the lines after it and are unreachable.
 
 ## Verification record
@@ -64,7 +71,7 @@ Run on the finished diff in this session's container (Linux, .NET SDK 10.0.402 i
 
 | Command | Result |
 |---|---|
-| `python -m unittest discover -s infra/scripts/phase/tests` | 185 run; 1 failure and 1 error, both `test_probe_v2_access.ProductionReaderTests.test_both_streams_capped`, which fails the same way on a clean checkout of `origin/main` |
+| `python -m unittest discover -s infra/scripts/phase/tests` | 185 run; 1 failure and 1 error, both `test_probe_v2_access.ProductionReaderTests.test_both_streams_capped`, which fails the same way on a clean checkout of `origin/main` in this container; `main`'s CI run 41245270515 (`.NET verification` on `a3b9e10`) succeeded, so the cause looks specific to this container and was not investigated |
 | `python -m unittest discover -s infra/scripts/tests` | 233 run; the same 1 failure and 1 error |
 | `python3 charts/parchwell/tests/test_probe_v2_chart.py` | passed: 153 positive, 138 negative |
 | `python3 charts/parchwell/tests/test_loadgen_host.py` | passed: 101 rendered environments and 14 rejected input regressions (run by the implementing subagent) |
@@ -80,4 +87,13 @@ The first backup push of this session committed Python bytecode by mistake; it w
 
 ## Cold review record
 
-Round 1: comprehensive (1 of 2). Input: the staged diff against `origin/main` at `a3b9e10`. Comparison revision: none. Cumulative before this round: 0 comprehensive, 0 focused. The specification sources are the plan comment, decisions and approval listed under "Authority and scope".
+Test names: `docs/engineering/dotnet.md` "Testing" requires `Given_<state>_When_<action>_Then_<outcome>`. The plan's architecture test name omitted the underscore after `Given`; the binding standard governs, so all new tests use `Given_`. About 85 older tests on `main` do not, which this change leaves alone.
+
+Round 1: comprehensive (1 of 2), reviewed commit `d6127a0` against `a3b9e10`. Result: 1 P1, 4 P2. Complete report held by the coordinating session. Dispositions:
+- P1 (24 new test names lacked the underscore after `Given`): fixed by renaming; see "Test names" above.
+- P2 (the two `azure_imds` construction cases make librdkafka queue a real token request to the metadata address on the CI host): `Out of contract:` the plan's "Tests" for `ProbeV2NativeAuthenticationTests` lists this construction test and its "Plan-check questions" (c) scope it to proving only that the pinned binary accepts the literals.
+- P2 (tool comment timing): fixed here and in `items/244/state.md` by citing the comment posted before the label.
+- P2 (receipt did not say `main`'s CI passes the failing Python test): fixed in "Verification record".
+- P2 (predicate map gaps): fixed in "Predicate map".
+
+Round 2: comprehensive (2 of 2). Input: the staged diff against `origin/main` at `a3b9e10`, which contains the Round 1 corrections. Comparison revision: `d6127a0`. Cumulative before this round: 1 comprehensive, 0 focused.

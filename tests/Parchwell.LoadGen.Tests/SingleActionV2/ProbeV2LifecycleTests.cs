@@ -52,7 +52,7 @@ public sealed class ProbeV2LifecycleTests
         }
     }
     [Fact]
-    public async Task GivenNativeJwtBearerStage_When_FiveSlotsRun_Then_SettingsAreAppliedRecordedAndRedacted()
+    public async Task Given_NativeJwtBearerStage_When_FiveSlotsRun_Then_SettingsAreAppliedRecordedAndRedacted()
     {
         using var fixture = new Fixture(item: "F06", configuration: "C6", stage: "nativejwt", nativeAuthentication: "jwt-bearer");
         int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs);

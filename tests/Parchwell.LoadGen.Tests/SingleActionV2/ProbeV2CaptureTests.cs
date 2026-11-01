@@ -207,7 +207,7 @@ public sealed class ProbeV2CaptureTests
     }
 
     [Fact]
-    public void GivenRedactor_When_LoggingText_Then_LineCarriesRedactedMessage()
+    public void Given_Redactor_When_LoggingText_Then_LineCarriesRedactedMessage()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
@@ -216,7 +216,7 @@ public sealed class ProbeV2CaptureTests
     }
 
     [Fact]
-    public void GivenRedactor_When_ClientErrorIsCaptured_Then_ReasonIsRedacted()
+    public void Given_Redactor_When_ClientErrorIsCaptured_Then_ReasonIsRedacted()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
@@ -225,7 +225,7 @@ public sealed class ProbeV2CaptureTests
     }
 
     [Fact]
-    public void GivenRedactor_When_KafkaExceptionErrorIsCaptured_Then_ReasonIsRedactedAndOriginIsLocal()
+    public void Given_Redactor_When_KafkaExceptionErrorIsCaptured_Then_ReasonIsRedactedAndOriginIsLocal()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
@@ -236,7 +236,7 @@ public sealed class ProbeV2CaptureTests
     }
 
     [Fact]
-    public void GivenRedactor_When_ProduceFailureDeliveryIsCaptured_Then_ReasonIsRedactedAndLocationIsNotInvented()
+    public void Given_Redactor_When_ProduceFailureDeliveryIsCaptured_Then_ReasonIsRedactedAndLocationIsNotInvented()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
@@ -251,7 +251,7 @@ public sealed class ProbeV2CaptureTests
     }
 
     [Fact]
-    public void GivenNoRedactor_When_CapturingNativeLookingText_Then_RawTextIsRecorded()
+    public void Given_NoRedactor_When_CapturingNativeLookingText_Then_RawTextIsRecorded()
     {
         var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000);
         capture.Log(new("native", SyslogLevel.Error, "synthetic", "x 11111111-1111-1111-1111-111111111111 eyJa.eyJb.c"));

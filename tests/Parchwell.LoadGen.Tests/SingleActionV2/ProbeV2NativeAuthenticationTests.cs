@@ -21,7 +21,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     ];
 
     [Fact]
-    public void GivenJwtBearer_When_Applying_Then_SetsExactlyTheListedKeys()
+    public void Given_JwtBearer_When_Applying_Then_SetsExactlyTheListedKeys()
     {
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer"), Resolved);
         var expected = new Dictionary<string, string>(Resolved, StringComparer.Ordinal)
@@ -39,7 +39,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     }
 
     [Fact]
-    public void GivenAzureImdsWorkload_When_Applying_Then_SetsExactlyTheListedKeys()
+    public void Given_AzureImdsWorkload_When_Applying_Then_SetsExactlyTheListedKeys()
     {
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions("nativeimds", "azure-imds-workload"), Resolved);
         var expected = new Dictionary<string, string>(Resolved, StringComparer.Ordinal)
@@ -56,7 +56,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     }
 
     [Fact]
-    public void GivenAzureImdsDefault_When_Applying_Then_SetsExactlyTheListedKeys()
+    public void Given_AzureImdsDefault_When_Applying_Then_SetsExactlyTheListedKeys()
     {
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions("nativeimdsnode", "azure-imds-default"), Resolved);
         var expected = new Dictionary<string, string>(Resolved, StringComparer.Ordinal)
@@ -76,7 +76,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     [InlineData("nativejwt", "jwt-bearer")]
     [InlineData("nativeimds", "azure-imds-workload")]
     [InlineData("nativeimdsnode", "azure-imds-default")]
-    public void GivenAnyMode_When_Applying_Then_NoExcludedKeyIsSet(string stage, string mode)
+    public void Given_AnyMode_When_Applying_Then_NoExcludedKeyIsSet(string stage, string mode)
     {
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions(stage, mode), Resolved);
         Assert.All(ExcludedKeys, key => Assert.DoesNotContain(key, applied.Keys));
@@ -89,14 +89,14 @@ public sealed class ProbeV2NativeAuthenticationTests
     }
 
     [Fact]
-    public void GivenUnknownMode_When_Applying_Then_Throws()
+    public void Given_UnknownMode_When_Applying_Then_Throws()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "other");
         Assert.Equal("v2_native_mode", Assert.Throws<InvalidOperationException>(() => ProbeV2NativeAuthentication.Apply(options, Resolved)).Message);
     }
 
     [Fact]
-    public void GivenJwtBearerOutput_When_Recording_Then_TokenFileTenantAreReplaced()
+    public void Given_JwtBearerOutput_When_Recording_Then_TokenFileTenantAreReplaced()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         Dictionary<string, string> recorded = ProbeV2NativeAuthentication.Recorded(options, ProbeV2NativeAuthentication.Apply(options, Resolved));
@@ -108,7 +108,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     }
 
     [Fact]
-    public void GivenAzureImdsWorkloadOutput_When_Recording_Then_ClientIsReplaced()
+    public void Given_AzureImdsWorkloadOutput_When_Recording_Then_ClientIsReplaced()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativeimds", "azure-imds-workload");
         Dictionary<string, string> recorded = ProbeV2NativeAuthentication.Recorded(options, ProbeV2NativeAuthentication.Apply(options, Resolved));
@@ -124,13 +124,13 @@ public sealed class ProbeV2NativeAuthenticationTests
     [InlineData("Failed to retrieve JWT token from \"https://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/oauth2/v2.0/token\": x (400)",
         "Failed to retrieve JWT token from \"https://login.microsoftonline.com/[guid]/oauth2/v2.0/token\": x (400)")]
     [InlineData("open /var/run/secrets/azure/tokens/azure-identity-token", "open [federated-token-file]")]
-    public void GivenClientText_When_Redacting_Then_ValuesAreReplaced(string text, string expected)
+    public void Given_ClientText_When_Redacting_Then_ValuesAreReplaced(string text, string expected)
     {
         Assert.Equal(expected, ProbeV2NativeAuthentication.Redact(text, ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer")));
     }
 
     [Fact]
-    public void GivenPrincipalOfDifferentCase_When_Redacting_Then_ItIsTheWorkloadPrincipal()
+    public void Given_PrincipalOfDifferentCase_When_Redacting_Then_ItIsTheWorkloadPrincipal()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         options.NativePrincipalId = "abcdef00-0000-0000-0000-000000000000";
@@ -139,7 +139,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     }
 
     [Fact]
-    public void GivenEmptyTokenFileAndTenant_When_RedactingAndRecording_Then_NeitherThrows()
+    public void Given_EmptyTokenFileAndTenant_When_RedactingAndRecording_Then_NeitherThrows()
     {
         ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
         options.FederatedTokenFile = "";
@@ -153,7 +153,7 @@ public sealed class ProbeV2NativeAuthenticationTests
     [InlineData("nativejwt", "jwt-bearer")]
     [InlineData("nativeimds", "azure-imds-workload")]
     [InlineData("nativeimdsnode", "azure-imds-default")]
-    public void GivenAppliedSettings_When_BuildingRealProducer_Then_PinnedBinaryAcceptsThem(string stage, string mode)
+    public void Given_AppliedSettings_When_BuildingRealProducer_Then_PinnedBinaryAcceptsThem(string stage, string mode)
     {
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions(stage, mode), Resolved);
         using IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(new ProducerConfig(applied)).Build();

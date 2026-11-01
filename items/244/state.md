@@ -2,7 +2,7 @@
 Covers: comment 6554652156 created 2026-11-01T06:53:38Z; read at 2026-11-01T07:00:00Z
 Parent items: none
 Item plan: none
-Implementing tool: Claude Code. Source: [tool comment 6554652156](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6554652156)
+Implementing tool: Claude Code. Source: [comment 6547412843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547412843), before `ready-for-agent`
 Approved plan: [plan comment 6547370647](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547370647), `Revision 4`, `updated_at` 2026-10-31T21:04:04Z.
 Decisions in force:
 - The issue body asks for a live comparison of the unmodified native client with AKS workload federation, with a positive control; it is not an implementation plan or dispatch approval. Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244)

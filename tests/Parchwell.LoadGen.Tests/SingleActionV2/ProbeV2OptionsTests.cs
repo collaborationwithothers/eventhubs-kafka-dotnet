@@ -97,7 +97,7 @@ public sealed class ProbeV2OptionsTests
     [InlineData("nativejwt", "jwt-bearer")]
     [InlineData("nativeimds", "azure-imds-workload")]
     [InlineData("nativeimdsnode", "azure-imds-default")]
-    public void GivenNativePair_When_ReadingOptions_Then_BindsNativeFieldsAndAuthenticationInputs(string stage, string mode)
+    public void Given_NativePair_When_ReadingOptions_Then_BindsNativeFieldsAndAuthenticationInputs(string stage, string mode)
     {
         ProbeV2Options parsed = ProbeV2Options.Read(Environment(NativeOptions(stage, mode)));
 
@@ -109,7 +109,7 @@ public sealed class ProbeV2OptionsTests
     }
 
     [Fact]
-    public void GivenNativeStageWithRefreshPath_When_ReadingOptions_Then_RejectsAsRefreshSelection()
+    public void Given_NativeStageWithRefreshPath_When_ReadingOptions_Then_RejectsAsRefreshSelection()
     {
         ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
         options.TestHandlerRefreshPath = true;
@@ -130,7 +130,7 @@ public sealed class ProbeV2OptionsTests
     [InlineData("nativejwt", "jwt-bearer", true, "{33333333-3333-3333-3333-333333333333}")]
     [InlineData("seed", "jwt-bearer", true, "33333333-3333-3333-3333-333333333333")]
     [InlineData("nativejwt", "", true, "33333333-3333-3333-3333-333333333333")]
-    public void GivenInvalidNativeSelection_When_ReadingOptions_Then_Rejects(string stage, string mode, bool capture, string principal)
+    public void Given_InvalidNativeSelection_When_ReadingOptions_Then_Rejects(string stage, string mode, bool capture, string principal)
     {
         ProbeV2Options options = NativeOptions(stage, mode);
         options.CaptureAuthenticationMetadata = capture;
@@ -139,7 +139,7 @@ public sealed class ProbeV2OptionsTests
     }
 
     [Fact]
-    public void GivenNativeStageOnAnotherConfiguration_When_ReadingOptions_Then_RejectsAsStage()
+    public void Given_NativeStageOnAnotherConfiguration_When_ReadingOptions_Then_RejectsAsStage()
     {
         ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
         options.ConfigurationId = "C9";
@@ -149,7 +149,7 @@ public sealed class ProbeV2OptionsTests
     [Theory]
     [InlineData(" ")]
     [InlineData("jwt-bearer\n")]
-    public void GivenMalformedNativeValue_When_ReadingOptions_Then_RejectsAsNativeOption(string value)
+    public void Given_MalformedNativeValue_When_ReadingOptions_Then_RejectsAsNativeOption(string value)
     {
         ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
         options.NativeAuthentication = value;
@@ -157,7 +157,7 @@ public sealed class ProbeV2OptionsTests
     }
 
     [Fact]
-    public void GivenProcessLifetimes_When_ReadingOptions_Then_NativeStageNeedsEightHundredFortyAndProduceStageStillNeedsNineteenTwenty()
+    public void Given_ProcessLifetimes_When_ReadingOptions_Then_NativeStageNeedsEightHundredFortyAndProduceStageStillNeedsNineteenTwenty()
     {
         ProbeV2Options native = NativeOptions("nativejwt", "jwt-bearer");
         native.ProcessLifetimeSeconds = 1920;

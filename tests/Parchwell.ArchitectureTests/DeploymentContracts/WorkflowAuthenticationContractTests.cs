@@ -91,7 +91,7 @@ public sealed class WorkflowAuthenticationContractTests
     }
 
     [Fact]
-    public void GivenNativeAuthenticationWorkflowFlag_When_Dispatched_Then_DefaultOffTupleGatesEveryJob()
+    public void Given_NativeAuthenticationWorkflowFlag_When_Dispatched_Then_DefaultOffTupleGatesEveryJob()
     {
         string[] lines = File.ReadAllLines(Path.Combine(RepositoryRoot, "docs/operations/workflows", "scenario.yml.txt"));
         Assert.Contains("      test_native_authentication:", lines);
