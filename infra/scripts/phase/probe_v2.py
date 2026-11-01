@@ -11,7 +11,7 @@ import time
 
 ITEMS = ("B08", "E01", "F06")
 AUTHENTICATION_CONTROLS = (("F06", "C6"), ("F06", "C9"))
-NATIVE_STAGES = (("nativejwt", "jwt-bearer"),)
+NATIVE_STAGES = (("nativejwt", "jwt-bearer"), ("nativeimds", "azure-imds-workload"), ("nativeimdsnode", "azure-imds-default"))
 CONFIGURATIONS = tuple((item, f"C{number}") for item, count in (("B08", 2), ("E01", 2), ("F06", 12)) for number in range(count))
 ACCOUNTS = ("loadgen", "probe", "enrichment-consumer", "verifier")
 TOPICS = ("document-events", "document-state", "document-events-dlq")
@@ -907,7 +907,7 @@ class ProbeV2:
                 "run_id": phase["run_id"], "source_commit": phase["source_commit"],
                 "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
                 "configurations": [{"item": item, "configuration": configuration} for item, configuration in AUTHENTICATION_CONTROLS],
-                "jobs": len(state["modes"]), "action_slots": 10, "maximum_clients": 20 if self.native(phase) else 15,
+                "jobs": len(state["modes"]), "action_slots": 10, "maximum_clients": 30 if self.native(phase) else 15,
                 "admitted_client_slots": self.admitted_slots(state, phase["run_id"], AUTHENTICATION_CONTROLS, self.native(phase)),
                 "transport_passed": transport_passed, "metadata_assessed": False, "cleanup_required": True})
             return int(not transport_passed)
