@@ -357,6 +357,79 @@ class PhaseTests(unittest.TestCase):
                 with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
                     phase.test_handler_refresh_path()
 
+    def test_native_authentication_flag_requires_exact_tuple_before_prepare_or_stop_side_effects(self):
+        valid = {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke',
+                 'PARCHWELL_BATCH_ITEMS': 'authentication-controls',
+                 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true',
+                 'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'false',
+                 'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}
+        with patch.dict(os.environ, valid):
+            self.assertEqual(0, self.main('validate-batch'))
+            with self.mocked():
+                self.assertEqual(0, self.main('prepare-batch'))
+                saved = json.loads((Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())[
+                    'PARCHWELL_PRIVATE_DIRECTORY']) / 'phase.json').read_text())
+                self.assertIs(True, saved['test_native_authentication'])
+
+        rejected = [
+            {'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'},
+            {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'false'},
+            {'PARCHWELL_BATCH_ITEMS': 'all'},
+            {'PARCHWELL_RUN_KIND': 'batch'},
+            {'PARCHWELL_SCENARIO': 'probe-batch', 'PARCHWELL_BATCH_ITEMS': 'all', 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'false'},
+            {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'false'},
+        ]
+        for change in rejected:
+            env = {**valid, **change}
+            with self.subTest(env=env), patch.dict(os.environ, env, clear=False):
+                before = set(self.root.iterdir())
+                self.env_file.write_text('')
+                self.assertEqual(2, self.main('validate-batch') if env['PARCHWELL_SCENARIO'].startswith('probe-') else self.main('validate-scenario'))
+                with patch.object(phase.Phase, 'run') as run:
+                    self.assertEqual(2, self.main('prepare-stop'))
+                    run.assert_not_called()
+                self.assertEqual('', self.env_file.read_text())
+                self.assertLessEqual(set(self.root.iterdir()), before | {self.env_file, self.output_file, self.summary_file})
+
+    def test_native_authentication_preparation_rejects_requested_vs_frozen_flag_mismatch_before_side_effects(self):
+        env = {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_RUN_KIND': 'smoke',
+               'PARCHWELL_BATCH_ITEMS': 'authentication-controls',
+               'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true'}
+        for requested, frozen in [('true', False), ('false', True)]:
+            metadata = {'run_kind': 'smoke', 'items': ['F06'], 'probe_v2_selection': 'authentication-controls',
+                        'capture_authentication_metadata': True, 'test_handler_refresh_path': False,
+                        'test_native_authentication': frozen}
+            with self.subTest(requested=requested, frozen=frozen), patch.dict(
+                    os.environ, {**env, 'PARCHWELL_TEST_NATIVE_AUTHENTICATION': requested}):
+                os.environ.pop('PARCHWELL_TEST_HANDLER_REFRESH_PATH', None)
+                before = set(self.root.iterdir())
+                with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
+                    phase.Phase().prepare_shared('probe-batch-2', 'single-action', None, 'probe', **metadata)
+                self.assertEqual('', self.env_file.read_text())
+                self.assertEqual(before, set(self.root.iterdir()))
+
+    def test_native_authentication_preparation_rejects_other_scenarios_before_side_effects(self):
+        with patch.dict(os.environ, {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}):
+            os.environ.pop('PARCHWELL_CAPTURE_AUTHENTICATION_METADATA', None)
+            os.environ.pop('PARCHWELL_TEST_HANDLER_REFRESH_PATH', None)
+            before = set(self.root.iterdir())
+            with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
+                phase.Phase().prepare('probe')
+            self.assertEqual('', self.env_file.read_text())
+            self.assertEqual(before, set(self.root.iterdir()))
+
+    def test_native_authentication_parser_is_strict_and_old_absence_defaults_false(self):
+        for value, expected in [(None, False), ('false', False), ('true', True)]:
+            with self.subTest(value=value), patch.dict(os.environ, {}, clear=False):
+                os.environ.pop('PARCHWELL_TEST_NATIVE_AUTHENTICATION', None)
+                if value is not None:
+                    os.environ['PARCHWELL_TEST_NATIVE_AUTHENTICATION'] = value
+                self.assertIs(expected, phase.test_native_authentication())
+        for value in ('True', '1', ''):
+            with self.subTest(value=value), patch.dict(os.environ, {'PARCHWELL_TEST_NATIVE_AUTHENTICATION': value}):
+                with self.assertRaisesRegex(phase.Failure, 'unsupported probe batch selection'):
+                    phase.test_native_authentication()
+
     def test_prepare_stop(self):
         env = {key: os.environ[key] for key in ('RUNNER_TEMP', 'GITHUB_ENV', 'GITHUB_OUTPUT', 'PARCHWELL_CLUSTER_RESOURCE_ID')}
         with patch.dict(os.environ, env, clear=True):

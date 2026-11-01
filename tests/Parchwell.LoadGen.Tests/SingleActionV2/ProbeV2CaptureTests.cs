@@ -206,6 +206,63 @@ public sealed class ProbeV2CaptureTests
         Assert.Empty(Snapshot(capture).Diagnostics);
     }
 
+    [Fact]
+    public void GivenRedactor_When_LoggingText_Then_LineCarriesRedactedMessage()
+    {
+        ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
+        capture.Log(new("native", SyslogLevel.Error, "synthetic", "x 11111111-1111-1111-1111-111111111111 eyJa.eyJb.c"));
+        Assert.EndsWith("x [guid] [jwt]", Assert.Single(capture.Logs()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenRedactor_When_ClientErrorIsCaptured_Then_ReasonIsRedacted()
+    {
+        ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
+        capture.Error(new Error(ErrorCode.Local_Transport, "11111111-1111-1111-1111-111111111111", false));
+        Assert.Equal("[guid]", Assert.Single(Snapshot(capture).ClientErrors).Reason);
+    }
+
+    [Fact]
+    public void GivenRedactor_When_KafkaExceptionErrorIsCaptured_Then_ReasonIsRedactedAndOriginIsLocal()
+    {
+        ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
+        capture.Exception(new Error(ErrorCode.Local_Authentication, "eyJa.eyJb.c"), false);
+        ProbeV2Repeat result = Snapshot(capture);
+        Assert.Equal("[jwt]", result.Error!.Reason);
+        Assert.Equal("local", result.Error.Origin);
+    }
+
+    [Fact]
+    public void GivenRedactor_When_ProduceFailureDeliveryIsCaptured_Then_ReasonIsRedactedAndLocationIsNotInvented()
+    {
+        ProbeV2Options options = ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer");
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000, redact: value => ProbeV2NativeAuthentication.Redact(value, options));
+        capture.Delivery(new() { Topic = "document-events", Partition = Partition.Any, Offset = Offset.Unset,
+            Status = PersistenceStatus.NotPersisted, Error = new Error(ErrorCode.TopicAuthorizationFailed, "22222222-2222-2222-2222-222222222222") });
+        ProbeV2Repeat result = Snapshot(capture);
+        Assert.Null(result.Delivery);
+        Assert.Equal("error", result.Result);
+        Assert.Equal(29, result.Error!.Code);
+        Assert.Equal("broker", result.Error.Origin);
+        Assert.Equal("[guid]", result.Error.Reason);
+    }
+
+    [Fact]
+    public void GivenNoRedactor_When_CapturingNativeLookingText_Then_RawTextIsRecorded()
+    {
+        var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), new TestClock(), 0, 120000);
+        capture.Log(new("native", SyslogLevel.Error, "synthetic", "x 11111111-1111-1111-1111-111111111111 eyJa.eyJb.c"));
+        capture.Error(new Error(ErrorCode.Local_Transport, "11111111-1111-1111-1111-111111111111", false));
+        capture.Exception(new Error(ErrorCode.Local_Authentication, "eyJa.eyJb.c"), false);
+        Assert.EndsWith("x 11111111-1111-1111-1111-111111111111 eyJa.eyJb.c", Assert.Single(capture.Logs()), StringComparison.Ordinal);
+        ProbeV2Repeat result = Snapshot(capture);
+        Assert.Equal("11111111-1111-1111-1111-111111111111", Assert.Single(result.ClientErrors).Reason);
+        Assert.Equal("eyJa.eyJb.c", result.Error!.Reason);
+    }
+
     private static ProbeV2Repeat Snapshot(ProbeV2Capture capture) => capture.Snapshot(1, "pod-r1", ProbeV2Stage.For("F06", "C2", "action"),
         new Dictionary<string, string>(), [], null, new("document-state", "explicit", 0, null, "aw==", "dg=="));
 }

@@ -52,6 +52,29 @@ public sealed class ProbeV2LifecycleTests
         }
     }
     [Fact]
+    public async Task GivenNativeJwtBearerStage_When_FiveSlotsRun_Then_SettingsAreAppliedRecordedAndRedacted()
+    {
+        using var fixture = new Fixture(item: "F06", configuration: "C6", stage: "nativejwt", nativeAuthentication: "jwt-bearer");
+        int exit = await ProbeV2Host.RunAsync(hostFactory: () => fixture.Host, output: fixture.Output, logs: fixture.Logs);
+        Assert.Equal(0, exit);
+        ProbeV2CaptureFile capture = Capture(fixture);
+        Assert.Equal(5, capture.Repeats.Count);
+        foreach (ProbeV2Repeat row in capture.Repeats)
+        {
+            Assert.DoesNotContain(row.Settings.Values, value => value.Contains("11111111-1111-1111-1111-111111111111", StringComparison.Ordinal));
+            Assert.DoesNotContain(row.Settings.Values, value => value.Contains("00000000-0000-0000-0000-000000000001", StringComparison.Ordinal));
+            Assert.DoesNotContain(row.Settings.Values, value => value.Contains("/var/run/secrets/azure/tokens/azure-identity-token", StringComparison.Ordinal));
+            Assert.Equal("f02-native:run-1:nativejwt:r" + row.Repeat, System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(row.Requested!.KeyBase64)));
+            Assert.Equal("f02-native:run-1:nativejwt:r" + row.Repeat, System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(row.Requested.ValueBase64!)));
+        }
+        ProbeV2Repeat first = capture.Repeats[0];
+        Assert.Equal("oidc", first.Settings["sasl.oauthbearer.method"]);
+        Assert.Equal("https://login.microsoftonline.com/[tenant]/oauth2/v2.0/token", first.Settings["sasl.oauthbearer.token.endpoint.url"]);
+        Assert.DoesNotContain("sasl.oauthbearer.token.endpoint.url", first.OmittedKeys);
+        Assert.DoesNotContain("sasl.oauthbearer.scope", first.OmittedKeys);
+    }
+
+    [Fact]
     public async Task Given_FiveFreshClients_When_HostEnds_Then_CaptureFollowsStopDispose()
     {
         using var fixture = new Fixture();
@@ -648,12 +671,20 @@ public sealed class ProbeV2LifecycleTests
             bool captureAuthenticationMetadata = false, TextWriter? logWriter = null, string stage = "action",
             bool testHandlerRefreshPath = false, int advanceClockOnSeekMilliseconds = 0,
             bool nonmatchingDiagnosticRead = false, bool nonmatchingAfterFirstPostSeek = false, string? inputRoot = null,
-            int diagnosticConsumeErrors = 0, int advanceClockOnSecondConsumeMilliseconds = 0)
+            int diagnosticConsumeErrors = 0, int advanceClockOnSecondConsumeMilliseconds = 0, string nativeAuthentication = "")
         {
             Options = ProbeV2OptionsTests.Options(item, configuration, stage);
             Options.CaptureAuthenticationMetadata = captureAuthenticationMetadata || testHandlerRefreshPath;
             Options.TestHandlerRefreshPath = testHandlerRefreshPath;
             Options.InputRoot = inputRoot ?? Options.InputRoot;
+            if (nativeAuthentication.Length != 0)
+            {
+                Options.CaptureAuthenticationMetadata = true;
+                Options.NativeAuthentication = nativeAuthentication;
+                Options.NativePrincipalId = "33333333-3333-3333-3333-333333333333";
+                Options.TenantId = "11111111-1111-1111-1111-111111111111";
+                Options.FederatedTokenFile = "/var/run/secrets/azure/tokens/azure-identity-token";
+            }
             string root = AppContext.BaseDirectory;
             while (!File.Exists(Path.Combine(root, "Parchwell.slnx"))) root = Path.GetDirectoryName(root) ?? throw new DirectoryNotFoundException("repository_root");
             Options.ScenarioRoot = root;

@@ -66,6 +66,10 @@ internal sealed partial class ProbeV2Options
     public string Stage { get; set; } = "";
     public bool CaptureAuthenticationMetadata { get; set; }
     public bool TestHandlerRefreshPath { get; set; }
+    public string NativeAuthentication { get; set; } = "";
+    public string NativePrincipalId { get; set; } = "";
+    internal string TenantId { get; set; } = "";
+    internal string FederatedTokenFile { get; set; } = "";
     public ProbeV2Limits Limits { get; set; } = new();
     public ScenarioLoadOptions ScenarioLoadOptions { get; set; } = new();
     public int ProcessLifetimeSeconds { get; set; }
@@ -78,13 +82,19 @@ internal sealed partial class ProbeV2Options
             !Guid.TryParse(PodUid, out _) || !Guid.TryParse(WorkloadIdentityClientId, out _) ||
             ServiceAccount != stage.Account || JobName != Job(RunId, ScenarioId, ConfigurationId, Stage) ||
             !PodName.StartsWith(JobName + "-", StringComparison.Ordinal) || ScenarioRoot != "/app" || InputRoot != "/run/probe-inputs" ||
-            ProcessLifetimeSeconds != (stage.Action == "produce_one" ? 1920 : 840))
+            ProcessLifetimeSeconds != (stage.Action == "produce_one" && stage.WindowMs == 330000 ? 1920 : 840))
             throw new InvalidOperationException("v2_identity");
         if (TestHandlerRefreshPath && (!CaptureAuthenticationMetadata || ScenarioId != "F06" ||
             ConfigurationId == "C6" && !(Stage == "seed" && stage.Account == "loadgen") ||
             ConfigurationId == "C9" && !(Stage == "action" && stage.Account == "enrichment-consumer") ||
             ConfigurationId is not ("C6" or "C9")))
             throw new InvalidOperationException("v2_handler_refresh_selection");
+        bool nativeStage = Stage is "nativejwt" or "nativeimds" or "nativeimdsnode";
+        if ((nativeStage || NativeAuthentication.Length != 0 || NativePrincipalId.Length != 0) && !(nativeStage &&
+            ScenarioId == "F06" && ConfigurationId == "C6" && ServiceAccount == "loadgen" &&
+            CaptureAuthenticationMetadata && !TestHandlerRefreshPath && NativePrincipalId.Length == 36 && Guid.TryParseExact(NativePrincipalId, "D", out _) &&
+            (Stage, NativeAuthentication) is ("nativejwt", "jwt-bearer") or ("nativeimds", "azure-imds-workload") or ("nativeimdsnode", "azure-imds-default")))
+            throw new InvalidOperationException("v2_native_authentication_selection");
         Limits.Validate();
         if (ScenarioLoadOptions.MaxDocumentCharacters != 1048576 || ScenarioLoadOptions.MaxNestingDepth != 32 ||
             ScenarioLoadOptions.MaxScalarCharacters != 65536 || ScenarioLoadOptions.MaxParserEvents != 100000)
@@ -111,6 +121,8 @@ internal sealed partial class ProbeV2Options
             !environment.TryGetValue("AZURE_TENANT_ID", out string? tenant) || !Guid.TryParse(tenant, out _) ||
             !environment.TryGetValue("AZURE_FEDERATED_TOKEN_FILE", out string? tokenFile) || !Path.IsPathFullyQualified(tokenFile) || tokenFile.Contains('\r') || tokenFile.Contains('\n'))
             throw new InvalidOperationException("v2_auth_identity");
+        options.TenantId = tenant;
+        options.FederatedTokenFile = tokenFile;
         foreach ((string name, string expected) in new[] { ("SOURCE_COMMIT", options.SourceCommit), ("JOB_NAME", options.JobName), ("POD_NAME", options.PodName), ("POD_UID", options.PodUid) })
             if (!environment.TryGetValue("PARCHWELL_" + name, out string? actual) || actual != expected)
                 throw new InvalidOperationException("v2_deployment_identity");
@@ -128,6 +140,16 @@ internal sealed partial class ProbeV2Options
                     if (raw == "true") property.SetValue(target, true);
                     else if (raw == "false") property.SetValue(target, false);
                     else throw new InvalidOperationException("v2_authentication_capture_option");
+                }
+                continue;
+            }
+            if (target is ProbeV2Options && prefix.Length == 0 && property.Name is nameof(NativeAuthentication) or nameof(NativePrincipalId))
+            {
+                if (values.Remove(key, out string? raw) && raw.Length != 0)
+                {
+                    if (string.IsNullOrWhiteSpace(raw) || raw.Contains('\r') || raw.Contains('\n'))
+                        throw new InvalidOperationException("v2_native_authentication_option");
+                    property.SetValue(target, raw);
                 }
                 continue;
             }

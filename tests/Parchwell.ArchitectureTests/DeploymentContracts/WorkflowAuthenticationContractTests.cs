@@ -35,6 +35,8 @@ public sealed class WorkflowAuthenticationContractTests
             printf '%s\n' "$GITHUB_WORKSPACE/scripts/azure-cli-session" >> "$GITHUB_PATH"
         """;
 
+    private const string NativeFactor = "(!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))";
+
     [Fact]
     public void Given_LifecycleSweeper_When_Authenticated_Then_RenewalPrecedesIndependentCleanup()
     {
@@ -82,10 +84,22 @@ public sealed class WorkflowAuthenticationContractTests
         Assert.Contains("      test_handler_refresh_path:", lines);
         Assert.Contains("        description: Test our handler refresh path with a 5000 ms advertised expiry cap (selected authentication controls only)", lines);
         Assert.Equal(5, lines.Count(line => line == "      PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}"));
-        Assert.Contains("    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && " + factor, lines);
-        Assert.Contains(lines, line => line.StartsWith("    if: (always() && ((inputs.scenario ==", StringComparison.Ordinal) && line.EndsWith(" && " + factor, StringComparison.Ordinal));
+        Assert.Contains("    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && " + factor + " && " + NativeFactor, lines);
+        Assert.Contains(lines, line => line.StartsWith("    if: (always() && ((inputs.scenario ==", StringComparison.Ordinal) && line.EndsWith(" && " + factor + " && " + NativeFactor, StringComparison.Ordinal));
         Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", lines);
         Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'", lines);
+    }
+
+    [Fact]
+    public void GivenNativeAuthenticationWorkflowFlag_When_Dispatched_Then_DefaultOffTupleGatesEveryJob()
+    {
+        string[] lines = File.ReadAllLines(Path.Combine(RepositoryRoot, "docs/operations/workflows", "scenario.yml.txt"));
+        Assert.Contains("      test_native_authentication:", lines);
+        Assert.Contains("        description: Build three native librdkafka OIDC producers beside the custom-handler control (selected authentication controls only)", lines);
+        Assert.Equal(5, lines.Count(line => line == "      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}"));
+        string[] conditions = lines.Where(line => line.StartsWith("    if: ", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(5, conditions.Length);
+        Assert.All(conditions, line => Assert.EndsWith(" && " + NativeFactor, line, StringComparison.Ordinal));
     }
 
     private static string[] ReadJob(string file, string job)

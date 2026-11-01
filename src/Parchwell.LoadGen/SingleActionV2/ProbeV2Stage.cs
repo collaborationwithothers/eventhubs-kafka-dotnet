@@ -28,6 +28,7 @@ internal sealed record ProbeV2Stage(string Action, string Account, string Topic,
             "seed" when item == "E01" || item == "F06" && number is >= 6 and <= 8 => action with
             { Action = "produce_one", Account = action.Topic == "document-events" ? "loadgen" : "enrichment-consumer", ValueKind = "marker", WindowMs = 330000, SourceConfiguration = null, SourceStage = null },
             "seedread" when item == "E01" => action with { Action = "assign_consume", Account = "probe", ValueKind = "marker", WindowMs = 120000, SourceConfiguration = configuration, SourceStage = "seed" },
+            "nativejwt" or "nativeimds" or "nativeimdsnode" when item == "F06" && number == 6 => action with { Action = "produce_one", Account = "loadgen", ValueKind = "marker", KeyRule = "f02_native", WindowMs = 120000, SourceConfiguration = null, SourceStage = null },
             _ => throw new InvalidOperationException("v2_stage")
         };
     }
@@ -36,13 +37,14 @@ internal sealed record ProbeV2Stage(string Action, string Account, string Topic,
     {
         "b08_fixed" => "b08-synthetic-0",
         "f06_seed" => $"f06-seed:{options.RunId}:{Topic}:r{repeat}",
+        "f02_native" => $"f02-native:{options.RunId}:{options.Stage}:r{repeat}",
         _ => $"{options.ScenarioId}:{options.ConfigurationId}:{options.RunId}:r{repeat}"
     });
     internal byte[]? Value(ProbeV2Options options, int repeat) => ValueKind switch
     {
         "null" => null,
         "empty" => [],
-        _ => Encoding.UTF8.GetBytes(KeyRule == "f06_seed" ? $"f06-seed:{options.RunId}:{Topic}:r{repeat}" :
+        _ => Encoding.UTF8.GetBytes(KeyRule == "f02_native" ? $"f02-native:{options.RunId}:{options.Stage}:r{repeat}" : KeyRule == "f06_seed" ? $"f06-seed:{options.RunId}:{Topic}:r{repeat}" :
             options.Stage is "seed" or "seedread" ? $"seed:E01:{options.ConfigurationId}:{options.RunId}:r{repeat}" :
             $"{options.ScenarioId}:{options.ConfigurationId}:{options.RunId}:r{repeat}")
     };
