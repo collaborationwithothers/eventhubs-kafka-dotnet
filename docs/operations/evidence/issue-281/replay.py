@@ -18,6 +18,11 @@ EXPECTED = 63
 # Stryker replaces a syntax node; parentheses keep an expression replacement one node. A compound
 # assignment is an expression statement here, and C# does not accept one in parentheses.
 PLAIN = ("Statement", "Block", "String", "Linq", "OrAssignmentExpression")
+# The report prints these nodes without the inner parentheses of their syntax tree (issue 312).
+OVERRIDES = {
+    "11986": "(record.Topic != delivery.Topic || record.Partition != delivery.Partition || record.Offset != delivery.Offset) && (keysBounded && record.KeyBase64 != source.Requested?.KeyBase64)",
+    "11988": "(record.Topic != delivery.Topic || record.Partition != delivery.Partition) && record.Offset != delivery.Offset",
+}
 TEST = ["dotnet", "test", "--project", "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj", "-c", "Release",
         "-p:TreatWarningsAsErrors=false", "-p:WarningsAsErrors=", "-p:CodeAnalysisTreatWarningsAsErrors=false"]
 TABLE = "docs/operations/verifier-mutation.md"
@@ -68,7 +73,7 @@ def run(report_path, output, part, ids):
         start, end = offset(mutant["location"]["start"]), offset(mutant["location"]["end"])
         if not SPAN[0] <= start < end <= SPAN[1]:
             sys.exit(f"{mutant['id']}: outside span {SPAN}")
-        replacement = mutant["replacement"]
+        replacement = OVERRIDES.get(mutant["id"], mutant["replacement"])
         if not mutant["mutatorName"].startswith(PLAIN):
             replacement = "(" + replacement + ")"
         open(path, "w", newline="").write(original[:start] + replacement + original[end:])
