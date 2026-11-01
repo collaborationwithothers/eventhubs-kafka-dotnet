@@ -23,7 +23,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | B05 | Transaction initialization on Premium | InitTransactions returned without error. Only initialization was tested; full transactions and exactly-once semantics were not. | confirmed | [Report](results/B05/2026-10-27.md) |
 | B06 | Acknowledgement settings | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | B07 | Batching delay | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| B08 | Partitioner compatibility | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| B08 | Partitioner compatibility | The default `consistent_random` partitioner sent the key `b08-synthetic-0` to partition 30 and `murmur2_random` sent it to partition 2 in all five repeats of each, on a 32-partition event hub, matching the partitions computed from the pinned librdkafka source. One key and one partition count were tested. | confirmed | [Report](results/B08/2026-11-01.md) |
 | B09 | Produce throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | B10 | Message timeout and application retry | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | B11 | Claim-check ordering and retention | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
