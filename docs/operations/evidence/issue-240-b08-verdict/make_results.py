@@ -449,6 +449,7 @@ def verify_captures(item, jobs, candidates):
                 require(a["requested"]["value_base64"] == want and rec["value_base64"] == want, "E01 target value differs")
                 seed, seedread = captures[(config, "seed")]["repeats"][i], captures[(config, "seedread")]["repeats"][i]
                 sd, sr = seed["delivery"], seedread["read_observation"]["record"]
+                require(sd["topic"] == sr["topic"] == spec["topic"], "E01 seed was not delivered and read on the target topic")
                 require(sd["persistence_status"] == "Persisted" and (sr["partition"], sr["offset"]) == (sd["partition"], sd["offset"])
                         and sr["value_base64"] == seed["requested"]["value_base64"] and sr["value_base64"] not in (None, ""),
                         "E01 seed was not read back non-null at its delivered location")

@@ -19,13 +19,13 @@ The generator file is shared in content with the E01 verdict pull request, which
 
 ## Cold review record
 
-Cumulative budget after round 3: 2 comprehensive, 1 focused; one focused round remains.
+Cumulative budget after round 3: 2 comprehensive, 1 focused. One focused round remains.
 
 - Round 1: mode comprehensive, input revision `f66d749`, comparison revision base `961413f`. Three P0 (the `results/` and README verdict finding, expected without the label), three P1 and three P2. Corrected in `0c915cd`.
 - Round 2: mode comprehensive, input revision `0c915cd`, comparison revision base `961413f`, previous reviewed revision `f66d749`. One P1 (an untraceable example key count) and one P2. Corrected in `af572bb` by removing the example.
 - Round 3: mode focused correction, input revision `af572bb`, comparison revision `0c915cd`, full pull request diff as context. The `results/` P0 again, and one P1 that this receipt did not record rounds 2 and 3, corrected by this section.
 
-The reports are linked from the pull request description, which also lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph. Specification sources are as listed in this receipt.
+Rounds after round 3 are recorded in the pull request description, which links all reports and also lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph. Specification sources are as listed in this receipt.
 
 ## Specification comparison
 
@@ -65,7 +65,7 @@ Inputs are extracted under the session scratchpad.
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
 | `grep -nP '[^\x00-\x7F]'` over the five authored files | No match. |
 
-The result SHA-256 is `9a3e5ebbabe186712f168e652cfd1577292c451374960aa63a6e4f934afb6471`. The generator SHA-256 is `e76b4f34665feba86f1a9b7700f495fef2b82859aa12e2a0635183d24eca47f8`. Both describe the corrected files at the round 2 revision `0c915cd`; the pull request description is authoritative for the final head.
+The result SHA-256 is `9a3e5ebbabe186712f168e652cfd1577292c451374960aa63a6e4f934afb6471`. The generator SHA-256 is `3033f090b032b83932cc53ae1c0fbec61b82092c497c887c7341ae715e2f449b`. The generator hash includes the seed-topic check added after round 3; the result hash is unchanged. The pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 
