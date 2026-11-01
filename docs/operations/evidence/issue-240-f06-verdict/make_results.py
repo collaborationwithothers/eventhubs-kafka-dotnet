@@ -247,8 +247,9 @@ NEGATIVE = ("C2", "C4", "C10", "C11")
 CONFIGS = tuple("C%d" % n for n in range(12))
 TOPICS = {"events": "document-events", "state": "document-state", "dlq": "document-events-dlq"}
 
-# Transcribed from scenarios/F06/scenario.yaml (cross-checked below). "reads" names
-# the configuration whose seed this configuration reads.
+# Transcribed from scenarios/F06/scenario.yaml (cross-checked below). "seed" is None for a
+# producer configuration, else (seed configuration, seed account); the seed account is None
+# where the configuration only reads the seed that another configuration wrote.
 MATRIX = {
     "C0": dict(action="produce_one", account="loadgen", topic="document-events", seed=None),
     "C1": dict(action="produce_one", account="probe", topic="document-events", seed=None),
@@ -850,7 +851,7 @@ def render_tables(result, jobs, candidates):
     pub = result["publication"]
     out = []
     out.append("<!-- tables:configurations -->")
-    out.append("| Configuration | Account | Action | Topic | Expected by the scenario | Outcome in all 5 repeats |")
+    out.append("| Configuration | Account | Action | Topic | Grant by design | Outcome in all 5 repeats |")
     out.append("| --- | --- | --- | --- | --- | --- |")
     for config in CONFIGS:
         m = MATRIX[config]

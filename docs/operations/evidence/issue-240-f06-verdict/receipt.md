@@ -58,15 +58,17 @@ Inputs are extracted under the session scratchpad.
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change (rerun after the round 1 corrections). |
 | `grep -nP '[^\x00-\x7F]'` over the authored files | No match. |
 
-The result SHA-256 is `328a8e004f3fd612fe32789951b2166b2800f65e4db2ba8fc34aab24f3d0af67`. The generator SHA-256 is `d9ab6603d88ec05561a95bfb5f5b1d998c4f0bbb16f205e33d2834db100645cb`. The pull request description is authoritative for the final head.
+The result SHA-256 is `328a8e004f3fd612fe32789951b2166b2800f65e4db2ba8fc34aab24f3d0af67`. The generator SHA-256 is `7b81b9d13eae4f0cc29000680d6aacabd666fd048149c84322b57eacb781a9c0`. The pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 
 ## Cold review record
 
-Cumulative budget after round 1: 1 comprehensive, 0 focused.
+Cumulative budget after round 3: 2 comprehensive, 1 focused (the prose-only P2-correction round under rule 8).
 
 - Round 1: mode comprehensive, input revision `af859df` (tree equal to the reviewed staged tree), comparison revision `7d51a8a`. Three P0 (the `results/` and README verdict finding, expected without the `verdict` label), three P1 and two P2. All P1 and P2 were verified against their sources and corrected: the full public audit projection is now embedded verbatim in the result (the plan says to include it); the Learn-page wording now lists its Kafka references; the `Fetch from broker` text is cited to `rdkafka_fetcher.c` and the consumer-group claim was replaced by a statement about configured grants; the survivor sentence no longer says they have no disposition; a dead check in the generator was removed with a comment naming the checks that cover it. `origin/main` was merged (now `40ba3b8`); the configured C5 targets, C5 configuration, scenarios, cluster and ephemeral Terraform are unchanged between `961413f` and it.
+- Round 2: mode comprehensive, input revision `e84788b`, comparison revision `40ba3b8`, previous reviewed revision `af859df`. The same three expected P0 (`results/` and README verdict, label not visible in a diff), no P1, four P2. Fixed: the table column header that attributed grants to the scenario (now "Grant by design"), and a generator comment that named a key that does not exist. Not fixed, with reasons: the survivor sentence (decision 6557335536 on issue 277, point 1 and 2, bars a pack from recording one child's dispositions; one later `verdict` pull request updates all packs), and the published key `boot_identity_clock` (renaming it changes result data, and rule 8 allows only prose-only P2 fixes in this round).
+- Round 3: mode focused P2-correction, input revision the head containing these fixes, comparison revision `e84788b`, full pull request diff as context. Reports only P0 or P1. Its result is recorded in the pull request description.
 
 Later rounds are recorded in the pull request description, which links all reports and lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph.
 
