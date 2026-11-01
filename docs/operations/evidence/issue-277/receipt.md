@@ -7,7 +7,7 @@ This records the update of 11 published evidence packs. Each pack called the 260
 - Deliverable: the 11 one-line pack edits, this receipt and `items/277/state.md` of the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560320119), Revision 2.
 - Authorization: plan Revision 2 (`updated_at` 2026-11-01T16:10:45Z), checked by [plan check 6560675226](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560675226) and approved by [comment 6561200897](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6561200897), including the three `apply in implementation` P2s, applied below. Later decisions: [6557335536](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6557335536), [6560241481](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560241481), [6560392252](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560392252).
 - Mandatory gates: the acceptance commands below, the cold review under AGENTS.md "Before opening a pull request" rule 8, hosted CI, Codex review and Hari's approval and merge. `results/` is protected and GOVERNANCE "Verdict integrity" applies. The pull request is labelled `verdict`.
-- Publication checkpoint: open the pull request after the first cold review with no P0 or P1.
+- Publication checkpoint: open the pull request after acceptance 1 to 7 pass and the first cold review has no P0 or P1.
 - Review budget: rule 8 as written. Exhaustion action: its review-budget handoff to Hari.
 
 ## Predicate map
@@ -107,4 +107,6 @@ Branch cut from `main` at `99131de`. `git diff --stat 831a2e7 origin/main -- res
 
 ## Cold review
 
-Recorded in the pull request's self-review record.
+- Round 1: comprehensive, 1 of at most 2 comprehensive passes; cumulative focused rounds at its start: 0. Input revision: `d24f03aa9ff71a1ae86d1d022d01052d816421a8`. Comparison: `origin/main` at `99131dee48677b971f0b2299d243779151ebe700`.
+- Specification sources: the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560320119), Revision 2, its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560675226) P2s as applied, [approval 6561200897](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6561200897), and decisions [6557335536](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6557335536), [6560241481](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560241481) and [6560392252](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6560392252).
+- Round 1 result: one P1 (the state file credited a decision with the child issue numbers it does not name) and two P2s (this section, and the publication checkpoint wording). All three are fixed. Later rounds and the final-head CI run are in the pull request's self-review record.
