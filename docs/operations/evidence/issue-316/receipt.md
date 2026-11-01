@@ -21,7 +21,7 @@ The plan's "Enforced checks" table is the map. Every row has a test in `tests/Pa
 
 ## Commands and results
 
-Branch cut from `main` at `8d225aae4c1a6ad92024098beebf68d0389c797d`. Items 1 to 5 ran on the tree of commit `08c9a02`; `items/316/state.md` and this receipt changed afterwards and no code, test, fixture or scenario file did. Items 6 and 8 ran on commit `804afcb`, which holds the final state file. .NET SDK 10.0.402 was installed with the official install script into a scratch directory.
+Branch cut from `main` at `8d225aae4c1a6ad92024098beebf68d0389c797d`. Items 1 to 5 ran on the tree of commit `08c9a02`, and item 7 on commit `5b7e6ce`, which differs from `08c9a02` only in this receipt and the state file, files item 7 does not read; `items/316/state.md` and this receipt changed afterwards and no code, test, fixture or scenario file did. Items 6 and 8 ran on commit `804afcb`, which holds the final state file. .NET SDK 10.0.402 was installed with the official install script into a scratch directory.
 
 1. Change 9 fixture script: printed `capabilities.json 29160 38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a` and `index.json 932 7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f`, equal to the plan's two lines. `GoldenArtifactWriterTests` and the golden reader tests are not among the failures below.
 2. Acceptance 4 script printed `remarks copied`.
