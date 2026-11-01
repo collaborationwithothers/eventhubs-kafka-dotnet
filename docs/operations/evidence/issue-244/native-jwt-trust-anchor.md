@@ -54,7 +54,7 @@ The IMDS modes remain accepted by the worker and chart, unchanged by design (pla
 
 ## Verification record
 
-Run in this session's container (Linux, .NET SDK 10.0.402 from the official installer, Helm 4.3.1 and kubeconform 0.8.0 downloaded with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`). Source: source and test files as in commit `123d473` (the first commit on the branch); the later correction commit changes only documentation, and `npm run check:docs` was rerun on it.
+Run in this session's container (Linux, .NET SDK 10.0.402 from the official installer, Helm 4.3.1 and kubeconform 0.8.0 downloaded with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`). Source: source and test files as in commit `123d473` (the first commit on the branch); the later correction commits change only documentation, and `npm run check:docs` was rerun after them.
 
 | Command | Result |
 |---|---|
@@ -73,11 +73,13 @@ Authority refresh before the first push: issue body `updated_at` 2026-11-01T09:3
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 2 of 2, focused 0 of 2. The final focused round's report is recorded in the pull request self-review record, not here, because it reviews this receipt.
+Cumulative counts at the time of writing: comprehensive 2 of 2, focused 1 of 2 reported (round 3) and the second (round 4) pending. The reports of rounds 3 and 4 are recorded in the pull request self-review record, not here, because they review this receipt.
 
 | Round | Mode | Input revision | Comparison revision | Findings | Disposition |
 |---|---|---|---|---|---|
 | 1 | comprehensive | `123d473` | `8078e6f` | P1: the new librdkafka claims in the operations doc had no citation. P2: the receipt did not name the verified commit | Both fixed in `dac7bea`: four pinned citations added; the verification record names `123d473` |
 | 2 | comprehensive (consolidated re-review) | `dac7bea` | `8078e6f` | P1: this receipt had no cold-review record. P2: the receipt did not say the doc adds citations beyond the plan's text | Both fixed in the commit that adds this section: this record, and the note in "Specification comparison" |
+| 3 | focused | `04ffbb2` | `dac7bea` | P1: this receipt did not name the mode and revisions of the review it was submitted for | Fixed in the commit that adds row 4 |
+| 4 | focused (last of 2) | the commit that adds this row | `04ffbb2` | Pending; recorded in the pull request self-review record | Not applicable |
 
 Round 1 and round 2 reported no missing, partial or incorrect requirement and no scope creep against the plan, plan check 6556022257 and approval 6556147592. Their pre-existing observations need no change here: the assessment comment 6555801700 has a `created_at` later than the comment the state file covers (a harmless re-read); `probe_v2.py` keeps `maximum_clients` hard-coded as the plan chose; and the protected workflow input description is recorded in the operations doc.
