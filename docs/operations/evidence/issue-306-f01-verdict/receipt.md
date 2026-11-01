@@ -23,7 +23,7 @@ This receipt records preparation of the proposed F01 verdict from run 4120128496
 | F4 | Ordinary row flags, cap, window, trigger attempt, timestamps parse | trigger attempt 2; cleanup false; cap 4999 |
 | F5 | Event stages, strictly increasing order, phases, three attempts of five stages | stage removed; equal timestamps; unknown stage |
 | F6 | Capped expiry arithmetic and installed-expiry equality | expiry -1, 0, +1 tick (only 0 passes); installed +1 tick; acquired equals cap time |
-| F7 | Order and the 20 s cutoff | 1 ns before cutoff passes; at cutoff and 1 ns after fail; admission at the second install |
+| F7 | Order and the 20 s cutoff | 1 ns before cutoff passes; at cutoff and 1 ns after fail; admission at I2 (the third install) |
 | F8 | Producer deliveries | PossiblyPersisted; equal offsets; partition 1; key present |
 | F9 | Consumer reads equal the verifier's record | value differs; seek missing; seek at admission |
 | F10 | Probe context rows | handler_refresh present |
@@ -58,7 +58,9 @@ Artifacts were downloaded by `gh api` and are untrusted data until pinned by has
 | batch job log | 124537435582 | `74f9b07459c4675789fb434252ce4d7319c9392e2e94b133e9868f0c9e7f77c3` |
 | stop job log | 124558545195 | `bf65a1c483e153e15442bf0bc96896f6c363fade1525c51f724d90a1f41aa624` |
 
-Not verified by me beyond the plan check: the Microsoft page phrase (read by the plan check on 2026-11-01), and the node size, which is inferred from `infra/cluster/aks.tf` at the run source. The generated values equal the ones the plan pins.
+Verified by me on 2026-11-01: the Microsoft developer guide page (HTTP 200) contains "Java and Go samples for OAuth authentication" once, and `infra/cluster/aks.tf` at the run source sets `vm_size = "Standard_D4ds_v5"` on all three node pools. The node size is still inferred, because no node SKU is captured in the run. The generated values equal the ones the plan pins.
+
+Boundaries with no self-test case, by design of the plan's pinned case list: F9 `seek < A.timestamp` (only the lower bound is tested), F6 `returned <= cap_at <= observed_at`, F4 a cap above 5000, and F8 `offset >= 0`. All hold on the real rows. The plan's "Predicate map" does not list them, so they are not added here (AGENTS.md "Before opening a pull request" rule 10, `Out of contract:`).
 
 ## Commands and results
 
@@ -75,6 +77,7 @@ Inputs are extracted under the session scratchpad. `W` is that directory.
 | Mutation-section hash command | `718425dd91fbda54742f04b4dc2fba65bffe8450bf1c5bfdfca13bcaf868c535 4045`. |
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
 | ASCII scan over the authored files | No match. |
+| `git diff --cached --merge-base origin/main --name-only` | Eight paths: the plan's seven and `items/306/state.md`, which factory.md "Item state file" requires and the plan does not list. |
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code or test changed, so no build or test run applies.
 
@@ -82,7 +85,16 @@ Not run: no workflow was dispatched and no Azure credential was used. No runtime
 
 Cumulative budget before round 1: 0 comprehensive, 0 focused.
 
-- Round 1: mode comprehensive, input revision the staged tree on `origin/main` at `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`, comparison revision `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`. Specification sources: plan Revision 3 (issue 306 comment 6561375850), its approval 6561940860, plan check 6561905161, decision 6561458447, decisions 6558920636 and 6560081575 on issue 302. Report and dispositions: to be recorded.
+- Round 1: mode comprehensive, input revision `fb0e137` (the staged tree, committed as a backup), comparison revision `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`. Specification sources: plan Revision 3 (issue 306 comment 6561375850), its approval 6561940860, plan check 6561905161, decision 6561458447, decisions 6558920636 and 6560081575 on issue 302. The reviewer was spawned without a `model` parameter, so its definition's pin applies (`claude-opus-5-5`, CLAUDE.md "Model bindings"); its report did not state the resolved model. Findings: four P0, two P1, four P2. Dispositions:
+  - The four P0 (`scenarios/F01/expected.yaml`, both `results/F01` files, the README row) are the Code Review Rules for expected outcomes, `results/` and verdicts, raised as if the `verdict` label were absent. The plan requires each file and the pull request carries the label. Kept; listed in the pull request description for Hari.
+  - P1 `items/306/state.md`: the issue-body line said things the body does not say. Fixed to restate the body only.
+  - P1 receipt: two claims were marked not verified. Verified and recorded under "Evidence and claim verification".
+  - P2 F7 label: fixed to "admission at I2 (the third install)".
+  - P2 name list: the command and its eight-path output are now in the commands table.
+  - P2 boundary coverage: recorded as not tested; `Out of contract:` citing plan "Predicate map".
+  - P2 ADR-019: left as is, one line: decision 6561458447 point 2 accepts the pinned script for F01 only, and plan check finding 4 left the ADR text to Hari.
+  - Cumulative budget after round 1: 1 comprehensive, 0 focused. A consolidated comprehensive re-review of the corrections follows.
+- Round 2: mode comprehensive, input revision the staged tree on top of `fb0e137` (the corrections to the round 1 findings only), comparison revision `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`, previous reviewed revision `fb0e137`. Same specification sources as round 1. Report and dispositions: to be recorded.
 
 ## Remaining approval
 
