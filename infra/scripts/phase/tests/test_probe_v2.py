@@ -187,6 +187,16 @@ class ProbeV2Tests(unittest.TestCase):
         self.write(self.private / 'phase.json', phase_data)
         os.environ.update(PARCHWELL_BATCH_ITEMS='authentication-controls', PARCHWELL_CAPTURE_AUTHENTICATION_METADATA='true')
 
+    def native_controls(self, principal=None):
+        self.selected_controls()
+        saved = self.p.read('phase.json')
+        saved['test_native_authentication'] = True
+        self.write(self.private / 'phase.json', saved)
+        if principal is not None:
+            ephemeral = self.p.read('ephemeral-output.json')
+            ephemeral['probe_v2_role_scope']['value']['accounts']['loadgen']['principal_id'] = principal
+            self.write(self.private / 'ephemeral-output.json', ephemeral)
+
     def test_selected_values_pass_capture_only_to_actor_workers(self):
         self.selected_controls()
         actors = []
@@ -298,6 +308,139 @@ class ProbeV2Tests(unittest.TestCase):
         self.assertEqual(15, report['admitted_client_slots']); self.assertTrue(report['transport_passed'])
         self.assertFalse(report['metadata_assessed']); self.assertTrue(report['cleanup_required'])
         self.assertFalse((self.artifacts / 'probe-v2-smoke.json').exists())
+
+    def test_native_stage_graph_extends_only_the_f06_c6_route_and_only_with_the_flag(self):
+        self.assertEqual((('seed', 'loadgen', 1980), ('action', 'probe', 900), ('judge', 'verifier', 120),
+                          ('nativejwt', 'loadgen', 900), ('nativeimds', 'loadgen', 900),
+                          ('nativeimdsnode', 'loadgen', 900)), v2.stages('F06', 'C6', True))
+        self.assertEqual(v2.stages('F06', 'C9'), v2.stages('F06', 'C9', True))
+        self.assertEqual((('seed', 'loadgen', 1980), ('action', 'probe', 900), ('judge', 'verifier', 120)), v2.stages('F06', 'C6'))
+        self.assertEqual(49, sum(len(v2.stages(item, configuration)) for item, configuration in v2.CONFIGURATIONS))
+        self.assertEqual(49, sum(len(v2.stages(item, configuration, False)) for item, configuration in v2.CONFIGURATIONS))
+
+    def test_native_authentication_flag_is_frozen_and_reaches_only_the_three_native_stages(self):
+        self.native_controls()
+        self.assertEqual(('authentication-controls', v2.AUTHENTICATION_CONTROLS), self.subject.selection())
+        modes = {'nativejwt': 'jwt-bearer', 'nativeimds': 'azure-imds-workload', 'nativeimdsnode': 'azure-imds-default'}
+        seen = []
+        for item, configuration in v2.AUTHENTICATION_CONTROLS:
+            for stage, role, _ in v2.stages(item, configuration, True):
+                runtime = self.subject.values(item, configuration, stage, role)['runtime']
+                if stage in modes:
+                    self.assertEqual(modes[stage], runtime['native_authentication'])
+                    self.assertEqual('principal-loadgen', runtime['native_principal_id'])
+                    self.assertIs(True, runtime['capture_authentication_metadata'])
+                    self.assertNotIn('test_handler_refresh_path', runtime)
+                    seen.append(stage)
+                else:
+                    self.assertNotIn('native_authentication', runtime)
+                    self.assertNotIn('native_principal_id', runtime)
+        self.assertEqual(['nativejwt', 'nativeimds', 'nativeimdsnode'], seen)
+        saved = self.p.read('phase.json')
+        for field, invalid in [('test_native_authentication', 'true'), ('test_handler_refresh_path', True),
+                               ('capture_authentication_metadata', False), ('items', ['B08']),
+                               ('run_kind', 'batch'), ('probe_v2_selection', 'all')]:
+            corrupted = dict(saved)
+            corrupted[field] = invalid
+            self.write(self.private / 'phase.json', corrupted)
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'v2_smoke_selection'):
+                self.subject.selection()
+
+    def test_native_stage_is_rejected_without_the_frozen_flag(self):
+        self.selected_controls()
+        with self.assertRaisesRegex(ValueError, 'v2_stage'):
+            self.subject.values('F06', 'C6', 'nativejwt', 'loadgen')
+
+    def test_native_selected_batch_runs_native_stages_after_the_c6_judge(self):
+        self.native_controls()
+        stages_seen = []
+        candidate_payloads = {}
+
+        def prepare_candidate(record):
+            prefix = f"{RUN}/single-action-v2/{record['item']}/{record['configuration']}/"
+            raw = json.dumps(candidate(record['item'], record['configuration'])).encode()
+            receipt = {'schema_version': 2, 'mode': 'single-action-v2-judge', 'run_id': RUN,
+                       'scenario_id': record['item'], 'configuration_id': record['configuration'],
+                       'source_commit': SHA, 'job_name': record['job'], 'pod_name': record['job'] + '-pod',
+                       'pod_uid': 'synthetic-pod-uid', 'candidate_name': prefix + 'candidate.json',
+                       'candidate_sha256': hashlib.sha256(raw).hexdigest(), 'handler_exit_code': 0,
+                       'cleanup_completed': True}
+            candidate_payloads[prefix + 'candidate.json'] = raw
+            candidate_payloads[prefix + 'judge-completion.json'] = json.dumps(receipt).encode()
+
+        def download(name, target, maximum, deadline):
+            payload = candidate_payloads[name]
+            target.write_bytes(payload)
+            return payload
+
+        def run_stage(item, configuration, stage, role, seconds, deadline, skip):
+            stages_seen.append((item, configuration, stage, role))
+            record = self.record(stage, item, configuration, role)
+            state = self.p.state(); state['modes'].append(record); self.p.save_state(state)
+            if stage == 'judge':
+                self.evidence(record)
+            else:
+                self.selected_evidence(record)
+            if stage == 'judge':
+                prepare_candidate(record)
+            return record
+        with patch.object(self.subject, 'scope', return_value=True), patch.object(self.p, 'admission_allowed', return_value=True), \
+             patch.object(self.subject, 'run_stage', side_effect=run_stage), patch.object(self.p, 'run', side_effect=self.fake), \
+             patch.object(self.p, 'download_blob', side_effect=download):
+            self.assertEqual(0, self.subject.run_batch())
+        self.assertEqual([('F06', 'C6', 'seed', 'loadgen'), ('F06', 'C6', 'action', 'probe'),
+                          ('F06', 'C6', 'judge', 'verifier'), ('F06', 'C6', 'nativejwt', 'loadgen'),
+                          ('F06', 'C6', 'nativeimds', 'loadgen'), ('F06', 'C6', 'nativeimdsnode', 'loadgen'),
+                          ('F06', 'C9', 'action', 'enrichment-consumer'), ('F06', 'C9', 'judge', 'verifier')], stages_seen)
+        state = self.p.state()
+        self.assertEqual(8, len(state['modes']))
+        self.assertEqual([('F06', 'C6'), ('F06', 'C9')],
+                         [(candidate['item'], candidate['configuration']) for candidate in state['candidates']])
+        report = json.loads((self.artifacts / 'authentication-metadata-collection.json').read_text())
+        self.assertEqual({'schema_version', 'mode', 'selection', 'run_id', 'source_commit', 'image_digests', 'configurations',
+                          'jobs', 'action_slots', 'maximum_clients', 'admitted_client_slots', 'transport_passed',
+                          'metadata_assessed', 'cleanup_required'}, set(report))
+        self.assertEqual(8, report['jobs']); self.assertEqual(10, report['action_slots']); self.assertEqual(30, report['maximum_clients'])
+        self.assertEqual(30, report['admitted_client_slots']); self.assertTrue(report['transport_passed'])
+        self.assertFalse(report['metadata_assessed']); self.assertTrue(report['cleanup_required'])
+
+    def test_native_stage_values_render_through_helm_with_the_loadgen_principal(self):
+        guid = '33333333-3333-3333-3333-333333333333'
+        runtime = yaml.safe_load((REPO / 'charts/parchwell/tests/fixture.yaml').read_text())['runtime']
+        state = self.p.read('phase.json')
+        state['source_commit'] = runtime['source_commit']
+        state['images'] = {w: {'reference': runtime[w + '_image'], 'digest': runtime[w + '_image'].rsplit('@', 1)[1]} for w in ('loadgen', 'verifier')}
+        self.write(self.private / 'phase.json', state)
+        ephemeral = self.p.read('ephemeral-output.json')
+        for key in ('eventhubs', 'blob'):
+            ephemeral[key] = {'value': runtime[key]}
+        ephemeral['blob']['value']['containers']['single_action'] = 'single-action'
+        self.write(self.private / 'ephemeral-output.json', ephemeral)
+        accounts = {a: {'name': a, 'client_id': f'00000000-0000-0000-0000-{i + 1:012d}', 'subject': 'system:serviceaccount:parchwell:' + a} for i, a in enumerate(v2.ACCOUNTS)}
+        self.write(self.private / 'cluster-output.json', {'workload_identity': {'value': {'service_accounts': accounts}}})
+        self.write(self.private / 'persistent-output.json', {'application_insights_connection_string': {'value': runtime['application_insights_connection_string']}})
+        self.native_controls(guid)
+        modes = {'nativejwt': 'jwt-bearer', 'nativeimds': 'azure-imds-workload', 'nativeimdsnode': 'azure-imds-default'}
+        for stage, mode in modes.items():
+            with self.subTest(stage=stage):
+                values = self.subject.values('F06', 'C6', stage, 'loadgen')
+                self.assertEqual(guid, values['runtime']['native_principal_id'])
+                path = self.private / 'native-v2-chart-values.json'; self.write(path, values)
+                result = subprocess.run(['helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(path)], cwd=REPO, capture_output=True, text=True, timeout=60)
+                self.assertEqual(0, result.returncode, result.stderr)
+                jobs = [o for o in yaml.safe_load_all(result.stdout) if o and o['kind'] == 'Job']
+                self.assertEqual(1, len(jobs))
+                job = jobs[0]
+                self.assertEqual(v2.job_name(RUN, 'F06', 'C6', stage), job['metadata']['name'])
+                self.assertEqual(900, job['spec']['activeDeadlineSeconds'])
+                self.assertEqual('loadgen', job['spec']['template']['spec']['serviceAccountName'])
+                container = job['spec']['template']['spec']['containers'][0]
+                self.assertEqual([], [m for m in container.get('volumeMounts', []) if m['name'].startswith('evidence-')])
+                env = {e['name']: e.get('value') for e in container['env']}
+                self.assertEqual(mode, env['ProbeV2__NativeAuthentication'])
+                self.assertEqual(guid, env['ProbeV2__NativePrincipalId'])
+                self.assertEqual('840', env['ProbeV2__ProcessLifetimeSeconds'])
+                self.assertEqual('true', env['ProbeV2__CaptureAuthenticationMetadata'])
 
     def test_selected_transport_failure_records_all_stages_and_gap_summary(self):
         self.selected_controls()
@@ -954,14 +1097,16 @@ class ProbeV2Tests(unittest.TestCase):
     def test_public_pod_redacts_identity_values_preserving_coordinates(self):
         value = pod(self.record())
         value['spec']['containers'][0]['env'].extend([{'name': 'Telemetry__ConnectionString', 'value': 'private-telemetry'}, {'name': 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value': 'private-app-insights'}])
+        value['spec']['containers'][0]['env'].append({'name': 'ProbeV2__NativePrincipalId', 'value': 'private-native-principal'})
         value['spec']['initContainers'] = [{'env': [{'name': 'ARM_SUBSCRIPTION_ID', 'value': 'private-subscription'}, {'name': 'ProbeV2Judge__PrincipalId', 'value': 'private-principal'}]}]
         v2.public_pod(value)
         raw = json.dumps(value)
-        for forbidden in ('private-client', 'private-tenant', 'private-subscription', 'private-principal', 'private-telemetry', 'private-app-insights'):
+        for forbidden in ('private-client', 'private-tenant', 'private-subscription', 'private-principal', 'private-telemetry', 'private-app-insights', 'private-native-principal'):
             self.assertNotIn(forbidden, raw)
         self.assertEqual('synthetic-pod-uid', value['metadata']['uid'])
         self.assertEqual(IMAGES['loadgen']['reference'], value['status']['containerStatuses'][0]['imageID'])
         self.assertEqual('loadgen', value['spec']['serviceAccountName'])
+        self.assertEqual('[redacted]', next(e['value'] for e in value['spec']['containers'][0]['env'] if e['name'] == 'ProbeV2__NativePrincipalId'))
 
     def test_closed_json_rejects_depth_duplicate_and_size_boundaries(self):
         self.assertEqual({'x': 1}, v2.decode(b'{"x":1}', 7))

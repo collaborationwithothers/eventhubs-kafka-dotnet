@@ -54,7 +54,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         CancellationToken sessionToken = refreshSessionCancellation?.Token ?? actionCancellation.Token;
         var capture = new ProbeV2Capture(options.Limits, clock, started, stage.WindowMs, diagnosticBudget,
             $"scenario_id={options.ScenarioId} run_id={options.RunId} configuration_id={options.ConfigurationId} stage={options.Stage} repeat={repeat} ",
-            options.CaptureAuthenticationMetadata);
+            options.CaptureAuthenticationMetadata,
+            options.NativeAuthentication.Length != 0 ? value => ProbeV2NativeAuthentication.Redact(value, options) : null);
         string clientId = $"{options.PodName}-r{repeat}";
         ProbeV2AuthenticationMetadataCollector? metadataCollector = null;
         if (options.CaptureAuthenticationMetadata)
@@ -64,7 +65,9 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
         }
         var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
         settings["client.id"] = clientId;
+        if (options.NativeAuthentication.Length != 0) settings = ProbeV2NativeAuthentication.Apply(options, settings);
         string[] omitted = resolved.Omissions.Select(value => value.Key).Concat(resolved.ScenarioOmissions.Select(value => value.Key))
+            .Where(key => options.NativeAuthentication.Length == 0 || !settings.ContainsKey(key))
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         int[]? metadata = null;
         IProducer<byte[], byte[]>? producer = null;
@@ -215,7 +218,8 @@ internal sealed class ProbeV2Worker(ProbeV2Options options, ProbeV2SessionFactor
                 }
             }
         }
-        return capture.Snapshot(repeat, clientId, stage, settings, omitted, metadata, requested);
+        return capture.Snapshot(repeat, clientId, stage,
+            options.NativeAuthentication.Length != 0 ? ProbeV2NativeAuthentication.Recorded(options, settings) : settings, omitted, metadata, requested);
 
         long Remaining() => Math.Max(0, stage.WindowMs - capture.ElapsedMs);
         bool Continue() => !capture.Terminal && !capture.Limit && Remaining() > 0;

@@ -36,6 +36,11 @@ on:
         type: boolean
         required: false
         default: false
+      test_native_authentication:
+        description: Build three native librdkafka OIDC producers beside the custom-handler control (selected authentication controls only)
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
   id-token: write
@@ -45,7 +50,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   probe:
-    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))
+    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -64,6 +69,7 @@ jobs:
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
+      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}
     steps:
@@ -245,7 +251,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   full-C0:
     needs: [probe]
-    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))
+    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -260,6 +266,7 @@ jobs:
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
+      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: C0
     steps:
@@ -440,7 +447,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   full-C3:
     needs: [probe, full-C0]
-    if: (always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))
+    if: (always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -455,6 +462,7 @@ jobs:
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
+      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
       PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C1' || 'C3' }}
     steps:
@@ -675,7 +683,7 @@ jobs:
           WORKLOAD_STEPS: tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy
         run: bash infra/scripts/phase/phase.sh report
   batch:
-    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))
+    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -690,6 +698,7 @@ jobs:
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
+      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}
@@ -868,7 +877,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))
+    if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -883,6 +892,7 @@ jobs:
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
+      PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario }}
       PARCHWELL_PHASE: single-action
       PARCHWELL_RUN_KIND: ${{ inputs.run_kind }}

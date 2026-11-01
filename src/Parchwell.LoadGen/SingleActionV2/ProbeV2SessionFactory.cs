@@ -16,6 +16,10 @@ internal sealed class ProbeV2SessionFactory
         ProbeV2Stage stage = ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage);
         producer = (settings, capture, cancellation) =>
         {
+            if (options.NativeAuthentication.Length != 0)
+                return new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
+                    .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
+                    .SetStatisticsHandler((_, value) => capture.Statistics(value)).Build();
             var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
             KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
                 ? authentication.CreateRefreshPathTestSession(identity, 5000, cancellation)
@@ -29,6 +33,7 @@ internal sealed class ProbeV2SessionFactory
         };
         consumer = (settings, capture, cancellation) =>
         {
+            if (options.NativeAuthentication.Length != 0) throw new InvalidOperationException("v2_native_consumer");
             var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
             KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
                 ? authentication.CreateRefreshPathTestSession(identity, 5000, cancellation)

@@ -7,7 +7,7 @@ import tempfile
 import yaml
 from test_chart import CHART, ROOT, positive_cases, with_case
 from test_single_action_chart import positive_cases as single_action_cases
-from test_probe_v2_chart import positive_cases as probe_v2_cases
+from test_probe_v2_chart import positive_cases as probe_v2_cases, native_cases as probe_v2_native_cases
 
 EXPECTED=b'{"loadgen_configuration_valid":true}\n'
 POD_UID='00000000-0000-4000-8000-000000000192'
@@ -109,6 +109,16 @@ def probe_v2_host_acceptance(td, loadgen_publish):
         proc = bounded(60, host, output, environment(rendered))
         assert proc.returncode == 0 and output.read_bytes() == expected, (mode, index, proc.stderr, output.read_bytes())
         environments.setdefault(mode, rendered)
+    native_host, native_expected, _, _ = hosts['single-action-v2']
+    native_rendered = 0
+    for index, values in enumerate(probe_v2_native_cases()):
+        fixture = td / f'v2-native-{index}.yaml'; with_case(values, fixture)
+        rendered = rendered_environment(fixture, td, f'v2-native-{index}')
+        output = td / f'v2-native-{index}.host.out'
+        proc = bounded(60, native_host, output, environment(rendered))
+        assert proc.returncode == 0 and output.read_bytes() == native_expected, (values['runtime']['stage'], proc.stderr, output.read_bytes())
+        native_rendered += 1
+    assert native_rendered == 3
     for mode, (host, _, prefix, failure) in hosts.items():
         for kind in ('missing', 'unknown', 'case_collision', 'legacy', 'wrong_identity'):
             rendered = dict(environments[mode])
@@ -136,7 +146,7 @@ def probe_v2_host_acceptance(td, loadgen_publish):
         output = td / f'v2-run-kind-{mode}.host.out'
         proc = bounded(60, judge_host, output, environment(rendered))
         assert proc.returncode == failure, (mode, proc.returncode, proc.stderr)
-    print('probe V2 host checks passed: 98 rendered smoke/batch environments and 14 rejected input regressions')
+    print('probe V2 host checks passed: 101 rendered smoke/batch/native environments and 14 rejected input regressions')
 
 
 def main():

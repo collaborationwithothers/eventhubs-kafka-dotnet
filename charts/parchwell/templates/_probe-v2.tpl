@@ -22,6 +22,11 @@
 {{- $roles = dict "action" (ternary "probe" "enrichment-consumer" (lt $index 9)) "judge" "verifier" -}}
 {{- if lt $index 9 -}}
 {{- $_ := set $roles "seed" (ternary "loadgen" "enrichment-consumer" (eq $index 6)) -}}
+{{- if and (eq $index 6) (hasKey $r "native_authentication") -}}
+{{- $_ := set $roles "nativejwt" "loadgen" -}}
+{{- $_ := set $roles "nativeimds" "loadgen" -}}
+{{- $_ := set $roles "nativeimdsnode" "loadgen" -}}
+{{- end -}}
 {{- $own = list "seed" "action" -}}
 {{- else -}}
 {{- $sourceConfiguration := printf "c%d" (sub $index 3) -}}
@@ -41,6 +46,10 @@
 {{- $refreshTuple := or $refreshProducer $refreshConsumer -}}
 {{- if eq (default false $r.test_handler_refresh_path) true -}}
 {{- if or (not $refreshTuple) (ne $r.run_kind "smoke") (ne (default false $r.capture_authentication_metadata) true) }}{{ fail "probe-v2 handler refresh selection mismatch" }}{{ end -}}
+{{- end -}}
+{{- $nativeModes := dict "nativejwt" "jwt-bearer" "nativeimds" "azure-imds-workload" "nativeimdsnode" "azure-imds-default" -}}
+{{- if or (hasKey $r "native_authentication") (hasKey $r "native_principal_id") (hasKey $nativeModes $stage) -}}
+{{- if or (ne $item "F06") (ne $configuration "C6") (ne $role "loadgen") (ne $r.run_kind "smoke") (ne (default false $r.capture_authentication_metadata) true) (eq (default false $r.test_handler_refresh_path) true) (not (hasKey $nativeModes $stage)) (not (hasKey $r "native_principal_id")) (ne (get $nativeModes $stage) (toString (default "" $r.native_authentication))) }}{{ fail "probe-v2 native authentication selection mismatch" }}{{ end -}}
 {{- end -}}
 {{- $dependencies := list -}}
 {{- $prefix := printf "%s-%s-%s-" $r.run_id (lower $item) (lower $configuration) -}}
@@ -102,6 +111,7 @@
 {{- else -}}
 {{- if eq $r.capture_authentication_metadata true }}{{- $_ := set $fields "CaptureAuthenticationMetadata" "true" }}{{- end -}}
 {{- if and (eq (default false $r.test_handler_refresh_path) true) $refreshTuple }}{{- $_ := set $fields "TestHandlerRefreshPath" "true" }}{{- end -}}
+{{- if hasKey $r "native_authentication" }}{{- $_ := set $fields "NativeAuthentication" $r.native_authentication }}{{- $_ := set $fields "NativePrincipalId" $r.native_principal_id }}{{- end -}}
 {{- $_ := set $fields "ProcessLifetimeSeconds" (ternary $bounds.execution.producer_process_seconds $bounds.execution.reader_process_seconds $spec.producer) -}}
 {{- end -}}
 apiVersion: batch/v1

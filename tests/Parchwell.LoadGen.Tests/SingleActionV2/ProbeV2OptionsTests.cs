@@ -93,6 +93,81 @@ public sealed class ProbeV2OptionsTests
         environment["ProbeV2__TestHandlerRefreshPath"] = value;
         Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(environment));
     }
+    [Theory]
+    [InlineData("nativejwt", "jwt-bearer")]
+    [InlineData("nativeimds", "azure-imds-workload")]
+    [InlineData("nativeimdsnode", "azure-imds-default")]
+    public void Given_NativePair_When_ReadingOptions_Then_BindsNativeFieldsAndAuthenticationInputs(string stage, string mode)
+    {
+        ProbeV2Options parsed = ProbeV2Options.Read(Environment(NativeOptions(stage, mode)));
+
+        Assert.Equal(stage, parsed.Stage);
+        Assert.Equal(mode, parsed.NativeAuthentication);
+        Assert.Equal("33333333-3333-3333-3333-333333333333", parsed.NativePrincipalId);
+        Assert.Equal("00000000-0000-0000-0000-000000000004", parsed.TenantId);
+        Assert.Equal("/unopened/token", parsed.FederatedTokenFile);
+    }
+
+    [Fact]
+    public void Given_NativeStageWithRefreshPath_When_ReadingOptions_Then_RejectsAsRefreshSelection()
+    {
+        ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
+        options.TestHandlerRefreshPath = true;
+        Assert.Equal("v2_handler_refresh_selection", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options))).Message);
+    }
+
+    [Theory]
+    [InlineData("nativejwt", "azure-imds-workload", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativejwt", "azure-imds-default", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativeimds", "jwt-bearer", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativeimds", "azure-imds-default", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativeimdsnode", "jwt-bearer", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativeimdsnode", "azure-imds-workload", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativejwt", "jwt-bearer", false, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativejwt", "jwt-bearer", true, "")]
+    [InlineData("nativejwt", "jwt-bearer", true, "x")]
+    [InlineData("nativejwt", "jwt-bearer", true, "33333333333333333333333333333333")]
+    [InlineData("nativejwt", "jwt-bearer", true, "{33333333-3333-3333-3333-333333333333}")]
+    [InlineData("seed", "jwt-bearer", true, "33333333-3333-3333-3333-333333333333")]
+    [InlineData("nativejwt", "", true, "33333333-3333-3333-3333-333333333333")]
+    public void Given_InvalidNativeSelection_When_ReadingOptions_Then_Rejects(string stage, string mode, bool capture, string principal)
+    {
+        ProbeV2Options options = NativeOptions(stage, mode);
+        options.CaptureAuthenticationMetadata = capture;
+        options.NativePrincipalId = principal;
+        Assert.Equal("v2_native_authentication_selection", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options))).Message);
+    }
+
+    [Fact]
+    public void Given_NativeStageOnAnotherConfiguration_When_ReadingOptions_Then_RejectsAsStage()
+    {
+        ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
+        options.ConfigurationId = "C9";
+        Assert.Equal("v2_stage", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options))).Message);
+    }
+
+    [Theory]
+    [InlineData(" ")]
+    [InlineData("jwt-bearer\n")]
+    public void Given_MalformedNativeValue_When_ReadingOptions_Then_RejectsAsNativeOption(string value)
+    {
+        ProbeV2Options options = NativeOptions("nativejwt", "jwt-bearer");
+        options.NativeAuthentication = value;
+        Assert.Equal("v2_native_authentication_option", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(options))).Message);
+    }
+
+    [Fact]
+    public void Given_ProcessLifetimes_When_ReadingOptions_Then_NativeStageNeedsEightHundredFortyAndProduceStageStillNeedsNineteenTwenty()
+    {
+        ProbeV2Options native = NativeOptions("nativejwt", "jwt-bearer");
+        native.ProcessLifetimeSeconds = 1920;
+        Assert.Equal("v2_identity", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(native))).Message);
+
+        ProbeV2Options ordinary = Options("F06", "C6", "seed");
+        ordinary.ProcessLifetimeSeconds = 840;
+        Assert.Equal("v2_identity", Assert.Throws<InvalidOperationException>(() => ProbeV2Options.Read(Environment(ordinary))).Message);
+    }
+
     [Fact]
     public void Given_AllDeclaredActorStages_When_DerivingMatrix_Then_ThereAreThirtyThreeJobsWithCorrectActors()
     {
@@ -120,9 +195,21 @@ public sealed class ProbeV2OptionsTests
             JobName = job, PodName = job + "-pod", PodUid = "00000000-0000-0000-0000-000000000003",
             NamespaceName = "synthetic-namespace", ServiceAccount = row.Account,
             WorkloadIdentityClientId = "00000000-0000-0000-0000-000000000001", ScenarioRoot = "/app", InputRoot = "/run/probe-inputs",
-            Limits = ProbeV2Limits.Fixed(), ProcessLifetimeSeconds = row.Action == "produce_one" ? 1920 : 840,
+            Limits = ProbeV2Limits.Fixed(), ProcessLifetimeSeconds = row.Action == "produce_one" && row.WindowMs == 330000 ? 1920 : 840,
             ScenarioLoadOptions = new() { MaxDocumentCharacters = 1048576, MaxNestingDepth = 32, MaxScalarCharacters = 65536, MaxParserEvents = 100000 }
         };
+    }
+    internal static ProbeV2Options NativeOptions(string stage, string mode)
+    {
+        ProbeV2Options options = Options("F06", "C6", stage);
+        options.CaptureAuthenticationMetadata = true;
+        options.NativeAuthentication = mode;
+        options.NativePrincipalId = "33333333-3333-3333-3333-333333333333";
+        options.WorkloadIdentityClientId = "22222222-2222-2222-2222-222222222222";
+        options.NamespaceName = "pwtest";
+        options.TenantId = "11111111-1111-1111-1111-111111111111";
+        options.FederatedTokenFile = "/var/run/secrets/azure/tokens/azure-identity-token";
+        return options;
     }
     private static ProbeV2Options OptionsForTuple(string item, string config, string stage)
     {
@@ -134,7 +221,7 @@ public sealed class ProbeV2OptionsTests
         options.ServiceAccount = selected.Account;
         options.JobName = ProbeV2Options.Job(options.RunId, item, config, stage);
         options.PodName = options.JobName + "-pod";
-        options.ProcessLifetimeSeconds = selected.Action == "produce_one" ? 1920 : 840;
+        options.ProcessLifetimeSeconds = selected.Action == "produce_one" && selected.WindowMs == 330000 ? 1920 : 840;
         return options;
     }
     internal static Dictionary<string, string> Environment(ProbeV2Options options)
