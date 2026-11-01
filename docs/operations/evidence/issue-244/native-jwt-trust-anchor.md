@@ -54,7 +54,7 @@ The IMDS modes remain accepted by the worker and chart, unchanged by design (pla
 
 ## Verification record
 
-Run in this session's container (Linux, .NET SDK 10.0.402 from the official installer, Helm 4.3.1 and kubeconform 0.8.0 downloaded with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`). Source: the working tree that became the first commit on the branch.
+Run in this session's container (Linux, .NET SDK 10.0.402 from the official installer, Helm 4.3.1 and kubeconform 0.8.0 downloaded with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`). Source: source and test files as in commit `123d473` (the first commit on the branch); the later correction commit changes only documentation, and `npm run check:docs` was rerun on it.
 
 | Command | Result |
 |---|---|
