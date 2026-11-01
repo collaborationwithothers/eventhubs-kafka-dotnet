@@ -15,7 +15,7 @@ The wip branches part of the instruction is not in this pull request. The backup
 
 - Deliverable: delete `items/244/state.md`; add this receipt.
 - Current authorization: the instruction above, for a deletion of one file.
-- Earliest authorized publication checkpoint: after the first comprehensive cold review and its corrections.
+- Earliest authorized publication checkpoint: after a cold review with no P0 or P1 has covered the current diff, including every correction made since the previous review.
 - Mandatory gates: AGENTS.md "Before opening a pull request" rule 8 (cold review), hosted Codex review, CI.
 - Verification: the commands in "Verification record".
 - Review budget: rule 8's, 2 comprehensive and 2 focused rounds. Exhaustion action: hand off to Hari.
@@ -53,9 +53,10 @@ No code or test is changed, so no .NET, Python or chart suite was run.
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 1 of 2 reported and the second pending, focused 0 of 2. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
+Cumulative counts at the time of writing: comprehensive 2 of 2, focused 0 of 2 reported and the first (the P2-correction round of AGENTS.md rule 8) pending. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
 
 | Round | Mode | Input revision | Comparison revision | Findings | Disposition |
 |---|---|---|---|---|---|
-| 1 | comprehensive | `6ddb049` | `f231fa6` | P1: the execution card had no earliest authorized publication checkpoint. P2: the opening said the pull request changes nothing else, but it also adds this receipt | Fixed in the commit that adds row 2: the card has the field and the opening names the receipt; the receipt also now names the extra backup branch and the commit its check ran on |
-| 2 | comprehensive (consolidated re-review) | the commit that adds this row | `f231fa6` | Pending; recorded in the pull request self-review record | Not applicable |
+| 1 | comprehensive | `6ddb049` | `f231fa6` | P1: the execution card had no earliest authorized publication checkpoint. P2: the opening said the pull request changes nothing else, but it also adds this receipt | Fixed in `3c70aab`: the card has the field and the opening names the receipt; the receipt also names the extra backup branch and the commit its check ran on |
+| 2 | comprehensive (consolidated re-review) | `3c70aab` | `f231fa6` | No P0 or P1. P2: the checkpoint wording allowed publishing the round 1 fixes before a review covered them | Fixed in the commit that adds row 3, a prose-only change in a file already in the diff: the checkpoint now requires a clean review of the current diff including every correction |
+| 3 | focused (P2-correction round, reports only P0 or P1) | the commit that adds this row | `3c70aab` | Pending; recorded in the pull request self-review record | Not applicable |
