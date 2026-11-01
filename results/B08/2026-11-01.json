@@ -1,0 +1,1472 @@
+{
+  "publication": {
+    "item": "B08",
+    "proposed_verdict": "confirmed",
+    "summary": [
+      "Across 10 complete synthetic repeats in two deterministic configurations, the default consistent_random partitioner delivered the fixed key to partition 30 in all five repeats and murmur2_random delivered it to partition 2 in all five, each equal to the partition computed from the pinned librdkafka v2.16.0 algorithms for a 32-partition event hub, so H_partition holds and the proposed B08 verdict is confirmed.",
+      "An independent consumer read back the same topic, partition, offset, key and value in every repeat, and each producer and reader reported partition IDs exactly 0 to 31 in its own metadata.",
+      "One key, one event hub of 32 partitions and one producer message per repeat were tested; behaviour for other keys, other partition counts, keyless messages and the sticky and random partitioners was not."
+    ],
+    "hypotheses": {
+      "H_partition": "holds"
+    },
+    "derivation": "decision rules transcribed from scenarios/B08/expected.yaml (SHA-256 45bab8e908bf59a0ac83aae427adc426e1ce63649dfb619906b858f66f50365c) into make_results.py; derived verdict equal to the verifier item_assessment of C1 (C0 carries null, as the rules require)",
+    "per_configuration": {
+      "C0": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true,
+        "broker_count_per_client": [
+          {
+            "repeat": 1,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r1",
+            "broker_count": 3
+          },
+          {
+            "repeat": 1,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r1",
+            "broker_count": 3
+          },
+          {
+            "repeat": 2,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r2",
+            "broker_count": 3
+          },
+          {
+            "repeat": 2,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r2",
+            "broker_count": 3
+          },
+          {
+            "repeat": 3,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r3",
+            "broker_count": 2
+          },
+          {
+            "repeat": 3,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r3",
+            "broker_count": 3
+          },
+          {
+            "repeat": 4,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r4",
+            "broker_count": 2
+          },
+          {
+            "repeat": 4,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r4",
+            "broker_count": 3
+          },
+          {
+            "repeat": 5,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r5",
+            "broker_count": 2
+          },
+          {
+            "repeat": 5,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r5",
+            "broker_count": 4
+          }
+        ]
+      },
+      "C1": {
+        "status": "complete_valid",
+        "deterministic": true,
+        "outcome_class": {
+          "result": "success",
+          "error_code": null,
+          "is_fatal": null,
+          "origin": null
+        },
+        "broker_count_per_repeat": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "broker_count_lower_bound": true,
+        "broker_count_per_client": [
+          {
+            "repeat": 1,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r1",
+            "broker_count": 1
+          },
+          {
+            "repeat": 1,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r1",
+            "broker_count": 3
+          },
+          {
+            "repeat": 2,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r2",
+            "broker_count": 2
+          },
+          {
+            "repeat": 2,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r2",
+            "broker_count": 3
+          },
+          {
+            "repeat": 3,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r3",
+            "broker_count": 2
+          },
+          {
+            "repeat": 3,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r3",
+            "broker_count": 3
+          },
+          {
+            "repeat": 4,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r4",
+            "broker_count": 2
+          },
+          {
+            "repeat": 4,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r4",
+            "broker_count": 3
+          },
+          {
+            "repeat": 5,
+            "stage": "action",
+            "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r5",
+            "broker_count": 2
+          },
+          {
+            "repeat": 5,
+            "stage": "read",
+            "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r5",
+            "broker_count": 2
+          }
+        ]
+      }
+    },
+    "observed_per_repeat": {
+      "C0": [
+        {
+          "repeat": 1,
+          "delivered_partition": 30,
+          "consumed_partition": 30,
+          "offset": 0,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 2,
+          "delivered_partition": 30,
+          "consumed_partition": 30,
+          "offset": 1,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 3,
+          "delivered_partition": 30,
+          "consumed_partition": 30,
+          "offset": 2,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 4,
+          "delivered_partition": 30,
+          "consumed_partition": 30,
+          "offset": 3,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 5,
+          "delivered_partition": 30,
+          "consumed_partition": 30,
+          "offset": 4,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        }
+      ],
+      "C1": [
+        {
+          "repeat": 1,
+          "delivered_partition": 2,
+          "consumed_partition": 2,
+          "offset": 0,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 2,
+          "delivered_partition": 2,
+          "consumed_partition": 2,
+          "offset": 1,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 3,
+          "delivered_partition": 2,
+          "consumed_partition": 2,
+          "offset": 2,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 4,
+          "delivered_partition": 2,
+          "consumed_partition": 2,
+          "offset": 3,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        },
+        {
+          "repeat": 5,
+          "delivered_partition": 2,
+          "consumed_partition": 2,
+          "offset": 4,
+          "key": "b08-synthetic-0",
+          "value_kind": "bytes",
+          "value_match": true
+        }
+      ]
+    },
+    "error_code_names": {},
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657",
+      "attempt": 1,
+      "run_id": "probe-41292426657-1",
+      "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+      "run_conclusion": "failure",
+      "run_conclusion_scope": "F06 permission audit defect, fixed in pull request 288; Hari decided it does not block B08 or E01",
+      "candidate_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657/artifacts/13078662873",
+      "pod_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657/artifacts/13078313354",
+      "batch_job": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657/job/124806233585",
+      "batch_stop_job": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657/job/124815068060",
+      "jobs": {
+        "C0": {
+          "action": {
+            "job": "probe-41292426657-1-b08-c0-action",
+            "pod": "probe-41292426657-1-b08-c0-action-dwpsg",
+            "pod_uid": "5693ca08-1a2f-44c4-a35d-d9f5b7b6fdc5",
+            "service_account": "loadgen",
+            "container": "loadgen",
+            "container_started_at": "2026-11-01T09:29:56Z",
+            "container_finished_at": "2026-11-01T09:31:39Z",
+            "exit_code": 0,
+            "image_digest": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+            "node_pool": "loadgen",
+            "pod_log_member": "probe-41292426657-1-b08-c0-action/probe-41292426657-1-b08-c0-action-dwpsg.containers.loadgen.log",
+            "pod_json_member": "probe-41292426657-1-b08-c0-action/pods.json"
+          },
+          "judge": {
+            "job": "probe-41292426657-1-b08-c0-judge",
+            "pod": "probe-41292426657-1-b08-c0-judge-4s486",
+            "pod_uid": "cceae200-3f38-4402-9e23-493a8fabcbb2",
+            "service_account": "verifier",
+            "container": "verifier",
+            "container_started_at": "2026-11-01T09:33:51Z",
+            "container_finished_at": "2026-11-01T09:33:53Z",
+            "exit_code": 0,
+            "image_digest": "sha256:a585522a58a8cdc453978ec3c3e52e3ef9063c62e992851961bae5efbc7b32da",
+            "node_pool": "workload",
+            "pod_log_member": "probe-41292426657-1-b08-c0-judge/probe-41292426657-1-b08-c0-judge-4s486.containers.verifier.log",
+            "pod_json_member": "probe-41292426657-1-b08-c0-judge/pods.json"
+          },
+          "read": {
+            "job": "probe-41292426657-1-b08-c0-read",
+            "pod": "probe-41292426657-1-b08-c0-read-zffsv",
+            "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+            "service_account": "probe",
+            "container": "probe",
+            "container_started_at": "2026-11-01T09:31:54Z",
+            "container_finished_at": "2026-11-01T09:33:37Z",
+            "exit_code": 0,
+            "image_digest": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+            "node_pool": "workload",
+            "pod_log_member": "probe-41292426657-1-b08-c0-read/probe-41292426657-1-b08-c0-read-zffsv.containers.probe.log",
+            "pod_json_member": "probe-41292426657-1-b08-c0-read/pods.json"
+          }
+        },
+        "C1": {
+          "action": {
+            "job": "probe-41292426657-1-b08-c1-action",
+            "pod": "probe-41292426657-1-b08-c1-action-4th4g",
+            "pod_uid": "614cb793-fb6b-4d5e-8fd3-12505cf43b15",
+            "service_account": "loadgen",
+            "container": "loadgen",
+            "container_started_at": "2026-11-01T09:34:10Z",
+            "container_finished_at": "2026-11-01T09:35:52Z",
+            "exit_code": 0,
+            "image_digest": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+            "node_pool": "loadgen",
+            "pod_log_member": "probe-41292426657-1-b08-c1-action/probe-41292426657-1-b08-c1-action-4th4g.containers.loadgen.log",
+            "pod_json_member": "probe-41292426657-1-b08-c1-action/pods.json"
+          },
+          "judge": {
+            "job": "probe-41292426657-1-b08-c1-judge",
+            "pod": "probe-41292426657-1-b08-c1-judge-vd7zq",
+            "pod_uid": "a0a9f04a-d7b6-4405-8d38-d3bce37c4391",
+            "service_account": "verifier",
+            "container": "verifier",
+            "container_started_at": "2026-11-01T09:37:57Z",
+            "container_finished_at": "2026-11-01T09:37:58Z",
+            "exit_code": 0,
+            "image_digest": "sha256:a585522a58a8cdc453978ec3c3e52e3ef9063c62e992851961bae5efbc7b32da",
+            "node_pool": "workload",
+            "pod_log_member": "probe-41292426657-1-b08-c1-judge/probe-41292426657-1-b08-c1-judge-vd7zq.containers.verifier.log",
+            "pod_json_member": "probe-41292426657-1-b08-c1-judge/pods.json"
+          },
+          "read": {
+            "job": "probe-41292426657-1-b08-c1-read",
+            "pod": "probe-41292426657-1-b08-c1-read-jx7g4",
+            "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+            "service_account": "probe",
+            "container": "probe",
+            "container_started_at": "2026-11-01T09:36:03Z",
+            "container_finished_at": "2026-11-01T09:37:45Z",
+            "exit_code": 0,
+            "image_digest": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+            "node_pool": "workload",
+            "pod_log_member": "probe-41292426657-1-b08-c1-read/probe-41292426657-1-b08-c1-read-jx7g4.containers.probe.log",
+            "pod_json_member": "probe-41292426657-1-b08-c1-read/pods.json"
+          }
+        }
+      }
+    },
+    "versions": {
+      "confluent_kafka_managed": "2.16.0.0",
+      "librdkafka_native": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+        "verifier": "sha256:a585522a58a8cdc453978ec3c3e52e3ef9063c62e992851961bae5efbc7b32da"
+      }
+    },
+    "environment": {
+      "region": "uksouth",
+      "event_hubs_sku": "Premium",
+      "pu_count": 1,
+      "partition_count_planned": {
+        "document-events": 32,
+        "document-state": 32
+      },
+      "node_size": "Standard_D4ds_v5",
+      "node_size_evidence": "inferred_from_pinned_configuration_and_no_change_cluster_plan",
+      "sources": [
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657/job/124806233585",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1/infra/cluster/aks.tf",
+        "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1/infra/ephemeral/eventhubs.tf"
+      ]
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130/artifacts/13057507952",
+      "commit": "2dc9715e3de176f7e1cd55eee9c251e43c29c746",
+      "measurement_complete": true,
+      "break_passed": true,
+      "break_threshold": 60,
+      "numerator": 3076,
+      "denominator": 3366,
+      "score_percent_rounded_1dp": 91.4,
+      "status_counts": {
+        "Killed": 3075,
+        "Timeout": 1,
+        "Survived": 290,
+        "NoCoverage": 0,
+        "CompileError": 327,
+        "RuntimeError": 0,
+        "Ignored": 110
+      },
+      "targets": {
+        "Judge/PhaseJudge.cs": {
+          "status_counts": {
+            "Killed": 189,
+            "Timeout": 1,
+            "Survived": 16,
+            "NoCoverage": 0,
+            "CompileError": 4,
+            "RuntimeError": 0,
+            "Ignored": 6
+          },
+          "numerator": 190,
+          "denominator": 206
+        },
+        "VerifyRun/Publication/PublicationAcceptance.cs": {
+          "status_counts": {
+            "Killed": 177,
+            "Timeout": 0,
+            "Survived": 6,
+            "NoCoverage": 0,
+            "CompileError": 6,
+            "RuntimeError": 0,
+            "Ignored": 14
+          },
+          "numerator": 177,
+          "denominator": 183
+        },
+        "VerifyRun/A01/A01EvidenceRecorder.cs": {
+          "status_counts": {
+            "Killed": 71,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 15,
+            "RuntimeError": 0,
+            "Ignored": 8
+          },
+          "numerator": 71,
+          "denominator": 71
+        },
+        "VerifyRun/A01/WorkloadRecorder.cs": {
+          "status_counts": {
+            "Killed": 95,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 2,
+            "RuntimeError": 0,
+            "Ignored": 7
+          },
+          "numerator": 95,
+          "denominator": 95
+        },
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": {
+          "status_counts": {
+            "Killed": 792,
+            "Timeout": 0,
+            "Survived": 8,
+            "NoCoverage": 0,
+            "CompileError": 142,
+            "RuntimeError": 0,
+            "Ignored": 29
+          },
+          "numerator": 792,
+          "denominator": 800
+        },
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": {
+          "status_counts": {
+            "Killed": 1751,
+            "Timeout": 0,
+            "Survived": 260,
+            "NoCoverage": 0,
+            "CompileError": 158,
+            "RuntimeError": 0,
+            "Ignored": 46
+          },
+          "numerator": 1751,
+          "denominator": 2011
+        }
+      },
+      "target_source_identical_at_run_source": {
+        "Judge/PhaseJudge.cs": true,
+        "VerifyRun/Publication/PublicationAcceptance.cs": true,
+        "VerifyRun/A01/A01EvidenceRecorder.cs": true,
+        "VerifyRun/A01/WorkloadRecorder.cs": true,
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": true,
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": true
+      },
+      "all_targets_identical_at_run_source": true,
+      "config_identical_at_run_source": true,
+      "c5_commit_is_ancestor_of_run_source": true,
+      "run_source": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1"
+    },
+    "workload": "synthetic",
+    "independent_computation": {
+      "key": "b08-synthetic-0",
+      "partition_count": 32,
+      "crc32": 2046850398,
+      "murmur2": 2245682434,
+      "expected_partition": {
+        "C0": 30,
+        "C1": 2
+      },
+      "basis": "rdkafka_msg.c, rdmurmur2.c and rdcrc32.h at librdkafka v2.16.0; a computed expectation, not a measurement",
+      "murmur2_port_checked_against_source_vectors": 11
+    },
+    "measured_partitioner": {
+      "C0": "consistent_random",
+      "C1": "murmur2_random"
+    }
+  },
+  "candidates": {
+    "C0": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41292426657-1",
+      "scenario_id": "B08",
+      "configuration_id": "C0",
+      "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+        "verifier": "sha256:a585522a58a8cdc453978ec3c3e52e3ef9063c62e992851961bae5efbc7b32da"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525411,
+            "native_ts": 464272625,
+            "raw_sha256": "ac0a79272defdd0d465ed9d71f2d857d2e196a93bfd4497e07a4da11604a39e2"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 30,
+            "consumed_partition": 30,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 30,
+            "offset": 0,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 1293,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 5,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 30,
+              "offset": 0,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMwOnByb2JlLTQxMjkyNDI2NjU3LTE6cjE=",
+              "observed_elapsed_ms": 1085,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C0",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c0-read",
+              "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+              "raw_sha256": "2b5165c7050e35fab8edcddb86702ab0dae5af199ef287f7117a3e5bd7d59562"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r1",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525411,
+                "native_ts": 464272625,
+                "raw_sha256": "ac0a79272defdd0d465ed9d71f2d857d2e196a93bfd4497e07a4da11604a39e2"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r1",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 6,
+                "native_time": 1793525530,
+                "native_ts": 581535692,
+                "raw_sha256": "147bd5c2ac3db9462fe69afaac0ab2794b51521baee563889220454734460715"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525432,
+            "native_ts": 485689583,
+            "raw_sha256": "ff6a7d0807c4b296baf439662e19054f608649e04ac8fbf5c42775c12ab7bc1c"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 30,
+            "consumed_partition": 30,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 30,
+            "offset": 1,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 361,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 30,
+              "offset": 1,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMwOnByb2JlLTQxMjkyNDI2NjU3LTE6cjI=",
+              "observed_elapsed_ms": 468,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C0",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c0-read",
+              "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+              "raw_sha256": "2b5165c7050e35fab8edcddb86702ab0dae5af199ef287f7117a3e5bd7d59562"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r2",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525432,
+                "native_ts": 485689583,
+                "raw_sha256": "ff6a7d0807c4b296baf439662e19054f608649e04ac8fbf5c42775c12ab7bc1c"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r2",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793525551,
+                "native_ts": 602582529,
+                "raw_sha256": "25fefc090bcb57df63fd923b4df5bed9595efe640383570b06e62264fe16ccaa"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525453,
+            "native_ts": 506103135,
+            "raw_sha256": "8557dfd4a2e045e2fd4e0553986b1e96294216c8d282b7bf6c72b1e9bc1fd8c2"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 30,
+            "consumed_partition": 30,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 30,
+            "offset": 2,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 314,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 3,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 30,
+              "offset": 2,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMwOnByb2JlLTQxMjkyNDI2NjU3LTE6cjM=",
+              "observed_elapsed_ms": 268,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C0",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c0-read",
+              "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+              "raw_sha256": "2b5165c7050e35fab8edcddb86702ab0dae5af199ef287f7117a3e5bd7d59562"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r3",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525453,
+                "native_ts": 506103135,
+                "raw_sha256": "8557dfd4a2e045e2fd4e0553986b1e96294216c8d282b7bf6c72b1e9bc1fd8c2"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r3",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 4,
+                "native_time": 1793525571,
+                "native_ts": 623053139,
+                "raw_sha256": "26661191971777997c836ee5ad7e4dac8b372342539b9eb44bcf3658085d63e0"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525473,
+            "native_ts": 526516242,
+            "raw_sha256": "8f0bba240fbab90e6b9983e18e2c7c883c0e697f7e33a6003c602435dae797ce"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 30,
+            "consumed_partition": 30,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 30,
+            "offset": 3,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 186,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 30,
+              "offset": 3,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMwOnByb2JlLTQxMjkyNDI2NjU3LTE6cjQ=",
+              "observed_elapsed_ms": 264,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C0",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c0-read",
+              "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+              "raw_sha256": "2b5165c7050e35fab8edcddb86702ab0dae5af199ef287f7117a3e5bd7d59562"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r4",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525473,
+                "native_ts": 526516242,
+                "raw_sha256": "8f0bba240fbab90e6b9983e18e2c7c883c0e697f7e33a6003c602435dae797ce"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r4",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793525591,
+                "native_ts": 643329130,
+                "raw_sha256": "70165066b8820dce42e5953006af9462fb26203c81196c97c8972bb0559e5f0b"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525494,
+            "native_ts": 546729013,
+            "raw_sha256": "a8141906c18720251d981f6f48852304b12d7de9a7bf5b9a1b6c1778cb40b09a"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 30,
+            "consumed_partition": 30,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 30,
+            "offset": 4,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 275,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 1,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 30,
+              "offset": 4,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMwOnByb2JlLTQxMjkyNDI2NjU3LTE6cjU=",
+              "observed_elapsed_ms": 265,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C0",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c0-read",
+              "pod_uid": "198c8edc-981c-486c-aedc-7bf7f2af9d12",
+              "raw_sha256": "2b5165c7050e35fab8edcddb86702ab0dae5af199ef287f7117a3e5bd7d59562"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c0-action-dwpsg-r5",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525494,
+                "native_ts": 546729013,
+                "raw_sha256": "a8141906c18720251d981f6f48852304b12d7de9a7bf5b9a1b6c1778cb40b09a"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c0-read-zffsv-r5",
+              "stage": "read",
+              "broker_count": 4,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525612,
+                "native_ts": 663592477,
+                "raw_sha256": "468c076917670ff90259f6cb7f64e4b80fbc4ee480d59abe48144641351e2334"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "full_experiment"
+      ],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C1": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41292426657-1",
+      "scenario_id": "B08",
+      "configuration_id": "C1",
+      "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:6b7de20a9810320b26ddbf544407f1b7fddf36c6a4d422646cd4b0706b72d547",
+        "verifier": "sha256:a585522a58a8cdc453978ec3c3e52e3ef9063c62e992851961bae5efbc7b32da"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 1,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525665,
+            "native_ts": 718279963,
+            "raw_sha256": "acd9bc290243951b79ba09fb4f6c6958c0a8d6a28a6863f1b111b615ed23fc0b"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 2,
+            "consumed_partition": 2,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 2,
+            "offset": 0,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 694,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 5,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 2,
+              "offset": 0,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMxOnByb2JlLTQxMjkyNDI2NjU3LTE6cjE=",
+              "observed_elapsed_ms": 817,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C1",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c1-read",
+              "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+              "raw_sha256": "a358d81e39fb6c363547fde15045b8c449ede44f2b0b70b4bfed68ef5ebf0c30"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r1",
+              "stage": "action",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525665,
+                "native_ts": 718279963,
+                "raw_sha256": "acd9bc290243951b79ba09fb4f6c6958c0a8d6a28a6863f1b111b615ed23fc0b"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r1",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 6,
+                "native_time": 1793525778,
+                "native_ts": 830380156,
+                "raw_sha256": "3f8fa3be29f1dfbe199866dab0fe1a0ee1756ef0bd67b6f782b06aa9f0ee284e"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525686,
+            "native_ts": 739096449,
+            "raw_sha256": "80767b75a97e03707e6e46a5144e7c88964b0544696dce091c6b2c0e59741fac"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 2,
+            "consumed_partition": 2,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 2,
+            "offset": 1,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 193,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 2,
+              "offset": 1,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMxOnByb2JlLTQxMjkyNDI2NjU3LTE6cjI=",
+              "observed_elapsed_ms": 247,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C1",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c1-read",
+              "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+              "raw_sha256": "a358d81e39fb6c363547fde15045b8c449ede44f2b0b70b4bfed68ef5ebf0c30"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r2",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525686,
+                "native_ts": 739096449,
+                "raw_sha256": "80767b75a97e03707e6e46a5144e7c88964b0544696dce091c6b2c0e59741fac"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r2",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793525799,
+                "native_ts": 851157132,
+                "raw_sha256": "07aa34178a8512a43dd3a103ccad62cc390bd448c05a358cb307632a3e6f67de"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525706,
+            "native_ts": 759309806,
+            "raw_sha256": "a21fc512ec84900d81cbd8362edb37a20815964e0896ce0982f811ec1471098a"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 2,
+            "consumed_partition": 2,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 2,
+            "offset": 2,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 205,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 3,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 2,
+              "offset": 2,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMxOnByb2JlLTQxMjkyNDI2NjU3LTE6cjM=",
+              "observed_elapsed_ms": 242,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C1",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c1-read",
+              "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+              "raw_sha256": "a358d81e39fb6c363547fde15045b8c449ede44f2b0b70b4bfed68ef5ebf0c30"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r3",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525706,
+                "native_ts": 759309806,
+                "raw_sha256": "a21fc512ec84900d81cbd8362edb37a20815964e0896ce0982f811ec1471098a"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r3",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 4,
+                "native_time": 1793525819,
+                "native_ts": 871406975,
+                "raw_sha256": "fc75e0e7a46a1baf8624e7583a2bd311559cc5191923aff07aa199ef8183e089"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525726,
+            "native_ts": 779526033,
+            "raw_sha256": "644bedb6bbf450198e4f2819919e4c198d9550fea93e0cdf48e1982d08b98e61"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 2,
+            "consumed_partition": 2,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 2,
+            "offset": 3,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 370,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 2,
+              "offset": 3,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMxOnByb2JlLTQxMjkyNDI2NjU3LTE6cjQ=",
+              "observed_elapsed_ms": 264,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C1",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c1-read",
+              "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+              "raw_sha256": "a358d81e39fb6c363547fde15045b8c449ede44f2b0b70b4bfed68ef5ebf0c30"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r4",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525726,
+                "native_ts": 779526033,
+                "raw_sha256": "644bedb6bbf450198e4f2819919e4c198d9550fea93e0cdf48e1982d08b98e61"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r4",
+              "stage": "read",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793525840,
+                "native_ts": 891651342,
+                "raw_sha256": "098d4d1fb12452ea1b106fe68489c3cc68eb13f8fed4330ccb51919cb92938c3"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793525747,
+            "native_ts": 799941279,
+            "raw_sha256": "91eb93229797413e47e9bb3e788f40436240936a473e379ecaf53ba759e8f473"
+          },
+          "semantic_outcome": {
+            "delivered_partition": 2,
+            "consumed_partition": 2,
+            "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": {
+            "topic": "document-events",
+            "partition": 2,
+            "offset": 4,
+            "persistence_status": "Persisted",
+            "error": null,
+            "observed_elapsed_ms": 190,
+            "sequence": 1
+          },
+          "read_observation": {
+            "records_seen": 1,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 2,
+              "offset": 4,
+              "key_base64": "YjA4LXN5bnRoZXRpYy0w",
+              "value_base64": "QjA4OkMxOnByb2JlLTQxMjkyNDI2NjU3LTE6cjU=",
+              "observed_elapsed_ms": 212,
+              "sequence": 1
+            }
+          },
+          "seed_reference": null,
+          "control_references": [
+            {
+              "run_id": "probe-41292426657-1",
+              "scenario_id": "B08",
+              "configuration_id": "C1",
+              "stage": "read",
+              "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+              "job_name": "probe-41292426657-1-b08-c1-read",
+              "pod_uid": "000009f6-0a6d-4f47-880f-8a5974e5bf0b",
+              "raw_sha256": "a358d81e39fb6c363547fde15045b8c449ede44f2b0b70b4bfed68ef5ebf0c30"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41292426657-1-b08-c1-action-4th4g-r5",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525747,
+                "native_ts": 799941279,
+                "raw_sha256": "91eb93229797413e47e9bb3e788f40436240936a473e379ecaf53ba759e8f473"
+              }
+            },
+            {
+              "client_id": "probe-41292426657-1-b08-c1-read-jx7g4-r5",
+              "stage": "read",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793525860,
+                "native_ts": 911918668,
+                "raw_sha256": "ba20d84ce52a3109983a85ca06dc74a564a24a4bc622009af51089a3439e8522"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "full_experiment"
+      ],
+      "security_finding": false,
+      "item_assessment": {
+        "verdict": "confirmed",
+        "hypotheses": {
+          "H_partition": "holds"
+        },
+        "reason": null
+      }
+    }
+  },
+  "judge_receipts": {
+    "C0": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41292426657-1",
+      "scenario_id": "B08",
+      "configuration_id": "C0",
+      "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+      "job_name": "probe-41292426657-1-b08-c0-judge",
+      "pod_name": "probe-41292426657-1-b08-c0-judge-4s486",
+      "pod_uid": "cceae200-3f38-4402-9e23-493a8fabcbb2",
+      "candidate_name": "probe-41292426657-1/single-action-v2/B08/C0/candidate.json",
+      "candidate_sha256": "8163b08b3bbf1a0cc435755daa03107a4f7ff5d6492c6ca191b422eaea4986ef",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C1": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41292426657-1",
+      "scenario_id": "B08",
+      "configuration_id": "C1",
+      "source_commit": "8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1",
+      "job_name": "probe-41292426657-1-b08-c1-judge",
+      "pod_name": "probe-41292426657-1-b08-c1-judge-vd7zq",
+      "pod_uid": "a0a9f04a-d7b6-4405-8d38-d3bce37c4391",
+      "candidate_name": "probe-41292426657-1/single-action-v2/B08/C1/candidate.json",
+      "candidate_sha256": "0538240056f4f695cf8c5542275bd9ab4e5754be46377ba9e3ce2d1c5c5aef99",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}

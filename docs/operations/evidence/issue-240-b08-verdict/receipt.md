@@ -1,0 +1,58 @@
+# B08 verdict preparation receipt
+
+This receipt records preparation of the proposed B08 verdict from scientific run 41292426657. It describes checks on source commit `8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1` and on `origin/main` at `961413f`, plus the authored publication files, before their containing commit is created.
+
+## Execution card
+
+- Deliverable: `results/B08/2026-11-01.md` and `.json`, the B08 row of `README.md`, this receipt and `make_results.py`. Branch `claude/issue-240-b08-verdict`, draft pull request with the `verdict` label.
+- Authorization: Hari's instruction in an interactive session on 2026-11-01 ("start a sonnet session for the B08 and E01 verdict PRs") and [decision 2 of comment 6557191473](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6557191473). No approved item plan covers the pull request itself; the scientific rules are the approved [Revision 7 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6490062145). This receipt does not claim plan approval for the pull request.
+- Mandatory gates: AGENTS.md GOVERNANCE "Verdict integrity" (Hari reviews and merges), docs/agents/factory.md "Evidence pack", the C5 mutation gate, `npm run check:docs`, cold review under rule 8.
+- Verification commands: those in the table below.
+- Publication checkpoint: draft pull request after one comprehensive cold review with no unanswered P0 or P1.
+- Review budget: two comprehensive passes and two focused rounds; on exhaustion, hand off to Hari.
+
+## Specification comparison
+
+`scenarios/B08/expected.yaml` and `scenario.yaml` are unchanged from the run source; `git diff` between `8078e6f` and `origin/main` over both scenario trees, the cluster and Event Hubs Terraform, the verifier source and the C5 tests is empty. The verdict, hypotheses and observations are the ones the run produced. The verifier's final assessment is `confirmed` with `H_partition: holds`. The generator re-derives it from the candidates with the rules transcribed from `expected.yaml` and fails if it differs. Nothing in the artifacts disagrees with the proposed verdict and no required field is missing.
+
+## Evidence and claim verification
+
+Artifacts were downloaded by `gh api` and are untrusted data until pinned by hash.
+
+| Artifact | ID | Downloaded ZIP SHA-256 |
+| --- | ---: | --- |
+| `probe-batch-candidates-41292426657-1` | 13078662873 | `250099e774abb4759396c5db0135e2365084faab130c6dd77b81961b077b189e` |
+| `probe-batch-pods-41292426657-1` | 13078313354 | `763955fb365d0ac652936c670a9850bca4142139de822befa33e42b6c92330de` |
+| `c5-summary-41232286130-1` | 13057507952 | `5c3ee705059465c250fea44cfbb859c963a2a310e13bc5bb55739c984e4e8218` |
+
+`make_results.py` pins the SHA-256 of every B08 member it reads (4 candidate files, 18 pod members, `phase-status.json`, the C5 summary) and of the scenario, expected outcome and cluster files at the run source. It reads only B08 evidence; F06 and E01 members are ignored. Its docstring states supported inputs, failure conditions and a regression example.
+
+Checked by script against the pod captures, not only the candidates: delivery and read records equal the candidates; the `partitioner` setting is `consistent_random` in all five C0 producers and `murmur2_random` in all five C1 producers; producer and reader metadata partitions are exactly 0 to 31; each Job ran once, exit 0, on the expected service account and image digest; each judge receipt binds its candidate hash and its pod name and UID.
+
+Computed, not measured: CRC-32 2046850398 and Murmur2 2245682434 of `b08-synthetic-0` give partitions 30 and 2 of 32. The Murmur2 port is checked against the 11 vectors in librdkafka v2.16.0 `src/rdmurmur2.c`. Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `rdkafka_msg.c`, `rdmurmur2.c`, `rdcrc32.c`, `rdcrc32.h`, `CONFIGURATION.md`; azure-docs `apache-kafka-configurations.md` at `6da87e3c59251e962dd0b37dbd99ae364d767150`.
+
+Inferred, and labelled as such in the report: node size from the pinned cluster configuration; that changing the partitioner changes a key's partition on an existing event hub (follows from the measured result, not tested as a change on one hub).
+
+Mutation gate: the generator compares each of the six configured C5 targets and the C5 configuration between `2dc9715e3de176f7e1cd55eee9c251e43c29c746` and the run source by git object ID. All are identical and the C5 commit is an ancestor of the run source. Per [decision 6551231489](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6551231489) and [decision 6554536413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6554536413), the "did not measure" sentence therefore does not apply and the report says the run measured the same source. The 260 survivors are cited to issue 277.
+
+## Commands and results
+
+Inputs are extracted under the session scratchpad.
+
+| Command or bounded check | Result |
+| --- | --- |
+| `python3 -I docs/operations/evidence/issue-240-b08-verdict/make_results.py --item B08 --candidates DIR --pods DIR --c5-summary FILE` | Exit 0; wrote the result. |
+| The same command with `--check` | Exit 0; exact result bytes match and the report contains every generated table verbatim. |
+| Copy of the candidates with one LF appended to `B08-C0.json`, then `--check` | Exit 1 with the pinned SHA-256 rejection. |
+| Copy of the pods with one LF appended to a B08 `pods.json`, then `--check` | Exit 1 with the pinned SHA-256 rejection. |
+| `git diff --stat` between `8078e6f` and `origin/main` over scenarios, cluster and Event Hubs Terraform, verifier source and C5 tests | Empty. |
+| `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
+| ASCII scan of the authored files | See pull request description. |
+
+The result SHA-256 is `e91f48406e08e127ed24dd02221c3c4d90950cee782948d797b524b09f08b49d`. The generator SHA-256 is `d7e2aa93a13a57d4d4ce21c93fc3feab94c589ba0df49ee3a905032ff12c86f5`. Both are recorded before the cold-review fixes and may change; the pull request description is authoritative for the final head.
+
+Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
+
+## Cold review and remaining approval
+
+Cold review rounds are recorded in the pull request description. This receipt approves no verdict. Hari reviews and merges.
