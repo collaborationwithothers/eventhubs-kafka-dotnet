@@ -30,5 +30,5 @@ Run from the repository root with SDK 10.0.402 on 2026-11-01.
 | `replay.py check` | `rows 63 results 63 problems 0`, exit 0 |
 | `git diff --name-only origin/main` (after `git add -N`) | the five files the plan lists |
 | `git diff --check origin/main` | exit 0, no output |
-| `npm run check:docs` | \`8 warnings\`, none in a changed file: the baseline set (\`docs/agents/factory.md\` 2, \`issue-124/README.md\` 1, \`issue-140/README.md\` 2, \`issue-211/receipt.md\` 3) |
-| \`./scripts/verify-dotnet.sh\` | not run: Docker is not running in this session. The hosted \`dotnet-verification\` run on the pull request is the evidence. |
+| `npm run check:docs` | `8 warnings`, none in a changed file: the baseline set (`docs/agents/factory.md` 2, `issue-124/README.md` 1, `issue-140/README.md` 2, `issue-211/receipt.md` 3) |
+| `./scripts/verify-dotnet.sh` | not run: Docker is not running in this session. The hosted `dotnet-verification` run on the pull request is the evidence. |
