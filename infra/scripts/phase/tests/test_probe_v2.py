@@ -94,7 +94,7 @@ class ProbeV2Tests(unittest.TestCase):
         self.write(self.artifacts / 'phase-status.json', self.state)
         self.write(self.private / 'phase.json', {'scenario': 'probe-batch-2', 'run_kind': 'smoke', 'items': list(v2.ITEMS),
             'run_id': RUN, 'source_commit': SHA, 'images': IMAGES, 'phase': 'single-action'})
-        self.write(self.private / 'cluster-output.json', {'workload_identity': {'value': {'service_accounts': ACCOUNTS}}})
+        self.write(self.private / 'cluster-output.json', {'workload_identity': {'value': {'service_accounts': {a: {k: v[k] for k in ('name', 'client_id', 'subject')} for a, v in ACCOUNTS.items()}}}})
         self.write(self.private / 'persistent-output.json', {'application_insights_connection_string': {'value': 'synthetic-telemetry'}})
         deployed = {'namespace_id': NS, 'topics': {t: NS + '/eventhubs/' + t for t in v2.TOPICS},
                     'accounts': {a: {k: ACCOUNTS[a][k] for k in ('client_id', 'principal_id')} for a in v2.ACCOUNTS},
