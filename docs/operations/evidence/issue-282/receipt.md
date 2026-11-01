@@ -31,5 +31,5 @@ Branch cut from `main` at `0db2375a23605ea2ce9c7d6185886d7436d51d00`, SDK 10.0.4
 ## Cold review
 
 - Mode: comprehensive, round 1 of at most 2 comprehensive passes. Cumulative focused rounds: 0.
-- Input revision: commit `0ffcd88` plus the staged receipt, state file and this section. Comparison: `origin/main` at `b680b8d`.
+- Input revision: commit `aaf68ec` (the merge of `origin/main` into the branch). Comparison: `origin/main` at `2e285ac`. The merge brought in only verdict files for another item and a README change, so the test and replay results above still hold.
 - Specification sources: the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/282#issuecomment-6557763377) (file changes 1 to 5, acceptance), its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/282#issuecomment-6557949954) P2 applied, [decision 6557346336](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/282#issuecomment-6557346336), the issue body and [split decision 6556141000](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277#issuecomment-6556141000).
