@@ -15,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(15, settings.Length);
+        Assert.Equal(19, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -45,7 +45,17 @@ public sealed class ScenarioOverrideMetadataTests
                 var source = Assert.Single(setting.Sources);
                 Assert.Equal("https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md", source.Url.AbsoluteUri);
                 Assert.Equal("v2.16.0", source.VersionOrDate);
+            },
+            setting => AssertNewEntry(setting, "socket.keepalive.enable", KafkaScenarioOverrideValueKind.Boolean, KafkaClientRole.LoadGenProducer, "A02", 0, 1),
+            setting => AssertNewEntry(setting, "metadata.max.age.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", 1, 86_400_000),
+            setting => AssertNewEntry(setting, "topic.metadata.refresh.interval.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", -1, 3_600_000),
+            setting =>
+            {
+                AssertNewEntry(setting, "connections.max.idle.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A04", 0, int.MaxValue);
+                Assert.Equal(["A04"], setting.OmissionInventoryIds);
+                Assert.Equal(2, setting.Sources.Length);
             });
+        Assert.All(settings.Where(setting => setting.Key != "connections.max.idle.ms"), setting => Assert.Empty(setting.OmissionInventoryIds));
     }
 
     [Theory]
@@ -304,6 +314,29 @@ public sealed class ScenarioOverrideMetadataTests
         ImmutableArray<KafkaSettingSource> sources = invalid == "source" ? [] : invalid == "null_source" ? [null!] : [new(new Uri("https://example.com/configuration"), "v1")];
         Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("group.protocol", ["consumer"], false, false, roles, inventory, sources));
         Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("session.timeout.ms", roles, inventory, sources));
+    }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("empty")]
+    [InlineData("not_subset")]
+    public void Given_InvalidOmissionIds_When_ConstructingIntegerWithOmission_Then_Rejects(string invalid)
+    {
+        ImmutableArray<string> omissions = invalid == "default" ? default : invalid == "empty" ? [] : ["A03"];
+        var exception = Assert.Throws<ArgumentException>(() => new KafkaScenarioOverrideSetting("connections.max.idle.ms", 0, int.MaxValue,
+            [KafkaClientRole.LoadGenProducer], ["A04"], omissions, [new(new Uri("https://example.com/configuration"), "v1")]));
+        Assert.Equal("omissionInventoryIds", exception.ParamName);
+    }
+
+    [Fact]
+    public void Given_SubsetOmissionIds_When_ConstructingIntegerWithOmission_Then_ExposesThem()
+    {
+        var setting = new KafkaScenarioOverrideSetting("connections.max.idle.ms", 0, int.MaxValue,
+            [KafkaClientRole.LoadGenProducer], ["A03", "A04"], ["A04"], [new(new Uri("https://example.com/configuration"), "v1")]);
+        Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind);
+        Assert.Equal(["A04"], setting.OmissionInventoryIds);
+        Assert.Equal(0, setting.Minimum);
+        Assert.Equal(int.MaxValue, setting.Maximum);
     }
 
     private static KafkaScenarioOverrideSetting CreateSetting(string key = "request.timeout.ms",

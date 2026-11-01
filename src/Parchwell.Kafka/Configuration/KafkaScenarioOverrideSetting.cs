@@ -61,6 +61,17 @@ public sealed class KafkaScenarioOverrideSetting
         ValueKind = KafkaScenarioOverrideValueKind.Omission;
     }
 
+    internal KafkaScenarioOverrideSetting(string key, int minimum, int maximum,
+        ImmutableArray<KafkaClientRole> supportedRoles, ImmutableArray<string> inventoryIds,
+        ImmutableArray<string> omissionInventoryIds, ImmutableArray<KafkaSettingSource> sources)
+        : this(key, KafkaScenarioOverrideValueKind.Integer, minimum, maximum, supportedRoles, inventoryIds, sources)
+    {
+        // An integer key that some items may also omit; each such item must already be one the entry serves.
+        if (omissionInventoryIds.IsDefaultOrEmpty || omissionInventoryIds.Any(id => !inventoryIds.Contains(id, StringComparer.Ordinal)))
+            throw new ArgumentException("Omission IDs must be a nonempty subset of the entry's inventory IDs.", nameof(omissionInventoryIds));
+        OmissionInventoryIds = omissionInventoryIds;
+    }
+
     /// <summary>Gets allowed exact string values; empty for non-enum entries.</summary>
     public ImmutableArray<string> AllowedValues { get; } = [];
 
@@ -69,6 +80,9 @@ public sealed class KafkaScenarioOverrideSetting
 
     /// <summary>Gets whether a cited baseline omission can be activated by this entry.</summary>
     public bool AllowActivation { get; }
+
+    /// <summary>Gets the inventory IDs whose scenarios may also remove this integer key with the plain scalar <c>omit</c>; empty for every other entry.</summary>
+    public ImmutableArray<string> OmissionInventoryIds { get; } = [];
 
     /// <summary>Gets the exact, case-sensitive Kafka configuration key.</summary>
     public string Key { get; }
@@ -130,7 +144,11 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.HeartbeatIntervalMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.PartitionAssignmentStrategy, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.Debug, ["cgrp", "topic,fetch,metadata"], false, true,
-            [KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], ["C08", "F04"], [NativeConfiguration])
+            [KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], ["C08", "F04"], [NativeConfiguration]),
+        new(KafkaSettingKeys.SocketKeepaliveEnable, KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["A02"], [NativeConfiguration]),
+        new(KafkaSettingKeys.MetadataMaxAgeMs, KafkaScenarioOverrideValueKind.Integer, 1, 86_400_000, [KafkaClientRole.LoadGenProducer], ["A03"], [NativeConfiguration]),
+        new(KafkaSettingKeys.TopicMetadataRefreshIntervalMs, KafkaScenarioOverrideValueKind.Integer, -1, 3_600_000, [KafkaClientRole.LoadGenProducer], ["A03"], [NativeConfiguration]),
+        new(KafkaSettingKeys.ConnectionsMaxIdleMs, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["A04"], ["A04"], [NativeConfiguration, NativeSource])
     ];
 
     /// <summary>Gets the immutable list of exact keys accepted by the override policy.</summary>
