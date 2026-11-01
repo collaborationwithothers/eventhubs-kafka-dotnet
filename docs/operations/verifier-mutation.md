@@ -363,6 +363,121 @@ T1 (`PhaseJudge.cs` 4863). The mutant changes `number++` to `number--` on line 4
 
 The [receipt](evidence/issue-275/receipt.md) records the identity check and the source-edit replay of all 31 mutants with `evidence/issue-275/replay.py`. A replay is diagnostic evidence, not C5 acceptance.
 
+## Issue 282 survivor dispositions
+
+[C5 run 41232286130](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130), attempt 1 on `main` at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, left 260 surviving mutants in `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` ([issue 277](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277)). This section gives one disposition to each of the 94 in span shard p4 (character span 31533..40525), in the members `V2Equal`, `V2JudgeItem`, `V2AssessmentShape` and `V2Published`, under the [issue 282 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/282#issuecomment-6557763377); raw Stryker statuses and scores are unchanged. The other 166 belong to issues 281 and 283.
+
+- Missing test: a test added for issue 282 passes on `main` and fails on the replayed mutant, and no existing test fails on it.
+- Equivalent: no input can change observable behaviour, and the mutant also survives replay.
+- Killed on replay: existing tests fail on the replayed mutant, though Stryker reported it survived.
+
+Scripted counts: 94 missing test, 0 equivalent, 0 killed on replay, 0 accepted gap. No verifier source changes and no assertion is loosened.
+
+Test aliases, all in `ProbeV2ItemJudgementAuditTests`: IJ1 `Given_OutcomeClassesAndDeliveredPartitions_When_Compared_Then_OnlyTheItemRuleDecidesEquality`; IJ2 `Given_ConfigurationDiagnostic_When_ItemJudged_Then_OnlyCompletionBlockersWithholdTheVerdict`; IJ3 `Given_DeterminismAndOutcomeClass_When_ItemJudged_Then_BothAreRequiredForAVerdict`; IJ4 `Given_OneContraryRepeat_When_ItemJudged_Then_EveryRepeatMustSupportTheHypothesis`; IJ5 `Given_UnknownItem_When_ItemJudged_Then_NoVerdictAndTheUnknownItemReason`; IJ6 `Given_PermissionAuditDiagnostics_When_F06Judged_Then_ExactlyOneSharedAuditAdmitsTheVerdict`; IJ7 `Given_RunKindMarkers_When_PublishedChecked_Then_OnlyTheMatchingRunShapeIsAdmitted`; IJ8 `Given_PermissionAuditDiagnosticShape_When_PublishedChecked_Then_OnlyOneLowercaseHexAuditOnF06IsAdmitted`; IJ9 `Given_FinalItemAssessmentShape_When_PublishedChecked_Then_OnlyDeclaredVerdictsLabelsValuesAndReasonsAreAdmitted`; IJ10 `Given_F06BatchAuditBinding_When_PublishedChecked_Then_TheCandidateCarriesTheAuditOrNoVerdict`; IJ11 `Given_RepeatStatusesAndClasses_When_PublishedChecked_Then_AggregateStatusDeterminismAndClassMustFollowTheRepeats`.
+
+Notes on two missing-test rows. Line numbers in this section are in the files at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, which for these files equals `main` when this section was written.
+
+- 12323 (line 360, `_ => false` to `_ => true` in `V2Equal`) and 12474 (line 399, reason `"unknown_item"` to `""` in `V2JudgeItem`) are killed by IJ1 and IJ5, which call the member directly with item `X01`. The production handler never passes such an item: `ProbeV2Options.Validate` (line 36 of `ProbeV2Options.cs`) calls `ProbeV2Matrix.For`, whose item switch throws `v2_configuration` for any other item (line 39 of `ProbeV2Matrix.cs`). The tests guard each member's own contract, not a path the handler uses. They are recorded as missing test, because they meet that definition.
+
+| Mutant | Line | Mutator | Disposition | Test or proof |
+| ---: | ---: | --- | --- | --- |
+| 12280 | 351 | Logical | missing test | IJ1 |
+| 12284 | 351 | Boolean | missing test | IJ1 |
+| 12305 | 359 | Conditional true | missing test | IJ1 |
+| 12315 | 359 | String | missing test | IJ1 |
+| 12317 | 359 | String | missing test | IJ1 |
+| 12320 | 359 | Logical | missing test | IJ1 |
+| 12323 | 360 | Boolean | missing test | IJ1 |
+| 12359 | 373 | Linq Any to All | missing test | IJ2 |
+| 12362 | 373 | Logical | missing test | IJ2 |
+| 12363 | 373 | Logical | missing test | IJ2 |
+| 12364 | 373 | String | missing test | IJ2 |
+| 12365 | 373 | String | missing test | IJ2 |
+| 12366 | 373 | String | missing test | IJ2 |
+| 12367 | 373 | String | missing test | IJ2 |
+| 12371 | 374 | Logical | missing test | IJ3 |
+| 12393 | 380 | Linq All to Any | missing test | IJ4 |
+| 12395 | 380 | Logical | missing test | IJ4 |
+| 12424 | 386 | Linq Any to All | missing test | IJ4 |
+| 12434 | 388 | Linq All to Any | missing test | IJ4 |
+| 12450 | 394 | Logical | missing test | IJ6 |
+| 12452 | 394 | Linq Any to All | missing test | IJ6 |
+| 12459 | 394 | String | missing test | IJ6 |
+| 12464 | 395 | Linq Any to All | missing test | IJ4 |
+| 12474 | 399 | String | missing test | IJ5 |
+| 12478 | 404 | Logical | missing test | IJ7 |
+| 12486 | 405 | String | missing test | IJ7 |
+| 12489 | 406 | String | missing test | IJ7 |
+| 12490 | 406 | Boolean | missing test | IJ7 |
+| 12492 | 408 | Logical | missing test | IJ8 |
+| 12495 | 408 | Equality | missing test | IJ8 |
+| 12497 | 408 | Logical | missing test | IJ8 |
+| 12498 | 408 | Logical | missing test | IJ8 |
+| 12499 | 408 | Equality | missing test | IJ8 |
+| 12500 | 408 | String | missing test | IJ8 |
+| 12501 | 408 | Equality | missing test | IJ8 |
+| 12502 | 408 | Logical not | missing test | IJ8 |
+| 12503 | 408 | Linq All to Any | missing test | IJ8 |
+| 12504 | 408 | Equality | missing test | IJ8 |
+| 12506 | 408 | Logical | missing test | IJ8 |
+| 12507 | 408 | Equality | missing test | IJ8 |
+| 12508 | 408 | Equality | missing test | IJ8 |
+| 12509 | 408 | Equality | missing test | IJ8 |
+| 12510 | 408 | Equality | missing test | IJ8 |
+| 12511 | 408 | Logical | missing test | IJ8 |
+| 12512 | 408 | Equality | missing test | IJ8 |
+| 12513 | 408 | Equality | missing test | IJ8 |
+| 12514 | 408 | Equality | missing test | IJ8 |
+| 12515 | 408 | Equality | missing test | IJ8 |
+| 12516 | 408 | Boolean | missing test | IJ8 |
+| 12520 | 411 | Equality | missing test | IJ9 |
+| 12521 | 411 | Boolean | missing test | IJ9 |
+| 12524 | 412 | String | missing test | IJ9 |
+| 12525 | 412 | String | missing test | IJ9 |
+| 12526 | 412 | String | missing test | IJ9 |
+| 12527 | 412 | String | missing test | IJ9 |
+| 12528 | 413 | Logical | missing test | IJ9 |
+| 12529 | 413 | Logical | missing test | IJ9 |
+| 12530 | 413 | Logical | missing test | IJ9 |
+| 12537 | 413 | String | missing test | IJ9 |
+| 12538 | 413 | String | missing test | IJ9 |
+| 12539 | 413 | String | missing test | IJ9 |
+| 12540 | 414 | Linq Order to OrderDescending | missing test | IJ9 |
+| 12541 | 415 | Linq All to Any | missing test | IJ9 |
+| 12547 | 415 | String | missing test | IJ9 |
+| 12548 | 415 | String | missing test | IJ9 |
+| 12549 | 415 | String | missing test | IJ9 |
+| 12558 | 416 | String | missing test | IJ9 |
+| 12559 | 416 | String | missing test | IJ9 |
+| 12560 | 416 | String | missing test | IJ9 |
+| 12561 | 416 | String | missing test | IJ9 |
+| 12562 | 416 | String | missing test | IJ9 |
+| 12563 | 416 | String | missing test | IJ9 |
+| 12564 | 416 | String | missing test | IJ9 |
+| 12614 | 426 | Equality | missing test | IJ10 |
+| 12615 | 426 | String | missing test | IJ10 |
+| 12617 | 426 | String | missing test | IJ10 |
+| 12618 | 426 | Conditional true | missing test | IJ10 |
+| 12619 | 426 | Conditional false | missing test | IJ10 |
+| 12620 | 426 | Equality | missing test | IJ10 |
+| 12621 | 426 | Equality | missing test | IJ10 |
+| 12622 | 426 | String | missing test | IJ10 |
+| 12624 | 427 | Linq All to Any | missing test | IJ11 |
+| 12627 | 427 | Logical | missing test | IJ11 |
+| 12628 | 427 | String | missing test | IJ11 |
+| 12629 | 427 | String | missing test | IJ11 |
+| 12633 | 428 | Conditional false | missing test | IJ11 |
+| 12634 | 428 | Linq Any to All | missing test | IJ11 |
+| 12636 | 428 | String | missing test | IJ11 |
+| 12637 | 428 | String | missing test | IJ11 |
+| 12640 | 428 | Linq All to Any | missing test | IJ11 |
+| 12644 | 428 | String | missing test | IJ11 |
+| 12646 | 429 | Conditional true | missing test | IJ11 |
+| 12650 | 429 | Linq All to Any | missing test | IJ11 |
+| 12652 | 430 | Conditional true | missing test | IJ11 |
+
+The [receipt](evidence/issue-282/receipt.md) records the source-edit replay of all 94 survivors with `evidence/issue-282/replay.py`, on a branch cut from `main` at `0db2375a23605ea2ce9c7d6185886d7436d51d00`. A replay is diagnostic evidence, not C5 acceptance.
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
