@@ -66,10 +66,10 @@ Status: research fetched 2026-10-12. Dispositions approved by Hari on 2026-10-12
 | K-41 | Public egress (Entra) uses load balancer SNAT; private endpoint traffic probably does not | no | no | confirmed (limits); unconfirmed (bypass) | S20, S29 | new K10 (D) |
 | K-42 | librdkafka connects only where needed; every client counts toward brokered connections per PU | yes | yes | confirmed (client); unconfirmed (EH broker IDs) | S02, S16 | fold D04; record broker count in every evidence pack |
 | K-43 | Workload identity needs HTTPS egress to `login.microsoftonline.com`, which has no fixed IPs | yes | yes | confirmed | S27, S52 | fold F03 |
-| K-44 | Projected token TTL default 3600 s, refreshed by kubelet at 80 percent; re-read the token file on each exchange | yes | yes | confirmed | S18, S54, S55 | fold F01, F03 |
-| K-45 | The Kafka token resource is `https://<namespace>.servicebus.windows.net` | yes | yes | confirmed | S17 | fold F01, F04 |
+| K-44 | Projected token TTL default 3600 s, refreshed by kubelet at 80 percent; re-read the token file on each exchange | yes | yes | confirmed | S18, S54, S55 | fold F03 |
+| K-45 | The Kafka token resource is `https://<namespace>.servicebus.windows.net` | yes | yes | confirmed | S17 | fold F04 |
 | K-46 | librdkafka refreshes the token at 80 percent of lifetime; on failure it keeps the old token and retries after 10 s | yes | yes | confirmed | S07 | fold F03 |
-| K-47 | The consumer's refresh callback runs only from `Consume`; the producer's is triggered through `IProducer.Poll`, which the background poll thread calls only while `dotnet.producer.enable.background.poll` is true (the default); with it false and no explicit `Poll`, refresh stalls | yes | yes | confirmed | S08, S01, S11 | fold F01, C03 |
+| K-47 | The consumer's refresh callback runs only from `Consume`; the producer's is triggered through `IProducer.Poll`, which the background poll thread calls only while `dotnet.producer.enable.background.poll` is true (the default); with it false and no explicit `Poll`, refresh stalls | yes | yes | confirmed | S08, S01, S11 | fold C03; producer half with background poll false deferred |
 | K-48 | Whether Event Hubs supports SASL re-authentication (KIP-368) or closes connections at token expiry | yes | yes | unconfirmed (EH side) | S03 | fold F03 (hypothesis) |
 | K-49 | Every pod can reach the node's IMDS; `azure_imds` uses the node identity, not workload identity | yes | yes | confirmed* | S02, S28 | fold F02 |
 | K-50 | librdkafka's built-in jwt-bearer grant (KIP-1139) with Entra federation is untested | yes | yes | unconfirmed | S02 | fold F02 (hypothesis) |
