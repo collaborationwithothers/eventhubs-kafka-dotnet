@@ -303,6 +303,9 @@ esac
         expected_environments = {'batch': 'parchwell-scenarios', 'batch-stop': 'parchwell-sweeper'}
         self.assertEqual(['batch-stop'], [name for name, job in self.all_jobs.items()
                                           if job['environment'] == 'parchwell-sweeper'])
+        # That environment's secrets are reachable without a human gate, so the
+        # stop job must not reference any secret.
+        self.assertNotIn('secrets.', json.dumps(stop))
         for name in expected_ids:
             job = self.all_jobs[name]
             self.assertEqual(expected_ids[name], [step['id'] for step in job['steps'] if 'id' in step])

@@ -4,12 +4,12 @@ The scenario workflow's stop-only job `batch-stop` now uses the `parchwell-sweep
 
 ## Task brief and authorization
 
-Directly authorized governance and workflow work with no approved item plan, for issue #240. Hari's instruction in an interactive session on 2026-11-01: "open a PR for that", meaning make the dispatch-end AKS stop run without waiting for an environment approval. After the governance conflict below was put to him, he answered "I approve the change just do it" (same session, 2026-11-01). Hari alone merges, because `.github/workflows/` is a protected path (AGENTS.md hard safety rule 8).
+Directly authorized governance and workflow work for issue #240. It amends the approved [Revision 7 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6490062145), whose item 8 keeps scenario.yml's "environment protection" unchanged, for `batch-stop` only. The amendment must be recorded as a `## Decision` comment on #240 before this pull request leaves draft; the agent session was not permitted to post it. Hari's instruction in an interactive session on 2026-11-01: "open a PR for that", meaning make the dispatch-end AKS stop run without waiting for an environment approval. After the governance conflict below was put to him, he answered "I approve the change just do it" (same session, 2026-11-01). Hari alone merges, because `.github/workflows/` is a protected path (AGENTS.md hard safety rule 8).
 
 ## Execution card
 
 - Deliverable: `batch-stop` environment change, its byte-identical mirror, the matching phase workflow test, and the two docs that describe the gate.
-- Mandatory gates: `cmp` of the workflow mirror, the phase Python tests, `check-offline.sh`, `npm run check:docs`, one comprehensive cold review, Codex review, Hari's merge.
+- Mandatory gates: `cmp` of the workflow mirror, the phase workflow tests, `check-offline.sh`, `npm run check:docs`, one comprehensive cold review, Codex review, Hari's merge.
 - Earliest publication checkpoint: draft pull request after the first clean cold review.
 - Review budget: AGENTS.md "Before opening a pull request" rule 8. Exhaustion action: hand off to Hari.
 - Predicate-to-test map: not applicable. No verifier predicate changes.
@@ -42,3 +42,14 @@ Every job on `parchwell-sweeper` gets the workflow's Azure identity without a hu
 ## Not changed
 
 `full-C3` keeps its approval wait. A01 and B04 dispatches still need approval before the stop runs.
+
+## Cold-review record
+
+Round 1, comprehensive, on the staged diff against `6ebaed0` (backup commit `2bb00ac`). Report complete. Findings and dispositions:
+
+- P0, identity scope (`scenario.yml:882`, blueprint section 9). The finding is correct: `batch-stop` now gets the apply-capable app's token without a human gate. Disposition: not fixed, because removing the scope change removes the requested behaviour. Hari approved this trade-off on 2026-11-01. Escalated to Hari in the pull request description; it is not claimed invalid or cleared.
+- P1, unrecorded plan amendment. Fixed in part: this receipt now names the Revision 7 conflict. The `## Decision` comment on #240 is still needed and is Hari's to post or authorize.
+- P2, no test pins "reads no secrets". Fixed: `test_batch_topology_and_exact_steps` asserts that `batch-stop` has no `secrets.` reference.
+- Pre-existing: `probe-v2-smoke-contract.md` said a dispatch keeps "the existing environment approval". Fixed to name the `batch` job. The failing `test_both_streams_capped` is unchanged by this pull request.
+
+Cumulative count: 1 comprehensive pass, 0 focused rounds.
