@@ -57,6 +57,11 @@ internal static class KafkaSettingKeys
     /// Scenario results are pending; add published result links when available.</remarks>
     internal const string MetadataMaxAgeMs = "metadata.max.age.ms";
 
+    /// <summary>The <c>topic.metadata.refresh.interval.ms</c> setting key.</summary>
+    /// <remarks>Inventory: <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/b8a25359c8c531c20b0950f3981b6c22a867df1e/docs/blueprint.md#L885">A03</see>.
+    /// Scenario results are pending; add published result links when available.</remarks>
+    internal const string TopicMetadataRefreshIntervalMs = "topic.metadata.refresh.interval.ms";
+
     /// <summary>The <c>connections.max.idle.ms</c> setting key.</summary>
     /// <remarks>Inventory: <see href="https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/b8a25359c8c531c20b0950f3981b6c22a867df1e/docs/blueprint.md#L1012">A04</see>.
     /// Scenario results are pending; add published result links when available.</remarks>

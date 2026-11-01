@@ -39,7 +39,7 @@ The initial schema_version is the contract literal 1. All named mappings are cas
 
 - baseline is exactly Parchwell.Kafka.
 - roles is a nonempty unique list of exact KafkaClientRole names.
-- configurations is a nonempty map of identifier to role map to Kafka-key/replacement. Numeric and boolean replacements use plain scalars; the admitted string and omission forms are defined under [Single-action declarations](#single-action-declarations). An empty role map, including an empty configuration, is a valid baseline. Config/tenant/stage identifiers are ASCII slugs starting with a letter and containing letters, digits, underscore or hyphen.
+- configurations is a nonempty map of identifier to role map to Kafka-key/replacement. Numeric and boolean replacements use plain scalars; the admitted string and omission forms are defined under [Single-action declarations](#single-action-declarations) and [Idle observation declarations](#idle-observation-declarations). An empty role map, including an empty configuration, is a valid baseline. Config/tenant/stage identifiers are ASCII slugs starting with a letter and containing letters, digits, underscore or hyphen.
 - repeats is a plain decimal integer obeying the factory minimum. The policy literal is at least five; it is a repository rule, not a measurement ([factory plan template](../agents/factory.md#plan-template)).
 - measures is a nonempty unique list of maps with exactly id and role. The role must be declared and applicable to the closed logical catalogue. Native availability does not imply implemented collection.
 - fault has exactly live and component. Either can be {kind: none}. A live declaration otherwise has kind: throttling and a nonempty unique configurations list. A component declaration otherwise has kind: toxiproxy_latency, configurations, direction: downstream and positive plain integer latency_ms. All configuration references must exist.
@@ -70,7 +70,7 @@ The seed, traffic weights, burst size and discrete payload distributions describ
 
 ScenarioResolver receives KafkaConfigurationFactory in its constructor. Resolve(LoadedScenario) invokes only declared roles' existing factory methods. It returns immutable string settings, baseline metadata and omissions. It does not mutate or expose the mutable native baseline configuration. Each replacement additionally records scenario/configuration identity and source location; baseline metadata continues to describe initial emission.
 
-Legacy LoadGenProducer replacements support request.timeout.ms and socket.timeout.ms (A01), and max.in.flight and the boolean enable.idempotence (B04). [Single-action declarations](#single-action-declarations) define the additional keys, activation and omission cases. Integers must be plain decimals within the pinned native ranges; booleans must be the plain literals true or false. Every replacement must differ from the baseline. Reject other keys, aliases and wrong roles. Empty configurations remain valid. Do not impose timeout-ordering constraints. Sources: [request timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L1797-L1802), [socket timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L576-L585), [merged baseline contract](kafka-baseline.md).
+Legacy LoadGenProducer replacements support request.timeout.ms and socket.timeout.ms (A01), and max.in.flight and the boolean enable.idempotence (B04). [Single-action declarations](#single-action-declarations) and [Idle observation declarations](#idle-observation-declarations) define the additional keys, activation and omission cases. Integers must be plain decimals within the pinned native ranges; booleans must be the plain literals true or false. Every replacement must differ from the baseline. Reject other keys, aliases and wrong roles. Empty configurations remain valid. Do not impose timeout-ordering constraints. Sources: [request timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L1797-L1802), [socket timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L576-L585), [merged baseline contract](kafka-baseline.md).
 
 Workers consume the resolved scenario/profile and effective Kafka configuration in-process under [ADR-014](../blueprint.md#adr-014-scenarios-are-a-definition-file-and-an-expected-outcome-file-per-item-workers-resolve-deployment-settings-in-process) and [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). There is no values-generator program or generated comparison contract in the target design. The chart's interface is the identifier, infrastructure, image and bounds interface fixed by the [#138 item plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383206899). C7 removes the obsolete generator implementation. expected.yaml is never a resolver input.
 
@@ -109,3 +109,35 @@ ADR-013 remains binding: timeout/retry ambiguity or incomplete guard evidence pr
 B08, E01 and F06 use the closed `probe_v2.configurations` declaration, mutually exclusive with `single_action`. Its rows contain exactly action, role, service_account, topic, partition_mode, partition, value_kind, window_ms, key_rule and read_rule. The fixed [V2 matrix and evidence rules](single-action-contract.md#schema-two-live-probes) own their allowed combinations; arbitrary accounts, topics, keys, modes or terminal rules are rejected.
 
 All use five repeats, no replacement, no fault/gate, and one single_action.outcome/client_errors measure for each declared role. B08 C0 has no delta; C1 changes only partitioner from consistent_random to murmur2_random. E01/F06 have no Kafka deltas. Both worker images package these definitions and their existing workload profile. [Smoke-only admission](probe-v2-smoke-contract.md) does not add expected-outcome files or scientific verdicts.
+
+## Idle observation declarations
+
+A02, A03 and A04 use the closed `idle_observation` declaration, under the [five proposal decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6562996229) and the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228). The experiment is one producer that produces, stays idle with nothing to send, and produces again. This section covers the declaration and settings only: no worker runs it yet, and the idle period, statistics interval and statistics report cap, both fields and values, are added by [#317](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/317) under the [#316 decision on timing fields](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564220623).
+
+`idle_observation` contains exactly `action: produce` and `role: LoadGenProducer`. Each item uses five repeats, the `LoadGenProducer` role only, no live or component fault, no gate, and exactly the `single_action.outcome` and `single_action.client_errors` measures for `LoadGenProducer`. Each item still names a validated profile, as the root schema requires; the idle experiment does not generate its workload.
+
+| Item | Configuration | `LoadGenProducer` delta |
+|---|---|---|
+| A02 | C0 | `socket.keepalive.enable: false`, the librdkafka default |
+| A02 | C1 | none; the baseline's `true` is Microsoft's recommendation |
+| A03 | C0 | `metadata.max.age.ms: 900000`, the librdkafka default |
+| A03 | C1 | none; the baseline's `180000` is Microsoft's recommendation |
+| A03 | C2 | `topic.metadata.refresh.interval.ms: 180000`; `metadata.max.age.ms` stays at the baseline's `180000` |
+| A04 | C0 | `connections.max.idle.ms: omit`, so the client leaves the key unmodified |
+| A04 | C1 | `connections.max.idle.ms: 180000` |
+
+Values in this table are configuration literals, not measurements. The loader's additional checks are a closed list:
+
+1. Admission: only A02, A03 and A04 may declare `idle_observation` (`idle_observation_unexpected`), and each of them must (`idle_observation_required`).
+2. Exclusivity: `idle_observation` cannot appear with `single_action` or `probe_v2` (`idle_observation_combined`).
+3. Shape: a mapping with exactly `action` and `role` (`idle_observation_shape`).
+4. Literals: `action` is `produce` and `role` is `LoadGenProducer` (`idle_observation_literal`).
+5. Fixed experiment: the repeats, faults, gate, roles and measures above (`idle_observation_experiment`).
+6. Configuration set: exactly the item's configurations in the table (`idle_observation_configurations`).
+7. Deltas: exactly the table's delta for each configuration (`idle_observation_deltas`).
+
+The override policy admits, for `LoadGenProducer` only, boolean `socket.keepalive.enable`, integer `metadata.max.age.ms` (1 to 86400000), integer `topic.metadata.refresh.interval.ms` (-1 to 3600000) and integer `connections.max.idle.ms` (0 to 2147483647), the [pinned native ranges](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md). Only A04 may also omit `connections.max.idle.ms` with the plain `omit`; the same value from any other item is `setting_out_of_range`. The split decision approves this omission as an exception to ADR-015's explicit-setting rule, for A04 C0 only. librdkafka applies its Azure idle heuristic only when the key is not modified ([rdkafka_conf.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L4682-L4687)); the namespace naming rule keeps "azure" out of the bootstrap address, so the heuristic is eligible but does not match.
+
+The baseline sets `topic.metadata.refresh.interval.ms` explicitly to the librdkafka default `300000` for every role, tagged A03. Microsoft's librdkafka configuration table does not list it, so ADR-015 selects the pinned native default, and the resolver can replace only an emitted or omitted baseline key ([Composition and output](#composition-and-output)).
+
+The action is a produce because librdkafka v2.16.0 builds a Produce request only when a partition's transmit queue holds messages ([rdkafka_broker.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L4446-L4448)), and polling serves callbacks only ([rdkafka.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L6147-L6154)). The client still sends its own requests while idle, such as the periodic Metadata refresh ([rdkafka.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L2458-L2461)). `expected.yaml` remains assessment-only and is not added here.

@@ -24,7 +24,7 @@ internal static class DefinitionReader
             throw new InvalidOperationException("Unreachable");
         }
         validation.TryFields(rootMap, "",
-            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action", "probe_v2"],
+            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action", "probe_v2", "idle_observation"],
             ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures"]);
 
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
@@ -52,8 +52,12 @@ internal static class DefinitionReader
         if (rootMap.Fields.ContainsKey("single_action") && rootMap.Fields.TryGetValue("probe_v2", out var probeNode))
             validation.Error(probeNode, "probe_v2", "probe_v2_unexpected", "Probe generations cannot be combined.");
         var probeV2 = ProbeV2DefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("probe_v2"), definition);
+        var idleObservation = IdleObservationDefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("idle_observation"), definition);
+        if (rootMap.Fields.TryGetValue("idle_observation", out var idleNode) &&
+            (rootMap.Fields.ContainsKey("single_action") || rootMap.Fields.ContainsKey("probe_v2")))
+            validation.Error(idleNode, "idle_observation", "idle_observation_combined", "Idle observation cannot be combined with another probe generation.");
         validation.ThrowIfErrors();
-        return definition with { SingleAction = singleAction, ProbeV2 = probeV2 };
+        return definition with { SingleAction = singleAction, ProbeV2 = probeV2, IdleObservation = idleObservation };
     }
 
     private static int ReadLiteralVersion(NodeValidation validation, MapNode map, string key, string path)
@@ -141,7 +145,8 @@ internal static class DefinitionReader
                             values[key] = new SettingOverride(text.Value, settingNode.Location);
                             continue;
                         }
-                        if (policy.ValueKind == KafkaScenarioOverrideValueKind.Omission && settingNode is ScalarNode { IsPlain: true, Value: "omit" })
+                        if ((policy.ValueKind == KafkaScenarioOverrideValueKind.Omission || !policy.OmissionInventoryIds.IsEmpty) &&
+                            settingNode is ScalarNode { IsPlain: true, Value: "omit" })
                         {
                             values[key] = new SettingOverride("omit", settingNode.Location);
                             continue;

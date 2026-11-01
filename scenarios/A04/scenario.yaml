@@ -1,0 +1,29 @@
+schema_version: 1
+id: A04
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0:
+    LoadGenProducer:
+      connections.max.idle.ms: omit
+  C1:
+    LoadGenProducer:
+      connections.max.idle.ms: 180000
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+idle_observation:
+  action: produce
+  role: LoadGenProducer

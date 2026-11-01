@@ -14,5 +14,5 @@ The captured `applicable_deadline_provenance` claim carries the production catal
 | [`manifest.json`](captured-run/manifest.json) | 1,323 | `c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66` |
 | [`statistics.jsonl`](captured-run/statistics.jsonl) | 3,422 | `b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988` |
 | [`request-lifecycle.jsonl`](captured-run/request-lifecycle.jsonl) | 1,162 | `d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2` |
-| [`capabilities.json`](captured-run/capabilities.json) | 28,731 | `eee741b47feecbc9bce246e14e77a0b6e7d31b1f3325aa30b8991216dadd93de` |
-| [`index.json`](captured-run/index.json) | 932 | `12fee7dfca83b80eda3c8fa0a05c86aeff8e6104724bc72812b938f9d79705ba` |
+| [`capabilities.json`](captured-run/capabilities.json) | 29,160 | `38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a` |
+| [`index.json`](captured-run/index.json) | 932 | `7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f` |
