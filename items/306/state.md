@@ -1,0 +1,15 @@
+# State: #306 F01 verdict pull request from run 41201284963 (#302 child 2)
+Covers: comment 6561940860 created 2026-11-01T18:17:02Z; read at 2026-11-01T18:35:00Z
+Parent items: [#302](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/302)
+Item plan: none (the parent has no item plan of the factory template; the scientific rules come from issue 245, as the approved plan lists)
+Implementing tool: Claude Code. Source: [approval 6561940860](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561940860), created 2026-11-01T18:17:02Z, before `ready-for-agent` at 2026-11-01T18:20:19Z; no comment on #302 names a tool
+Approved plan: [f01-handler-refresh-verdict plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561375850), updated_at 2026-11-01T18:02:50Z, approved by [comment 6561940860](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561940860) after [plan check 6561905161](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561905161) (`Blocking findings: none`; findings 1 to 3 are `apply in implementation`)
+Decisions in force:
+- Issue body: split entry 2 of #302 (publish the F01 verdict from the passing run 41201284963); predecessor: the pull request of #304; not decided: the verdict word (Hari decides it in the verdict pull request), whether the run's captures meet docs/agents/factory.md "Evidence pack", and whether its artifacts are still retained (ADR-020). Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306)
+- #302 decision: publish F01 and F02, narrow the F01 blueprint row first. Source: [decision 6558920636](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/302#issuecomment-6558920636)
+- #302 decision: split into four children, in the body's order. Source: [split decision 6560081575](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/302#issuecomment-6560081575)
+- Answers the five open questions of plan Revision 1: the smoke run is a verdict source for F01 with one exception sentence in the smoke contract; the pinned script judges the handler rows for F01 only; no `scenarios/F01/scenario.yaml`; `scenarios/F01/expected.yaml` restates only pre-run rules; the pull request proposes `undocumented`. It approves no plan revision, dispatch or verdict. Source: [decision 6561458447](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561458447)
+- Approves plan Revision 3 for its pull request only, with no dispatch and no Azure spend; the verdict word stays Hari's. Source: [approval 6561940860](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/306#issuecomment-6561940860)
+Open questions:
+- None
+Next action: Hari reviews the verdict pull request, decides the verdict word and merges it (verdict pull requests always go to Hari).

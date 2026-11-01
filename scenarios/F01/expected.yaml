@@ -1,0 +1,50 @@
+# F01 expected outcome. Every key below restates an assessment rule approved before run
+# 41201284963 was created (2026-10-31T12:28:48Z), and its comment tags the sources that state it.
+# Sources, by tag:
+# [R2] issue 245 plan Revision 2, comment 6532455703, updated 2026-10-31T06:57:18Z,
+#      approved by comment 6540478275 at 2026-10-31T07:12:55Z.
+# [CARD] docs/operations/authentication-lifecycle-observation.md, section
+#      "Future handler-refresh assessment card", merged at e76c7602b948946eb4e37c56d91ab79fbcaf3ba5
+#      (pull request 265, 2026-10-31T10:32:05Z); the whole file is unchanged at the run source
+#      b79acb256d09ea29e493acc460ebbe2c9c59aa4f.
+# [DIAG] the same file at the same commits, section "Separately selected handler refresh-path diagnostic".
+# [D] issue 245 decision 6532364305, 2026-10-30T20:03:13Z.
+# [DISP] issue 245 dispatch approval 6543347760, 2026-10-31T12:26:59Z.
+# [EP] docs/agents/factory.md "Evidence pack" at b79acb256d09ea29e493acc460ebbe2c9c59aa4f,
+#      which carries the approved counts exception of issue 210 comment 6415081194 (2026-10-26T11:38:31Z).
+# [MODES] docs/agents/factory.md "Modes of work" at b79acb256d09ea29e493acc460ebbe2c9c59aa4f.
+# The card says no expected.yaml, verdict or results entry follows from the diagnostic. This file
+# is published under issue 302 decision 6558920636 point 3 and issue 306 decision 6561458447
+# point 4, which postdate the run and add no expectation.
+schema_version: 1
+id: F01
+assessment_rules:
+  run_definition: F06 C6 loadgen seed producers and F06 C9 enrichment-consumer action consumers, dispatched through scenario.yml on main at b79acb256d09ea29e493acc460ebbe2c9c59aa4f # [R2] [DIAG] [DISP]
+  dispatch: scenario=probe-batch-2, run_kind=smoke, items=authentication-controls, capture_authentication_metadata=true, test_handler_refresh_path=true # [CARD] [DISP]
+  fixed_slots_per_ordinary_actor: 5 # [CARD]
+  replacement_slots: 0 # [CARD]
+  reruns: 0 # [CARD]
+  ordinary_clients: five C6 loadgen seed producers and five C9 enrichment-consumer action consumers # [R2]
+  probe_rows: separate prerequisite context # [CARD]
+  full_assessment_requires: all five producer and five consumer rows # [CARD]
+  per_client_requirements: # [CARD]
+  - join the raw row to the original registration and capture, admitted pod identity, immutable image digest, ordinary effective-scope evidence and existing candidate dependency chain
+  - first successful initial service operation
+  - first two later complete callback, SDK, acquisition and install chains
+  - actual versus effective expiry consistency
+  - one post-refresh service operation before the same 20-second cutoff
+  - usable raw timestamps, successful client cleanup and existing workflow teardown and stop
+  producer_operation: persisted on the requested topic and partition with the diagnostic marker # [CARD]
+  consumer_operation: returns the original requested topic, partition, offset, key and value after one successful Seek; buffering is acceptable # [CARD]
+  cached_sdk_token: passes # [D] [DIAG] [DISP]
+  gaps: missing, duplicate, conflicting, late, oversized, clock-limited or cleanup-incomplete evidence is a gap, never a scientific contradiction or a zero # [CARD]
+  out_of_scope: natural expiry, new issuance, assertion rotation, broker reauthentication # [D]
+  adr012_counts: not_applicable # [EP]
+  evidence_policy: docs/agents/factory.md#evidence-pack # [EP]
+  changed_expectations_require_human_approval: true # [MODES]
+hypotheses:
+  H_handler: # [R2]
+    statement: under an artificial advertised expiry, native scheduling re-enters our handler, the handler calls the SDK and installs its response, and the same native clients continue service operations
+    decision: recorded_only
+verdict:
+  decision: none approved before the run # [CARD] [DISP]

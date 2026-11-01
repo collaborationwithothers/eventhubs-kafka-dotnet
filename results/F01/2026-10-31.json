@@ -1,0 +1,1684 @@
+{
+  "publication": {
+    "item": "F01",
+    "proposed_verdict": "undocumented",
+    "verdict_basis": "Microsoft's [Apache Kafka developer guide for Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-developer-guide) lists its OAuth samples as \"Java and Go samples for OAuth authentication\" (read 2026-11-01), so the .NET refresh-handler path that worked here is not covered by that guidance.",
+    "workload": "synthetic",
+    "adr012_counts": "not_applicable",
+    "hypotheses": {
+      "H_handler": "recorded_only"
+    },
+    "h_handler_observed": true,
+    "run": {
+      "workflow_run": 41201284963,
+      "attempt": 1,
+      "run_id": "probe-41201284963-1",
+      "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "run_conclusion": "success",
+      "created_at": "2026-10-31T12:28:48Z",
+      "candidate_artifact": {
+        "id": 13044674034,
+        "name": "probe-batch-candidates-41201284963-1",
+        "zip_sha256": "5f1fb152ac7809cb76708152b810b1faf6b521ffb294f1efee577c1f9eb15d5f"
+      },
+      "pod_artifact": {
+        "id": 13044719046,
+        "name": "probe-batch-pods-41201284963-1",
+        "zip_sha256": "c247f668177ebced9c34dc43034a4883939c26c5d3ff059eac485393056aab2a"
+      },
+      "batch_job_id": 124537435582,
+      "stop_job_id": 124558545195
+    },
+    "rule_sources": {
+      "R2": {
+        "what": "issue 245 plan Revision 2",
+        "comment": 6532455703,
+        "updated_at": "2026-10-31T06:57:18Z",
+        "approval_comment": 6540478275,
+        "approved_at": "2026-10-31T07:12:55Z"
+      },
+      "CARD": {
+        "what": "docs/operations/authentication-lifecycle-observation.md, section \"Future handler-refresh assessment card\"",
+        "commit": "e76c7602b948946eb4e37c56d91ab79fbcaf3ba5",
+        "pull_request": 265,
+        "merged_at": "2026-10-31T10:32:05Z",
+        "unchanged_at_run_source": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f"
+      },
+      "DIAG": {
+        "what": "the same file at the same commits, section \"Separately selected handler refresh-path diagnostic\""
+      },
+      "D": {
+        "what": "issue 245 decision",
+        "comment": 6532364305,
+        "created_at": "2026-10-30T20:03:13Z"
+      },
+      "DISP": {
+        "what": "issue 245 dispatch approval",
+        "comment": 6543347760,
+        "created_at": "2026-10-31T12:26:59Z"
+      },
+      "EP": {
+        "what": "docs/agents/factory.md \"Evidence pack\"",
+        "commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+        "counts_exception": {
+          "issue": 210,
+          "comment": 6415081194,
+          "created_at": "2026-10-26T11:38:31Z"
+        }
+      },
+      "MODES": {
+        "what": "docs/agents/factory.md \"Modes of work\"",
+        "commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f"
+      }
+    },
+    "versions": {
+      "managed": "2.16.0.0",
+      "native": "2.16.0"
+    },
+    "environment": {
+      "pu": 1,
+      "sku": "Premium",
+      "region": "uksouth",
+      "node_size": "Standard_D4ds_v5",
+      "node_size_basis": "inferred from infra/cluster/aks.tf at SOURCE; not captured"
+    },
+    "teardown": {
+      "ephemeral_state_empty": "2026-10-31T14:05:57.5406578Z",
+      "aks_stopped": "2026-10-31T16:05:36.5602480Z"
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130",
+      "summary_artifact": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130/artifacts/13057507952",
+      "commit": "2dc9715e3de176f7e1cd55eee9c251e43c29c746",
+      "measurement_complete": true,
+      "break_passed": true,
+      "break_threshold": 60,
+      "numerator": 3076,
+      "denominator": 3366,
+      "score_percent_rounded_1dp": 91.4,
+      "status_counts": {
+        "Killed": 3075,
+        "Timeout": 1,
+        "Survived": 290,
+        "NoCoverage": 0,
+        "CompileError": 327,
+        "RuntimeError": 0,
+        "Ignored": 110
+      },
+      "targets": {
+        "Judge/PhaseJudge.cs": {
+          "status_counts": {
+            "Killed": 189,
+            "Timeout": 1,
+            "Survived": 16,
+            "NoCoverage": 0,
+            "CompileError": 4,
+            "RuntimeError": 0,
+            "Ignored": 6
+          },
+          "numerator": 190,
+          "denominator": 206
+        },
+        "VerifyRun/Publication/PublicationAcceptance.cs": {
+          "status_counts": {
+            "Killed": 177,
+            "Timeout": 0,
+            "Survived": 6,
+            "NoCoverage": 0,
+            "CompileError": 6,
+            "RuntimeError": 0,
+            "Ignored": 14
+          },
+          "numerator": 177,
+          "denominator": 183
+        },
+        "VerifyRun/A01/A01EvidenceRecorder.cs": {
+          "status_counts": {
+            "Killed": 71,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 15,
+            "RuntimeError": 0,
+            "Ignored": 8
+          },
+          "numerator": 71,
+          "denominator": 71
+        },
+        "VerifyRun/A01/WorkloadRecorder.cs": {
+          "status_counts": {
+            "Killed": 95,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 2,
+            "RuntimeError": 0,
+            "Ignored": 7
+          },
+          "numerator": 95,
+          "denominator": 95
+        },
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": {
+          "status_counts": {
+            "Killed": 792,
+            "Timeout": 0,
+            "Survived": 8,
+            "NoCoverage": 0,
+            "CompileError": 142,
+            "RuntimeError": 0,
+            "Ignored": 29
+          },
+          "numerator": 792,
+          "denominator": 800
+        },
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": {
+          "status_counts": {
+            "Killed": 1751,
+            "Timeout": 0,
+            "Survived": 260,
+            "NoCoverage": 0,
+            "CompileError": 158,
+            "RuntimeError": 0,
+            "Ignored": 46
+          },
+          "numerator": 1751,
+          "denominator": 2011
+        }
+      },
+      "target_blob_ids": {
+        "Judge/PhaseJudge.cs": "7073e645860ade1fd4af6df3afd5a9cd5456e995",
+        "VerifyRun/Publication/PublicationAcceptance.cs": "644887b24a7e55186ad35ee358bb2f67b3e50b65",
+        "VerifyRun/A01/A01EvidenceRecorder.cs": "23806d788539b407cf19186fc2a7d9ed59f74337",
+        "VerifyRun/A01/WorkloadRecorder.cs": "e2fb04ddc4b99f60831f277d8753aee11b2d56f0",
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "a70d9fc782108341e86fcb3dbad771d71ea7ba08",
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "778dfcb256aca728b42ce064e60e2bdabf6e027e"
+      },
+      "config_blob_id": "a2107085514492779afd612b48896a4247a623df",
+      "target_source_identical_at_run_source": {
+        "Judge/PhaseJudge.cs": true,
+        "VerifyRun/Publication/PublicationAcceptance.cs": true,
+        "VerifyRun/A01/A01EvidenceRecorder.cs": true,
+        "VerifyRun/A01/WorkloadRecorder.cs": true,
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": true,
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": true
+      },
+      "all_targets_identical_at_run_source": true,
+      "run_source": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "run_source_is_ancestor_of_measured_commit": true,
+      "measured_commit_is_ancestor_of_run_source": false
+    },
+    "broker_counts": {
+      "c6_seed": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "c6_action": [
+        4,
+        3,
+        3,
+        3,
+        3
+      ],
+      "c9_action": [
+        3,
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    "row_bytes": {
+      "ordinary": 102990,
+      "c6_seed": 50841,
+      "c9_action": 52149,
+      "probe_context": 10384,
+      "all_rows": 113374
+    },
+    "per_client": [
+      {
+        "kind": "producer",
+        "label": "P1",
+        "repeat": 1,
+        "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r1",
+        "I0": "2026-10-31T13:57:14.7319635+00:00",
+        "before_service": "2026-10-31T13:57:15.33556+00:00",
+        "I1": "2026-10-31T13:57:19.3004899+00:00",
+        "I2": "2026-10-31T13:57:24.2974431+00:00",
+        "admission": "2026-10-31T13:57:24.3267055+00:00",
+        "seek": null,
+        "after_service": "2026-10-31T13:57:24.3425067+00:00",
+        "seconds_from_window_start": "8.938858",
+        "seconds_before_cutoff": "11.061142",
+        "advertised_expiry": [
+          "2026-10-31T13:57:19.7295926+00:00",
+          "2026-10-31T13:57:24.3003895+00:00",
+          "2026-10-31T13:57:29.2973853+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 0,
+        "diagnostic_offset": 1,
+        "row_bytes": 10168
+      },
+      {
+        "kind": "producer",
+        "label": "P2",
+        "repeat": 2,
+        "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r2",
+        "I0": "2026-10-31T13:57:35.5437788+00:00",
+        "before_service": "2026-10-31T13:57:35.6978003+00:00",
+        "I1": "2026-10-31T13:57:40.540365+00:00",
+        "I2": "2026-10-31T13:57:44.5413578+00:00",
+        "admission": "2026-10-31T13:57:44.5607703+00:00",
+        "seek": null,
+        "after_service": "2026-10-31T13:57:44.5734436+00:00",
+        "seconds_from_window_start": "8.830120",
+        "seconds_before_cutoff": "11.169880",
+        "advertised_expiry": [
+          "2026-10-31T13:57:40.5437444+00:00",
+          "2026-10-31T13:57:45.5403133+00:00",
+          "2026-10-31T13:57:49.5412992+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 2,
+        "diagnostic_offset": 3,
+        "row_bytes": 10169
+      },
+      {
+        "kind": "producer",
+        "label": "P3",
+        "repeat": 3,
+        "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r3",
+        "I0": "2026-10-31T13:57:55.7540855+00:00",
+        "before_service": "2026-10-31T13:57:55.9058356+00:00",
+        "I1": "2026-10-31T13:58:00.7499338+00:00",
+        "I2": "2026-10-31T13:58:04.7505817+00:00",
+        "admission": "2026-10-31T13:58:04.7681592+00:00",
+        "seek": null,
+        "after_service": "2026-10-31T13:58:04.7801647+00:00",
+        "seconds_from_window_start": "8.826452",
+        "seconds_before_cutoff": "11.173548",
+        "advertised_expiry": [
+          "2026-10-31T13:58:00.7540458+00:00",
+          "2026-10-31T13:58:05.7498844+00:00",
+          "2026-10-31T13:58:09.750524+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 4,
+        "diagnostic_offset": 5,
+        "row_bytes": 10163
+      },
+      {
+        "kind": "producer",
+        "label": "P4",
+        "repeat": 4,
+        "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r4",
+        "I0": "2026-10-31T13:58:15.9645019+00:00",
+        "before_service": "2026-10-31T13:58:16.1865045+00:00",
+        "I1": "2026-10-31T13:58:20.959987+00:00",
+        "I2": "2026-10-31T13:58:24.9605889+00:00",
+        "admission": "2026-10-31T13:58:24.9800808+00:00",
+        "seek": null,
+        "after_service": "2026-10-31T13:58:24.9914889+00:00",
+        "seconds_from_window_start": "8.727133",
+        "seconds_before_cutoff": "11.272867",
+        "advertised_expiry": [
+          "2026-10-31T13:58:20.9644504+00:00",
+          "2026-10-31T13:58:25.9599245+00:00",
+          "2026-10-31T13:58:29.9605461+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 6,
+        "diagnostic_offset": 7,
+        "row_bytes": 10170
+      },
+      {
+        "kind": "producer",
+        "label": "P5",
+        "repeat": 5,
+        "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r5",
+        "I0": "2026-10-31T13:58:36.2737531+00:00",
+        "before_service": "2026-10-31T13:58:36.6112404+00:00",
+        "I1": "2026-10-31T13:58:41.2692054+00:00",
+        "I2": "2026-10-31T13:58:46.2697894+00:00",
+        "admission": "2026-10-31T13:58:46.2925962+00:00",
+        "seek": null,
+        "after_service": "2026-10-31T13:58:46.3041375+00:00",
+        "seconds_from_window_start": "9.630187",
+        "seconds_before_cutoff": "10.369813",
+        "advertised_expiry": [
+          "2026-10-31T13:58:41.2737125+00:00",
+          "2026-10-31T13:58:46.2691532+00:00",
+          "2026-10-31T13:58:51.2697405+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00",
+          "2026-11-01T13:57:13.7154648+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 8,
+        "diagnostic_offset": 9,
+        "row_bytes": 10171
+      },
+      {
+        "kind": "consumer",
+        "label": "C1",
+        "repeat": 1,
+        "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r1",
+        "I0": "2026-10-31T14:01:27.7274654+00:00",
+        "before_service": "2026-10-31T14:01:27.8650249+00:00",
+        "I1": "2026-10-31T14:01:32.3409706+00:00",
+        "I2": "2026-10-31T14:01:37.3355154+00:00",
+        "admission": "2026-10-31T14:01:37.3766227+00:00",
+        "seek": "2026-10-31T14:01:37.3830792+00:00",
+        "after_service": "2026-10-31T14:01:37.7518749+00:00",
+        "seconds_from_window_start": "9.886651",
+        "seconds_before_cutoff": "10.113349",
+        "advertised_expiry": [
+          "2026-10-31T14:01:32.7248786+00:00",
+          "2026-10-31T14:01:37.3408586+00:00",
+          "2026-10-31T14:01:42.335447+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 0,
+        "diagnostic_offset": 0,
+        "row_bytes": 10429
+      },
+      {
+        "kind": "consumer",
+        "label": "C2",
+        "repeat": 2,
+        "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r2",
+        "I0": "2026-10-31T14:01:47.9102768+00:00",
+        "before_service": "2026-10-31T14:01:47.9924612+00:00",
+        "I1": "2026-10-31T14:01:52.9060894+00:00",
+        "I2": "2026-10-31T14:01:57.9069313+00:00",
+        "admission": "2026-10-31T14:01:58.0020227+00:00",
+        "seek": "2026-10-31T14:01:58.0022713+00:00",
+        "after_service": "2026-10-31T14:01:58.4118445+00:00",
+        "seconds_from_window_start": "10.419373",
+        "seconds_before_cutoff": "9.580627",
+        "advertised_expiry": [
+          "2026-10-31T14:01:52.9102147+00:00",
+          "2026-10-31T14:01:57.9060236+00:00",
+          "2026-10-31T14:02:02.906873+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 2,
+        "diagnostic_offset": 2,
+        "row_bytes": 10429
+      },
+      {
+        "kind": "consumer",
+        "label": "C3",
+        "repeat": 3,
+        "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r3",
+        "I0": "2026-10-31T14:02:08.0045577+00:00",
+        "before_service": "2026-10-31T14:02:08.0801585+00:00",
+        "I1": "2026-10-31T14:02:13.000136+00:00",
+        "I2": "2026-10-31T14:02:18.0006786+00:00",
+        "admission": "2026-10-31T14:02:18.0907747+00:00",
+        "seek": "2026-10-31T14:02:18.0909531+00:00",
+        "after_service": "2026-10-31T14:02:18.1026356+00:00",
+        "seconds_from_window_start": "10.022465",
+        "seconds_before_cutoff": "9.977535",
+        "advertised_expiry": [
+          "2026-10-31T14:02:13.0045073+00:00",
+          "2026-10-31T14:02:18.0000713+00:00",
+          "2026-10-31T14:02:23.0006045+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 4,
+        "diagnostic_offset": 4,
+        "row_bytes": 10436
+      },
+      {
+        "kind": "consumer",
+        "label": "C4",
+        "repeat": 4,
+        "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r4",
+        "I0": "2026-10-31T14:02:28.0909313+00:00",
+        "before_service": "2026-10-31T14:02:28.1674681+00:00",
+        "I1": "2026-10-31T14:02:33.0860206+00:00",
+        "I2": "2026-10-31T14:02:37.0866875+00:00",
+        "admission": "2026-10-31T14:02:37.1767753+00:00",
+        "seek": "2026-10-31T14:02:37.1769554+00:00",
+        "after_service": "2026-10-31T14:02:37.2157217+00:00",
+        "seconds_from_window_start": "9.048199",
+        "seconds_before_cutoff": "10.951801",
+        "advertised_expiry": [
+          "2026-10-31T14:02:33.0908842+00:00",
+          "2026-10-31T14:02:38.08596+00:00",
+          "2026-10-31T14:02:42.0866207+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 6,
+        "diagnostic_offset": 6,
+        "row_bytes": 10420
+      },
+      {
+        "kind": "consumer",
+        "label": "C5",
+        "repeat": 5,
+        "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r5",
+        "I0": "2026-10-31T14:02:48.1805432+00:00",
+        "before_service": "2026-10-31T14:02:48.2692904+00:00",
+        "I1": "2026-10-31T14:02:53.1737597+00:00",
+        "I2": "2026-10-31T14:02:57.1743571+00:00",
+        "admission": "2026-10-31T14:02:57.1794346+00:00",
+        "seek": "2026-10-31T14:02:57.1795543+00:00",
+        "after_service": "2026-10-31T14:02:57.5341638+00:00",
+        "seconds_from_window_start": "9.264864",
+        "seconds_before_cutoff": "10.735136",
+        "advertised_expiry": [
+          "2026-10-31T14:02:53.1804926+00:00",
+          "2026-10-31T14:02:58.1736929+00:00",
+          "2026-10-31T14:03:02.1742788+00:00"
+        ],
+        "acquired_expiry": [
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00",
+          "2026-11-01T14:01:26.7099026+00:00"
+        ],
+        "acquired_expiry_unchanged": true,
+        "initial_offset": 8,
+        "diagnostic_offset": 8,
+        "row_bytes": 10435
+      }
+    ],
+    "probe_context": [
+      {
+        "repeat": 1,
+        "initial_install": "2026-10-31T13:59:15.2551528+00:00",
+        "event_count": 3,
+        "client_cleanup_completed": true,
+        "row_bytes": 2078
+      },
+      {
+        "repeat": 2,
+        "initial_install": "2026-10-31T13:59:35.8121955+00:00",
+        "event_count": 3,
+        "client_cleanup_completed": true,
+        "row_bytes": 2075
+      },
+      {
+        "repeat": 3,
+        "initial_install": "2026-10-31T13:59:55.921922+00:00",
+        "event_count": 3,
+        "client_cleanup_completed": true,
+        "row_bytes": 2076
+      },
+      {
+        "repeat": 4,
+        "initial_install": "2026-10-31T14:00:16.0106649+00:00",
+        "event_count": 3,
+        "client_cleanup_completed": true,
+        "row_bytes": 2078
+      },
+      {
+        "repeat": 5,
+        "initial_install": "2026-10-31T14:00:36.099586+00:00",
+        "event_count": 3,
+        "client_cleanup_completed": true,
+        "row_bytes": 2077
+      }
+    ],
+    "jobs": [
+      {
+        "configuration": "C6",
+        "stage": "seed",
+        "job": "probe-41201284963-1-f06-c6-seed",
+        "account": "loadgen",
+        "container_started": "2026-10-31T13:57:13Z",
+        "container_finished": "2026-10-31T13:58:57Z",
+        "pod_log_member": "probe-41201284963-1-f06-c6-seed/probe-41201284963-1-f06-c6-seed-k7hlv.containers.loadgen.log",
+        "pod_json_member": "probe-41201284963-1-f06-c6-seed/pods.json"
+      },
+      {
+        "configuration": "C6",
+        "stage": "action",
+        "job": "probe-41201284963-1-f06-c6-action",
+        "account": "probe",
+        "container_started": "2026-10-31T13:59:14Z",
+        "container_finished": "2026-10-31T14:00:56Z",
+        "pod_log_member": "probe-41201284963-1-f06-c6-action/probe-41201284963-1-f06-c6-action-48vfr.containers.probe.log",
+        "pod_json_member": "probe-41201284963-1-f06-c6-action/pods.json"
+      },
+      {
+        "configuration": "C6",
+        "stage": "judge",
+        "job": "probe-41201284963-1-f06-c6-judge",
+        "account": "verifier",
+        "container_started": "2026-10-31T14:01:07Z",
+        "container_finished": "2026-10-31T14:01:10Z",
+        "pod_log_member": "probe-41201284963-1-f06-c6-judge/probe-41201284963-1-f06-c6-judge-8lbk2.containers.verifier.log",
+        "pod_json_member": "probe-41201284963-1-f06-c6-judge/pods.json"
+      },
+      {
+        "configuration": "C9",
+        "stage": "action",
+        "job": "probe-41201284963-1-f06-c9-action",
+        "account": "enrichment-consumer",
+        "container_started": "2026-10-31T14:01:26Z",
+        "container_finished": "2026-10-31T14:03:08Z",
+        "pod_log_member": "probe-41201284963-1-f06-c9-action/probe-41201284963-1-f06-c9-action-tbt85.containers.enrichment-consumer.log",
+        "pod_json_member": "probe-41201284963-1-f06-c9-action/pods.json"
+      },
+      {
+        "configuration": "C9",
+        "stage": "judge",
+        "job": "probe-41201284963-1-f06-c9-judge",
+        "account": "verifier",
+        "container_started": "2026-10-31T14:03:21Z",
+        "container_finished": "2026-10-31T14:03:23Z",
+        "pod_log_member": "probe-41201284963-1-f06-c9-judge/probe-41201284963-1-f06-c9-judge-wpxpc.containers.verifier.log",
+        "pod_json_member": "probe-41201284963-1-f06-c9-judge/pods.json"
+      }
+    ],
+    "limits": [
+      "natural token expiry;",
+      "new Entra token issuance (the acquired expiry never changed);",
+      "projected token TTL, kubelet refresh and re-read of the token file on each exchange (F03, K-44);",
+      "token resource (F04, K-45);",
+      "consumer refresh only inside `Consume` (C03, K-47);",
+      "producer refresh with `dotnet.producer.enable.background.poll` false and no explicit `Poll` (deferred, K-47);",
+      "broker re-authentication;",
+      "network and federation faults (deferred to issue 256);",
+      "any partition other than partition 0 of `document-events`."
+    ]
+  },
+  "candidates": {
+    "C6": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41201284963-1",
+      "scenario_id": "F06",
+      "configuration_id": "C6",
+      "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:a40984d5a843954767fefcc0cf38bdbf328515ee68c76c83b91ffd12ac52f2dd",
+        "verifier": "sha256:3c65f77bb27366db7bf127b1fedefc640ac01f35fe0abe2f9094358c6a5f5041"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 4,
+          "statistics_reference": {
+            "sequence": 11,
+            "native_time": 1793455169,
+            "native_ts": 662147285,
+            "raw_sha256": "269b12ba40a7a721267ea57e3f4a96e8bd661a684a74342bc09b91d61baa4731"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 10,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 0,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "observed_elapsed_ms": 1095,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r1",
+              "stage": "action",
+              "broker_count": 4,
+              "statistics_reference": {
+                "sequence": 11,
+                "native_time": 1793455169,
+                "native_ts": 662147285,
+                "raw_sha256": "269b12ba40a7a721267ea57e3f4a96e8bd661a684a74342bc09b91d61baa4731"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r1",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455049,
+                "native_ts": 8200210027,
+                "raw_sha256": "1f72d134b8062393d5a2b8ca3a9b39af6d7c9ab09b7f58db39f067ff66271d08"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793455190,
+            "native_ts": 683226530,
+            "raw_sha256": "2364ee90a9dc3d88818d31c7dcb8602b085ec34305846a117b324097cc232aa0"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 8,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 2,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "observed_elapsed_ms": 114,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r2",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 9,
+                "native_time": 1793455190,
+                "native_ts": 683226530,
+                "raw_sha256": "2364ee90a9dc3d88818d31c7dcb8602b085ec34305846a117b324097cc232aa0"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r2",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455070,
+                "native_ts": 8221455102,
+                "raw_sha256": "d6a84c6bde60f8b0a13c96f9365a13c8918aee664a53fafc758f6efa829e4336"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 7,
+            "native_time": 1793455210,
+            "native_ts": 703344404,
+            "raw_sha256": "e44a883900ce1146771469b010e2985ca259f18e33cf73570bb8861095225dd4"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 6,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 4,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "observed_elapsed_ms": 85,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r3",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 7,
+                "native_time": 1793455210,
+                "native_ts": 703344404,
+                "raw_sha256": "e44a883900ce1146771469b010e2985ca259f18e33cf73570bb8861095225dd4"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r3",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455090,
+                "native_ts": 8241665701,
+                "raw_sha256": "d30a012116d74bc31f8dce7360dd194707f9e97d1b75261352053be725232043"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 5,
+            "native_time": 1793455231,
+            "native_ts": 723433268,
+            "raw_sha256": "814c6a7e84330a2fa98accddf0ec8a27df2523717cb50a977a05ff85cef1ab4d"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 6,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "observed_elapsed_ms": 86,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r4",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793455231,
+                "native_ts": 723433268,
+                "raw_sha256": "814c6a7e84330a2fa98accddf0ec8a27df2523717cb50a977a05ff85cef1ab4d"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r4",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455110,
+                "native_ts": 8261875844,
+                "raw_sha256": "182e8394b2d4d478ae06c3bbe994e77709be3d679f9fcdd36f20351ea4831c92"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793455251,
+            "native_ts": 743521954,
+            "raw_sha256": "60b0b79679ecdbe006a617cd0d9e6c966cf9f3a39b0f7484bcd0eaadf458e3e3"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 8,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "observed_elapsed_ms": 91,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r5",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793455251,
+                "native_ts": 743521954,
+                "raw_sha256": "60b0b79679ecdbe006a617cd0d9e6c966cf9f3a39b0f7484bcd0eaadf458e3e3"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r5",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455131,
+                "native_ts": 8282184946,
+                "raw_sha256": "a27163f654d96e347adc4213db1b9c3b25adc0a41cf65233565654a769299f00"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "smoke_only"
+      ],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C9": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41201284963-1",
+      "scenario_id": "F06",
+      "configuration_id": "C9",
+      "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:a40984d5a843954767fefcc0cf38bdbf328515ee68c76c83b91ffd12ac52f2dd",
+        "verifier": "sha256:3c65f77bb27366db7bf127b1fedefc640ac01f35fe0abe2f9094358c6a5f5041"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 11,
+            "native_time": 1793455302,
+            "native_ts": 794761807,
+            "raw_sha256": "a77cb40c886e76d6fec865cb2004ed405344e3423fdab7f8c8a53c0a641b98ff"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 10,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 0,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "observed_elapsed_ms": 581,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            },
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-action",
+              "pod_uid": "5af0b05d-7646-48c5-bd7b-d2e57e04bd69",
+              "raw_sha256": "be5d743b3c90c41b197e48d83f35c9a588507a722745ec547b929cc04b56c7f6"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r1",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 11,
+                "native_time": 1793455302,
+                "native_ts": 794761807,
+                "raw_sha256": "a77cb40c886e76d6fec865cb2004ed405344e3423fdab7f8c8a53c0a641b98ff"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r1",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455049,
+                "native_ts": 8200210027,
+                "raw_sha256": "1f72d134b8062393d5a2b8ca3a9b39af6d7c9ab09b7f58db39f067ff66271d08"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r1",
+              "stage": "action",
+              "broker_count": 4,
+              "statistics_reference": {
+                "sequence": 11,
+                "native_time": 1793455169,
+                "native_ts": 662147285,
+                "raw_sha256": "269b12ba40a7a721267ea57e3f4a96e8bd661a684a74342bc09b91d61baa4731"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 9,
+            "native_time": 1793455322,
+            "native_ts": 815332735,
+            "raw_sha256": "d6189ec13c4562af654b2f449f68127e5a00afdc02b2a035f898d0a03c7966d7"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 8,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 2,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "observed_elapsed_ms": 89,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            },
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-action",
+              "pod_uid": "5af0b05d-7646-48c5-bd7b-d2e57e04bd69",
+              "raw_sha256": "be5d743b3c90c41b197e48d83f35c9a588507a722745ec547b929cc04b56c7f6"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r2",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 9,
+                "native_time": 1793455322,
+                "native_ts": 815332735,
+                "raw_sha256": "d6189ec13c4562af654b2f449f68127e5a00afdc02b2a035f898d0a03c7966d7"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r2",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455070,
+                "native_ts": 8221455102,
+                "raw_sha256": "d6a84c6bde60f8b0a13c96f9365a13c8918aee664a53fafc758f6efa829e4336"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r2",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 9,
+                "native_time": 1793455190,
+                "native_ts": 683226530,
+                "raw_sha256": "2364ee90a9dc3d88818d31c7dcb8602b085ec34305846a117b324097cc232aa0"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 7,
+            "native_time": 1793455343,
+            "native_ts": 835426347,
+            "raw_sha256": "870ba9368a4bf69dc59024b29c7a85997b0b1598046ee8a127a83beba10502c7"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 6,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 4,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "observed_elapsed_ms": 82,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            },
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-action",
+              "pod_uid": "5af0b05d-7646-48c5-bd7b-d2e57e04bd69",
+              "raw_sha256": "be5d743b3c90c41b197e48d83f35c9a588507a722745ec547b929cc04b56c7f6"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r3",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 7,
+                "native_time": 1793455343,
+                "native_ts": 835426347,
+                "raw_sha256": "870ba9368a4bf69dc59024b29c7a85997b0b1598046ee8a127a83beba10502c7"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r3",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455090,
+                "native_ts": 8241665701,
+                "raw_sha256": "d30a012116d74bc31f8dce7360dd194707f9e97d1b75261352053be725232043"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r3",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 7,
+                "native_time": 1793455210,
+                "native_ts": 703344404,
+                "raw_sha256": "e44a883900ce1146771469b010e2985ca259f18e33cf73570bb8861095225dd4"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 5,
+            "native_time": 1793455363,
+            "native_ts": 855513570,
+            "raw_sha256": "1ad9ac6cc876ea0a0b644fa0769f4e1f2794d076277e4f10fe9ff15f9dde2992"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 6,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "observed_elapsed_ms": 83,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            },
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-action",
+              "pod_uid": "5af0b05d-7646-48c5-bd7b-d2e57e04bd69",
+              "raw_sha256": "be5d743b3c90c41b197e48d83f35c9a588507a722745ec547b929cc04b56c7f6"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r4",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793455363,
+                "native_ts": 855513570,
+                "raw_sha256": "1ad9ac6cc876ea0a0b644fa0769f4e1f2794d076277e4f10fe9ff15f9dde2992"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r4",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455110,
+                "native_ts": 8261875844,
+                "raw_sha256": "182e8394b2d4d478ae06c3bbe994e77709be3d679f9fcdd36f20351ea4831c92"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r4",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793455231,
+                "native_ts": 723433268,
+                "raw_sha256": "814c6a7e84330a2fa98accddf0ec8a27df2523717cb50a977a05ff85cef1ab4d"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793455383,
+            "native_ts": 875603174,
+            "raw_sha256": "5031da61e45e3f868a45758ab8847e9af7c05e6f374a8ac29439ac3fc35e1d46"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 8,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEyMDEyODQ5NjMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "observed_elapsed_ms": 98,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41201284963-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+            "job_name": "probe-41201284963-1-f06-c6-seed",
+            "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+            "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-seed",
+              "pod_uid": "954c54ef-bfd0-431f-85b2-93490cf2eb56",
+              "raw_sha256": "e9cd2252887899f125df82dd8d62c1ee5646005d9368783d0f42487dfaae9ec5"
+            },
+            {
+              "run_id": "probe-41201284963-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+              "job_name": "probe-41201284963-1-f06-c6-action",
+              "pod_uid": "5af0b05d-7646-48c5-bd7b-d2e57e04bd69",
+              "raw_sha256": "be5d743b3c90c41b197e48d83f35c9a588507a722745ec547b929cc04b56c7f6"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41201284963-1-f06-c9-action-tbt85-r5",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793455383,
+                "native_ts": 875603174,
+                "raw_sha256": "5031da61e45e3f868a45758ab8847e9af7c05e6f374a8ac29439ac3fc35e1d46"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-seed-k7hlv-r5",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793455131,
+                "native_ts": 8282184946,
+                "raw_sha256": "a27163f654d96e347adc4213db1b9c3b25adc0a41cf65233565654a769299f00"
+              }
+            },
+            {
+              "client_id": "probe-41201284963-1-f06-c6-action-48vfr-r5",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793455251,
+                "native_ts": 743521954,
+                "raw_sha256": "60b0b79679ecdbe006a617cd0d9e6c966cf9f3a39b0f7484bcd0eaadf458e3e3"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "smoke_only"
+      ],
+      "security_finding": false,
+      "item_assessment": null
+    }
+  },
+  "judge_receipts": {
+    "C6": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41201284963-1",
+      "scenario_id": "F06",
+      "configuration_id": "C6",
+      "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "job_name": "probe-41201284963-1-f06-c6-judge",
+      "pod_name": "probe-41201284963-1-f06-c6-judge-8lbk2",
+      "pod_uid": "5d9b742c-5e63-464d-a21a-7ae24f012f99",
+      "candidate_name": "probe-41201284963-1/single-action-v2/F06/C6/candidate.json",
+      "candidate_sha256": "5f7497e8499924f914047c0d1cacf58f4e5b15bc2ca0f30dce0f5b485c20b903",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C9": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41201284963-1",
+      "scenario_id": "F06",
+      "configuration_id": "C9",
+      "source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+      "job_name": "probe-41201284963-1-f06-c9-judge",
+      "pod_name": "probe-41201284963-1-f06-c9-judge-wpxpc",
+      "pod_uid": "e21f49e6-d265-4dc7-8d67-250152f7a96e",
+      "candidate_name": "probe-41201284963-1/single-action-v2/F06/C9/candidate.json",
+      "candidate_sha256": "442a4ee5c7fc283f9e8dfe76613a05e13a70b4a86a1d39bb9127dc5c3dd006f8",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}
