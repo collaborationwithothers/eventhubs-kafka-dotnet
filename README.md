@@ -62,7 +62,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | F03 | Token refresh failures | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | F04 | Missing-role and wrong-resource-token errors | Missing-role produce returned broker error 29; assigned consume had "no read and no error within the window", establishing neither denial nor success. A wrong-resource token returned local error -169. | undocumented | [Report](results/F04/2026-10-28.md) |
 | F05 | Local authentication rejection | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| F06 | Identity role scope | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| F06 | Identity role scope | Sends and reads inside each narrow identity's event-hub grants succeeded in all five repeats, and the four configurations outside them returned broker error 29 in all five repeats. A permission audit of the two narrow identities matched the intended grants. Only partition 0 of three topics was tested, and no universal scope enforcement is claimed. | undocumented | [Report](results/F06/2026-11-01.md) |
 | G01 | Planned geo-replication promotion | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | G02 | Forced geo-replication promotion | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | G03 | Replication lag and throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
