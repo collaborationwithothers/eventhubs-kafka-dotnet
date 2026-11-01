@@ -1,0 +1,30 @@
+schema_version: 1
+id: A03
+baseline: Parchwell.Kafka
+roles:
+- LoadGenProducer
+profile: profiles/saturation-ramp.yaml
+configurations:
+  C0:
+    LoadGenProducer:
+      metadata.max.age.ms: 900000
+  C1: {}
+  C2:
+    LoadGenProducer:
+      topic.metadata.refresh.interval.ms: 180000
+fault:
+  live:
+    kind: none
+  component:
+    kind: none
+repeats: 5
+gate:
+  kind: none
+measures:
+- id: single_action.outcome
+  role: LoadGenProducer
+- id: single_action.client_errors
+  role: LoadGenProducer
+idle_observation:
+  action: produce
+  role: LoadGenProducer

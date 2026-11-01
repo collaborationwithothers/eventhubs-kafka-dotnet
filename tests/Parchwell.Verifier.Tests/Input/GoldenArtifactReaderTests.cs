@@ -159,7 +159,7 @@ public sealed class GoldenArtifactReaderTests
         Assert.True(capabilities.Value.StatisticsCompletion.Value!.IsComplete);
         Assert.Equal(12_000_000L, capabilities.Value.StatisticsCompletion.Value.DrainBoundaryMicroseconds.Value);
         Assert.Empty(capabilities.Value.GuardObservations);
-        Assert.Equal(28_731L, index.Value.Artifacts[4].Length);
+        Assert.Equal(29_160L, index.Value.Artifacts[4].Length);
     }
 
     private static byte[] ReadGolden(string file) => File.ReadAllBytes(Path.Combine(

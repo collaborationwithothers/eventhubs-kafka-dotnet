@@ -66,6 +66,8 @@ internal static class BaselineSettingsCatalog
             "Microsoft's librdkafka recommendation; this setting alone does not choose OS keepalive timers."),
         KafkaSettingDefinition.Explicit(KafkaSettingKeys.MetadataMaxAgeMs, "180000", ["A03"], [MicrosoftGuidance],
             "Microsoft's specifically librdkafka-labelled metadata age recommendation."),
+        KafkaSettingDefinition.Explicit(KafkaSettingKeys.TopicMetadataRefreshIntervalMs, "300000", ["A03"], [NativeConfiguration],
+            "ADR-015 selects the pinned native default; it sets the periodic metadata refresh interval."),
         KafkaSettingDefinition.Explicit(KafkaSettingKeys.ConnectionsMaxIdleMs, "0", ["A04"], [NativeConfiguration, Blueprint],
             "ADR-015 selects the pinned native default; Java and generic troubleshooting values do not replace it."),
         KafkaSettingDefinition.Explicit(KafkaSettingKeys.BrokerAddressTtl, "1000", ["K04"], [NativeConfiguration],

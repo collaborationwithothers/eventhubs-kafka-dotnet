@@ -138,7 +138,7 @@ public sealed record ScenarioDefinition(int SchemaVersion, string Id, string Bas
     ImmutableArray<KafkaClientRole> Roles, string Profile,
     ImmutableDictionary<string, ScenarioConfiguration> Configurations, FaultDefinition Fault,
     int Repeats, ScenarioGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source,
-    SingleActionDefinition? SingleAction = null, ProbeV2Definition? ProbeV2 = null);
+    SingleActionDefinition? SingleAction = null, ProbeV2Definition? ProbeV2 = null, IdleObservationDefinition? IdleObservation = null);
 
 /// <summary>The validated second-batch probe rows; owning checks are in scenario-contract.md.</summary>
 public sealed record ProbeV2Definition(ImmutableDictionary<string, ProbeV2Configuration> Configurations);
@@ -146,6 +146,9 @@ public sealed record ProbeV2Definition(ImmutableDictionary<string, ProbeV2Config
 /// <summary>One probe action with its fixed identity, location and value rules.</summary>
 public sealed record ProbeV2Configuration(string Action, KafkaClientRole Role, string ServiceAccount, string Topic,
     string PartitionMode, int? Partition, string ValueKind, int WindowMs, string KeyRule, string ReadRule);
+
+/// <summary>The validated idle-observation declaration of A02, A03 or A04; owning checks are in scenario-contract.md, "Idle observation declarations".</summary>
+public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role);
 
 /// <summary>The validated fixed single-action rows; owning checks are in scenario-contract.md.</summary>
 public sealed record SingleActionDefinition(ImmutableDictionary<string, SingleActionConfiguration> Configurations);

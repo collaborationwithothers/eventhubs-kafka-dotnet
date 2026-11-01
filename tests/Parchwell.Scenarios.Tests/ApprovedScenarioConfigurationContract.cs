@@ -40,6 +40,7 @@ internal static class ApprovedConfigurationContract
         Add("ssl.endpoint.identification.algorithm", "https", "F01", Native);
         Add("socket.keepalive.enable", "true", "A02", Microsoft);
         Add("metadata.max.age.ms", "180000", "A03", Microsoft);
+        Add("topic.metadata.refresh.interval.ms", "300000", "A03", Native);
         Add("connections.max.idle.ms", "0", "A04", Native);
         Add("broker.address.ttl", "1000", "K04", Native);
         Add("socket.timeout.ms", "60000", producer ? "A01" : "C04,C05", Native);

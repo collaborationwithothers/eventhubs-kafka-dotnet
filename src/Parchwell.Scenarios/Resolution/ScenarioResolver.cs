@@ -60,7 +60,10 @@ public sealed class ScenarioResolver
                         var value = item.Value.Value;
                         var origin = new OverrideOrigin(definition.Id, configuration.Key, item.Value.Location);
                         var normalized = value;
-                        switch (setting.ValueKind)
+                        // An integer entry may also let named items omit its key (connections.max.idle.ms for A04).
+                        var omits = setting.ValueKind == KafkaScenarioOverrideValueKind.Omission ||
+                            (value == "omit" && setting.OmissionInventoryIds.Contains(definition.Id, StringComparer.Ordinal));
+                        switch (omits ? KafkaScenarioOverrideValueKind.Omission : setting.ValueKind)
                         {
                             case KafkaScenarioOverrideValueKind.Boolean:
                                 if (value is not ("true" or "false")) OutOfRange();
@@ -93,7 +96,7 @@ public sealed class ScenarioResolver
                             throw Invalid(definition, fieldPath, omission is not null ? "cannot_activate_omitted_setting" : "setting_not_in_baseline",
                                 "The setting is not an emitted baseline key and cannot be introduced.", item.Value.Location);
                         }
-                        if (setting.ValueKind == KafkaScenarioOverrideValueKind.Omission)
+                        if (omits)
                         {
                             effective = effective.Remove(item.Key);
                             scenarioOmissions.Add(new(item.Key, inherited.Baseline, origin));
