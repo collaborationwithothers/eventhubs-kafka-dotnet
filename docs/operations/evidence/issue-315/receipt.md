@@ -27,4 +27,7 @@ Branch cut from `main` at `4bc7ae3560d4b292afb0556ce658a6596bf3abdb`. Each entry
 
 ## Cold review
 
-(Filled in per round below.)
+- Round 1: comprehensive, 1 of at most 2 comprehensive passes; cumulative focused rounds at its start: 0. Input revision: `653af6a` (`c663b53` plus the committed receipt). Comparison: `origin/main` at `4bc7ae3560d4b292afb0556ce658a6596bf3abdb`.
+- Specification sources: the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/315#issuecomment-6563631886) (changes 0 to 6, acceptance commands), its [plan check 6563740367](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/315#issuecomment-6563740367), the [#315 body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/315), [#315 decision 6563545115](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/315#issuecomment-6563545115) and the #301 decisions it adopts. The plan check's two P2 notes are marked "leave" and need no change.
+- Round 1 report (reviewer: `repo-reviewer` spawned without a `model` parameter, so the definition's pin `claude-opus-5-5` applies; the report does not state the resolved model): no P0, P1 or P2 findings. Two author notes, both applied: this section was a placeholder, and the input revision is `653af6a`. Two pre-existing observations, left: the "Folded into existing items" heading says "the catalogue row is the source" (the plan check's P2 to leave), and the catalogue's line 5 still says dispositions were approved on 2026-10-12.
+- Round 2: focused review of this section's edit under rule 8, 1 of at most 2 focused rounds; comprehensive passes used: 1. Reports only P0 or P1. Its report is linked in the pull request's self-review record, not here.
