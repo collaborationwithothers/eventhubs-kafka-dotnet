@@ -27,10 +27,10 @@ Deliverable 3: no .NET or chart code changes, so no build was run for this chang
 
 `main()` builds the audited binding from the ephemeral output `probe_v2_role_scope.accounts.*.principal_id`. The cross-check needs a second source for the same IDs.
 
-| Candidate | Has principal IDs | Change needed | Independent of the ephemeral value |
+| Candidate | Has principal IDs | Change needed | Separate from the ephemeral value |
 |---|---|---|---|
 | `cluster-output.json`, `workload_identity.service_accounts` | No (`infra/cluster/outputs.tf`, lines 5 to 15) | Terraform output change in `infra/cluster`, then a cluster apply by a workflow | No. `infra/cluster/locals.tf` line 2 and `infra/ephemeral/locals.tf` line 2 both read the same persistent remote state |
-| `persistent-output.json`, `workload_identities` | Yes (`infra/persistent/outputs.tf`, lines 26 to 29: `id`, `client_id`, `principal_id`) | None | Yes, by path. It is the `PARCHWELL_PERSISTENT_OUTPUTS` secret, which `infra/scripts/phase/phase.py` lines 345 to 379 write to the private directory. The ephemeral value is read from remote state during the run's apply |
+| `persistent-output.json`, `workload_identities` | Yes (`infra/persistent/outputs.tf`, lines 26 to 29: `id`, `client_id`, `principal_id`) | None | By path only. Both values copy the same persistent state output. It is the `PARCHWELL_PERSISTENT_OUTPUTS` secret, which `infra/scripts/phase/phase.py` lines 345 to 379 write to the private directory. The ephemeral value is read from remote state during the run's apply |
 
 Chosen: `persistent-output.json`. It needs no Terraform change and no apply in any layer. `docs/operations/a01-workflow.md` line 19 says the secret "must contain the `terraform output -json` text of `infra/persistent`". The [Terraform `output` command page](https://developer.hashicorp.com/terraform/cli/commands/output), read 2026-11-01, says `-json` gives "a JSON object, with a key per output", and that it shows `sensitive` values in plain text. That page does not describe the per-output `value` wrapper. The wrapper used in the test is inferred from the repository's existing `unwrap` in `infra/scripts/phase/probe_v2.py` line 122, which accepts both forms.
 
@@ -76,6 +76,12 @@ The changed predicate is the principal cross-check in `main()`. Each case is a s
 | Account entry missing | same as above | `entry_missing` |
 | `workload_identities` missing | same as above | `key_absent` |
 | `persistent-output.json` missing | same as above | `file_absent` |
+| `workload_identities` value is a list | same as above | `identities_not_mapping` |
+| Account entry is a string | same as above | `identity_not_mapping` |
+| `persistent-output.json` of 4194304 and 4194305 bytes | exit 0, complete | `test_main_persistent_output_byte_limit` |
+| `persistent-output.json` of 4194306 bytes | exit 1, `permission_evidence_incomplete`, no reader built, no output files | `test_main_persistent_output_byte_limit` |
+
+With the two `isinstance` guards in `applied_principal` removed in a scratch copy, the two non-mapping cases raise `AttributeError`, which `main()` does not catch.
 
 Before the fix, the failing-input cases also failed, but for the wrong reason: the missing cluster key. The `uppercased` and equal cases are the ones that show the defect and the fix.
 
@@ -110,6 +116,17 @@ Round 1 report, against `214dee45b6b137f0463f7205d05f55e76fee722c`: 3 findings a
 - P2, nothing stated that F06 needs `workload_identities` in the secret: fixed in prose in `docs/operations/a01-workflow.md`. A preparation-time check in `phase.py` is not added; it would be new scope beyond the brief.
 
 Round 2: comprehensive review of the whole authored diff against merge base `08f081c`, the second and last comprehensive pass this pull request may use.
+
+Round 2 report, against `fdc20eb`: no P0 or P1, 3 at P2. Dispositions:
+- P2, the predicate map omitted the byte limit and the non-mapping guards: fixed with the four test rows above. Not prose, so fixed under rule 10.
+- P2, the `applied_principal` docstring called the value independent of the ephemeral output: fixed; both copy the same persistent state.
+- P2, `docs/operations/a01-workflow.md` could be read as saying preparation checks the key: fixed in prose.
+
+| Command | Literal result |
+| --- | --- |
+| `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_probe_v2_access.py' -v`, after the round 2 fixes | `Ran 34 tests`, `FAILED (failures=1, errors=1)`: only `test_both_streams_capped (stream='stderr')` |
+
+Focused round 1: the changes since `fdc20eb`, with the full diff against `08f081c` as context. Cumulative counts: comprehensive 2 of 2, focused 1 of 2.
 
 ## Models
 

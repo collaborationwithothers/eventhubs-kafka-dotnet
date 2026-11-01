@@ -491,9 +491,17 @@ class MainTests(unittest.TestCase):
         def file_absent(f):
             f['persistent-output.json'] = None
 
+        def identities_not_mapping(f):
+            f['persistent-output.json']['workload_identities']['value'] = ['not', 'a', 'mapping']
+
+        def identity_not_mapping(f):
+            f['persistent-output.json']['workload_identities']['value']['loadgen'] = 'not-a-mapping'
+
         cases = (('uppercased', upper, 0, self.COMPLETE), ('different', different, 1, self.INCOMPLETE),
                  ('none', none, 1, self.INCOMPLETE), ('entry_missing', entry_missing, 1, self.INCOMPLETE),
-                 ('key_absent', key_absent, 1, self.INCOMPLETE), ('file_absent', file_absent, 1, self.INCOMPLETE))
+                 ('key_absent', key_absent, 1, self.INCOMPLETE), ('file_absent', file_absent, 1, self.INCOMPLETE),
+                 ('identities_not_mapping', identities_not_mapping, 1, self.INCOMPLETE),
+                 ('identity_not_mapping', identity_not_mapping, 1, self.INCOMPLETE))
         for name, mutate, expected_code, expected_out in cases:
             with self.subTest(name):
                 files = self.files()
@@ -501,6 +509,24 @@ class MainTests(unittest.TestCase):
                 code, out, private_written, artifact_written, factory = self.run_main(files)
                 self.assertEqual((code, out), (expected_code, expected_out))
                 if expected_code:
+                    factory.assert_not_called()
+                    self.assertFalse(private_written)
+                    self.assertFalse(artifact_written)
+
+    def test_main_persistent_output_byte_limit(self):
+        for size in (4194304, 4194305, 4194306):
+            with self.subTest(size=size):
+                files = self.files()
+                persistent = files['persistent-output.json']
+                persistent['padding'] = ''
+                base = len((json.dumps(persistent) + '\n').encode())
+                persistent['padding'] = 'x' * (size - base)
+                self.assertEqual(len((json.dumps(persistent) + '\n').encode()), size)
+                code, out, private_written, artifact_written, factory = self.run_main(files)
+                if size <= 4194305:
+                    self.assertEqual((code, out), (0, self.COMPLETE))
+                else:
+                    self.assertEqual((code, out), (1, self.INCOMPLETE))
                     factory.assert_not_called()
                     self.assertFalse(private_written)
                     self.assertFalse(artifact_written)

@@ -489,7 +489,11 @@ class ProductionReader:
 
 
 def applied_principal(identities, account):
-    """Return the persistent layer's principal ID for an account, independent of the ephemeral output."""
+    """Return the principal ID that the persistent-outputs secret records for an account.
+
+    The ephemeral value is a copy of the same persistent state, read during the apply,
+    so a mismatch shows that the secret is stale, not that the identities differ.
+    """
     identity = identities.get(account) if isinstance(identities, dict) else None
     value = identity.get('principal_id') if isinstance(identity, dict) else None
     if not isinstance(value, str):
