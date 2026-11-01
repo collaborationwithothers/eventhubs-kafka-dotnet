@@ -28,11 +28,11 @@ There is no approved item plan for this change. It is directly authorized work. 
 | Result paragraphs, with links to the run, the assessment, run 41286058152 and two Microsoft Learn pages | `docs/operations/authentication-lifecycle-observation.md` |
 | Covers, Open questions and Next action (the Approved plan line is unchanged by this pull request) | `items/244/state.md` |
 
-S7 (STATISTICS.md, master) is not changed. Only S6 was in scope. No other file cites the S6 master URL (checked by grep).
+S7 (STATISTICS.md, master) is not changed. Only S6 was in scope. No other file cites the S6 master URL (the `grep` in "Reproduction").
 
 ## Claims verified at the pinned version
 
-Source: [CONFIGURATION.md at tag v2.16.0](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md), fetched 2026-11-01, SHA-256 `b68b3e195018f0b77f32ddf9f2dde9c71642631e963571e5e382255a5d326f89`, tag commit `c6c9973cf1b25394c58e0cade13a36f386856f77` (from `git ls-remote`). I parsed the property table by script and compared each default that the blueprint cites to S6. All matched.
+Source: [CONFIGURATION.md at tag v2.16.0](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md), fetched 2026-11-01, SHA-256 `b68b3e195018f0b77f32ddf9f2dde9c71642631e963571e5e382255a5d326f89`, tag commit `c6c9973cf1b25394c58e0cade13a36f386856f77` (from `git ls-remote`). I parsed the property table and compared each default that the blueprint cites to S6 with the first script in "Reproduction". All matched.
 
 | Claim cited to S6 | Blueprint place | v2.16.0 value |
 |---|---|---|
@@ -53,11 +53,11 @@ Source: [CONFIGURATION.md at tag v2.16.0](https://github.com/confluentinc/librdk
 | `enable.auto.offset.store` default `true`; `enable.auto.commit` default `true` | C10 | true and true |
 | `group.protocol` default `classic`, KIP-848 text present; `partition.assignment.strategy` default `range,roundrobin`, `cooperative-sticky` present; `group.instance.id` present | C07, C08, C06 | all present as stated |
 
-Claims on the Microsoft Learn pages in the result paragraphs were read on 2026-11-01: the On-Behalf-Of page says `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` with `requested_token_use` "Required ... must be set to `on_behalf_of`", and "the OBO flow only works for user principals"; the error-code page lists AADSTS900144 as "The request body must contain the following parameter". Numbers in the result paragraphs (5 slots, 45 requests, 55 earlier lines, 0 trust-anchor lines) come from the artifacts of runs 41296493195 and 41286058152 as read in the assessment comment, which gives the counting method.
+Claims on the Microsoft Learn pages in the result paragraphs were read on 2026-11-01: the On-Behalf-Of page says `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` with `requested_token_use` "Required ... must be set to `on_behalf_of`", and "the OBO flow only works for user principals"; the error-code page lists AADSTS900144 as "The request body must contain the following parameter". Numbers in the result paragraphs (5 slots, 45 requests, 55 earlier lines, 0 trust-anchor lines) come from the artifacts of runs 41296493195 and 41286058152; the second script in "Reproduction" counts them.
 
-Coverage audit by script (after round 2): the blueprint cites S6 on 8 body lines (196, 232, 238, 249, 943, 945, 946, 947) and in 20 inventory rows (A01, A02, A03, A04, B02, B04, B05, B07, B08, B10, C01, C03, C06, C07, C08, C10, C15, F01, F02, G01). Each is covered by a row of the table above or by the checks below.
+Coverage audit (the last part of the first script in "Reproduction", run after round 2): the blueprint cites S6 on 8 body lines (196, 232, 238, 249, 943, 945, 946, 947) and in 20 inventory rows (A01, A02, A03, A04, B02, B04, B05, B07, B08, B10, C01, C03, C06, C07, C08, C10, C15, F01, F02, G01). Each is covered by a row of the table above or by the checks below.
 
-Also checked after the first cold review: `transactional.id` exists (B05); `max.poll.interval.ms` exists with default 300000 (C03); `metadata.recovery.strategy` exists with default `rebootstrap` (G01).
+Also covered by the first script: `transactional.id` exists (B05); `max.poll.interval.ms` exists with default 300000 (C03); `metadata.recovery.strategy` exists with default `rebootstrap` (G01).
 
 Not verified: the free prose of inventory rows C06, C07 and similar, which states behaviour and design questions beyond the settings and defaults above. The S6 row in the blueprint says only that the settings, defaults and option values were rechecked.
 
@@ -65,24 +65,90 @@ Not verified: the free prose of inventory rows C06, C07 and similar, which state
 
 Not applicable. This pull request changes documentation only and touches no verifier, predicate or test.
 
+## Reproduction
+
+Run from the repository root, with `gh` authenticated and `SCRATCH` set to an empty directory outside the repository. The first block checks the v2.16.0 document and audits which blueprint lines cite S6; the second counts the dispatch evidence quoted in the operations doc.
+
+```bash
+curl -sSL https://raw.githubusercontent.com/confluentinc/librdkafka/v2.16.0/CONFIGURATION.md -o "$SCRATCH/CONFIGURATION-2.16.0.md"
+sha256sum "$SCRATCH/CONFIGURATION-2.16.0.md"
+git ls-remote https://github.com/confluentinc/librdkafka refs/tags/v2.16.0
+grep -rn "librdkafka/blob/master/CONFIGURATION" . --exclude-dir=node_modules --exclude-dir=.git --exclude=s6-repin.md
+python3 -I - "$SCRATCH/CONFIGURATION-2.16.0.md" <<'EOF'
+import re, sys
+rows = {}
+for line in open(sys.argv[1], encoding="utf-8"):
+    p = line.rstrip("\n").split("|", 5)
+    if len(p) == 6 and re.match(r"^[a-z][a-z0-9_.\-]+\s*$", p[0]):
+        rows[p[0].strip()] = [x.strip() for x in p]
+defaults = {"request.timeout.ms": "30000", "enable.idempotence": "false", "message.max.bytes": "1000000",
+    "batch.size": "1000000", "socket.keepalive.enable": "false", "metadata.max.age.ms": "900000", "linger.ms": "5",
+    "session.timeout.ms": "45000", "auto.offset.reset": "largest", "message.timeout.ms": "300000",
+    "partitioner": "consistent_random", "connections.max.idle.ms": "0", "group.protocol": "classic",
+    "partition.assignment.strategy": "range,roundrobin", "enable.auto.offset.store": "true",
+    "enable.auto.commit": "true", "max.poll.interval.ms": "300000", "metadata.recovery.strategy": "rebootstrap"}
+for key, value in defaults.items():
+    assert rows[key][3] == value, (key, rows[key][3])
+text = open(sys.argv[1], encoding="utf-8").read()
+for key, needle in [("message.max.bytes", "may exceed the maximum size by one message"),
+    ("connections.max.idle.ms", "brokers on Azure"), ("max.poll.interval.ms", "enable.auto.offset.store=false"),
+    ("sasl.oauthbearer.metadata.authentication.type", "azure_imds"), ("sasl.mechanisms", "OAUTHBEARER")]:
+    assert needle in rows[key][5], (key, needle)
+for needle in ("murmur2_random", "cooperative-sticky", "KIP-848", "group.instance.id", "oauthbearer_token_refresh_cb"):
+    assert needle in text, needle
+assert "azure_imds" in rows["sasl.oauthbearer.metadata.authentication.type"][2]
+assert "transactional.id" in rows
+lines = open("docs/blueprint.md", encoding="utf-8").read().splitlines()
+body = [n for n, l in enumerate(lines, 1) if re.search(r"\bS6\b", l) and not l.startswith("|")]
+inventory = [l.split("|")[1].strip() for l in lines if re.search(r"\bS6\b", l) and l.startswith("|") and not l.startswith("| S6 ")]
+print("defaults and texts: all match")
+print("body lines citing S6:", body)
+print("inventory rows citing S6:", len(inventory), inventory)
+EOF
+```
+
+```bash
+gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/13080457579/zip > "$SCRATCH/new.zip"
+gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/13076353402/zip > "$SCRATCH/old.zip"
+python3 -I - "$SCRATCH/new.zip" "$SCRATCH/old.zip" <<'EOF'
+import re, sys, zipfile
+def log(path):
+    z = zipfile.ZipFile(path)
+    name = [n for n in z.namelist() if "c6-nativejwt" in n and n.endswith(".containers.loadgen.log")][0]
+    return z.read(name).decode("utf-8").splitlines()
+def count(lines, pattern, repeat=None):
+    return sum(1 for l in lines if re.search(pattern, l) and (repeat is None or f"repeat={repeat} " in l))
+new, old = log(sys.argv[1]), log(sys.argv[2])
+retrieve = r"Failed to retrieve JWT token from"
+print("new run per-slot retrieve lines:", [count(new, retrieve, r) for r in range(1, 6)], "total", count(new, retrieve))
+print("new run lines ending (400):", sum(1 for l in new if re.search(retrieve, l) and l.rstrip().endswith("(400)")))
+print("new run retrieve lines with AADSTS900144:", count(new, retrieve + ".*AADSTS900144"), " trust-anchor lines:", count(new, "error adding trust anchors"))
+print("new run configured-location lines:", count(new, "CA certs from configured location"))
+print("old run trust-anchor retrieve lines:", sum(1 for l in old if re.search(retrieve, l) and "error adding trust anchors" in l))
+EOF
+```
+
+The artifact IDs are those of `probe-batch-pods-41296493195-1` (new run) and `probe-batch-pods-41286058152-1` (earlier run). Run both blocks to reproduce every count and list in the sections above.
+
 ## Verification record
 
-Run in this session's container. The `check:docs` result below was taken on the working tree that became commit `80181d5` (the tree of round 2). Later commits on the branch change only this receipt and add no warning in a changed file; `check:docs` was rerun after each.
+Run in this session's container. The `npm` and `git diff --check` results below were taken on the working tree that became commit `80181d5` (the tree of round 2) and `check:docs` was rerun after each later commit, which changed only this receipt. Both scripts in "Reproduction" were extracted from this file and run on the tree that became the commit after `aeb211d`; they printed the values and counts quoted above.
 
 | Command | Result |
 |---|---|
 | `npm ci --ignore-scripts`, `npm run test:docs` | passed |
-| `npm run check:docs` | 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, evidence for issues 124, 140 and 211); the three changed files report no issues |
+| `npm run check:docs` | 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, evidence for issues 124, 140 and 211); the four changed files report no issues |
 | `git diff --check` | clean |
 
 No code or test is changed, so no .NET, Python or chart suite was run for this change.
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 2 of 2, focused 0 of 2 reported and the first pending. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
+Cumulative counts at the time of writing: comprehensive 2 of 2, focused 1 of 2 reported and the second (the last) pending. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
 
 | Round | Mode | Input revision | Comparison revision | Findings | Disposition |
 |---|---|---|---|---|---|
 | 1 | comprehensive | `68dea93` | `216bce2` | P1: the S6 row said every claim was rechecked, which the receipt contradicted. P1: the result paragraphs lacked a recorded authorization. P1: no predicate-to-test map entry. P2: the receipt said the state file's Approved plan line changed. P2: Open questions in the state file said None while the assessment lists two decisions. P2: the sentence on Microsoft's documentation said more than the source | Fixed in `80181d5`: the S6 row now says settings, defaults and option values; B05, C03 and G01 settings are checked in the receipt; the authorization context is recorded; "not applicable" map added; receipt wording corrected; state file lists the two open questions; the documentation sentence names the inferred part |
-| 2 | comprehensive (consolidated re-review) | `80181d5` | `216bce2` | P1: inventory row F01 cites S6 and was missing from the claim list (same class as round 1's first P1). P2: the verification record did not name the commit it describes | Fixed in the commit that adds row 3: F01 added to the claim table, a script audit of all 8 body lines and 20 inventory rows that cite S6 added, and the verification record names `80181d5` |
-| 3 | focused | the commit that adds this row | `80181d5` | Pending; recorded in the pull request self-review record | Not applicable |
+| 2 | comprehensive (consolidated re-review) | `80181d5` | `216bce2` | P1: inventory row F01 cites S6 and was missing from the claim list (same class as round 1's first P1). P2: the verification record did not name the commit it describes | Fixed in `aeb211d`: F01 added to the claim table, a coverage audit of all 8 body lines and 20 inventory rows that cite S6 added, and the verification record names `80181d5` |
+| 3 | focused | `aeb211d` | `80181d5` | P1: the receipt stated script and grep results without giving the commands (also at the two earlier lines that said "by script" and "checked by grep") | Fixed in the commit that adds row 4: a "Reproduction" section holds both scripts, every such line points to it, the scripts were run from this file, and one count that included a non-request line was narrowed to request lines |
+| 4 | focused (last of 2) | the commit that adds this row | `aeb211d` | Pending; recorded in the pull request self-review record | Not applicable |
