@@ -38,7 +38,7 @@ Nothing here authorizes a dispatch, an Azure action or spend.
 
 Plan check P2 4: the operations doc says that the file's absence from the image is inferred, using the check's replacement text. P2 5: the doc says the workflow input's description still says three producers and that the workflow is not changed here. The plan's line numbers matched `main` at `8078e6f`; edits were placed by the anchor text the plan quotes.
 
-The three Python assertions narrowed to `nativejwt` (tuple, `modes` twice, `seen`) follow the behaviour change, as the plan states; a new negative test covers the two removed stages. No `results/`, `expected.yaml`, verifier, judge, `*.csproj`, chart, workflow or package change. `docs/blueprint.md`, AGENTS.md and factory.md are unchanged.
+The three Python assertions narrowed to `nativejwt` (tuple, `modes` twice, `seen`) follow the behaviour change, as the plan states; a new negative test covers the two removed stages. Beyond the plan's text, the operations doc's second paragraph carries four source citations (librdkafka `rdkafka_conf.c` and `rdkafka.c`, Confluent.Kafka `SafeKafkaHandle.cs`, all at v2.16.0), added under AGENTS.md "Before opening a pull request" rules 1 and 2 after cold review round 1. No `results/`, `expected.yaml`, verifier, judge, `*.csproj`, chart, workflow or package change. `docs/blueprint.md`, AGENTS.md and factory.md are unchanged.
 
 ## Predicate map
 
@@ -70,3 +70,14 @@ Run in this session's container (Linux, .NET SDK 10.0.402 from the official inst
 Tests that need Docker or a local Kafka run in CI only. The runner image is not checked here, so the first CI run is the check that `/etc/ssl/certs/ca-certificates.crt` exists there.
 
 Authority refresh before the first push: issue body `updated_at` 2026-11-01T09:32:16Z, 26 comments, newest 6556147592, all unchanged since the catch-up; `origin/main` is `8078e6f`.
+
+## Cold review record
+
+Cumulative counts at the time of writing: comprehensive 2 of 2, focused 0 of 2. The final focused round's report is recorded in the pull request self-review record, not here, because it reviews this receipt.
+
+| Round | Mode | Input revision | Comparison revision | Findings | Disposition |
+|---|---|---|---|---|---|
+| 1 | comprehensive | `123d473` | `8078e6f` | P1: the new librdkafka claims in the operations doc had no citation. P2: the receipt did not name the verified commit | Both fixed in `dac7bea`: four pinned citations added; the verification record names `123d473` |
+| 2 | comprehensive (consolidated re-review) | `dac7bea` | `8078e6f` | P1: this receipt had no cold-review record. P2: the receipt did not say the doc adds citations beyond the plan's text | Both fixed in the commit that adds this section: this record, and the note in "Specification comparison" |
+
+Round 1 and round 2 reported no missing, partial or incorrect requirement and no scope creep against the plan, plan check 6556022257 and approval 6556147592. Their pre-existing observations need no change here: the assessment comment 6555801700 has a `created_at` later than the comment the state file covers (a harmless re-read); `probe_v2.py` keeps `maximum_clients` hard-coded as the plan chose; and the protected workflow input description is recorded in the operations doc.
