@@ -314,6 +314,55 @@ Killed on replay:
 
 The [receipt](evidence/issue-268/receipt.md) records the source-edit replay of every survivor with `evidence/issue-268/replay.py`. A replay is diagnostic evidence, not C5 acceptance. The next complete hosted run on `main` measures these targets under [Issue 187 hosted C5 measurement](#issue-187-hosted-c5-measurement).
 
+## Issue 275 survivor dispositions
+
+[C5 run 41232286130](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130), attempt 1 on `main` at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, is a complete measurement that passes break 60. It left 290 surviving mutants and one Timeout. This section gives one disposition to each of the 30 survivors outside `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs`, and to the Timeout, under the [issue 275 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6549790804) and Hari's decisions [6549570595](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6549570595) and [6550543272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6550543272); raw Stryker statuses and scores are unchanged. The 260 survivors of that configuration target are [issue 277](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277).
+
+No file under `src/Parchwell.Verifier` differs between `b79acb256d09ea29e493acc460ebbe2c9c59aa4f`, the baseline of the [issue 268 dispositions](#issue-268-survivor-dispositions), and `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, which also contains the tests issue 268 added. Each of the 30 survivors, and the Timeout, has the same id, mutator, replacement and location as in run 41183628251, and each target's report carries the same source text. The dispositions therefore use the definitions in that section, and its proofs E1 to E11 and R1 apply unchanged, with their line numbers. R2 and T1 are new.
+
+- Equivalent: 25 survivors. Each was also an equivalent survivor of run 41183628251, with the same proof.
+- Killed on replay: 6 mutants. Five are survivors, all `String` mutants of the `static readonly` arrays on lines 19 and 20 of `PublicationAcceptance.cs`. Mutants 9922, 9924 and 9926 are R1. R2 is mutants 9917 and 9919: run 41183628251 reported them killed, while this run reports them survived; mutants 9918 and 9920, which R1 found survived there, are reported killed here. On replay, existing tests fail for each of the five. Inferred, not proven, as for R1: Stryker's status for these literals comes from how it activates mutants in static initializers, not from a missing test. No test is added. The sixth is the Timeout, mutant 4863 (T1).
+
+R1 and R2 together show that some static-array mutants change outcome between C5 runs on the same source. In this run, 9917 and 9919 survived, while 9918 and 9920, which survived in run 41183628251, were killed. Run 41183628251 is incomplete because its configuration judgement job failed; its `PublicationAcceptance.cs` job completed. The individual Stryker outcomes of these literals are therefore not reproducible from run to run. The gate result is not in doubt: the raw score is 91.38 percent, from 3076 / 3366 * 100 rounded to two decimal places, against break 60.
+
+T1 (`PhaseJudge.cs` 4863). The mutant changes `number++` to `number--` on line 42, the loop over the five repeat slots. `number` starts at 1 and only decreases, so the loop does not stop after five passes, and each pass adds an entry to `repeats`. Stryker reported Timeout for it in this run and in run 41183628251. The replay runs it with a 4 GiB [heap hard limit](https://learn.microsoft.com/dotnet/core/runtime-config/garbage-collector#heap-hard-limit) (`DOTNET_GCHeapHardLimit`) and stops once a failed test reports `System.OutOfMemoryException` thrown through `PhaseJudge.Evaluate`, or after 900 seconds. An existing test failed that way. The replay does not count how many tests fail. No test is added.
+
+| File | Mutant | Line | Mutator | Disposition | Proof |
+| --- | ---: | ---: | --- | --- | --- |
+| `PhaseJudge.cs` | 4863 | 42 | PostIncrement to PostDecrement | killed on replay | T1 |
+| `PhaseJudge.cs` | 4992 | 76 | Logical | equivalent | E1 |
+| `PhaseJudge.cs` | 4994 | 76 | Linq Any to All | equivalent | E1 |
+| `PhaseJudge.cs` | 4995 | 76 | Equality | equivalent | E1 |
+| `PhaseJudge.cs` | 4998 | 76 | Statement | equivalent | E1 |
+| `PhaseJudge.cs` | 5013 | 80 | Linq All to Any | equivalent | E2 |
+| `PhaseJudge.cs` | 5014 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5015 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5016 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5017 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5018 | 80 | Logical | equivalent | E2 |
+| `PhaseJudge.cs` | 5028 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5030 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5032 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5034 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5036 | 86 | Checked | equivalent | E3 |
+| `PhaseJudge.cs` | 5038 | 86 | Checked | equivalent | E3 |
+| `PublicationAcceptance.cs` | 9917 | 19 | String | killed on replay | R2 |
+| `PublicationAcceptance.cs` | 9919 | 19 | String | killed on replay | R2 |
+| `PublicationAcceptance.cs` | 9922 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9924 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 9926 | 20 | String | killed on replay | R1 |
+| `PublicationAcceptance.cs` | 10008 | 61 | Statement | equivalent | E4 |
+| `SingleActionRepeatJudgement.cs` | 13447 | 62 | Boolean | equivalent | E5 |
+| `SingleActionRepeatJudgement.cs` | 13530 | 101 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 13836 | 175 | Boolean | equivalent | E7 |
+| `SingleActionRepeatJudgement.cs` | 14123 | 245 | Logical | equivalent | E8 |
+| `SingleActionRepeatJudgement.cs` | 14129 | 246 | Linq First to FirstOrDefault | equivalent | E9 |
+| `SingleActionRepeatJudgement.cs` | 14193 | 277 | String | equivalent | E6 |
+| `SingleActionRepeatJudgement.cs` | 14286 | 299 | Logical | equivalent | E10 |
+| `SingleActionRepeatJudgement.cs` | 14288 | 299 | Block | equivalent | E11 |
+
+The [receipt](evidence/issue-275/receipt.md) records the identity check and the source-edit replay of all 31 mutants with `evidence/issue-275/replay.py`. A replay is diagnostic evidence, not C5 acceptance.
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
