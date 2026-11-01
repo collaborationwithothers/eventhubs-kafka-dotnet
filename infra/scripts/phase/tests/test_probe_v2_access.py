@@ -275,7 +275,10 @@ class ProductionReaderTests(unittest.TestCase):
     def test_both_streams_capped(self):
         for stream in ('stdout', 'stderr'):
             with self.subTest(stream=stream), self.assertRaises(audit.Gap) as caught:
-                self.run_reader('import sys; sys.' + stream + '.write("x"*100000)', {'response_bytes': 1024})
+                # When the child's stderr is unbuffered (PYTHONUNBUFFERED=1, which the cloud
+                # container sets), one large write past RLIMIT_FSIZE is a short write: nothing
+                # raises and the child exits 0. Chunked writes fail with EFBIG in both modes.
+                self.run_reader('import sys\nfor _ in range(100): sys.' + stream + '.write("x"*1000)', {'response_bytes': 1024})
             self.assertEqual(caught.exception.reason, 'response_limit')
 
     def test_file_and_byte_budgets_checked_before_launch(self):
