@@ -49,10 +49,13 @@ Source: [CONFIGURATION.md at tag v2.16.0](https://github.com/confluentinc/librdk
 | `connections.max.idle.ms` Azure-specific heuristic when left at default | A04; conflicts item 4 | description says heuristics identify "brokers on Azure" when left at default |
 | `sasl.oauthbearer.metadata.authentication.type` has `azure_imds` | ADR-003 context; conflicts item 5; F02 | values `none, azure_imds, aws_iam`; `azure_imds` uses the Azure IMDS endpoint |
 | Offset-store pattern recommended in the `max.poll.interval.ms` description | ADR-005 options, item 4 | the description recommends `enable.auto.offset.store=false` and storing offsets after processing |
+| `sasl.mechanisms` supports `OAUTHBEARER`; the `oauthbearer_token_refresh_cb` callback exists | F01 | `sasl.mechanisms` text: "Supported: GSSAPI, PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER"; `oauthbearer_token_refresh_cb` present |
 | `enable.auto.offset.store` default `true`; `enable.auto.commit` default `true` | C10 | true and true |
 | `group.protocol` default `classic`, KIP-848 text present; `partition.assignment.strategy` default `range,roundrobin`, `cooperative-sticky` present; `group.instance.id` present | C07, C08, C06 | all present as stated |
 
 Claims on the Microsoft Learn pages in the result paragraphs were read on 2026-11-01: the On-Behalf-Of page says `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` with `requested_token_use` "Required ... must be set to `on_behalf_of`", and "the OBO flow only works for user principals"; the error-code page lists AADSTS900144 as "The request body must contain the following parameter". Numbers in the result paragraphs (5 slots, 45 requests, 55 earlier lines, 0 trust-anchor lines) come from the artifacts of runs 41296493195 and 41286058152 as read in the assessment comment, which gives the counting method.
+
+Coverage audit by script (after round 2): the blueprint cites S6 on 8 body lines (196, 232, 238, 249, 943, 945, 946, 947) and in 20 inventory rows (A01, A02, A03, A04, B02, B04, B05, B07, B08, B10, C01, C03, C06, C07, C08, C10, C15, F01, F02, G01). Each is covered by a row of the table above or by the checks below.
 
 Also checked after the first cold review: `transactional.id` exists (B05); `max.poll.interval.ms` exists with default 300000 (C03); `metadata.recovery.strategy` exists with default `rebootstrap` (G01).
 
@@ -64,7 +67,7 @@ Not applicable. This pull request changes documentation only and touches no veri
 
 ## Verification record
 
-Run in this session's container on the working tree that became the first commit of the branch.
+Run in this session's container. The `check:docs` result below was taken on the working tree that became commit `80181d5` (the tree of round 2). Later commits on the branch change only this receipt and add no warning in a changed file; `check:docs` was rerun after each.
 
 | Command | Result |
 |---|---|
@@ -76,9 +79,10 @@ No code or test is changed, so no .NET, Python or chart suite was run for this c
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 1 of 2 reported and the second pending, focused 0 of 2. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
+Cumulative counts at the time of writing: comprehensive 2 of 2, focused 0 of 2 reported and the first pending. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
 
 | Round | Mode | Input revision | Comparison revision | Findings | Disposition |
 |---|---|---|---|---|---|
-| 1 | comprehensive | `68dea93` | `216bce2` | P1: the S6 row said every claim was rechecked, which the receipt contradicted. P1: the result paragraphs lacked a recorded authorization. P1: no predicate-to-test map entry. P2: the receipt said the state file's Approved plan line changed. P2: Open questions in the state file said None while the assessment lists two decisions. P2: the sentence on Microsoft's documentation said more than the source | Fixed in the commit that adds this record: the S6 row now says settings, defaults and option values; B05, C03 and G01 settings are checked in the receipt; the authorization context is recorded; "not applicable" map added; receipt wording corrected; state file lists the two open questions; the documentation sentence names the inferred part |
-| 2 | comprehensive (consolidated re-review) | the commit that adds this record | `216bce2` | Pending; recorded in the pull request self-review record | Not applicable |
+| 1 | comprehensive | `68dea93` | `216bce2` | P1: the S6 row said every claim was rechecked, which the receipt contradicted. P1: the result paragraphs lacked a recorded authorization. P1: no predicate-to-test map entry. P2: the receipt said the state file's Approved plan line changed. P2: Open questions in the state file said None while the assessment lists two decisions. P2: the sentence on Microsoft's documentation said more than the source | Fixed in `80181d5`: the S6 row now says settings, defaults and option values; B05, C03 and G01 settings are checked in the receipt; the authorization context is recorded; "not applicable" map added; receipt wording corrected; state file lists the two open questions; the documentation sentence names the inferred part |
+| 2 | comprehensive (consolidated re-review) | `80181d5` | `216bce2` | P1: inventory row F01 cites S6 and was missing from the claim list (same class as round 1's first P1). P2: the verification record did not name the commit it describes | Fixed in the commit that adds row 3: F01 added to the claim table, a script audit of all 8 body lines and 20 inventory rows that cite S6 added, and the verification record names `80181d5` |
+| 3 | focused | the commit that adds this row | `80181d5` | Pending; recorded in the pull request self-review record | Not applicable |
