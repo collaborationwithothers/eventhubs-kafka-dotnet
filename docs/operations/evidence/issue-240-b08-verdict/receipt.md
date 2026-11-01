@@ -11,6 +11,16 @@ This receipt records preparation of the proposed B08 verdict from scientific run
 - Publication checkpoint: draft pull request after one comprehensive cold review with no unanswered P0 or P1.
 - Review budget: two comprehensive passes and two focused rounds; on exhaustion, hand off to Hari.
 
+## Predicate map and shared generator
+
+`make_results.py` adds accept and reject predicates for the publication only: pinned hashes, candidate shape, receipt binding, pod binding, capture agreement, the transcribed B08 decision rule, the 0 to 31 metadata check, the partition arithmetic and the C5 comparison. It adds no verifier or runtime predicate. The boundary cases that exist are the two hash-mutation runs in the table below. There is no unit test suite for the generator; the predicate-to-test map for verifier work is therefore not applicable, and the generator's own failure conditions are listed in its docstring.
+
+The generator file is shared in content with the E01 verdict pull request, which carries the same bytes under its own directory. This pull request's review covers the B08 paths; the E01 pins, rules and published E01 summary text in the file are owned by the E01 pull request's review.
+
+## Cold review record
+
+Round 1: mode comprehensive, input revision `f66d749` (parent `961413f`, comparison revision base `961413f`), specification sources as listed in this receipt. Its report and the dispositions are in the pull request description.
+
 ## Specification comparison
 
 `scenarios/B08/expected.yaml` and `scenario.yaml` are unchanged from the run source; `git diff` between `8078e6f` and `origin/main` over both scenario trees, the cluster and Event Hubs Terraform, the verifier source and the C5 tests is empty. The verdict, hypotheses and observations are the ones the run produced. The verifier's final assessment is `confirmed` with `H_partition: holds`. The generator re-derives it from the candidates with the rules transcribed from `expected.yaml` and fails if it differs. Nothing in the artifacts disagrees with the proposed verdict and no required field is missing.
@@ -29,9 +39,9 @@ Artifacts were downloaded by `gh api` and are untrusted data until pinned by has
 
 Checked by script against the pod captures, not only the candidates: delivery and read records equal the candidates; the `partitioner` setting is `consistent_random` in all five C0 producers and `murmur2_random` in all five C1 producers; producer and reader metadata partitions are exactly 0 to 31; each Job ran once, exit 0, on the expected service account and image digest; each judge receipt binds its candidate hash and its pod name and UID.
 
-Computed, not measured: CRC-32 2046850398 and Murmur2 2245682434 of `b08-synthetic-0` give partitions 30 and 2 of 32. The Murmur2 port is checked against the 11 vectors in librdkafka v2.16.0 `src/rdmurmur2.c`. Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `rdkafka_msg.c`, `rdmurmur2.c`, `rdcrc32.c`, `rdcrc32.h`, `CONFIGURATION.md`; azure-docs `apache-kafka-configurations.md` at `6da87e3c59251e962dd0b37dbd99ae364d767150`.
+Computed, not measured: CRC-32 2046850398 and Murmur2 2245682434 of `b08-synthetic-0` give partitions 30 and 2 of 32. The Murmur2 port is checked against the 11 non-NULL vectors of the 12 in librdkafka v2.16.0 `src/rdmurmur2.c`; the 12th is NULL with the same expected value as the empty key. Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `rdkafka_msg.c`, `rdmurmur2.c`, `rdcrc32.c`, `rdcrc32.h`, `CONFIGURATION.md`; azure-docs `apache-kafka-configurations.md` at `6da87e3c59251e962dd0b37dbd99ae364d767150`.
 
-Inferred, and labelled as such in the report: node size from the pinned cluster configuration; that changing the partitioner changes a key's partition on an existing event hub (follows from the measured result, not tested as a change on one hub).
+Inferred, and labelled as such in the report: node size from the pinned cluster configuration; that changing the partitioner can move a key to another partition (follows from the measured result for one key, not tested as a change on one hub); the report also states that some keys, such as `b08-synthetic-36`, map to the same partition under both algorithms, computed by script and not run.
 
 Mutation gate: the generator compares each of the six configured C5 targets and the C5 configuration between `2dc9715e3de176f7e1cd55eee9c251e43c29c746` and the run source by git object ID. All are identical and the C5 commit is an ancestor of the run source. Per [decision 6551231489](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6551231489) and [decision 6554536413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6554536413), the "did not measure" sentence therefore does not apply and the report says the run measured the same source. The 260 survivors are cited to issue 277.
 
@@ -47,9 +57,9 @@ Inputs are extracted under the session scratchpad.
 | Copy of the pods with one LF appended to a B08 `pods.json`, then `--check` | Exit 1 with the pinned SHA-256 rejection. |
 | `git diff --stat` between `8078e6f` and `origin/main` over scenarios, cluster and Event Hubs Terraform, verifier source and C5 tests | Empty. |
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
-| ASCII scan of the authored files | See pull request description. |
+| `grep -nP '[^\x00-\x7F]'` over the five authored files | No match. |
 
-The result SHA-256 is `e91f48406e08e127ed24dd02221c3c4d90950cee782948d797b524b09f08b49d`. The generator SHA-256 is `d7e2aa93a13a57d4d4ce21c93fc3feab94c589ba0df49ee3a905032ff12c86f5`. Both are recorded before the cold-review fixes and may change; the pull request description is authoritative for the final head.
+The result SHA-256 is `9a3e5ebbabe186712f168e652cfd1577292c451374960aa63a6e4f934afb6471`. The generator SHA-256 is `e76b4f34665feba86f1a9b7700f495fef2b82859aa12e2a0635183d24eca47f8`. Both are recorded before the cold-review fixes and may change; the pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 

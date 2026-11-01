@@ -13,7 +13,7 @@ and also requires the report results/<ITEM>/2026-11-01.md to contain the tables
 that --tables prints, so no table row is typed by hand. This follows the issue-210
 and issue-230 publication assembler precedent. It is not a second scientific
 validator: the verifier's complete-valid projections stay authoritative, and the
-five candidates per configuration and their judge receipts are preserved
+the candidate of each configuration (five repeats) and its judge receipt are preserved
 unchanged, re-serialized with indentation. The closed decision rules below are
 transcribed from the pinned scenarios/<ITEM>/expected.yaml and are only used to
 confirm that the verifier's proposed assessment follows from the candidates.
@@ -179,7 +179,8 @@ EXPECTED = {
     },
 }
 
-# Source vectors of rd_murmur2() in librdkafka v2.16.0 src/rdmurmur2.c unittest_murmur2.
+# The 11 non-NULL of the 12 vectors of rd_murmur2() in librdkafka v2.16.0 src/rdmurmur2.c
+# unittest_murmur2. The 12th is NULL and has the same expected value as the empty key.
 MURMUR_VECTORS = (
     (b"kafka", 0xD067CF64), (b"giberish123456789", 0x8F552B0C), (b"1234", 0x9FC97B14),
     (b"234", 0xE7C009CA), (b"34", 0x873930DA), (b"4", 0x5A4B5CA1),
@@ -561,7 +562,7 @@ def build(item, cand_dir, pods_dir, c5_path):
             "key": key.decode("ascii"), "partition_count": 32, "crc32": math["crc32"], "murmur2": math["murmur2"],
             "expected_partition": {"C0": math["consistent_random"], "C1": math["murmur2_random"]},
             "basis": "rdkafka_msg.c, rdmurmur2.c and rdcrc32.h at librdkafka v2.16.0; a computed expectation, not a measurement",
-            "murmur2_port_checked_against_source_vectors": len(MURMUR_VECTORS),
+            "murmur2_port_checked_against_non_null_source_vectors": len(MURMUR_VECTORS),
         }
         extra["measured_partitioner"] = {c: spec["partitioner"][c] for c in spec["configurations"]}
 
