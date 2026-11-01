@@ -363,6 +363,93 @@ T1 (`PhaseJudge.cs` 4863). The mutant changes `number++` to `number--` on line 4
 
 The [receipt](evidence/issue-275/receipt.md) records the identity check and the source-edit replay of all 31 mutants with `evidence/issue-275/replay.py`. A replay is diagnostic evidence, not C5 acceptance.
 
+## Issue 281 survivor dispositions
+
+[C5 run 41232286130](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130), attempt 1 on `main` at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, left 260 surviving mutants in `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` ([issue 277](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/277)). This section gives one disposition to each of the 63 in span shard p3 (character span 20406..31533), all in the member `V2Candidate`, under the [issue 281 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/281#issuecomment-6556794609); raw Stryker statuses and scores are unchanged. The other 197 belong to issues 282 and 283.
+
+- Missing test: a test added for issue 281 passes on `main` and fails on the replayed mutant, and no existing test fails on it.
+- Equivalent: no input can change observable behaviour. The proof is in EP1 or EP2, and the mutant also survives replay.
+- Killed on replay: existing tests fail on the replayed mutant, though Stryker reported it survived.
+
+Scripted counts: 61 missing test, 2 equivalent, 0 killed on replay, 0 accepted gap. No verifier source changes and no assertion is loosened.
+
+Test aliases, all in `ProbeV2CandidateProjectionAuditTests`: CP1 `Given_PermissionAuditOutcome_When_Projected_Then_EveryRepeatCarriesItsProblem`; CP2 `Given_InvalidHelperSlots_When_Projected_Then_AnyInvalidHelperInvalidatesTheRepeat`; CP3 `Given_CompleteMatrix_When_Projected_Then_HelperClientsAndOnlyTheSeedReferenceAreKept`; CP4 `Given_SourceOrReaderDefect_When_Projected_Then_FirstRepeatHasExactStatusAndReasons`; CP5 `Given_NegativeReaderSourceActionFailed_When_Projected_Then_ControlsGapIsRecorded`; CP6 `Given_NegativeSendDelivered_When_Projected_Then_SecurityFindingFollowsActionFidelity`; CP7 `Given_FinalConfiguration_When_PriorsChecked_Then_StatusDiagnosticsAndSecurityAreExact`.
+
+Equivalence proofs (line numbers in this section are in the target file at `2dc9715e3de176f7e1cd55eee9c251e43c29c746`, equal to `main` when this section was written):
+
+- EP1 (11923, line 254, `continue` removed after `matrix.SourceStage is null`). `ProbeV2Matrix.For` gives a null `SourceStage` only for B08 action, F06 C0 to C5 action, E01 seed and F06 seed; each of these also has a null `SourceConfiguration` and the action `produce_one`. Without the `continue`, lines 255 to 281 run with `sourceKey` `(null, null)`. `evidence` is keyed by non-nullable `(string, string)` tuples, so no key is `(null, null)`; the only production caller, `ProbeV2Handler` (line 163), builds it from `ProbeV2Matrix.Dependencies` keys only (lines 96 to 105). So `TryGetValue` is false, `V2EvidenceProblems` is not called and `Raw` returns null. `source`, `sourceReceipt` and `admission` are read only inside `if (matrix.Action == "assign_consume")` (line 261), false here, and in the line 280 condition, which needs stage `action` and item E01; E01 action has `SourceStage` `seed`. No output changes and nothing throws.
+- EP2 (12277, line 346, default slot status `"incomplete"` to `""`). A slot's `Status` is read only by the comparisons with `"invalid"` at lines 230 and 240, which neither value meets. Line 313 sets the projected repeat's `Status` again, so the slot's own status never reaches the output. The production caller also never reaches this default: `ProbeV2Handler` adds one five-element `checkedSlots` entry for every `evidence` key (lines 115 to 141), and every `Slot` call uses such a key.
+
+Note on 12278 (line 346, default slot reason `"v2_completion"` to `""`): CP4 kills it by calling `V2Candidate` directly with a missing slot entry. By EP2's last sentence, the production handler never reaches that default, so the test guards the member's own contract, not a path the handler uses. It is recorded as missing test, because it meets that definition.
+
+| Mutant | Line | Mutator | Disposition | Test or proof |
+| ---: | ---: | --- | --- | --- |
+| 11880 | 229 | Statement | missing test | CP1 |
+| 11885 | 230 | Equality | missing test | CP1 |
+| 11887 | 230 | String | missing test | CP1 |
+| 11888 | 230 | String | missing test | CP1 |
+| 11893 | 240 | OrAssignment to ExclusiveOrAssignment | missing test | CP2 |
+| 11895 | 240 | String | missing test | CP2 |
+| 11896 | 241 | Statement | missing test | CP3 |
+| 11904 | 245 | Equality | missing test | CP3 |
+| 11905 | 245 | String | missing test | CP3 |
+| 11913 | 246 | Boolean | missing test | CP4 |
+| 11914 | 246 | Statement | missing test | CP4 |
+| 11915 | 246 | String | missing test | CP4 |
+| 11919 | 252 | Statement | missing test | CP4 |
+| 11920 | 252 | String | missing test | CP4 |
+| 11921 | 252 | Statement | missing test | CP4 |
+| 11923 | 254 | Statement | equivalent | EP1 |
+| 11924 | 257 | Logical | missing test | CP4 |
+| 11925 | 257 | Logical | missing test | CP4 |
+| 11949 | 263 | String | missing test | CP4 |
+| 11951 | 263 | Statement | missing test | CP4 |
+| 11952 | 263 | String | missing test | CP4 |
+| 11953 | 263 | Statement | missing test | CP4 |
+| 11956 | 264 | Statement | missing test | CP4 |
+| 11957 | 264 | String | missing test | CP4 |
+| 11960 | 265 | Boolean | missing test | CP4 |
+| 11961 | 265 | Statement | missing test | CP4 |
+| 11962 | 265 | String | missing test | CP4 |
+| 11986 | 274 | Logical | missing test | CP4 |
+| 11988 | 274 | Logical | missing test | CP4 |
+| 11989 | 274 | Logical | missing test | CP4 |
+| 11997 | 275 | Statement | missing test | CP4 |
+| 11999 | 277 | Logical | missing test | CP4 |
+| 12002 | 277 | String | missing test | CP4 |
+| 12005 | 277 | String | missing test | CP4 |
+| 12006 | 277 | String | missing test | CP4 |
+| 12007 | 277 | Statement | missing test | CP4 |
+| 12008 | 277 | String | missing test | CP4 |
+| 12021 | 281 | Logical | missing test | CP4 |
+| 12057 | 291 | String | missing test | CP4 |
+| 12059 | 291 | Statement | missing test | CP4 |
+| 12060 | 291 | String | missing test | CP4 |
+| 12096 | 300 | Equality | missing test | CP5 |
+| 12097 | 300 | String | missing test | CP5 |
+| 12100 | 300 | Logical | missing test | CP5 |
+| 12101 | 300 | String | missing test | CP5 |
+| 12102 | 300 | String | missing test | CP5 |
+| 12103 | 300 | String | missing test | CP5 |
+| 12109 | 303 | Statement | missing test | CP5 |
+| 12110 | 303 | String | missing test | CP5 |
+| 12112 | 305 | Statement | missing test | CP4 |
+| 12113 | 305 | String | missing test | CP4 |
+| 12132 | 309 | Logical | missing test | CP6 |
+| 12133 | 309 | String | missing test | CP6 |
+| 12134 | 309 | String | missing test | CP6 |
+| 12135 | 309 | String | missing test | CP6 |
+| 12137 | 310 | OrAssignment to ExclusiveOrAssignment | missing test | CP6 |
+| 12235 | 327 | OrAssignment to ExclusiveOrAssignment | missing test | CP7 |
+| 12238 | 328 | Linq Any to All | missing test | CP7 |
+| 12243 | 328 | String | missing test | CP7 |
+| 12250 | 330 | Conditional false | missing test | CP7 |
+| 12252 | 330 | String | missing test | CP7 |
+| 12277 | 346 | String | equivalent | EP2 |
+| 12278 | 346 | String | missing test | CP4 |
+
+The [receipt](evidence/issue-281/receipt.md) records the source-edit replay of all 63 survivors with `evidence/issue-281/replay.py`. A replay is diagnostic evidence, not C5 acceptance.
+
 ## Issue 93 closure measurement
 
 The [child C receipt](evidence/issue-93/child-c/receipt.md) records the fresh full mutation measurement authorized by the [closure decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/93#issuecomment-6306618757). It maps the original assigned variants to the new report while keeping proofs, raw statuses and unresolved limitations separate.
