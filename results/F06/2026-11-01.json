@@ -1946,6 +1946,134 @@
           "receive": false
         }
       ],
+      "projection_verbatim": {
+        "schema_version": 1,
+        "mode": "azure_rbac_configuration_check",
+        "run_id": "probe-41302009289-1",
+        "source_commit": "961413f3fc81ec1b58b3fecc7f9e5122a8a21010",
+        "started_unix_ms": 1793533285664,
+        "completed_unix_ms": 1793533289970,
+        "binding_sha256": "5b360cc9f5cd98ef2aad69fac3a725dee884f5daa0c2cc3ef8f05da893977a51",
+        "status": "complete",
+        "reasons": [],
+        "observed": {
+          "requests": 6,
+          "api_versions": {
+            "arm": "2022-04-01",
+            "graph": "v1.0"
+          }
+        },
+        "coverage": {
+          "accounts": {
+            "loadgen": {
+              "membership_complete": true,
+              "membership_pages": [
+                "ec7acd4d362943f4f4ea1fef10ba06dc4f0aae0e1b9142a7013af7c25077c9be"
+              ],
+              "groups": [],
+              "directory_roles": [],
+              "assignment_collections": [
+                {
+                  "subject": "loadgen",
+                  "complete": true,
+                  "pages": [
+                    "0606a576408583b78f6ed25b65d11b232eedd3ba4e3ad8e4f206f9f99c51792f"
+                  ]
+                }
+              ]
+            },
+            "enrichment-consumer": {
+              "membership_complete": true,
+              "membership_pages": [
+                "ec7acd4d362943f4f4ea1fef10ba06dc4f0aae0e1b9142a7013af7c25077c9be"
+              ],
+              "groups": [],
+              "directory_roles": [],
+              "assignment_collections": [
+                {
+                  "subject": "enrichment-consumer",
+                  "complete": true,
+                  "pages": [
+                    "03c216711e9b8de394ad2d22a9451469e5a3a8cdc97930524985e49480605cb6"
+                  ]
+                }
+              ]
+            }
+          },
+          "targets": [
+            "document-events",
+            "document-events-dlq",
+            "document-state"
+          ],
+          "definitions": [
+            {
+              "alias": "role:381f14360c2dd696c57e22b3ae6adf8d6ac6236e54b61ce07b8fac1b9a94d1fd",
+              "raw_sha256": "b5d683cea368fb740e8986bd7173e9e832dec221129cf872d33408f2ed73dc54"
+            },
+            {
+              "alias": "role:3e19034a1a61908f4e68573f0fe51b7ca4d2ed969825921cd8233b044fe2a55e",
+              "raw_sha256": "b1d1b8531116f2abb39f5d55e3689868ae5cc06f5f7e07ffb378f256d1cf1310"
+            }
+          ]
+        },
+        "entries": [
+          {
+            "account": "loadgen",
+            "subject": "loadgen",
+            "target": "document-events",
+            "operation": "send",
+            "role": "sender",
+            "assignment_alias": "assignment:9cc673ea9237fdd26eddb562c41bf4a34be7b2c3a20e395ca234ace44b7864ac",
+            "definition_alias": "role:3e19034a1a61908f4e68573f0fe51b7ca4d2ed969825921cd8233b044fe2a55e",
+            "scope_class": "event_hub"
+          },
+          {
+            "account": "enrichment-consumer",
+            "subject": "enrichment-consumer",
+            "target": "document-events-dlq",
+            "operation": "send",
+            "role": "sender",
+            "assignment_alias": "assignment:6d781482c7d9633aecfe222fb65ebd4deec709ef00cdf35f65336addd1b80b63",
+            "definition_alias": "role:3e19034a1a61908f4e68573f0fe51b7ca4d2ed969825921cd8233b044fe2a55e",
+            "scope_class": "event_hub"
+          },
+          {
+            "account": "enrichment-consumer",
+            "subject": "enrichment-consumer",
+            "target": "document-state",
+            "operation": "send",
+            "role": "sender",
+            "assignment_alias": "assignment:31602e5a559bc842e8b253a0d4ccba3032b77b6b4c19601e5393076c3388feac",
+            "definition_alias": "role:3e19034a1a61908f4e68573f0fe51b7ca4d2ed969825921cd8233b044fe2a55e",
+            "scope_class": "event_hub"
+          },
+          {
+            "account": "enrichment-consumer",
+            "subject": "enrichment-consumer",
+            "target": "document-events",
+            "operation": "receive",
+            "role": "receiver",
+            "assignment_alias": "assignment:3cd53d88c2da64095745bce7e435e83a840b93ee6ddd10c8486f50b5513b8baf",
+            "definition_alias": "role:381f14360c2dd696c57e22b3ae6adf8d6ac6236e54b61ce07b8fac1b9a94d1fd",
+            "scope_class": "event_hub"
+          }
+        ],
+        "unsupported": [],
+        "source_limits": {
+          "audit_seconds": 600,
+          "requests": 256,
+          "pages_per_collection": 8,
+          "groups": 64,
+          "definitions": 64,
+          "assignments": 4096,
+          "private_files": 1024,
+          "response_bytes": 1048576,
+          "total_raw_bytes": 16777216,
+          "projection_bytes": 32768,
+          "automatic_retries": 0,
+          "first_admission_age_ms": 60000
+        }
+      },
       "not_audited": "the probe identity (namespace-level Sender and Receiver exception) and the verifier; deny assignments, SAS and other authorization mechanisms"
     },
     "adr012_counts": "not_applicable",

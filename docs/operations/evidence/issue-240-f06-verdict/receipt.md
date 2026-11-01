@@ -1,6 +1,6 @@
 # F06 verdict preparation receipt
 
-This receipt records preparation of the proposed F06 verdict from scientific rerun 41302009289. It describes checks on source commit `961413f3fc81ec1b58b3fecc7f9e5122a8a21010` and on `origin/main` at `7d51a8a`, plus the authored publication files, before their containing commit is created.
+This receipt records preparation of the proposed F06 verdict from scientific rerun 41302009289. It describes checks on source commit `961413f3fc81ec1b58b3fecc7f9e5122a8a21010` and on `origin/main` at `40ba3b8`, plus the authored publication files, before their containing commit is created.
 
 ## Execution card
 
@@ -38,7 +38,7 @@ Artifacts were downloaded by `gh api` and are untrusted data until pinned by has
 
 Checked by script against the pod captures, not only the candidates: every request (topic, explicit partition 0, key and value), delivery and error; each independent read equals the delivered location, key and value; each seed is read at its location by the probe and by the second identity; C2 and C4 read stages were skipped for want of a delivery; each negative configuration has no delivery and no read record; each Job ran once, exit 0, on the expected service account and image digest; each judge receipt binds its candidate hash and its pod name and UID; the scenario matrix equals the transcribed one.
 
-Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `src/rdkafka.h` (SHA-256 `09f5d9bf81240b985d1adb83d1cb4e84faa7d0591de01478b2a47e776550cd1a`) and `src/rdkafka.c` (`57ea67830c2d41089258c400b46f902e2d55b45a3ffe125d3010e5c0be0b8a67`); confluent-kafka-dotnet v2.16.0 `ErrorCode.cs` (`99af8c1567302cf14d897c4d00129ba55cf211be7c60c74ec36bd45ea88490b8`), for the meaning of error code 29; azure-docs `articles/event-hubs/authorize-access-azure-active-directory.md` at `84ce263e4a1bdd0ce29cb5afde8ae98d1ad4068f`, for scopes; `infra/ephemeral/identity.tf` at the run source, for the grants. `STATISTICS.md` at v2.16.0 line 87 was read and lists the broker `source` values (learned, configured, internal, logical); the counting rule itself (state UP, internal excluded) is the verifier contract's, not that line's.
+Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `src/rdkafka.h` (SHA-256 `09f5d9bf81240b985d1adb83d1cb4e84faa7d0591de01478b2a47e776550cd1a`) and `src/rdkafka.c` (`57ea67830c2d41089258c400b46f902e2d55b45a3ffe125d3010e5c0be0b8a67`); confluent-kafka-dotnet v2.16.0 `ErrorCode.cs` (`99af8c1567302cf14d897c4d00129ba55cf211be7c60c74ec36bd45ea88490b8`), for the meaning of error code 29; librdkafka v2.16.0 `src/rdkafka_fetcher.c` L305-L306 (SHA-256 `f9a8301b7437eaafac1268f20902af727e3653e5f49ffefaafd97e9365b48427`), for the `Fetch from broker` text; azure-docs `articles/event-hubs/authorize-access-azure-active-directory.md` at `84ce263e4a1bdd0ce29cb5afde8ae98d1ad4068f`, for scopes; `infra/ephemeral/identity.tf` at the run source, for the grants. `STATISTICS.md` at v2.16.0 line 87 was read and lists the broker `source` values (learned, configured, internal, logical); the counting rule itself (state UP, internal excluded) is the verifier contract's, not that line's.
 
 Not verified by me: the ephemeral environment facts (SKU, capacity, region, partition counts, timestamps) come from reading the batch job log of the run, which is not a pinned input; the permission-check log line and the `aks_stopped` line were read from job logs. Node size is inferred from the pinned cluster configuration, and the report says so.
 
@@ -55,13 +55,21 @@ Inputs are extracted under the session scratchpad.
 | Copy of the candidates with one LF appended to `F06-C0.json`, then `--check` | Exit 1 with the pinned SHA-256 rejection. |
 | Five single-line mutations of a copy of the generator, then `--check` | Exit 1 each, with the matching rejection. |
 | `git diff --stat` between `961413f` and `origin/main` over scenarios, cluster and ephemeral Terraform, verifier source and C5 tests | Empty. |
-| `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
+| `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change (rerun after the round 1 corrections). |
 | `grep -nP '[^\x00-\x7F]'` over the authored files | No match. |
 
-The result SHA-256 is `e4c908197e4d2bcd47aa26a343e90fee0103316f4181d1c983129702a063db63`. The generator SHA-256 is `62790f1c29f7ddd0c2454efc69bb4c3c450f30d1632d3c12f3d5509b556ba608`. The pull request description is authoritative for the final head.
+The result SHA-256 is `328a8e004f3fd612fe32789951b2166b2800f65e4db2ba8fc34aab24f3d0af67`. The generator SHA-256 is `d9ab6603d88ec05561a95bfb5f5b1d998c4f0bbb16f205e33d2834db100645cb`. The pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 
-## Cold review and remaining approval
+## Cold review record
 
-Cold review rounds are recorded in the pull request description. This receipt approves no verdict. Hari reviews and merges.
+Cumulative budget after round 1: 1 comprehensive, 0 focused.
+
+- Round 1: mode comprehensive, input revision `af859df` (tree equal to the reviewed staged tree), comparison revision `7d51a8a`. Three P0 (the `results/` and README verdict finding, expected without the `verdict` label), three P1 and two P2. All P1 and P2 were verified against their sources and corrected: the full public audit projection is now embedded verbatim in the result (the plan says to include it); the Learn-page wording now lists its Kafka references; the `Fetch from broker` text is cited to `rdkafka_fetcher.c` and the consumer-group claim was replaced by a statement about configured grants; the survivor sentence no longer says they have no disposition; a dead check in the generator was removed with a comment naming the checks that cover it. `origin/main` was merged (now `40ba3b8`); the configured C5 targets, C5 configuration, scenarios, cluster and ephemeral Terraform are unchanged between `961413f` and it.
+
+Later rounds are recorded in the pull request description, which links all reports and lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph.
+
+## Remaining approval
+
+This receipt approves no verdict. Hari reviews and merges.

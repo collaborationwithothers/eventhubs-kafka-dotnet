@@ -409,9 +409,8 @@ def derive(candidates):
             return None, None, "incomplete_configuration"
     for config in CONFIGS:
         require(candidates[config]["deterministic"] is True, "F06 %s is not deterministic" % config)
-    if len({json.dumps(r["outcome_class"], sort_keys=True) for c in candidates.values() for r in c["repeats"]
-            if False}) > 1:
-        fail("unreachable")
+    # Unequal classes within a configuration are rejected by the determinism require above and by the
+    # per-repeat outcome-class check in verify_candidates.
     for config in CONFIGS:
         if candidates[config]["outcome_class"].get("origin") == "construction":
             return "untestable", "undecided", "construction_origin"
@@ -553,6 +552,7 @@ def verify_audit(pods_dir, status):
         "entries": [{k: e[k] for k in ("account", "target", "operation", "role", "scope_class")} for e in
                     sorted(doc["entries"], key=lambda e: (e["account"], e["target"], e["operation"]))],
         "unsupported": doc["unsupported"], "intended_grants_true_cells": grid,
+        "projection_verbatim": doc,
         "not_audited": "the probe identity (namespace-level Sender and Receiver exception) and the verifier; deny assignments, SAS and other authorization mechanisms",
     }
 
