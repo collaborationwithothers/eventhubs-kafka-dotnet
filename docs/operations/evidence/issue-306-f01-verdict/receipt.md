@@ -60,7 +60,16 @@ Artifacts were downloaded by `gh api` and are untrusted data until pinned by has
 
 Verified by me on 2026-11-01: the Microsoft developer guide page (HTTP 200) contains "Java and Go samples for OAuth authentication" once, and `infra/cluster/aks.tf` at the run source sets `vm_size = "Standard_D4ds_v5"` on all three node pools. The node size is still inferred, because no node SKU is captured in the run. The generated values equal the ones the plan pins.
 
-Boundaries with no self-test case, by design of the plan's pinned case list: F9 `seek < A.timestamp` (only the lower bound is tested), F6 `returned <= cap_at <= observed_at`, F4 a cap above 5000, and F8 `offset >= 0`. All hold on the real rows. The plan's "Predicate map" does not list them, so they are not added here (AGENTS.md "Before opening a pull request" rule 10, `Out of contract:`).
+Predicates with no self-test case, by design of the plan's pinned case list. This is the complete list found by the round 2 cold review and by me:
+- F4: `observation_limit_ms == 20000`; a cap above 5000; `trigger_attempt` above 3.
+- F5: strictly increasing `sequence` (the cases change only timestamps, stages or remove an event).
+- F6: `returned <= cap_at <= observed_at`.
+- F7: `B.timestamp` before the first refresh; `A.timestamp > I2.timestamp`; `operation_admitted_timestamp < cutoff` (only the `A.timestamp` side is tested); the observed-time chain.
+- F8: `offset >= 0`.
+- F9: `seek < A.timestamp` (only the lower bound is tested).
+- F13: the 40-line window after the namespace resource line.
+
+All hold on the real rows. The plan's "Predicate map" does not list them, so they are not added here (AGENTS.md "Before opening a pull request" rule 10, `Out of contract:`).
 
 ## Commands and results
 
@@ -94,7 +103,8 @@ Cumulative budget before round 1: 0 comprehensive, 0 focused.
   - P2 boundary coverage: recorded as not tested; `Out of contract:` citing plan "Predicate map".
   - P2 ADR-019: left as is, one line: decision 6561458447 point 2 accepts the pinned script for F01 only, and plan check finding 4 left the ADR text to Hari.
   - Cumulative budget after round 1: 1 comprehensive, 0 focused. A consolidated comprehensive re-review of the corrections follows.
-- Round 2: mode comprehensive, input revision the staged tree on top of `fb0e137` (the corrections to the round 1 findings only), comparison revision `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`, previous reviewed revision `fb0e137`. Same specification sources as round 1. Report and dispositions: to be recorded.
+- Round 2: mode comprehensive, input revision `61430b5`, comparison revision `10c37a78e4dd6cb76288cc5774aaf2656c5550dc`, previous reviewed revision `fb0e137`. Same specification sources as round 1. The reviewer found no new P0 or P1. It raised the same four label-dependent P0 (kept, as in round 1) and one P2: the boundary note above read as complete but was not. Fixed by listing every untested predicate. The reviewer also asked that the record name commits; done. Cumulative budget after round 2: 2 comprehensive, 0 focused.
+- Round 3: mode focused (the prose-only P2-correction round of AGENTS.md rule 8, which reports only P0 or P1), input revision the staged tree on top of `61430b5`, comparison revision `61430b5`, with the full pull request diff as context. Report and disposition: to be recorded.
 
 ## Remaining approval
 
