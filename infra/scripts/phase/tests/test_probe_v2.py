@@ -311,16 +311,17 @@ class ProbeV2Tests(unittest.TestCase):
 
     def test_native_stage_graph_extends_only_the_f06_c6_route_and_only_with_the_flag(self):
         self.assertEqual((('seed', 'loadgen', 1980), ('action', 'probe', 900), ('judge', 'verifier', 120),
-                          ('nativejwt', 'loadgen', 900)), v2.stages('F06', 'C6', True))
+                          ('nativejwt', 'loadgen', 900), ('nativeimds', 'loadgen', 900),
+                          ('nativeimdsnode', 'loadgen', 900)), v2.stages('F06', 'C6', True))
         self.assertEqual(v2.stages('F06', 'C9'), v2.stages('F06', 'C9', True))
         self.assertEqual((('seed', 'loadgen', 1980), ('action', 'probe', 900), ('judge', 'verifier', 120)), v2.stages('F06', 'C6'))
         self.assertEqual(49, sum(len(v2.stages(item, configuration)) for item, configuration in v2.CONFIGURATIONS))
         self.assertEqual(49, sum(len(v2.stages(item, configuration, False)) for item, configuration in v2.CONFIGURATIONS))
 
-    def test_native_authentication_flag_is_frozen_and_reaches_only_the_jwt_bearer_stage(self):
+    def test_native_authentication_flag_is_frozen_and_reaches_only_the_three_native_stages(self):
         self.native_controls()
         self.assertEqual(('authentication-controls', v2.AUTHENTICATION_CONTROLS), self.subject.selection())
-        modes = {'nativejwt': 'jwt-bearer'}
+        modes = {'nativejwt': 'jwt-bearer', 'nativeimds': 'azure-imds-workload', 'nativeimdsnode': 'azure-imds-default'}
         seen = []
         for item, configuration in v2.AUTHENTICATION_CONTROLS:
             for stage, role, _ in v2.stages(item, configuration, True):
@@ -334,7 +335,7 @@ class ProbeV2Tests(unittest.TestCase):
                 else:
                     self.assertNotIn('native_authentication', runtime)
                     self.assertNotIn('native_principal_id', runtime)
-        self.assertEqual(['nativejwt'], seen)
+        self.assertEqual(['nativejwt', 'nativeimds', 'nativeimdsnode'], seen)
         saved = self.p.read('phase.json')
         for field, invalid in [('test_native_authentication', 'true'), ('test_handler_refresh_path', True),
                                ('capture_authentication_metadata', False), ('items', ['B08']),
@@ -347,14 +348,15 @@ class ProbeV2Tests(unittest.TestCase):
 
     def test_native_stage_is_rejected_without_the_frozen_flag(self):
         self.selected_controls()
-        with self.assertRaisesRegex(ValueError, 'v2_stage'):
-            self.subject.values('F06', 'C6', 'nativejwt', 'loadgen')
-
-    def test_imds_native_stages_are_no_longer_scheduled_with_the_flag(self):
-        self.native_controls()
-        for stage in ('nativeimds', 'nativeimdsnode'):
+        for stage in ('nativejwt', 'nativeimds', 'nativeimdsnode'):
             with self.subTest(stage=stage), self.assertRaisesRegex(ValueError, 'v2_stage'):
                 self.subject.values('F06', 'C6', stage, 'loadgen')
+
+    def test_imds_native_stages_are_scheduled_again_with_the_flag(self):
+        self.native_controls()
+        for stage, mode in (('nativeimds', 'azure-imds-workload'), ('nativeimdsnode', 'azure-imds-default')):
+            with self.subTest(stage=stage):
+                self.assertEqual(mode, self.subject.values('F06', 'C6', stage, 'loadgen')['runtime']['native_authentication'])
 
     def test_native_selected_batch_runs_native_stages_after_the_c6_judge(self):
         self.native_controls()
@@ -395,17 +397,18 @@ class ProbeV2Tests(unittest.TestCase):
             self.assertEqual(0, self.subject.run_batch())
         self.assertEqual([('F06', 'C6', 'seed', 'loadgen'), ('F06', 'C6', 'action', 'probe'),
                           ('F06', 'C6', 'judge', 'verifier'), ('F06', 'C6', 'nativejwt', 'loadgen'),
+                          ('F06', 'C6', 'nativeimds', 'loadgen'), ('F06', 'C6', 'nativeimdsnode', 'loadgen'),
                           ('F06', 'C9', 'action', 'enrichment-consumer'), ('F06', 'C9', 'judge', 'verifier')], stages_seen)
         state = self.p.state()
-        self.assertEqual(6, len(state['modes']))
+        self.assertEqual(8, len(state['modes']))
         self.assertEqual([('F06', 'C6'), ('F06', 'C9')],
                          [(candidate['item'], candidate['configuration']) for candidate in state['candidates']])
         report = json.loads((self.artifacts / 'authentication-metadata-collection.json').read_text())
         self.assertEqual({'schema_version', 'mode', 'selection', 'run_id', 'source_commit', 'image_digests', 'configurations',
                           'jobs', 'action_slots', 'maximum_clients', 'admitted_client_slots', 'transport_passed',
                           'metadata_assessed', 'cleanup_required'}, set(report))
-        self.assertEqual(6, report['jobs']); self.assertEqual(10, report['action_slots']); self.assertEqual(20, report['maximum_clients'])
-        self.assertEqual(20, report['admitted_client_slots']); self.assertTrue(report['transport_passed'])
+        self.assertEqual(8, report['jobs']); self.assertEqual(10, report['action_slots']); self.assertEqual(30, report['maximum_clients'])
+        self.assertEqual(30, report['admitted_client_slots']); self.assertTrue(report['transport_passed'])
         self.assertFalse(report['metadata_assessed']); self.assertTrue(report['cleanup_required'])
 
     def test_native_stage_values_render_through_helm_with_the_loadgen_principal(self):
@@ -424,7 +427,7 @@ class ProbeV2Tests(unittest.TestCase):
         self.write(self.private / 'cluster-output.json', {'workload_identity': {'value': {'service_accounts': accounts}}})
         self.write(self.private / 'persistent-output.json', {'application_insights_connection_string': {'value': runtime['application_insights_connection_string']}})
         self.native_controls(guid)
-        modes = {'nativejwt': 'jwt-bearer'}
+        modes = {'nativejwt': 'jwt-bearer', 'nativeimds': 'azure-imds-workload', 'nativeimdsnode': 'azure-imds-default'}
         for stage, mode in modes.items():
             with self.subTest(stage=stage):
                 values = self.subject.values('F06', 'C6', stage, 'loadgen')
