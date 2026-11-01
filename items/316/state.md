@@ -10,7 +10,6 @@ Decisions in force:
 - Open question 1, option 1: the baseline sets `topic.metadata.refresh.interval.ms` at `300000`, the golden fixture is regenerated, one protected test literal changes, and the override decision's point 1 covers #316. Source: [decision 6564185671](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564185671)
 - Open question 2: child 3 (#317) adds the idle period, statistics interval and report cap, fields and values; this child declares none. Source: [decision 6564220623](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564220623)
 - Approves plan Revision 2 and applies two corrections, the line citations of change 7 in `ScenarioResolver.cs` and the count of changed `src/` files in acceptance 6. Source: [approval 6564337374](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564337374)
-- The plan check states `Blocking findings: none` and marks five P2s `apply in implementation`. Source: [plan check 6564289566](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564289566)
 Open questions:
 - None
 Next action: Hari or the #301 control session merges the pull request under the #301 override decision as extended to #316; after merge, post the completion comment on this issue.
