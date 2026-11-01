@@ -25,8 +25,8 @@ Run from the repository root with SDK 10.0.402. Artifacts were downloaded throug
 | `git diff --quiet 2dc9715e3de176f7e1cd55eee9c251e43c29c746 origin/main -- src tests .github/workflows/verifier-c5-mutation.yml results && echo unchanged` | `unchanged` |
 | `sha256sum` of the nine ZIPs (ZIP: SHA-256) | old-phase `e5f7d5bbdedbcf4a4ccffa69aca1762324f831872702b190c5db52125ace4e47`; old-publication `abcde8f5e8f6c7e91779cd52ca6500bb328022740eb5bd7c424280cba392557f`; old-repeat `8c354bce572decdc97f42e3455648483204188a8140398a40f2d7f888f19b11b`; phase `30ee41906b695893da4e4ff6fe51c9ec8446c53b3ed565f6d02cde81374b4067`; publication `0958c1cbe3aa2b2b0b1e3fc6a4827689ca56253b423958c2ffb031164fe1a715`; repeat-p1 `d46046521cd7dec9fe61d62c14b19d97377734ae57a4858cbb3b9de303fa5fb4`; repeat-p2 `982718362f8adfd6a4ab9da3c5113642e5f0788f2f953d121f63310da190acb4`; repeat-p3 `24f7de948380c665a4d026ff99c9cbc3ecfe578af8fcd736acfeb6dc50da9500`; summary `5c3ee705059465c250fea44cfbb859c963a2a310e13bc5bb55739c984e4e8218` |
 | `summary.json` line | `2dc9715e3de176f7e1cd55eee9c251e43c29c746 41232286130 1 True [] True 3076 3366 13` |
-| `replay.py map` | exit 0; 31 id lines; last line `problems 0` |
-| `replay.py run` (3 workers) | 31 records: 24 survived, 6 killed, 1 compile_error |
+| `replay.py map` | exit 0; the 31 id lines and the last line are under "Literal replay output" |
+| `replay.py run` (3 workers) | 31 records: 24 survived, 6 killed, 1 compile_error; per-mutant lines under "Literal replay output" |
 | `replay.py check` | `rows 31 results 31 problems 0` |
 | runs API, four verdict runs | `40227770436 fa417d783e833ad222ab5173978433448e4aefbe main 1 .github/workflows/scenario.yml`; `40315155000 cb83254f1c2645acd86fe734b24e542e0956edd3 main 1 .github/workflows/scenario.yml`; `40415641139 7b6834c5e8668e89376597bc2b524c0725326daf main 1 .github/workflows/scenario.yml`; `40722187672 20f17794330b60d77a75bf5788ee442cc8baa1f6 main 1 .github/workflows/scenario.yml` |
 | `packs.py report` | the eight lines recorded in plan file change 4, equal byte for byte (compared by script: `True`) |
@@ -41,3 +41,78 @@ Run from the repository root with SDK 10.0.402. Artifacts were downloaded throug
 - Replay counts per disposition: 25 equivalent rows survived, except 14288, which was a compile_error as proof E11 expects (24 survived, 1 compile_error); 6 killed on replay (9917, 9919, 9922, 9924, 9926 and the Timeout 4863).
 - 4863 record: `{"failed_methods": ["Parchwell.Verifier.Tests.Judge.JudgeHandlerTests.Given_B04OptionsWithA01RepeatEvidence_When_Judged_Then_RejectsCrossScenarioEvidence"], "id": "4863", "phase_judge_out_of_memory": true, "status": "killed"}`. The failed method differs from the planning sessions' records; the plan allows this.
 - SHA-256 of the replay output files, which stay outside the repository: `out0.jsonl` `cbbf2d243cda48abe497613cf12b876496c89cfd60c61f1d3b75c9012295f9a6`, `out1.jsonl` `9004d8b1d51e9348815bc94ca0a389bac5ae7c9b58f839f7ab608d2b21cd40b2`, `out2.jsonl` `fd5b846430096c19a50611eed900816acbb535dcb494aac6c581a463d5273010`.
+
+## Literal replay output
+
+`replay.py map` (exit 0):
+
+```text
+4992 run 41183628251 status Survived
+4994 run 41183628251 status Survived
+4995 run 41183628251 status Survived
+4998 run 41183628251 status Survived
+5013 run 41183628251 status Survived
+5014 run 41183628251 status Survived
+5015 run 41183628251 status Survived
+5016 run 41183628251 status Survived
+5017 run 41183628251 status Survived
+5018 run 41183628251 status Survived
+5028 run 41183628251 status Survived
+5030 run 41183628251 status Survived
+5032 run 41183628251 status Survived
+5034 run 41183628251 status Survived
+5036 run 41183628251 status Survived
+5038 run 41183628251 status Survived
+9917 run 41183628251 status Killed
+9919 run 41183628251 status Killed
+9922 run 41183628251 status Survived
+9924 run 41183628251 status Survived
+9926 run 41183628251 status Survived
+10008 run 41183628251 status Survived
+13447 run 41183628251 status Survived
+13530 run 41183628251 status Survived
+13836 run 41183628251 status Survived
+14123 run 41183628251 status Survived
+14129 run 41183628251 status Survived
+14193 run 41183628251 status Survived
+14286 run 41183628251 status Survived
+14288 run 41183628251 status Survived
+4863 run 41183628251 status Timeout
+problems 0
+```
+
+`replay.py run`, lines `id status failed-method-count`, sorted by id:
+
+```text
+4863 killed 1
+4992 survived 0
+4994 survived 0
+4995 survived 0
+4998 survived 0
+5013 survived 0
+5014 survived 0
+5015 survived 0
+5016 survived 0
+5017 survived 0
+5018 survived 0
+5028 survived 0
+5030 survived 0
+5032 survived 0
+5034 survived 0
+5036 survived 0
+5038 survived 0
+9917 killed 37
+9919 killed 37
+9922 killed 37
+9924 killed 37
+9926 killed 37
+10008 survived 0
+13447 survived 0
+13530 survived 0
+13836 survived 0
+14123 survived 0
+14129 survived 0
+14193 survived 0
+14286 survived 0
+14288 compile_error 0
+```
