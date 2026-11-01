@@ -581,7 +581,10 @@
             "seedread",
             "action",
             "read",
-            "judge"
+            "judge",
+            "nativejwt",
+            "nativeimds",
+            "nativeimdsnode"
           ]
         },
         "probe_namespace_data_roles": {
@@ -593,6 +596,17 @@
         "test_handler_refresh_path": {
           "type": "boolean",
           "default": false
+        },
+        "native_authentication": {
+          "enum": [
+            "jwt-bearer",
+            "azure-imds-workload",
+            "azure-imds-default"
+          ]
+        },
+        "native_principal_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
         },
         "run_kind": {
           "type": "string",
@@ -908,6 +922,40 @@
             }
           }
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "runtime": {
+            "anyOf": [
+              { "required": ["native_authentication"] },
+              { "required": ["native_principal_id"] },
+              { "properties": { "stage": { "enum": ["nativejwt", "nativeimds", "nativeimdsnode"] } }, "required": ["stage"] }
+            ]
+          }
+        },
+        "required": ["runtime"]
+      },
+      "then": {
+        "properties": {
+          "scenario_id": { "const": "F06" },
+          "configuration_id": { "const": "C6" },
+          "runtime": {
+            "properties": {
+              "action_role": { "const": "loadgen" },
+              "run_kind": { "const": "smoke" },
+              "capture_authentication_metadata": { "const": true },
+              "test_handler_refresh_path": { "const": false }
+            },
+            "required": ["stage", "action_role", "run_kind", "capture_authentication_metadata", "native_authentication", "native_principal_id"],
+            "oneOf": [
+              { "properties": { "stage": { "const": "nativejwt" }, "native_authentication": { "const": "jwt-bearer" } } },
+              { "properties": { "stage": { "const": "nativeimds" }, "native_authentication": { "const": "azure-imds-workload" } } },
+              { "properties": { "stage": { "const": "nativeimdsnode" }, "native_authentication": { "const": "azure-imds-default" } } }
+            ]
+          }
+        }
       }
     },
     {

@@ -79,14 +79,26 @@ def test_handler_refresh_path():
     raise Failure('unsupported probe batch selection')
 
 
+def test_native_authentication():
+    value = os.environ.get('PARCHWELL_TEST_NATIVE_AUTHENTICATION')
+    if value is None or value == 'false':
+        return False
+    if value == 'true':
+        return True
+    raise Failure('unsupported probe batch selection')
+
+
 def batch_items():
     value = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
     selected_scenario = os.environ.get('PARCHWELL_SCENARIO')
     capture = capture_authentication_metadata()
     refresh_test = test_handler_refresh_path()
+    native_test = test_native_authentication()
     if selected_scenario == 'probe-batch-2':
         kind = os.environ.get('PARCHWELL_RUN_KIND')
         if refresh_test and not (kind == 'smoke' and value == 'authentication-controls' and capture):
+            raise Failure('unsupported probe batch selection')
+        if native_test and not (kind == 'smoke' and value == 'authentication-controls' and capture and not refresh_test):
             raise Failure('unsupported probe batch selection')
         available = ['B08', 'E01', 'F06']
         if kind == 'smoke' and value == 'all' and not capture:
@@ -98,7 +110,7 @@ def batch_items():
             if selected and selected == [item for item in available if item in selected]:
                 return selected
         raise Failure('unsupported probe batch selection')
-    if capture or refresh_test:
+    if capture or refresh_test or native_test:
         raise Failure('unsupported probe batch selection')
     if value == 'all':
         return list(SINGLE_ACTION_ITEMS)
@@ -263,6 +275,8 @@ class Phase:
             raise Failure('unsupported probe batch selection')
         if test_handler_refresh_path():
             raise Failure('unsupported probe batch selection')
+        if test_native_authentication():
+            raise Failure('unsupported probe batch selection')
         return 0
 
     def validate_batch(self):
@@ -293,16 +307,19 @@ class Phase:
         selected = scenario()
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
         refresh_test = test_handler_refresh_path() if selected == 'probe-batch-2' else False
+        native_test = test_native_authentication() if selected == 'probe-batch-2' else False
         metadata = {'run_kind': os.environ['PARCHWELL_RUN_KIND'], 'items': batch_items()}
         if selected == 'probe-batch-2':
             metadata.update(probe_v2_selection=os.environ.get('PARCHWELL_BATCH_ITEMS', 'all'),
                             capture_authentication_metadata=capture,
-                            test_handler_refresh_path=refresh_test)
+                            test_handler_refresh_path=refresh_test,
+                            test_native_authentication=native_test)
         return self.prepare_shared(selected, "single-action", None, "probe", **metadata)
 
     def prepare_shared(self, selected, phase, configuration, prefix, **metadata):
         capture = capture_authentication_metadata()
         refresh_test = test_handler_refresh_path()
+        native_test = test_native_authentication()
         if selected == 'probe-batch-2':
             expected_items = batch_items()
             selector = os.environ.get('PARCHWELL_BATCH_ITEMS', 'all')
@@ -314,9 +331,10 @@ class Phase:
                     or metadata.get('probe_v2_selection') != selector or not selection_valid
                     or metadata.get('capture_authentication_metadata') is not capture
                     or metadata.get('test_handler_refresh_path', False) is not refresh_test
+                    or metadata.get('test_native_authentication', False) is not native_test
                     or run_kind == 'batch' and capture):
                 raise Failure('unsupported probe batch selection')
-        elif capture or refresh_test:
+        elif capture or refresh_test or native_test:
             raise Failure('unsupported probe batch selection')
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
         run = f"{prefix}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
@@ -383,7 +401,8 @@ class Phase:
 
     def prepare_stop(self):
         refresh_test = test_handler_refresh_path()
-        if scenario() == "probe-batch-2" or refresh_test:
+        native_test = test_native_authentication()
+        if scenario() == "probe-batch-2" or refresh_test or native_test:
             self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()

@@ -48,6 +48,16 @@ On .NET runtime `v10.0.13`, `FileSystemInfo.LinkTarget` exposes raw link text, w
 
 The observer serializes calls and performs at most 4096 sample attempts. Attempt 4097 and every later call returns sample 4097 with status `sample_limit`, null clock values and generation, without reading metadata or sampling a clock. These limits bound this diagnostic capability; they are not measured credential lifetimes or rotation rates. Public sample fields are limited to sample number, observation time, monotonic timestamp, timestamp frequency, generation and status. The observer never opens token contents, parses JWTs, persists the comparison tuple, or exposes paths, hashes, file lengths, modification times or exceptions.
 
+## Native client compatibility diagnostic
+
+The native client diagnostic builds three producers with librdkafka's own OIDC code and no refresh handler, beside the custom-handler control. Only `test_native_authentication` selects it, with scenario `probe-batch-2`, run kind `smoke`, items `authentication-controls`, metadata capture on and the handler refresh path off. It adds three F06 C6 Jobs, `nativejwt`, `nativeimds` and `nativeimdsnode`, after the C6 judge. Each runs five 120000 ms slots under the 900 s reader Job bound; these are planning choices, not measurements.
+
+`ProbeV2NativeAuthentication.Apply` holds the literal settings and is applied outside the authentication factory, so the ordinary baseline and its validator are unchanged.
+
+`ProbeV2NativeAuthentication.Redact`, called inside `ProbeV2Capture`, rewrites every client log line and every client error, `KafkaException` and delivery-report reason. It replaces the token-file path, classifies each `principal=` value as `[workload]`, `[other]` or `[empty]`, and replaces JWT-shaped strings and GUIDs. Recorded settings replace the tenant ID, workload client ID and token-file path. A construction rejection is recorded only as `construction:` and the exception type. No repository code reads token, assertion or token-file contents.
+
+Captures are raw; native Jobs get no judge, candidate or receipt. A native Job that reaches a capture limit or a client cleanup timeout exits 1, so the dispatch can fail while the control passes. A native Job whose stop cannot be confirmed sets the safety stop, so every later stage, the remaining native Jobs and both C9 stages, is not attempted; the C6 control has already run. The authored assessment reads every slot whatever the dispatch result. A `Failed to acquire SASL OAUTHBEARER token` error without a `Failed to retrieve ... token from` line, and a `SASL authentication error:` continuing `SaslAuthenticateRequest failed:` or `SaslAuthenticateResponse parsing failed:`, are local failures, never Entra, IMDS or broker answers. The rules are in the issue 244 plan.
+
 ## Evidence inventory
 
 | Reusable evidence | What it establishes | What it cannot establish |

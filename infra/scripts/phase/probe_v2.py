@@ -11,6 +11,7 @@ import time
 
 ITEMS = ("B08", "E01", "F06")
 AUTHENTICATION_CONTROLS = (("F06", "C6"), ("F06", "C9"))
+NATIVE_STAGES = (("nativejwt", "jwt-bearer"), ("nativeimds", "azure-imds-workload"), ("nativeimdsnode", "azure-imds-default"))
 CONFIGURATIONS = tuple((item, f"C{number}") for item, count in (("B08", 2), ("E01", 2), ("F06", 12)) for number in range(count))
 ACCOUNTS = ("loadgen", "probe", "enrichment-consumer", "verifier")
 TOPICS = ("document-events", "document-state", "document-events-dlq")
@@ -99,7 +100,7 @@ def private_json(path, value):
     return encoded
 
 
-def stages(item, configuration):
+def stages(item, configuration, native=False):
     number = int(configuration[1:])
     if (item, configuration) not in CONFIGURATIONS:
         raise ValueError("v2_configuration")
@@ -110,7 +111,8 @@ def stages(item, configuration):
     if number < 6:
         return (("action", "loadgen" if number % 2 == 0 else "probe", 1980), ("read", "probe", 900), ("judge", "verifier", 120))
     seed = (("seed", "loadgen" if number == 6 else "enrichment-consumer", 1980),) if number < 9 else ()
-    return seed + (("action", "probe" if number < 9 else "enrichment-consumer", 900), ("judge", "verifier", 120))
+    native_stages = tuple((stage, "loadgen", 900) for stage, _ in NATIVE_STAGES) if native and (item, configuration) == ("F06", "C6") else ()
+    return seed + (("action", "probe" if number < 9 else "enrichment-consumer", 900), ("judge", "verifier", 120)) + native_stages
 
 
 def job_name(run, item, configuration, stage):
@@ -128,7 +130,7 @@ def public_pod(pod):
         for container in pod.get("spec", {}).get(kind, []):
             for variable in container.get("env", []):
                 name = variable.get("name", "")
-                if (name in hidden or name.endswith("__WorkloadIdentityClientId") or name.endswith("__PrincipalId")) and "value" in variable:
+                if (name in hidden or name.endswith("__WorkloadIdentityClientId") or name.endswith("__PrincipalId") or name.endswith("__NativePrincipalId")) and "value" in variable:
                     variable["value"] = "[redacted]"
     annotations = pod.get("metadata", {}).get("annotations", {})
     for name in ("azure.workload.identity/client-id", "azure.workload.identity/tenant-id"):
@@ -142,16 +144,24 @@ class ProbeV2:
         self.p = phase
         self.limits = decode((phase.repo / "docs/operations/probe-v2-runtime-limits.json").read_bytes(), 65536)
 
+    @staticmethod
+    def native(phase):
+        return phase.get("test_native_authentication", False) is True
+
     def selection(self, phase=None):
         phase = phase or self.p.read("phase.json")
         selected = phase.get("probe_v2_selection", "all")
         capture = phase.get("capture_authentication_metadata", False)
         refresh_test = phase.get("test_handler_refresh_path", False)
+        native_test = phase.get("test_native_authentication", False)
         if (phase.get("scenario") != "probe-batch-2" or type(capture) is not bool
-                or type(refresh_test) is not bool):
+                or type(refresh_test) is not bool or type(native_test) is not bool):
             raise ValueError("v2_smoke_selection")
         if refresh_test and not (selected == "authentication-controls" and phase.get("items") == ["F06"]
                                  and phase.get("run_kind") == "smoke" and capture):
+            raise ValueError("v2_smoke_selection")
+        if native_test and not (selected == "authentication-controls" and phase.get("items") == ["F06"]
+                                and phase.get("run_kind") == "smoke" and capture and not refresh_test):
             raise ValueError("v2_smoke_selection")
         items = phase.get("items")
         if (phase.get("run_kind") == "batch" and capture is False
@@ -170,7 +180,7 @@ class ProbeV2:
         ephemeral = self.p.read("ephemeral-output.json")
         persistent = self.p.read("persistent-output.json")
         accounts = unwrap(self.p.read("cluster-output.json")["workload_identity"])["service_accounts"]
-        if not any(s == stage and a == account for s, a, _ in stages(item, configuration)):
+        if not any(s == stage and a == account for s, a, _ in stages(item, configuration, self.native(phase))):
             raise ValueError("v2_stage")
         selection, configurations = self.selection(phase)
         runtime = {
@@ -190,6 +200,10 @@ class ProbeV2:
                         ("F06", "C6", "seed", "loadgen"),
                         ("F06", "C9", "action", "enrichment-consumer"))):
                 runtime["test_handler_refresh_path"] = True
+            native_modes = dict(NATIVE_STAGES)
+            if stage in native_modes:
+                runtime["native_authentication"] = native_modes[stage]
+                runtime["native_principal_id"] = unwrap(ephemeral["probe_v2_role_scope"])["accounts"]["loadgen"]["principal_id"]
         return {"scenario_id": item, "configuration_id": configuration, "runtime": runtime}
 
     def scope(self):
@@ -710,10 +724,10 @@ class ProbeV2:
         return accepted and (smoke if phase["run_kind"] == "smoke" else evidence)
 
     @staticmethod
-    def admitted_slots(state, run, configurations=CONFIGURATIONS):
+    def admitted_slots(state, run, configurations=CONFIGURATIONS, native=False):
         """Count declared admissions only when every actor capture was transported and completed."""
         expected = {job_name(run, item, configuration, stage) for item, configuration in configurations
-                    for stage, _, _ in stages(item, configuration) if stage != "judge"}
+                    for stage, _, _ in stages(item, configuration, native) if stage != "judge"}
         actors = [record for record in state["modes"] if record.get("stage") != "judge"]
         if (len(actors) != len(expected) or {record["job"] for record in actors} != expected
                 or any(record.get("capture_complete") is not True or type(record.get("admitted_client_slots")) is not int
@@ -805,7 +819,7 @@ class ProbeV2:
         phase = self.p.read("phase.json")
         selection, configurations = self.selection(phase)
         items = phase.get("items")
-        expected_jobs = sum(len(stages(i, c)) for i, c in configurations)
+        expected_jobs = sum(len(stages(i, c, self.native(phase))) for i, c in configurations)
         state = self.p.state()
         if phase["run_kind"] == "batch":
             state["not_selected"] = [item for item in ITEMS if item not in items]
@@ -830,7 +844,7 @@ class ProbeV2:
             self.p.command_deadline = previous
         passed = clock and scope_valid
         for item, configuration in configurations:
-            selected_stages = stages(item, configuration)
+            selected_stages = stages(item, configuration, self.native(phase))
             if phase["run_kind"] == "batch" and item == "F06" and "permission_audit" not in self.p.state():
                 if clock and self.p.admission_allowed() and end - time.monotonic() >= 600 + sum(s + 120 for _, _, s in selected_stages):
                     self.collect_access(end)
@@ -874,7 +888,7 @@ class ProbeV2:
             return int(not passed or len(state["modes"]) != 49 or state.get("safety_stop", False))
         if selection == "authentication-controls":
             selected_jobs = {job_name(phase["run_id"], item, configuration, stage)
-                             for item, configuration in configurations for stage, _, _ in stages(item, configuration)}
+                             for item, configuration in configurations for stage, _, _ in stages(item, configuration, self.native(phase))}
             actual_jobs = [record.get("job") for record in state["modes"]]
             expected_candidates = {(item, configuration) for item, configuration in configurations}
             candidates = state.get("candidates", [])
@@ -893,8 +907,8 @@ class ProbeV2:
                 "run_id": phase["run_id"], "source_commit": phase["source_commit"],
                 "image_digests": {w: phase["images"][w]["digest"] for w in ("loadgen", "verifier")},
                 "configurations": [{"item": item, "configuration": configuration} for item, configuration in AUTHENTICATION_CONTROLS],
-                "jobs": len(state["modes"]), "action_slots": 10, "maximum_clients": 15,
-                "admitted_client_slots": self.admitted_slots(state, phase["run_id"], AUTHENTICATION_CONTROLS),
+                "jobs": len(state["modes"]), "action_slots": 10, "maximum_clients": 30 if self.native(phase) else 15,
+                "admitted_client_slots": self.admitted_slots(state, phase["run_id"], AUTHENTICATION_CONTROLS, self.native(phase)),
                 "transport_passed": transport_passed, "metadata_assessed": False, "cleanup_required": True})
             return int(not transport_passed)
         private_json(self.p.artifacts / ("probe-v2-smoke.json" if phase["run_kind"] == "smoke" else "probe-v2-batch.json"), {"schema_version": 2, "mode": "smoke_only" if phase["run_kind"] == "smoke" else "full_experiment", "selected_items": items, "run_id": phase["run_id"],

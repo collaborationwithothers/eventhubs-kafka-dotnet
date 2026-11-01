@@ -10,6 +10,7 @@ import unittest
 import yaml
 
 REPO = Path(__file__).resolve().parents[4]
+NATIVE_FACTOR = "(!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))"
 
 
 class UniqueLoader(yaml.BaseLoader):
@@ -56,6 +57,8 @@ class WorkflowTests(unittest.TestCase):
             'capture_authentication_metadata': {'description': 'Collect bounded authentication metadata (selected authentication controls only)',
                       'type': 'boolean', 'required': 'false', 'default': 'false'},
             'test_handler_refresh_path': {'description': 'Test our handler refresh path with a 5000 ms advertised expiry cap (selected authentication controls only)',
+                      'type': 'boolean', 'required': 'false', 'default': 'false'},
+            'test_native_authentication': {'description': 'Build three native librdkafka OIDC producers beside the custom-handler control (selected authentication controls only)',
                       'type': 'boolean', 'required': 'false', 'default': 'false'}}}}, self.workflow['on'])
         self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
@@ -72,10 +75,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn('needs', self.jobs['probe'])
         self.assertEqual(['probe'], self.jobs['full-C0']['needs'])
         factor = "(!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))"
-        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true') && {factor}", self.jobs['full-C0']['if'])
+        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true') && {factor} && " + NATIVE_FACTOR, self.jobs['full-C0']['if'])
         self.assertEqual(['probe', 'full-C0'], self.jobs['full-C3']['needs'])
-        self.assertEqual(f"(always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && {factor}", self.jobs['full-C3']['if'])
-        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && {factor}", self.jobs['probe']['if'])
+        self.assertEqual(f"(always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && {factor} && " + NATIVE_FACTOR, self.jobs['full-C3']['if'])
+        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2') && {factor} && " + NATIVE_FACTOR, self.jobs['probe']['if'])
         expected_phases = {
             'probe': ("${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}", "${{ inputs.scenario || 'A01' }}"),
             'full-C0': ('C0', "${{ inputs.scenario || 'A01' }}"),
@@ -88,6 +91,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(expected_phases[name][0], job['env']['PARCHWELL_PHASE'])
             self.assertEqual(expected_phases[name][1], job['env']['PARCHWELL_SCENARIO'])
             self.assertEqual("${{ inputs.test_handler_refresh_path && 'true' || 'false' }}", job['env']['PARCHWELL_TEST_HANDLER_REFRESH_PATH'])
+            self.assertEqual("${{ inputs.test_native_authentication && 'true' || 'false' }}", job['env']['PARCHWELL_TEST_NATIVE_AUTHENTICATION'])
             steps = job['steps']
             self.assertEqual('guard', steps[0]['id'])
             self.assertIn('test "$GITHUB_REF" = refs/heads/main', steps[0]['run'])
@@ -116,22 +120,24 @@ class WorkflowTests(unittest.TestCase):
     def test_refresh_path_admission_factors_preserve_batch_parentheses_and_cleanup(self):
         factor = "(!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))"
         batch = self.all_jobs['batch']
-        self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor}", batch['if'])
+        self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor} && " + NATIVE_FACTOR, batch['if'])
         stop = self.all_jobs['batch-stop']
         expected_stop = "always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))))"
-        self.assertEqual(f"({expected_stop}) && {factor}", stop['if'])
+        self.assertEqual(f"({expected_stop}) && {factor} && " + NATIVE_FACTOR, stop['if'])
         self.assertIn('PARCHWELL_TEST_HANDLER_REFRESH_PATH', batch['env'])
+        self.assertIn('PARCHWELL_TEST_NATIVE_AUTHENTICATION', batch['env'])
         steps = self.steps(batch)
         self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", steps['destroy']['if'])
         self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'", steps['delete_workload']['if'])
         for job in self.all_jobs.values():
             if 'if' in job:
                 self.assertIn(factor, job['if'])
+                self.assertIn(NATIVE_FACTOR, job['if'])
 
     def test_refresh_path_job_predicates_admit_only_exact_tuple(self):
         def admitted(source, values):
             evaluated = source.replace('always()', 'True')
-            for field in ('capture_authentication_metadata', 'test_handler_refresh_path'):
+            for field in ('capture_authentication_metadata', 'test_handler_refresh_path', 'test_native_authentication'):
                 evaluated = evaluated.replace('!inputs.' + field, 'not inputs.' + field)
             evaluated = evaluated.replace('&&', ' and ').replace('||', ' or ')
             for name, value in values.items():
@@ -143,7 +149,8 @@ class WorkflowTests(unittest.TestCase):
             return bool(eval(evaluated, {'__builtins__': {}}, context))
 
         valid = {'scenario': 'probe-batch-2', 'run_kind': 'smoke', 'items': 'authentication-controls',
-                 'capture_authentication_metadata': True, 'test_handler_refresh_path': True}
+                 'capture_authentication_metadata': True, 'test_handler_refresh_path': True,
+                 'test_native_authentication': False}
         self.assertTrue(admitted(self.all_jobs['batch']['if'], valid))
         self.assertTrue(admitted(self.all_jobs['batch-stop']['if'], valid))
         for invalid in (
@@ -153,9 +160,20 @@ class WorkflowTests(unittest.TestCase):
                 {**valid, 'capture_authentication_metadata': False}):
             self.assertFalse(admitted(self.all_jobs['batch']['if'], invalid))
             self.assertFalse(admitted(self.all_jobs['batch-stop']['if'], invalid))
-        legacy = {**valid, 'scenario': 'probe-batch', 'test_handler_refresh_path': False,
+        legacy = {**valid, 'scenario': 'probe-batch', 'test_handler_refresh_path': False, 'test_native_authentication': False,
                   'capture_authentication_metadata': False}
         self.assertTrue(admitted(self.all_jobs['batch']['if'], legacy))
+        native = {**valid, 'test_handler_refresh_path': False, 'test_native_authentication': True}
+        self.assertTrue(admitted(self.all_jobs['batch']['if'], native))
+        self.assertTrue(admitted(self.all_jobs['batch-stop']['if'], native))
+        for invalid in (
+                {**native, 'test_handler_refresh_path': True},
+                {**native, 'capture_authentication_metadata': False},
+                {**native, 'items': 'all'},
+                {**native, 'run_kind': 'batch'},
+                {**native, 'scenario': 'probe-batch'}):
+            self.assertFalse(admitted(self.all_jobs['batch']['if'], invalid))
+            self.assertFalse(admitted(self.all_jobs['batch-stop']['if'], invalid))
 
     def test_reports_and_cleanup(self):
         expected_workload_steps = {
@@ -271,11 +289,11 @@ esac
         batch = self.all_jobs['batch']
         stop = self.all_jobs['batch-stop']
         factor = "(!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))"
-        self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor}", batch['if'])
+        self.assertEqual(f"(inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2') && {factor} && " + NATIVE_FACTOR, batch['if'])
         self.assertNotIn('needs', batch)
         self.assertEqual(['batch'], stop['needs'])
         expected_stop = "always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))))"
-        self.assertEqual(f"({expected_stop}) && {factor}", stop['if'])
+        self.assertEqual(f"({expected_stop}) && {factor} && " + NATIVE_FACTOR, stop['if'])
         expected_ids = {
             'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
@@ -395,11 +413,13 @@ esac
             evaluated = expression.replace('always()', 'True').replace('&&', ' and ').replace('||', ' or ')
             evaluated = evaluated.replace('!inputs.capture_authentication_metadata', 'not capture').replace('&&', ' and ').replace('||', ' or ')
             evaluated = evaluated.replace('!inputs.test_handler_refresh_path', 'not refresh_test')
+            evaluated = evaluated.replace('!inputs.test_native_authentication', 'not native_test')
             for name, value in [('scenario', selected), ('run_kind', kind), ('items', items)]:
                 evaluated = evaluated.replace('inputs.' + name, repr(value.casefold()))
             evaluated = evaluated.replace('inputs.capture_authentication_metadata', 'capture')
             evaluated = evaluated.replace('inputs.test_handler_refresh_path', 'refresh_test')
-            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: any(str(v).casefold() == str(value).casefold() for v in values), 'fromJSON': json.loads}, {'capture': capture, 'refresh_test': False}), (selected, kind, items, capture))
+            evaluated = evaluated.replace('inputs.test_native_authentication', 'native_test')
+            self.assertEqual(expected, eval(evaluated, {'__builtins__': {}, 'contains': lambda values, value: any(str(v).casefold() == str(value).casefold() for v in values), 'fromJSON': json.loads}, {'capture': capture, 'refresh_test': False, 'native_test': False}), (selected, kind, items, capture))
         stop_steps = self.steps(self.all_jobs['batch-stop'])
         self.assertIn('prepare-stop', stop_steps['stop_prepare']['run'])
         self.assertLess(list(stop_steps).index('stop_prepare'), list(stop_steps).index('login'))
@@ -410,7 +430,7 @@ esac
     def test_capture_validation_and_actual_stop_prerequisites(self):
         def expression(source, inputs, outcomes):
             evaluated = source.replace('always()', 'True')
-            for field in ('capture_authentication_metadata', 'test_handler_refresh_path'):
+            for field in ('capture_authentication_metadata', 'test_handler_refresh_path', 'test_native_authentication'):
                 evaluated = evaluated.replace('!inputs.' + field, 'not inputs.' + field)
             evaluated = evaluated.replace('&&', ' and ').replace('||', ' or ')
             for name, value in inputs.items():
@@ -451,7 +471,8 @@ esac
         for case, expected in [(item, 0) for item in valid] + [(item, 2) for item in rejected]:
             scenario, kind, items, capture = case
             inputs = {'scenario': scenario, 'run_kind': kind, 'items': items,
-                      'capture_authentication_metadata': capture == 'true', 'test_handler_refresh_path': False}
+                      'capture_authentication_metadata': capture == 'true', 'test_handler_refresh_path': False,
+                      'test_native_authentication': False}
             with self.subTest(case=case):
                 env = dict(os.environ, PARCHWELL_SCENARIO=scenario, PARCHWELL_RUN_KIND=kind,
                            PARCHWELL_BATCH_ITEMS=items, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
@@ -468,7 +489,8 @@ esac
         for scenario in ('A01', 'B04'):
             for capture, expected_select, expected_cleanup in (('true', 2, []), ('false', 0, ['stop_prepare', 'login', 'azure_session', 'stop'])):
                 inputs = {'scenario': scenario, 'run_kind': 'smoke', 'items': 'all',
-                          'capture_authentication_metadata': capture == 'true', 'test_handler_refresh_path': False}
+                          'capture_authentication_metadata': capture == 'true', 'test_handler_refresh_path': False,
+                          'test_native_authentication': False}
                 env = dict(os.environ, PARCHWELL_SCENARIO=scenario, PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=capture)
                 select_run = subprocess.run(['/bin/bash', '-c', self.steps(full_c3)['select']['run']], cwd=REPO,
                                             env=env, text=True, capture_output=True)

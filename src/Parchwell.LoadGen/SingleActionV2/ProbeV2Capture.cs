@@ -4,7 +4,7 @@ using Parchwell.Kafka.Authentication;
 
 namespace Parchwell.LoadGen.SingleActionV2;
 
-internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, long started, int windowMs, ProbeV2DiagnosticBudget? sharedBudget = null, string logContext = "", bool captureAuthenticationMetadata = false)
+internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, long started, int windowMs, ProbeV2DiagnosticBudget? sharedBudget = null, string logContext = "", bool captureAuthenticationMetadata = false, Func<string, string>? redact = null)
 {
     private readonly object gate = new();
     private readonly ProbeV2DiagnosticBudget diagnosticBudget = sharedBudget ?? new(limits.MaxDiagnostics);
@@ -26,6 +26,7 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     private ProbeV2Record? record;
     private int recordsSeen;
     private int eofCount;
+    private string Text(string value) => redact is null ? value : redact(value);
     internal long ElapsedMs => (long)clock.GetElapsedTime(started).TotalMilliseconds;
     internal bool Terminal { get { lock (gate) return terminal; } }
     internal bool Limit { get { lock (gate) return limit; } }
@@ -47,9 +48,10 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
         {
             if (errors.Count >= limits.MaxClientErrors)
             { MarkLimit(nameof(limits.MaxClientErrors), errors.Count + 1L, limits.MaxClientErrors); return; }
-            if (Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes)
-            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(error.Reason), limits.MaxErrorBytes); return; }
-            var value = ErrorValue(error, false, ++sequence);
+            string reason = Text(error.Reason);
+            if (Encoding.UTF8.GetByteCount(reason) > limits.MaxErrorBytes)
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(reason), limits.MaxErrorBytes); return; }
+            var value = ErrorValue(error, false, ++sequence, reason);
             errors.Add(value);
             if (error.IsFatal) ObserveTerminal("error", value, value.ObservedElapsedMs);
         }
@@ -58,9 +60,10 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     {
         lock (gate)
         {
-            if (Encoding.UTF8.GetByteCount(error.Reason) > limits.MaxErrorBytes)
-            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(error.Reason), limits.MaxErrorBytes); return; }
-            ProbeV2Error value = ErrorValue(error, constructing, ++sequence);
+            string reason = Text(error.Reason);
+            if (Encoding.UTF8.GetByteCount(reason) > limits.MaxErrorBytes)
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(reason), limits.MaxErrorBytes); return; }
+            ProbeV2Error value = ErrorValue(error, constructing, ++sequence, reason);
             ObserveTerminal("error", value, value.ObservedElapsedMs);
         }
     }
@@ -69,9 +72,10 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
         lock (gate)
         {
             long order = ++sequence;
-            if (report.Error.IsError && Encoding.UTF8.GetByteCount(report.Error.Reason) > limits.MaxErrorBytes)
-            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(report.Error.Reason), limits.MaxErrorBytes); return; }
-            ProbeV2Error? error = report.Error.IsError ? ErrorValue(report.Error, false, order) : null;
+            string reason = Text(report.Error.Reason);
+            if (report.Error.IsError && Encoding.UTF8.GetByteCount(reason) > limits.MaxErrorBytes)
+            { MarkLimit(nameof(limits.MaxErrorBytes), Encoding.UTF8.GetByteCount(reason), limits.MaxErrorBytes); return; }
+            ProbeV2Error? error = report.Error.IsError ? ErrorValue(report.Error, false, order, reason) : null;
             long elapsed = ElapsedMs;
             if (!string.IsNullOrEmpty(report.Topic) && report.Partition.Value >= 0 && report.Offset.Value >= 0)
                 delivery ??= new(report.Topic, report.Partition.Value, report.Offset.Value, report.Status.ToString(), error, elapsed, order);
@@ -132,10 +136,11 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     {
         lock (gate)
         {
-            if (message.Message.Length > limits.MaxClientLogBytes || message.Facility.Length > limits.MaxClientLogBytes)
+            string text = Text(message.Message);
+            if (text.Length > limits.MaxClientLogBytes || message.Facility.Length > limits.MaxClientLogBytes)
             { logCapped = true; return; }
             string line = "probe_v2_client_log " + logContext + message.Facility.Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal) + " " +
-                message.Message.Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
+                text.Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
             int bytes = Encoding.UTF8.GetByteCount(line) + 1;
             if (bytes > limits.MaxClientLogBytes - logBytes - Encoding.UTF8.GetByteCount("probe_v2_client_log_capped " + logContext) - 1) { logCapped = true; return; }
             logs.Add(line);
@@ -166,8 +171,8 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
             terminalUnix, settings, omitted, metadata, requested, delivery, new(recordsSeen, eofCount, record), result,
             terminalError, errors.ToArray(), statistics.ToArray(), diagnostics.AsReadOnly());
     }
-    private ProbeV2Error ErrorValue(Error error, bool constructing, long order) => new((int)error.Code, error.IsFatal,
-        constructing ? "construction" : error.IsLocalError ? "local" : "broker", error.Reason, ElapsedMs, order);
+    private ProbeV2Error ErrorValue(Error error, bool constructing, long order, string reason) => new((int)error.Code, error.IsFatal,
+        constructing ? "construction" : error.IsLocalError ? "local" : "broker", reason, ElapsedMs, order);
     private void ObserveTerminal(string outcome, ProbeV2Error? error, long elapsed)
     {
         if (terminal || limit || elapsed > windowMs) return;

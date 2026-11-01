@@ -54,6 +54,20 @@ def positive_cases(image_smoke=False):
     return (case(*row, image_smoke=image_smoke) for row in stages())
 
 
+NATIVE_MODES = (('nativejwt', 'jwt-bearer'), ('nativeimds', 'azure-imds-workload'), ('nativeimdsnode', 'azure-imds-default'))
+NATIVE_PRINCIPAL = '33333333-3333-3333-3333-333333333333'
+
+
+def native_cases():
+    cases = []
+    for stage, mode in NATIVE_MODES:
+        values = case('F06', 'C6', stage, 'loadgen')
+        values['runtime'].update(capture_authentication_metadata=True, native_authentication=mode,
+                                 native_principal_id=NATIVE_PRINCIPAL)
+        cases.append(values)
+    return cases
+
+
 def job_name(values, config=None, stage=None):
     runtime = values['runtime']
     return '-'.join((runtime['run_id'], values['scenario_id'].lower(),
@@ -100,6 +114,9 @@ def expected_env(values):
             fields['CaptureAuthenticationMetadata'] = 'true'
         if runtime.get('test_handler_refresh_path', False):
             fields['TestHandlerRefreshPath'] = 'true'
+        if 'native_authentication' in runtime:
+            fields['NativeAuthentication'] = runtime['native_authentication']
+            fields['NativePrincipalId'] = runtime['native_principal_id']
         fields['ProcessLifetimeSeconds'] = 1920 if producer else 840
     result = {prefix + key: {'value': str(value)} for key, value in fields.items()}
     result.update({
@@ -191,6 +208,7 @@ def main():
         values['runtime']['capture_authentication_metadata'] = True
         values['runtime']['test_handler_refresh_path'] = True
     cases.extend(refresh_cases)
+    cases.extend(native_cases())
     with tempfile.TemporaryDirectory(prefix='probe-v2-chart-') as name:
         directory = Path(name)
         for index, values in enumerate(cases):
@@ -221,6 +239,27 @@ def main():
         ]
         for mutation in refresh_invalid:
             bad = deepcopy(refresh_source); mutation(bad); negatives.append(bad)
+        native_source = native_cases()[0]
+        native_invalid = [
+            lambda v: (v.update(configuration_id='C9'), v['runtime'].update(phase='C9')),
+            lambda v: v.update(scenario_id='E01'),
+            lambda v: v['runtime'].update(stage='seed'),
+            lambda v: v['runtime'].update(native_authentication='azure-imds-default'),
+            lambda v: v['runtime'].update(action_role='probe'),
+            lambda v: v['runtime'].update(capture_authentication_metadata=False),
+            lambda v: v['runtime'].pop('capture_authentication_metadata'),
+            lambda v: v['runtime'].update(test_handler_refresh_path=True),
+            lambda v: v['runtime'].update(run_kind='batch'),
+            lambda v: v['runtime'].update(native_principal_id='x'),
+            lambda v: v['runtime'].pop('native_principal_id'),
+            lambda v: v['runtime'].pop('native_authentication'),
+        ]
+        for mutation in native_invalid:
+            bad = deepcopy(native_source); mutation(bad); negatives.append(bad)
+        native_on_seed = case('F06', 'C6', 'seed', 'loadgen')
+        native_on_seed['runtime'].update(capture_authentication_metadata=True, native_authentication='jwt-bearer',
+                                         native_principal_id=NATIVE_PRINCIPAL)
+        negatives.append(native_on_seed)
         mutations = [lambda v: v['runtime'].update(stage='unknown'), lambda v: v['runtime'].update(phase='C1'),
             lambda v: v['runtime'].update(probe_namespace_data_roles=False), lambda v: v.update(scenario_id='F04'),
             lambda v: v['runtime'].update(mode='single-action-v2-judge'), lambda v: v['runtime'].update(image_smoke='false')]
