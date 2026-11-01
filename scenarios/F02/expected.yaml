@@ -1,0 +1,67 @@
+# F02 expected outcome. Every key below restates an assessment rule approved before run
+# 41331232103 was created (2026-11-01T17:23:35Z), and its comment tags the sources that state it.
+# Sources, by tag:
+# [R4] issue 244 native-authentication-diagnostic plan Revision 4, comment 6547370647, updated
+#      2026-10-31T21:04:04Z, section "Proposed later assessment" rules 1 to 6, approved by comment
+#      6554645171 at 2026-11-01T06:52:48Z; implemented by pull request 278, merged 2026-11-01T07:44:52Z.
+# [R4H] the same comment, section "Objective and evidence boundary" (the hypotheses).
+# [TA] issue 244 native-jwt-trust-anchor plan Revision 1, comment 6555876576, updated
+#      2026-11-01T09:05:00Z, section "Proposed later assessment" rules 7 and 8, and section
+#      "Objective and hypotheses", approved by comment 6556147592 at 2026-11-01T09:32:16Z;
+#      implemented by pull request 285, merged 2026-11-01T10:08:03Z.
+# [L] issue 307 expectation lines 1 to 3, comment 6561262956, 2026-11-01T17:18:35Z, approved as
+#      written by comment 6561311090 at 2026-11-01T17:22:41Z, item 1.
+# [DISP] issue 307 dispatch approval, comment 6561311090, item 2.
+# [EP] docs/agents/factory.md "Evidence pack" at 99131dee48677b971f0b2299d243779151ebe700.
+# [MODES] docs/agents/factory.md "Modes of work" at 99131dee48677b971f0b2299d243779151ebe700.
+# This file is published under issue 302 decision 6558920636 point 3, which postdates the
+# run sources above and adds no expectation.
+schema_version: 1
+id: F02
+assessment_rules:
+  dispatch: scenario=probe-batch-2, run_kind=smoke, items=authentication-controls, capture_authentication_metadata=true, test_handler_refresh_path=false, test_native_authentication=true # [DISP]
+  reruns: 0 # [DISP]
+  control: all five C6 seed repeats have a delivery with persistence_status Persisted and null delivery.error, and the C6 judge candidate is accepted; otherwise every native slot is not decisive (failed control) # [R4] rule 1
+  slot_classes: # [R4] rule 2, first match wins; every other class with evidence is listed with line counts (connections and callbacks can differ); a line is a probe_v2_client_log line for that stage and repeat, a client_errors[].reason or the repeat's error.reason
+  - '2.1 delivered (a delivery with persistence_status Persisted and null delivery.error)'
+  - '2.2 authorization denied (error code 29 and origin broker, with no delivery)'
+  - '2.3 broker authentication succeeded, outcome incomplete (a SASL OAUTHBEARER authentication successful line; it outranks any failure line)'
+  - '2.4 broker authentication rejected (no success line, and a line containing SASL OAUTHBEARER authentication failed (principal= or SASL authentication error: followed by text that starts with neither SaslAuthenticateRequest failed: nor SaslAuthenticateResponse parsing failed:; quote the broker''s text)'
+  - '2.5 token installed (a Waking up waiting broker threads after setting OAUTHBEARER token line; a SaslAuthenticateRequest failed: or SaslAuthenticateResponse parsing failed: line is quoted as a local failure, never a broker rejection)'
+  - '2.6 token endpoint (a Failed to retrieve JWT token from or Failed to retrieve OIDC token from line; quote its text and code; only an HTTP status of 400 or more with its body, or Server did not provide an error string, is an Entra or IMDS answer, and a transport error (-1), Terminating (-1), Response is not JSON encoded: ... or Failed to parse JSON response at ... is not; for nativejwt, a 400 is attributed to Entra rejecting the grant only with the body''s AADSTS code quoted)'
+  - '2.7 local token failure (a Failed to acquire SASL OAUTHBEARER token: or Failed to append params line, quoted as local, never an Entra or IMDS response; in nativejwt, Expected JSON response with "id_token" field does not identify which access_token check failed, and an installation failure may carry unrelated text or, if empty, no error at all; Failed to append params may show (null) as the URL)'
+  - '2.8 construction (a diagnostic starting construction:, type only, or an error with origin construction)'
+  - '2.9 incomplete (no class above matches)'
+  identity: count the principal classes [workload], [other] and [empty] on the authentication successful and failed lines; a class 2.4 slot with only a broker error string has none; a delivered azure_imds slot with [other] shows a non-workload identity, not workload federation # [R4] rule 3
+  limits: 'a capped log or capture_limit makes the class a lower bound (at least <class>); SASL authentication error: line counts are lower bounds (30 s suppression); a not_attempted_cleanup repeat, or a missing slot or capture, is incomplete, never a contradiction or a zero' # [R4] rule 4
+  multiple_user_assigned_identities: for H-imds-default, a Multiple user assigned identities exist body is the FAQ's documented outcome, not evidence about federation # [R4] rule 5
+  scope: this build, these literals, this cluster and this run only # [R4] rule 6
+  tls_setup: a nativejwt slot with a Failed to retrieve JWT token from line containing error adding trust anchors, or diagnostic construction:InvalidOperationException, contradicts H-ca for that slot and leaves H-jwt undecided; quote the line and attribute neither to Entra # [TA] rule 7
+  adr012_counts: not_applicable # [EP]
+  evidence_policy: docs/agents/factory.md#evidence-pack # [EP]
+  changed_expectations_require_human_approval: true # [MODES]
+hypotheses:
+  H_control: # [R4H]
+    statement: the custom handler in the same dispatch delivers all five C6 seed messages; otherwise no native failure is decisive
+    decision: control rule above # [R4] rule 1
+  H_ca: # [TA]
+    statement: with https.ca.location set to the image's CA bundle, the JWT-bearer request gets past local TLS setup, so no error adding trust anchors line appears
+    contradicts: tls_setup rule above # [TA] rule 7
+  H_jwt: # [R4H] [TA]
+    statement: Entra's token endpoint rejects the native JWT-bearer grant with the projected Kubernetes token as assertion; it rests on the source mismatch that comment 6547370647 records; acceptance contradicts it; the run can decide it only if H-ca holds
+    decided_only_from: a class 2.1 to 2.5 slot, or a class 2.6 slot with an HTTP status of 400 or more and the body's AADSTS code quoted; any other class leaves it undecided # [TA] rule 8
+  H_imds_workload: # [R4H] [L] line 1
+    statement: azure_imds with the workload client ID gets no token for that identity, because IMDS serves the node resource's identities; that reason is an inference from Microsoft's IMDS pages, not a cited statement
+    stage: nativeimds
+    supports: class 2.6 with an HTTP status of 400 or more and the response body quoted, or authentication successful or failed lines that carry only [other] principals
+    contradicts: an authentication successful line that carries a [workload] principal
+    otherwise: undecided for that slot
+  H_imds_default: # [R4H] [L] line 2
+    statement: azure_imds with no client ID gets a node identity's token, which Event Hubs denies, or fails with the documented Multiple user assigned identities exist error; which applies depends on the node scale set's identities, which the repository does not establish
+    stage: nativeimdsnode
+    supports: class 2.2 with only [other] principals on its authentication lines, or class 2.6 with an HTTP status of 400 or more and a body containing Multiple user assigned identities exist
+    contradicts: class 2.1, or an authentication successful line that carries a [workload] principal
+    otherwise: undecided for that slot
+run_agreement: each hypothesis, H-ca and H-jwt included, is decided for the run only when the control passes and no slot of its stage is incomplete (rule 2.9 or rule 4), and all five slots give the same per-slot decision; otherwise it is undecided for the run, the per-slot results are reported, and that is not grounds for a rerun # [L] line 3
+verdict:
+  decision: none approved before the run; the verdict word is decided by Hari in the verdict pull request # [L] [DISP]

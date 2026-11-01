@@ -1,0 +1,1922 @@
+{
+  "publication": {
+    "item": "F02",
+    "proposed_verdict": "confirmed",
+    "verdict_basis": "Microsoft's [workload identity page for AKS](https://learn.microsoft.com/azure/aks/workload-identity-overview) states that \"workload identity uses the Microsoft Entra v2 token endpoint rather than the IMDS `resource` flow used by managed identity\" (read 2026-11-01). In this run, librdkafka's built-in `azure_imds` option, which calls IMDS, never obtained the workload identity: with the workload client ID IMDS answered `Identity not found`, and with no client ID the broker saw only a non-workload principal.",
+    "verdict_authority": "issue 307 decision 6562117618",
+    "workload": "synthetic",
+    "adr012_counts": "not_applicable",
+    "run": {
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41331232103",
+      "attempt": 1,
+      "run_id": "probe-41331232103-1",
+      "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+      "run_conclusion": "failure",
+      "failure_cause": "nativejwt Job exit 1 at the client-error capture limit",
+      "created_at": "2026-11-01T17:23:35Z",
+      "candidate_artifact": {
+        "id": 13094681168,
+        "name": "probe-batch-candidates-41331232103-1",
+        "zip_sha256": "ae68a24e7072c30c06682692f427f11cae0463bb8bc24b9c845d84cbcc88e72e"
+      },
+      "pod_artifact": {
+        "id": 13095030533,
+        "name": "probe-batch-pods-41331232103-1",
+        "zip_sha256": "4fc71fd159f2d5d05e630ac6885992db02c26e585fff4309627c4e382a1d326a"
+      },
+      "batch_job_id": 124921593777,
+      "stop_job_id": 124931950159
+    },
+    "rule_sources": [
+      {
+        "tag": "R4",
+        "comment": "issue 244 comment 6547370647",
+        "updated_at": "2026-10-31T21:04:04Z",
+        "approval": "comment 6554645171 at 2026-11-01T06:52:48Z",
+        "pull_request": "278, merged 2026-11-01T07:44:52Z"
+      },
+      {
+        "tag": "R4H",
+        "comment": "issue 244 comment 6547370647, section Objective and evidence boundary",
+        "updated_at": "2026-10-31T21:04:04Z",
+        "approval": "comment 6554645171 at 2026-11-01T06:52:48Z",
+        "pull_request": "278, merged 2026-11-01T07:44:52Z"
+      },
+      {
+        "tag": "TA",
+        "comment": "issue 244 comment 6555876576",
+        "updated_at": "2026-11-01T09:05:00Z",
+        "approval": "comment 6556147592 at 2026-11-01T09:32:16Z",
+        "pull_request": "285, merged 2026-11-01T10:08:03Z"
+      },
+      {
+        "tag": "L",
+        "comment": "issue 307 comment 6561262956, lines 1 to 3",
+        "updated_at": "2026-11-01T17:18:35Z",
+        "approval": "comment 6561311090 item 1 at 2026-11-01T17:22:41Z",
+        "pull_request": null
+      },
+      {
+        "tag": "DISP",
+        "comment": "issue 307 comment 6561311090 item 2",
+        "updated_at": "2026-11-01T17:22:41Z",
+        "approval": "comment 6561311090 item 2",
+        "pull_request": null
+      }
+    ],
+    "control": [
+      {
+        "repeat": 1,
+        "persistence_status": "Persisted",
+        "delivery_error": null
+      },
+      {
+        "repeat": 2,
+        "persistence_status": "Persisted",
+        "delivery_error": null
+      },
+      {
+        "repeat": 3,
+        "persistence_status": "Persisted",
+        "delivery_error": null
+      },
+      {
+        "repeat": 4,
+        "persistence_status": "Persisted",
+        "delivery_error": null
+      },
+      {
+        "repeat": 5,
+        "persistence_status": "Persisted",
+        "delivery_error": null
+      }
+    ],
+    "slots": [
+      {
+        "stage": "nativejwt",
+        "repeat": 1,
+        "client_id": "probe-41331232103-1-f06-c6-nativejwt-lxv8n-r1",
+        "class": "2.6",
+        "lower_bound": true,
+        "incomplete": false,
+        "lines_for_class": 9,
+        "other_classes": {
+          "2.7": 8
+        },
+        "client_log_lines": 22,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [
+          "900144"
+        ],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS900144: The request body must contain the following parameter: 'requested_token_use'. Trace ID: [guid] Correlation ID: [guid] Timestamp: 2026-11-01 17:40:28Z\",\"error_codes\":[900144],\"timestamp\":\"2026-11-01 17:40:28Z\",\"trace_id\":\"[guid]\",\"correlation_id\":\"[guid]\",\"error_uri\":\"https://login.microsoftonline.com/error?code=900144\"}",
+        "error": null,
+        "diagnostics": [
+          "capture_limit",
+          "capture_rejected:MaxClientErrors:observed=9:allowed=8"
+        ],
+        "elapsed_ms": 88317,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "supports",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativejwt",
+        "repeat": 2,
+        "client_id": "probe-41331232103-1-f06-c6-nativejwt-lxv8n-r2",
+        "class": "2.6",
+        "lower_bound": true,
+        "incomplete": false,
+        "lines_for_class": 9,
+        "other_classes": {
+          "2.7": 8
+        },
+        "client_log_lines": 22,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [
+          "900144"
+        ],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS900144: The request body must contain the following parameter: 'requested_token_use'. Trace ID: [guid] Correlation ID: [guid] Timestamp: 2026-11-01 17:41:57Z\",\"error_codes\":[900144],\"timestamp\":\"2026-11-01 17:41:57Z\",\"trace_id\":\"[guid]\",\"correlation_id\":\"[guid]\",\"error_uri\":\"https://login.microsoftonline.com/error?code=900144\"}",
+        "error": null,
+        "diagnostics": [
+          "capture_limit",
+          "capture_rejected:MaxClientErrors:observed=9:allowed=8"
+        ],
+        "elapsed_ms": 88218,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "supports",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativejwt",
+        "repeat": 3,
+        "client_id": "probe-41331232103-1-f06-c6-nativejwt-lxv8n-r3",
+        "class": "2.6",
+        "lower_bound": true,
+        "incomplete": false,
+        "lines_for_class": 9,
+        "other_classes": {
+          "2.7": 8
+        },
+        "client_log_lines": 22,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [
+          "900144"
+        ],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS900144: The request body must contain the following parameter: 'requested_token_use'. Trace ID: [guid] Correlation ID: [guid] Timestamp: 2026-11-01 17:43:25Z\",\"error_codes\":[900144],\"timestamp\":\"2026-11-01 17:43:25Z\",\"trace_id\":\"[guid]\",\"correlation_id\":\"[guid]\",\"error_uri\":\"https://login.microsoftonline.com/error?code=900144\"}",
+        "error": null,
+        "diagnostics": [
+          "capture_limit",
+          "capture_rejected:MaxClientErrors:observed=9:allowed=8"
+        ],
+        "elapsed_ms": 88214,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "supports",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativejwt",
+        "repeat": 4,
+        "client_id": "probe-41331232103-1-f06-c6-nativejwt-lxv8n-r4",
+        "class": "2.6",
+        "lower_bound": true,
+        "incomplete": false,
+        "lines_for_class": 9,
+        "other_classes": {
+          "2.7": 8
+        },
+        "client_log_lines": 22,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [
+          "900144"
+        ],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS900144: The request body must contain the following parameter: 'requested_token_use'. Trace ID: [guid] Correlation ID: [guid] Timestamp: 2026-11-01 17:44:53Z\",\"error_codes\":[900144],\"timestamp\":\"2026-11-01 17:44:53Z\",\"trace_id\":\"[guid]\",\"correlation_id\":\"[guid]\",\"error_uri\":\"https://login.microsoftonline.com/error?code=900144\"}",
+        "error": null,
+        "diagnostics": [
+          "capture_limit",
+          "capture_rejected:MaxClientErrors:observed=9:allowed=8"
+        ],
+        "elapsed_ms": 88219,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "supports",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativejwt",
+        "repeat": 5,
+        "client_id": "probe-41331232103-1-f06-c6-nativejwt-lxv8n-r5",
+        "class": "2.6",
+        "lower_bound": true,
+        "incomplete": false,
+        "lines_for_class": 9,
+        "other_classes": {
+          "2.7": 8
+        },
+        "client_log_lines": 22,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [
+          "900144"
+        ],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS900144: The request body must contain the following parameter: 'requested_token_use'. Trace ID: [guid] Correlation ID: [guid] Timestamp: 2026-11-01 17:46:21Z\",\"error_codes\":[900144],\"timestamp\":\"2026-11-01 17:46:21Z\",\"trace_id\":\"[guid]\",\"correlation_id\":\"[guid]\",\"error_uri\":\"https://login.microsoftonline.com/error?code=900144\"}",
+        "error": null,
+        "diagnostics": [
+          "capture_limit",
+          "capture_rejected:MaxClientErrors:observed=9:allowed=8"
+        ],
+        "elapsed_ms": 88249,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "supports",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimds",
+        "repeat": 1,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimds-j8pkq-r1",
+        "class": "2.6",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 11,
+        "other_classes": {
+          "2.7": 1
+        },
+        "client_log_lines": 15,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"}",
+        "error": null,
+        "diagnostics": [
+          "action_window_elapsed"
+        ],
+        "elapsed_ms": 120124,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "undecided",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimds",
+        "repeat": 2,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimds-j8pkq-r2",
+        "class": "2.6",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 11,
+        "other_classes": {
+          "2.7": 1
+        },
+        "client_log_lines": 15,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"}",
+        "error": null,
+        "diagnostics": [
+          "action_window_elapsed"
+        ],
+        "elapsed_ms": 120018,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "undecided",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimds",
+        "repeat": 3,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimds-j8pkq-r3",
+        "class": "2.6",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 11,
+        "other_classes": {
+          "2.7": 1
+        },
+        "client_log_lines": 15,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"}",
+        "error": null,
+        "diagnostics": [
+          "action_window_elapsed"
+        ],
+        "elapsed_ms": 120013,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "undecided",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimds",
+        "repeat": 4,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimds-j8pkq-r4",
+        "class": "2.6",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 11,
+        "other_classes": {
+          "2.7": 1
+        },
+        "client_log_lines": 15,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"}",
+        "error": null,
+        "diagnostics": [
+          "action_window_elapsed"
+        ],
+        "elapsed_ms": 120012,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "undecided",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimds",
+        "repeat": 5,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimds-j8pkq-r5",
+        "class": "2.6",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 11,
+        "other_classes": {
+          "2.7": 1
+        },
+        "client_log_lines": 15,
+        "principals": {
+          "workload": 0,
+          "other": 0,
+          "empty": 0
+        },
+        "http_statuses": [
+          400
+        ],
+        "aadsts": [],
+        "first_token_endpoint_body": "{\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"}",
+        "error": null,
+        "diagnostics": [
+          "action_window_elapsed"
+        ],
+        "elapsed_ms": 120012,
+        "terminal": false,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "undecided",
+          "H-jwt": "undecided",
+          "H-ca": "supports"
+        }
+      },
+      {
+        "stage": "nativeimdsnode",
+        "repeat": 1,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimdsnode-4886x-r1",
+        "class": "2.2",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 1,
+        "other_classes": {
+          "2.3": 2,
+          "2.5": 1
+        },
+        "client_log_lines": 31,
+        "principals": {
+          "workload": 0,
+          "other": 2,
+          "empty": 0
+        },
+        "http_statuses": [],
+        "aadsts": [],
+        "first_token_endpoint_body": null,
+        "error": {
+          "code": 29,
+          "origin": "broker",
+          "reason": "Broker: Topic authorization failed"
+        },
+        "diagnostics": [],
+        "elapsed_ms": 464,
+        "terminal": true,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "supports",
+          "H-jwt": "contradicts",
+          "H-ca": "undecided"
+        }
+      },
+      {
+        "stage": "nativeimdsnode",
+        "repeat": 2,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimdsnode-4886x-r2",
+        "class": "2.2",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 1,
+        "other_classes": {
+          "2.3": 2,
+          "2.5": 1
+        },
+        "client_log_lines": 31,
+        "principals": {
+          "workload": 0,
+          "other": 2,
+          "empty": 0
+        },
+        "http_statuses": [],
+        "aadsts": [],
+        "first_token_endpoint_body": null,
+        "error": {
+          "code": 29,
+          "origin": "broker",
+          "reason": "Broker: Topic authorization failed"
+        },
+        "diagnostics": [],
+        "elapsed_ms": 328,
+        "terminal": true,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "supports",
+          "H-jwt": "contradicts",
+          "H-ca": "undecided"
+        }
+      },
+      {
+        "stage": "nativeimdsnode",
+        "repeat": 3,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimdsnode-4886x-r3",
+        "class": "2.2",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 1,
+        "other_classes": {
+          "2.3": 2,
+          "2.5": 1
+        },
+        "client_log_lines": 31,
+        "principals": {
+          "workload": 0,
+          "other": 2,
+          "empty": 0
+        },
+        "http_statuses": [],
+        "aadsts": [],
+        "first_token_endpoint_body": null,
+        "error": {
+          "code": 29,
+          "origin": "broker",
+          "reason": "Broker: Topic authorization failed"
+        },
+        "diagnostics": [],
+        "elapsed_ms": 128,
+        "terminal": true,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "supports",
+          "H-jwt": "contradicts",
+          "H-ca": "undecided"
+        }
+      },
+      {
+        "stage": "nativeimdsnode",
+        "repeat": 4,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimdsnode-4886x-r4",
+        "class": "2.2",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 1,
+        "other_classes": {
+          "2.3": 2,
+          "2.5": 1
+        },
+        "client_log_lines": 31,
+        "principals": {
+          "workload": 0,
+          "other": 2,
+          "empty": 0
+        },
+        "http_statuses": [],
+        "aadsts": [],
+        "first_token_endpoint_body": null,
+        "error": {
+          "code": 29,
+          "origin": "broker",
+          "reason": "Broker: Topic authorization failed"
+        },
+        "diagnostics": [],
+        "elapsed_ms": 80,
+        "terminal": true,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "supports",
+          "H-jwt": "contradicts",
+          "H-ca": "undecided"
+        }
+      },
+      {
+        "stage": "nativeimdsnode",
+        "repeat": 5,
+        "client_id": "probe-41331232103-1-f06-c6-nativeimdsnode-4886x-r5",
+        "class": "2.2",
+        "lower_bound": false,
+        "incomplete": false,
+        "lines_for_class": 1,
+        "other_classes": {
+          "2.3": 2,
+          "2.5": 1
+        },
+        "client_log_lines": 31,
+        "principals": {
+          "workload": 0,
+          "other": 2,
+          "empty": 0
+        },
+        "http_statuses": [],
+        "aadsts": [],
+        "first_token_endpoint_body": null,
+        "error": {
+          "code": 29,
+          "origin": "broker",
+          "reason": "Broker: Topic authorization failed"
+        },
+        "diagnostics": [],
+        "elapsed_ms": 69,
+        "terminal": true,
+        "trust_anchor_lines": 0,
+        "decisions": {
+          "H-imds-workload": "supports",
+          "H-imds-default": "supports",
+          "H-jwt": "contradicts",
+          "H-ca": "undecided"
+        }
+      }
+    ],
+    "decisions": {
+      "H-control": "passed",
+      "H-ca": "decided:supports",
+      "H-jwt": "decided:supports",
+      "H-imds-workload": "decided:supports",
+      "H-imds-default": "decided:supports"
+    },
+    "settings": {
+      "nativejwt": {
+        "sasl.oauthbearer.method": "oidc",
+        "sasl.oauthbearer.sub.claim.name": "oid",
+        "debug": "security",
+        "sasl.oauthbearer.grant.type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "sasl.oauthbearer.assertion.file": "[federated-token-file]",
+        "sasl.oauthbearer.token.endpoint.url": "https://login.microsoftonline.com/[tenant]/oauth2/v2.0/token",
+        "sasl.oauthbearer.scope": "https://eh-parchwell-a01prod1.servicebus.windows.net/.default",
+        "https.ca.location": "/etc/ssl/certs/ca-certificates.crt"
+      },
+      "nativeimds": {
+        "sasl.oauthbearer.method": "oidc",
+        "sasl.oauthbearer.sub.claim.name": "oid",
+        "debug": "security",
+        "sasl.oauthbearer.metadata.authentication.type": "azure_imds",
+        "sasl.oauthbearer.config": "query=api-version=2018-02-01&resource=https://eh-parchwell-a01prod1.servicebus.windows.net&client_id=[client]"
+      },
+      "nativeimdsnode": {
+        "sasl.oauthbearer.method": "oidc",
+        "sasl.oauthbearer.sub.claim.name": "oid",
+        "debug": "security",
+        "sasl.oauthbearer.metadata.authentication.type": "azure_imds",
+        "sasl.oauthbearer.config": "query=api-version=2018-02-01&resource=https://eh-parchwell-a01prod1.servicebus.windows.net"
+      },
+      "seed": {
+        "sasl.oauthbearer.method": "default",
+        "sasl.oauthbearer.metadata.authentication.type": "none"
+      }
+    },
+    "metadata_collection": {
+      "transport_passed": false,
+      "metadata_assessed": false,
+      "admitted_client_slots": null,
+      "jobs": 8,
+      "action_slots": 10,
+      "maximum_clients": 30
+    },
+    "versions": {
+      "managed": "2.16.0.0",
+      "native_librdkafka": "2.16.0"
+    },
+    "environment": {
+      "pu": 1,
+      "sku": "Premium",
+      "region": "uksouth",
+      "node_size": "Standard_D4ds_v5",
+      "node_size_basis": "inferred from infra/cluster/aks.tf at 99131dee48677b971f0b2299d243779151ebe700; not captured"
+    },
+    "teardown": {
+      "ephemeral_state_empty": "2026-11-01T18:04:36.6310454Z",
+      "aks_stopped": "2026-11-01T18:05:36.8232474Z"
+    },
+    "mutation_gate": {
+      "run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130",
+      "summary_artifact_id": 13057507952,
+      "commit": "2dc9715e3de176f7e1cd55eee9c251e43c29c746",
+      "measurement_complete": true,
+      "break_passed": true,
+      "break_threshold": 60,
+      "numerator": 3076,
+      "denominator": 3366,
+      "status_counts": {
+        "Killed": 3075,
+        "Timeout": 1,
+        "Survived": 290,
+        "NoCoverage": 0,
+        "CompileError": 327,
+        "RuntimeError": 0,
+        "Ignored": 110
+      },
+      "targets": {
+        "Judge/PhaseJudge.cs": {
+          "status_counts": {
+            "Killed": 189,
+            "Timeout": 1,
+            "Survived": 16,
+            "NoCoverage": 0,
+            "CompileError": 4,
+            "RuntimeError": 0,
+            "Ignored": 6
+          },
+          "numerator": 190,
+          "denominator": 206
+        },
+        "VerifyRun/Publication/PublicationAcceptance.cs": {
+          "status_counts": {
+            "Killed": 177,
+            "Timeout": 0,
+            "Survived": 6,
+            "NoCoverage": 0,
+            "CompileError": 6,
+            "RuntimeError": 0,
+            "Ignored": 14
+          },
+          "numerator": 177,
+          "denominator": 183
+        },
+        "VerifyRun/A01/A01EvidenceRecorder.cs": {
+          "status_counts": {
+            "Killed": 71,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 15,
+            "RuntimeError": 0,
+            "Ignored": 8
+          },
+          "numerator": 71,
+          "denominator": 71
+        },
+        "VerifyRun/A01/WorkloadRecorder.cs": {
+          "status_counts": {
+            "Killed": 95,
+            "Timeout": 0,
+            "Survived": 0,
+            "NoCoverage": 0,
+            "CompileError": 2,
+            "RuntimeError": 0,
+            "Ignored": 7
+          },
+          "numerator": 95,
+          "denominator": 95
+        },
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": {
+          "status_counts": {
+            "Killed": 792,
+            "Timeout": 0,
+            "Survived": 8,
+            "NoCoverage": 0,
+            "CompileError": 142,
+            "RuntimeError": 0,
+            "Ignored": 29
+          },
+          "numerator": 792,
+          "denominator": 800
+        },
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": {
+          "status_counts": {
+            "Killed": 1751,
+            "Timeout": 0,
+            "Survived": 260,
+            "NoCoverage": 0,
+            "CompileError": 158,
+            "RuntimeError": 0,
+            "Ignored": 46
+          },
+          "numerator": 1751,
+          "denominator": 2011
+        }
+      },
+      "target_source_identical_at_c5_run_source_and_head": {
+        "Judge/PhaseJudge.cs": true,
+        "VerifyRun/Publication/PublicationAcceptance.cs": true,
+        "VerifyRun/A01/A01EvidenceRecorder.cs": true,
+        "VerifyRun/A01/WorkloadRecorder.cs": true,
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": true,
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": true
+      },
+      "config_identical": true,
+      "c5_commit_is_ancestor_of_run_source": true,
+      "run_source": "99131dee48677b971f0b2299d243779151ebe700"
+    },
+    "broker_counts": {
+      "f06-c6-seed": [
+        1,
+        1,
+        1,
+        2,
+        1
+      ],
+      "f06-c6-action": [
+        4,
+        2,
+        2,
+        2,
+        2
+      ],
+      "f06-c6-nativejwt": {
+        "value": "unavailable",
+        "basis": "native Jobs have no candidate; no checked statistics measurement"
+      },
+      "f06-c6-nativeimds": {
+        "value": "unavailable",
+        "basis": "native Jobs have no candidate; no checked statistics measurement"
+      },
+      "f06-c6-nativeimdsnode": {
+        "value": "unavailable",
+        "basis": "native Jobs have no candidate; no checked statistics measurement"
+      },
+      "f06-c9-action": [
+        3,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "limits": [
+      "the AKS Workload ID IMDS migration sidecar (pod annotation `azure.workload.identity/inject-proxy-sidecar`);",
+      "a JWT-bearer request that adds `requested_token_use`, or any other request shape than librdkafka v2.16.0 builds from the settings above;",
+      "`client_credentials` with a client secret or certificate;",
+      "which identities the node scale set holds;",
+      "token refresh, expiry and broker re-authentication on the native clients;",
+      "network and federation faults (deferred to issue 256);",
+      "any partition other than partition 0 of `document-events`."
+    ]
+  },
+  "candidates": {
+    "C6": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41331232103-1",
+      "scenario_id": "F06",
+      "configuration_id": "C6",
+      "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:b278b4f6b460ee2ba7fc8f07aa6f0fa8800c59542f10e6004262f8687efb0e39",
+        "verifier": "sha256:49351ab3cfddac0e84309e22c33625665f1776080983b43474485a2945c0c577"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 4,
+          "statistics_reference": {
+            "sequence": 6,
+            "native_time": 1793554707,
+            "native_ts": 494798572,
+            "raw_sha256": "83949420cf00bae26810e28d2b37f68b0dc42e42620b2e273ee18afd4b85136f"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 5,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 0,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "observed_elapsed_ms": 1031,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r1",
+              "stage": "action",
+              "broker_count": 4,
+              "statistics_reference": {
+                "sequence": 6,
+                "native_time": 1793554707,
+                "native_ts": 494798572,
+                "raw_sha256": "83949420cf00bae26810e28d2b37f68b0dc42e42620b2e273ee18afd4b85136f"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r1",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554586,
+                "native_ts": 377041993,
+                "raw_sha256": "36c149ba36b253f31f43ae5ec5d96ebd0065dd96c91c800231dd8ef49db9e5ad"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 5,
+            "native_time": 1793554728,
+            "native_ts": 515813726,
+            "raw_sha256": "a0e9859d52f11db35426699344d6c0a5a5b8530435d38b6151ca9a2d910154f8"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 1,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "observed_elapsed_ms": 63,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r2",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793554728,
+                "native_ts": 515813726,
+                "raw_sha256": "a0e9859d52f11db35426699344d6c0a5a5b8530435d38b6151ca9a2d910154f8"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r2",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554607,
+                "native_ts": 398410667,
+                "raw_sha256": "aaed80356d74e4217ebbbfad037ef9b499c704fd42b6b63f8f49dd5067b69fd0"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 4,
+            "native_time": 1793554748,
+            "native_ts": 535884222,
+            "raw_sha256": "4d8cd5459518409383ed4d95b3d985ad2eebe725099f71d4c5c5e42347c0a954"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 3,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 2,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "observed_elapsed_ms": 59,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r3",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 4,
+                "native_time": 1793554748,
+                "native_ts": 535884222,
+                "raw_sha256": "4d8cd5459518409383ed4d95b3d985ad2eebe725099f71d4c5c5e42347c0a954"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r3",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554628,
+                "native_ts": 418626320,
+                "raw_sha256": "e0a59a553c2e661f30a8180b5a9431680e7a3c1b0b00e2e24f39edd27f32fcfb"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793554768,
+            "native_ts": 555945487,
+            "raw_sha256": "848b6d2c8af242734e5dcb46b6b5562c163969efcf3a96e9969afc093dfe58fa"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 3,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "observed_elapsed_ms": 148,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r4",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793554768,
+                "native_ts": 555945487,
+                "raw_sha256": "848b6d2c8af242734e5dcb46b6b5562c163969efcf3a96e9969afc093dfe58fa"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r4",
+              "stage": "seed",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554648,
+                "native_ts": 438843486,
+                "raw_sha256": "3fbdf9fbed4dc0060f669991021314dd58fd1ad56861b412ce19a0cd4709ca47"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793554788,
+            "native_ts": 576097302,
+            "raw_sha256": "4242e95d5bc76117a1f52b24ca0cc91d09602e1cd5d20d4edd89d27fdd68142a"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 1,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 4,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "observed_elapsed_ms": 40,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r5",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554788,
+                "native_ts": 576097302,
+                "raw_sha256": "4242e95d5bc76117a1f52b24ca0cc91d09602e1cd5d20d4edd89d27fdd68142a"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r5",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554668,
+                "native_ts": 459063295,
+                "raw_sha256": "98ac895dbdce8b9a12ad63a4977f0fae957a538267c7d3cb7d6c5282fcb4faf9"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "smoke_only"
+      ],
+      "security_finding": false,
+      "item_assessment": null
+    },
+    "C9": {
+      "schema_version": 2,
+      "mode": "single-action-v2",
+      "synthetic": true,
+      "run_id": "probe-41331232103-1",
+      "scenario_id": "F06",
+      "configuration_id": "C9",
+      "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+      "managed_version": "2.16.0.0",
+      "native_version": "2.16.0",
+      "image_digests": {
+        "loadgen": "sha256:b278b4f6b460ee2ba7fc8f07aa6f0fa8800c59542f10e6004262f8687efb0e39",
+        "verifier": "sha256:49351ab3cfddac0e84309e22c33625665f1776080983b43474485a2945c0c577"
+      },
+      "status": "complete_valid",
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 3,
+          "statistics_reference": {
+            "sequence": 6,
+            "native_time": 1793556025,
+            "native_ts": 1813193784,
+            "raw_sha256": "36efb7051e2dc84fd20407a72b84c8f90f3584239165bf3edff845e588cf1be1"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 5,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 0,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjE=",
+              "observed_elapsed_ms": 610,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            },
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-action",
+              "pod_uid": "0ddbd4e0-6165-4860-ab42-40f9ff0ce806",
+              "raw_sha256": "9674fa14e98bfda4141019fe3abcdfa123ed6e272767a9d3af4c83e507644e40"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c9-action-p9v6s-r1",
+              "stage": "action",
+              "broker_count": 3,
+              "statistics_reference": {
+                "sequence": 6,
+                "native_time": 1793556025,
+                "native_ts": 1813193784,
+                "raw_sha256": "36efb7051e2dc84fd20407a72b84c8f90f3584239165bf3edff845e588cf1be1"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r1",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554586,
+                "native_ts": 377041993,
+                "raw_sha256": "36c149ba36b253f31f43ae5ec5d96ebd0065dd96c91c800231dd8ef49db9e5ad"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r1",
+              "stage": "action",
+              "broker_count": 4,
+              "statistics_reference": {
+                "sequence": 6,
+                "native_time": 1793554707,
+                "native_ts": 494798572,
+                "raw_sha256": "83949420cf00bae26810e28d2b37f68b0dc42e42620b2e273ee18afd4b85136f"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 5,
+            "native_time": 1793556046,
+            "native_ts": 1833787195,
+            "raw_sha256": "c6dc87be867688c360fe54954ddc07ea02f6dae421d5c9023941a101d766c482"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 4,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 1,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjI=",
+              "observed_elapsed_ms": 47,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            },
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-action",
+              "pod_uid": "0ddbd4e0-6165-4860-ab42-40f9ff0ce806",
+              "raw_sha256": "9674fa14e98bfda4141019fe3abcdfa123ed6e272767a9d3af4c83e507644e40"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c9-action-p9v6s-r2",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793556046,
+                "native_ts": 1833787195,
+                "raw_sha256": "c6dc87be867688c360fe54954ddc07ea02f6dae421d5c9023941a101d766c482"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r2",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554607,
+                "native_ts": 398410667,
+                "raw_sha256": "aaed80356d74e4217ebbbfad037ef9b499c704fd42b6b63f8f49dd5067b69fd0"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r2",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 5,
+                "native_time": 1793554728,
+                "native_ts": 515813726,
+                "raw_sha256": "a0e9859d52f11db35426699344d6c0a5a5b8530435d38b6151ca9a2d910154f8"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 4,
+            "native_time": 1793556066,
+            "native_ts": 1853838046,
+            "raw_sha256": "d3e25aa85b31ca09c7d7fc82ce3c2e58fc24ab42ab968fba350ed70233d36857"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 3,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 2,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjM=",
+              "observed_elapsed_ms": 60,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            },
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-action",
+              "pod_uid": "0ddbd4e0-6165-4860-ab42-40f9ff0ce806",
+              "raw_sha256": "9674fa14e98bfda4141019fe3abcdfa123ed6e272767a9d3af4c83e507644e40"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c9-action-p9v6s-r3",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 4,
+                "native_time": 1793556066,
+                "native_ts": 1853838046,
+                "raw_sha256": "d3e25aa85b31ca09c7d7fc82ce3c2e58fc24ab42ab968fba350ed70233d36857"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r3",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554628,
+                "native_ts": 418626320,
+                "raw_sha256": "e0a59a553c2e661f30a8180b5a9431680e7a3c1b0b00e2e24f39edd27f32fcfb"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r3",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 4,
+                "native_time": 1793554748,
+                "native_ts": 535884222,
+                "raw_sha256": "4d8cd5459518409383ed4d95b3d985ad2eebe725099f71d4c5c5e42347c0a954"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 3,
+            "native_time": 1793556086,
+            "native_ts": 1873903322,
+            "raw_sha256": "49e4dc6a786b363a968b9736e5f4ee609822fb3bb60186fba6df58a664085fad"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 2,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 3,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjQ=",
+              "observed_elapsed_ms": 42,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            },
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-action",
+              "pod_uid": "0ddbd4e0-6165-4860-ab42-40f9ff0ce806",
+              "raw_sha256": "9674fa14e98bfda4141019fe3abcdfa123ed6e272767a9d3af4c83e507644e40"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c9-action-p9v6s-r4",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793556086,
+                "native_ts": 1873903322,
+                "raw_sha256": "49e4dc6a786b363a968b9736e5f4ee609822fb3bb60186fba6df58a664085fad"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r4",
+              "stage": "seed",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554648,
+                "native_ts": 438843486,
+                "raw_sha256": "3fbdf9fbed4dc0060f669991021314dd58fd1ad56861b412ce19a0cd4709ca47"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r4",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 3,
+                "native_time": 1793554768,
+                "native_ts": 555945487,
+                "raw_sha256": "848b6d2c8af242734e5dcb46b6b5562c163969efcf3a96e9969afc093dfe58fa"
+              }
+            }
+          ]
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "outcome_class": {
+            "result": "success",
+            "error_code": null,
+            "is_fatal": null,
+            "origin": null
+          },
+          "broker_count": 2,
+          "statistics_reference": {
+            "sequence": 2,
+            "native_time": 1793556106,
+            "native_ts": 1893949281,
+            "raw_sha256": "3abf8f3ae84622fb4280ebad2a421c3d9c93e745f66a8fff775ad4176d2f7681"
+          },
+          "semantic_outcome": {
+            "delivered_partition": null,
+            "consumed_partition": 0,
+            "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+            "value_kind": "bytes",
+            "value_match": true
+          },
+          "delivery": null,
+          "read_observation": {
+            "records_seen": 1,
+            "eof_count": 0,
+            "record": {
+              "topic": "document-events",
+              "partition": 0,
+              "offset": 4,
+              "key_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "value_base64": "ZjA2LXNlZWQ6cHJvYmUtNDEzMzEyMzIxMDMtMTpkb2N1bWVudC1ldmVudHM6cjU=",
+              "observed_elapsed_ms": 65,
+              "sequence": 1
+            }
+          },
+          "seed_reference": {
+            "run_id": "probe-41331232103-1",
+            "scenario_id": "F06",
+            "configuration_id": "C6",
+            "stage": "seed",
+            "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+            "job_name": "probe-41331232103-1-f06-c6-seed",
+            "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+            "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+          },
+          "control_references": [
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "seed",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-seed",
+              "pod_uid": "1b20801c-cd49-408f-9e9b-40211061c4db",
+              "raw_sha256": "712aa3926f74c40f8f2e4f85d0e3ae3421816f6a5bb058b1ccbcd83875207b0c"
+            },
+            {
+              "run_id": "probe-41331232103-1",
+              "scenario_id": "F06",
+              "configuration_id": "C6",
+              "stage": "action",
+              "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+              "job_name": "probe-41331232103-1-f06-c6-action",
+              "pod_uid": "0ddbd4e0-6165-4860-ab42-40f9ff0ce806",
+              "raw_sha256": "9674fa14e98bfda4141019fe3abcdfa123ed6e272767a9d3af4c83e507644e40"
+            }
+          ],
+          "clients": [
+            {
+              "client_id": "probe-41331232103-1-f06-c9-action-p9v6s-r5",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793556106,
+                "native_ts": 1893949281,
+                "raw_sha256": "3abf8f3ae84622fb4280ebad2a421c3d9c93e745f66a8fff775ad4176d2f7681"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-seed-mtc9d-r5",
+              "stage": "seed",
+              "broker_count": 1,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554668,
+                "native_ts": 459063295,
+                "raw_sha256": "98ac895dbdce8b9a12ad63a4977f0fae957a538267c7d3cb7d6c5282fcb4faf9"
+              }
+            },
+            {
+              "client_id": "probe-41331232103-1-f06-c6-action-k96l6-r5",
+              "stage": "action",
+              "broker_count": 2,
+              "statistics_reference": {
+                "sequence": 2,
+                "native_time": 1793554788,
+                "native_ts": 576097302,
+                "raw_sha256": "4242e95d5bc76117a1f52b24ca0cc91d09602e1cd5d20d4edd89d27fdd68142a"
+              }
+            }
+          ]
+        }
+      ],
+      "deterministic": true,
+      "outcome_class": {
+        "result": "success",
+        "error_code": null,
+        "is_fatal": null,
+        "origin": null
+      },
+      "adr012_counts": "not_applicable",
+      "diagnostics": [
+        "smoke_only"
+      ],
+      "security_finding": false,
+      "item_assessment": null
+    }
+  },
+  "judge_receipts": {
+    "C6": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41331232103-1",
+      "scenario_id": "F06",
+      "configuration_id": "C6",
+      "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+      "job_name": "probe-41331232103-1-f06-c6-judge",
+      "pod_name": "probe-41331232103-1-f06-c6-judge-xpvkw",
+      "pod_uid": "7175405b-929c-4abb-9d37-c53871d1102b",
+      "candidate_name": "probe-41331232103-1/single-action-v2/F06/C6/candidate.json",
+      "candidate_sha256": "7302ecb5ae422e3a68695f2026cb46a777bb697e8be86a26dbc71e162ff8a512",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    },
+    "C9": {
+      "schema_version": 2,
+      "mode": "single-action-v2-judge",
+      "run_id": "probe-41331232103-1",
+      "scenario_id": "F06",
+      "configuration_id": "C9",
+      "source_commit": "99131dee48677b971f0b2299d243779151ebe700",
+      "job_name": "probe-41331232103-1-f06-c9-judge",
+      "pod_name": "probe-41331232103-1-f06-c9-judge-4mtgq",
+      "pod_uid": "26ee1a31-226c-4c91-8b53-02a6e62d83c3",
+      "candidate_name": "probe-41331232103-1/single-action-v2/F06/C9/candidate.json",
+      "candidate_sha256": "0a577654d79097f018c93e6bda030b2cf964db6449d30a3e4732a2658faeb588",
+      "handler_exit_code": 0,
+      "cleanup_completed": true
+    }
+  }
+}
