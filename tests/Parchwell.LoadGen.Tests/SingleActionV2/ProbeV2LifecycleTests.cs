@@ -72,6 +72,7 @@ public sealed class ProbeV2LifecycleTests
         Assert.Equal("https://login.microsoftonline.com/[tenant]/oauth2/v2.0/token", first.Settings["sasl.oauthbearer.token.endpoint.url"]);
         Assert.DoesNotContain("sasl.oauthbearer.token.endpoint.url", first.OmittedKeys);
         Assert.DoesNotContain("sasl.oauthbearer.scope", first.OmittedKeys);
+        Assert.Equal("/etc/ssl/certs/ca-certificates.crt", first.Settings["https.ca.location"]);
     }
 
     [Fact]

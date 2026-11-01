@@ -16,6 +16,7 @@ internal static partial class ProbeV2NativeAuthentication
                 applied["sasl.oauthbearer.assertion.file"] = options.FederatedTokenFile;
                 applied["sasl.oauthbearer.token.endpoint.url"] = "https://login.microsoftonline.com/" + options.TenantId + "/oauth2/v2.0/token";
                 applied["sasl.oauthbearer.scope"] = resource + "/.default";
+                applied["https.ca.location"] = "/etc/ssl/certs/ca-certificates.crt";
                 break;
             case "azure-imds-workload":
                 applied["sasl.oauthbearer.metadata.authentication.type"] = "azure_imds";

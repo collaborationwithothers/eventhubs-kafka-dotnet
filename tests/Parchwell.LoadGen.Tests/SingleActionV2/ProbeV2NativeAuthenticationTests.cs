@@ -33,7 +33,8 @@ public sealed class ProbeV2NativeAuthenticationTests
             ["sasl.oauthbearer.grant.type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
             ["sasl.oauthbearer.assertion.file"] = "/var/run/secrets/azure/tokens/azure-identity-token",
             ["sasl.oauthbearer.token.endpoint.url"] = "https://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/oauth2/v2.0/token",
-            ["sasl.oauthbearer.scope"] = "https://pwtest.servicebus.windows.net/.default"
+            ["sasl.oauthbearer.scope"] = "https://pwtest.servicebus.windows.net/.default",
+            ["https.ca.location"] = "/etc/ssl/certs/ca-certificates.crt"
         };
         Assert.Equal(expected.OrderBy(pair => pair.Key, StringComparer.Ordinal), applied.OrderBy(pair => pair.Key, StringComparer.Ordinal));
     }
@@ -53,6 +54,7 @@ public sealed class ProbeV2NativeAuthenticationTests
         Assert.Equal(expected.OrderBy(pair => pair.Key, StringComparer.Ordinal), applied.OrderBy(pair => pair.Key, StringComparer.Ordinal));
         Assert.DoesNotContain("sasl.oauthbearer.grant.type", applied.Keys);
         Assert.DoesNotContain("sasl.oauthbearer.token.endpoint.url", applied.Keys);
+        Assert.DoesNotContain("https.ca.location", applied.Keys);
     }
 
     [Fact]
@@ -70,6 +72,7 @@ public sealed class ProbeV2NativeAuthenticationTests
         Assert.Equal(expected.OrderBy(pair => pair.Key, StringComparer.Ordinal), applied.OrderBy(pair => pair.Key, StringComparer.Ordinal));
         Assert.DoesNotContain("sasl.oauthbearer.grant.type", applied.Keys);
         Assert.DoesNotContain("sasl.oauthbearer.token.endpoint.url", applied.Keys);
+        Assert.DoesNotContain("https.ca.location", applied.Keys);
     }
 
     [Theory]
@@ -158,5 +161,14 @@ public sealed class ProbeV2NativeAuthenticationTests
         Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions(stage, mode), Resolved);
         using IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(new ProducerConfig(applied)).Build();
         Assert.NotNull(producer);
+    }
+
+    [Fact]
+    public void Given_MissingHttpsCaLocation_When_BuildingRealProducer_Then_ConstructionFails()
+    {
+        Dictionary<string, string> applied = ProbeV2NativeAuthentication.Apply(ProbeV2OptionsTests.NativeOptions("nativejwt", "jwt-bearer"), Resolved);
+        applied["https.ca.location"] = "/nonexistent/parchwell-ca.crt";
+        var error = Assert.Throws<InvalidOperationException>(() => new ProducerBuilder<byte[], byte[]>(new ProducerConfig(applied)).Build());
+        Assert.Contains("`https.ca.location` must be an existing file or directory", error.Message, StringComparison.Ordinal);
     }
 }
