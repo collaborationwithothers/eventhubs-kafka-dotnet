@@ -14,7 +14,7 @@ While full-C0 or full-C3 waits for approval the run is not completed, so the swe
 
 ## Private inputs
 
-Prepare the environment's `PARCHWELL_CLUSTER_BACKEND`, `PARCHWELL_CLUSTER_TFVARS`, `PARCHWELL_EPHEMERAL_BACKEND`, `PARCHWELL_EPHEMERAL_TFVARS`, and `PARCHWELL_PERSISTENT_OUTPUTS` secrets. Supply `PARCHWELL_CLUSTER_RESOURCE_ID` as the exact expected cluster identifier. The backend and tfvars contracts remain in [lifecycle tools and private inputs](lifecycle.md#tools-and-private-inputs).
+Prepare the environment's `PARCHWELL_CLUSTER_BACKEND`, `PARCHWELL_CLUSTER_TFVARS`, `PARCHWELL_EPHEMERAL_BACKEND`, `PARCHWELL_EPHEMERAL_TFVARS`, and `PARCHWELL_PERSISTENT_OUTPUTS` secrets. Prepare the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` environment secrets as well, because the workflows log in with them. Supply `PARCHWELL_CLUSTER_RESOURCE_ID` as the exact expected cluster identifier. The backend and tfvars contracts remain in [lifecycle tools and private inputs](lifecycle.md#tools-and-private-inputs).
 
 `PARCHWELL_PERSISTENT_OUTPUTS` must contain the `terraform output -json` text of `infra/persistent`, including `acr` and `application_insights_connection_string`. For F06 in probe batch 2 it must also include `workload_identities`, which the permission audit reads for its principal cross-check. Preparation does not check that key; a missing key is found only when the F06 audit runs, after the cluster and ephemeral applies. Hari supplies that output after applying the persistent root; an agent session does not apply it. Preparation validates the private inputs before image or infrastructure commands. Private inputs, Terraform outputs, Helm values and rendered manifests stay outside the candidate and pod artifact directories.
 

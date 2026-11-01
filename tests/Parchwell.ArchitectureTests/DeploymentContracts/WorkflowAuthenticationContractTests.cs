@@ -13,9 +13,9 @@ public sealed class WorkflowAuthenticationContractTests
         - name: Existing environment OIDC login
           uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
           with:
-            client-id: ${{ vars.AZURE_CLIENT_ID }}
-            tenant-id: ${{ vars.AZURE_TENANT_ID }}
-            subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         """;
 
     private const string InstallationStep = """

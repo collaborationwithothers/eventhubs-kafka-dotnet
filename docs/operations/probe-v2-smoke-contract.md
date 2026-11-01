@@ -61,7 +61,7 @@ Only smoke preparation receives that secret as `S_PROBE_V2_EFFECTIVE_SCOPE`. It 
 
 ## Completion and subsequent work
 
-Protected workflow, identity, verifier and design changes reach main through Hari's merge. Dispatch uses main and retains the existing environment approval. The full experiment has its own revision-specific implementation approval; it inherits no scientific dispatch authorization from this prerequisite.
+Protected workflow, identity, verifier and design changes reach main through Hari's merge. Dispatch uses main and retains the existing environment approval for the `batch` job; the stop-only `batch-stop` job runs without one ([single-action contract](single-action-contract.md#mode-selection-and-completeness)). The full experiment has its own revision-specific implementation approval; it inherits no scientific dispatch authorization from this prerequisite.
 
 The [completed smoke receipt](evidence/issue-240/live-smoke-receipt.md) records the successful run on 2026-10-30, its candidate/final-receipt and pod evidence, and successful teardown and cluster stop. It completes this smoke prerequisite. Scientific item assessments remain null; the scientific implementation has its own approval, while live execution still needs separate authorization.
 

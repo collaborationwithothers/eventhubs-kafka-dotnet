@@ -59,12 +59,12 @@ jobs:
       loadgen_digest: ${{ steps.images.outputs.loadgen_digest }}
       verifier_digest: ${{ steps.images.outputs.verifier_digest }}
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
@@ -81,7 +81,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-            echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
         id: checkout
@@ -124,9 +123,9 @@ jobs:
         id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Enable renewable serialized Azure CLI session
         id: azure_session
         shell: bash
@@ -256,12 +255,12 @@ jobs:
     environment: parchwell-scenarios
     timeout-minutes: 360
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
@@ -278,7 +277,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-            echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
         id: checkout
@@ -317,9 +315,9 @@ jobs:
         id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Enable renewable serialized Azure CLI session
         id: azure_session
         shell: bash
@@ -452,12 +450,12 @@ jobs:
     environment: parchwell-scenarios
     timeout-minutes: 360
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
@@ -474,7 +472,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-            echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
         id: checkout
@@ -509,9 +506,9 @@ jobs:
         id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Enable renewable serialized Azure CLI session
         id: azure_session
         shell: bash
@@ -688,12 +685,12 @@ jobs:
     environment: parchwell-scenarios
     timeout-minutes: 360
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
@@ -712,7 +709,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-            echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
         id: checkout
@@ -756,9 +752,9 @@ jobs:
         id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Enable renewable serialized Azure CLI session
         id: azure_session
         shell: bash
@@ -879,15 +875,15 @@ jobs:
     needs: [batch]
     if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
-    environment: parchwell-scenarios
+    environment: parchwell-sweeper
     timeout-minutes: 360
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: "true"
       PARCHWELL_CLUSTER_RESOURCE_ID: ${{ vars.PARCHWELL_CLUSTER_RESOURCE_ID }}
       PARCHWELL_CAPTURE_AUTHENTICATION_METADATA: ${{ inputs.capture_authentication_metadata && 'true' || 'false' }}
@@ -906,7 +902,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-            echo "::add-mask::$value"
           done
       - name: Check out the main head this run started from
         id: checkout
@@ -922,9 +917,9 @@ jobs:
         id: login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Enable renewable serialized Azure CLI session
         id: azure_session
         shell: bash
