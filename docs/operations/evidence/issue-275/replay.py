@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Replays the 30 C5 survivors and the one Timeout of run 41232286130 as source edits (issue 275).
 
-Diagnostic evidence only; never C5 acceptance. From the repository root:
+Diagnostic evidence only; never C5 acceptance. From the repository root, on any checkout whose three
+target files equal the source text the reports recorded; run stops otherwise:
   replay.py map NEW_DIR OLD_DIR            compare each selected mutant with the issue 268 reports
   replay.py run NEW_DIR OUTPUT_JSONL K/N   replay every Nth selected mutant from K (0-based)
   replay.py check OUTPUT_JSONL...          compare results with the disposition table
@@ -11,7 +12,6 @@ run 41232286130; OLD_DIR holds phase.json, publication.json and repeat.json from
 """
 import hashlib, json, os, re, signal, subprocess, sys, tempfile, threading, time
 
-MEASURED = "2dc9715e3de176f7e1cd55eee9c251e43c29c746"
 PHASE = "Judge/PhaseJudge.cs"
 PUBLICATION = "VerifyRun/Publication/PublicationAcceptance.cs"
 REPEAT = "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs"
@@ -91,8 +91,10 @@ def map_old(new_dir, old_dir):
 
 
 def run(report_dir, output, part):
-    if subprocess.run(["git", "diff", "--quiet", MEASURED, "HEAD", "--", "src", "tests"]).returncode:
-        sys.exit(f"src or tests differ from {MEASURED}")
+    stale = [t for t, files in entries(report_dir, NEW).items() for e in files
+             if open(os.path.join("src/Parchwell.Verifier", t), newline="").read() != e["source"]]
+    if stale:
+        sys.exit(f"{sorted(set(stale))} differ from the source the report measured; the mutant locations no longer apply")
     k, n = (int(x) for x in part.split("/"))
     work = tempfile.mkdtemp(prefix="issue-275-replay-")
     subprocess.run(f"git archive HEAD | tar -x -C {work}", shell=True, check=True)

@@ -116,3 +116,9 @@ problems 0
 14286 survived 0
 14288 compile_error 0
 ```
+
+## Amendment to file change 2
+
+Hari approved this amendment in the implementing session on 2026-11-01 ("yes, do it"), after [Codex's P2 on `replay.py`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/279#discussion_r4434836185). Plan Revision 4 pins `replay.py` byte for byte. The amendment changes one thing: `run` no longer compares `src` and `tests` with the measured commit. It checks that each of the three target files equals the `source` text recorded in the report, and stops with a message if one differs. No commit is named in the script, so a merge elsewhere in the repository does not break it. The acceptance output is unchanged.
+
+Checked from the head that contains the #278 changes: with a line appended to `Judge/PhaseJudge.cs`, `run` stops with `['Judge/PhaseJudge.cs'] differ from the source the report measured; the mutant locations no longer apply`; with the file restored, `run ... 1/31` printed `4994 survived 0`, as disposition E1 expects. The 31-mutant replay recorded above ran before the amendment, at the plan baseline.
