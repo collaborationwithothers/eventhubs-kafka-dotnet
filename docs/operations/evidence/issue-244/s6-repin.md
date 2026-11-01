@@ -7,7 +7,7 @@ Branch: `claude/issue-244-s6-repin`
 
 ## Authority and scope
 
-There is no approved item plan for this change. It is directly authorized work. The authorization is Hari's instruction in an interactive session on 2026-11-01: "do the S6 re-pin. I want it in the repo". It follows [decision 6547412663](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547412663), answer 9, which makes the S6 re-pin a separate later change, and the [authored assessment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6557005071) of run 41296493195. I read "it" in the second sentence as the dispatch result, and I recorded that in the operations doc. If Hari meant something else, this is the part to change.
+There is no approved item plan for this change. It is directly authorized work. The authorization is Hari's instruction in an interactive session on 2026-11-01: "do the S6 re-pin. I want it in the repo". It follows [decision 6547412663](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547412663), answer 9, which makes the S6 re-pin a separate later change, and the [authored assessment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6557005071) of run 41296493195. The sentence "I want it in the repo" answers my immediately preceding message, which proposed the S6 re-pin and a question: "Not asked yet: where the finding gets stated publicly. It isn't in `results/`, so only the issue comment records it. If you want it in the repo, I'd propose a short docs note". So I read "it" as the dispatch finding, which is why the operations doc now records it. That reading is mine, and Hari's wording does not name the finding; if he meant only the re-pin, the two result paragraphs are the part to remove. The dispatch of run 41296493195 was authorized by Hari in the same session ("then do a dispatch", 2026-11-01); no comment on issue 244 records that authorization.
 
 `docs/blueprint.md` is under `/docs/` in `.github/CODEOWNERS` (owner: Hari), so Hari merges this pull request. The implementing tool is Claude Code.
 
@@ -26,7 +26,7 @@ There is no approved item plan for this change. It is directly authorized work. 
 |---|---|
 | S6 row now names the v2.16.0 tag, the commit `c6c9973cf1b25394c58e0cade13a36f386856f77` and the re-pin date, and says it is the same document as S25 | `docs/blueprint.md` line 1183 |
 | Result paragraphs, with links to the run, the assessment, run 41286058152 and two Microsoft Learn pages | `docs/operations/authentication-lifecycle-observation.md` |
-| Covers, Approved plan, Next action | `items/244/state.md` |
+| Covers, Open questions and Next action (the Approved plan line is unchanged by this pull request) | `items/244/state.md` |
 
 S7 (STATISTICS.md, master) is not changed. Only S6 was in scope. No other file cites the S6 master URL (checked by grep).
 
@@ -54,7 +54,13 @@ Source: [CONFIGURATION.md at tag v2.16.0](https://github.com/confluentinc/librdk
 
 Claims on the Microsoft Learn pages in the result paragraphs were read on 2026-11-01: the On-Behalf-Of page says `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` with `requested_token_use` "Required ... must be set to `on_behalf_of`", and "the OBO flow only works for user principals"; the error-code page lists AADSTS900144 as "The request body must contain the following parameter". Numbers in the result paragraphs (5 slots, 45 requests, 55 earlier lines, 0 trust-anchor lines) come from the artifacts of runs 41296493195 and 41286058152 as read in the assessment comment, which gives the counting method.
 
-Not verified: claims in the inventory table rows that I did not find a v2.16.0 default for in this list. I checked every S6-citing sentence in the body text and every default named in an inventory row; I did not re-read each row's non-default prose.
+Also checked after the first cold review: `transactional.id` exists (B05); `max.poll.interval.ms` exists with default 300000 (C03); `metadata.recovery.strategy` exists with default `rebootstrap` (G01).
+
+Not verified: the free prose of inventory rows C06, C07 and similar, which states behaviour and design questions beyond the settings and defaults above. The S6 row in the blueprint says only that the settings, defaults and option values were rechecked.
+
+## Predicate-to-test map
+
+Not applicable. This pull request changes documentation only and touches no verifier, predicate or test.
 
 ## Verification record
 
@@ -70,4 +76,9 @@ No code or test is changed, so no .NET, Python or chart suite was run for this c
 
 ## Cold review record
 
-Cumulative counts at the time of writing: comprehensive 0 of 2, focused 0 of 2. Round 1 is pending: comprehensive, input revision the commit that adds this receipt, comparison revision `216bce2`. Reports and dispositions are recorded in the pull request self-review record.
+Cumulative counts at the time of writing: comprehensive 1 of 2 reported and the second pending, focused 0 of 2. The final report of each round is recorded in the pull request self-review record, not here, because it reviews this receipt.
+
+| Round | Mode | Input revision | Comparison revision | Findings | Disposition |
+|---|---|---|---|---|---|
+| 1 | comprehensive | `68dea93` | `216bce2` | P1: the S6 row said every claim was rechecked, which the receipt contradicted. P1: the result paragraphs lacked a recorded authorization. P1: no predicate-to-test map entry. P2: the receipt said the state file's Approved plan line changed. P2: Open questions in the state file said None while the assessment lists two decisions. P2: the sentence on Microsoft's documentation said more than the source | Fixed in the commit that adds this record: the S6 row now says settings, defaults and option values; B05, C03 and G01 settings are checked in the receipt; the authorization context is recorded; "not applicable" map added; receipt wording corrected; state file lists the two open questions; the documentation sentence names the inferred part |
+| 2 | comprehensive (consolidated re-review) | the commit that adds this record | `216bce2` | Pending; recorded in the pull request self-review record | Not applicable |
