@@ -1,5 +1,5 @@
 # State: #244 Live authentication follow-up: unmodified native client with AKS workload federation (F02)
-Covers: comment 6556147592 created 2026-11-01T09:32:16Z; read at 2026-11-01T10:00:00Z
+Covers: comment 6557033685 created 2026-11-01T10:59:53Z; read at 2026-11-01T11:30:00Z
 Parent items: none
 Item plan: none
 Implementing tool: Claude Code. Source: [comment 6547412843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6547412843), before `ready-for-agent`
@@ -12,4 +12,4 @@ Decisions in force:
 - Hari approves native-jwt-trust-anchor Revision 1 in light of its plan check: the follow-up scope is adopted (repeat only `nativejwt` with `https.ca.location` set, beside the control); the schedule change supersedes answer 2 above for that schedule; the explicit file `/etc/ssl/certs/ca-certificates.crt` is approved over `probe`; the check's two `apply in implementation` P2s apply; no dispatch, Azure action or spend is authorized and a dispatch needs a separate approval after the implementation merges. Source: [approval 6556147592](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6556147592), [plan check 6556022257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/244#issuecomment-6556022257)
 Open questions:
 - None
-Next action: Implementation pull request for plan Revision 1 under review; after it merges, a live dispatch needs a separate approval from Hari on issue 244.
+Next action: Pull request for the S6 re-pin and the recorded dispatch result under review; closing issue 244 is Hari's decision after it merges.
