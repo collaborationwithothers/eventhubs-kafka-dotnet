@@ -32,3 +32,5 @@ Run from the repository root with SDK 10.0.402 on 2026-11-01. The acceptance com
 | `git diff --check origin/main` | exit 0, no output |
 | `npm ci --ignore-scripts && npm run check:docs` | `8 warnings`, none in a changed file: `docs/agents/factory.md` 2, `docs/operations/evidence/issue-124/README.md` 1, `docs/operations/evidence/issue-140/README.md` 2, `docs/operations/evidence/issue-211/receipt.md` 3 |
 | `./scripts/verify-dotnet.sh` | not run: Docker is not running in this session. The hosted `dotnet-verification` run on the pull request is the evidence. |
+
+Correction (issue 312): the rows for mutants 11986 and 11988 in the replay above replayed different expressions from the ones Stryker measured, because the printed replacement was inserted with outer parentheses only. [The issue 312 receipt](../issue-312/receipt.md) records their replay with the syntax-tree grouping.
