@@ -1,8 +1,10 @@
 """Synthetic Graph/ARM pages exercise the production inventory and byte producer."""
 import base64
+import contextlib
 import copy
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -10,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 REPO = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO / 'infra/scripts/phase'))
@@ -411,6 +413,97 @@ except audit.Gap as gap: (root/'result').write_text(gap.reason)
             self.assertEqual((directory / 'result').read_text(), 'safety_stop')
             pid = int((directory / 'child-pid').read_text())
             self.assertFalse(Path('/proc/' + str(pid)).exists())
+
+
+# The files mirror the terraform output -json shapes of infra/ephemeral, infra/cluster and infra/persistent outputs.tf, with synthetic GUIDs.
+class MainTests(unittest.TestCase):
+    ACCOUNT_NAMES = ('loadgen', 'probe', 'enrichment-consumer', 'verifier')
+    COMPLETE = '{"permission_check":"complete","reasons":[]}\n'
+    INCOMPLETE = 'permission_evidence_incomplete\n'
+
+    @classmethod
+    def files(cls):
+        principals = {'loadgen': BINDING['principals']['loadgen'], 'enrichment-consumer': BINDING['principals']['enrichment-consumer'],
+                      'probe': '22222222-2222-2222-2222-222222222222', 'verifier': '44444444-4444-4444-4444-444444444444'}
+        clients = {a: '0000000%d-0000-0000-0000-000000000000' % n for n, a in enumerate(cls.ACCOUNT_NAMES, 1)}
+        return {
+            'phase.json': {'scenario': 'probe-batch-2', 'phase': 'single-action', 'configuration': None, 'run_id': 'run1',
+                           'source_commit': '1' * 40, 'run_kind': 'batch', 'items': ['B08', 'E01', 'F06']},
+            'ephemeral-output.json': {'probe_v2_role_scope': {'sensitive': True, 'type': 'object', 'value': {
+                'namespace_id': NS, 'topics': dict(BINDING['targets']),
+                'accounts': {a: {'client_id': clients[a], 'principal_id': principals[a]} for a in cls.ACCOUNT_NAMES},
+                'assignments': {}, 'probe_namespace_data_roles': True}}},
+            'cluster-output.json': {'workload_identity': {'sensitive': False, 'type': 'object', 'value': {
+                'namespace': 'parchwell',
+                'service_accounts': {k: {'name': k, 'client_id': clients[k], 'subject': 'system:serviceaccount:parchwell:' + k}
+                                     for k in cls.ACCOUNT_NAMES}}}},
+            'persistent-output.json': {
+                'acr': {'sensitive': False, 'type': 'object', 'value': {
+                    'id': '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/synthetic-rg/providers/Microsoft.ContainerRegistry/registries/parchwellacr',
+                    'name': 'parchwellacr', 'login_server': 'parchwellacr.azurecr.io'}},
+                'application_insights_connection_string': {'sensitive': True, 'type': 'string',
+                                                           'value': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'},
+                'workload_identities': {'sensitive': False, 'type': 'object', 'value': {
+                    k: {'id': '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/synthetic-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-' + k,
+                        'client_id': clients[k], 'principal_id': principals[k]} for k in cls.ACCOUNT_NAMES}}}}
+
+    def run_main(self, files, factory=None):
+        with tempfile.TemporaryDirectory() as root:
+            private = Path(root) / 'private'
+            artifacts = Path(root) / 'artifacts'
+            private.mkdir(); artifacts.mkdir()
+            for name, value in files.items():
+                if value is not None:
+                    (private / name).write_text(json.dumps(value) + '\n')
+            factory = factory or MagicMock(side_effect=lambda private_dir, repo: Reader())
+            out = io.StringIO()
+            with patch.object(sys, 'argv', ['probe_v2_access.py', str(private)]), \
+                    patch.dict(os.environ, {'PARCHWELL_ARTIFACT_DIRECTORY': str(artifacts)}), \
+                    patch.object(audit, 'ProductionReader', factory), contextlib.redirect_stdout(out):
+                code = audit.main()
+            return (code, out.getvalue(), (private / 'probe-v2/access-check.json').exists(),
+                    (artifacts / 'probe-v2-access-check.json').exists(), factory)
+
+    def test_main_with_real_output_shapes(self):
+        code, out, private_written, artifact_written, _ = self.run_main(self.files())
+        self.assertEqual(code, 0)
+        self.assertEqual(out, self.COMPLETE)
+        self.assertTrue(private_written)
+        self.assertTrue(artifact_written)
+
+    def test_main_principal_cross_check(self):
+        def upper(f):
+            ids = f['persistent-output.json']['workload_identities']['value']
+            ids['loadgen']['principal_id'] = ids['loadgen']['principal_id'].upper()
+
+        def different(f):
+            f['persistent-output.json']['workload_identities']['value']['enrichment-consumer']['principal_id'] = '99999999-9999-9999-9999-999999999999'
+
+        def none(f):
+            f['persistent-output.json']['workload_identities']['value']['loadgen']['principal_id'] = None
+
+        def entry_missing(f):
+            del f['persistent-output.json']['workload_identities']['value']['loadgen']
+
+        def key_absent(f):
+            del f['persistent-output.json']['workload_identities']
+
+        def file_absent(f):
+            f['persistent-output.json'] = None
+
+        cases = (('uppercased', upper, 0, self.COMPLETE), ('different', different, 1, self.INCOMPLETE),
+                 ('none', none, 1, self.INCOMPLETE), ('entry_missing', entry_missing, 1, self.INCOMPLETE),
+                 ('key_absent', key_absent, 1, self.INCOMPLETE), ('file_absent', file_absent, 1, self.INCOMPLETE))
+        for name, mutate, expected_code, expected_out in cases:
+            with self.subTest(name):
+                files = self.files()
+                mutate(files)
+                code, out, private_written, artifact_written, factory = self.run_main(files)
+                self.assertEqual((code, out), (expected_code, expected_out))
+                if expected_code:
+                    factory.assert_not_called()
+                    self.assertFalse(private_written)
+                    self.assertFalse(artifact_written)
 
 
 if __name__ == '__main__':

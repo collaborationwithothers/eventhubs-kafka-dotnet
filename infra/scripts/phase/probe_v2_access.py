@@ -488,6 +488,15 @@ class ProductionReader:
                 signal.signal(sig, handler)
 
 
+def applied_principal(identities, account):
+    """Return the persistent layer's principal ID for an account, independent of the ephemeral output."""
+    identity = identities.get(account) if isinstance(identities, dict) else None
+    value = identity.get('principal_id') if isinstance(identity, dict) else None
+    if not isinstance(value, str):
+        raise Gap('input_invalid')
+    return value.lower()
+
+
 def main():
     if len(sys.argv) != 2:
         print('permission_evidence_incomplete'); return 1
@@ -495,13 +504,13 @@ def main():
     try:
         phase = decode((private / 'phase.json').read_bytes(), 131072)
         ephemeral = decode((private / 'ephemeral-output.json').read_bytes(), 1048576)
-        cluster = decode((private / 'cluster-output.json').read_bytes(), 1048576)
+        persistent = decode((private / 'persistent-output.json').read_bytes(), 4194305)
         scope = unwrap(ephemeral['probe_v2_role_scope'])
-        identities = unwrap(cluster['workload_identity'])['service_accounts']
+        identities = unwrap(persistent['workload_identities'])
         binding = {'run_id': phase['run_id'], 'source_commit': phase['source_commit'], 'namespace_id': scope['namespace_id'],
                    'principals': {a: scope['accounts'][a]['principal_id'] for a in ACCOUNTS}, 'targets': scope['topics']}
         validate_binding(binding)
-        if any(binding['principals'][a].lower() != identities[a]['principal_id'].lower() for a in ACCOUNTS):
+        if any(binding['principals'][a].lower() != applied_principal(identities, a) for a in ACCOUNTS):
             raise Gap('input_invalid')
         if not sys.platform.startswith('linux'):
             now = int(time.time() * 1000)
