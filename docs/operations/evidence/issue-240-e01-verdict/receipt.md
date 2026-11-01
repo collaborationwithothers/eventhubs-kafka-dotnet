@@ -19,7 +19,10 @@ The generator file is shared in content with the B08 verdict pull request, which
 
 ## Cold review record
 
-Round 1: mode comprehensive, input revision the staged tree on `claude/issue-240-e01-verdict` (diff SHA-256 `dccd5645` prefix), comparison revision `b358c58`. Its report and the dispositions are in the pull request description.
+Cumulative budget after round 2: 2 comprehensive, 0 focused. Rounds after round 2 are recorded in the pull request description, which links all reports and lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph.
+
+- Round 1: mode comprehensive, input revision the staged tree on `claude/issue-240-e01-verdict` (diff SHA-256 prefix `dccd5645`), comparison revision base `b358c58`. One P0 (the `results/` finding, expected without the label), one P1 (no predicate map record) and five P2. Corrected in `269c021`.
+- Round 2: mode comprehensive, input revision `269c021`, comparison revision the round 1 staged tree, base `b358c58`. The `results/` P0 again, one P1 (this section did not record round 2) and two P2: a missing seed-topic check in the generator and a stale hash sentence. Corrected in the commit after `269c021`.
 
 ## Specification comparison
 
@@ -59,7 +62,7 @@ Inputs are extracted under the session scratchpad.
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
 | `grep -nP '[^\x00-\x7F]'` over the five authored files | No match. |
 
-The result SHA-256 is `f902f88bfb8fa82590ebc7fe1cdfc82524c5ad236a799e0f8dd0f2b75a2c96d1`. The generator SHA-256 is `e76b4f34665feba86f1a9b7700f495fef2b82859aa12e2a0635183d24eca47f8`. Both are recorded before the cold-review fixes and may change; the pull request description is authoritative for the final head.
+The result SHA-256 is `f902f88bfb8fa82590ebc7fe1cdfc82524c5ad236a799e0f8dd0f2b75a2c96d1`. The generator SHA-256 is `3033f090b032b83932cc53ae1c0fbec61b82092c497c887c7341ae715e2f449b`. The generator hash includes the seed-topic check added after round 2; the result hash is unchanged. The pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 
