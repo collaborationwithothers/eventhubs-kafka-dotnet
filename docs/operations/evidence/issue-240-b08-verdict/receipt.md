@@ -41,7 +41,7 @@ Checked by script against the pod captures, not only the candidates: delivery an
 
 Computed, not measured: CRC-32 2046850398 and Murmur2 2245682434 of `b08-synthetic-0` give partitions 30 and 2 of 32. The Murmur2 port is checked against the 11 non-NULL vectors of the 12 in librdkafka v2.16.0 `src/rdmurmur2.c`; the 12th is NULL with the same expected value as the empty key. Sources read on 2026-11-01 at pinned versions: librdkafka v2.16.0 `rdkafka_msg.c`, `rdmurmur2.c`, `rdcrc32.c`, `rdcrc32.h`, `CONFIGURATION.md`; azure-docs `apache-kafka-configurations.md` at `6da87e3c59251e962dd0b37dbd99ae364d767150`.
 
-Inferred, and labelled as such in the report: node size from the pinned cluster configuration; that changing the partitioner can move a key to another partition (follows from the measured result for one key, not tested as a change on one hub); the report also states that some keys, such as `b08-synthetic-36`, map to the same partition under both algorithms, computed by script and not run.
+Inferred, and labelled as such in the report: node size from the pinned cluster configuration; that changing the partitioner can move a key to another partition (follows from the measured result for one key, not tested as a change on one hub); the report states only that one key was tested and does not claim that every key moves.
 
 Mutation gate: the generator compares each of the six configured C5 targets and the C5 configuration between `2dc9715e3de176f7e1cd55eee9c251e43c29c746` and the run source by git object ID. All are identical and the C5 commit is an ancestor of the run source. Per [decision 6551231489](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6551231489) and [decision 6554536413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/275#issuecomment-6554536413), the "did not measure" sentence therefore does not apply and the report says the run measured the same source. The 260 survivors are cited to issue 277.
 
@@ -59,7 +59,7 @@ Inputs are extracted under the session scratchpad.
 | `npm run check:docs` | Exit 0; 8 warnings, all in files this pull request does not change. |
 | `grep -nP '[^\x00-\x7F]'` over the five authored files | No match. |
 
-The result SHA-256 is `9a3e5ebbabe186712f168e652cfd1577292c451374960aa63a6e4f934afb6471`. The generator SHA-256 is `e76b4f34665feba86f1a9b7700f495fef2b82859aa12e2a0635183d24eca47f8`. Both are recorded before the cold-review fixes and may change; the pull request description is authoritative for the final head.
+The result SHA-256 is `9a3e5ebbabe186712f168e652cfd1577292c451374960aa63a6e4f934afb6471`. The generator SHA-256 is `e76b4f34665feba86f1a9b7700f495fef2b82859aa12e2a0635183d24eca47f8`. Both describe the corrected files at the round 2 revision `0c915cd`; the pull request description is authoritative for the final head.
 
 Not run: no workflow was dispatched and no Azure credential was used. No runtime code, test or `expected.yaml` changed, so no build or test run applies. Warning disposition: warnings in unchanged files are inherited.
 
