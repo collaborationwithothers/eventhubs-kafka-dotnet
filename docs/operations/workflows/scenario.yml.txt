@@ -879,7 +879,7 @@ jobs:
     needs: [batch]
     if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
-    environment: parchwell-scenarios
+    environment: parchwell-sweeper
     timeout-minutes: 360
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}

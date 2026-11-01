@@ -298,11 +298,19 @@ esac
             'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
         }
+        # The stop-only job uses the no-reviewer main-only environment so the
+        # dispatch-end AKS stop does not wait for a second approval.
+        expected_environments = {'batch': 'parchwell-scenarios', 'batch-stop': 'parchwell-sweeper'}
+        self.assertEqual(['batch-stop'], [name for name, job in self.all_jobs.items()
+                                          if job['environment'] == 'parchwell-sweeper'])
+        # That environment's secrets are reachable without a human gate, so the
+        # stop job must not reference any secret.
+        self.assertNotRegex(json.dumps(stop), r'\bsecrets\b')
         for name in expected_ids:
             job = self.all_jobs[name]
             self.assertEqual(expected_ids[name], [step['id'] for step in job['steps'] if 'id' in step])
             self.assertEqual('${{ vars.PARCHWELL_RUNNER_LABEL }}', job['runs-on'])
-            self.assertEqual('parchwell-scenarios', job['environment'])
+            self.assertEqual(expected_environments[name], job['environment'])
             self.assertEqual('360', job['timeout-minutes'])
             self.assertEqual('${{ inputs.scenario }}', job['env']['PARCHWELL_SCENARIO'])
             self.assertEqual('single-action', job['env']['PARCHWELL_PHASE'])
