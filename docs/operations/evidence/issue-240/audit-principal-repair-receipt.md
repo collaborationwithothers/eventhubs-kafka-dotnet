@@ -2,11 +2,14 @@
 
 This receipt records a fix to the F06 permission audit, `infra/scripts/phase/probe_v2_access.py`. Its `main()` compared the audited principal IDs with a `principal_id` key that the real cluster output does not have, so the audit stopped before any Graph or ARM request. The fix takes the comparison IDs from the persistent layer's outputs, and a new test runs `main()` against files shaped like the real Terraform outputs.
 
-Source commit for the commands below: `6ebaed0755b09becb75a47500ecff4196ded3302` (`origin/main`) plus the working-tree changes of this branch.
+Source commit for the commands below: this branch rebased onto `08f081c` (`origin/main` when the commands were rerun). The results of the first run, on `6ebaed0755b09becb75a47500ecff4196ded3302`, are kept below and labelled with that commit.
 
 ## Execution card
 
-- Deliverable: the three items of Hari's task brief of 2026-11-01, quoted under "Authorization".
+- Deliverable: the three items of Hari's task brief of 2026-11-01:
+  1. Make the cross-check use principal IDs that the real outputs actually contain, keeping an independent comparison. The brief names `probe_v2_role_scope` in `infra/ephemeral/outputs.tf` and says "`probe_v2.py` also reads `persistent-output.json` from the private directory. Choose the smallest correct source and justify it in the receipt."
+  2. Add a regression test that runs `main()` against private-directory files shaped like the real Terraform outputs (`phase.json`, `ephemeral-output.json`, `cluster-output.json`), with synthetic GUIDs, failing before the fix and passing after. Check every other key `main()` reads for the same mismatch.
+  3. Run the phase Python tests, the build and tests if .NET or chart code changes, and `npm run check:docs`.
 - Authorization: directly authorized work under [issue 240](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240), with no approved item plan for this fix. Hari's words in an interactive Claude Code session on 2026-11-01: "fix the F06 audit bug and open a PR". The task brief names the defect, the three deliverables and the limits: no workflow dispatch, no Azure credentials, no change under `results/`, to any `expected.yaml` or to any verdict, and no `.github/workflows/` change unless needed. This pull request does not authorize another F06 run; Hari decides that separately on issue 240.
 - Defect evidence: [scientific run 41292426657](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41292426657) on `main` at `8078e6fcc16b1115899fbfb3edfbb1299cb8eaf1`, and the [analysis comment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6556466439). That comment is evidence, not a decision.
 - Mandatory gates: the commands below; `npm run check:docs`; the cold review under AGENTS.md "Before opening a pull request" rule 8; hosted CI; Codex review; the merge under AGENTS.md GOVERNANCE "Merge rule".
@@ -16,7 +19,9 @@ Source commit for the commands below: `6ebaed0755b09becb75a47500ecff4196ded3302`
 
 ## Specification comparison
 
-The approved [Revision 7 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6490062145) says the CLI "reads phase/ephemeral/cluster outputs, checks identity/topic bindings". After this fix `main()` reads phase, ephemeral and persistent outputs, and no longer reads the cluster output. This is a deliberate deviation, made under the task brief, which names `persistent-output.json` as a candidate source. The plan names no source for the principal cross-check itself.
+The approved [Revision 7 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6490062145) says the CLI "reads phase/ephemeral/cluster outputs, checks identity/topic bindings". After this fix `main()` reads phase, ephemeral and persistent outputs, and no longer reads the cluster output. This is a deliberate deviation, made under the task brief, which names `persistent-output.json` as a candidate source. The plan names no source for the principal cross-check itself. Hari adopted the change in the [audit principal decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6556645278), which amends that sentence. `docs/operations/single-action-contract.md`, which carries the same sentence, is updated to match, and `docs/operations/a01-workflow.md` now states that F06 needs `workload_identities` in the secret.
+
+Deliverable 3: no .NET or chart code changes, so no build was run for this change.
 
 ## Choice of source
 
@@ -38,6 +43,8 @@ Not verified: that the current `PARCHWELL_PERSISTENT_OUTPUTS` secret contains `w
 - `infra/scripts/phase/probe_v2_access.py`: `main()` reads `persistent-output.json` with a 4194305-byte limit (the 4 MiB secret limit in `phase.py` plus the newline `write_private` adds), and compares each principal through a new `applied_principal` helper. The helper raises `Gap('input_invalid')` when the entry or its `principal_id` is missing or not a string. Without it a non-string value would raise `AttributeError`, which the catch-all in `main()` does not catch.
 - `infra/scripts/phase/tests/test_probe_v2_access.py`: new `MainTests`. It writes `phase.json`, `ephemeral-output.json`, `cluster-output.json` and `persistent-output.json` in the `terraform output -json` shapes of the three `outputs.tf` files, with synthetic GUIDs, and runs `main()` with the synthetic Graph and ARM reader.
 - `infra/scripts/phase/tests/test_probe_v2.py`: its `setUp` wrote `cluster-output.json` with a `principal_id` in each service account, which the real output lacks. It now writes only `name`, `client_id` and `subject`. This is the same fixture defect class (AGENTS.md "Before opening a pull request" rule 5).
+
+`docs/operations/single-action-contract.md` and `docs/operations/a01-workflow.md`: one sentence each, as above.
 
 No Terraform, workflow, chart, .NET, `results/`, `expected.yaml` or verdict file changes. No item state file is written: docs/agents/factory.md "Item state file" makes the `implement-plan` session its only writer, and this is not such a session.
 
@@ -80,17 +87,29 @@ Run from the repository root with Python 3 from the container. The phase tests r
 | --- | --- |
 | `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_probe_v2_access.py' -v`, new tests present, fix absent | `Ran 33 tests`, `FAILED (failures=3, errors=1)`: `test_main_with_real_output_shapes` (exit 1, not 0), `test_main_principal_cross_check [uppercased]`, and `test_both_streams_capped (stream='stderr')` failure and error |
 | The same command, fix applied | `Ran 33 tests`, `FAILED (failures=1, errors=1)`: only `test_both_streams_capped (stream='stderr')` |
-| `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py' -v`, this branch | `Ran 187 tests`, `FAILED (failures=1, errors=1)`: only `test_both_streams_capped (stream='stderr')` |
-| The same suite on `origin/main` (changes stashed) | `Ran 185 tests`, `FAILED (failures=1, errors=1)`: the same test |
+| `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py' -v`, this branch on `6ebaed0` | `Ran 187 tests`, `FAILED (failures=1, errors=1)`: only `test_both_streams_capped (stream='stderr')` |
+| The same suite on `6ebaed0` (changes stashed) | `Ran 185 tests`, `FAILED (failures=1, errors=1)`: the same test |
 | `git diff --check` | no output |
+| The full-suite command above, this branch rebased onto `08f081c`, Helm 4.3.1 on `PATH` | `Ran 188 tests`, `FAILED (failures=1, errors=1)`: only `test_both_streams_capped (stream='stderr')` |
+| `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_probe_v2_access.py'`, rebased branch | `Ran 33 tests`, `FAILED (failures=1, errors=1)`: the same test |
+| The full suite on `08f081c` alone | `Ran 186 tests`, `FAILED (failures=1, errors=1)`: the same test |
 
-`test_both_streams_capped (stream='stderr')` fails on `origin/main` too, with `Gap not raised`. This change does not touch `ProductionReader`. Its cause in this container is not diagnosed.
+`test_both_streams_capped (stream='stderr')` fails on `6ebaed0` too, with `Gap not raised`. This change does not touch `ProductionReader`. Its cause in this container is not diagnosed.
 
 `npm ci --ignore-scripts && npm run check:docs` gives `8 warnings`, none in a changed file. Blanket line: the 8 baseline warnings are in unchanged files (`docs/agents/factory.md` 2, `docs/operations/evidence/issue-124/README.md` 1, `docs/operations/evidence/issue-140/README.md` 2, `docs/operations/evidence/issue-211/receipt.md` 3).
 
 ## Cold review input
 
 Round 1: comprehensive review of the whole authored diff, `git diff --cached --merge-base origin/main`, with merge base `6ebaed0755b09becb75a47500ecff4196ded3302`. Specification sources: the task brief and issue 240 above, and the Revision 7 plan for the deviation recorded under "Specification comparison".
+
+Round 1 report, against `214dee45b6b137f0463f7205d05f55e76fee722c`: 3 findings at P1, 2 at P2. Dispositions, applied together before round 2:
+- P1, plan input changed without a recognized decision: fixed by Hari's [audit principal decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/240#issuecomment-6556645278).
+- P1, `docs/operations/single-action-contract.md` still named the cluster output: fixed. That path is not protected: `.github/CODEOWNERS` lists `/docs/operations/` with no owner, and the ruleset excludes it.
+- P1, the receipt did not record the brief's deliverables: fixed under "Execution card".
+- P2, `6ebaed0` was labelled `origin/main` after `main` moved: fixed. The branch is rebased onto `08f081c` and the suite was rerun there.
+- P2, nothing stated that F06 needs `workload_identities` in the secret: fixed in prose in `docs/operations/a01-workflow.md`. A preparation-time check in `phase.py` is not added; it would be new scope beyond the brief.
+
+Round 2: comprehensive review of the whole authored diff against merge base `08f081c`, the second and last comprehensive pass this pull request may use.
 
 ## Models
 
