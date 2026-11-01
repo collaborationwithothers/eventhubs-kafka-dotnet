@@ -55,7 +55,6 @@ No difference between the plan and the repository changed any meaning. No `resul
 | `Bind` native value | whitespace and CR or LF rejected; empty leaves `""` | `ProbeV2OptionsTests` |
 | `Redact` | each rewrite in the plan's list, including empty `FederatedTokenFile` and `TenantId` | `ProbeV2NativeAuthenticationTests` |
 | Capture redaction | `Log`, `Error`, `Exception`, `Delivery`; null `redact` records raw text | `ProbeV2CaptureTests` |
-
 | `ProcessLifetimeSeconds` (`produce_one && WindowMs == 330000`) | native stage (`WindowMs` 120000) needs 840; existing `produce_one` stages still need 1920 | `ProbeV2OptionsTests` |
 | `ProbeV2Stage.For` native arm (`number == 6`) | C6 accepted; C9 rejected as `v2_stage`; no C7 or below-boundary case, because configuration validity (`v2_configuration`) runs first and the chart rejects other configurations | `ProbeV2OptionsTests`, `test_probe_v2_chart.py` |
 | `stages(..., native)` C6-only gate | C6 gains three stages; C9 and every other configuration equal `main` | `test_probe_v2.py` |
@@ -67,7 +66,9 @@ In `batch_items`, only the `not refresh_test` factor of the native check is inde
 
 ## Verification record
 
-Run on the finished diff in this session's container (Linux, .NET SDK 10.0.402 installed from the official script, Helm 4.3.1 and kubeconform 0.8.0 with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`).
+Source commits: the Python, chart, host, `verify-dotnet.sh` and docs runs were made on the working tree that became commit `d6127a0` (source and test files identical to it; the receipt and state file were written after those runs). After the round 1 corrections, which only rename the 24 new tests and edit this receipt and `items/244/state.md`, the solution build, the LoadGen tests, `WorkflowAuthenticationContractTests` (with `PARCHWELL_REPOSITORY_ROOT` set) and `npm run check:docs` were run again on the tree that became commit `43df08a`. The Python tests do not depend on C# test names and were not rerun.
+
+Run in this session's container (Linux, .NET SDK 10.0.402 installed from the official script, Helm 4.3.1 and kubeconform 0.8.0 with the SHA-256 values pinned in `infra/scripts/lifecycle/install-tools.sh`).
 
 | Command | Result |
 |---|---|
@@ -97,3 +98,7 @@ Round 1: comprehensive (1 of 2), reviewed commit `d6127a0` against `a3b9e10`. Re
 - P2 (predicate map gaps): fixed in "Predicate map".
 
 Round 2: comprehensive (2 of 2). Input: the staged diff against `origin/main` at `a3b9e10`, which contains the Round 1 corrections. Comparison revision: `d6127a0`. Cumulative before this round: 1 comprehensive, 0 focused.
+
+Round 2 result: reviewed tree of commit `43df08a` against `a3b9e10`; 1 P1, 1 P2. Dispositions: P1 (the verification record named no commit for its results): fixed by the "Source commits" paragraph under "Verification record". P2 (a blank line split the predicate-map table): fixed.
+
+Round 3: focused (1 of 2). Input: the change since `43df08a`, which edits only this receipt. Comparison revision: `43df08a`. The full pull request diff against `a3b9e10` is context. Cumulative before this round: 2 comprehensive, 0 focused. The comprehensive budget is spent; this round reports only unresolved findings and the corrections.
