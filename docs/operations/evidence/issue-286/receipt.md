@@ -20,7 +20,7 @@ Limit: change only CLAUDE.md, this receipt and the self-review record. Dispatch 
 - Authorization: the brief above; no plan approval is claimed.
 - Mandatory gates: `npm run check:docs`; cold review under AGENTS.md "Before opening a pull request" rule 8; hosted CI; Codex review. CLAUDE.md is protected, so only Hari merges.
 - Verification commands: see "Commands and results".
-- Publication checkpoint: open a draft pull request after the first cold review with no P0 or P1.
+- Publication checkpoint: planned after the first cold review with no P0 or P1. Hari instructed in the session to open the draft pull request while that review was running, so the push (7aee2cb) preceded its report.
 - Review budget: rule 8 as written; exhaustion action is its review-budget handoff to Hari.
 
 ## Predicate map
@@ -32,9 +32,9 @@ Not applicable; no verifier predicate changes.
 | Claim in CLAUDE.md | Source | Kind | Date |
 |---|---|---|---|
 | `create_session` defaults `model` to the calling session's model | The `model` parameter of the `create_session` tool definition in this session: "Model ID for the new session. Defaults to the calling session's model." | Tool metadata of the harness, not official documentation | 2026-11-01 |
-| No official documentation of `create_session` | I did not find any; I read only the sub-agents page, which covers the Agent tool, not `create_session` | Absence of evidence, stated as such | 2026-11-01 |
+| No official page on `create_session` was read | I read only the sub-agents page, which covers the Agent tool, not `create_session`; I ran no search for a `create_session` page | Not a finding of absence | 2026-11-01 |
 | The Agent tool's `model` parameter accepts `sonnet`, `opus`, `haiku`, `fable` | Observed in the Agent tool definition in this session (enum of those four). The sub-agents page, "Choose a model", says the per-invocation parameter "takes a model alias: `sonnet`, `opus`, `haiku`, or `fable`" (https://code.claude.com/docs/en/sub-agents, fetched 2026-11-01, first 100000 of 116219 characters read) | Tool definition plus official documentation | 2026-11-01 |
-| An alias selects the latest model of its family | Carried over unchanged from the earlier sentence; I did not re-verify it in this change | Inherited, unverified here | 2026-11-01 |
+| An alias resolves to the version it points to, except that a same-family main-conversation model is used exactly | The sub-agents page, "Choose a model": "a family alias such as `opus` ... resolves to the main conversation's model instead of the version the alias points to" when "The main conversation's model belongs to that family" (fetched 2026-11-01). The earlier claim "latest model of that family" is removed: round 1 cold review P1 found the page never says it | Official documentation | 2026-11-01 |
 | Haiku tier is a policy choice without measurement | Hari's decision in the task brief | Hari's decision | 2026-11-01 |
 
 The previous sentence said the tool "accepts only the aliases `opus` and `sonnet`". That was stale: the tool definition lists four.
@@ -48,4 +48,10 @@ The previous sentence said the tool "accepts only the aliases `opus` and `sonnet
 | `git diff --check` | no output |
 | `git diff --name-only origin/main...HEAD` | `CLAUDE.md`, `docs/operations/evidence/issue-286/receipt.md` |
 
-The cold-review record is in the pull request description.
+## Cold review round 1 (comprehensive)
+
+Reviewer: `repo-reviewer`, spawned without `model`. Its definition pins `claude-opus-5-5`; its report does not state the resolved model, so the resolved model is not recorded here. Reviewed revision 7aee2cb against `origin/main` 08f081c; report complete. Findings: P1 on the "latest model of that family" sentence (valid; the page never says "latest"; fixed by citing the documented resolution rule); P2 on over-broad source wording for the `create_session` default and for the absence of documentation (valid; reworded in CLAUDE.md and in the sources table). Noted as pre-existing in round 1; round 2 found this diff changes that sentence (see below). Cumulative: 1 comprehensive, 0 focused. The fixes go to one consolidated comprehensive re-review.
+
+## Cold review round 2 (comprehensive)
+
+Reviewer: `repo-reviewer`, spawned without `model`; its report states it ran on `claude-opus-5-5` "as my environment states" (self-reported, not independently observed). Reviewed the staged tree on top of 7aee2cb against `origin/main` 08f081c; report complete. Findings: no P0 or P1; round 1's P1 confirmed fixed. One P2: the changed "pin the exact identifiers" sentence extended full-ID pinning to Haiku subagents, but the Agent tool cannot pass a full ID (sub-agents page, "Choose a model", fetched 2026-11-01), so a workflow author could be misled. Valid; prose-only in a changed file. Fixed in CLAUDE.md "Subagents" by naming where a full ID is accepted (`--model`, subagent frontmatter, `CLAUDE_CODE_SUBAGENT_MODEL`) and that an Agent tool call takes an alias. Cumulative: 2 comprehensive, 0 focused; one focused P2-correction review (P0 and P1 only) follows under AGENTS.md rule 8, before the push of the fixes.
