@@ -3,7 +3,6 @@ from pathlib import Path
 import importlib.util
 import json
 import os
-import re
 import subprocess
 import tempfile
 import unittest
@@ -305,10 +304,8 @@ esac
         self.assertEqual(['batch-stop'], [name for name, job in self.all_jobs.items()
                                           if job['environment'] == 'parchwell-sweeper'])
         # That environment's secrets are reachable without a human gate, so the
-        # stop job may reference only the three Azure identifiers that
-        # azure/login needs (issue 118), and no other secret.
-        allowed_secrets = r'secrets\.AZURE_(?:CLIENT|TENANT|SUBSCRIPTION)_ID\b'
-        self.assertNotRegex(re.sub(allowed_secrets, '', json.dumps(stop)), r'\bsecrets\b')
+        # stop job must not reference any secret.
+        self.assertNotRegex(json.dumps(stop), r'\bsecrets\b')
         for name in expected_ids:
             job = self.all_jobs[name]
             self.assertEqual(expected_ids[name], [step['id'] for step in job['steps'] if 'id' in step])
