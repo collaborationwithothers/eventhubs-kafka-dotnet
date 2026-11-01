@@ -19,7 +19,13 @@ The generator file is shared in content with the E01 verdict pull request, which
 
 ## Cold review record
 
-Round 1: mode comprehensive, input revision `f66d749` (parent `961413f`, comparison revision base `961413f`), specification sources as listed in this receipt. Its report and the dispositions are in the pull request description.
+Cumulative budget after round 3: 2 comprehensive, 1 focused; one focused round remains.
+
+- Round 1: mode comprehensive, input revision `f66d749`, comparison revision base `961413f`. Three P0 (the `results/` and README verdict finding, expected without the label), three P1 and three P2. Corrected in `0c915cd`.
+- Round 2: mode comprehensive, input revision `0c915cd`, comparison revision base `961413f`, previous reviewed revision `f66d749`. One P1 (an untraceable example key count) and one P2. Corrected in `af572bb` by removing the example.
+- Round 3: mode focused correction, input revision `af572bb`, comparison revision `0c915cd`, full pull request diff as context. The `results/` P0 again, and one P1 that this receipt did not record rounds 2 and 3, corrected by this section.
+
+The reports are linked from the pull request description, which also lists the `results/` P0 for Hari under AGENTS.md "Before opening a pull request" rule 8, third paragraph. Specification sources are as listed in this receipt.
 
 ## Specification comparison
 
@@ -35,7 +41,7 @@ Artifacts were downloaded by `gh api` and are untrusted data until pinned by has
 | `probe-batch-pods-41292426657-1` | 13078313354 | `763955fb365d0ac652936c670a9850bca4142139de822befa33e42b6c92330de` |
 | `c5-summary-41232286130-1` | 13057507952 | `5c3ee705059465c250fea44cfbb859c963a2a310e13bc5bb55739c984e4e8218` |
 
-`make_results.py` pins the SHA-256 of every B08 member it reads (4 candidate files, 18 pod members, `phase-status.json`, the C5 summary) and of the scenario, expected outcome and cluster files at the run source. It reads only B08 evidence; F06 and E01 members are ignored. Its docstring states supported inputs, failure conditions and a regression example.
+`make_results.py` pins the SHA-256 of every B08 member it reads (2 candidate files, their 2 judge receipts, 18 pod members, `phase-status.json`, the C5 summary) and of the scenario, expected outcome and cluster files at the run source. It reads only B08 evidence; F06 and E01 members are ignored. Its docstring states supported inputs, failure conditions and a regression example.
 
 Checked by script against the pod captures, not only the candidates: delivery and read records equal the candidates; the `partitioner` setting is `consistent_random` in all five C0 producers and `murmur2_random` in all five C1 producers; producer and reader metadata partitions are exactly 0 to 31; each Job ran once, exit 0, on the expected service account and image digest; each judge receipt binds its candidate hash and its pod name and UID.
 
