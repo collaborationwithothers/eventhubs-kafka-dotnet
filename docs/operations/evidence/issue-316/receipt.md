@@ -17,11 +17,11 @@ This pull request adds the closed `idle_observation` declaration for A02, A03 an
 
 ## Predicate map
 
-The plan's "Enforced checks" table is the map. Every row has a test in `tests/Parchwell.Scenarios.Tests/IdleObservationDefinitionTests.cs` or `tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs`: checks 1 to 7 by the committed-file theory and the mutated-file theory (each mutation asserts one occurrence of its `before` text), checks 8 to 11 by the key theory at below, at and above each bound.
+The plan's "Enforced checks" table is the map. Every row has a test in `tests/Parchwell.Scenarios.Tests/IdleObservationDefinitionTests.cs` or `tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs`: checks 1 to 7 by the committed-file theory and the mutated-file theory (each mutation asserts one occurrence of its `before` text), checks 8, 9 and 11 by the key theory, and check 10 by `Given_IdleKeyOnVerifierOrOmitOnIntegerKey_When_Loading_Then_Rejects` and the per-entry role assertions in `ScenarioOverrideMetadataTests`, at below, at and above each bound.
 
 ## Commands and results
 
-Branch cut from `main` at `8d225aae4c1a6ad92024098beebf68d0389c797d`. .NET SDK 10.0.402 was installed with the official install script into a scratch directory.
+Branch cut from `main` at `8d225aae4c1a6ad92024098beebf68d0389c797d`. Every command below ran on the tree of commit `08c9a02` (the receipt is the only later change). .NET SDK 10.0.402 was installed with the official install script into a scratch directory.
 
 1. Change 9 fixture script: printed `capabilities.json 29160 38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a` and `index.json 932 7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f`, equal to the plan's two lines. `GoldenArtifactWriterTests` and the golden reader tests are not among the failures below.
 2. Acceptance 4 script printed `remarks copied`.
@@ -29,4 +29,5 @@ Branch cut from `main` at `8d225aae4c1a6ad92024098beebf68d0389c797d`. .NET SDK 1
 4. Because the script stops there, the remaining suites ran directly with `dotnet test --project ... -c Release --no-build`: `Parchwell.Scenarios.Tests` 286 passed, 0 failed. `Parchwell.LoadGen.Tests` 757 passed, 4 failed, all named `Given_LocalKafka...` or `Given_RealLocalKafkaRun...`. `Parchwell.Verifier.Tests` 4659 passed, 12 failed, all in `Component` tests whose message is "Failed to connect to Docker endpoint". These 17 failures are environmental; they are not verified on `main` here. The pull request's `dotnet-verification.yml` run on the head is the evidence for them.
 5. `./scripts/verify-kafka-coverage.sh` was not run here. The CI coverage step is the evidence for plan acceptance 2.
 6. `npm run check:docs`: `8 warnings`, none in the changed documents or `items/316/state.md`; all are in files this change does not touch.
-7. `git diff --check origin/main...HEAD`: no output. `git diff --name-only origin/main...HEAD` lists 21 paths before this receipt.
+7. Plan acceptance 5: `sha256sum` of the committed files printed `38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a` for `capabilities.json` and `7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f` for `index.json`. Acceptance 7: `git diff origin/main...HEAD -- tests/Parchwell.Verifier.Tests` shows one removed and one added line. Acceptance 8: the `grep` printed nothing and exited 1. Acceptance 3: `npm run check:docs` exited 0 (item 6).
+8. `git diff --check origin/main...HEAD`: no output. `git diff --name-only origin/main...HEAD` lists 21 paths before this receipt.
