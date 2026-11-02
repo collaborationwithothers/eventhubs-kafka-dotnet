@@ -12,7 +12,7 @@ This pull request sets `metadata.max.age.ms` and `topic.metadata.refresh.interva
 
 ## Plan deviations and choices
 
-One deviation. The plan's edits applied by an exact-once replace script and each anchor matched. Afterwards the contract paragraph's sentence on the #320 observation (change 7) was narrowed to what that observation states, because the plan's wording, "every quiet period on a connected broker ended at a Metadata request", omits the condition "on a connection that stayed UP", the six disconnect-ended periods and the interval-level coincidence (see the Review record). The plan's two non-blocking P2s from the plan check are not applied: the CODEOWNERS wording sits in plan text only, and `docs/operations/kafka-configuration-explained.md` line 47 is outside the plan's files and the check did not mark it `apply in implementation`. The wording in that file, that only A03 C2 overrides `topic.metadata.refresh.interval.ms`, is therefore now incomplete; it is left for a later change.
+One deviation. The plan's edits applied by an exact-once replace script and each anchor matched. Afterwards the contract paragraph's sentence on the #320 observation (change 7) was reworded to follow that observation's headline (66 of 66 on connections that stayed up, two straddling a report boundary, six disconnect-ended), because the plan's wording, "every quiet period on a connected broker ended at a Metadata request", omits the condition "on a connection that stayed UP", the six disconnect-ended periods and the interval-level coincidence (see the Review record). The plan's two non-blocking P2s from the plan check are not applied: the CODEOWNERS wording sits in plan text only, and `docs/operations/kafka-configuration-explained.md` line 47 is outside the plan's files and the check did not mark it `apply in implementation`. The wording in that file, that only A03 C2 overrides `topic.metadata.refresh.interval.ms`, is therefore now incomplete; it is left for a later change.
 
 ## Predicate map
 
@@ -21,8 +21,9 @@ One deviation. The plan's edits applied by an exact-once replace script and each
 
 ## Review record
 
-- Cold review pass 1: comprehensive (1 of 2 comprehensive, 0 of 2 focused), input revision 66f1dd2db633c87bc9268e80e4a0438132c37cae, comparison origin/main f0850d44086c4065cad76e64da6ec6f2d9cc50ce. Findings: two P0 on the protected \`scenarios/A02/expected.yaml\` and \`scenarios/A04/expected.yaml\` (kept under rule 8, third paragraph: plan changes 8 and 9 require them; listed in the pull request description), one P1 on the contract sentence (fixed, above), one P1 that this receipt lacked the review mode and revisions (fixed by this section), one P2 on the state file's \`Item plan\` (fixed).
+- Cold review pass 1: comprehensive (1 of 2 comprehensive, 0 of 2 focused), input revision 66f1dd2db633c87bc9268e80e4a0438132c37cae, comparison origin/main f0850d44086c4065cad76e64da6ec6f2d9cc50ce. Findings: two P0 on the protected `scenarios/A02/expected.yaml` and `scenarios/A04/expected.yaml` (kept under rule 8, third paragraph: plan changes 8 and 9 require them; listed in the pull request description), one P1 on the contract sentence (fixed, above; round 2 found the fix still over-stated the timing and the counter interval, and a second fix followed), one P1 that this receipt lacked the review mode and revisions (fixed by this section), one P2 on the state file's `Item plan` (fixed).
 - Cold review round 2: focused (1 of 2 comprehensive, 1 of 2 focused), input revision the branch head after the pass 1 corrections, comparison revision 66f1dd2db633c87bc9268e80e4a0438132c37cae; it reviews the corrections to the contract sentence, this section and the state file's `Item plan`, with the full pull request diff as context.
+- Cold review round 3: focused (1 of 2 comprehensive, 2 of 2 focused), input revision the branch head after the round 2 corrections, comparison revision 55f66bc0efcc4b96d07ec1c0e92971339c569f1f. Round 2 reported one P1 (the contract sentence still over-stated the timing and the counter interval), fixed by rewording to the observation's headline.
 
 ## Commands and results
 
@@ -36,3 +37,4 @@ Run on commit 8a0c1b366d756a1490481b851a97a529178cf1ed (all code, tests and docs
 6. Acceptance 6: `git diff --name-only origin/main...HEAD` lists the ten plan paths plus this receipt (eleven; the receipt is required by rule 8).
 7. Acceptance 7: the plan's script prints `ok`.
 8. Acceptance 8: the ASCII scan prints nothing.
+9. `npm run check:docs` again before rounds 2 and 3: 8 warnings, none in a changed file.
