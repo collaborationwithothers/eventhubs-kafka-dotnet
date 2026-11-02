@@ -8,9 +8,13 @@ configurations:
   C0:
     LoadGenProducer:
       connections.max.idle.ms: omit
+      metadata.max.age.ms: 900000
+      topic.metadata.refresh.interval.ms: 900000
   C1:
     LoadGenProducer:
       connections.max.idle.ms: 180000
+      metadata.max.age.ms: 900000
+      topic.metadata.refresh.interval.ms: 900000
 fault:
   live:
     kind: none

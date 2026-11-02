@@ -146,8 +146,8 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.Debug, ["cgrp", "topic,fetch,metadata"], false, true,
             [KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], ["C08", "F04"], [NativeConfiguration]),
         new(KafkaSettingKeys.SocketKeepaliveEnable, KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["A02"], [NativeConfiguration]),
-        new(KafkaSettingKeys.MetadataMaxAgeMs, KafkaScenarioOverrideValueKind.Integer, 1, 86_400_000, [KafkaClientRole.LoadGenProducer], ["A03"], [NativeConfiguration]),
-        new(KafkaSettingKeys.TopicMetadataRefreshIntervalMs, KafkaScenarioOverrideValueKind.Integer, -1, 3_600_000, [KafkaClientRole.LoadGenProducer], ["A03"], [NativeConfiguration]),
+        new(KafkaSettingKeys.MetadataMaxAgeMs, KafkaScenarioOverrideValueKind.Integer, 1, 86_400_000, [KafkaClientRole.LoadGenProducer], ["A02", "A03", "A04"], [NativeConfiguration]),
+        new(KafkaSettingKeys.TopicMetadataRefreshIntervalMs, KafkaScenarioOverrideValueKind.Integer, -1, 3_600_000, [KafkaClientRole.LoadGenProducer], ["A02", "A03", "A04"], [NativeConfiguration]),
         new(KafkaSettingKeys.ConnectionsMaxIdleMs, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["A04"], ["A04"], [NativeConfiguration, NativeSource])
     ];
 

@@ -61,15 +61,16 @@ internal static class IdleObservationDefinitionReader
         return new(Action, KafkaClientRole.LoadGenProducer, IdleSeconds, StatisticsIntervalMs, MaxStatisticsReports);
     }
 
-    // The configurations fixed by the #301 decisions; C0 is the librdkafka default in each item.
+    // The configurations fixed by the #301 decisions; C0 uses the librdkafka default of the item's varied key.
+    // A02 and A04 also hold both metadata timers above the idle period (#329).
     private static ImmutableDictionary<string, ImmutableArray<string>> Configurations(string item)
     {
         var rows = ImmutableDictionary.CreateBuilder<string, ImmutableArray<string>>(StringComparer.Ordinal);
         switch (item)
         {
             case "A02":
-                rows.Add("C0", ["LoadGenProducer:socket.keepalive.enable=false"]);
-                rows.Add("C1", []);
+                rows.Add("C0", ["LoadGenProducer:socket.keepalive.enable=false", "LoadGenProducer:metadata.max.age.ms=900000", "LoadGenProducer:topic.metadata.refresh.interval.ms=900000"]);
+                rows.Add("C1", ["LoadGenProducer:metadata.max.age.ms=900000", "LoadGenProducer:topic.metadata.refresh.interval.ms=900000"]);
                 break;
             case "A03":
                 rows.Add("C0", ["LoadGenProducer:metadata.max.age.ms=900000"]);
@@ -77,8 +78,8 @@ internal static class IdleObservationDefinitionReader
                 rows.Add("C2", ["LoadGenProducer:topic.metadata.refresh.interval.ms=180000"]);
                 break;
             case "A04":
-                rows.Add("C0", ["LoadGenProducer:connections.max.idle.ms=omit"]);
-                rows.Add("C1", ["LoadGenProducer:connections.max.idle.ms=180000"]);
+                rows.Add("C0", ["LoadGenProducer:connections.max.idle.ms=omit", "LoadGenProducer:metadata.max.age.ms=900000", "LoadGenProducer:topic.metadata.refresh.interval.ms=900000"]);
+                rows.Add("C1", ["LoadGenProducer:connections.max.idle.ms=180000", "LoadGenProducer:metadata.max.age.ms=900000", "LoadGenProducer:topic.metadata.refresh.interval.ms=900000"]);
                 break;
         }
         return rows.ToImmutable();
