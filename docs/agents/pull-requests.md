@@ -4,7 +4,7 @@ This file holds the rules for work that a pull request will publish: the executi
 
 The text moved here unchanged from AGENTS.md in the third governance pull request for issue #264 ([decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/264#issuecomment-6570202237)). `/docs/` is a protected path (GOVERNANCE "Merge rule"; `.github/CODEOWNERS` mirrors the list), so a change to this file reaches `main` only through Hari's merge, as a change to AGENTS.md does.
 
-Rule numbers are those of AGENTS.md "Before opening a pull request". A bare rule number means the rule of that number in that section: rules 1 to 10 are here, and rules 11 to 13 are in AGENTS.md. A section name with no file, such as GOVERNANCE "Merge rule" or "Code Review Rules", names a section of AGENTS.md.
+Rule numbers are those of AGENTS.md "Before opening a pull request". A bare rule number means the rule of that number in that section: rules 1 to 10 are here, and rules 11 to 13 are in AGENTS.md. A section name with no file, such as GOVERNANCE "Merge rule" or "Code Review Rules", names a section of AGENTS.md. Where AGENTS.md says that "this file" wins a conflict, this file counts as part of AGENTS.md.
 
 ## Rules
 
@@ -46,4 +46,3 @@ Before the first cold review of verifier work, map each changed or affected pred
     The pull request description links its approved plan. A pull request with no approved plan, such as a governance or documentation change, has no plan checks, so its P2 findings take the last case. The checks a plan lists are its "Enforced checks" field or, for a plan approved before that field existed, the checks its text names. Codex findings are answered in their review thread and cold-review findings in the self-review record. A cold-review P0 or P1 answered `Not valid:` is also listed in the pull request description, so Hari sees the dispute.
 
     A pull request that cannot clear Codex review uses rule 11, subject to rule 8's review-budget handoff to Hari.
-
