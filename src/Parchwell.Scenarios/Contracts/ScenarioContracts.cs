@@ -147,8 +147,8 @@ public sealed record ProbeV2Definition(ImmutableDictionary<string, ProbeV2Config
 public sealed record ProbeV2Configuration(string Action, KafkaClientRole Role, string ServiceAccount, string Topic,
     string PartitionMode, int? Partition, string ValueKind, int WindowMs, string KeyRule, string ReadRule);
 
-/// <summary>The validated idle-observation declaration of A02, A03 or A04; owning checks are in scenario-contract.md, "Idle observation declarations".</summary>
-public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role);
+/// <summary>The validated idle-observation declaration of A02, A03 or A04, with its fixed timing literals; owning checks are in scenario-contract.md, "Idle observation declarations".</summary>
+public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role, int IdleSeconds, int StatisticsIntervalMs, int MaxStatisticsReports);
 
 /// <summary>The validated fixed single-action rows; owning checks are in scenario-contract.md.</summary>
 public sealed record SingleActionDefinition(ImmutableDictionary<string, SingleActionConfiguration> Configurations);

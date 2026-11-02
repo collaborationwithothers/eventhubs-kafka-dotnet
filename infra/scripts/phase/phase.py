@@ -32,6 +32,7 @@ SINGLE_ACTION_CONFIGURATIONS = (
 )
 SINGLE_ACTION_ITEMS = ('B01', 'B03', 'B05', 'C08', 'C12', 'F04')
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
+IDLE_MODE = "idle-observation"
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
 SEED_RECEIPT_MARKER = "PARCHWELL_F04_SEED_RECEIPT "
@@ -185,6 +186,8 @@ def unwrap(value):
 def job_name(run, phase, mode, repeat=None, item=None, configuration=None, action_role=None):
     if mode == "single-action-seed":
         return f"{run}-f04-seed"
+    if mode == IDLE_MODE:
+        return f"{run}-{item.lower()}-{configuration.lower()}-idle"
     if mode in SINGLE_ACTION_MODES:
         suffix = "single-judge" if mode == "single-action-judge" else "single"
         return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
@@ -238,6 +241,13 @@ class Phase:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module.ProbeV2(self)
+
+    def idle_observation(self):
+        source = Path(__file__).with_name("idle_observation.py")
+        spec = importlib.util.spec_from_file_location("parchwell_idle_observation", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.IdleObservation(self)
 
     def read(self, name):
         return strict_json((self.private / name).read_bytes())
@@ -494,6 +504,8 @@ class Phase:
         return 0
 
     def values(self, mode, repeat, item=None, configuration=None, action_role=None):
+        if mode == IDLE_MODE:
+            return self.idle_observation().values(item, configuration)
         phase = self.read("phase.json")
         ephemeral = self.read("ephemeral-output.json")
         persistent = self.read("persistent-output.json")
@@ -546,6 +558,8 @@ class Phase:
                   "deadline": None, "outcome": "not_attempted"}
         if mode in SINGLE_ACTION_MODES:
             record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
+        elif mode == IDLE_MODE:
+            record.update(item=item, configuration=configuration, role=action_role)
         state["modes"].append(record)
 
         def save():
@@ -563,7 +577,7 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
-                if mode in SINGLE_ACTION_MODES:
+                if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE:
                     record["reason"] = "safety_stop"
                     save()
                 return record
@@ -607,7 +621,7 @@ class Phase:
                 empty = False
                 if not confirmed:
                     try:
-                        decode = single_action_json if mode in SINGLE_ACTION_MODES else strict_json
+                        decode = single_action_json if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE else strict_json
                         confirmation_data = decode(confirmation.read_bytes())
                         empty = isinstance(confirmation_data, dict) and confirmation_data.get("items") == []
                     except (Failure, OSError, ValueError, AttributeError):

@@ -10,7 +10,8 @@ namespace Parchwell.Scenarios.Tests;
 [Trait("Category", "Unit")]
 public sealed class IdleObservationDefinitionTests
 {
-    private const string Block = "idle_observation:\n  action: produce\n  role: LoadGenProducer\n";
+    private const string Timing = "  idle_seconds: 420\n  statistics_interval_ms: 15000\n  max_statistics_reports: 80\n";
+    private const string Block = "idle_observation:\n  action: produce\n  role: LoadGenProducer\n" + Timing;
 
     [Theory]
     [InlineData("A02")]
@@ -20,7 +21,7 @@ public sealed class IdleObservationDefinitionTests
     {
         var loaded = await Load(item);
         var definition = loaded.Definition;
-        Assert.Equal(new IdleObservationDefinition("produce", KafkaClientRole.LoadGenProducer), definition.IdleObservation);
+        Assert.Equal(new IdleObservationDefinition("produce", KafkaClientRole.LoadGenProducer, 420, 15000, 80), definition.IdleObservation);
         Assert.Null(definition.SingleAction);
         Assert.Null(definition.ProbeV2);
         Assert.Equal([KafkaClientRole.LoadGenProducer], definition.Roles);
@@ -45,6 +46,7 @@ public sealed class IdleObservationDefinitionTests
             Assert.Equal(settings.OrderBy(x => x.Key, StringComparer.Ordinal),
                 role.Settings.Select(x => KeyValuePair.Create(x.Key, x.Value.Value)).OrderBy(x => x.Key, StringComparer.Ordinal));
             Assert.Equal(changes.Where(c => c.Value is null).Select(c => c.Key), role.ScenarioOmissions.Select(o => o.Key));
+            Assert.Equal("15000", role.Settings["statistics.interval.ms"].Value);
         }
     }
 
@@ -69,9 +71,16 @@ public sealed class IdleObservationDefinitionTests
     }
 
     [Theory]
-    [InlineData("A02", Block, "idle_observation:\n  action: produce_one\n  role: LoadGenProducer\n", "idle_observation_literal")]
-    [InlineData("A02", Block, "idle_observation:\n  action: null\n  role: LoadGenProducer\n", "idle_observation_literal")]
-    [InlineData("A02", Block, "idle_observation:\n  action: produce\n  role: VerifierConsumer\n", "idle_observation_literal")]
+    [InlineData("A02", Block, "idle_observation:\n  action: produce_one\n  role: LoadGenProducer\n" + Timing, "idle_observation_literal")]
+    [InlineData("A02", Block, "idle_observation:\n  action: null\n  role: LoadGenProducer\n" + Timing, "idle_observation_literal")]
+    [InlineData("A02", Block, "idle_observation:\n  action: produce\n  role: VerifierConsumer\n" + Timing, "idle_observation_literal")]
+    [InlineData("A02", "  idle_seconds: 420\n", "  idle_seconds: 240\n", "idle_observation_literal")]
+    [InlineData("A02", "  idle_seconds: 420\n", "  idle_seconds: '420'\n", "idle_observation_literal")]
+    [InlineData("A02", "  idle_seconds: 420\n", "  idle_seconds: 0420\n", "idle_observation_literal")]
+    [InlineData("A02", "  statistics_interval_ms: 15000\n", "  statistics_interval_ms: 5000\n", "idle_observation_literal")]
+    [InlineData("A02", "  max_statistics_reports: 80\n", "  max_statistics_reports: 81\n", "idle_observation_literal")]
+    [InlineData("A02", "  max_statistics_reports: 80\n", "", "idle_observation_shape")]
+    [InlineData("A02", Block, Block + "  window_ms: 1\n", "idle_observation_shape")]
     [InlineData("A02", Block, Block + "  topic: document-events\n", "idle_observation_shape")]
     [InlineData("A02", Block, "idle_observation:\n  action: produce\n", "idle_observation_shape")]
     [InlineData("A02", Block, "idle_observation: produce\n", "idle_observation_shape")]

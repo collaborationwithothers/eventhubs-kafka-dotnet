@@ -134,3 +134,11 @@ Runtime bounds agree exactly with [probe-v2-runtime-limits.json](probe-v2-runtim
 The [smoke contract](probe-v2-smoke-contract.md) requires actual V2 execution commands, not image-smoke commands, for live acceptance. Private role evidence is mounted only into judges after namespace reset. Missing evidence mounts are optional so the judge can report gaps; optional does not mean accepted. Workflow ownership and teardown remain ADR-020 policy.
 
 Schema-two evidence dependencies project the four optional immutable ConfigMaps defined by the [wire contract](single-action-contract.md#dependency-transport-and-admission) into each existing read-only dependency mount. Every source has explicit key-to-path mappings; absent or partial evidence cannot supply a successful dependency. Stage, identity, security, client and Job admission rules are unchanged. The [runtime table](probe-v2-runtime-limits.json) owns revised statistics/capture/log bounds; the [repair receipt](evidence/issue-240/statistics-repair-receipt.md) records their derivation.
+
+## Idle-observation execution
+
+Mode `idle-observation` renders one Job under the loadgen identity and node pool with the LoadGen image and the argument `--idle-observation`. The Job deadline is 1320 seconds and its termination grace is 30 seconds. `run_kind` is required, and `repeat`, `loadgen_job_name` and `action_role` are rejected. The Job is named `<run>-<item>-<configuration>-idle` in lowercase, and the phase must equal the configuration.
+
+Bounds equal [idle-observation-runtime-limits.json](idle-observation-runtime-limits.json) exactly. The Job has 45 environment names: four `PARCHWELL_*`, five `Telemetry__*` and 36 `IdleObservation__*` (ten identity and path fields, the twenty capture bounds, four `ScenarioLoadOptions__*` parsing bounds, `PodName` and `PodUid`). The chart admits only these item and configuration pairs: A02 C0 and C1, A03 C0, C1 and C2, A04 C0 and C1. The [idle-observation contract](idle-observation-contract.md) defines the worker side.
+
+`charts/parchwell/tests/test_idle_observation_chart.py` checks this section, and the published host check runs the worker's configuration validation on each rendered environment.
