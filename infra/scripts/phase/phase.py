@@ -33,6 +33,7 @@ SINGLE_ACTION_CONFIGURATIONS = (
 SINGLE_ACTION_ITEMS = ('B01', 'B03', 'B05', 'C08', 'C12', 'F04')
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
 IDLE_MODE = "idle-observation"
+IDLE_ITEMS = ("A02", "A03", "A04")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
 SEED_RECEIPT_MARKER = "PARCHWELL_F04_SEED_RECEIPT "
@@ -57,7 +58,7 @@ class Failure(Exception):
 
 def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
-    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2"):
+    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2", IDLE_MODE):
         raise Failure("unsupported scenario")
     return selected
 
@@ -290,12 +291,21 @@ class Phase:
         return 0
 
     def validate_batch(self):
+        if scenario() == IDLE_MODE:
+            return self.validate_idle_observation()
         if scenario() == "probe-batch-2":
             batch_items()
             return 0
         if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
             raise Failure("unsupported probe batch selection")
         batch_items()
+        return 0
+
+    def validate_idle_observation(self):
+        if (scenario() != IDLE_MODE or os.environ.get("PARCHWELL_RUN_KIND") != "smoke"
+                or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all" or capture_authentication_metadata()
+                or test_handler_refresh_path() or test_native_authentication()):
+            raise Failure("unsupported idle observation selection")
         return 0
 
     def allow_images(self):
@@ -315,6 +325,8 @@ class Phase:
     def prepare_batch(self):
         self.validate_batch()
         selected = scenario()
+        if selected == IDLE_MODE:
+            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind="smoke", items=list(IDLE_ITEMS))
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
         refresh_test = test_handler_refresh_path() if selected == 'probe-batch-2' else False
         native_test = test_native_authentication() if selected == 'probe-batch-2' else False
@@ -412,7 +424,7 @@ class Phase:
     def prepare_stop(self):
         refresh_test = test_handler_refresh_path()
         native_test = test_native_authentication()
-        if scenario() == "probe-batch-2" or refresh_test or native_test:
+        if scenario() in ("probe-batch-2", IDLE_MODE) or refresh_test or native_test:
             self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()
@@ -818,7 +830,13 @@ class Phase:
         if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
             self.probe_v2().selection(frozen)
             return 0
+        if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
+            self.idle_observation().selection(frozen)
+            return 0
         if scenario() == 'probe-batch-2':
+            self.validate_batch()
+            return 0
+        if scenario() == IDLE_MODE:
             self.validate_batch()
             return 0
         self.validate_batch()
@@ -845,9 +863,13 @@ class Phase:
         if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
             self.probe_v2().selection(frozen)
             return self.probe_v2().run_batch()
+        if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
+            return self.idle_observation().run_batch()
         self.validate_batch()
         if scenario() == "probe-batch-2":
             return self.probe_v2().run_batch()
+        if scenario() == IDLE_MODE:
+            return self.idle_observation().run_batch()
         selected = self.read('phase.json')['items']
         state = self.state()
         state['not_selected'] = [

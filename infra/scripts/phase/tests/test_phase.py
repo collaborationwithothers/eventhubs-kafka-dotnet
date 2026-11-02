@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 REPO = Path(__file__).resolve().parents[4]
 SPEC = importlib.util.spec_from_file_location('phase', REPO / 'infra/scripts/phase/phase.py')
@@ -981,6 +981,74 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 self.assertEqual(2, self.main(command, 'extra'))
             self.assertEqual(2, self.main('prepare', 'C0'))
         self.assertEqual([], self.fake.calls)
+
+    def idle_environment(self, **overrides):
+        return {'PARCHWELL_SCENARIO': 'idle-observation', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all', **overrides}
+
+    def prepare_idle(self):
+        os.environ.update(self.idle_environment())
+        self.assertEqual(0, self.main('prepare-batch'))
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
+        self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
+        self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
+        self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
+
+    def test_idle_observation_admits_only_the_smoke_tuple_before_side_effects(self):
+        with patch.dict(os.environ, self.idle_environment()), self.mocked():
+            self.assertEqual(0, self.main('validate-batch'))
+            self.assertEqual(0, self.main('prepare-stop'))
+        self.assertIn('private_directory=', self.output_file.read_text())
+        rejected = [{'PARCHWELL_RUN_KIND': 'batch'}, {'PARCHWELL_RUN_KIND': 'Smoke'}, {'PARCHWELL_BATCH_ITEMS': 'A02'},
+                    {'PARCHWELL_BATCH_ITEMS': 'A02,A03,A04'}, {'PARCHWELL_BATCH_ITEMS': 'ALL'}, {'PARCHWELL_BATCH_ITEMS': ''},
+                    {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true'}, {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'yes'},
+                    {'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'},
+                    {'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}, {'PARCHWELL_SCENARIO': 'IDLE-OBSERVATION'}, None]
+        for overrides in rejected:
+            with self.subTest(overrides=overrides), patch.dict(os.environ, self.idle_environment(**(overrides or {}))):
+                if overrides is None:
+                    del os.environ['PARCHWELL_BATCH_ITEMS']
+                before = set(self.root.iterdir())
+                environment_before, output_before = self.env_file.read_bytes(), self.output_file.read_bytes()
+                with self.mocked():
+                    for command in ('validate-batch', 'prepare-batch', 'prepare-stop', 'single-action-seed', 'run-single-action-batch'):
+                        self.assertEqual(2, self.main(command), command)
+                self.assertEqual(before, set(self.root.iterdir()))
+                self.assertEqual(environment_before, self.env_file.read_bytes())
+                self.assertEqual(output_before, self.output_file.read_bytes())
+        self.assertEqual([], self.fake.calls)
+        with patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND='batch')), contextlib.redirect_stderr(io.StringIO()) as error:
+            self.assertEqual(2, phase.main(['validate-batch']))
+        self.assertEqual('unsupported idle observation selection', error.getvalue().strip())
+
+    def test_idle_observation_preparation_freezes_all_seven_configurations(self):
+        self.prepare_idle()
+        self.assertEqual({'scenario': 'idle-observation', 'phase': 'idle-observation', 'configuration': None,
+                          'run_id': 'idle-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke',
+                          'items': ['A02', 'A03', 'A04']}, json.loads((self.private / 'phase.json').read_text()))
+        self.assertEqual({'phase': 'idle-observation', 'run_id': 'idle-40121134428-1', 'modes': [], 'candidate': None,
+                          'safety_stop': False}, phase.Phase().state())
+        self.assertEqual({}, json.loads((self.private / 'ephemeral_tfvars.tfvars.json').read_text()))
+        self.assertEqual([], list(self.candidate_dir.iterdir()))
+        self.assertEqual(('A02', 'A03', 'A04'), phase.IDLE_ITEMS)
+        self.assertEqual((('A02', 'C0'), ('A02', 'C1'), ('A03', 'C0'), ('A03', 'C1'), ('A03', 'C2'), ('A04', 'C0'), ('A04', 'C1')),
+                         phase.Phase().idle_observation().selection())
+
+    def test_idle_observation_batch_entrypoints_route_only_to_the_idle_module(self):
+        self.prepare_idle()
+        idle = Mock()
+        idle.run_batch.side_effect = [0, 1]
+        with self.mocked(), patch.object(phase.Phase, 'idle_observation', return_value=idle), \
+                patch.object(phase.Phase, 'probe_v2', side_effect=AssertionError('probe_v2')):
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(1, idle.selection.call_count)
+            self.assertEqual('idle-observation', idle.selection.call_args.args[0]['scenario'])
+            self.assertEqual(0, self.main('run-single-action-batch'))
+            self.assertEqual(1, self.main('run-single-action-batch'))
+            self.assertEqual(2, idle.run_batch.call_count)
+            self.assertEqual(0, self.main('delete-workload'))
+        self.assertEqual([['kubectl', 'delete', 'jobs', '-n', 'parchwell', '-l', 'app.kubernetes.io/instance=idle-40121134428-1',
+                           '--ignore-not-found', '--wait=false', '--request-timeout=30s']], [call[0] for call in self.fake.calls])
+        self.assertNotIn('seed_gap', phase.Phase().state())
 
     def test_batch_preparation_privacy_and_metadata(self):
         self.prepare_batch()

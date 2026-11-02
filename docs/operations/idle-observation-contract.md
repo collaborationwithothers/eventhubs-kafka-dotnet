@@ -54,7 +54,15 @@ A limit on a statistics report count or size, a client error size, a delivery er
 
 The phase module `infra/scripts/phase/idle_observation.py` runs the selected configurations one at a time, in the order A02 C0, A02 C1, A03 C0, A03 C1, A03 C2, A04 C0, A04 C1. The selected items must be a nonempty list in item order. Before each Job it requires 1860 seconds to remain inside the 14400-second batch window; otherwise it skips the configuration with `start_cap`. The 1860 seconds are 60 apply + 1410 wait + 210 collect + 120 delete + 30 confirm + 25 command reserve = 1855, rounded up. Seven configurations reserve 13020 seconds in total. These are planning budgets, not measurements.
 
-The module transports only. A configuration passes when its Job outcome is complete, its evidence collection has no gaps, and the one loadgen pod terminated with exit code 0, which the worker reaches only after the completion upload. The module writes `idle-observation-<run_kind>.json` in the artifacts directory. Workflow admission is [#318](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/318)'s.
+The module transports only. A configuration passes when its Job outcome is complete, its evidence collection has no gaps, and the one loadgen pod terminated with exit code 0, which the worker reaches only after the completion upload. The module writes `idle-observation-<run_kind>.json` in the artifacts directory. [Workflow admission](#workflow-admission) says how a dispatch reaches this module.
+
+## Workflow admission
+
+The Scenario workflow offers the choice `idle-observation`. `phase.py` admits it only with `run_kind=smoke` and `items=all`, with `capture_authentication_metadata`, `test_handler_refresh_path` and `test_native_authentication` all false. It rejects any other selection with `unsupported idle observation selection` before private inputs or Azure login. The batch run kind is not admitted yet; [#319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319) adds it with the verifier.
+
+The existing `batch` job runs the dispatch. Its `validate-batch` and `prepare-batch` commands check and freeze the selection in `phase.py`. `single-action-seed` re-checks the frozen document through the module above and starts no F04 seed. `run-single-action-batch` runs the module. Preparation freezes items A02, A03 and A04, all seven configurations, under the run ID `idle-<run_id>-<run_attempt>`. The pod evidence artifact is `idle-observation-pods-<run_id>-<run_attempt>` and holds `idle-observation-smoke.json`. The candidate upload finds no file for this choice and does not fail, because nothing is judged. The stop-only `batch-stop` job validates the same selection and stops AKS when the dispatch ends.
+
+A smoke result is not published ([split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228), point 4).
 
 ## Boundaries
 
