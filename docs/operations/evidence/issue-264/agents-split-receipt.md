@@ -6,7 +6,7 @@ This receipt records the third governance change of issue #264. AGENTS.md keeps 
 
 - Deliverable: a shorter AGENTS.md, a new role file docs/agents/pull-requests.md, rule 13 links to the measurement decisions in force, pointers in CLAUDE.md and four repository-owned skills, and the check script `agents-split-check.py` beside this receipt.
 - Authorization: [decision 6570202237](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/264#issuecomment-6570202237), points 1 to 5: "one governance pull request linked to this issue, merged by Hari". The session prompt: "Implement the third governance change of issue #264, defined in decision 6570202237". Directly authorized governance work without an approved item plan; no plan approval is claimed. The decision's "Not decided here" (file layout, which rules stay in the core) is proposed below for Hari to decide at merge.
-- Mandatory gates: `git diff --check`, `npm run check:docs`, the check script, the cold review under AGENTS.md "Before opening a pull request" rule 8 (now held in docs/agents/pull-requests.md), CI, hosted Codex review, and Hari's merge, because every changed file is a protected path (`/*.md`, `/docs/`, `/.*/` in `.github/CODEOWNERS`).
+- Mandatory gates: `git diff --check`, `npm run check:docs`, the check script, the cold review under AGENTS.md "Before opening a pull request" rule 8 (now held in docs/agents/pull-requests.md), CI, hosted Codex review, and Hari's merge, because seven of the nine changed files are protected paths (`/*.md`, `/docs/`, `/.*/` in `.github/CODEOWNERS`). The script and this receipt are under `docs/operations/`, which agents own (docs/agents/factory.md "Ruleset").
 - Verification commands: `git diff --check`; `npm run check:docs`; `python3 -I docs/operations/evidence/issue-264/agents-split-check.py origin/main`.
 - Publication checkpoint: open the pull request as a draft after the first cold-review round with no P0 or P1.
 - Review budget: rule 8 as written, no rounds used before this pull request. Exhaustion action: rule 8's review-budget handoff to Hari.
@@ -19,7 +19,7 @@ One role file, docs/agents/pull-requests.md. It holds the execution card, the pr
 What stays in the core, and why:
 
 - GOVERNANCE, "Implementer and reviewer", "Skills", "GitHub issues and pull requests" and "Writing standards" bind every session: safety, merge, handoffs, commit trailers, the `ready-for-agent` ban, REST paging and punctuation.
-- "Engineering standards" is 696 characters (by script) and binds every code change; moving it saves little.
+- "Engineering standards" binds every code change, and its body is 692 characters (by script: the text between its heading and the next heading, stripped of surrounding whitespace), so moving it saves little.
 - "Code Review Rules" stays because Codex code review reads the `## Code Review Rules` section of AGENTS.md files (source 4). The page does not say Codex review follows a link to another file.
 - Rules 11 to 13 stay because they bind sessions that open no pull request. Rule 11 names planning and plan checking in its exemptions; rule 13 holds the cost-complaint stop and the measurement decisions.
 
@@ -31,7 +31,8 @@ Who reads the role file, and the pointer that sends them:
 | Implementing session | `implement-plan` skill, opening line |
 | Claude Code session opening a pull request | CLAUDE.md "Before opening a pull request" |
 | Cold reviewer | `repo-review` rubric, "anything" row |
-| Planning and plan-check sessions, rules 1, 2 and 4 only | `plan-pr` step 3, `plan-check` step 3, and the AGENTS.md pointer; docs/agents/factory.md "Item lifecycle" step 1 already cites the rules |
+| Planning sessions, rules 1, 2 and 4 only | `plan-pr` step 3, and the AGENTS.md pointer; docs/agents/factory.md "Item lifecycle" step 1 already cites the rules |
+| Plan-check sessions | `plan-check` step 3 says where those rules are now, without adding a check |
 
 Alternatives not taken:
 
@@ -67,7 +68,7 @@ Inference, not measured: AGENTS.md on `dfc6cb1` was 29,370 bytes, 89.6% of 32,76
 
 The moved text changes in one place only: the link to docs/engineering/documentation-checks.md in rule 5 becomes `../engineering/documentation-checks.md`, because the file moved; the script resolves relative links before comparing. The #263 losses (rule 5's checker-capability sentence, citations of hard safety rules 6 and 10) are each a block the script would report as changed or gone. The negative test under "Verification" shows it does.
 
-The new text is the pointer paragraphs in AGENTS.md "Before opening a pull request", the opening three paragraphs of docs/agents/pull-requests.md, and one sentence each in CLAUDE.md and the `implement-plan`, `plan-pr`, `plan-check` and `repo-review` skills. Each one adds a reader or a pointer; none removes a rule.
+The new text is the pointer paragraphs in AGENTS.md "Before opening a pull request", the opening three paragraphs of docs/agents/pull-requests.md, and one sentence each in CLAUDE.md and the `implement-plan`, `plan-pr`, `plan-check` and `repo-review` skills. Each one adds a reader or a pointer; none removes a rule or adds a duty.
 
 ## Claims and sources
 
@@ -83,7 +84,7 @@ The new text is the pointer paragraphs in AGENTS.md "Before opening a pull reque
 | Command | Observed result |
 | --- | --- |
 | `python3 -I docs/operations/evidence/issue-264/agents-split-check.py origin/main` | Exit 0. Map totals: CHANGED 2, KEPT 93, MOVED 22. Citations checked: 437; failures: 0; resolved through the pointer: 168; pre-existing unresolved: 1 (`hard safety rule 4` in docs/operations/evidence/issue-114/cold-review-3.md; AGENTS.md has no rule 4 on `dfc6cb1` either). |
-| Negative test: delete rule 5's sentence "A new check needs explicit supported inputs, failure conditions and regression examples.", and break rule 6's number, then run the script; restore both | Exit 1. Rule 5 reported CHANGED with the sentence's words; rule 6 reported GONE; factory.md's citation of rule 6 reported UNRESOLVED. After restoring, exit 0. |
+| Negative test: delete rule 5's sentence "A new check needs explicit supported inputs, failure conditions and regression examples.", and break rule 6's number, then run the script; restore both | Exit 1. Rule 5 reported CHANGED with the deleted words printed; rule 6 reported GONE; factory.md's citation of rule 6 reported UNRESOLVED. The exit status comes from the GONE block and the citation: a CHANGED block alone does not fail, so its printed word diff is read by hand. After restoring, exit 0. |
 | Sizes, by script | AGENTS.md 29,370 to 19,594 characters (33.3% fewer) and 4,430 to 2,864 words (35.3% fewer). docs/agents/pull-requests.md 12,357 characters. CLAUDE.md 6,606 to 6,688 characters. A session that reads both files reads 31,951 characters, 2,581 (8.8%) more than the old AGENTS.md. |
 | `git diff --check` | Exit 0, no output. |
 | `npm run check:docs` | 8 warnings, the same count as on `dfc6cb1`, all in files this change does not touch: docs/agents/factory.md (2), and evidence files under issues 124, 140 and 211 (6). |
@@ -97,3 +98,5 @@ Decision 6570202237 point 5: after the merge, a before-and-after Codex plan-chec
 ## Cold review
 
 Comprehensive round 1: input is the staged diff against `origin/main` at `dfc6cb1`. Report and dispositions are in the pull request's self-review record.
+
+Comprehensive round 2, the consolidated re-review: input is the staged diff against `origin/main` at `dfc6cb1`, which is round 1's reviewed content (commit `98c1a70`) plus the fixes for its three P1 and two P2 findings, all fixed. The P1s were receipt evidence: citation counts that included this receipt's own quotes, a protected-path claim that missed `docs/operations/`, and a size figure with no stated definition. The P2s were a `plan-check` edit that added a duty, and a negative-test result that read as if a CHANGED block fails the script. Cumulative: 2 comprehensive, 0 focused.

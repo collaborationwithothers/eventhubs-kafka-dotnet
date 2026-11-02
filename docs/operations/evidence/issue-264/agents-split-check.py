@@ -22,7 +22,9 @@ skill and agent files is resolved against the working tree:
 A rule 1 to 10 resolves through the pointer in AGENTS.md "Before opening a pull request",
 which names docs/agents/pull-requests.md; the script counts those separately. A citation
 that fails on the base AGENTS.md too is reported as PRE-EXISTING and is not a failure.
-Exit status is 1 if any block is GONE or any citation newly fails to resolve.
+Exit status is 1 if any block is GONE or any citation newly fails to resolve. A CHANGED
+block does not change the exit status: read its printed word diff by hand.
+The moved file and the receipt for this change are not scanned for citations.
 """
 
 import difflib
@@ -33,6 +35,8 @@ import sys
 
 CORE = "AGENTS.md"
 ROLE = "docs/agents/pull-requests.md"
+# The receipt quotes citations and this script's output; its quotes are not citations.
+RECEIPT = "docs/operations/evidence/issue-264/agents-split-receipt.md"
 
 
 def blocks(text):
@@ -154,7 +158,7 @@ def main():
     ]
     checked = via_pointer = pre_existing = 0
     for f in sorted(set(files)):
-        if not os.path.isfile(f) or f == ROLE:
+        if not os.path.isfile(f) or f in (ROLE, RECEIPT):
             continue
         text = open(f, encoding="utf-8", errors="replace").read()
         for kind, pattern, numeric in patterns:
