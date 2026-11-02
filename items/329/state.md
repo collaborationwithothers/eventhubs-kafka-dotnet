@@ -1,7 +1,7 @@
 # State: #329 Rerun A02 and A04 with metadata traffic kept out of the idle window (#301 child 9)
 Covers: comment 6588805136 created 2026-11-02T21:23:27Z; read at 2026-11-02T21:32:31Z
 Parent items: [#301](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301)
-Item plan: none
+Item plan: [rerun decision 6588207250](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6588207250), which adds split entry 9, as the plan's "Parent plan" line states
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent`; Claude Code by default
 Approved plan: [Metadata timers out of the A02 and A04 idle window implementation-grade plan, Revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/329#issuecomment-6588394554), updated_at 2026-11-02T21:18:23Z, approved under standing approval by [plan check 6588805136](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/329#issuecomment-6588805136)
 Decisions in force:

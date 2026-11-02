@@ -12,12 +12,17 @@ This pull request sets `metadata.max.age.ms` and `topic.metadata.refresh.interva
 
 ## Plan deviations and choices
 
-None in the changes: the plan's edits applied by an exact-once replace script and each anchor matched. The plan's two non-blocking P2s from the plan check are not applied: the CODEOWNERS wording sits in plan text only, and `docs/operations/kafka-configuration-explained.md` line 47 is outside the plan's files and the check did not mark it `apply in implementation`. The wording in that file, that only A03 C2 overrides `topic.metadata.refresh.interval.ms`, is therefore now incomplete; it is left for a later change.
+One deviation. The plan's edits applied by an exact-once replace script and each anchor matched. Afterwards the contract paragraph's sentence on the #320 observation (change 7) was narrowed to what that observation states, because the plan's wording, "every quiet period on a connected broker ended at a Metadata request", omits the condition "on a connection that stayed UP", the six disconnect-ended periods and the interval-level coincidence (see the Review record). The plan's two non-blocking P2s from the plan check are not applied: the CODEOWNERS wording sits in plan text only, and `docs/operations/kafka-configuration-explained.md` line 47 is outside the plan's files and the check did not mark it `apply in implementation`. The wording in that file, that only A03 C2 overrides `topic.metadata.refresh.interval.ms`, is therefore now incomplete; it is left for a later change.
 
 ## Predicate map
 
 - Loader configuration check: an added C2, a removed C1, a missing or extra delta in A02 or A04, and a changed value (900001, 600000) are each rejected by their own row; every row keeps the other fields valid.
 - A03 is unchanged.
+
+## Review record
+
+- Cold review pass 1: comprehensive (1 of 2 comprehensive, 0 of 2 focused), input revision 66f1dd2db633c87bc9268e80e4a0438132c37cae, comparison origin/main f0850d44086c4065cad76e64da6ec6f2d9cc50ce. Findings: two P0 on the protected \`scenarios/A02/expected.yaml\` and \`scenarios/A04/expected.yaml\` (kept under rule 8, third paragraph: plan changes 8 and 9 require them; listed in the pull request description), one P1 on the contract sentence (fixed, above), one P1 that this receipt lacked the review mode and revisions (fixed by this section), one P2 on the state file's \`Item plan\` (fixed).
+- Cold review round 2: focused (1 of 2 comprehensive, 1 of 2 focused), input revision the branch head after the pass 1 corrections, comparison revision 66f1dd2db633c87bc9268e80e4a0438132c37cae; it reviews the corrections to the contract sentence, this section and the state file's `Item plan`, with the full pull request diff as context.
 
 ## Commands and results
 
