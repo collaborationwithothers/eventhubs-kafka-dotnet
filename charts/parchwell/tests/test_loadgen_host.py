@@ -8,6 +8,7 @@ import yaml
 from test_chart import CHART, ROOT, positive_cases, with_case
 from test_single_action_chart import positive_cases as single_action_cases
 from test_probe_v2_chart import positive_cases as probe_v2_cases, native_cases as probe_v2_native_cases
+from test_idle_observation_chart import positive_cases as idle_observation_cases
 
 EXPECTED=b'{"loadgen_configuration_valid":true}\n'
 POD_UID='00000000-0000-4000-8000-000000000192'
@@ -149,6 +150,32 @@ def probe_v2_host_acceptance(td, loadgen_publish):
     print('probe V2 host checks passed: 101 rendered smoke/batch/native environments and 14 rejected input regressions')
 
 
+def idle_observation_host_acceptance(td, loadgen_publish):
+    host = ['dotnet', str(loadgen_publish / 'Parchwell.LoadGen.dll'), '--validate-idle-observation-configuration']
+    expected = b'{"idle_observation_configuration_valid":true}\n'
+    first = None
+    cases = list(idle_observation_cases())
+    assert len(cases) == 8
+    for index, values in enumerate(cases):
+        fixture = td / f'idle-{index}.yaml'
+        with_case(values, fixture)
+        rendered = rendered_environment(fixture, td, f'idle-{index}')
+        output = td / f'idle-{index}.host.out'
+        proc = bounded(60, host, output, host_environment(rendered, td))
+        assert proc.returncode == 0 and output.read_bytes() == expected, (index, proc.stderr, output.read_bytes())
+        first = first or rendered
+    for kind in ('missing', 'unknown'):
+        rendered = dict(first)
+        if kind == 'missing':
+            del rendered['IdleObservation__PodUid']
+        else:
+            rendered['IdleObservation__UnsupportedSetting'] = 'forbidden'
+        output = td / f'idle-{kind}.host.out'
+        proc = bounded(60, host, output, host_environment(rendered, td))
+        assert proc.returncode == 1, (kind, proc.returncode, proc.stderr)
+    print('idle-observation host checks passed: 8 rendered environments, 2 missing/unknown regressions')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='parchwell-loadgen-host-') as name:
         td=Path(name); publish=td/'publish'
@@ -170,5 +197,6 @@ def main():
         print('loadgen host check passed: 7 rendered environments, 1 missing-setting regression')
         single_action_host_acceptance(td, publish)
         probe_v2_host_acceptance(td, publish)
+        idle_observation_host_acceptance(td, publish)
 
 if __name__=='__main__': main()
