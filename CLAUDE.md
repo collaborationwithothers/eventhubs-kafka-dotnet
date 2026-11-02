@@ -27,7 +27,7 @@ In GitHub Actions, Claude acts through the factory's GitHub App, using a token m
 
 ## Before opening a pull request
 
-AGENTS.md's "Before opening a pull request" applies in full. In addition:
+AGENTS.md's "Before opening a pull request" applies in full, including docs/agents/pull-requests.md, which holds that section's rules 1 to 10. In addition:
 
 1. Run the full local verification suite appropriate to the change: build and tests for runtime changes, documentation checks for documentation-only changes. Warnings are errors for builds; documentation warning dispositions follow AGENTS.md "Before opening a pull request" rule 8. Verification repetition follows that section's rule 13.
 2. In an interactive session, run the cold review (AGENTS.md, "Before opening a pull request", rule 8) as follows. The steps for GitHub Actions are not written yet (issue #27).

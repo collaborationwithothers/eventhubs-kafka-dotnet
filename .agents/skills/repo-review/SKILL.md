@@ -18,7 +18,7 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 
 | The diff touches | Apply |
 |---|---|
-| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", "Before opening a pull request", "Skills", writing standards; CLAUDE.md; docs/agents/factory.md; docs/blueprint.md ADRs |
+| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", "Before opening a pull request", "Skills", writing standards; docs/agents/pull-requests.md; CLAUDE.md; docs/agents/factory.md; docs/blueprint.md ADRs |
 | `docs/engineering/` | each changed document itself |
 | .NET code or tests | docs/engineering/dotnet.md |
 | Terraform | docs/engineering/terraform.md; ADR-011 |
