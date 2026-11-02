@@ -985,20 +985,21 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
     def idle_environment(self, **overrides):
         return {'PARCHWELL_SCENARIO': 'idle-observation', 'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all', **overrides}
 
-    def prepare_idle(self):
-        os.environ.update(self.idle_environment())
+    def prepare_idle(self, **overrides):
+        os.environ.update(self.idle_environment(**overrides))
         self.assertEqual(0, self.main('prepare-batch'))
         os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
         self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
         self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
         self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
 
-    def test_idle_observation_admits_only_the_smoke_tuple_before_side_effects(self):
-        with patch.dict(os.environ, self.idle_environment()), self.mocked():
-            self.assertEqual(0, self.main('validate-batch'))
-            self.assertEqual(0, self.main('prepare-stop'))
+    def test_idle_observation_admits_only_the_smoke_and_batch_tuples_before_side_effects(self):
+        for kind in ('smoke', 'batch'):
+            with self.subTest(run_kind=kind), patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind)), self.mocked():
+                self.assertEqual(0, self.main('validate-batch'))
+                self.assertEqual(0, self.main('prepare-stop'))
         self.assertIn('private_directory=', self.output_file.read_text())
-        rejected = [{'PARCHWELL_RUN_KIND': 'batch'}, {'PARCHWELL_RUN_KIND': 'Smoke'}, {'PARCHWELL_BATCH_ITEMS': 'A02'},
+        rejected = [{'PARCHWELL_RUN_KIND': 'Batch'}, {'PARCHWELL_RUN_KIND': 'Smoke'}, {'PARCHWELL_BATCH_ITEMS': 'A02'},
                     {'PARCHWELL_BATCH_ITEMS': 'A02,A03,A04'}, {'PARCHWELL_BATCH_ITEMS': 'ALL'}, {'PARCHWELL_BATCH_ITEMS': ''},
                     {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true'}, {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'yes'},
                     {'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'},
@@ -1016,7 +1017,7 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 self.assertEqual(environment_before, self.env_file.read_bytes())
                 self.assertEqual(output_before, self.output_file.read_bytes())
         self.assertEqual([], self.fake.calls)
-        with patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND='batch')), contextlib.redirect_stderr(io.StringIO()) as error:
+        with patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND='Batch')), contextlib.redirect_stderr(io.StringIO()) as error:
             self.assertEqual(2, phase.main(['validate-batch']))
         self.assertEqual('unsupported idle observation selection', error.getvalue().strip())
 
@@ -1032,6 +1033,13 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         self.assertEqual(('A02', 'A03', 'A04'), phase.IDLE_ITEMS)
         self.assertEqual((('A02', 'C0'), ('A02', 'C1'), ('A03', 'C0'), ('A03', 'C1'), ('A03', 'C2'), ('A04', 'C0'), ('A04', 'C1')),
                          phase.Phase().idle_observation().selection())
+
+    def test_idle_observation_preparation_freezes_the_batch_run_kind_and_names_the_judge_job(self):
+        self.prepare_idle(PARCHWELL_RUN_KIND='batch')
+        self.assertEqual('batch', json.loads((self.private / 'phase.json').read_text())['run_kind'])
+        self.assertEqual('idle-40121134428-1-idle-judge',
+                         phase.job_name('idle-40121134428-1', 'idle-observation', phase.IDLE_JUDGE_MODE))
+        self.assertEqual('idle-observation-judge', phase.IDLE_JUDGE_MODE)
 
     def test_idle_observation_batch_entrypoints_route_only_to_the_idle_module(self):
         self.prepare_idle()

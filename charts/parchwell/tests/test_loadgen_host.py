@@ -8,7 +8,7 @@ import yaml
 from test_chart import CHART, ROOT, positive_cases, with_case
 from test_single_action_chart import positive_cases as single_action_cases
 from test_probe_v2_chart import positive_cases as probe_v2_cases, native_cases as probe_v2_native_cases
-from test_idle_observation_chart import positive_cases as idle_observation_cases
+from test_idle_observation_chart import positive_cases as idle_observation_cases, judge_cases as idle_observation_judge_cases
 
 EXPECTED=b'{"loadgen_configuration_valid":true}\n'
 POD_UID='00000000-0000-4000-8000-000000000192'
@@ -176,6 +176,42 @@ def idle_observation_host_acceptance(td, loadgen_publish):
     print('idle-observation host checks passed: 8 rendered environments, 2 missing/unknown regressions')
 
 
+def idle_observation_judge_host_acceptance(td, verifier_publish):
+    host = ['dotnet', str(verifier_publish / 'Parchwell.Verifier.dll'), '--validate-idle-observation-judge-configuration']
+    expected = b'{"idle_observation_judge_configuration_valid":true}\n'
+    first = None
+    def environment(rendered):
+        env = host_environment(rendered, td)
+        env.update(AZURE_TENANT_ID='00000000-0000-0000-0000-000000000010',
+                   AZURE_CLIENT_ID=rendered['IdleObservationJudge__WorkloadIdentityClientId'])
+        return env
+    cases = list(idle_observation_judge_cases())
+    assert len(cases) == 3
+    for index, values in enumerate(cases):
+        fixture = td / f'idle-judge-{index}.yaml'
+        with_case(values, fixture)
+        rendered = rendered_environment(fixture, td, f'idle-judge-{index}')
+        output = td / f'idle-judge-{index}.host.out'
+        proc = bounded(60, host, output, environment(rendered))
+        assert proc.returncode == 0 and output.read_bytes() == expected, (index, proc.stderr, output.read_bytes())
+        first = first or rendered
+    for kind in ('missing', 'unknown', 'azure', 'pods'):
+        rendered = dict(first)
+        if kind == 'missing':
+            del rendered['IdleObservationJudge__PodUid']
+        elif kind == 'unknown':
+            rendered['IdleObservationJudge__UnsupportedSetting'] = 'forbidden'
+        elif kind == 'pods':
+            rendered['IdleObservationJudge__CapturePods'] = 'A02C2:x:y'
+        env = environment(rendered)
+        if kind == 'azure':
+            env['AZURE_CLIENT_ID'] = '00000000-0000-0000-0000-000000000099'
+        output = td / f'idle-judge-{kind}.host.out'
+        proc = bounded(60, host, output, env)
+        assert proc.returncode == 2, (kind, proc.returncode, proc.stderr)
+    print('idle-observation judge host checks passed: 3 rendered environments, 4 rejected input regressions')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='parchwell-loadgen-host-') as name:
         td=Path(name); publish=td/'publish'
@@ -198,5 +234,8 @@ def main():
         single_action_host_acceptance(td, publish)
         probe_v2_host_acceptance(td, publish)
         idle_observation_host_acceptance(td, publish)
+        verifier_publish = td / 'idle-judge-verifier-publish'
+        publish_worker('Verifier', verifier_publish)
+        idle_observation_judge_host_acceptance(td, verifier_publish)
 
 if __name__=='__main__': main()

@@ -1,0 +1,64 @@
+schema_version: 1
+id: A04
+
+assessment_rules:
+  observation_unit: fresh_producer_idle_observation
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  idle_seconds: 420
+  statistics_interval_ms: 15000
+  connection_classes: [kept, closed_while_idle, stale_on_resume, first_failed]
+  quiet_period: "smaller of txidle and rxidle in the report before the disconnect, in ms; one -1 uses the other; both -1 or a key absent from that report gives 0, so other_cause"
+  idle_timed_threshold_ms: 225000
+  idle_timed_threshold_basis: "harness choice, not a measurement; Microsoft's stated 240000 ms idle limit minus one 15000 ms report interval"
+  survival: "only idle_timed disconnects count, on any broker including bootstrap; closed_while_idle is one in the idle window, stale_on_resume one in the resume window only; both are not_kept"
+  recorded_not_selecting: [other_cause disconnects, request timeouts, second produce outcome, client error callbacks]
+  require_one_survival_in_all_five: true
+  unequal_classes: no_verdict
+  incomplete_configuration: no_verdict
+  first_produce_failure: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+  judgement_contract: docs/operations/verifier-contract.md#idle-observation-judgement
+
+hypotheses:
+  H_client_close:
+    question: "Does connections.max.idle.ms=180000 make the client close idle connections before Azure's documented 240 s?"
+    configurations: [C1]
+    decision: "holds when every C1 repeat's first idle-window disconnect has `first_close_quiet_ms >= 163000` and `first_close_after_idle_ms < 225000`; else, including a repeat with no idle-window disconnect, contradicted. `H_default_close` (C0): recorded only. Verdict: undocumented, `not_in_librdkafka_table`."
+    limit_ms: 225000
+    quiet_floor_ms: 163000
+    cause_note: "decided from the first idle-window disconnect of either cause, by its quiet period; the client's own close leaves a quiet period below 225000 ms, so it is classed other_cause; recorded_not_selecting governs the verdict word, which is fixed as undocumented for A04"
+    limits_basis: "harness choices, not measurements; 225000 is Microsoft's stated 240000 ms idle limit minus one 15000 ms report interval, as for idle_timed (decision 6576703230, points 2 and 6), and 163000 is 178000 (180000 minus the 2000 ms jitter) minus one 15000 ms interval"
+  H_default_close:
+    question: "What happens to an idle connection with connections.max.idle.ms omitted?"
+    configurations: [C0]
+    decision: "recorded_only; the heuristic cannot fire because namespace names exclude \"azure\" (K-36; infra/ephemeral/variables.tf:33)"
+
+verdict:
+  decision: "holds when every C1 repeat's first idle-window disconnect has `first_close_quiet_ms >= 163000` and `first_close_after_idle_ms < 225000`; else, including a repeat with no idle-window disconnect, contradicted. `H_default_close` (C0): recorded only. Verdict: undocumented, `not_in_librdkafka_table`."
+  precedence: "smoke run -> null, `smoke_only`; a missing candidate or any configuration not `complete_valid` -> null, `incomplete_configuration`; any repeat `first_failed` -> `untestable`, `first_produce_failed`; any configuration whose five repeats do not share one survival -> null, `unequal_classes`; then the item rule."
+  no_verdict_when: "smoke run, incomplete or missing configuration, unequal survival or inverse effect; no pooling or replacement repeats."
+  text_must_state: "the 225000 ms idle_timed threshold is a harness choice, not a measurement; per repeat, the other_cause disconnects, request timeouts, second produce outcome and client error callbacks. The 163000 ms quiet floor is a harness choice, not a measurement."
+
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-11-02"

@@ -36,7 +36,11 @@ internal static partial class Program
     [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Verifier disposal failed for scenario {ScenarioId} run {RunId}.")]
     private static partial void LogDisposalFailed(ILogger logger, Exception exception, string? scenarioId, string? runId);
 
-    public static Task<int> Main(string[] args) => args.Length == 1 && args[0] == "--single-action-v2-judge"
+    public static Task<int> Main(string[] args) => args.Length == 1 && args[0] == "--idle-observation-judge"
+        ? VerifyRun.IdleObservation.IdleObservationJudgeHost.RunAsync()
+        : args.Length == 1 && args[0] == "--validate-idle-observation-judge-configuration"
+        ? Task.FromResult(VerifyRun.IdleObservation.IdleObservationJudgeHost.ValidateConfiguration())
+        : args.Length == 1 && args[0] == "--single-action-v2-judge"
         ? VerifyRun.SingleAction.ProbeV2Host.RunAsync()
         : args.Length == 1 && args[0] == "--validate-single-action-v2-judge-configuration"
         ? Task.FromResult(VerifyRun.SingleAction.ProbeV2Host.ValidateConfiguration())

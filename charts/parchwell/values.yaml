@@ -132,6 +132,7 @@ runtime:
       execution:
         job_seconds: 1320
         termination_grace_seconds: 30
+        judge_job_seconds: 720
       capture:
         ProcessLifetimeSeconds: 1260
         ActionWindowMs: 330000
@@ -153,6 +154,18 @@ runtime:
         CallbackQueueCapacity: 128
         MaxSettingsKeys: 128
         MaxSettingsBytes: 16384
+      judge:
+        ProcessLifetimeSeconds: 660
+        CaptureIoSeconds: 60
+        IoSeconds: 10
+        CleanupSeconds: 10
+        MaxCaptureBytes: 167772160
+        MaxRegistrationBytes: 65536
+        MaxCompletionBytes: 65536
+        MaxStatisticsReportBytes: 262144
+        MaxBrokerEntries: 64
+        MaxCandidateBytes: 16777216
+        MaxJudgeReceiptBytes: 65536
     probe_v2:
       capture:
         PostTerminalStatisticsSeconds: 20

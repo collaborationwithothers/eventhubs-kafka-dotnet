@@ -1,0 +1,19 @@
+# State: #319 Idle observation: verifier judge, expected outcomes and batch admission (#301 child 5)
+Covers: comment 6579727682 created 2026-11-02T14:31:13Z; read at 2026-11-02T15:00:00Z
+Parent items: #301
+Item plan: [split proposal](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563089851) with the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228); the child plan below is the implementation-grade plan
+Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent` (applied 2026-11-02T10:51:07Z); Claude Code by default
+Approved plan: [plan comment 6575747094](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6575747094) and [part 2 6579253743](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6579253743), both `Revision: 6` (updated 2026-11-02T14:26:39Z and 14:26:41Z), approved under standing approval by [plan check 6579727682](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6579727682) (`Blocking findings: none`, posted after the last edit)
+Decisions in force:
+- Issue body: split entry 5 of #301; the verifier judge for the new wire format, `scenarios/A02`, `A03` and `A04` `expected.yaml`, batch admission in `scenario.yml` and its copy, and the C5 mutation scope for the new judge files; decision rules are proposed in the plan and the expected outcomes are Hari's approval. Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319)
+- Adopts the #301 decisions. Source: [6563545842](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6563545842)
+- Adopts the #301 recommendations decision. Source: [6569916748](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6569916748)
+- Point 1: proceed with the decision rules and write `expected.yaml` in this pull request, without counter evidence from the smoke run. Point 2: read Microsoft's notes as claims that the setting prevents idle closure. Point 3 was replaced by the next decision below. Source: [6575814051](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6575814051)
+- Quiet-period rule replaces point 3: a disconnect counts only if its quiet period is at least 225000 ms (a harness choice), A04 limits 163000 ms and 225000 ms. Source: [6576703230](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6576703230)
+- When both idle readings are -1, the disconnect is `other_cause`. Source: [6577558091](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6577558091)
+- The judge exits non-zero for an invalid or incomplete run, after publishing candidates and the receipt, as ADR-017 requires; the phase module fails the Job on a non-zero exit and still checks the published files. Source: [6578865672](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6578865672)
+- The plan may span two comments for this issue. Source: [6579214789](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6579214789)
+- Change 14 also edits `infra/scripts/lifecycle/check-offline.sh` (resolves blocking finding B1 of the Revision 5 check). Source: [6579586253](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319#issuecomment-6579586253)
+Open questions:
+- None
+Next action: focused cold review (round 4), then pull request for Hari's merge (protected paths); after merge, the batch dispatch and the hosted mutation campaign under the #301 override decision

@@ -1,6 +1,6 @@
 # Idle-observation capture contract
 
-The idle-observation worker runs the A02, A03 and A04 experiment. Five fresh producers produce one record each, stay idle with nothing to send, and produce again; the worker records both outcomes and every native statistics report and judges nothing. The verifier that reads this capture is [#319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319)'s.
+The idle-observation worker runs the A02, A03 and A04 experiment. Five fresh producers produce one record each, stay idle with nothing to send, and produce again; the worker records both outcomes and every native statistics report and judges nothing. The verifier judges it under the [verifier contract](verifier-contract.md#idle-observation-judgement).
 
 ## Inputs and identity
 
@@ -54,16 +54,18 @@ A limit on a statistics report count or size, a client error size, a delivery er
 
 The phase module `infra/scripts/phase/idle_observation.py` runs the selected configurations one at a time, in the order A02 C0, A02 C1, A03 C0, A03 C1, A03 C2, A04 C0, A04 C1. The selected items must be a nonempty list in item order. Before each Job it requires 1860 seconds to remain inside the 14400-second batch window; otherwise it skips the configuration with `start_cap`. The 1860 seconds are 60 apply + 1410 wait + 210 collect + 120 delete + 30 confirm + 25 command reserve = 1855, rounded up. Seven configurations reserve 13020 seconds in total. These are planning budgets, not measurements.
 
+After the seven configurations, the module runs one judge Job, `<run>-idle-judge`, when 1255 seconds remain. The 1255 seconds are 60 apply + 810 wait + 210 collect + 120 delete + 30 confirm + 25 command reserve = 1255 (`JUDGE_RESERVATION`). Seven captures and the judge reserve 13020 + 1255 = 14275 seconds. The 1255 and 14275 seconds are planning budgets, not measured judge durations. Whatever the judge exit code, the module downloads the judge receipt and the three candidates and checks their identity and hashes. The run's evidence passes only when every capture is complete, the judge exits 0 and every candidate is accepted.
+
 The module transports only. A configuration passes when its Job outcome is complete, its evidence collection has no gaps, and the one loadgen pod terminated with exit code 0, which the worker reaches only after the completion upload. The module writes `idle-observation-<run_kind>.json` in the artifacts directory. [Workflow admission](#workflow-admission) says how a dispatch reaches this module.
 
 ## Workflow admission
 
-The Scenario workflow offers the choice `idle-observation`. `phase.py` admits it only with `run_kind=smoke` and `items=all`, with `capture_authentication_metadata`, `test_handler_refresh_path` and `test_native_authentication` all false. It rejects any other selection with `unsupported idle observation selection` before private inputs or Azure login. The batch run kind is not admitted yet; [#319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/319) adds it with the verifier.
+The Scenario workflow offers the choice `idle-observation`. `phase.py` admits it only with `run_kind` `smoke` or `batch` and `items=all`, with `capture_authentication_metadata`, `test_handler_refresh_path` and `test_native_authentication` all false. It rejects any other selection with `unsupported idle observation selection` before private inputs or Azure login.
 
-The existing `batch` job runs the dispatch. Its `validate-batch` and `prepare-batch` commands check and freeze the selection in `phase.py`. `single-action-seed` re-checks the frozen document through the module above and starts no F04 seed. `run-single-action-batch` runs the module. Preparation freezes items A02, A03 and A04, all seven configurations, under the run ID `idle-<run_id>-<run_attempt>`. The pod evidence artifact is `idle-observation-pods-<run_id>-<run_attempt>` and holds `idle-observation-smoke.json`. The candidate upload finds no file for this choice and does not fail, because nothing is judged. The stop-only `batch-stop` job validates the same selection and stops AKS when the dispatch ends.
+The existing `batch` job runs the dispatch. Its `validate-batch` and `prepare-batch` commands check and freeze the selection in `phase.py`. `single-action-seed` re-checks the frozen document through the module above and starts no F04 seed. `run-single-action-batch` runs the module. Preparation freezes items A02, A03 and A04, all seven configurations, under the run ID `idle-<run_id>-<run_attempt>`. The pod evidence artifact is `idle-observation-pods-<run_id>-<run_attempt>` and holds `idle-observation-<run_kind>.json`, which is `idle-observation-smoke.json` for a smoke run and `idle-observation-batch.json` for a batch run. The candidates go to the artifact `idle-observation-candidates-<run_id>-<run_attempt>`; a missing file fails the upload. The stop-only `batch-stop` job validates the same selection and stops AKS when the dispatch ends.
 
 A smoke result is not published ([split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228), point 4).
 
 ## Boundaries
 
-The worker makes no content checks (ADR-019 in the [blueprint](../blueprint.md)). It does not test K-37. It decides nothing about whether the idle period caused a failure.
+The worker makes no content checks (ADR-019 in the [blueprint](../blueprint.md)). It does not test K-37. It decides nothing about whether the idle period caused a failure. The judge, not the worker, applies the decision rules.
