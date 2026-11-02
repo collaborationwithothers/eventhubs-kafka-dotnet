@@ -1,0 +1,28 @@
+{
+  "execution": {
+    "job_seconds": 1320,
+    "termination_grace_seconds": 30
+  },
+  "capture": {
+    "ProcessLifetimeSeconds": 1260,
+    "ActionWindowMs": 330000,
+    "PostTerminalStatisticsSeconds": 20,
+    "CleanupSeconds": 10,
+    "RegistrationUploadSeconds": 30,
+    "CaptureUploadSeconds": 60,
+    "HostCleanupSeconds": 10,
+    "ReceiptUploadSeconds": 30,
+    "PollSliceMs": 100,
+    "MaxCaptureBytes": 167772160,
+    "MaxRegistrationBytes": 65536,
+    "MaxCompletionBytes": 65536,
+    "MaxStatisticsReportBytes": 262144,
+    "MaxClientErrors": 64,
+    "MaxErrorBytes": 4096,
+    "MaxDiagnosticsPerClient": 20,
+    "MaxDiagnosticBytes": 2048,
+    "CallbackQueueCapacity": 128,
+    "MaxSettingsKeys": 128,
+    "MaxSettingsBytes": 16384
+  }
+}

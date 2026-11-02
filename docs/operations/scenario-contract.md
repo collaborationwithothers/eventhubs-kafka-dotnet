@@ -112,9 +112,9 @@ All use five repeats, no replacement, no fault/gate, and one single_action.outco
 
 ## Idle observation declarations
 
-A02, A03 and A04 use the closed `idle_observation` declaration, under the [five proposal decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6562996229) and the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228). The experiment is one producer that produces, stays idle with nothing to send, and produces again. This section covers the declaration and settings only: no worker runs it yet, and the idle period, statistics interval and statistics report cap, both fields and values, are added by [#317](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/317) under the [#316 decision on timing fields](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/316#issuecomment-6564220623).
+A02, A03 and A04 use the closed `idle_observation` declaration, under the [five proposal decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6562996229) and the [split decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228). The experiment is one producer that produces, stays idle with nothing to send, and produces again. The [idle-observation contract](idle-observation-contract.md) owns the worker that runs it, its wire format and its bounds.
 
-`idle_observation` contains exactly `action: produce` and `role: LoadGenProducer`. Each item uses five repeats, the `LoadGenProducer` role only, no live or component fault, no gate, and exactly the `single_action.outcome` and `single_action.client_errors` measures for `LoadGenProducer`. Each item still names a validated profile, as the root schema requires; the idle experiment does not generate its workload.
+`idle_observation` contains exactly `action: produce`, `role: LoadGenProducer`, and the plain scalars `idle_seconds: 420`, `statistics_interval_ms: 15000` and `max_statistics_reports: 80`. The three numbers are configuration literals from the [#317 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/317), not measurements. The statistics interval equals the baseline `statistics.interval.ms`; the worker refuses a configuration whose resolved value differs. Each item uses five repeats, the `LoadGenProducer` role only, no live or component fault, no gate, and exactly the `single_action.outcome` and `single_action.client_errors` measures for `LoadGenProducer`. Each item still names a validated profile, as the root schema requires; the idle experiment does not generate its workload.
 
 | Item | Configuration | `LoadGenProducer` delta |
 |---|---|---|
@@ -130,8 +130,8 @@ Values in this table are configuration literals, not measurements. The loader's 
 
 1. Admission: only A02, A03 and A04 may declare `idle_observation` (`idle_observation_unexpected`), and each of them must (`idle_observation_required`).
 2. Exclusivity: `idle_observation` cannot appear with `single_action` or `probe_v2` (`idle_observation_combined`).
-3. Shape: a mapping with exactly `action` and `role` (`idle_observation_shape`).
-4. Literals: `action` is `produce` and `role` is `LoadGenProducer` (`idle_observation_literal`).
+3. Shape: a mapping with exactly those five fields (`idle_observation_shape`).
+4. Literals: the five values above (`idle_observation_literal`).
 5. Fixed experiment: the repeats, faults, gate, roles and measures above (`idle_observation_experiment`).
 6. Configuration set: exactly the item's configurations in the table (`idle_observation_configurations`).
 7. Deltas: exactly the table's delta for each configuration (`idle_observation_deltas`).
