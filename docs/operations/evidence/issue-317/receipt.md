@@ -23,7 +23,7 @@ Not applicable: no verifier predicate changes.
 
 ## Commands and results
 
-Run on commit 31de0706a6c3957c02d3cf0871405839cd55727c (the last commit that changed code, tests or scenarios; later commits add this receipt and `items/317/state.md` only), with .NET SDK 10.0.402, Helm v4.3.1 and kubeconform 0.8.0 installed in the session.
+Run on commit 31de0706a6c3957c02d3cf0871405839cd55727c (the last commit that changed code, tests or scenarios; later commits change only this receipt, `items/317/state.md` and the prose of `docs/operations/idle-observation-contract.md`), with .NET SDK 10.0.402, Helm v4.3.1 and kubeconform 0.8.0 installed in the session.
 
 1. `dotnet build Parchwell.slnx -c Release`: 0 warnings, 0 errors.
 2. `dotnet test --project tests/Parchwell.Scenarios.Tests -c Release --no-build`: 293 passed, 0 failed.
@@ -33,5 +33,5 @@ Run on commit 31de0706a6c3957c02d3cf0871405839cd55727c (the last commit that cha
 6. `PARCHWELL_TOOLS_DIRECTORY=<tools> bash charts/parchwell/tests/check-loadgen-host.sh`: passed; the idle-observation line reads 8 rendered environments, 2 missing or unknown regressions.
 7. `python3 -m unittest discover -s infra/scripts/phase/tests -p test_idle_observation.py`: 11 passed. The full `infra/scripts/tests` discovery shows 24 failures and 103 errors, identical in a clean `origin/main` worktree (the sorted failure lists are equal); the session has no `helm` on the default path for that suite.
 8. Acceptance 1 script: prints 1110.4, 1240.4, 75, 139811200, 27960960, 1855, 13020 and 45. Acceptance 2 diffs print nothing.
-9. `npm run check:docs`: 8 warnings, all in files this pull request does not change.
+9. `npm run check:docs`: 8 warnings, all in files this pull request does not change. Re-run at commit 5899854b12fbe293ecfe49076b98ac7a73f7eacf: the same 8 warnings.
 10. Acceptance 7: `git diff --name-only origin/main...HEAD` lists nothing under `.github/`, `src/Parchwell.Verifier/`, `tests/Parchwell.Verifier.Tests/`, `results/` or any `expected.yaml`; the only `*.csproj` is `src/Parchwell.LoadGen/Parchwell.LoadGen.csproj`, whose diff is the three `Content` lines.
