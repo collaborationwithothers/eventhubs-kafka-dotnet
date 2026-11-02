@@ -22,6 +22,10 @@ None. The plan's five edit scripts ran as posted and each applied cleanly. The p
 - Scenario case variant `IDLE-OBSERVATION` rejected.
 - Precedence: each rejected row keeps the other fields valid, so only the field under test can fail. Covered by `test_idle_observation_admits_only_the_smoke_tuple_before_side_effects` and `test_idle_observation_routes_only_to_batch_and_batch_stop`.
 
+## Review record
+
+- Comprehensive pass 1 on 940ed72 plus the receipt: one P1 (the state file's read time was later than its commit; now the real refresh time 2026-11-02T07:28:13Z) and one P2 (a wrong sentence in the contract's "Workflow admission" about which commands call the idle module; reworded). Both fixed. The plan's own text for change 7 carried the wrong sentence; the reworded text follows `phase.py` lines 304, 329, 833 and 866.
+
 ## Commands and results
 
 Run on commit 940ed7275b63285d3bbe4087e950073f1518e91c (all code, tests and docs; this receipt is added after it), with CPython 3.12.3 and the pinned tools from `install-tools.sh ... ci`, and .NET SDK 10.0.402.

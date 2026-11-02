@@ -1,5 +1,5 @@
 # State: #318 Idle observation: smoke admission in scenario.yml (#301 child 4)
-Covers: comment 6571272561 created 2026-11-02T07:09:03Z; read at 2026-11-02T07:25:00Z
+Covers: comment 6571272561 created 2026-11-02T07:09:03Z; read at 2026-11-02T07:28:13Z
 Parent items: [#301](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301)
 Item plan: none
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent`; Claude Code by default
