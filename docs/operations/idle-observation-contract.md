@@ -16,7 +16,7 @@ The worker registers once, then runs five clients at the same time in one pod. E
 
 1. Construct the producer. A construction failure becomes the first produce's terminal error with origin `construction`, and the client does nothing further.
 2. Produce the first record and wait for its delivery report, for at most the action window.
-3. Stay idle for `idle_seconds`, calling no producer method other than the delivery-report and statistics callback drain. The managed background poll (`dotnet.producer.enable.background.poll`, `true` in the [baseline](kafka-baseline.md)) serves callbacks while the client is idle.
+3. Stay idle for `idle_seconds`, calling no producer method other than the delivery-report and statistics callback drain. The managed background poll (`dotnet.producer.enable.background.poll`, `true` in the [baseline](kafka-baseline.md)) serves callbacks while the client is idle ([`EnableBackgroundPoll`, Confluent.Kafka v2.16.0](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Config_gen.cs#L1508-L1517)).
 4. Produce the second record and wait for its delivery report, for at most the action window.
 5. Keep the client open for the post-terminal statistics period so later reports are captured.
 6. Dispose the client.
@@ -37,7 +37,7 @@ Registration and completion follow the [single-action contract](single-action-co
 
 The capture has exactly `schema_version`, `mode`, `synthetic`, `run_kind`, `identity`, `job_name`, `pod_name`, `pod_uid`, `source_commit`, `managed_version`, `native_version`, `topic`, `partition`, `payload_bytes`, `idle_seconds`, `statistics_interval_ms`, `max_statistics_reports` and `repeats`. Each repeat has exactly `repeat`, `client_id`, `settings`, `omitted_keys`, `client_started_unix_ms`, `first`, `idle_started_elapsed_ms`, `idle_ended_elapsed_ms`, `second`, `client_errors`, `client_errors_dropped`, `statistics` and `diagnostics`. Each produce record has exactly `attempt`, `key`, `started_elapsed_ms`, `terminal`, `result`, `error`, `terminal_elapsed_ms` and `terminal_unix_ms`.
 
-`result` and `error` follow the single-action contract's capture envelopes (`origin` is `construction`, `local` or `broker`). A produce with no delivery report inside the window has `terminal` false and null `result`, `error`, `terminal_elapsed_ms` and `terminal_unix_ms`, and its repeat holds the diagnostic `action_window_elapsed:p<attempt>`. A broker error on either produce is a captured outcome, not a worker failure.
+`result` and `error` follow the single-action contract's capture envelopes (`origin` is `construction`, `local` or `broker`). A produce with no recorded delivery report has `terminal` false (no report arrived inside the window, or the repeat had already set `capture_limit` or the report's error reason exceeded `MaxErrorBytes`, so the worker dropped it; in both limit cases the worker exits 1) and null `result`, `error`, `terminal_elapsed_ms` and `terminal_unix_ms`, and its repeat holds the diagnostic `action_window_elapsed:p<attempt>`. A broker error on either produce is a captured outcome, not a worker failure.
 
 ## Bounds
 
@@ -48,7 +48,7 @@ The capture has exactly `schema_version`, `mode`, `synthetic`, `run_kind`, `iden
 - Reports: 1110.4 seconds at one report per 15 seconds is at most 75 reports, and the cap is 80.
 - Statistics bytes: 5 clients x 80 reports x 349528 (the base64 length of 262144 bytes) = 139811200, which is 27960960 below `MaxCaptureBytes` (167772160).
 
-A limit on a statistics report count or size, a client error size, a diagnostic count or size, the callback queue or the settings marks `capture_limit` in that repeat. The worker then still writes the capture, exits 1 and writes no completion. Client errors past `MaxClientErrors` are counted in `client_errors_dropped` and do not set the limit. A client cleanup failure also exits 1 with no completion.
+A limit on a statistics report count or size, a client error size, a delivery error reason size, a diagnostic count or size, the callback queue or the settings marks `capture_limit` in that repeat. The worker then still writes the capture, exits 1 and writes no completion. Client errors past `MaxClientErrors` are counted in `client_errors_dropped` and do not set the limit. A client cleanup failure also exits 1 with no completion.
 
 ## Phase selection
 

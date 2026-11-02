@@ -13,7 +13,6 @@ This pull request adds the LoadGen idle-observation worker for A02, A03 and A04,
 ## Plan deviations and choices
 
 - Plan check P2-1 to P2-5 applied: 45 environment names, not 46; the reworded plain-scalar sentence in `scenario-contract.md`; only the `-idle` Job name and the `ledger` container validate; the per-client worst case is 1110.4 s and the per-process worst case 1240.4 s; the host check command carries `PARCHWELL_TOOLS_DIRECTORY`.
-- Change 21: `IDLE_MODE` follows `SINGLE_ACTION_MODES`, because line 34 of `phase.py` is `SMOKE_MARKER`.
 - Change 20: the runtime values include `run_kind`, which the chart requires.
 - Change 7: `Error` checks the reason size before the dropped count, so an oversized reason sets `capture_limit` even after 64 errors.
 - Change 22: the contract makes no claim about why a polled producer with nothing to send sends no Produce request, because `scenario-contract.md` does not contain that text.
@@ -24,7 +23,7 @@ Not applicable: no verifier predicate changes.
 
 ## Commands and results
 
-Run on the branch head before the receipt, with .NET SDK 10.0.402, Helm v4.3.1 and kubeconform 0.8.0 installed in the session.
+Run on commit 31de0706a6c3957c02d3cf0871405839cd55727c (the last commit that changed code, tests or scenarios; later commits add this receipt and `items/317/state.md` only), with .NET SDK 10.0.402, Helm v4.3.1 and kubeconform 0.8.0 installed in the session.
 
 1. `dotnet build Parchwell.slnx -c Release`: 0 warnings, 0 errors.
 2. `dotnet test --project tests/Parchwell.Scenarios.Tests -c Release --no-build`: 293 passed, 0 failed.
@@ -35,3 +34,4 @@ Run on the branch head before the receipt, with .NET SDK 10.0.402, Helm v4.3.1 a
 7. `python3 -m unittest discover -s infra/scripts/phase/tests -p test_idle_observation.py`: 11 passed. The full `infra/scripts/tests` discovery shows 24 failures and 103 errors, identical in a clean `origin/main` worktree (the sorted failure lists are equal); the session has no `helm` on the default path for that suite.
 8. Acceptance 1 script: prints 1110.4, 1240.4, 75, 139811200, 27960960, 1855, 13020 and 45. Acceptance 2 diffs print nothing.
 9. `npm run check:docs`: 8 warnings, all in files this pull request does not change.
+10. Acceptance 7: `git diff --name-only origin/main...HEAD` lists nothing under `.github/`, `src/Parchwell.Verifier/`, `tests/Parchwell.Verifier.Tests/`, `results/` or any `expected.yaml`; the only `*.csproj` is `src/Parchwell.LoadGen/Parchwell.LoadGen.csproj`, whose diff is the three `Content` lines.
