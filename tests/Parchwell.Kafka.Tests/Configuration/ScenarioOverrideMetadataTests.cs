@@ -47,8 +47,8 @@ public sealed class ScenarioOverrideMetadataTests
                 Assert.Equal("v2.16.0", source.VersionOrDate);
             },
             setting => AssertNewEntry(setting, "socket.keepalive.enable", KafkaScenarioOverrideValueKind.Boolean, KafkaClientRole.LoadGenProducer, "A02", 0, 1),
-            setting => AssertNewEntry(setting, "metadata.max.age.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", 1, 86_400_000),
-            setting => AssertNewEntry(setting, "topic.metadata.refresh.interval.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", -1, 3_600_000),
+            setting => AssertNewEntry(setting, "metadata.max.age.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", 1, 86_400_000, inventories: ["A02", "A03", "A04"]),
+            setting => AssertNewEntry(setting, "topic.metadata.refresh.interval.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A03", -1, 3_600_000, inventories: ["A02", "A03", "A04"]),
             setting =>
             {
                 AssertNewEntry(setting, "connections.max.idle.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A04", 0, int.MaxValue);
@@ -255,12 +255,13 @@ public sealed class ScenarioOverrideMetadataTests
     }
 
     private static void AssertNewEntry(KafkaScenarioOverrideSetting setting, string key, KafkaScenarioOverrideValueKind kind,
-        KafkaClientRole role, string inventory, int minimum, int maximum, string[]? allowed = null, bool any = false, bool activation = false)
+        KafkaClientRole role, string inventory, int minimum, int maximum, string[]? allowed = null, bool any = false, bool activation = false,
+        string[]? inventories = null)
     {
         Assert.Equal(key, setting.Key);
         Assert.Equal(kind, setting.ValueKind);
         Assert.Equal([role], setting.SupportedRoles);
-        Assert.Equal([inventory], setting.InventoryIds);
+        Assert.Equal(inventories ?? [inventory], setting.InventoryIds);
         Assert.Equal(minimum, setting.Minimum);
         Assert.Equal(maximum, setting.Maximum);
         Assert.Equal(allowed ?? [], setting.AllowedValues);

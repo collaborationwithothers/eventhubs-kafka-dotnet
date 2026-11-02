@@ -7,6 +7,8 @@ assessment_rules:
   replacement_repeats: 0
   idle_seconds: 420
   statistics_interval_ms: 15000
+  metadata_timers_ms: 900000
+  metadata_timers_basis: "metadata.max.age.ms and topic.metadata.refresh.interval.ms are both 900000 in C0 and C1 so that no metadata timer is due inside the idle period (rerun decision 6588207250; docs/operations/scenario-contract.md, Idle observation declarations); a configuration literal, not a measurement"
   connection_classes: [kept, closed_while_idle, stale_on_resume, first_failed]
   quiet_period: "smaller of txidle and rxidle in the report before the disconnect, in ms; one -1 uses the other; both -1 or a key absent from that report gives 0, so other_cause"
   idle_timed_threshold_ms: 225000
@@ -41,7 +43,7 @@ verdict:
   decision: "holds when every C1 repeat's first idle-window disconnect has `first_close_quiet_ms >= 163000` and `first_close_after_idle_ms < 225000`; else, including a repeat with no idle-window disconnect, contradicted. `H_default_close` (C0): recorded only. Verdict: undocumented, `not_in_librdkafka_table`."
   precedence: "smoke run -> null, `smoke_only`; a missing candidate or any configuration not `complete_valid` -> null, `incomplete_configuration`; any repeat `first_failed` -> `untestable`, `first_produce_failed`; any configuration whose five repeats do not share one survival -> null, `unequal_classes`; then the item rule."
   no_verdict_when: "smoke run, incomplete or missing configuration, unequal survival or inverse effect; no pooling or replacement repeats."
-  text_must_state: "the 225000 ms idle_timed threshold is a harness choice, not a measurement; per repeat, the other_cause disconnects, request timeouts, second produce outcome and client error callbacks. The 163000 ms quiet floor is a harness choice, not a measurement."
+  text_must_state: "the 225000 ms idle_timed threshold is a harness choice, not a measurement; per repeat, the other_cause disconnects, request timeouts, second produce outcome, client error callbacks and idle_metadata_requests. The 163000 ms quiet floor is a harness choice, not a measurement. Both metadata timers were 900000 ms in C0 and C1, not the baseline's 180000 ms metadata.max.age.ms and 300000 ms topic.metadata.refresh.interval.ms."
 
 sources:
 - url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
@@ -60,5 +62,11 @@ sources:
   version: v2.16.0
   read_date: "2026-11-02"
 - url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_metadata_cache.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_topic.c
   version: v2.16.0
   read_date: "2026-11-02"

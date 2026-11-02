@@ -68,6 +68,14 @@ public sealed class IdleObservationDefinitionTests
         Assert.Equal("180000", Value(a03, "C2", "topic.metadata.refresh.interval.ms"));
         Assert.False(a04.Configurations["C0"].Roles[KafkaClientRole.LoadGenProducer].Settings.ContainsKey("connections.max.idle.ms"));
         Assert.Equal("180000", Value(a04, "C1", "connections.max.idle.ms"));
+        Assert.Equal("900000", Value(a02, "C0", "metadata.max.age.ms"));
+        Assert.Equal("900000", Value(a02, "C0", "topic.metadata.refresh.interval.ms"));
+        Assert.Equal("900000", Value(a02, "C1", "metadata.max.age.ms"));
+        Assert.Equal("900000", Value(a02, "C1", "topic.metadata.refresh.interval.ms"));
+        Assert.Equal("900000", Value(a04, "C0", "metadata.max.age.ms"));
+        Assert.Equal("900000", Value(a04, "C0", "topic.metadata.refresh.interval.ms"));
+        Assert.Equal("900000", Value(a04, "C1", "metadata.max.age.ms"));
+        Assert.Equal("900000", Value(a04, "C1", "topic.metadata.refresh.interval.ms"));
     }
 
     [Theory]
@@ -93,15 +101,19 @@ public sealed class IdleObservationDefinitionTests
     [InlineData("A02", "  live:\n    kind: none\n", "  live:\n    kind: throttling\n    configurations:\n    - C0\n", "idle_observation_experiment")]
     [InlineData("A02", "- id: single_action.client_errors\n  role: LoadGenProducer\n", "", "idle_observation_experiment")]
     [InlineData("A02", "measures:\n", "measures:\n- id: stats.broker.disconnects\n  role: LoadGenProducer\n", "idle_observation_experiment")]
-    [InlineData("A02", "  C1: {}\n", "  C1: {}\n  C2: {}\n", "idle_observation_configurations")]
-    [InlineData("A02", "  C1: {}\n", "", "idle_observation_configurations")]
-    [InlineData("A02", "  C0:\n    LoadGenProducer:\n      socket.keepalive.enable: false\n", "  C0: {}\n", "idle_observation_deltas")]
-    [InlineData("A02", "  C1: {}\n", "  C1:\n    LoadGenProducer:\n      socket.keepalive.enable: false\n", "idle_observation_deltas")]
+    [InlineData("A02", "fault:\n", "  C2: {}\nfault:\n", "idle_observation_configurations")]
+    [InlineData("A02", "  C1:\n    LoadGenProducer:\n      metadata.max.age.ms: 900000\n      topic.metadata.refresh.interval.ms: 900000\n", "", "idle_observation_configurations")]
+    [InlineData("A02", "      socket.keepalive.enable: false\n", "", "idle_observation_deltas")]
+    [InlineData("A02", "  C1:\n    LoadGenProducer:\n", "  C1:\n    LoadGenProducer:\n      socket.keepalive.enable: false\n", "idle_observation_deltas")]
+    [InlineData("A02", "  C1:\n    LoadGenProducer:\n      metadata.max.age.ms: 900000\n", "  C1:\n    LoadGenProducer:\n      metadata.max.age.ms: 900001\n", "idle_observation_deltas")]
+    [InlineData("A02", "      topic.metadata.refresh.interval.ms: 900000\n  C1:\n", "  C1:\n", "idle_observation_deltas")]
     [InlineData("A03", "metadata.max.age.ms: 900000\n", "metadata.max.age.ms: 900001\n", "idle_observation_deltas")]
     [InlineData("A03", "topic.metadata.refresh.interval.ms: 180000\n", "topic.metadata.refresh.interval.ms: 170000\n", "idle_observation_deltas")]
     [InlineData("A03", "      topic.metadata.refresh.interval.ms: 180000\n", "      topic.metadata.refresh.interval.ms: 180000\n      metadata.max.age.ms: 900000\n", "idle_observation_deltas")]
     [InlineData("A04", "connections.max.idle.ms: omit\n", "connections.max.idle.ms: 0\n", "idle_observation_deltas")]
     [InlineData("A04", "connections.max.idle.ms: 180000\n", "connections.max.idle.ms: 179999\n", "idle_observation_deltas")]
+    [InlineData("A04", "      topic.metadata.refresh.interval.ms: 900000\n  C1:\n", "  C1:\n", "idle_observation_deltas")]
+    [InlineData("A04", "      connections.max.idle.ms: 180000\n      metadata.max.age.ms: 900000\n", "      connections.max.idle.ms: 180000\n      metadata.max.age.ms: 600000\n", "idle_observation_deltas")]
     public async Task Given_MutatedIdleFile_When_Loading_Then_RejectsWithTheOwningCheck(string item, string before, string after, string code)
     {
         var original = Text(item);
@@ -171,9 +183,9 @@ public sealed class IdleObservationDefinitionTests
 
     private static Dictionary<string, (string Key, string? Value)[]> Expected(string item) => item switch
     {
-        "A02" => new() { ["C0"] = [("socket.keepalive.enable", "false")], ["C1"] = [] },
+        "A02" => new() { ["C0"] = [("socket.keepalive.enable", "false"), ("metadata.max.age.ms", "900000"), ("topic.metadata.refresh.interval.ms", "900000")], ["C1"] = [("metadata.max.age.ms", "900000"), ("topic.metadata.refresh.interval.ms", "900000")] },
         "A03" => new() { ["C0"] = [("metadata.max.age.ms", "900000")], ["C1"] = [], ["C2"] = [("topic.metadata.refresh.interval.ms", "180000")] },
-        "A04" => new() { ["C0"] = [("connections.max.idle.ms", null)], ["C1"] = [("connections.max.idle.ms", "180000")] },
+        "A04" => new() { ["C0"] = [("connections.max.idle.ms", null), ("metadata.max.age.ms", "900000"), ("topic.metadata.refresh.interval.ms", "900000")], ["C1"] = [("connections.max.idle.ms", "180000"), ("metadata.max.age.ms", "900000"), ("topic.metadata.refresh.interval.ms", "900000")] },
         _ => throw new ArgumentOutOfRangeException(nameof(item))
     };
 

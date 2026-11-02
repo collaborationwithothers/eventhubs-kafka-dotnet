@@ -8,7 +8,12 @@ configurations:
   C0:
     LoadGenProducer:
       socket.keepalive.enable: false
-  C1: {}
+      metadata.max.age.ms: 900000
+      topic.metadata.refresh.interval.ms: 900000
+  C1:
+    LoadGenProducer:
+      metadata.max.age.ms: 900000
+      topic.metadata.refresh.interval.ms: 900000
 fault:
   live:
     kind: none
