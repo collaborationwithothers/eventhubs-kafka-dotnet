@@ -41,6 +41,8 @@ internal static class Program
         if (args.Length == 1 && args[0] == "--validate-single-action-v2-configuration") return SingleActionV2.ProbeV2Host.ValidateConfiguration();
         if (args.Length == 1 && args[0] == "--single-action") return await SingleAction.SingleActionHost.RunAsync(configureTestServices, hostFactory).ConfigureAwait(false);
         if (args.Length == 1 && args[0] == "--validate-single-action-configuration") return SingleAction.SingleActionHost.ValidateConfiguration();
+        if (args.Length == 1 && args[0] == "--idle-observation") return await IdleObservation.IdleObservationHost.RunAsync(configureTestServices, hostFactory).ConfigureAwait(false);
+        if (args.Length == 1 && args[0] == "--validate-idle-observation-configuration") return IdleObservation.IdleObservationHost.ValidateConfiguration();
         if (args.Length == 1 && args[0] == "--validate-configuration") return ValidateConfiguration();
         if (args.Length != 0) return 1;
         completionOutput ??= Console.Out;

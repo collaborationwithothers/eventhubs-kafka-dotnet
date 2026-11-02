@@ -32,6 +32,8 @@ SINGLE_ACTION_CONFIGURATIONS = (
 )
 SINGLE_ACTION_ITEMS = ('B01', 'B03', 'B05', 'C08', 'C12', 'F04')
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
+IDLE_MODE = "idle-observation"
+IDLE_ITEMS = ("A02", "A03", "A04")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
 SEED_RECEIPT_MARKER = "PARCHWELL_F04_SEED_RECEIPT "
@@ -56,7 +58,7 @@ class Failure(Exception):
 
 def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
-    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2"):
+    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2", IDLE_MODE):
         raise Failure("unsupported scenario")
     return selected
 
@@ -185,6 +187,8 @@ def unwrap(value):
 def job_name(run, phase, mode, repeat=None, item=None, configuration=None, action_role=None):
     if mode == "single-action-seed":
         return f"{run}-f04-seed"
+    if mode == IDLE_MODE:
+        return f"{run}-{item.lower()}-{configuration.lower()}-idle"
     if mode in SINGLE_ACTION_MODES:
         suffix = "single-judge" if mode == "single-action-judge" else "single"
         return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
@@ -239,6 +243,13 @@ class Phase:
         spec.loader.exec_module(module)
         return module.ProbeV2(self)
 
+    def idle_observation(self):
+        source = Path(__file__).with_name("idle_observation.py")
+        spec = importlib.util.spec_from_file_location("parchwell_idle_observation", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.IdleObservation(self)
+
     def read(self, name):
         return strict_json((self.private / name).read_bytes())
 
@@ -280,12 +291,21 @@ class Phase:
         return 0
 
     def validate_batch(self):
+        if scenario() == IDLE_MODE:
+            return self.validate_idle_observation()
         if scenario() == "probe-batch-2":
             batch_items()
             return 0
         if scenario() != "probe-batch" or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch"):
             raise Failure("unsupported probe batch selection")
         batch_items()
+        return 0
+
+    def validate_idle_observation(self):
+        if (scenario() != IDLE_MODE or os.environ.get("PARCHWELL_RUN_KIND") != "smoke"
+                or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all" or capture_authentication_metadata()
+                or test_handler_refresh_path() or test_native_authentication()):
+            raise Failure("unsupported idle observation selection")
         return 0
 
     def allow_images(self):
@@ -305,6 +325,8 @@ class Phase:
     def prepare_batch(self):
         self.validate_batch()
         selected = scenario()
+        if selected == IDLE_MODE:
+            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind="smoke", items=list(IDLE_ITEMS))
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
         refresh_test = test_handler_refresh_path() if selected == 'probe-batch-2' else False
         native_test = test_native_authentication() if selected == 'probe-batch-2' else False
@@ -402,7 +424,7 @@ class Phase:
     def prepare_stop(self):
         refresh_test = test_handler_refresh_path()
         native_test = test_native_authentication()
-        if scenario() == "probe-batch-2" or refresh_test or native_test:
+        if scenario() in ("probe-batch-2", IDLE_MODE) or refresh_test or native_test:
             self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()
@@ -494,6 +516,8 @@ class Phase:
         return 0
 
     def values(self, mode, repeat, item=None, configuration=None, action_role=None):
+        if mode == IDLE_MODE:
+            return self.idle_observation().values(item, configuration)
         phase = self.read("phase.json")
         ephemeral = self.read("ephemeral-output.json")
         persistent = self.read("persistent-output.json")
@@ -546,6 +570,8 @@ class Phase:
                   "deadline": None, "outcome": "not_attempted"}
         if mode in SINGLE_ACTION_MODES:
             record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
+        elif mode == IDLE_MODE:
+            record.update(item=item, configuration=configuration, role=action_role)
         state["modes"].append(record)
 
         def save():
@@ -563,7 +589,7 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
-                if mode in SINGLE_ACTION_MODES:
+                if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE:
                     record["reason"] = "safety_stop"
                     save()
                 return record
@@ -607,7 +633,7 @@ class Phase:
                 empty = False
                 if not confirmed:
                     try:
-                        decode = single_action_json if mode in SINGLE_ACTION_MODES else strict_json
+                        decode = single_action_json if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE else strict_json
                         confirmation_data = decode(confirmation.read_bytes())
                         empty = isinstance(confirmation_data, dict) and confirmation_data.get("items") == []
                     except (Failure, OSError, ValueError, AttributeError):
@@ -804,7 +830,13 @@ class Phase:
         if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
             self.probe_v2().selection(frozen)
             return 0
+        if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
+            self.idle_observation().selection(frozen)
+            return 0
         if scenario() == 'probe-batch-2':
+            self.validate_batch()
+            return 0
+        if scenario() == IDLE_MODE:
             self.validate_batch()
             return 0
         self.validate_batch()
@@ -831,9 +863,13 @@ class Phase:
         if isinstance(frozen, dict) and frozen.get('scenario') == 'probe-batch-2':
             self.probe_v2().selection(frozen)
             return self.probe_v2().run_batch()
+        if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
+            return self.idle_observation().run_batch()
         self.validate_batch()
         if scenario() == "probe-batch-2":
             return self.probe_v2().run_batch()
+        if scenario() == IDLE_MODE:
+            return self.idle_observation().run_batch()
         selected = self.read('phase.json')['items']
         state = self.state()
         state['not_selected'] = [

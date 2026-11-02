@@ -25,3 +25,6 @@ measures:
 idle_observation:
   action: produce
   role: LoadGenProducer
+  idle_seconds: 420
+  statistics_interval_ms: 15000
+  max_statistics_reports: 80

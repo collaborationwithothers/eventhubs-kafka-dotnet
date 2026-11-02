@@ -16,6 +16,10 @@ A broker error alone can leave a successfully captured experiment. A capture, wr
 
 The Enrichment seed is a separate executable and `SeedF04` slice under its own service account. It produces the declared marker once, disposes its host, and emits the bounded console receipt defined by the wire contract. It has no Blob publication or telemetry registration. Its action window is 330000 milliseconds, process limit 390 seconds and Job deadline 420 seconds, with 10-second client and host cleanup budgets. Image smoke is distinct from proof of seed delivery.
 
+## Idle-observation capture
+
+`--idle-observation` runs the A02, A03 and A04 capture slice. The [idle-observation contract](idle-observation-contract.md) owns its sequence, paths, fields and bounds. Single-action and legacy Run execution are unchanged.
+
 ## Worker lifecycle
 
 The load generator runs one finite scenario repeat under a unique Kubernetes Job and pod identity. It resolves its settings from the packaged scenario, registers the invocation before constructing Kafka, publishes failure diagnostics when needed, and writes a completion receipt only after execution, publication and cleanup succeed. It does not classify verifier outcomes or change scenario expectations.
