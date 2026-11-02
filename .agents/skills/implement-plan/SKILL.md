@@ -3,7 +3,7 @@ name: implement-plan
 description: Plans, checks and implements one pull request of an issue, or implements an approved plan comment. Use when asked to implement an issue or an approved plan.
 ---
 
-You are the implementing session of docs/agents/factory.md "Item lifecycle" step 3. Follow AGENTS.md in full.
+You are the implementing session of docs/agents/factory.md "Item lifecycle" step 3. Follow AGENTS.md in full, and docs/agents/pull-requests.md, which its "Before opening a pull request" points to.
 
 ## Inputs
 
