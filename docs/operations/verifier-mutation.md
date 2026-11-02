@@ -127,6 +127,12 @@ The [approved S2 plan](https://github.com/collaborationwithothers/eventhubs-kafk
 
 After protected merge, a main-only hosted campaign must include the changed verifier commit and every shard of all six targets. Publication requires `measurement_complete: true` and `break_passed: true`; an incomplete or failed run cannot be waived by local unit tests. Survivor review is capped at 50 with exhaustion action `record the gap and continue`; unreviewed remainder is recorded as `unreviewed_beyond_cap`, without changing raw scoring. No passing six-shard mutation result is claimed by the implementation PR.
 
+## Issue 319 idle-observation target
+
+This plan adds `VerifyRun/IdleObservation/IdleObservationJudgement.cs` to the C5 mutation scope as a seventh target with one shard. The runner, committed configuration, workflow matrix and literal test fixtures agree on seven targets and 14 shards. The sections above that say six targets describe the scope before this change.
+
+After protected merge, a main-only hosted campaign must report `measurement_complete: true` and `break_passed: true` before any idle-observation verdict is published ([docs/agents/factory.md](../agents/factory.md) "Evidence pack"). Survivor review is capped at 50 with exhaustion action `record the gap and continue`. No passing seven-target mutation result is claimed by the implementation pull request.
+
 ## Issue 268 survivor dispositions
 
 The first C5 run after the [issue 261 repair](#issue-261-excluded-source-instrumentation-repair), [run 41183628251](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41183628251), left 149 surviving mutants in four targets. The run is incomplete and is not acceptance evidence. This section gives each survivor one disposition under the [issue 268 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/268#issuecomment-6544994859); raw Stryker statuses and scores are unchanged. Survivors of `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` are unknown until a complete run exists and are not covered.

@@ -105,6 +105,16 @@ public sealed class CompiledArchitectureTests
         Check(judges.Should().NotDependOnAny(kafkaClients),architecture);
     }
 
+    [Fact]
+    public void Given_IdleObservationJudge_When_CompiledDependenciesAreChecked_Then_NoKafkaClientOrBuilderDependency()
+    {
+        var architecture=Architecture.Value;
+        var judges=Types().That().Are(architecture.Types.Where(type=>type.Namespace.FullName.StartsWith("Parchwell.Verifier.VerifyRun.IdleObservation",StringComparison.Ordinal)));
+        var kafkaClients=architecture.Types.Concat(architecture.ReferencedTypes).Where(type=>
+            type.Namespace.FullName=="Confluent.Kafka"&&KafkaClientTypeNames.Any(name=>type.Name.StartsWith(name,StringComparison.Ordinal)));
+        Check(judges.Should().NotDependOnAny(kafkaClients),architecture);
+    }
+
     private static void Check(TypesShouldConjunction rule, Architecture architecture)
     {
         // Empty class-library scaffolds have no types. Assembly identity is checked above;

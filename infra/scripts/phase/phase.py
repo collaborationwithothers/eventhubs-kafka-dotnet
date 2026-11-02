@@ -33,6 +33,7 @@ SINGLE_ACTION_CONFIGURATIONS = (
 SINGLE_ACTION_ITEMS = ('B01', 'B03', 'B05', 'C08', 'C12', 'F04')
 SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-seed")
 IDLE_MODE = "idle-observation"
+IDLE_JUDGE_MODE = "idle-observation-judge"
 IDLE_ITEMS = ("A02", "A03", "A04")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
@@ -187,6 +188,8 @@ def unwrap(value):
 def job_name(run, phase, mode, repeat=None, item=None, configuration=None, action_role=None):
     if mode == "single-action-seed":
         return f"{run}-f04-seed"
+    if mode == IDLE_JUDGE_MODE:
+        return f"{run}-idle-judge"
     if mode == IDLE_MODE:
         return f"{run}-{item.lower()}-{configuration.lower()}-idle"
     if mode in SINGLE_ACTION_MODES:
@@ -302,7 +305,7 @@ class Phase:
         return 0
 
     def validate_idle_observation(self):
-        if (scenario() != IDLE_MODE or os.environ.get("PARCHWELL_RUN_KIND") != "smoke"
+        if (scenario() != IDLE_MODE or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch")
                 or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all" or capture_authentication_metadata()
                 or test_handler_refresh_path() or test_native_authentication()):
             raise Failure("unsupported idle observation selection")
@@ -326,7 +329,7 @@ class Phase:
         self.validate_batch()
         selected = scenario()
         if selected == IDLE_MODE:
-            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind="smoke", items=list(IDLE_ITEMS))
+            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=list(IDLE_ITEMS))
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
         refresh_test = test_handler_refresh_path() if selected == 'probe-batch-2' else False
         native_test = test_native_authentication() if selected == 'probe-batch-2' else False
@@ -516,6 +519,8 @@ class Phase:
         return 0
 
     def values(self, mode, repeat, item=None, configuration=None, action_role=None):
+        if mode == IDLE_JUDGE_MODE:
+            return self.idle_observation().judge_values()
         if mode == IDLE_MODE:
             return self.idle_observation().values(item, configuration)
         phase = self.read("phase.json")
@@ -570,7 +575,7 @@ class Phase:
                   "deadline": None, "outcome": "not_attempted"}
         if mode in SINGLE_ACTION_MODES:
             record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
-        elif mode == IDLE_MODE:
+        elif mode in (IDLE_MODE, IDLE_JUDGE_MODE):
             record.update(item=item, configuration=configuration, role=action_role)
         state["modes"].append(record)
 
@@ -589,7 +594,7 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
-                if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE:
+                if mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE):
                     record["reason"] = "safety_stop"
                     save()
                 return record
@@ -633,7 +638,7 @@ class Phase:
                 empty = False
                 if not confirmed:
                     try:
-                        decode = single_action_json if mode in SINGLE_ACTION_MODES or mode == IDLE_MODE else strict_json
+                        decode = single_action_json if mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE) else strict_json
                         confirmation_data = decode(confirmation.read_bytes())
                         empty = isinstance(confirmation_data, dict) and confirmation_data.get("items") == []
                     except (Failure, OSError, ValueError, AttributeError):

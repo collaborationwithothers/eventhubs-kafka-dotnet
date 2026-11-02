@@ -41,6 +41,8 @@ jobs:
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: single-action-configuration-p6
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: idle-observation
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
     steps:

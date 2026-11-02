@@ -17,6 +17,7 @@ app.kubernetes.io/instance: {{ .Values.runtime.run_id | quote }}
 {{- $r := .Values.runtime -}}{{- $phase := lower $r.phase -}}
 {{- if eq $r.mode "single-action-seed" -}}{{ printf "%s-f04-seed" $r.run_id }}
 {{- else if eq $r.mode "single-action" -}}{{ printf "%s-%s-%s-single" $r.run_id (lower .Values.scenario_id) (lower .Values.configuration_id) }}
+{{- else if eq $r.mode "idle-observation-judge" -}}{{ printf "%s-idle-judge" $r.run_id }}
 {{- else if eq $r.mode "idle-observation" -}}{{ printf "%s-%s-%s-idle" $r.run_id (lower .Values.scenario_id) (lower .Values.configuration_id) }}
 {{- else if eq $r.mode "single-action-judge" -}}{{ printf "%s-%s-%s-single-judge" $r.run_id (lower .Values.scenario_id) (lower .Values.configuration_id) }}
 {{- else if eq $r.mode "judge" -}}{{ printf "%s-%s-judge" $r.run_id $phase }}{{- else -}}{{ printf "%s-%s-r%d-%s" $r.run_id $phase (int $r.repeat) $r.mode }}{{- end -}}

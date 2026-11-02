@@ -1,0 +1,69 @@
+schema_version: 1
+id: A03
+
+assessment_rules:
+  observation_unit: fresh_producer_idle_observation
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  idle_seconds: 420
+  statistics_interval_ms: 15000
+  connection_classes: [kept, closed_while_idle, stale_on_resume, first_failed]
+  quiet_period: "smaller of txidle and rxidle in the report before the disconnect, in ms; one -1 uses the other; both -1 or a key absent from that report gives 0, so other_cause"
+  idle_timed_threshold_ms: 225000
+  idle_timed_threshold_basis: "harness choice, not a measurement; Microsoft's stated 240000 ms idle limit minus one 15000 ms report interval"
+  survival: "only idle_timed disconnects count, on any broker including bootstrap; closed_while_idle is one in the idle window, stale_on_resume one in the resume window only; both are not_kept"
+  recorded_not_selecting: [other_cause disconnects, request timeouts, second produce outcome, client error callbacks]
+  require_one_survival_in_all_five: true
+  unequal_classes: no_verdict
+  incomplete_configuration: no_verdict
+  first_produce_failure: untestable
+  adr012_counts: not_applicable
+  evidence_policy: docs/agents/factory.md#evidence-pack
+  error_text_compared: false
+  changed_expectations_require_human_approval: true
+  judgement_contract: docs/operations/verifier-contract.md#idle-observation-judgement
+
+hypotheses:
+  H_metadata_age:
+    question: "Does metadata.max.age.ms=180000 keep a producer's connections open across a 420 s idle period on Event Hubs?"
+    configurations: [C0, C1]
+    expected: "not_kept in C1 as in C0, an inference from rdkafka.c L2458-L2461"
+    decision: "over the survival in assessment_rules: C0 kept and C1 not_kept -> null, `inverse_effect`. Else C1 not_kept -> contradicted, `closed_with_microsoft_value`. Else C0 not_kept -> confirmed, `microsoft_value_kept_connection`. Else (both kept) -> untestable, `no_idle_close_observed`."
+    reading: "the note \"Must be < 240000\" with \"Azure closes idle connections after 240 seconds\" is read as a claim that the value avoids idle closure"
+  H_metadata_cadence:
+    question: "How many Metadata requests does each configuration send during the idle window?"
+    configurations: [C0, C1, C2]
+    decision: "recorded_only"
+  H_refresh_interval:
+    question: "Does topic.metadata.refresh.interval.ms=180000 keep the connections open?"
+    configurations: [C2]
+    decision: "recorded_only; survival of C2"
+
+verdict:
+  decision: "over the survival in assessment_rules: C0 kept and C1 not_kept -> null, `inverse_effect`. Else C1 not_kept -> contradicted, `closed_with_microsoft_value`. Else C0 not_kept -> confirmed, `microsoft_value_kept_connection`. Else (both kept) -> untestable, `no_idle_close_observed`."
+  precedence: "smoke run -> null, `smoke_only`; a missing candidate or any configuration not `complete_valid` -> null, `incomplete_configuration`; any repeat `first_failed` -> `untestable`, `first_produce_failed`; any configuration whose five repeats do not share one survival -> null, `unequal_classes`; then the item rule."
+  no_verdict_when: "smoke run, incomplete or missing configuration, unequal survival or inverse effect; no pooling or replacement repeats."
+  text_must_state: "the 225000 ms idle_timed threshold is a harness choice, not a measurement; per repeat, the other_cause disconnects, request timeouts, second produce outcome and client error callbacks."
+
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c
+  version: v2.16.0
+  read_date: "2026-11-02"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_metadata_cache.c
+  version: v2.16.0
+  read_date: "2026-11-02"

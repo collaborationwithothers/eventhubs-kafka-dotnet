@@ -1,5 +1,7 @@
 {{- if eq .Values.runtime.mode "idle-observation" -}}
 {{- include "parchwell.idleObservationJob" . -}}
+{{- else if eq .Values.runtime.mode "idle-observation-judge" -}}
+{{- include "parchwell.idleObservationJudgeJob" . -}}
 {{- else if has .Values.runtime.mode (list "single-action-v2" "single-action-v2-judge") -}}
 {{- include "parchwell.probeV2Job" . -}}
 {{- else -}}
