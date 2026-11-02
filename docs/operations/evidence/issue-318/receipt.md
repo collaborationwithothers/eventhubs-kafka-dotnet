@@ -12,7 +12,7 @@ This pull request adds the choice `idle-observation` to the Scenario workflow an
 
 ## Plan deviations and choices
 
-None. The plan's five edit scripts ran as posted and each applied cleanly. The plan check's one P2 (the `items` input description at `scenario.yml` line 25 lists only probe-batch formats) is not applied: the check judged it non-blocking and a fix would change acceptance 1's count and the pinned input map. `phase.py` rejects any value but `all` for this choice before login.
+One deviation. The plan's five edit scripts ran as posted and each applied cleanly. Afterwards the second paragraph of the contract's "Workflow admission" (change 7) was reworded, because the plan's sentence said `validate-batch` and `prepare-batch` route to the idle module and that `single-action-seed` does nothing; both statements are wrong against `phase.py` (see the Review record). The plan check's one P2 (the `items` input description at `scenario.yml` line 25 lists only probe-batch formats) is not applied: the check judged it non-blocking and a fix would change acceptance 1's count and the pinned input map. `phase.py` rejects any value but `all` for this choice before login.
 
 ## Predicate map
 
