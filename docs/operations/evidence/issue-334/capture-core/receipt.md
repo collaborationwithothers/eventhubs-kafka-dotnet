@@ -1,6 +1,6 @@
 # Packet-summary core receipt
 
-This PR implements a synthetic-tested decoder and bounded summary encoder from the approved capture design. It supplies no packet acquisition, live observation or public result.
+This PR implements a decoder and bounded summary encoder with synthetic contract tests from the approved capture design. It supplies no packet acquisition, live observation or public result.
 
 ## Execution card
 
@@ -12,8 +12,8 @@ This PR implements a synthetic-tested decoder and bounded summary encoder from t
 - Earliest normal push/PR: successful acceptance, applicable cold-review coverage and refreshed authority. Final-head CI and hosted reviews remain separate required gates.
 - Budgets: the plan caps changed-file documentation-warning dispositions at 12, with exhaustion action `push -wip and hand off to the next session`. Its fixed fixture matrix includes one pass through all byte flag combinations and one maximum-count streaming case. Other runtime-sized work follows AGENTS.md rule 11; no discretionary retry loop is authorized.
 - Cold-review budget: docs/agents/pull-requests.md rule 8 owns the cumulative budget and exhaustion action. "At most two comprehensive passes run per PR across all sessions." It then allows "at most two focused correction-review rounds", including its P2-correction exception. "When another required review would exceed the budget, or when focus is unsafe, save unpublished work under rule 12 and hand off to Hari."
-- Predicate map: not applicable to verifier work; no verifier predicates change. The component's own boundary-test map will identify its planned test members and unreachable production byte ceilings.
-- Models: Codex implementing session and separate high-effort implementation agent, with exact model names not exposed. Planning and the independent plan check were separate high-effort agents. No core cold reviewer has started.
+- Predicate map: not applicable to verifier work; no verifier predicates change. The component's boundary-test map below identifies its test members and unreachable production byte ceilings.
+- Models: Codex implementing session and separate high-effort implementation agent, with exact model names not exposed. Planning and the independent plan check were separate high-effort agents. The continuation used a separate high-effort agent for the known analyzer corrections. No core cold reviewer has started.
 
 ## Sources and specification comparison
 
@@ -35,9 +35,11 @@ Synthetic fixture values are labeled synthetic in `SyntheticPacketHeaders.cs`. T
 | Byte/envelope/total limits | production-boundary budget theories, arithmetic-extreme case, and smaller-ceiling tests through the real writer |
 | Write faults and terminal states | `Given_StreamFaultOrCancellation_When_WritingEachStage_Then_FaultIsTerminal`; completed-writer and invalid-event cases |
 
-The legal compact event tops out at 125 bytes, while the policy cap is 256. The schema and event-count ceiling leave production total/envelope ceilings unreachable as exact real-output states. Budget-helper boundary tests plus smaller positive limits through the production writer test these guards without broadening the schema or exposing configuration overrides. These tests are planned evidence until the verification results below record execution.
+The legal compact event tops out at 125 bytes, while the policy cap is 256. The schema and event-count ceiling leave production total/envelope ceilings unreachable as exact real-output states. Budget-helper boundary tests plus smaller positive limits through the production writer test these guards without broadening the schema or exposing configuration overrides. The continuation results below distinguish executed synthetic tests from the full verification gate.
 
 ## Verification
+
+### Previous session
 
 The execution card was authored before implementation. The pinned SDK 10.0.402 was installed in the workspace's temporary tools directory, and the managed Docker daemon responded successfully. The required `./scripts/verify-dotnet.sh` exited 1: locked restore passed, then the solution build failed with three distinct CA1861 analyzer errors. The count was computed from unique file/line/column/code diagnostics, excluding the repeated build-summary lines. Architecture checks and test execution were not reached, so no test pass is claimed.
 
@@ -70,7 +72,7 @@ PY
 
 `npm run check:docs` exited 0 with eight warnings in unchanged files and none in the authored paths at the scan checkpoint. Subsequent edits only record this handoff; they have not received a new documentation scan or cold review. No generated output or downloaded source is committed.
 
-### First measured execution workload and continuation
+### Previous session: first measured execution workload
 
 The first build measured three analyzer findings, all CA1861 (prefer static readonly fields for repeated constant-array arguments):
 
@@ -80,8 +82,35 @@ The first build measured three analyzer findings, all CA1861 (prefer static read
 
 The approved plan caps documentation-warning dispositions but does not cap compiler/analyzer findings. AGENTS.md Before opening a pull request rule 11 says: "At an uncapped first measurement, record the count and an estimate of the remaining time under hard safety rule 11, then push -wip and hand off to the next session." No correction or verification retry was attempted after this measurement.
 
-Estimate on 2026-11-03: 20-40 minutes for the three identical array-extraction fixes, full verification and review preparation, based on three localized changes and the still-unrun test suite. This is not a measured duration; hosted CI/review waiting is additional and unknown. The next session has these three concrete fixes, must preserve every assertion, rerun the required verification, update this receipt/state and complete cold/hosted review before a normal push or PR. The backup branch is `codex/issue-334-packet-summary-core-wip`; it is not a PR branch.
+Estimate on 2026-11-03: 20-40 minutes for the three identical array-extraction fixes, full verification and review preparation, based on three localized changes and the still-unrun test suite. This is not a measured duration; hosted CI/review waiting is additional and unknown. That handoff assigned the three concrete fixes, preservation of every assertion, required verification and cold/hosted review to the continuation. The backup branch is `codex/issue-334-packet-summary-core-wip`; it is not a PR branch.
+
+### Continuation: known analyzer corrections
+
+The continuation resumed [the saved implementation](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/commit/4f8c1d4ac6ffa2e6dc52484c4a9bc6844035bbea) under [the evidence-linked handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/334#issuecomment-6616510526). The full issue/comment metadata snapshot, state catch-up, current plan/check, standing decision, design adoptions and approval were refreshed. The current plan remains Revision 1, unchanged; no plan/check or approval was repeated. REST confirmed that the registration and design PRs are merged and there was no open core PR. The normal branch was restored from the exact backup commit; the backup remains until a cold-reviewed normal push.
+
+[Correction source commit](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/commit/aec930a8360fef6443153f40622ac2d18a975040) extracts the expected key arrays to static readonly fields at the three recorded test locations. A Python comparison replaced those references with their original literals and removed the new fields; each result equalled its entire saved test file byte for byte. Every expected value and assertion is preserved. Production code is unchanged from the saved implementation.
+
+### Continuation verification results
+
+On 2026-11-03, the full `./scripts/verify-dotnet.sh` exited 0 with SDK 10.0.402. The tested source was saved commit `4f8c1d4ac6ffa2e6dc52484c4a9bc6844035bbea` plus the exact array extractions subsequently committed as `aec930a8360fef6443153f40622ac2d18a975040`; later receipt/state prose does not change that source. Locked restore, Release build/analyzers, Kafka XML inventory, effective project settings, architecture checks, every fresh test-report validation and both warning-control counterparts passed. Build reported zero warnings and zero errors.
+
+Counts were computed by parsing the fresh XML reports in `/tmp/parchwell-dotnet-verification.EzJl5SHo`, not inferred from test names:
+
+| Suite | Passed |
+|---|---|
+| Architecture | 15 |
+| Enrichment | 56 |
+| Kafka, including the local Docker characterization | 482 |
+| LoadGen | 930 |
+| Scenarios | 297 |
+| Verifier | 5005 |
+
+The script-computed total is 6785 passed, with zero failures, skips or runner errors. Within LoadGen, 115 cases belong to `IdleConnectionCapture`, all passed. This includes the required flag-combination loop and maximum-count streaming case. These are synthetic managed-boundary tests, not kernel filtering, live smoke or experimental observations. The script's existing synthetic Kafka characterization output stays outside the repository.
+
+`npm ci --ignore-scripts` exited 0. `npm run check:docs` exited 0 with eight warnings, all confined to unchanged files; the authored paths had no warning. Those existing warnings are left under the rule-8 blanket disposition and consume none of the plan's changed-file disposition budget. The documentation scan is repeated on the frozen receipt/state snapshot before review. `git diff --check` and the scope/ASCII/arithmetic assertion above passed again. The assertion confirms the planned eleven paths, with only the state index pre-existing on source main; all existing routes, source, tests, packages and project files remain unchanged. No program output is committed.
 
 ## Review record
 
-No cold review has started for this PR. Cumulative consumption: zero comprehensive and zero focused rounds. The merged design PR consumed one comprehensive and zero focused rounds under its separate budget. Complete reports and dispositions belong in the PR self-review record, with final-head CI and hosted review evidence; no report will be added to its own reviewed receipt.
+Review mode: first comprehensive cold review. Input revision: `capture-core-cold-1`, the frozen committed snapshot supplied as a full PR diff against source main `4738586e121568be759e82766776b39520246418`. Its code source is `aec930a8360fef6443153f40622ac2d18a975040`; the exact input commit and diff hash accompany the complete report in the PR self-review record. No comparison to an earlier reviewed core revision exists.
+
+Cumulative consumption before this review: zero comprehensive and zero focused rounds. This is the first comprehensive pass; the existing rule-8 limits and exhaustion action apply across sessions. The merged design PR used its own separate budget. Complete reports and dispositions, final-head CI and hosted review evidence belong in the PR self-review record; the final report is not added to its own reviewed receipt.

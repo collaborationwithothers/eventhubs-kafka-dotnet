@@ -1,5 +1,5 @@
 # State: #334 What closes idle connections to Event Hubs, and why the client sometimes does not see it
-Covers: comment 6616348469 created 2026-11-03T21:53:33Z; read at 2026-11-03T21:53:48.657570+00:00
+Covers: comment 6616510526 created 2026-11-03T22:02:02Z; read at 2026-11-03T22:41:30.240344+00:00
 Parent items: none
 Item plan: none; the investigation scope is [decision 6596595315](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/334#issuecomment-6596595315).
 Implementing tool: Codex. Source: [standing decision point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/334#issuecomment-6596595315).
@@ -14,4 +14,4 @@ Decisions in force:
 - Hari approves the exact observer-only NET_RAW exception, the completeness/interpretation rules and their referenced conditions, and documentation-only Revision 3 with the identifying check's exact citation corrections. This resolves the earlier reservations without claiming implementation or smoke proof; later capability planning, publication paths, protected merges and environment approvals remain required. Source: [Revision 3 approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/334#issuecomment-6615675298).
 Open questions:
 - None for the bounded core component; acquisition, correlation, atomic file finalization, verifier/publication implementation and live proof remain later work.
-Next action: Continue the approved core implementation from codex/issue-334-packet-summary-core-wip. Its first build measured three CA1861 analyzer errors in the new tests; preserve assertions while fixing those known locations, then rerun required verification and perform cold/hosted review. No core PR or passing test result exists yet. Registration and design PRs are merged; no runtime capture or live observation has been produced.
+Next action: Complete cold review and normal-branch publication of the bounded packet-summary core, then final-head CI and hosted reviews. The three recorded analyzer findings are fixed without changing assertions; full local verification passed, including the synthetic core tests. The merge-method decision for design PR #346 does not select this core PR's method. After core merge, separately plan acquisition, correlation, atomic file finalization and verifier/publication paths under standing approval. No runtime capture or live observation has been produced; registration and design PRs are merged.
