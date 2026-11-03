@@ -3,7 +3,7 @@
 Purpose: build results/A04/2026-11-03.json and results/A04/2026-11-03.md, the
 candidate-derived result and report for the A04 verdict pull request (issue 322),
 from the idle-observation batch run 41602168787 and the mutation run
-41602164797. Nothing here reaches Azure or GitHub.
+41670913768. Nothing here reaches Azure or GitHub.
 
 Command line:
 
@@ -12,8 +12,8 @@ Command line:
         [--check | --readme-row | --self-test]
 
 Supported inputs: the extracted candidate and pod artifacts of attempt 1, the
-extracted C5 summary artifact of run 41602164797, the two job logs, and this
-checkout's git objects for c878a9a and f0850d4.
+extracted C5 summary artifact of run 41670913768, the two job logs, and this
+checkout's git objects for c878a9a, 87327f5 and f0850d4.
 
 Output: with no mode flag it writes only results/A04/2026-11-03.json and
 results/A04/2026-11-03.md. It is not a second scientific validator. The
@@ -52,7 +52,9 @@ REPO = "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet"
 RUN = REPO + "/actions/runs/41602168787"
 RUN_ID = "idle-41602168787-1"
 SOURCE = "c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62"
-C5_RUN = REPO + "/actions/runs/41602164797"
+C5_RUN = REPO + "/actions/runs/41670913768"
+GATE_COMMIT = "87327f5841822a8962dd3dbaecb2ee442a8faa8b"
+JUDGE = "VerifyRun/IdleObservation/IdleObservationJudgement.cs"
 PRIOR_C5_COMMIT = "f0850d44086c4065cad76e64da6ec6f2d9cc50ce"
 LOADGEN_DIGEST = "sha256:c43ca9fc2c5ac759cef722f0fe0506058d3064d6e21b88749dbad9c223350750"
 VERIFIER_DIGEST = "sha256:971906cace285b307da14a97386a158d425b09035aab14c0052e6d6adcbb3f27"
@@ -105,9 +107,9 @@ PINS = {
     "pods/idle-41602168787-1-idle-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
     "pods/idle-41602168787-1-idle-judge/idle-41602168787-1-idle-judge-sr4jp.containers.verifier.log": "197871f001e6cea52c11df077e495c9b5f1d8e8997a25206c79cc617d4226326",
     "pods/idle-41602168787-1-idle-judge/pods.json": "c3122871c794ea4c1b4cde8021d206c91d7c281220d715a949d4293c11e28b3c",
-    "c5/summary.json": "0cedd09cb1a61ebd16abfc9ee47a4720baa4abdc1639a3eecb3bc3f8937d545e",
-    "c5/summary.md": "61006a347fc867c134e08389af06433dc2bfa21d0ef0cfb6c955436a9c732bcc",
-    "c5/survivors.json": "a1b5c1d9c7aaab95e275b683770d1d22d97e0196ddcac08a43415bc19003a4fe",
+    "c5/summary.json": "d8cdfb8a17482c5eec35315df9e9d3ac102cc47fe9cca4d6d5e0cdb36a6507f8",
+    "c5/summary.md": "6690d0f09bb82d122ef5f142e5d40c24360267e3406d079c39f184d561b1691d",
+    "c5/survivors.json": "f90dab7447263feb19d95bb36b456678167e378ef0e8c02fe846d0b17daf4e02",
     "logs/batch.log": "a747f60c3568fa287f91869c38dec5dc1706679b1dcb653b2c699f9b10b95632",
     "logs/stop.log": "76bd6dde11f5d8f866276bfdd3ec15d964d1e1dcd9d690b0660f0a71545fafe6",
 }
@@ -124,18 +126,18 @@ WORKING_TREE_SOURCES = ("scenarios/A04/scenario.yaml", "scenarios/A04/expected.y
 # (population, target, Killed, Timeout, Survived, NoCoverage, CompileError, RuntimeError, Ignored, numerator, denominator)
 TARGETS = [
     ("phase", "Judge/PhaseJudge.cs", 189, 1, 16, 0, 4, 0, 6, 190, 206),
-    ("publication", "VerifyRun/Publication/PublicationAcceptance.cs", 177, 0, 6, 0, 6, 0, 14, 177, 183),
+    ("publication", "VerifyRun/Publication/PublicationAcceptance.cs", 176, 0, 7, 0, 6, 0, 14, 176, 183),
     ("a01", "VerifyRun/A01/A01EvidenceRecorder.cs", 71, 0, 0, 0, 15, 0, 8, 71, 71),
-    ("workload", "VerifyRun/A01/WorkloadRecorder.cs", 95, 0, 0, 0, 2, 0, 7, 95, 95),
+    ("workload", "VerifyRun/A01/WorkloadRecorder.cs", 67, 0, 28, 0, 2, 0, 7, 67, 95),
     ("single-action-repeat", "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", 792, 0, 8, 0, 142, 0, 29, 792, 800),
-    ("single-action-configuration", "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 1966, 0, 45, 0, 158, 0, 46, 1966, 2011),
-    ("idle-observation", "VerifyRun/IdleObservation/IdleObservationJudgement.cs", 433, 0, 14, 0, 101, 0, 15, 433, 447),
+    ("single-action-configuration", "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 1948, 0, 63, 0, 158, 0, 46, 1948, 2011),
+    ("idle-observation", "VerifyRun/IdleObservation/IdleObservationJudgement.cs", 424, 0, 23, 0, 101, 0, 15, 424, 447),
 ]
 STATUS_NAMES = ("Killed", "Timeout", "Survived", "NoCoverage", "CompileError", "RuntimeError", "Ignored")
-COMBINED = (3723, 1, 89, 0, 428, 0, 125, 3724, 3813)
+COMBINED = (3667, 1, 145, 0, 428, 0, 125, 3668, 3813)
 SHARD_COUNT = 18
 SAMPLE_SIZE = 50
-UNREVIEWED = 39
+UNREVIEWED = 95
 PRIOR_SAC_SURVIVORS = 8
 SAC = "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
 
@@ -273,11 +275,11 @@ TEMPLATE = "\n".join([
     "",
     "## Mutation publication gate",
     "",
-    "Current gate: [C5 run 41602164797](" + C5_RUN + "), attempt 1, measured `main` at `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`, the source commit of this batch run, so the judge that produced the candidate is the code measured. Its [summary artifact 13220181257](" + C5_RUN + "/artifacts/13220181257) (`c5-summary-41602164797-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and an empty `rebalance_needed`. The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 97.7%, from 3724 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), \"Issue 319 idle-observation target\", and point 4 of the silent-drop decision.",
+    "Current gate: [C5 run 41670913768](" + C5_RUN + "), attempt 1, measured `main` at `87327f5841822a8962dd3dbaecb2ee442a8faa8b`, the commit of pull request 341, which is later than the `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62` this batch run built from. `VerifyRun/IdleObservation/IdleObservationJudgement.cs`, the judge that produced the candidate, has the same git blob at both commits, so the code measured is the code that judged. The campaign ran after the pull request that isolates static-field mutants, which the hold decision required. Its [summary artifact 13256330812](" + C5_RUN + "/artifacts/13256330812) (`c5-summary-41670913768-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and an empty `rebalance_needed`. The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 96.2%, from 3668 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), \"Issue 319 idle-observation target\", and the hold decision. An earlier campaign, run 41602164797 on `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`, is not used. The [hold decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6602480631) said its kill counts in shards containing a static-field mutant could not be relied on. The mechanism is inferred, not shown: that a static-field mutant active at type initialization leaves every later mutant in the same test process running against the mutated value, as [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-340-static-field-isolation), \"Issue 340 static-field isolation\", states. [Pull request 341](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/341) added the isolation.",
     "",
     "<!-- tables:mutation-targets -->",
     "",
-    "The run recorded 89 survivors, @@IDLE_SURVIVORS@@ of them in `VerifyRun/IdleObservation/IdleObservationJudgement.cs`, the target that judged this item. This pull request records no disposition for any of them and runs no survivor review or replay; dispositions recorded in [verifier-mutation.md](../../docs/operations/verifier-mutation.md) for other runs are not reapplied. `survivors.json` puts the first 50 survivors in its disposition sample and records `unreviewed_beyond_cap` 39, under the survivor review cap of 50 with exhaustion action `record the gap and continue`. `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` is byte-identical at `f0850d44086c4065cad76e64da6ec6f2d9cc50ce`, where C5 run 41484094658 recorded 8 survivors in it (the [A03 report](../A03/2026-11-02.md)), and at `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`, where this run recorded 45. That difference is recorded here, not explained.",
+    "The run recorded 145 survivors, @@IDLE_SURVIVORS@@ of them in `VerifyRun/IdleObservation/IdleObservationJudgement.cs`, the target that judged this item. This pull request records no disposition for any of them and runs no survivor review or replay; dispositions recorded in [verifier-mutation.md](../../docs/operations/verifier-mutation.md) for other runs are not reapplied. `survivors.json` puts the first 50 survivors in its disposition sample and records `unreviewed_beyond_cap` 95, under the survivor review cap of 50 with exhaustion action `record the gap and continue`. `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` is byte-identical at `f0850d44086c4065cad76e64da6ec6f2d9cc50ce`, where C5 run 41484094658 recorded 8 survivors in it (the [A03 report](../A03/2026-11-02.md)), at `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62` and at `87327f5841822a8962dd3dbaecb2ee442a8faa8b`, where this run recorded 63. That difference is recorded here, not explained.",
     "",
     "<!-- tables:survivors -->",
 ])
@@ -656,7 +658,7 @@ def check_g9(inputs):
 def check_g10(inputs):
     summary = parse(inputs, "c5/summary.json", "G10")
     survivors = parse(inputs, "c5/survivors.json", "G10")
-    expect(summary.get("commit") == SOURCE and summary.get("run_id") == "41602164797" and summary.get("run_attempt") == "1", "G10", "summary identity")
+    expect(summary.get("commit") == GATE_COMMIT and summary.get("run_id") == "41670913768" and summary.get("run_attempt") == "1", "G10", "summary identity")
     expect(summary.get("measurement_complete") is True and summary.get("incomplete_reasons") == [], "G10", "measurement complete")
     expect(summary.get("break_passed") is True, "G10", "break passed")
     expect(summary.get("rebalance_needed") == [], "G10", "rebalance_needed")
@@ -670,11 +672,13 @@ def check_g10(inputs):
         expect([entry["status_counts"].get(name) for name in STATUS_NAMES] == list(row[2:9]), "G10", "status counts for " + row[0])
         expect(entry.get("numerator") == row[9] and entry.get("denominator") == row[10], "G10", "score for " + row[0])
     expect([summary["status_counts"].get(name) for name in STATUS_NAMES] == list(COMBINED[:7]), "G10", "combined status counts")
-    config = json.loads(git_show("tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json", SOURCE, "G10"))["stryker-config"]
+    config = json.loads(git_show("tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json", GATE_COMMIT, "G10"))["stryker-config"]
     expect(config["thresholds"]["break"] == 60, "G10", "break threshold")
     expect(config["mutate"] == [row[1] for row in TARGETS], "G10", "mutate list")
+    expect(is_ancestor(SOURCE, GATE_COMMIT), "G10", "batch source commit is not an ancestor of the measured commit")
     expect(is_ancestor(PRIOR_C5_COMMIT, SOURCE), "G10", "prior C5 commit is not an ancestor of the run source")
-    expect(git_rev("src/Parchwell.Verifier/" + SAC, PRIOR_C5_COMMIT) == git_rev("src/Parchwell.Verifier/" + SAC, SOURCE), "G10", "configuration judgement differs between the two C5 commits")
+    expect(git_rev("src/Parchwell.Verifier/" + JUDGE, SOURCE) == git_rev("src/Parchwell.Verifier/" + JUDGE, GATE_COMMIT), "G10", "idle judgement differs between the batch source and the measured commit")
+    expect(git_rev("src/Parchwell.Verifier/" + SAC, PRIOR_C5_COMMIT) == git_rev("src/Parchwell.Verifier/" + SAC, SOURCE) == git_rev("src/Parchwell.Verifier/" + SAC, GATE_COMMIT), "G10", "configuration judgement differs between the C5 commits")
     prior = json.loads(git_show("results/A03/2026-11-02.json", SOURCE, "G10"))["publication"]["mutation_gate"]
     expect(prior["measured_commit"] == PRIOR_C5_COMMIT, "G10", "A03 mutation gate commit")
     expect(sum(1 for s in prior["survivors"] if s["target"] == SAC) == PRIOR_SAC_SURVIVORS, "G10", "A03 configuration judgement survivor count")
@@ -872,9 +876,9 @@ def render_json(ctx):
             "jobs": job_rows(),
             "mutation_gate": {
                 "workflow_run": C5_RUN, "attempt": 1,
-                "summary_artifact": {"id": 13220181257, "name": "c5-summary-41602164797-1", "zip_sha256": "db220b179377791eda68796f8d6eb011906cc1eee44084f6a25cc850af7ae08a"},
+                "summary_artifact": {"id": 13256330812, "name": "c5-summary-41670913768-1", "zip_sha256": "fdd649f14cd26fffbb58bae37b260cba2cc3ac44c628db991d13141491cedfa9"},
                 "summary_json_sha256": PINS["c5/summary.json"], "survivors_json_sha256": PINS["c5/survivors.json"],
-                "measured_commit": SOURCE, "measurement_complete": True, "break_passed": True, "break_threshold": 60,
+                "measured_commit": GATE_COMMIT, "measurement_complete": True, "break_passed": True, "break_threshold": 60,
                 "numerator": COMBINED[7], "denominator": COMBINED[8], "shards": SHARD_COUNT,
                 "disposition_sample_size": SAMPLE_SIZE, "unreviewed_beyond_cap": UNREVIEWED,
                 "dispositions_recorded_in_this_pull_request": 0, "survivors": survivors,
@@ -1115,6 +1119,26 @@ def self_test(inputs, sources):
             if error.code != code:
                 print("FAIL " + name + ": expected " + code + ", got " + error.code + ": " + error.message, file=sys.stderr)
                 return 1
+        print("PASS " + name)
+    real_ancestor, real_rev = is_ancestor, git_rev
+    g10_patches = (
+        ("G10-ancestor", lambda older, newer: False if (older, newer) == (SOURCE, GATE_COMMIT) else real_ancestor(older, newer), real_rev),
+        ("G10-idle-blob", real_ancestor, lambda path, commit: "0" * 40 if (path.endswith(JUDGE) and commit == GATE_COMMIT) else real_rev(path, commit)),
+        ("G10-config-blob", real_ancestor, lambda path, commit: "0" * 40 if (path.endswith(SAC) and commit == PRIOR_C5_COMMIT) else real_rev(path, commit)),
+        ("G10-config-blob-gate", real_ancestor, lambda path, commit: "0" * 40 if (path.endswith(SAC) and commit == GATE_COMMIT) else real_rev(path, commit)),
+    )
+    for name, patched_ancestor, patched_rev in g10_patches:
+        globals()["is_ancestor"], globals()["git_rev"] = patched_ancestor, patched_rev
+        try:
+            verify(dict(inputs), pins=False, sources=sources)
+            print("FAIL " + name + ": no check failed", file=sys.stderr)
+            return 1
+        except CheckFailure as error:
+            if error.code != "G10":
+                print("FAIL " + name + ": expected G10, got " + error.code + ": " + error.message, file=sys.stderr)
+                return 1
+        finally:
+            globals()["is_ancestor"], globals()["git_rev"] = real_ancestor, real_rev
         print("PASS " + name)
     for name, change in (("G11-expected", lambda s: check_g11(s, s["scenarios/A04/expected.yaml"] + b"x")),
                          ("G11-scenario", lambda s: check_g11(dict(s, **{"scenarios/A04/scenario.yaml": s["scenarios/A04/scenario.yaml"] + b"x"}), s["scenarios/A04/expected.yaml"]))):
