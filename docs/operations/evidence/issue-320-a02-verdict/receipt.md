@@ -25,12 +25,12 @@ This receipt records how the A02 evidence pack of issue 320 was prepared from ba
 - G8 Pods: collection status, pod identity, restarts, exit codes, image digests, container times and the repeat-tagged client log lines (C0 repeat 1 and C1 repeat 3, two `REQTMOUT` lines each).
 - G9 Logs: the pinned lines of the batch and stop job logs.
 - G10 Mutation gate: summary, commit and tree, 18 shards, the 42 isolated mutants by shard, seven targets, break threshold, Stryker configuration and the 145 survivors with their 50-entry sample.
-- G10a Source equality: `git diff --quiet c878a9a 87327f5 -- src scenarios` exits 0 and no `.cs` or `.csproj` file differs between the batch source and the campaign commit.
+- G10a Source equality: `git diff --quiet c878a9a 87327f5 -- src scenarios` exits 0 and no `.cs` or `.csproj` file differs between the batch source and the campaign commit. The report names the other files that changed between them (`c5_workflow.py`, its test and the phase script test), after the round 2 cold review found the amendment's shorter list incomplete.
 - G11 Sources: the pinned scenario, expected outcome and cluster files and the pinned lines of expected.yaml.
 - G12 Event recomputation: quiet maxima, disconnect and request timeout rows, window sums and the resume timeout sequence from every statistics report.
 - G13 Output (`--check` only): the results files and README line 14 equal the rendered bytes.
 
-`--self-test` runs the real inputs once and then 28 single-change cases, each of which must fail at its stated check: G1-append, G1-extra, G2-exit, G2-hash, G3-notes, G3-kind, G4-word, G5-status, G5-client, G5-window, G6-class, G6-hypothesis, G7-stop, G7-selected, G7-evidence, G8-restart, G8-gap, G9-teardown, G10-break, G10-commit, G10-isolated, G10-survivor, G10-cap, G12-max, G12-timeout, G11-expected, G8-tagged-log and G10a-source. No other self-test case exists.
+`--self-test` runs the real inputs once and then 29 single-change cases, each of which must fail at its stated check: G1-append, G1-extra, G2-exit, G2-hash, G3-notes, G3-kind, G4-word, G5-status, G5-client, G5-window, G6-class, G6-hypothesis, G7-stop, G7-selected, G7-evidence, G8-restart, G8-gap, G9-teardown, G10-break, G10-commit, G10-isolated, G10-survivor, G10-cap, G12-max, G12-timeout, G11-expected, G8-tagged-log, G10a-source and G10a-cs. No other self-test case exists.
 
 ### Cases with no self-test
 
@@ -46,7 +46,7 @@ The boundary, empty-input and precedence cases of the predicate map have no test
 - K-37 not tested (decision 6562996229 point 3): the report states that K-37 was not tested and implies no answer; the candidate note `k37_not_tested` is checked by G3.
 - Run 41602168787 only and campaign 41670913768 (decision 6596426514 points 1 and 4, adopted by 6596432641, with A1 to A5 approved by decision 6612198749): every run value comes from that run; G10 requires the campaign summary to equal the pinned commit and tree, and G10a requires that commit to differ from the batch source in no verifier source or scenario. Campaign 41602164797 is dropped as a gate and not used as evidence.
 - Rule history stated (decision 6596426514 point 2, expected.yaml `text_must_state`): the report and the README row state that `timed_out_on_resume` was designed after an earlier run was seen; G6 recomputes the summaries without it.
-- Nothing from earlier runs (decisions 6588208278 and 6591864593): no value of runs 41483886512 or 41534423570 is used as evidence.
+- Nothing from earlier runs (decisions 6588208278 and 6596432641): no value of runs 41483886512 or 41534423570 is used as evidence.
 
 ## Evidence and claim verification
 
@@ -60,7 +60,7 @@ Run from the repository root at base `87327f5841822a8962dd3dbaecb2ee442a8faa8b` 
 - Generator with no mode flag: exit 0; wrote only the two results files.
 - `--readme-row`: exit 0; one line, used as README line 14.
 - `--check`: exit 0.
-- `--self-test`: exit 0; 28 `PASS` lines from `PASS G1-append` to `PASS G10a-source`.
+- `--self-test`: exit 0; 29 `PASS` lines from `PASS G1-append` to `PASS G10a-cs`.
 - `npm run check:docs`: exit 0 with 8 warnings, all in files this pull request does not change (docs/agents/factory.md, docs/operations/evidence/issue-124, issue-140 and issue-211).
 - Acceptance step 7: after `git add` of exactly the six paths, `git fetch origin main && git diff --cached --merge-base origin/main --name-only` listed exactly those six paths.
 - Acceptance step 8: the ASCII scan over the report, the evidence folder, `README.md` and `items/320/state.md` printed nothing.
@@ -69,6 +69,7 @@ Run from the repository root at base `87327f5841822a8962dd3dbaecb2ee442a8faa8b` 
 
 - Round 1, comprehensive, reviewed revision 73806dc (commit before the amendment), run by `repo-reviewer` on `claude-opus-5-5` in the earlier session. Findings and dispositions: [handoff 6601204905](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/320#issuecomment-6601204905). The false pod-log sentence is fixed by amendment A4, the predicate-map prose by amendment A5, and the three P0s on `results/` and the README are the verdict changes this `verdict` pull request carries by design.
 - Round 2, comprehensive re-review of the entire authored diff, this session: mode comprehensive, input revision the staged tree on top of 40b2a46 (rebased on `main` at 87327f5), comparison base `origin/main`. It is the second and last comprehensive pass allowed by docs/agents/pull-requests.md rule 8. Its report and dispositions are in the pull request's self-review record, not in this reviewed receipt.
+- Round 3, focused correction review (first of two focused rounds): input revision the staged tree on top of cdf3237, comparison revision cdf3237 (the revision round 2 reviewed). It covers the fixes for the round 2 P1 (the incomplete changed-file list in the report) and three P2s (receipt citation, G10a `.cs` case, G8 message), with the full PR diff as context. Its report is in the self-review record.
 
 ## Remaining approval
 

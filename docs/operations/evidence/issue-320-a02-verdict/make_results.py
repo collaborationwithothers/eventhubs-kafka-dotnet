@@ -254,7 +254,7 @@ The members are in pod artifact 13218221146. Each client ID is the pod name foll
 
 ## Mutation publication gate
 
-Current gate: [C5 run 41670913768](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768), attempt 1, measured `main` at `87327f5841822a8962dd3dbaecb2ee442a8faa8b` (tree `0acdbc11a962d054420e1fab1f97b7c4a4ff390b`), a later commit than this batch run's source `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`. `git diff --quiet c878a9a 87327f5 -- src scenarios` exits 0, and no `.cs` or `.csproj` file differs between them (both checked 2026-11-03; the generator checks both as G10a). Only `tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py`, its test and documentation changed, so the campaign measured the verifier code that judged this item (docs/agents/factory.md "Evidence pack", mutation acceptance: a passing run on a later main commit is acceptable when it includes the target changes under review). Its [summary artifact 13256330812](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768/artifacts/13256330812) (`c5-summary-41670913768-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and lists no shard in `rebalance_needed`. Five shards also record `isolated_mutants`, 42 mutant IDs in total (publication 11, workload 4, single-action-configuration part 1 7 and part 4 12, idle-observation part 1 8). The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 96.2%, from 3668 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), "Issue 319 idle-observation target", and point 4 of decision 6596426514. Campaign 41602164797 is dropped as a gate and not cited as evidence: it was superseded because its shards ran static-field mutants in a way that leaked state between mutants (pull request 341, issue 340).
+Current gate: [C5 run 41670913768](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768), attempt 1, measured `main` at `87327f5841822a8962dd3dbaecb2ee442a8faa8b` (tree `0acdbc11a962d054420e1fab1f97b7c4a4ff390b`), a later commit than this batch run's source `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`. `git diff --quiet c878a9a 87327f5 -- src scenarios` exits 0, and no `.cs` or `.csproj` file differs between them (both checked 2026-11-03; the generator checks both as G10a). Besides documentation and item state files, only `tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py`, its test `test_c5_workflow.py` and the phase script test `infra/scripts/phase/tests/test_phase.py` changed (`git diff --name-only`, checked 2026-11-03), so the campaign measured the verifier code that judged this item (docs/agents/factory.md "Evidence pack", mutation acceptance: a passing run on a later main commit is acceptable when it includes the target changes under review). Its [summary artifact 13256330812](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768/artifacts/13256330812) (`c5-summary-41670913768-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and lists no shard in `rebalance_needed`. Five shards also record `isolated_mutants`, 42 mutant IDs in total (publication 11, workload 4, single-action-configuration part 1 7 and part 4 12, idle-observation part 1 8). The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 96.2%, from 3668 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), "Issue 319 idle-observation target", and point 4 of decision 6596426514. Campaign 41602164797 is dropped as a gate and not cited as evidence: it was superseded because its shards ran static-field mutants in a way that leaked state between mutants (pull request 341, issue 340).
 
 <!-- tables:mutation-targets -->
 
@@ -587,7 +587,7 @@ def check_g8(inputs):
                 if match:
                     key = (name, int(match.group(1)))
                     found[key] = found.get(key, 0) + 1
-                    expect(match.group(2) == "REQTMOUT", "G8", name + " tagged client log level")
+                    expect(match.group(2) == "REQTMOUT", "G8", name + " tagged client log facility")
             expected = {key: count for key, count in TAGGED_CLIENT_LOGS.items() if key[0] == name}
             expect(found == expected, "G8", name + " repeat-tagged client log lines")
 
@@ -663,7 +663,10 @@ def check_g10a(source=SOURCE, commit=C5_COMMIT):
     expect(quiet.returncode == 0, "G10a", "src or scenarios differ between the batch source and the campaign commit")
     names = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", source, commit], capture_output=True)
     expect(names.returncode == 0, "G10a", "git diff --name-only failed")
-    changed = names.stdout.decode("utf-8").split("\n")
+    check_no_cs_change(names.stdout.decode("utf-8").split("\n"))
+
+
+def check_no_cs_change(changed):
     expect(not any(n.endswith(".cs") or n.endswith(".csproj") for n in changed), "G10a", "a .cs or .csproj file differs")
 
 
@@ -1118,6 +1121,15 @@ def self_test(inputs, sources):
             print("FAIL G10a-source: expected G10a, got " + error.code, file=sys.stderr)
             return 1
     print("PASS G10a-source")
+    try:
+        check_no_cs_change(["tests/Parchwell.Verifier.Tests/Judge/Example.cs"])
+        print("FAIL G10a-cs: no check failed", file=sys.stderr)
+        return 1
+    except CheckFailure as error:
+        if error.code != "G10a":
+            print("FAIL G10a-cs: expected G10a, got " + error.code, file=sys.stderr)
+            return 1
+    print("PASS G10a-cs")
     return 0
 
 
