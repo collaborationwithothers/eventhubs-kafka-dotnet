@@ -249,25 +249,30 @@
       }
     ],
     "mutation_gate": {
-      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41602164797",
+      "workflow_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768",
       "attempt": 1,
       "summary_artifact": {
-        "id": 13220181257,
-        "name": "c5-summary-41602164797-1",
-        "zip_sha256": "db220b179377791eda68796f8d6eb011906cc1eee44084f6a25cc850af7ae08a"
+        "id": 13256330812,
+        "name": "c5-summary-41670913768-1",
+        "zip_sha256": "fdd649f14cd26fffbb58bae37b260cba2cc3ac44c628db991d13141491cedfa9"
       },
-      "summary_json_sha256": "0cedd09cb1a61ebd16abfc9ee47a4720baa4abdc1639a3eecb3bc3f8937d545e",
-      "survivors_json_sha256": "a1b5c1d9c7aaab95e275b683770d1d22d97e0196ddcac08a43415bc19003a4fe",
-      "measured_commit": "c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62",
+      "summary_json_sha256": "d8cdfb8a17482c5eec35315df9e9d3ac102cc47fe9cca4d6d5e0cdb36a6507f8",
+      "survivors_json_sha256": "f90dab7447263feb19d95bb36b456678167e378ef0e8c02fe846d0b17daf4e02",
+      "measured_commit": "87327f5841822a8962dd3dbaecb2ee442a8faa8b",
+      "measured_tree": "0acdbc11a962d054420e1fab1f97b7c4a4ff390b",
+      "batch_source_commit": "c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62",
+      "source_equality": "git diff --quiet c878a9a 87327f5 -- src scenarios exits 0; no .cs or .csproj file differs",
+      "isolated_mutants": 42,
       "shards": 18,
       "measurement_complete": true,
       "break_passed": true,
       "break_threshold": 60,
-      "numerator": 3724,
+      "numerator": 3668,
       "denominator": 3813,
-      "survivor_count": 89,
+      "survivor_count": 145,
       "disposition_sample_count": 50,
-      "unreviewed_beyond_cap": 39,
+      "unreviewed_beyond_cap": 95,
+      "newly_exposed_survivors": 61,
       "dispositions": "none in this pull request",
       "survivors": [
         {
@@ -383,242 +388,508 @@
           "in_disposition_sample": true
         },
         {
+          "id": 7041,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 20,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7046,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 22,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7048,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 24,
+          "mutator": "Conditional (false) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7051,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 24,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7053,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 25,
+          "mutator": "Conditional (false) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7056,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 25,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7055,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 25,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7062,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 26,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7060,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 26,
+          "mutator": "Conditional (true) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7061,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 26,
+          "mutator": "Conditional (false) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7064,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 27,
+          "mutator": "Conditional (false) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7071,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7073,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7075,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7076,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7077,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7081,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "Conditional (false) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7083,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 28,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7114,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 41,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7112,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 41,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7122,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 41,
+          "mutator": "Statement mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7123,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 41,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7124,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 41,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7128,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 49,
+          "mutator": "Remove checked expression",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7130,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 49,
+          "mutator": "Statement mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7131,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 49,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7132,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 51,
+          "mutator": "Conditional (true) mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7135,
+          "target": "VerifyRun/A01/WorkloadRecorder.cs",
+          "line": 51,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7345,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 15,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7346,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 16,
+          "mutator": "Boolean mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7347,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 16,
+          "mutator": "Boolean mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7421,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 47,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7424,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 49,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7426,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 49,
+          "mutator": "String mutation",
+          "in_disposition_sample": true
+        },
+        {
+          "id": 7428,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 55,
+          "mutator": "Remove checked expression",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 7439,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 61,
+          "mutator": "UnaryMinusExpression to UnaryPlusExpression mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 7441,
+          "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+          "line": 61,
+          "mutator": "UnaryMinusExpression to UnaryPlusExpression mutation",
+          "in_disposition_sample": false
+        },
+        {
           "id": 7475,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 78,
           "mutator": "UnaryMinusExpression to UnaryPlusExpression mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7487,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 82,
           "mutator": "Equality mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7489,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 83,
           "mutator": "Equality mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7494,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 84,
           "mutator": "Equality mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7508,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 86,
           "mutator": "Equality mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7548,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 111,
           "mutator": "Linq method mutation (Min() to Max())",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7549,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 111,
           "mutator": "Null coalescing mutation (remove left)",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7595,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 135,
           "mutator": "Statement mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7674,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 154,
           "mutator": "Linq method mutation (Max() to Min())",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7679,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 155,
           "mutator": "Conditional (true) mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7754,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 184,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7803,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 196,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7804,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 196,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 7810,
           "target": "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
           "line": 198,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
-          "id": 10924,
+          "id": 10939,
           "target": "VerifyRun/Publication/PublicationAcceptance.cs",
-          "line": 19,
+          "line": 33,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
-          "id": 10927,
+          "id": 10965,
           "target": "VerifyRun/Publication/PublicationAcceptance.cs",
-          "line": 19,
-          "mutator": "String mutation",
-          "in_disposition_sample": true
+          "line": 47,
+          "mutator": "Remove checked expression",
+          "in_disposition_sample": false
         },
         {
-          "id": 10929,
+          "id": 11002,
           "target": "VerifyRun/Publication/PublicationAcceptance.cs",
-          "line": 20,
-          "mutator": "String mutation",
-          "in_disposition_sample": true
-        },
-        {
-          "id": 10931,
-          "target": "VerifyRun/Publication/PublicationAcceptance.cs",
-          "line": 20,
-          "mutator": "String mutation",
-          "in_disposition_sample": true
-        },
-        {
-          "id": 10933,
-          "target": "VerifyRun/Publication/PublicationAcceptance.cs",
-          "line": 20,
-          "mutator": "String mutation",
-          "in_disposition_sample": true
+          "line": 58,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
         },
         {
           "id": 11015,
           "target": "VerifyRun/Publication/PublicationAcceptance.cs",
           "line": 61,
           "mutator": "Statement mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
+        },
+        {
+          "id": 11051,
+          "target": "VerifyRun/Publication/PublicationAcceptance.cs",
+          "line": 73,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 11079,
+          "target": "VerifyRun/Publication/PublicationAcceptance.cs",
+          "line": 89,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 11124,
+          "target": "VerifyRun/Publication/PublicationAcceptance.cs",
+          "line": 104,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
         },
         {
           "id": 12069,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 33,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12311,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12312,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12313,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12314,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12315,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12316,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12317,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12318,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12319,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12320,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12321,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12322,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12325,
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 90,
           "mutator": "String mutation",
-          "in_disposition_sample": true
+          "in_disposition_sample": false
         },
         {
           "id": 12326,
@@ -779,6 +1050,132 @@
           "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
           "line": 117,
           "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12509,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 124,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12519,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 125,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12520,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 125,
+          "mutator": "Linq method mutation (All() to Any())",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12662,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 150,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12682,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 156,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12686,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 157,
+          "mutator": "OrAssignmentExpression to ExclusiveOrAssignmentExpression mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12689,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 157,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12733,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 171,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12734,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 172,
+          "mutator": "Linq method mutation (Any() to All())",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12735,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 172,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12744,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 176,
+          "mutator": "Linq method mutation (Any() to All())",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12751,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 177,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12752,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 177,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12757,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 179,
+          "mutator": "Equality mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12759,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 179,
+          "mutator": "Boolean mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12829,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 201,
+          "mutator": "Logical mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12841,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 204,
+          "mutator": "String mutation",
+          "in_disposition_sample": false
+        },
+        {
+          "id": 12859,
+          "target": "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+          "line": 209,
+          "mutator": "Linq method mutation (All() to Any())",
           "in_disposition_sample": false
         },
         {

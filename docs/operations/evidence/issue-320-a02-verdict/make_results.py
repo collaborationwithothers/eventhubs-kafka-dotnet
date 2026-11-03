@@ -1,9 +1,9 @@
-"""Assemble the A02 publication from batch run 41602168787 and mutation campaign 41602164797, offline.
+"""Assemble the A02 publication from batch run 41602168787 and mutation campaign 41670913768, offline.
 
 Purpose: build results/A02/2026-11-03.json and results/A02/2026-11-03.md, the
 candidate-derived result and report for the A02 verdict pull request (issue 320),
 from the idle-observation batch run 41602168787 and the C5 mutation campaign
-41602164797. Nothing here reaches Azure or GitHub.
+41670913768. Nothing here reaches Azure or GitHub.
 
 Command line:
 
@@ -12,8 +12,8 @@ Command line:
         [--check | --readme-row | --self-test]
 
 Supported inputs: the extracted candidate and pod artifacts of attempt 1, the
-extracted C5 summary artifact of campaign 41602164797, the two job logs, and this
-checkout's git objects for c878a9a.
+extracted C5 summary artifact of campaign 41670913768, the two job logs, and this
+checkout's git objects for c878a9a and 87327f5.
 
 Output: with no mode flag it writes only results/A02/2026-11-03.json and
 results/A02/2026-11-03.md. It is not a second scientific validator. The
@@ -27,9 +27,12 @@ Failure conditions (exit 1, "FAIL G<n>: <message>" on stderr):
   G5  a configuration or repeat has the wrong shape, status or client ID
   G6  a recomputed class, summary, verdict, reason or hypothesis differs
   G7  the phase status or batch record differs
-  G8  a pod, container, exit code, image digest or time differs
+  G8  a pod, container, exit code, image digest or time differs, or the repeat-tagged
+      client log lines of a pod log differ from the pinned counts
   G9  a pinned job-log line differs
-  G10 the mutation summary, shard, survivor set or sample differs
+  G10 the mutation summary, shard, isolated mutants, survivor set or sample differs
+  G10a the campaign commit differs from the batch source in src or scenarios, or any
+      .cs or .csproj file differs between them
   G11 a source file or a pinned source line differs
   G12 a recomputed quiet maximum, disconnect, timeout, reconnect or count differs
   G13 (--check only) a generated file or README line 14 differs
@@ -52,7 +55,15 @@ REPO = "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet"
 RUN = REPO + "/actions/runs/41602168787"
 RUN_ID = "idle-41602168787-1"
 SOURCE = "c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62"
-C5_RUN = REPO + "/actions/runs/41602164797"
+C5_RUN = REPO + "/actions/runs/41670913768"
+C5_RUN_ID = "41670913768"
+C5_COMMIT = "87327f5841822a8962dd3dbaecb2ee442a8faa8b"
+C5_TREE = "0acdbc11a962d054420e1fab1f97b7c4a4ff390b"
+C5_ARTIFACT = {"id": 13256330812, "name": "c5-summary-41670913768-1", "zip_sha256": "fdd649f14cd26fffbb58bae37b260cba2cc3ac44c628db991d13141491cedfa9"}
+# Per-shard counts of mutants the campaign isolated from static-field leakage (pull request 341, issue 340).
+ISOLATED_MUTANTS = {"publication": 11, "workload": 4, "single-action-configuration-p1": 7, "single-action-configuration-p4": 12, "idle-observation-p1": 8}
+# Client log lines tagged by repeat in the pod logs: (configuration, repeat) -> number of REQTMOUT lines.
+TAGGED_CLIENT_LOGS = {("C0", 1): 2, ("C1", 3): 2}
 LOADGEN_DIGEST = "sha256:c43ca9fc2c5ac759cef722f0fe0506058d3064d6e21b88749dbad9c223350750"
 VERIFIER_DIGEST = "sha256:971906cace285b307da14a97386a158d425b09035aab14c0052e6d6adcbb3f27"
 CONFIGS = ("C0", "C1")
@@ -99,9 +110,9 @@ PINS = {
     "pods/idle-41602168787-1-idle-judge/collection-status.json": "fa4da065bc94ef89ab52608d18a9f5f1ccb6e652c02d37ac85100f3d663a4966",
     "pods/idle-41602168787-1-idle-judge/idle-41602168787-1-idle-judge-sr4jp.containers.verifier.log": "197871f001e6cea52c11df077e495c9b5f1d8e8997a25206c79cc617d4226326",
     "pods/idle-41602168787-1-idle-judge/pods.json": "c3122871c794ea4c1b4cde8021d206c91d7c281220d715a949d4293c11e28b3c",
-    "c5/summary.json": "0cedd09cb1a61ebd16abfc9ee47a4720baa4abdc1639a3eecb3bc3f8937d545e",
-    "c5/summary.md": "61006a347fc867c134e08389af06433dc2bfa21d0ef0cfb6c955436a9c732bcc",
-    "c5/survivors.json": "a1b5c1d9c7aaab95e275b683770d1d22d97e0196ddcac08a43415bc19003a4fe",
+    "c5/summary.json": "d8cdfb8a17482c5eec35315df9e9d3ac102cc47fe9cca4d6d5e0cdb36a6507f8",
+    "c5/summary.md": "6690d0f09bb82d122ef5f142e5d40c24360267e3406d079c39f184d561b1691d",
+    "c5/survivors.json": "f90dab7447263feb19d95bb36b456678167e378ef0e8c02fe846d0b17daf4e02",
     "logs/batch.log": "a747f60c3568fa287f91869c38dec5dc1706679b1dcb653b2c699f9b10b95632",
     "logs/stop.log": "76bd6dde11f5d8f866276bfdd3ec15d964d1e1dcd9d690b0660f0a71545fafe6",
 }
@@ -116,16 +127,16 @@ WORKING_TREE_SOURCES = ("scenarios/A02/scenario.yaml", "scenarios/A02/expected.y
 # (population, target, parts, Killed, Timeout, Survived, NoCoverage, CompileError, RuntimeError, Ignored, numerator, denominator)
 TARGETS = [
     ("phase", "Judge/PhaseJudge.cs", 1, 189, 1, 16, 0, 4, 0, 6, 190, 206),
-    ("publication", "VerifyRun/Publication/PublicationAcceptance.cs", 1, 177, 0, 6, 0, 6, 0, 14, 177, 183),
+    ("publication", "VerifyRun/Publication/PublicationAcceptance.cs", 1, 176, 0, 7, 0, 6, 0, 14, 176, 183),
     ("a01", "VerifyRun/A01/A01EvidenceRecorder.cs", 1, 71, 0, 0, 0, 15, 0, 8, 71, 71),
-    ("workload", "VerifyRun/A01/WorkloadRecorder.cs", 1, 95, 0, 0, 0, 2, 0, 7, 95, 95),
+    ("workload", "VerifyRun/A01/WorkloadRecorder.cs", 1, 67, 0, 28, 0, 2, 0, 7, 67, 95),
     ("single-action-repeat", "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", 3, 792, 0, 8, 0, 142, 0, 29, 792, 800),
-    ("single-action-configuration", "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 8, 1966, 0, 45, 0, 158, 0, 46, 1966, 2011),
-    ("idle-observation", "VerifyRun/IdleObservation/IdleObservationJudgement.cs", 3, 433, 0, 14, 0, 101, 0, 15, 433, 447),
+    ("single-action-configuration", "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 8, 1948, 0, 63, 0, 158, 0, 46, 1948, 2011),
+    ("idle-observation", "VerifyRun/IdleObservation/IdleObservationJudgement.cs", 3, 424, 0, 23, 0, 101, 0, 15, 424, 447),
 ]
 STATUS_NAMES = ("Killed", "Timeout", "Survived", "NoCoverage", "CompileError", "RuntimeError", "Ignored")
 # Killed, Timeout, Survived, NoCoverage, CompileError, RuntimeError, Ignored, numerator, denominator
-COMBINED = (3723, 1, 89, 0, 428, 0, 125, 3724, 3813)
+COMBINED = (3667, 1, 145, 0, 428, 0, 125, 3668, 3813)
 
 DECISION = "over the survival in assessment_rules: C0 kept and C1 not_kept -> null, `inverse_effect`. Else C1 not_kept -> contradicted, `closed_with_keepalive`. Else C0 not_kept -> confirmed, `keepalive_kept_connection`. Else (both kept) -> untestable, `no_idle_close_observed`."
 PRECEDENCE = "smoke run -> null, `smoke_only`; a missing candidate or any configuration not `complete_valid` -> null, `incomplete_configuration`; any repeat `first_failed` -> `untestable`, `first_produce_failed`; any configuration whose five repeats do not share one survival -> null, `unequal_classes`; then the item rule."
@@ -239,15 +250,15 @@ The batch job log records the planned ephemeral namespace as capacity 1 (line 14
 
 <!-- tables:jobs -->
 
-The members are in pod artifact 13218221146. Each client ID is the pod name followed by `-r<repeat>`. The pod logs carry no line tagged by repeat, because the five clients share one pod. The per-repeat evidence is the candidate's repeat results, which keep every projected statistics report, and each pod JSON records the worker's exit code 0.
+The members are in pod artifact 13218221146. Each client ID is the pod name followed by `-r<repeat>`. Client log lines in the pod logs are tagged by repeat (`idle_observation_client_log r<repeat>`); in this run only C0 repeat 1 and C1 repeat 3 have such lines, two `REQTMOUT` lines each. The per-repeat evidence is the candidate's repeat results, which keep every projected statistics report, and each pod JSON records the worker's exit code 0.
 
 ## Mutation publication gate
 
-Current gate: [C5 run 41602164797](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41602164797), attempt 1, measured `main` at `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`, the source commit of this batch run, so it measured the verifier code that judged this item. Its [summary artifact 13220181257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41602164797/artifacts/13220181257) (`c5-summary-41602164797-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and lists no shard in `rebalance_needed`. The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 97.7%, from 3724 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), "Issue 319 idle-observation target", and point 4 of decision 6596426514.
+Current gate: [C5 run 41670913768](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768), attempt 1, measured `main` at `87327f5841822a8962dd3dbaecb2ee442a8faa8b` (tree `0acdbc11a962d054420e1fab1f97b7c4a4ff390b`), a later commit than this batch run's source `c878a9ab2b2550e17ee4cbb5a6388f96f93d6c62`. `git diff --quiet c878a9a 87327f5 -- src scenarios` exits 0, and no `.cs` or `.csproj` file differs between them (both checked 2026-11-03; the generator checks both as G10a). Only `tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py`, its test and documentation changed, so the campaign measured the verifier code that judged this item (docs/agents/factory.md "Evidence pack", mutation acceptance: a passing run on a later main commit is acceptable when it includes the target changes under review). Its [summary artifact 13256330812](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768/artifacts/13256330812) (`c5-summary-41670913768-1`), member `summary.json`, records `measurement_complete: true`, no incomplete reasons and `break_passed: true`, across all 18 shards of the seven configured targets, and lists no shard in `rebalance_needed`. Five shards also record `isolated_mutants`, 42 mutant IDs in total (publication 11, workload 4, single-action-configuration part 1 7 and part 4 12, idle-observation part 1 8). The break threshold is 60, from `thresholds.break` in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json` at that commit. The raw score is 96.2%, from 3668 / 3813 * 100 rounded to one decimal place. This meets the publication requirement in [verifier-mutation.md](../../docs/operations/verifier-mutation.md#issue-319-idle-observation-target), "Issue 319 idle-observation target", and point 4 of decision 6596426514. Campaign 41602164797 is dropped as a gate and not cited as evidence: it was superseded because its shards ran static-field mutants in a way that leaked state between mutants (pull request 341, issue 340).
 
 <!-- tables:mutation-targets -->
 
-The campaign left 89 surviving mutants in five targets, 14 of them in `VerifyRun/IdleObservation/IdleObservationJudgement.cs`, the target that judged this item. No survivor of this campaign is dispositioned in this pull request. `survivors.json` lists the first 50 survivors as its disposition sample, which is not a disposition, and records the other 39 as `unreviewed_beyond_cap`, under the survivor review cap of 50 and its exhaustion action `record the gap and continue` in [verifier-mutation.md](../../docs/operations/verifier-mutation.md). Separately from the mutation measurement, the generator recomputes every connection class, both configuration summaries and the assessment from the candidate's window counts, and checks those counts against the disconnects, request timeouts and connection attempts in the candidate's own statistics reports.
+The campaign left 145 surviving mutants in six targets, 23 of them in `VerifyRun/IdleObservation/IdleObservationJudgement.cs`, the target that judged this item. No survivor of this campaign is dispositioned in this pull request. 61 of the 145 are newly exposed survivors that the earlier campaign had counted as killed through the leakage (the issue 340 comparison, an inference stated there). `survivors.json` lists the first 50 survivors as its disposition sample, which is not a disposition, and records the other 95 as `unreviewed_beyond_cap`, under the survivor review cap of 50 and its exhaustion action `record the gap and continue` in [verifier-mutation.md](../../docs/operations/verifier-mutation.md). Whether that gap is acceptable for this verdict is Hari's decision when he reviews this pull request. Separately from the mutation measurement, the generator recomputes every connection class, both configuration summaries and the assessment from the candidate's window counts, and checks those counts against the disconnects, request timeouts and connection attempts in the candidate's own statistics reports.
 
 <!-- tables:survivors -->"""
 
@@ -568,6 +579,17 @@ def check_g8(inputs):
         expect(terminated["exitCode"] == 0, "G8", name + " exit code")
         expect(container["imageID"].endswith("@" + digest), "G8", name + " image digest")
         expect((terminated["startedAt"], terminated["finishedAt"]) == CONTAINER_TIMES[name], "G8", name + " container times")
+        if name in CONFIGS:
+            log = inputs["pods/" + job + "/" + pod + ".containers.loadgen.log"].decode("utf-8", errors="strict")
+            found = {}
+            for line in log.split("\n"):
+                match = re.match(r"idle_observation_client_log r([0-9]+) [0-9]+\|([A-Z]+)\|", line)
+                if match:
+                    key = (name, int(match.group(1)))
+                    found[key] = found.get(key, 0) + 1
+                    expect(match.group(2) == "REQTMOUT", "G8", name + " tagged client log level")
+            expected = {key: count for key, count in TAGGED_CLIENT_LOGS.items() if key[0] == name}
+            expect(found == expected, "G8", name + " repeat-tagged client log lines")
 
 
 def log_lines(data):
@@ -597,7 +619,7 @@ def check_g9(inputs):
 def check_g10(inputs):
     summary = parse(inputs, "c5/summary.json", "G10")
     survivors = parse(inputs, "c5/survivors.json", "G10")
-    expect(summary.get("commit") == SOURCE and summary.get("run_id") == "41602164797" and summary.get("run_attempt") == "1", "G10", "summary identity")
+    expect(summary.get("commit") == C5_COMMIT and summary.get("tree") == C5_TREE and summary.get("run_id") == C5_RUN_ID and summary.get("run_attempt") == "1", "G10", "summary identity")
     expect(summary.get("measurement_complete") is True and summary.get("incomplete_reasons") == [], "G10", "measurement complete")
     expect(summary.get("break_passed") is True, "G10", "break passed")
     expect(summary.get("numerator") == COMBINED[7] and summary.get("denominator") == COMBINED[8], "G10", "summary score")
@@ -618,18 +640,31 @@ def check_g10(inputs):
     combined = summary.get("status_counts")
     expect(isinstance(combined, dict) and [combined.get(name) for name in STATUS_NAMES] == list(COMBINED[:7]), "G10", "combined status counts")
     config_path = "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json"
-    config = json.loads(git_show(config_path, SOURCE, "G10"))["stryker-config"]
+    config = json.loads(git_show(config_path, C5_COMMIT, "G10"))["stryker-config"]
     expect(config["thresholds"]["break"] == 60, "G10", "break threshold")
     expect(config["mutate"] == [row[1] for row in TARGETS], "G10", "mutate list")
     exact_keys(survivors, ("survivors", "disposition_sample", "unreviewed_beyond_cap"), "G10", "survivors.json")
-    expect(len(survivors["survivors"]) == 89, "G10", "survivor count")
+    isolated = {name: len(entry.get("isolated_mutants", [])) for name, entry in shards.items() if entry.get("isolated_mutants")}
+    expect(isolated == ISOLATED_MUTANTS, "G10", "isolated mutants per shard")
+    expect(sum(isolated.values()) == 42, "G10", "isolated mutants total")
+    expect(len(survivors["survivors"]) == COMBINED[2], "G10", "survivor count")
     expect(all(item.get("status") == "Survived" for item in survivors["survivors"]), "G10", "survivor status")
     expect(survivors["disposition_sample"] == survivors["survivors"][:50], "G10", "survivor sample")
-    expect(survivors["unreviewed_beyond_cap"] == 39, "G10", "unreviewed_beyond_cap")
+    expect(survivors["unreviewed_beyond_cap"] == COMBINED[2] - 50, "G10", "unreviewed_beyond_cap")
     for row in TARGETS:
         found = sum(1 for item in survivors["survivors"] if item.get("file") == row[1])
         expect(found == row[5], "G10", "survivor count for " + row[1])
     return summary
+
+
+def check_g10a(source=SOURCE, commit=C5_COMMIT):
+    """The campaign commit and the batch source differ in no verifier source or scenario."""
+    quiet = subprocess.run(["git", "-C", str(ROOT), "diff", "--quiet", source, commit, "--", "src", "scenarios"], capture_output=True)
+    expect(quiet.returncode == 0, "G10a", "src or scenarios differ between the batch source and the campaign commit")
+    names = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", source, commit], capture_output=True)
+    expect(names.returncode == 0, "G10a", "git diff --name-only failed")
+    changed = names.stdout.decode("utf-8").split("\n")
+    expect(not any(n.endswith(".cs") or n.endswith(".csproj") for n in changed), "G10a", "a .cs or .csproj file differs")
 
 
 def check_g11(sources, expected):
@@ -735,6 +770,7 @@ def verify(inputs, pins=True, sources=None):
     check_g8(inputs)
     check_g9(inputs)
     summary = check_g10(inputs)
+    check_g10a()
     survivors = parse(inputs, "c5/survivors.json", "G10")
     sources = sources if sources is not None else read_sources()
     check_g11(sources, sources["scenarios/A02/expected.yaml"])
@@ -819,12 +855,14 @@ def render_json(ctx):
             "jobs": job_rows(),
             "mutation_gate": {
                 "workflow_run": C5_RUN, "attempt": 1,
-                "summary_artifact": {"id": 13220181257, "name": "c5-summary-41602164797-1", "zip_sha256": "db220b179377791eda68796f8d6eb011906cc1eee44084f6a25cc850af7ae08a"},
+                "summary_artifact": C5_ARTIFACT,
                 "summary_json_sha256": PINS["c5/summary.json"], "survivors_json_sha256": PINS["c5/survivors.json"],
-                "measured_commit": SOURCE, "shards": 18,
+                "measured_commit": C5_COMMIT, "measured_tree": C5_TREE, "batch_source_commit": SOURCE,
+                "source_equality": "git diff --quiet c878a9a 87327f5 -- src scenarios exits 0; no .cs or .csproj file differs",
+                "isolated_mutants": 42, "shards": 18,
                 "measurement_complete": True, "break_passed": True, "break_threshold": 60,
-                "numerator": 3724, "denominator": 3813, "survivor_count": 89, "disposition_sample_count": 50,
-                "unreviewed_beyond_cap": 39, "dispositions": "none in this pull request",
+                "numerator": COMBINED[7], "denominator": COMBINED[8], "survivor_count": COMBINED[2], "disposition_sample_count": 50,
+                "unreviewed_beyond_cap": COMBINED[2] - 50, "newly_exposed_survivors": 61, "dispositions": "none in this pull request",
                 "survivors": survivor_list(ctx["survivors"]),
             },
         },
@@ -1009,6 +1047,10 @@ def self_test(inputs, sources):
     def gap(i):
         edit_json(i, "pods/" + PODS["judge"][0] + "/collection-status.json", lambda s: s.update(gaps=["x"]))
 
+    def tagged_log(i):
+        key = "pods/" + PODS["C0"][0] + "/" + PODS["C0"][1] + ".containers.loadgen.log"
+        i[key] = i[key].replace(b"idle_observation_client_log r1 ", b"idle_observation_client_log r2 ", 1)
+
     def teardown(i):
         lines = i["logs/batch.log"].decode("utf-8").split("\n")
         lines[3748] = "x"
@@ -1034,9 +1076,11 @@ def self_test(inputs, sources):
     case("G7-evidence", "G7", lambda i: edit_json(i, "pods/idle-observation-batch.json", lambda b: b.update(evidence_passed=False)))
     case("G8-restart", "G8", restart)
     case("G8-gap", "G8", gap)
+    case("G8-tagged-log", "G8", tagged_log)
     case("G9-teardown", "G9", teardown)
     case("G10-break", "G10", lambda i: edit_json(i, "c5/summary.json", lambda s: s.update(break_passed=False)))
     case("G10-commit", "G10", lambda i: edit_json(i, "c5/summary.json", lambda s: s.update(commit="f0850d44086c4065cad76e64da6ec6f2d9cc50ce")))
+    case("G10-isolated", "G10", lambda i: edit_json(i, "c5/summary.json", lambda s: s["shards"]["workload"]["isolated_mutants"].pop()))
     case("G10-survivor", "G10", lambda i: edit_json(i, "c5/survivors.json", drop_survivor))
     case("G10-cap", "G10", lambda i: edit_json(i, "c5/survivors.json", lambda s: s.update(unreviewed_beyond_cap=0)))
     case("G12-max", "G12", candidate_edit(set_quiet), refresh=True)
@@ -1065,6 +1109,15 @@ def self_test(inputs, sources):
             print("FAIL G11-expected: expected G11, got " + error.code, file=sys.stderr)
             return 1
     print("PASS G11-expected")
+    try:
+        check_g10a(SOURCE, "f0850d44086c4065cad76e64da6ec6f2d9cc50ce")
+        print("FAIL G10a-source: no check failed", file=sys.stderr)
+        return 1
+    except CheckFailure as error:
+        if error.code != "G10a":
+            print("FAIL G10a-source: expected G10a, got " + error.code, file=sys.stderr)
+            return 1
+    print("PASS G10a-source")
     return 0
 
 
