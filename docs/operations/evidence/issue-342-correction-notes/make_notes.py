@@ -100,7 +100,7 @@ def check_classification():
         for name in sorted(os.listdir(os.path.join("results", item))):
             if name.endswith(".md"):
                 current = gate_runs(open(os.path.join("results", item, name), encoding="utf-8").read())
-                if current is not None:
+                if current is not None and current != CORRECTED:
                     found[item] = (name[:-3], current)
     if len(found) > len(RESULTS):
         sys.exit(f"affected list grew to {len(found)}: {sorted(found)}; push -wip and hand off to the next session")
@@ -150,7 +150,11 @@ def files_text(source, differ, absent):
         parts.append("These differ: " + ", ".join(f"`{t}`" for t in differ) + ".")
     if absent:
         parts.append(f"These did not exist at `{source}`: " + ", ".join(f"`{t}`" for t in absent) + ".")
-    parts.append(f"So run {CORRECTED} did not measure exactly the verifier source that produced this result.")
+    if differ:
+        parts.append(f"So run {CORRECTED} did not measure exactly the verifier source that produced this result.")
+    else:
+        parts.append(f"Run {CORRECTED} also scored mutants of the files that did not exist at this result's source; "
+                     "the files that existed there are byte-identical.")
     return " ".join(parts)
 
 
