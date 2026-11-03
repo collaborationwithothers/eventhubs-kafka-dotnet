@@ -9,6 +9,8 @@ namespace Parchwell.LoadGen.Tests.IdleConnectionCapture;
 #pragma warning disable CA1707
 public sealed class PacketSummaryStreamWriterTests
 {
+    private static readonly string[] ExpectedEnvelopeKeys = ["schema_version", "run_id", "source_commit", "configuration_id", "repeat", "capture_started_utc", "events", "capture_ended_utc"];
+
     private static PacketSummaryEvent Event => new(1, PacketDirection.Outbound, 0, TcpControlFlags.Syn);
 
     [Theory]
@@ -33,7 +35,7 @@ public sealed class PacketSummaryStreamWriterTests
         Assert.DoesNotContain("\n", text, StringComparison.Ordinal);
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement root = document.RootElement;
-        Assert.Equal(new[] { "schema_version", "run_id", "source_commit", "configuration_id", "repeat", "capture_started_utc", "events", "capture_ended_utc" },
+        Assert.Equal(ExpectedEnvelopeKeys,
             root.EnumerateObject().Select(p => p.Name));
         Assert.Equal(1, root.GetProperty("schema_version").GetInt32());
         Assert.Equal("synthetic-334", root.GetProperty("run_id").GetString());

@@ -10,6 +10,8 @@ namespace Parchwell.LoadGen.Tests.IdleConnectionCapture;
 #pragma warning disable CA1707
 public sealed class PacketHeaderDecoderTests
 {
+    private static readonly string[] ExpectedEventKeys = ["flow", "direction", "elapsed_ns", "flags"];
+
     [Theory]
     [InlineData(5, 5, 40)]
     [InlineData(15, 15, 120)]
@@ -73,7 +75,7 @@ public sealed class PacketHeaderDecoderTests
             SyntheticPacketHeaders.Acknowledgment.ToString(CultureInfo.InvariantCulture)
         }) Assert.DoesNotContain(forbidden, encoded, StringComparison.OrdinalIgnoreCase);
         using JsonDocument document = JsonDocument.Parse(encoded);
-        Assert.Equal(new[] { "flow", "direction", "elapsed_ns", "flags" },
+        Assert.Equal(ExpectedEventKeys,
             document.RootElement.GetProperty("events")[0].EnumerateObject().Select(p => p.Name));
     }
 

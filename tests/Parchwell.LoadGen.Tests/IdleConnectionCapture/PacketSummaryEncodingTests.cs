@@ -7,6 +7,8 @@ namespace Parchwell.LoadGen.Tests.IdleConnectionCapture;
 #pragma warning disable CA1707
 public sealed class PacketSummaryEncodingTests
 {
+    private static readonly string[] ExpectedEventKeys = ["flow", "direction", "elapsed_ns", "flags"];
+
     [Theory]
     [InlineData(0, 0, 0, false)] [InlineData(1, 0, 0, true)]
     [InlineData(64, 1, long.MaxValue, true)] [InlineData(65, 0, 0, false)]
@@ -23,7 +25,7 @@ public sealed class PacketSummaryEncodingTests
         Assert.Null(failure);
         using JsonDocument document = JsonDocument.Parse(encoded);
         JsonElement root = document.RootElement;
-        Assert.Equal(new[] { "flow", "direction", "elapsed_ns", "flags" }, root.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(ExpectedEventKeys, root.EnumerateObject().Select(p => p.Name));
         Assert.Equal(flow, root.GetProperty("flow").GetInt32());
         Assert.Equal(direction == 0 ? "outbound" : "inbound", root.GetProperty("direction").GetString());
         Assert.Equal(elapsed, root.GetProperty("elapsed_ns").GetInt64());
