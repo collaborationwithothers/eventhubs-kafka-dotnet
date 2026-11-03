@@ -25,7 +25,7 @@ Check 12 is the existing `report_records`, covered by `test_report_scope_schema_
 
 ## Commands and results
 
-Branch `claude/issue-340-static-field-isolation` cut from `main` at `69102fe874698ab16839fe789b0bb54f158d535a`. A1 to A5 ran on commit `236e589` (the code and documentation after cold review rounds 1 and 2, with `items/340/state.md`), which differs from the final head only by this receipt. The proof ran on the earlier commit `9a29c4f`; `git diff 9a29c4f 236e589` changes one code comment in `c5_workflow.py`, one sentence of `verifier-mutation.md`, and `test_c5_workflow.py` only, and no runner logic.
+Branch `claude/issue-340-static-field-isolation` cut from `main` at `69102fe874698ab16839fe789b0bb54f158d535a`. A1 to A5 ran on commit `236e589` (the code and documentation after cold review rounds 1 and 2, with `items/340/state.md`), which differs from the final head only by this receipt. The proof ran on the earlier commit `9a29c4f`; `git diff 9a29c4f 236e589` changes one code comment in `c5_workflow.py`, one sentence of `verifier-mutation.md` and `test_c5_workflow.py`, and adds this receipt; it changes no runner logic.
 
 1. A1. `sha256sum`: `c5_workflow.py` `c27583891677d9e6a381de06401134daf6722fd86e0b89610558ded3f45edf91`, `test_c5_workflow.py` `d6039eb6058d587d115c1efc56dccb199f0427091aacb4e6f0386764c4386ebc`, `verifier-mutation.md` `8f081a4ad59221ed6b98414af8e88ab9e0970cd041229ed6c39c84f4347e50ca`. These differ from the plan's `c88f74f8...`, `535c8a37...` and `cb2c28b1...` by the plan check's three marked P2 fixes and the cold review corrections listed under "Deviations from the plan".
 2. A2. `cd tests/Parchwell.Verifier.Tests/Mutation && python3 -m unittest test_c5_workflow`: `Ran 78 tests`, `OK` (77 before the exit code 2 test; 63 on `main`).
@@ -76,3 +76,7 @@ Round 2 (comprehensive, pass 2 of 2): input revision `7373f7b` plus the receipt 
 - P2, the authorization line did not say that the listed parent #301 carries `ready-for-agent`. Corrected above.
 
 Focused round 1 of 2 (rule 8): input revision `236e589` plus this receipt, comparison revision `7373f7b` (the revision round 2 reviewed), full pull request diff as context, reviewing the round 2 corrections only.
+
+Focused round 1 report: complete, no P0 or P1, one P2 (the sentence above said `git diff 9a29c4f 236e589` changed only three files, and it also adds this receipt). Fixed above, as prose in a file already in the diff.
+
+Focused round 2 of 2 (rule 8, P2-correction round, reports only P0 or P1): input revision `236e589` plus this receipt, comparison revision `befa40d` (the receipt reviewed in focused round 1), full pull request diff as context.
