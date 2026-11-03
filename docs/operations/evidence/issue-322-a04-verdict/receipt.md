@@ -19,13 +19,15 @@ This receipt describes how the A04 evidence pack in `results/A04/2026-11-03.md` 
 
 The generator was decoded from the plan comment (gzip and base64, Acceptance step 0) with SHA-256 `3d92de34755b23c726317bf3f8631e01f6718d1ddfa030864671f588235eeb7a`. The plan check's `apply in implementation` finding was then applied: the report title in `TEMPLATE` said the client closed idle producer connections, which the report itself lists as not tested. It now reads "each producer's first idle-window disconnect came before 225000 ms and every repeat was kept". The committed generator's SHA-256 is `c5f20c0c4e72de9926504794cd58088b86bc6ce79ef3b167e79baf50144be50d`, the value the plan check gave. No check, pinned value, recorded number or verdict changed.
 
+Cold review round 1 (comprehensive) raised one more prose finding, applied under the plan's stop rule for generator changes: the summary sentence now says that H_client_close is decided by the timing of the first idle-window disconnect whichever side closed it. No check, pinned value, recorded number or verdict changed. The generator's SHA-256 is now `08c08bfdf510c4aede06a6548571b5945afd3ca19492cbfdda4cda20d97a2462`. After that change Acceptance steps 2 to 5 were rerun with the same results.
+
 ## Specification comparison
 
 Each "Evidence pack" bullet maps to a report section: the approved scenario and expected outcome (Approved inputs and run); per-repeat results (Repeat outcomes and the JSON `candidate`); validity, completion and pod evidence (Repeat outcomes, Versions, environment and timing); verifier counts (stated not applicable, absent); broker counts (Disconnects recomputed from the statistics reports); versions, PU count, region and timestamps (Versions, environment and timing); the proposed verdict and summary (opening paragraph, Assessment against expected.yaml). The `text_must_state` clauses of A04 expected.yaml map to the Assessment section, the resume timeout class section and the Not tested section.
 
 ## Evidence and claim verification
 
-Every input is pinned by SHA-256 in the generator and re-checked by G1. The ZIP and log hashes equal the plan's Acceptance step 1 values. The `.json` output hash equals the plan's reference value `93bc09fb2346ae92d7e5d6185dac6c0e5c66453312a93ff1ec2962b4c30437dc`. The `.md` hash differs from the plan's reference value, as the plan check said it would after the title change, and is `f9a39bbe81918d43095e0c4090b917245e7afe75f1b7a19ce343616eb5738076`. No survivor review or replay was run: the report lists the 89 survivors as unreviewed, 14 of them in the judge, with the first 50 as the disposition sample and 39 beyond the cap.
+Every input is pinned by SHA-256 in the generator and re-checked by G1. The ZIP and log hashes equal the plan's Acceptance step 1 values. The `.json` output hash equals the plan's reference value `93bc09fb2346ae92d7e5d6185dac6c0e5c66453312a93ff1ec2962b4c30437dc`. The `.md` hash differs from the plan's reference value, as the plan check said it would after the title change, and after the second prose change is `80ff54c71df9694246b8c89db090f0eafae3ecf40e0e26e8fabd930238863ee1`. No survivor review or replay was run: the report lists the 89 survivors as unreviewed, 14 of them in the judge, with the first 50 as the disposition sample and 39 beyond the cap.
 
 ## Commands and results
 
@@ -38,7 +40,8 @@ Run from the repository root at base `69102fe874698ab16839fe789b0bb54f158d535a` 
 - `--check`: exit 0 after the README change.
 - `--self-test`: exit 0; 27 `PASS` lines from `PASS G1-append` to `PASS G11-scenario`.
 - `npm run check:docs`: exit 0 with 8 warnings, all in files this pull request does not change (docs/agents/factory.md, docs/operations/evidence/issue-124, issue-140 and issue-211).
-- Acceptance steps 7 and 8 are recorded in the pull request description after staging.
+- Acceptance step 7: after `git add` of exactly the six paths, `git fetch origin main && git diff --cached --merge-base origin/main --name-only` exited 0 and listed exactly `README.md`, `docs/operations/evidence/issue-322-a04-verdict/make_results.py`, `docs/operations/evidence/issue-322-a04-verdict/receipt.md`, `items/322/state.md`, `results/A04/2026-11-03.json` and `results/A04/2026-11-03.md`.
+- Acceptance step 8: the ASCII scan `LC_ALL=C grep -nP '[^\x00-\x7F]'` over the report, the evidence folder, `README.md` and `items/322/state.md` printed nothing (grep exit 1).
 
 ## Cold review record
 
