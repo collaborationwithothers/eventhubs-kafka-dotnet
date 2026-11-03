@@ -624,12 +624,15 @@
         "capture_pods": {
           "type": "string",
           "minLength": 1
+        },
+        "judge_items": {
+          "enum": ["A02", "A03", "A04", "A02,A03", "A02,A04", "A03,A04", "A02,A03,A04"]
         }
       },
       "allOf": [
         {
           "if": { "properties": { "mode": { "const": "idle-observation-judge" } }, "required": ["mode"] },
-          "then": { "required": ["run_kind", "capture_pods"], "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] }, "properties": { "bounds": { "required": ["idle_observation"] } } }
+          "then": { "required": ["run_kind", "capture_pods", "judge_items"], "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] }, "properties": { "bounds": { "required": ["idle_observation"] } } }
         },
         {
           "if": { "properties": { "mode": { "const": "idle-observation" } }, "required": ["mode"] },

@@ -264,6 +264,7 @@ class IdleObservationTests(unittest.TestCase):
         expected = ','.join(f'{e["item"]}{e["configuration"]}:{e["capture_pod"]["name"]}:{e["capture_pod"]["uid"]}'
                             for e in entries if e['capture_complete'])
         self.assertEqual(runtime['capture_pods'], expected)
+        self.assertEqual(runtime['judge_items'], 'A02,A03,A04')
         self.assertEqual(len(expected.split(',')), 6)
         self.assertNotIn('A03C0', expected)
         self.assertEqual(self.p.values('idle-observation-judge', None, None, None, 'verifier'), values)
@@ -273,6 +274,9 @@ class IdleObservationTests(unittest.TestCase):
         self.assertEqual(self.idle.judge_values()['runtime']['capture_pods'], 'none')
         self.write_phase(phase_document(items=['A03']))
         self.assertEqual(self.idle.judge_values()['configuration_id'], 'C1')
+        self.assertEqual(self.idle.judge_values()['runtime']['judge_items'], 'A03')
+        self.write_phase(phase_document(items=['A02', 'A04']))
+        self.assertEqual(self.idle.judge_values()['runtime']['judge_items'], 'A02,A04')
 
     def judge_clock(self, remaining, items=('A02', 'A03', 'A04')):
         document = phase_document(items=items) | {'batch_started_monotonic': 1000.0, 'batch_clock_boot_id': BOOT, 'batch_clock_run_id': RUN,

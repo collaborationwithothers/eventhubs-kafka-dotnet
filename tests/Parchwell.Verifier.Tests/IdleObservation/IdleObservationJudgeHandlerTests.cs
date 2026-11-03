@@ -46,6 +46,17 @@ public sealed class IdleObservationJudgeHandlerTests
     }
 
     [Fact]
+    public async Task Given_SelectedItemsA02AndA04_When_Judged_Then_OnlyTheirCandidatesAreWritten()
+    {
+        var fixture = await Fixture.CreateAsync(pods: PodKeys.Where(key => !key.StartsWith("A03", StringComparison.Ordinal)), items: "A02,A04");
+        var references = await fixture.Handler.ExecuteAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(["A02", "A04"], references.Select(x => x.ScenarioId));
+        Assert.Equal(["complete_valid", "complete_valid"], references.Select(x => x.Status));
+        Assert.Equal(0, IdleObservationJudgement.ExitCode(references));
+        Assert.Equal([IdleObservationPaths.Candidate("run1", "A02"), IdleObservationPaths.Candidate("run1", "A04")], fixture.Store.Files.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task Given_SmokeRun_When_Judged_Then_CandidatesCarryEvidenceButNoVerdict()
     {
         var fixture = await Fixture.CreateAsync(runKind: "smoke");
@@ -262,12 +273,13 @@ public sealed class IdleObservationJudgeHandlerTests
         internal TestHost Host { get; private set; } = null!;
 
         internal static async Task<Fixture> CreateAsync(string runKind = "batch", IEnumerable<string>? pods = null,
-            Func<string, string, IdleCapture, IdleCapture>? alter = null)
+            Func<string, string, IdleCapture, IdleCapture>? alter = null, string items = "A02,A03,A04")
         {
             var fixture = new Fixture();
             fixture.Store = new(fixture.Events);
             var options = JudgeOptions(runKind);
             options.CapturePods = pods is null ? options.CapturePods : CapturePodsText(pods);
+            options.Items = items;
             var loader = new ScenarioLoader(new FileSystemScenarioSource(AppContext.BaseDirectory), Microsoft.Extensions.Options.Options.Create(options.ScenarioLoadOptions));
             var resolver = new IdleObservationResolver(options);
             foreach (string key in PodKeys.Where(options.Pods().ContainsKey))

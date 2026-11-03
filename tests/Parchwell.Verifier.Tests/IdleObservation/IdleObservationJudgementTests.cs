@@ -19,7 +19,7 @@ public sealed class IdleObservationJudgementTests
         var result = JudgeOne(Repeat());
         Assert.Equal("complete_valid", result.Status);
         Assert.Equal("kept", result.ConnectionClass);
-        Assert.Equal(new IdleWindows(0, 0, 0, 0, 0, null, null, 0, 0, 0, 0), result.Windows);
+        Assert.Equal(new IdleWindows(0, 0, 0, 0, 0, null, null, 0, 0, 0, 0, false), result.Windows);
         Assert.Equal(2, result.MaximumUpBrokers);
     }
 
@@ -57,6 +57,76 @@ public sealed class IdleObservationJudgementTests
         Assert.Equal("kept", result.ConnectionClass);
         Assert.Equal(1, result.Windows!.ResumeOtherCauseDisconnects);
         Assert.Equal(1, result.Windows.ResumeRequestTimeouts);
+    }
+
+    private static readonly long[] ResumeTimes = [.. Enumerable.Range(1, 33).Select(index => index * 15000L)];
+
+    private static IdleRepeat ResumeRepeat(SingleActionStatistic[] statistics) => Repeat(statistics) with { Second = Produce(2, 422000, 480000) };
+
+    [Theory]
+    [InlineData(435000L, 435000L, 435000L, "timed_out_on_resume", true)]
+    [InlineData(435000L, 450000L, 465000L, "timed_out_on_resume", true)]
+    [InlineData(450000L, 450000L, 480000L, "timed_out_on_resume", true)]
+    [InlineData(435000L, 465000L, 450000L, "kept", false)]
+    [InlineData(450000L, 435000L, 465000L, "kept", false)]
+    [InlineData(435000L, 435000L, 495000L, "kept", false)]
+    [InlineData(420000L, 435000L, 435000L, "kept", false)]
+    [InlineData(435000L, long.MaxValue, 435000L, "kept", false)]
+    [InlineData(435000L, 435000L, long.MaxValue, "kept", false)]
+    [InlineData(long.MaxValue, 435000L, 435000L, "kept", false)]
+    public void Given_ResumeTimeoutDisconnectAndConnect_When_ReportOrderVaries_Then_OnlyThatOrderOnOneKeyIsTimedOutOnResume(
+        long timeoutFrom, long disconnectFrom, long connectFrom, string expected, bool sequence)
+    {
+        var result = JudgeOne(ResumeRepeat(Node8Series((elapsed, broker) => broker with
+        {
+            Timeouts = elapsed >= timeoutFrom ? 1 : 0,
+            Disconnects = elapsed >= disconnectFrom ? 1 : 0,
+            Connects = elapsed >= connectFrom ? 2 : 1
+        }, ResumeTimes)));
+        Assert.Equal("complete_valid", result.Status);
+        Assert.Equal(expected, result.ConnectionClass);
+        Assert.Equal(sequence, result.Windows!.ResumeTimeoutReconnect);
+        Assert.Equal(0, result.Windows.ResumeIdleTimedDisconnects);
+    }
+
+    [Fact]
+    public void Given_TimeoutOnOneKeyAndReconnectOnAnother_When_Judged_Then_ConnectionIsKept()
+    {
+        var result = JudgeOne(ResumeRepeat(Series(elapsed => elapsed >= 435000
+            ? [Bootstrap() with { Disconnects = 1, Connects = 2 }, Node8() with { Timeouts = 1 }]
+            : [Bootstrap(), Node8()], ResumeTimes)));
+        Assert.Equal("kept", result.ConnectionClass);
+        Assert.False(result.Windows!.ResumeTimeoutReconnect);
+        Assert.Equal((1L, 1L, 1L), (result.Windows.ResumeOtherCauseDisconnects, result.Windows.ResumeConnects, result.Windows.ResumeRequestTimeouts));
+    }
+
+    [Fact]
+    public void Given_KeyFirstSeenInResumeWindowWithTimeoutDisconnectAndConnect_When_Judged_Then_AbsentCountsAsZero()
+    {
+        var result = JudgeOne(ResumeRepeat(Series(elapsed => elapsed >= 435000
+            ? [Bootstrap(), Node8(), ("n:9093/9", 9, "learned", "UP", 1000000, 1000000, 1, 1, 1, 0)]
+            : [Bootstrap(), Node8()], ResumeTimes)));
+        Assert.Equal("timed_out_on_resume", result.ConnectionClass);
+        Assert.True(result.Windows!.ResumeTimeoutReconnect);
+    }
+
+    [Fact]
+    public void Given_ResumeIdleTimedDisconnectWithTimeoutAndReconnect_When_Judged_Then_StaleOnResumeTakesPrecedence()
+    {
+        var result = JudgeOne(Repeat(Node8Series((elapsed, broker) => elapsed == 420000 ? broker with { TxIdle = 405000000, RxIdle = 405000000 }
+            : elapsed >= 435000 ? broker with { Timeouts = 1, Disconnects = 1, Connects = 2 } : broker)));
+        Assert.Equal("stale_on_resume", result.ConnectionClass);
+        Assert.True(result.Windows!.ResumeTimeoutReconnect);
+        Assert.Equal(1, result.Windows.ResumeIdleTimedDisconnects);
+    }
+
+    [Fact]
+    public void Given_IdleTimedCloseAndResumeTimeoutSequence_When_Judged_Then_ClosedWhileIdleTakesPrecedence()
+    {
+        var result = JudgeOne(Repeat(Node8Series((elapsed, broker) => elapsed == 240000 ? broker with { TxIdle = 230000000, RxIdle = 230000000 }
+            : elapsed >= 435000 ? broker with { Disconnects = 2, Connects = 2, Timeouts = 1 } : elapsed >= 255000 ? broker with { Disconnects = 1 } : broker)));
+        Assert.Equal("closed_while_idle", result.ConnectionClass);
+        Assert.True(result.Windows!.ResumeTimeoutReconnect);
     }
 
     [Fact]
@@ -187,7 +257,7 @@ public sealed class IdleObservationJudgementTests
         Assert.Equal("complete_valid", result.Status);
         Assert.Empty(result.Reasons);
         Assert.Equal("kept", result.ConnectionClass);
-        Assert.Equal(new IdleWindows(0, 0, 0, 0, 0, null, null, 0, 0, 0, 0), result.Windows);
+        Assert.Equal(new IdleWindows(0, 0, 0, 0, 0, null, null, 0, 0, 0, 0, false), result.Windows);
         Assert.Equal(0, result.MaximumUpBrokers);
         Assert.Equal(DefaultTimes.Length, result.Reports.Length);
     }
@@ -522,6 +592,20 @@ public sealed class IdleObservationJudgementTests
     public void Given_FourKeptAndOneClosed_When_ConfigurationIsSummarised_Then_SummaryIsUnequal()
     {
         IdleRepeatResult[] repeats = [Result("closed_while_idle"), .. Five("kept").Skip(1)];
+        Assert.Equal("unequal", IdleObservationJudgement.Configuration("C0", [], false, repeats, null).Summary);
+    }
+
+    [Fact]
+    public void Given_EveryClosingClass_When_ConfigurationIsSummarised_Then_SummaryIsNotKept()
+    {
+        IdleRepeatResult[] repeats = [Result("closed_while_idle"), Result("stale_on_resume"), Result("timed_out_on_resume"), Result("timed_out_on_resume"), Result("closed_while_idle")];
+        Assert.Equal("not_kept", IdleObservationJudgement.Configuration("C0", [], false, repeats, null).Summary);
+    }
+
+    [Fact]
+    public void Given_FourKeptAndOneTimedOutOnResume_When_ConfigurationIsSummarised_Then_SummaryIsUnequal()
+    {
+        IdleRepeatResult[] repeats = [Result("timed_out_on_resume"), .. Five("kept").Skip(1)];
         Assert.Equal("unequal", IdleObservationJudgement.Configuration("C0", [], false, repeats, null).Summary);
     }
 

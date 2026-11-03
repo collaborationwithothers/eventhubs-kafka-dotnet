@@ -138,6 +138,37 @@ public sealed class IdleObservationJudgeOptionsTests
     }
 
     [Theory]
+    [InlineData("A02,A03,A04", true)]
+    [InlineData("A02,A04", true)]
+    [InlineData("A03", true)]
+    [InlineData("A04,A02", false)]
+    [InlineData("A02,A02", false)]
+    [InlineData("A02,", false)]
+    [InlineData("", false)]
+    [InlineData("a02", false)]
+    [InlineData("A05", false)]
+    public void Given_Items_When_Validated_Then_OnlyANonEmptyOrderedSubsetIsAccepted(string text, bool valid)
+    {
+        var values = Values();
+        values[Section + "CapturePods"] = "none";
+        values[Section + "Items"] = text;
+        if (valid) Assert.Equal(text.Split(','), Read(values).SelectedItems());
+        else Assert.Equal("idle_judge_identity", Assert.Throws<InvalidOperationException>(() => Read(values)).Message);
+    }
+
+    [Theory]
+    [InlineData("A02C0:run1-a02-c0-idle-abc:uid,A04C1:run1-a04-c1-idle-abc:uid", true)]
+    [InlineData("A03C0:run1-a03-c0-idle-abc:uid", false)]
+    public void Given_SelectedItems_When_CapturePodsAreValidated_Then_OnlyPodsOfSelectedItemsAreAccepted(string pods, bool valid)
+    {
+        var values = Values();
+        values[Section + "Items"] = "A02,A04";
+        values[Section + "CapturePods"] = pods;
+        if (valid) Assert.Equal(2, Read(values).Pods().Count);
+        else Assert.Equal("idle_judge_identity", Assert.Throws<InvalidOperationException>(() => Read(values)).Message);
+    }
+
+    [Theory]
     [InlineData("ProbeV2__RunId")]
     [InlineData("ProbeV2Judge__RunId")]
     [InlineData("SingleAction__RunId")]

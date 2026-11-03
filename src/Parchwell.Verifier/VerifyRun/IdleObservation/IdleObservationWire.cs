@@ -15,7 +15,7 @@ internal sealed record IdleBroker(long NodeId, string Source, string State, long
 internal sealed record IdleReport(int Sequence, long ObservedElapsedMs, Dictionary<string, IdleBroker> Brokers);
 internal sealed record IdleWindows(long IdleTimedDisconnects, long IdleOtherCauseDisconnects, long IdleConnects, long IdleMetadataRequests,
     long IdleRequestTimeouts, long? FirstCloseAfterIdleMs, long? FirstCloseQuietMs, long ResumeIdleTimedDisconnects, long ResumeOtherCauseDisconnects,
-    long ResumeConnects, long ResumeRequestTimeouts);
+    long ResumeConnects, long ResumeRequestTimeouts, bool ResumeTimeoutReconnect);
 internal sealed record IdleOutcome(string Result, int? ErrorCode, bool? IsFatal, string? Origin, long LatencyMs);
 internal sealed record IdleClientErrorRow(int Code, bool IsFatal, string Origin, long ObservedElapsedMs);
 internal sealed record IdleRepeatResult(int Repeat, string? ClientId, string Status, string[] Reasons, string? ConnectionClass, IdleOutcome? First,

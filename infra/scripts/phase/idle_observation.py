@@ -104,6 +104,7 @@ class IdleObservation:
                         for item, configuration in CONFIGURATIONS if (item, configuration) in pods)
         runtime = self.runtime("C1", JUDGE_MODE)
         runtime["capture_pods"] = text or "none"
+        runtime["judge_items"] = ",".join(item for item in ITEMS if item in self.p.read("phase.json")["items"])
         return {"scenario_id": "A04", "configuration_id": "C1", "runtime": runtime}
 
     def capture_complete(self, record):

@@ -167,8 +167,8 @@ class CommittedContractTests(unittest.TestCase):
             "a01": ("VerifyRun/A01/A01EvidenceRecorder.cs", 1),
             "workload": ("VerifyRun/A01/WorkloadRecorder.cs", 1),
             "single-action-repeat": (REPEAT, 3),
-            "single-action-configuration": (CONFIGURATION, 6),
-            "idle-observation": (IDLE, 1),
+            "single-action-configuration": (CONFIGURATION, 8),
+            "idle-observation": (IDLE, 3),
         }
         shards = {
             "phase": "Judge/PhaseJudge.cs",
@@ -184,7 +184,11 @@ class CommittedContractTests(unittest.TestCase):
             "single-action-configuration-p4": CONFIGURATION,
             "single-action-configuration-p5": CONFIGURATION,
             "single-action-configuration-p6": CONFIGURATION,
-            "idle-observation": IDLE,
+            "single-action-configuration-p7": CONFIGURATION,
+            "single-action-configuration-p8": CONFIGURATION,
+            "idle-observation-p1": IDLE,
+            "idle-observation-p2": IDLE,
+            "idle-observation-p3": IDLE,
         }
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(targets, workflow.TARGETS)
@@ -196,7 +200,7 @@ class CommittedContractTests(unittest.TestCase):
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(14, len(matrix))
+        self.assertEqual(18, len(matrix))
 
     def test_workflow_keeps_stryker_logs_out_of_aggregate_input(self):
         import yaml
@@ -286,8 +290,13 @@ class SpanTests(unittest.TestCase):
             "single-action-configuration-p2": CONFIGURATION + "{26..52}",
             "single-action-configuration-p3": CONFIGURATION + "{52..78}",
             "single-action-configuration-p4": CONFIGURATION + "{78..104}",
-            "single-action-configuration-p5": CONFIGURATION + "{104..156}",
-            "single-action-configuration-p6": CONFIGURATION + "{156..2147483647}",
+            "single-action-configuration-p5": CONFIGURATION + "{104..130}",
+            "single-action-configuration-p6": CONFIGURATION + "{130..156}",
+            "single-action-configuration-p7": CONFIGURATION + "{156..182}",
+            "single-action-configuration-p8": CONFIGURATION + "{182..2147483647}",
+            "idle-observation-p1": IDLE + "{0..52}",
+            "idle-observation-p2": IDLE + "{52..130}",
+            "idle-observation-p3": IDLE + "{130..2147483647}",
         }
         for shard in workflow.PARTS:
             with self.subTest(shard=shard):
@@ -651,14 +660,14 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertEqual((13, 16), (summary["numerator"], summary["denominator"]))
         target = summary["targets"]["single-action-configuration"]
-        self.assertEqual(6, target["parts"])
+        self.assertEqual(8, target["parts"])
         self.assertEqual((6, 2), (target["status_counts"]["Killed"], target["status_counts"]["Survived"]))
         self.assertEqual((6, 8), (target["numerator"], target["denominator"]))
-        self.assertEqual([2, 2, 1, 1, 1, 1], [summary["shards"][f"single-action-configuration-p{i}"]["denominator"]
-                                              for i in range(1, 7)])
-        self.assertEqual([104, 156], summary["shards"]["single-action-configuration-p5"]["span"])
+        self.assertEqual([1, 1, 1, 1, 1, 1, 1, 1], [summary["shards"][f"single-action-configuration-p{i}"]["denominator"]
+                                                    for i in range(1, 9)])
+        self.assertEqual([104, 130], summary["shards"]["single-action-configuration-p5"]["span"])
         self.assertIsNone(summary["shards"]["phase"]["span"])
-        self.assertEqual(14, len(summary["shards"]))
+        self.assertEqual(18, len(summary["shards"]))
         self.assertEqual([], summary["rebalance_needed"])
         self.assertEqual(7200, summary["rebalance_threshold_seconds"])
 
@@ -734,10 +743,10 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["break_passed"], True)
         self.assertEqual([{"shard": "single-action-configuration-p5", "target": CONFIGURATION, "part": 5,
-                           "parts": 6, "span": [104, 156], "span_verified": True,
+                           "parts": 8, "span": [104, 130], "span_verified": True,
                            "elapsed_seconds": 7200.001}], summary["rebalance_needed"])
-        self.assertIn("- `single-action-configuration-p5` took 7200 s, over 7200 s: split part 5 of 6 of "
-                      f"`{CONFIGURATION}`, span 104..156.", (fixture.output / "summary.md").read_text())
+        self.assertIn("- `single-action-configuration-p5` took 7200 s, over 7200 s: split part 5 of 8 of "
+                      f"`{CONFIGURATION}`, span 104..130.", (fixture.output / "summary.md").read_text())
 
     def time_out(self, fixture, shard="single-action-repeat-p2"):
         fixture.receipts[shard].update(elapsed_seconds=16200.02, termination_reason="time_cap_exceeded",

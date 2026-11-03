@@ -23,7 +23,7 @@ on:
           - smoke
           - batch
       items:
-        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all)"
+        description: "Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all or ordered A02,A03,A04)"
         type: string
         required: false
         default: all
@@ -874,7 +874,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   batch-stop:
     needs: [batch]
-    if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))) || (inputs.scenario == 'idle-observation' && (inputs.run_kind == 'smoke' || inputs.run_kind == 'batch') && inputs.items == 'all' && !inputs.capture_authentication_metadata))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
+    if: (always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('["all","B08","E01","F06","B08,E01","B08,F06","E01,F06","B08,E01,F06"]'), inputs.items)))) || (inputs.scenario == 'idle-observation' && (inputs.run_kind == 'smoke' || inputs.run_kind == 'batch') && contains(fromJSON('["all","A02","A03","A04","A02,A03","A02,A04","A03,A04","A02,A03,A04"]'), inputs.items) && !inputs.capture_authentication_metadata))) && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-sweeper
     timeout-minutes: 360

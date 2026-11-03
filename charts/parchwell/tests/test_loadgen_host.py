@@ -195,7 +195,7 @@ def idle_observation_judge_host_acceptance(td, verifier_publish):
         proc = bounded(60, host, output, environment(rendered))
         assert proc.returncode == 0 and output.read_bytes() == expected, (index, proc.stderr, output.read_bytes())
         first = first or rendered
-    for kind in ('missing', 'unknown', 'azure', 'pods'):
+    for kind in ('missing', 'unknown', 'azure', 'pods', 'items'):
         rendered = dict(first)
         if kind == 'missing':
             del rendered['IdleObservationJudge__PodUid']
@@ -203,13 +203,15 @@ def idle_observation_judge_host_acceptance(td, verifier_publish):
             rendered['IdleObservationJudge__UnsupportedSetting'] = 'forbidden'
         elif kind == 'pods':
             rendered['IdleObservationJudge__CapturePods'] = 'A02C2:x:y'
+        elif kind == 'items':
+            rendered['IdleObservationJudge__Items'] = 'A04,A02'
         env = environment(rendered)
         if kind == 'azure':
             env['AZURE_CLIENT_ID'] = '00000000-0000-0000-0000-000000000099'
         output = td / f'idle-judge-{kind}.host.out'
         proc = bounded(60, host, output, env)
         assert proc.returncode == 2, (kind, proc.returncode, proc.stderr)
-    print('idle-observation judge host checks passed: 3 rendered environments, 4 rejected input regressions')
+    print('idle-observation judge host checks passed: 3 rendered environments, 5 rejected input regressions')
 
 
 def main():
