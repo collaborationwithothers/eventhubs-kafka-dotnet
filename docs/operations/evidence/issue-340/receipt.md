@@ -24,11 +24,14 @@ Check 12 is the existing `report_records`, covered by `test_report_scope_schema_
 
 ## Commands and results
 
-Branch `claude/issue-340-static-field-isolation` cut from `main` at `69102fe874698ab16839fe789b0bb54f158d535a`. Every command below ran on commit `9a29c4f` (C1 to C3 and C5), which differs from the final head only by this receipt.
+Branch `claude/issue-340-static-field-isolation` cut from `main` at `69102fe874698ab16839fe789b0bb54f158d535a`. A1 to A5 ran on commit `7373f7b` (the code and documentation after cold review round 1, with `items/340/state.md`), which differs from the final head only by this receipt. The proof ran on the earlier commit `9a29c4f`; `git diff 9a29c4f 7373f7b` changes one code comment in `c5_workflow.py`, one sentence of `verifier-mutation.md` and adds one test, and no runner logic.
 
-1. A1. `sha256sum`: `c5_workflow.py` `c88f74f8ddf6b7029478209bf17ac18db4f9321f4bbe580bd5ecd86133abb002`, `test_c5_workflow.py` `535c8a37b9c4848cd851dd41606757c38e604ee22e3f09ebc8530c001b5bb3e0`, `verifier-mutation.md` `2529412f7544ad331aff8c71e49182c12821501a772e68ebd7f3a676c0821c78`. The first two equal the plan. The third is the digest the plan check gives after its three marked P2 fixes, not the plan's `cb2c28b1...`.
-2. A2. `cd tests/Parchwell.Verifier.Tests/Mutation && python3 -m unittest test_c5_workflow`: `Ran 77 tests`, `OK`.
-3. Proof run: see below.
+1. A1. `sha256sum`: `c5_workflow.py` `c27583891677d9e6a381de06401134daf6722fd86e0b89610558ded3f45edf91`, `test_c5_workflow.py` `6c8e4457a050a8ba53e1fbc1c3fa58ef1486e8fbcbad759628fdee17f0b83f4c`, `verifier-mutation.md` `8f081a4ad59221ed6b98414af8e88ab9e0970cd041229ed6c39c84f4347e50ca`. These differ from the plan's `c88f74f8...`, `535c8a37...` and `cb2c28b1...` by the plan check's three marked P2 fixes and the cold review corrections listed under "Deviations from the plan".
+2. A2. `cd tests/Parchwell.Verifier.Tests/Mutation && python3 -m unittest test_c5_workflow`: `Ran 78 tests`, `OK` (77 before the exit code 2 test; 63 on `main`).
+3. A3. `npm ci && npm run check:docs`: `no issues found` for `docs/operations/verifier-mutation.md`, `docs/operations/evidence/issue-340/receipt.md` and `items/340/state.md`; `8 warnings`, in files this pull request does not change (blanket line, rule 8).
+4. A4. `grep -nP '[^\x00-\x7F]'` over the five files: no output (grep exit 1).
+5. A5. `git diff --name-only origin/main...HEAD` lists exactly the five files: `docs/operations/evidence/issue-340/receipt.md`, `docs/operations/verifier-mutation.md`, `items/340/state.md`, `tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py`, `tests/Parchwell.Verifier.Tests/Mutation/test_c5_workflow.py`.
+6. A6. Proof run: see below.
 
 ## Proof run
 
@@ -52,8 +55,18 @@ Recorded, not a gate: the main invocation's status counts were {"Killed": 48, "T
 ## Deviations from the plan
 
 - The plan says to commit C1 to C5 before the proof. The proof ran on the commit holding C1 to C3 and C5; this receipt (C4) is committed after it, so it records the proof without a receipt-only amend (rule 8).
-- A1's third digest and the docs script differ from the plan's `cb2c28b1...` by the three P2 replacements marked `apply in implementation` in the plan check.
+- `verifier-mutation.md` differs from the plan's script output in three marked P2 replacements from the plan check (`apply in implementation`) and one cold review correction: the new section's first paragraph says the survivor comparison "inferred from its measured logs and reports", not "measured", because that comparison labels the mechanism an inference.
+- `c5_workflow.py` differs from patch P1 in one comment, which now says that logs left by a failed move stay in `isolated/ID/stryker/logs/` and are carried by the evidence upload.
+- `test_c5_workflow.py` adds `test_isolated_invocation_with_a_surviving_mutant_may_exit_with_code_2`, so the accepted exit code 2 of an isolated invocation is tested (plan "Enforced checks" 7).
 
 ## Cold review
 
-Round 1 (comprehensive, pass 1 of 2): input revision is commit 27d8dff plus this receipt, comparison revision `origin/main` 69102fe874698ab16839fe789b0bb54f158d535a, specification sources as listed under "Execution card" and the plan's own text (plan Revision 2, plan check 6603619206).
+Round 1 (comprehensive, pass 1 of 2): input revision `9a29c4f` plus the receipt commit `8d01825`, comparison revision `origin/main` 69102fe874698ab16839fe789b0bb54f158d535a, reviewer model claude-opus-5-5 (pinned by the `repo-reviewer` definition; spawned without a `model` parameter), specification sources as listed under "Execution card". Report complete. Findings: 2 at P0 or P1, 3 at P2.
+
+- P1, `verifier-mutation.md` new section: said the survivor comparison "measured" the static-state mechanism. Fixed as above.
+- P1, receipt: A3 to A5 were not recorded. Recorded above.
+- P2, `c5_workflow.py` log-move comment was false. Fixed.
+- P2, receipt named an input revision (27d8dff) that the amended history no longer holds. Corrected above to `9a29c4f`.
+- P2, no test for exit code 2 in an isolated invocation. Test added.
+
+Round 2 (comprehensive, pass 2 of 2): input revision `7373f7b` plus this receipt, comparison revision `origin/main` 69102fe874698ab16839fe789b0bb54f158d535a, reviewing all authored work including the round 1 corrections.
