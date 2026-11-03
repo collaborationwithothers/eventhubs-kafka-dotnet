@@ -1680,5 +1680,42 @@
       "handler_exit_code": 0,
       "cleanup_completed": true
     }
+  },
+  "mutation_gate_correction": {
+    "date": "2026-11-03",
+    "note_heading": "Correction note, 2026-11-03",
+    "verdict_changed": false,
+    "current_gate_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130",
+    "json_gate_field": "publication.mutation_gate",
+    "json_gate_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41232286130",
+    "static_field_mutants_in_current_gate": true,
+    "leakage_measured_in_current_gate": false,
+    "comparisons": [
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6600991848",
+      "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/340#issuecomment-6611864147"
+    ],
+    "corrected_run": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41670913768",
+    "corrected_measured_commit": "87327f5841822a8962dd3dbaecb2ee442a8faa8b",
+    "corrected_detected": 3668,
+    "corrected_scored": 3813,
+    "corrected_measurement_complete": true,
+    "corrected_break_passed": true,
+    "result_source_commit": "b79acb256d09ea29e493acc460ebbe2c9c59aa4f",
+    "judge_files_identical": [
+      "Judge/PhaseJudge.cs",
+      "VerifyRun/Publication/PublicationAcceptance.cs",
+      "VerifyRun/A01/A01EvidenceRecorder.cs",
+      "VerifyRun/A01/WorkloadRecorder.cs",
+      "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+      "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
+    ],
+    "judge_files_differ": [],
+    "judge_files_absent_at_source": [
+      "VerifyRun/IdleObservation/IdleObservationJudgement.cs"
+    ],
+    "rejudge": {
+      "outcome": "gap",
+      "reason": "no_offline_verifier_mode"
+    }
   }
 }
