@@ -29,12 +29,14 @@ Every input is pinned by SHA-256 in the generator and re-checked by G1. The ZIP 
 
 Run from the repository root at base `9014b8effd4f8556d3446bcfbf8f951a52905bb2` with the artifacts and logs in a scratch directory outside the repository.
 
-- The five `sha256sum` values equal the plan's Acceptance step 1.
+- Acceptance step 1: the five `gh api` downloads (three artifact ZIPs, two job logs) each exited 0, and the extraction exited 0. `sha256sum` printed `9e2376e4fb39f2491f931b217d574db2ad325f52e457f5709d330be82ed186ec` (cand.zip), `35a992329edcd87dfd1d84f636228f1ff417791dd8626c4df823db597404df42` (pods.zip), `91121e3d5b09a69b230e148e13336b61da0434d20840e33e87262264a9086c40` (c5.zip), `73e59b9f58fef0642e9e1166b98a8e0d15072badbd283a0c48eff36b233e9f22` (batch.log) and `5cf7ed3214b29335a820af670696e41c7ba0c01ea7dd6e805f9689e01af0f583` (stop.log), equal to the plan's values. The download was repeated once more for this record with the same values.
 - Generator with no mode flag: exit 0; wrote only the two results files.
 - `--readme-row`: exit 0; one line, used as README line 15.
 - `--check`: first run exit 1 with `FAIL G13: README.md line 15 differs` (README not yet updated); after the README change, exit 0.
 - `--self-test`: exit 0; 25 `PASS` lines from `PASS G1-append` to `PASS G11-scenario`.
 - `npm run check:docs`: exit 0 with 8 warnings, all in files this pull request does not change (docs/agents/factory.md, docs/operations/evidence/issue-124, issue-140 and issue-211).
+- Acceptance step 7: `git fetch origin main && git diff --cached --merge-base origin/main --name-only` (run as `git diff --merge-base origin/main --name-only HEAD` after the work was committed to the backup branch) exited 0 and listed exactly the six paths: `README.md`, `docs/operations/evidence/issue-321-a03-verdict/make_results.py`, `docs/operations/evidence/issue-321-a03-verdict/receipt.md`, `items/321/state.md`, `results/A03/2026-11-02.json`, `results/A03/2026-11-02.md`.
+- Acceptance step 8: the ASCII scan `LC_ALL=C grep -nP '[^\x00-\x7F]'` over the report, the evidence folder, `README.md` and `items/321/state.md` printed nothing (grep exit 1).
 
 ## Cold review record
 
