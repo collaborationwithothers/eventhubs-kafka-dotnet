@@ -143,7 +143,7 @@ Estimate, 2026-11-03, not a measurement. Basis: the mutants of campaign 41484094
 
 ## Issue 340 static-field isolation
 
-Each C5 job tests every mutant of its `static readonly` field declarations in a separate Stryker run, one mutant per run. Before this change, the mutant a test process ran first could fix a static value for every later mutant in that process, as the [C5 survivor comparison](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6600991848) measured ([issue 340](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/340)).
+Each C5 job tests every mutant of its `static readonly` field declarations in a separate Stryker run, one mutant per run. Before this change, the mutant a test process ran first could fix a static value for every later mutant in that process, as the [C5 survivor comparison](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6600991848) inferred from its measured logs and reports ([issue 340](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/340)).
 
 Confirmed in pinned Stryker 5.0.0:
 

@@ -407,7 +407,7 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
                 (output_dir / "stryker/logs").mkdir(parents=True, exist_ok=True)
                 shutil.move(logs, output_dir / "stryker/logs" / f"isolated-{item['mutant_id']}")
             except OSError:
-                pass  # Logs are not evidence: aggregation never reads them, and the logs upload takes either place.
+                pass  # Logs are not evidence: aggregation never reads them. If the move fails they stay in isolated/ID/stryker/logs/, which the evidence upload carries.
         entry = {**item, "argv": argv, "started_at_utc": started, "finished_at_utc": utc_now(),
                  "elapsed_seconds": time.monotonic() - start, "child_exit_code": child_exit,
                  "termination_reason": reason, "command_completed": child_exit is not None and reason is None,

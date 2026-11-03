@@ -983,6 +983,15 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(["9", "10"], summary["shards"]["workload"]["isolated_mutants"])
         self.assertEqual([], summary["shards"]["phase"]["isolated_mutants"])
 
+    def test_isolated_invocation_with_a_surviving_mutant_may_exit_with_code_2(self):
+        fixture = self.static_fixture(self.directory)
+        entry = next(e for e in fixture.receipts["workload"]["isolated"] if e["mutant_id"] == "10")
+        entry["child_exit_code"] = 2
+        fixture.save("workload")
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertEqual([], summary["incomplete_reasons"])
+
     def test_static_isolation_failures_are_incomplete(self):
         def edit_receipt(change):
             def apply(fixture):
