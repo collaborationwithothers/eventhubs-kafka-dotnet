@@ -31,6 +31,10 @@ FILTERED = {"status": "Ignored", "statusReason": "Removed by mutate filter"}
 REPEAT = "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs"
 CONFIGURATION = "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
 IDLE = "VerifyRun/IdleObservation/IdleObservationJudgement.cs"
+WORKLOAD = "VerifyRun/A01/WorkloadRecorder.cs"
+STATIC_SOURCE = SOURCE + b"    private static readonly int[] A=[1];\n"
+MUTATE_FILTER = "Removed by mutate filter"
+STATIC_PHASE = b"    private static readonly int[] A=[1];\n    bool B() => true;\n"
 
 
 def digest(path):
@@ -51,7 +55,8 @@ def mutant(identifier, status):
 
 
 class AggregateFixture:
-    def __init__(self, directory, populations=None):
+    def __init__(self, directory, populations=None, sources=None):
+        sources = sources or {}
         self.input = directory / "input"
         self.output = directory / "summary"
         self.input.mkdir()
@@ -63,14 +68,14 @@ class AggregateFixture:
             artifact = self.input / f"c5-mutation-{RUN_ID}-{ATTEMPT}-{shard}"
             artifact.mkdir()
             self.paths[shard] = artifact
-            write_json(artifact / "shard-config.json", workflow.shard_config(shard, SOURCE))
+            write_json(artifact / "shard-config.json", workflow.shard_config(shard, sources.get(target, SOURCE)))
             (artifact / "command.log").write_bytes(b"synthetic output\n")
             report = {
                 "schemaVersion": "2", "projectRoot": "/synthetic/src/Parchwell.Verifier",
                 "thresholds": {"high": 80, "low": 60},
                 "files": {
                     "/synthetic/src/Parchwell.Verifier/" + target: {
-                        "language": "cs", "source": SOURCE.decode(), "mutants": [],
+                        "language": "cs", "source": sources.get(target, SOURCE).decode(), "mutants": [],
                     },
                     "/synthetic/src/Parchwell.Verifier/Other.cs": {
                         "language": "none", "source": "File ignored by mutate filter", "mutants": [],
@@ -78,7 +83,7 @@ class AggregateFixture:
                 },
             }
             self.reports[shard] = report
-            original = {projection.VERIFIER + name: SOURCE for name in workflow.SHARDS.values()}
+            original = {projection.VERIFIER + name: sources.get(name, SOURCE) for name in workflow.SHARDS.values()}
             original["tests/Parchwell.Verifier.Tests/SyntheticTests.cs"] = b"synthetic test source"
             source = {name: projection.digest(data) for name, data in original.items()}
             disabled = sorted(name for name in original if name.startswith(projection.VERIFIER) and name != projection.VERIFIER + target)
@@ -109,6 +114,9 @@ class AggregateFixture:
                 "config_sha256_before": None, "config_sha256_after": None,
                 "report_sha256": None, "command_log_sha256": None,
                 "projection_manifest_sha256": digest(artifact / "projection.json"),
+                "static_regions": [list(region) for region in
+                                   workflow.shard_static_regions(shard, sources.get(target, SOURCE))],
+                "isolated": [], "isolation_error": None,
             }
             self.save(shard)
         for (key, _), population in zip(workflow.TARGETS.items(), populations, strict=True):
@@ -133,6 +141,25 @@ class AggregateFixture:
         for shard in self.members(key):
             self.target_rows(shard).extend(copy.deepcopy(row) for row in rows)
             self.save(shard)
+
+    def isolate(self, shard, item, rows):
+        """Retain one isolated invocation whose report lists rows, and record it in the shard's receipt."""
+        target = workflow.SHARDS[shard]
+        folder = self.paths[shard] / "isolated" / item["mutant_id"]
+        write_json(folder / "config.json", workflow.isolated_config(target, item))
+        report = copy.deepcopy(self.reports[shard])
+        report["files"]["/synthetic/src/Parchwell.Verifier/" + target]["mutants"] = rows
+        write_json(folder / "stryker/reports/mutation-report.json", report)
+        (folder / "command.log").write_bytes(b"isolated output\n")
+        self.receipts[shard]["isolated"].append({
+            **item, "argv": ["dotnet", "stryker"], "started_at_utc": "2026-10-25T18:00:01+00:00",
+            "finished_at_utc": "2026-10-25T18:00:02+00:00", "elapsed_seconds": 1.0, "child_exit_code": 0,
+            "termination_reason": None, "command_completed": True,
+            "config_sha256_before": digest(folder / "config.json"),
+            "config_sha256_after": digest(folder / "config.json"),
+            "report_sha256": digest(folder / "stryker/reports/mutation-report.json"),
+            "command_log_sha256": digest(folder / "command.log")})
+        self.save(shard)
 
     def target_rows(self, shard):
         target = workflow.SHARDS[shard]
@@ -236,6 +263,16 @@ class CommittedContractTests(unittest.TestCase):
                 self.assertEqual(SPAN_END, selected[-1][1])
 
 
+    def test_committed_static_regions_each_lie_inside_one_span(self):
+        root = Path(__file__).resolve().parents[3]
+        for key, (target, _) in workflow.TARGETS.items():
+            with self.subTest(target=key):
+                source = (root / "src/Parchwell.Verifier" / target).read_bytes()
+                owned = [region for shard, (owner, _, _) in workflow.PARTS.items() if owner == key
+                         for region in workflow.shard_static_regions(shard, source)]
+                self.assertEqual(workflow.static_regions(workflow.target_text(source)), owned)
+
+
 class SpanTests(unittest.TestCase):
     TEXT = "namespace N;\n\npublic sealed class C\n{\n    void A()\n    {\n    }\n\n    void B()\n    {\n    }\n}\n"
 
@@ -304,9 +341,11 @@ class SpanTests(unittest.TestCase):
                 self.assertEqual([expected.get(shard, workflow.SHARDS[shard])], config["stryker-config"]["mutate"])
                 config["stryker-config"]["mutate"] = workflow.BASE_CONFIG["stryker-config"]["mutate"]
                 self.assertEqual(workflow.BASE_CONFIG, config)
-        self.assertEqual(workflow.shard_config("phase"), workflow.shard_config("phase", b"ignored"))
+        self.assertEqual([workflow.SHARDS["phase"]], workflow.shard_config("phase", b"ignored")["stryker-config"]["mutate"])
         with self.assertRaisesRegex(ValueError, "span shard requires target source"):
-            workflow.shard_config("single-action-repeat-p1")
+            workflow.shard_config("single-action-repeat-p1", None)
+        with self.assertRaisesRegex(ValueError, "shard configuration requires target source"):
+            workflow.shard_config("phase", None)
         with self.assertRaisesRegex(ValueError, "too few member boundaries for span count"):
             workflow.shard_config("single-action-repeat-p1", b"if (value) return true;")
 
@@ -320,6 +359,138 @@ def row(identifier, status, reason=None, **changes):
 
 def filtered(identifier, **changes):
     return {**row(identifier, "Ignored", **changes), **FILTERED}
+
+
+def located(identifier, status, line, start, end, static=True, reason=None):
+    value = row(identifier, status, reason, location={"start": {"line": line, "column": start},
+                                                      "end": {"line": line, "column": end}})
+    value["static"] = static
+    return value
+
+
+STATIC_TEXT = ('namespace N;\n\ninternal static class C\n{\n'
+               '    private static readonly string[] A = ["a"];\n'
+               '    internal static readonly (string Id, long Rate)[] B = [\n        ("b", 1)];\n'
+               '    private const long K = 1;\n'
+               '    static int M() => 0;\n'
+               '    internal static bool F()\n    {\n        static int L() => 1;\n        return true;\n    }\n}\n')
+
+
+class StaticRegionTests(unittest.TestCase):
+    def test_regions_are_whole_lines_through_the_terminating_semicolon(self):
+        self.assertEqual([(40, 88), (88, 167)], workflow.static_regions(STATIC_TEXT))
+        self.assertEqual([0, 13, 14, 38, 40, 88, 148, 167, 197, 222, 251, 257, 286, 307, 313, 315],
+                         workflow.line_starts(STATIC_TEXT))
+        self.assertEqual([], workflow.static_regions(SOURCE.decode()))
+
+    def test_unterminated_declaration_and_other_line_terminators_fail(self):
+        for text in ("    private static readonly int[] A=[1]\n", "    private static readonly int[] A=[1];"):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, "unterminated static field declaration"):
+                workflow.static_regions(text)
+        for mark in ("\r", "\u2028", "\u2029", "\x85"):
+            with self.subTest(mark=repr(mark)), self.assertRaisesRegex(ValueError, "unsupported line terminator in target"):
+                workflow.static_regions("    int A;" + mark + "\n")
+
+    def test_shard_configs_exclude_the_static_regions_inside_their_span(self):
+        self.assertEqual([WORKLOAD, "!" + WORKLOAD + "{208..249}"],
+                         workflow.shard_config("workload", STATIC_SOURCE)["stryker-config"]["mutate"])
+        self.assertEqual([CONFIGURATION + "{208..2147483647}", "!" + CONFIGURATION + "{208..249}"],
+                         workflow.shard_config("single-action-configuration-p8", STATIC_SOURCE)["stryker-config"]["mutate"])
+        self.assertEqual([CONFIGURATION + "{0..26}"],
+                         workflow.shard_config("single-action-configuration-p1", STATIC_SOURCE)["stryker-config"]["mutate"])
+        self.assertEqual([(208, 249)], workflow.shard_static_regions("workload", STATIC_SOURCE))
+        self.assertEqual([], workflow.shard_static_regions("single-action-configuration-p1", STATIC_SOURCE))
+
+    def test_region_across_a_span_edge_fails_and_regions_outside_are_skipped(self):
+        cases = (((0, 208), []), ((0, 209), None), ((208, 249), [(208, 249)]), ((209, SPAN_END), None),
+                 ((248, SPAN_END), None), ((249, SPAN_END), []))
+        for span, expected in cases:
+            with self.subTest(span=span), patch.object(workflow, "shard_span", return_value=span):
+                if expected is None:
+                    with self.assertRaisesRegex(ValueError, "static field declaration crosses a span boundary"):
+                        workflow.shard_static_regions("workload", STATIC_SOURCE)
+                else:
+                    self.assertEqual(expected, workflow.shard_static_regions("workload", STATIC_SOURCE))
+
+
+class IsolationPlanTests(unittest.TestCase):
+    def rows(self):
+        return [located(7, "Killed", 1, 10, 12, static=False),
+                located(10, "Ignored", 25, 37, 40, reason=MUTATE_FILTER),
+                located(9, "Ignored", 25, 38, 39, reason=MUTATE_FILTER),
+                located(8, "CompileError", 25, 37, 40, reason="Mutant caused compile errors"),
+                located(11, "Ignored", 2, 5, 6, static=False, reason=MUTATE_FILTER)]
+
+    def test_each_filtered_mutant_in_a_region_gets_one_invocation_by_ascending_id(self):
+        expected = [{"mutant_id": "9", "span": [245, 246], "exclusions": []},
+                    {"mutant_id": "10", "span": [244, 247], "exclusions": [[245, 246]]}]
+        self.assertEqual(expected, workflow.isolation_plan(self.rows(), STATIC_SOURCE, [(208, 249)]))
+        ignored = located(12, "Ignored", 25, 38, 39, reason="Removed by ignore mutation filter")
+        self.assertEqual(expected, workflow.isolation_plan(self.rows() + [ignored], STATIC_SOURCE, [(208, 249)]))
+        self.assertEqual([], workflow.isolation_plan(self.rows(), STATIC_SOURCE, []))
+        config = workflow.isolated_config(WORKLOAD, expected[1])
+        self.assertEqual([WORKLOAD + "{244..247}", "!" + WORKLOAD + "{245..246}"], config["stryker-config"]["mutate"])
+        config["stryker-config"]["mutate"] = workflow.BASE_CONFIG["stryker-config"]["mutate"]
+        self.assertEqual(workflow.BASE_CONFIG, config)
+
+    def test_a_testable_mutant_with_the_same_span_cannot_be_isolated(self):
+        for status, reason in (("Ignored", MUTATE_FILTER), ("Killed", None)):
+            rows = self.rows() + [located(12, status, 25, 38, 39, reason=reason)]
+            with self.subTest(status=status), self.assertRaisesRegex(ValueError, "mutant 9 shares its span with mutant 12"):
+                workflow.isolation_plan(rows, STATIC_SOURCE, [(208, 249)])
+
+    def test_locations_outside_the_target_fail(self):
+        for name, line, start, end in (("line", 27, 1, 2), ("past-end", 26, 1, 2), ("empty", 25, 38, 38),
+                                       ("reversed", 25, 39, 38)):
+            rows = [located(1, "Ignored", line, start, end, reason=MUTATE_FILTER)]
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "mutant location outside target"):
+                workflow.isolation_plan(rows, STATIC_SOURCE, [(208, 249)])
+
+
+class MergeIsolatedTests(unittest.TestCase):
+    ITEM = {"mutant_id": "10", "span": [244, 247], "exclusions": [[245, 246]]}
+
+    def main(self):
+        return [row(7, "Killed"), filtered(9), filtered(10), row(8, "CompileError", "Mutant caused compile errors"),
+                row(11, "Ignored", "Removed by ignore mutation filter"),
+                row(12, "Ignored", "Removed by block already covered filter")]
+
+    def isolated(self, **changes):
+        rows = {"7": filtered(7), "9": filtered(9), "10": row(10, "Survived"),
+                "8": row(8, "CompileError", "Mutant caused compile errors"),
+                "11": row(11, "Ignored", "Removed by ignore mutation filter"), "12": filtered(12)}
+        rows.update(changes)
+        return list(rows.values())
+
+    def test_merge_takes_the_isolated_row_of_its_one_mutant(self):
+        merged = workflow.merge_isolated(self.main(), self.ITEM, self.isolated())
+        self.assertEqual([row(7, "Killed"), filtered(9), row(10, "Survived"),
+                          row(8, "CompileError", "Mutant caused compile errors"),
+                          row(11, "Ignored", "Removed by ignore mutation filter"),
+                          row(12, "Ignored", "Removed by block already covered filter")], merged)
+        repeated = self.isolated(**{"10": row(10, "Timeout"), "11": filtered(11),
+                                    "12": row(12, "Ignored", "Removed by block already covered filter")})
+        self.assertEqual(row(10, "Timeout"), workflow.merge_isolated(self.main(), self.ITEM, repeated)[2])
+
+    def test_isolated_invocation_that_tested_another_mutant_or_none_fails(self):
+        ran = "mutant {} ran in the isolated invocation of mutant 10"
+        cases = {
+            "filtered": ({"10": filtered(10)}, "mutant 10 was not tested in isolation"),
+            "compile-error": ({"10": row(10, "CompileError", "Mutant caused compile errors")},
+                              "mutant 10 was not tested in isolation"),
+            "main-killed": ({"7": row(7, "Killed")}, ran.format(7)),
+            "main-killed-other-ignore": ({"7": row(7, "Ignored", "Removed by block already covered filter")}, ran.format(7)),
+            "filtered-survived": ({"9": row(9, "Survived")}, ran.format(9)),
+            "compile-error-killed": ({"8": row(8, "Killed")}, ran.format(8)),
+            "identity": ({"7": {**filtered(7), "replacement": "true"}}, "mutant 7 identity differs in isolation"),
+            "inventory": ({}, "isolated inventory differs"),
+        }
+        for name, (changes, message) in cases.items():
+            rows = self.isolated(**changes)
+            if name == "inventory":
+                rows = [value for value in rows if value["id"] != "12"]
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, message):
+                workflow.merge_isolated(self.main(), self.ITEM, rows)
 
 
 class ReconcileTests(unittest.TestCase):
@@ -791,6 +962,106 @@ class AggregationTests(unittest.TestCase):
                                  summary["rebalance_needed"])
                 self.assertIn(f"split part 2 of 3 of `{REPEAT}`.\n", (fixture.output / "summary.md").read_text())
 
+    def static_fixture(self, directory):
+        fixture = AggregateFixture(Path(directory), sources={WORKLOAD: STATIC_SOURCE})
+        fixture.add_shared("workload", [located(10, "Ignored", 25, 37, 40, reason=MUTATE_FILTER),
+                                        located(9, "Ignored", 25, 38, 39, reason=MUTATE_FILTER)])
+        main = fixture.target_rows("workload")
+        fixture.isolate("workload", {"mutant_id": "9", "span": [245, 246], "exclusions": []},
+                        [{**main[0], **FILTERED}, main[1], {**main[2], "status": "Killed", "statusReason": None}])
+        fixture.isolate("workload", {"mutant_id": "10", "span": [244, 247], "exclusions": [[245, 246]]},
+                        [{**main[0], **FILTERED}, {**main[1], "status": "Survived", "statusReason": None}, main[2]])
+        return fixture
+
+    def test_static_mutants_merge_from_their_isolated_invocations(self):
+        fixture = self.static_fixture(self.directory)
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertEqual([], summary["incomplete_reasons"])
+        counts = summary["targets"]["workload"]["status_counts"]
+        self.assertEqual((2, 1, 2), (counts["Killed"], counts["Survived"], summary["targets"]["workload"]["numerator"]))
+        self.assertEqual(["9", "10"], summary["shards"]["workload"]["isolated_mutants"])
+        self.assertEqual([], summary["shards"]["phase"]["isolated_mutants"])
+
+    def test_isolated_invocation_with_a_surviving_mutant_may_exit_with_code_2(self):
+        fixture = self.static_fixture(self.directory)
+        entry = next(e for e in fixture.receipts["workload"]["isolated"] if e["mutant_id"] == "10")
+        entry["child_exit_code"] = 2
+        fixture.save("workload")
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertEqual([], summary["incomplete_reasons"])
+
+    def test_static_isolation_failures_are_incomplete(self):
+        def edit_receipt(change):
+            def apply(fixture):
+                change(fixture.receipts["workload"])
+                fixture.save("workload")
+            return apply
+
+        def rewrite_isolated(mutant, change, update_receipt=True):
+            def apply(fixture):
+                folder = fixture.paths["workload"] / "isolated" / mutant
+                change(folder)
+                entry = next(e for e in fixture.receipts["workload"]["isolated"] if e["mutant_id"] == mutant)
+                if update_receipt:
+                    entry["config_sha256_before"] = entry["config_sha256_after"] = digest(folder / "config.json")
+                    entry["report_sha256"] = digest(folder / "stryker/reports/mutation-report.json")
+                    fixture.save("workload")
+            return apply
+
+        def report_change(rows_change):
+            def change(folder):
+                path = folder / "stryker/reports/mutation-report.json"
+                report = json.loads(path.read_text())
+                rows_change(report["files"]["/synthetic/src/Parchwell.Verifier/" + WORKLOAD]["mutants"])
+                write_json(path, report)
+            return change
+
+        def main_change(fixture):
+            fixture.target_rows("workload")[2].update({"status": "Killed"})
+            fixture.target_rows("workload")[2].pop("statusReason")
+            fixture.save("workload")
+
+        def source_change(folder):
+            path = folder / "stryker/reports/mutation-report.json"
+            report = json.loads(path.read_text())
+            report["files"]["/synthetic/src/Parchwell.Verifier/" + WORKLOAD]["source"] += " "
+            write_json(path, report)
+
+        cases = {
+            "missing-entry": (edit_receipt(lambda r: r["isolated"].pop()), "workload: isolated invocation list mismatch"),
+            "isolation-error": (edit_receipt(lambda r: r.update(isolation_error="isolated invocation of mutant 10 failed")),
+                                "workload: static isolation incomplete"),
+            "region": (edit_receipt(lambda r: r.update(static_regions=[])), "workload: static region mismatch"),
+            "child": (edit_receipt(lambda r: r["isolated"][1].update(child_exit_code=1)),
+                      "workload: isolated child execution error"),
+            "malformed": (edit_receipt(lambda r: r["isolated"][1].pop("argv")), "workload: malformed isolated receipt"),
+            "plan": (edit_receipt(lambda r: r["isolated"][1].update(exclusions=[])),
+                     "workload: isolated invocation differs from plan"),
+            "tested-in-main": (main_change, "workload: static mutant 9 tested outside isolation"),
+            "report-tamper": (rewrite_isolated("10", report_change(lambda rows: rows.append({})), update_receipt=False),
+                              "workload: isolated report hash mismatch"),
+            "config": (rewrite_isolated("10", lambda folder: write_json(folder / "config.json", workflow.shard_config("workload", STATIC_SOURCE))),
+                       "workload: unexpected isolated configuration"),
+            "another-mutant": (rewrite_isolated("10", report_change(lambda rows: rows[0].update(status="Killed", statusReason=None))),
+                               "workload: mutant 0 ran in the isolated invocation of mutant 10"),
+            "config-hash": (edit_receipt(lambda r: r["isolated"][1].update(config_sha256_before="0" * 64)),
+                            "workload: isolated config hash mismatch"),
+            "command-log-hash": (edit_receipt(lambda r: r["isolated"][1].update(command_log_sha256="0" * 64)),
+                                 "workload: isolated command log hash mismatch"),
+            "source-hash": (rewrite_isolated("10", source_change),
+                            "workload: report target source mismatch"),
+        }
+        for name, (change, message) in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                fixture = self.static_fixture(directory)
+                change(fixture)
+                result, summary = fixture.invoke()
+                self.assertEqual(1, result)
+                self.assertIs(summary["measurement_complete"], False)
+                self.assertIn(message, summary["incomplete_reasons"])
+
 
 CHILD = r'''
 import argparse
@@ -829,6 +1100,28 @@ if mode == 'extra-source':
 if mode == 'config':
     with args.config_file.open('a') as config:
         config.write(' ')
+if mode.startswith('static'):
+    mutate = json.loads(args.config_file.read_text())['stryker-config']['mutate']
+    isolated = '{' in mutate[0]
+    if (mode == 'static-main-fails' and not isolated) or (mode == 'static-isolated-fails' and isolated):
+        sys.exit(1)
+    target = root / 'src/Parchwell.Verifier/Judge/PhaseJudge.cs'
+
+    def located(identifier, tested, line, start, end, static):
+        value = {'id': identifier, 'mutatorName': 'Synthetic', 'replacement': 'x', 'static': static,
+                 'location': {'start': {'line': line, 'column': start}, 'end': {'line': line, 'column': end}}}
+        value.update({'status': 'Killed'} if tested else {'status': 'Ignored', 'statusReason': 'Removed by mutate filter'})
+        return value
+
+    report = {'schemaVersion': '2', 'projectRoot': str(root / 'src/Parchwell.Verifier'), 'files': {str(target): {
+        'language': 'cs', 'source': target.read_text(),
+        'mutants': [located('1', not isolated, 2, 17, 21, False), located('2', isolated, 1, 37, 40, True)]}}}
+    path = args.output / 'reports/mutation-report.json'
+    path.parent.mkdir(parents=True)
+    path.write_text('{}' if mode == 'static-bad-report' else json.dumps(report))
+    (args.output / 'logs').mkdir()
+    (args.output / 'logs/log.txt').write_text('synthetic log')
+    sys.exit(0)
 if mode == 'no-report':
     sys.exit(0)
 report = args.output / 'reports/mutation-report.json'
@@ -924,7 +1217,7 @@ class RunnerTests(unittest.TestCase):
                 continue
             target = workflow.SHARDS[shard]
             with self.subTest(shard=shard):
-                config = workflow.shard_config(shard)
+                config = workflow.shard_config(shard, SOURCE)
                 self.assertEqual([target], config["stryker-config"]["mutate"])
                 config["stryker-config"]["mutate"] = workflow.BASE_CONFIG["stryker-config"]["mutate"]
                 self.assertEqual(workflow.BASE_CONFIG, config)
@@ -1077,7 +1370,10 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse((self.root / "calls.txt").exists())
 
     def commit_configuration(self, data):
-        path = self.root / "src/Parchwell.Verifier" / CONFIGURATION
+        self.commit_target(CONFIGURATION, data)
+
+    def commit_target(self, target, data):
+        path = self.root / "src/Parchwell.Verifier" / target
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
@@ -1190,6 +1486,66 @@ class RunnerTests(unittest.TestCase):
         self.commit_configuration(SOURCE)
         self.assertEqual(0, self.local_check("whole-file", span="0..2147483647", timeout=5)[0])
         self.assertEqual(0, self.local_check("timeout-limit", span="0..26", timeout=16200)[0])
+
+    def test_static_region_mutants_run_in_their_own_invocations(self):
+        self.commit_target("Judge/PhaseJudge.cs", STATIC_PHASE)
+        result, receipt, output = self.invoke("static")
+        self.assertEqual(0, result)
+        self.assertEqual([[0, 41]], receipt["static_regions"])
+        self.assertIsNone(receipt["isolation_error"])
+        self.assertEqual(["Judge/PhaseJudge.cs", "!Judge/PhaseJudge.cs{0..41}"],
+                         json.loads((output / "shard-config.json").read_text())["stryker-config"]["mutate"])
+        [entry] = receipt["isolated"]
+        self.assertEqual(workflow.ISOLATED_FIELDS, set(entry))
+        self.assertEqual(("2", [36, 39], [], 0, None, True),
+                         (entry["mutant_id"], entry["span"], entry["exclusions"], entry["child_exit_code"],
+                          entry["termination_reason"], entry["command_completed"]))
+        folder = output / "isolated/2"
+        self.assertEqual(["Judge/PhaseJudge.cs{36..39}"],
+                         json.loads((folder / "config.json").read_text())["stryker-config"]["mutate"])
+        self.assertEqual(digest(folder / "stryker/reports/mutation-report.json"), entry["report_sha256"])
+        self.assertEqual("synthetic log", (output / "stryker/logs/isolated-2/log.txt").read_text())
+        self.assertFalse((folder / "stryker/logs").exists())
+        self.assertEqual(["called"] * 2, (self.root / "calls.txt").read_text().splitlines())
+        rows = workflow.report_records(json.loads((output / workflow.REPORT_PATH).read_text()), "Judge/PhaseJudge.cs")
+        [item] = workflow.isolation_plan(rows, STATIC_PHASE, [(0, 41)])
+        merged = workflow.isolated_rows(output, "Judge/PhaseJudge.cs", projection.digest(STATIC_PHASE), item, entry, rows)
+        self.assertEqual([("1", "Killed"), ("2", "Killed")], [(value["id"], value["status"]) for value in merged])
+
+    def test_static_isolation_failures_fail_the_shard(self):
+        self.commit_target("Judge/PhaseJudge.cs", STATIC_PHASE)
+        cases = (("static-main-fails", "main invocation did not complete", 0, 1),
+                 ("static-isolated-fails", "isolated invocation of mutant 2 failed", 1, 2),
+                 ("static-bad-report", "isolation selection failed: unsupported report schema", 0, 1))
+        for mode, message, entries, calls in cases:
+            with self.subTest(mode=mode):
+                (self.root / "calls.txt").unlink(missing_ok=True)
+                result, receipt, _ = self.invoke(mode)
+                self.assertEqual(1, result)
+                self.assertEqual(message, receipt["isolation_error"])
+                self.assertEqual(entries, len(receipt["isolated"]))
+                self.assertEqual(["called"] * calls, (self.root / "calls.txt").read_text().splitlines())
+        launch = workflow.launch
+
+        def slow(*arguments):
+            outcome = launch(*arguments)
+            time.sleep(1.2)
+            return outcome
+
+        def broken(*arguments):
+            raise OSError("disk full")
+
+        with self.subTest(mode="isolation-oserror"), patch.object(workflow, "run_isolated", broken):
+            result, receipt, _ = self.invoke("static", output=self.root / "oserror")
+            self.assertEqual(1, result)
+            self.assertEqual("isolation failed: disk full", receipt["isolation_error"])
+            self.assertEqual([], receipt["isolated"])
+
+        with self.subTest(mode="deadline"), patch.object(workflow, "launch", slow):
+            result, receipt, _ = self.invoke("static", output=self.root / "deadline", timeout=1)
+            self.assertEqual(1, result)
+            self.assertEqual("shard time limit reached before mutant 2", receipt["isolation_error"])
+            self.assertEqual([], receipt["isolated"])
 
     def test_member_boundaries_command_prints_offsets_and_lines(self):
         self.commit_configuration(SOURCE)

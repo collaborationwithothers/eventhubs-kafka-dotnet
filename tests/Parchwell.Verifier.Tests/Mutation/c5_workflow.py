@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import time
@@ -38,6 +39,9 @@ FILTERED = ("Ignored", "Removed by mutate filter")
 IDENTITY = ("mutatorName", "replacement", "location")
 REBALANCE_SECONDS = 7200
 LOCAL_PURPOSE = "Local C5 check: diagnostic only, never acceptance evidence."
+STATIC_FIELD = re.compile(r"    (?:[a-z]+ )*static readonly ")
+LINE_TERMINATORS = ("\r", "\u2028", "\u2029", "\x85")
+TESTED = ("Killed", "Timeout", "Survived", "NoCoverage", "RuntimeError")
 BASE_CONFIG = {"stryker-config": {
     "project": "Parchwell.Verifier.csproj", "test-runner": "mtp",
     "configuration": "Release", "target-framework": "net10.0",
@@ -57,7 +61,11 @@ RECEIPT_FIELDS = set("""shard target commit tree run_id run_attempt argv cwd
     environment_overrides started_at_utc finished_at_utc elapsed_seconds
     child_exit_code termination_reason command_completed source_sha256_before
     source_sha256_after tracked_clean_before tracked_clean_after config_sha256_before
-    config_sha256_after report_sha256 command_log_sha256 projection_manifest_sha256""".split())
+    config_sha256_after report_sha256 command_log_sha256 projection_manifest_sha256
+    static_regions isolated isolation_error""".split())
+ISOLATED_FIELDS = set("""mutant_id span exclusions argv started_at_utc finished_at_utc
+    elapsed_seconds child_exit_code termination_reason command_completed config_sha256_before
+    config_sha256_after report_sha256 command_log_sha256""".split())
 
 
 def sha256(path: Path) -> str:
@@ -140,11 +148,68 @@ def shard_span(shard: str, source: bytes | None) -> tuple[int, int] | None:
     return spans(target_text(source), count)[index - 1]
 
 
-def shard_config(shard: str, source: bytes | None = None) -> dict:
+def line_starts(text: str) -> list[int]:
+    """UTF-16 offset of each line start, numbered as Roslyn numbers lines; other line terminators are rejected."""
+    if any(mark in text for mark in LINE_TERMINATORS):
+        raise ValueError("unsupported line terminator in target")
+    starts = [0]
+    for line in text.split("\n")[:-1]:
+        starts.append(starts[-1] + utf16_length(line) + 1)
+    return starts
+
+
+def static_regions(text: str) -> list[tuple[int, int]]:
+    """Whole-line span of each member-level static readonly field, through its first line that ends with ';'."""
+    starts = line_starts(text)
+    lines = text.split("\n")
+    regions = []
+    index = 0
+    while index < len(lines):
+        if STATIC_FIELD.match(lines[index]) is None:
+            index += 1
+            continue
+        end = index
+        while end < len(lines) - 1 and not lines[end].endswith(";"):
+            end += 1
+        if end == len(lines) - 1:
+            raise ValueError("unterminated static field declaration")
+        regions.append((starts[index], starts[end + 1]))
+        index = end + 1
+    return regions
+
+
+def shard_static_regions(shard: str, source: bytes | None) -> list[tuple[int, int]]:
+    """Static field regions inside a shard's span; a region across the span's edge is an error."""
+    span = shard_span(shard, source) or (0, SPAN_END)
+    if source is None:
+        raise ValueError("shard configuration requires target source")
+    inside = []
+    for start, end in static_regions(target_text(source)):
+        if span[0] <= start and end <= span[1]:
+            inside.append((start, end))
+        elif start < span[1] and span[0] < end:
+            raise ValueError("static field declaration crosses a span boundary")
+    return inside
+
+
+def shard_config(shard: str, source: bytes | None) -> dict:
+    """Main invocation: the shard's span, minus its static field regions, whose mutants run isolated."""
     target = SHARDS[shard]
     span = shard_span(shard, source)
     config = copy.deepcopy(BASE_CONFIG)
-    config["stryker-config"]["mutate"] = [target if span is None else f"{target}{{{span[0]}..{span[1]}}}"]
+    config["stryker-config"]["mutate"] = [
+        target if span is None else f"{target}{{{span[0]}..{span[1]}}}",
+        *(f"!{target}{{{start}..{end}}}" for start, end in shard_static_regions(shard, source))]
+    return config
+
+
+def isolated_config(target: str, item: dict) -> dict:
+    """One mutant's invocation: its node span, minus the node span of every other mutant inside it."""
+    config = copy.deepcopy(BASE_CONFIG)
+    start, end = item["span"]
+    config["stryker-config"]["mutate"] = [
+        f"{target}{{{start}..{end}}}",
+        *(f"!{target}{{{low}..{high}}}" for low, high in item["exclusions"])]
     return config
 
 
@@ -232,7 +297,9 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
         print(f"C5 projection failed: {error}")
         return 1
     try:
-        config = shard_config(shard, (staging_root / (projection.VERIFIER + target)).read_bytes())
+        source = (staging_root / (projection.VERIFIER + target)).read_bytes()
+        config = shard_config(shard, source)
+        regions = shard_static_regions(shard, source)
     except (OSError, ValueError) as error:
         staging.cleanup()
         print(f"C5 span selection failed: {error}")
@@ -242,15 +309,26 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
     report_path = output_dir / REPORT_PATH
     write_json(config_path, config)
     config_before = sha256(config_path)
-    argv = [*(command_prefix or ["dotnet", "stryker"]), "--config-file", str(config_path),
+    prefix = command_prefix or ["dotnet", "stryker"]
+    argv = [*prefix, "--config-file", str(config_path),
             "--output", str(output_dir / "stryker"), "--log-to-file", "--verbosity", "debug"]
     cwd = staging_root / "tests/Parchwell.Verifier.Tests"
     started = utc_now()
     start = time.monotonic()
     child_exit = None
     reason = None
+    isolated = []
+    isolation_error = None
     try:
         child_exit, reason = launch(argv, cwd, log_path, timeout)
+        if regions and not (reason is None and child_exit in (0, 2) and report_path.is_file()):
+            isolation_error = "main invocation did not complete"
+        elif regions:
+            try:
+                isolated, isolation_error = run_isolated(target, source, regions, report_path, output_dir,
+                                                         prefix, cwd, start + timeout)
+            except OSError as error:
+                isolation_error = f"isolation failed: {error}"
     finally:
         finished = utc_now()
         elapsed = time.monotonic() - start
@@ -290,11 +368,58 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
             "report_sha256": sha256(report_path) if report_path.is_file() else None,
             "projection_manifest_sha256": sha256(projection_path),
             "command_log_sha256": sha256(log_path) if log_path.is_file() else None,
+            "static_regions": [list(region) for region in regions],
+            "isolated": isolated, "isolation_error": isolation_error,
         }
         write_json(output_dir / "receipt.json", receipt)
     return 0 if (receipt["command_completed"] and child_exit in (0, 2)
-                 and clean_after and before == after and before
+                 and clean_after and before == after and before and isolation_error is None
                  and projection_valid and config_before == config_after and receipt["report_sha256"]) else 1
+
+
+def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], main_report: Path,
+                 output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
+    """Run each mutant of the shard's static field regions in its own Stryker invocation, with fresh test processes."""
+    try:
+        plan = isolation_plan(report_records(json.loads(main_report.read_bytes()), target), source, regions)
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        return [], f"isolation selection failed: {error}"
+    entries = []
+    for item in plan:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return entries, f"shard time limit reached before mutant {item['mutant_id']}"
+        directory = output_dir / "isolated" / item["mutant_id"]
+        directory.mkdir(parents=True)
+        config_path = directory / "config.json"
+        log_path = directory / "command.log"
+        report_path = directory / REPORT_PATH
+        write_json(config_path, isolated_config(target, item))
+        config_before = sha256(config_path)
+        argv = [*prefix, "--config-file", str(config_path), "--output", str(directory / "stryker"),
+                "--log-to-file", "--verbosity", "debug"]
+        started = utc_now()
+        start = time.monotonic()
+        child_exit, reason = launch(argv, cwd, log_path, remaining)
+        logs = directory / "stryker/logs"
+        if logs.is_dir():
+            try:
+                (output_dir / "stryker/logs").mkdir(parents=True, exist_ok=True)
+                shutil.move(logs, output_dir / "stryker/logs" / f"isolated-{item['mutant_id']}")
+            except OSError:
+                pass  # Logs are not evidence: aggregation never reads them. If the move fails they stay in isolated/ID/stryker/logs/, which the evidence upload carries.
+        entry = {**item, "argv": argv, "started_at_utc": started, "finished_at_utc": utc_now(),
+                 "elapsed_seconds": time.monotonic() - start, "child_exit_code": child_exit,
+                 "termination_reason": reason, "command_completed": child_exit is not None and reason is None,
+                 "config_sha256_before": config_before,
+                 "config_sha256_after": sha256(config_path) if config_path.is_file() else None,
+                 "report_sha256": sha256(report_path) if report_path.is_file() else None,
+                 "command_log_sha256": sha256(log_path) if log_path.is_file() else None}
+        entries.append(entry)
+        if not (entry["command_completed"] and child_exit in (0, 2) and entry["report_sha256"]
+                and entry["config_sha256_after"] == config_before):
+            return entries, f"isolated invocation of mutant {item['mutant_id']} failed"
+    return entries, None
 
 
 def require(condition: object, message: str) -> None:
@@ -358,6 +483,84 @@ def report_records(report: dict, target: str, *, source_sha256: str | None = Non
     return records
 
 
+def node_span(row: dict, starts: list[int], length: int) -> tuple[int, int]:
+    """UTF-16 span of a report mutant's original node, from its 1-based line and column."""
+    def offset(position: dict) -> int:
+        require(position["line"] <= len(starts), "mutant location outside target")
+        return starts[position["line"] - 1] + position["column"] - 1
+
+    start, end = offset(row["location"]["start"]), offset(row["location"]["end"])
+    require(0 <= start < end <= length, "mutant location outside target")
+    return start, end
+
+
+def isolation_plan(rows: list[dict], source: bytes, regions: list[tuple[int, int]]) -> list[dict]:
+    """One invocation per mutant that the main invocation filtered out of a static field region, by ascending id."""
+    if not regions:
+        return []
+    text = target_text(source)
+    starts = line_starts(text)
+    length = utf16_length(text)
+    nodes = {row["id"]: node_span(row, starts, length) for row in rows}
+    plan = []
+    for row in sorted(rows, key=lambda item: int(item["id"])):
+        start, end = nodes[row["id"]]
+        if ((row["status"], row.get("statusReason")) != FILTERED
+                or not any(low <= start and end <= high for low, high in regions)):
+            continue
+        others = [other for other in rows if other["id"] != row["id"]]
+        for other in others:
+            if nodes[other["id"]] == (start, end) and (
+                    other["status"] in TESTED or (other["status"], other.get("statusReason")) == FILTERED):
+                raise ValueError(f"mutant {row['id']} shares its span with mutant {other['id']}")
+        inner = sorted({nodes[other["id"]] for other in others
+                        if start <= nodes[other["id"]][0] and nodes[other["id"]][1] <= end
+                        and nodes[other["id"]] != (start, end)})
+        plan.append({"mutant_id": row["id"], "span": [start, end], "exclusions": [list(node) for node in inner]})
+    return plan
+
+
+def merge_isolated(rows: list[dict], item: dict, isolated_rows: list[dict]) -> list[dict]:
+    """Replace one filtered main row with its isolated row, after checking that invocation tested only that mutant."""
+    main = {row["id"]: row for row in rows}
+    isolated = {row["id"]: row for row in isolated_rows}
+    require(set(main) == set(isolated), "isolated inventory differs")
+    identifier = item["mutant_id"]
+    for key, row in isolated.items():
+        require([row.get(field) for field in IDENTITY] == [main[key].get(field) for field in IDENTITY],
+                f"mutant {key} identity differs in isolation")
+        disposition = (row["status"], row.get("statusReason"))
+        if key == identifier:
+            require(disposition != FILTERED and row["status"] != "CompileError",
+                    f"mutant {key} was not tested in isolation")
+        else:
+            original = (main[key]["status"], main[key].get("statusReason"))
+            require(disposition == FILTERED or (disposition == original and original[0] not in TESTED),
+                    f"mutant {key} ran in the isolated invocation of mutant {identifier}")
+    return [isolated[row["id"]] if row["id"] == identifier else row for row in rows]
+
+
+def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, entry: object,
+                  rows: list[dict]) -> list[dict]:
+    """Check one isolated invocation's retained evidence and merge its one tested mutant into the shard's rows."""
+    require(isinstance(entry, dict) and set(entry) == ISOLATED_FIELDS, "malformed isolated receipt")
+    require(all(entry[key] == item[key] for key in ("mutant_id", "span", "exclusions")),
+            "isolated invocation differs from plan")
+    require(entry["command_completed"] is True and entry["termination_reason"] is None
+            and type(entry["child_exit_code"]) is int and entry["child_exit_code"] in (0, 2),
+            "isolated child execution error")
+    folder = directory / "isolated" / item["mutant_id"]
+    config_path = folder / "config.json"
+    require(json.loads(config_path.read_text()) == isolated_config(target, item),
+            "unexpected isolated configuration")
+    require(sha256(config_path) == entry["config_sha256_before"] == entry["config_sha256_after"],
+            "isolated config hash mismatch")
+    report_bytes = (folder / REPORT_PATH).read_bytes()
+    require(hashlib.sha256(report_bytes).hexdigest() == entry["report_sha256"], "isolated report hash mismatch")
+    require(sha256(folder / "command.log") == entry["command_log_sha256"], "isolated command log hash mismatch")
+    return merge_isolated(rows, item, report_records(json.loads(report_bytes), target, source_sha256=target_hash))
+
+
 def populations(records: list[dict]) -> tuple[dict, int, int]:
     counts = {status: 0 for status in STATUSES}
     for row in records:
@@ -406,7 +609,8 @@ def retained_span(directory: Path, target: str) -> list[int] | None:
         mutate = json.loads((directory / "shard-config.json").read_text())["stryker-config"]["mutate"]
     except (OSError, ValueError, TypeError, KeyError):
         return None
-    if not (isinstance(mutate, list) and len(mutate) == 1 and isinstance(mutate[0], str)):
+    if not (isinstance(mutate, list) and mutate and all(isinstance(item, str) for item in mutate)
+            and all(re.fullmatch(re.escape("!" + target) + r"\{\d+\.\.\d+\}", item) for item in mutate[1:])):
         return None
     match = re.fullmatch(re.escape(target) + r"\{(\d+)\.\.(\d+)\}", mutate[0])
     return None if match is None else [int(match[1]), int(match[2])]
@@ -498,12 +702,25 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(json.loads(config_path.read_text()) == shard_config(shard, source),
                     "unexpected shard configuration")
             span = shard_span(shard, source)
-            part_records[shard] = report_records(report, target, source_sha256=target_hash)
+            rows = report_records(report, target, source_sha256=target_hash)
+            regions = shard_static_regions(shard, source)
+            require(receipt["static_regions"] == [list(region) for region in regions], "static region mismatch")
+            require(receipt["isolation_error"] is None, "static isolation incomplete")
+            for row in rows:
+                require(not (row.get("static") is True and row["status"] in TESTED),
+                        f"static mutant {row['id']} tested outside isolation")
+            plan = isolation_plan(rows, source, regions)
+            require(isinstance(receipt["isolated"], list) and len(receipt["isolated"]) == len(plan),
+                    "isolated invocation list mismatch")
+            for item, entry in zip(plan, receipt["isolated"]):
+                rows = isolated_rows(directory, target, target_hash, item, entry, rows)
+            part_records[shard] = rows
             shards[shard] = {"target": target, "part": index, "parts": count,
                              "span": None if span is None else list(span),
                              "elapsed_seconds": elapsed,
                              "child_exit_code": receipt["child_exit_code"],
-                             "report_sha256": report_hash}
+                             "report_sha256": report_hash,
+                             "isolated_mutants": [item["mutant_id"] for item in plan]}
         except (OSError, ValueError, TypeError, KeyError) as error:
             reasons.append(f"{shard}: {error}")
     for key, (target, count) in TARGETS.items():
