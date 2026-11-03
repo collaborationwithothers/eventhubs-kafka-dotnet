@@ -25,6 +25,7 @@ internal static class IdleFixture
         BlobServiceUri = "https://syntheticstore.blob.core.windows.net/", LedgerContainer = "ledger", VerifierContainer = "verifier",
         LoadGenImage = "registry.test/parchwell/loadgen@sha256:" + new string('a', 64), VerifierImage = "registry.test/parchwell/verifier@sha256:" + new string('b', 64),
         CapturePods = CapturePodsText(PodKeys),
+        Items = "A02,A03,A04",
         Limits = new()
         {
             ProcessLifetimeSeconds = 660, CaptureIoSeconds = 60, IoSeconds = 10, CleanupSeconds = 10, MaxCaptureBytes = 167772160, MaxRegistrationBytes = 65536,
@@ -85,5 +86,5 @@ internal static class IdleFixture
     internal static IdleConfigurationResult Summary(string id, string? summary, string status = "complete_valid", IdleRepeatResult[]? repeats = null) =>
         new(id, status, summary, null, repeats ?? []);
 
-    internal static IdleWindows CloseWindows(long? after, long? quiet) => new(0, 0, 0, 0, 0, after, quiet, 0, 0, 0, 0);
+    internal static IdleWindows CloseWindows(long? after, long? quiet) => new(0, 0, 0, 0, 0, after, quiet, 0, 0, 0, 0, false);
 }

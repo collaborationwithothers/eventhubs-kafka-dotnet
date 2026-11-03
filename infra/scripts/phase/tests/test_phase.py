@@ -995,12 +995,15 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
 
     def test_idle_observation_admits_only_the_smoke_and_batch_tuples_before_side_effects(self):
         for kind in ('smoke', 'batch'):
-            with self.subTest(run_kind=kind), patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind)), self.mocked():
-                self.assertEqual(0, self.main('validate-batch'))
-                self.assertEqual(0, self.main('prepare-stop'))
+            for items in ('all', 'A02', 'A03', 'A02,A04', 'A02,A03,A04'):
+                with self.subTest(run_kind=kind, items=items), \
+                        patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items)), self.mocked():
+                    self.assertEqual(0, self.main('validate-batch'))
+                    self.assertEqual(0, self.main('prepare-stop'))
         self.assertIn('private_directory=', self.output_file.read_text())
-        rejected = [{'PARCHWELL_RUN_KIND': 'Batch'}, {'PARCHWELL_RUN_KIND': 'Smoke'}, {'PARCHWELL_BATCH_ITEMS': 'A02'},
-                    {'PARCHWELL_BATCH_ITEMS': 'A02,A03,A04'}, {'PARCHWELL_BATCH_ITEMS': 'ALL'}, {'PARCHWELL_BATCH_ITEMS': ''},
+        rejected = [{'PARCHWELL_RUN_KIND': 'Batch'}, {'PARCHWELL_RUN_KIND': 'Smoke'}, {'PARCHWELL_BATCH_ITEMS': 'A04,A02'},
+                    {'PARCHWELL_BATCH_ITEMS': 'A02,A02'}, {'PARCHWELL_BATCH_ITEMS': 'A02,'}, {'PARCHWELL_BATCH_ITEMS': 'a02'},
+                    {'PARCHWELL_BATCH_ITEMS': 'A05'}, {'PARCHWELL_BATCH_ITEMS': 'ALL'}, {'PARCHWELL_BATCH_ITEMS': ''},
                     {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true'}, {'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'yes'},
                     {'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true'},
                     {'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}, {'PARCHWELL_SCENARIO': 'IDLE-OBSERVATION'}, None]
@@ -1033,6 +1036,11 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         self.assertEqual(('A02', 'A03', 'A04'), phase.IDLE_ITEMS)
         self.assertEqual((('A02', 'C0'), ('A02', 'C1'), ('A03', 'C0'), ('A03', 'C1'), ('A03', 'C2'), ('A04', 'C0'), ('A04', 'C1')),
                          phase.Phase().idle_observation().selection())
+
+    def test_idle_observation_preparation_freezes_an_ordered_item_subset(self):
+        self.prepare_idle(PARCHWELL_RUN_KIND='batch', PARCHWELL_BATCH_ITEMS='A02,A04')
+        self.assertEqual(['A02', 'A04'], json.loads((self.private / 'phase.json').read_text())['items'])
+        self.assertEqual((('A02', 'C0'), ('A02', 'C1'), ('A04', 'C0'), ('A04', 'C1')), phase.Phase().idle_observation().selection())
 
     def test_idle_observation_preparation_freezes_the_batch_run_kind_and_names_the_judge_job(self):
         self.prepare_idle(PARCHWELL_RUN_KIND='batch')

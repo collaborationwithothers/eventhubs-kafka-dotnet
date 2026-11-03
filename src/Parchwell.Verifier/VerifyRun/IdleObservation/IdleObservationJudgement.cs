@@ -88,6 +88,9 @@ internal static class IdleObservationJudgement
         IdleReport r0 = reports[first], r1 = reports[last], r2 = reports[resume];
         long idleTimed = 0, idleOther = 0, resumeTimed = 0, resumeOther = 0;
         long? close = null, closeQuiet = null;
+        var timedOut = new HashSet<string>(StringComparer.Ordinal);
+        var dropped = new HashSet<string>(StringComparer.Ordinal);
+        bool reconnected = false;
         for (int index = first + 1; index <= resume; index++)
         {
             bool idle = index <= last;
@@ -96,6 +99,13 @@ internal static class IdleObservationJudgement
             {
                 IdleBroker? earlier = reports[index - 1].Brokers.GetValueOrDefault(key);
                 long rose = broker.Disconnects - (earlier?.Disconnects ?? 0);
+                if (!idle)
+                {
+                    // Resume timeout sequence: on one broker key, a request timeout, then a disconnect, then a connection attempt.
+                    if (broker.ReqTimeouts > (earlier?.ReqTimeouts ?? 0)) timedOut.Add(key);
+                    if (rose > 0 && timedOut.Contains(key)) dropped.Add(key);
+                    if (broker.Connects > (earlier?.Connects ?? 0) && dropped.Contains(key)) reconnected = true;
+                }
                 if (rose <= 0) continue;
                 long quiet = QuietMs(earlier);
                 quietest = Math.Min(quietest ?? quiet, quiet);
@@ -108,7 +118,7 @@ internal static class IdleObservationJudgement
             if (idle && close is null && quietest is not null) (close, closeQuiet) = (reports[index].ObservedElapsedMs - start, quietest);
         }
         return new(idleTimed, idleOther, Delta(r0, r1, b => b.Connects), Delta(r0, r1, b => b.Metadata), Delta(r0, r1, b => b.ReqTimeouts), close, closeQuiet,
-            resumeTimed, resumeOther, Delta(r1, r2, b => b.Connects), Delta(r1, r2, b => b.ReqTimeouts));
+            resumeTimed, resumeOther, Delta(r1, r2, b => b.Connects), Delta(r1, r2, b => b.ReqTimeouts), reconnected);
     }
 
     internal static IdleRepeatResult JudgeRepeat(IdleRepeat repeat, int ordinal, string pod, IReadOnlyDictionary<string, string> settings,
@@ -137,7 +147,8 @@ internal static class IdleObservationJudgement
         {
             windows = Windows(reports, start, end, repeat.Second.TerminalElapsedMs!.Value);
             if (windows is null) incomplete.Add("idle_reference_missing");
-            else connection = windows.IdleTimedDisconnects > 0 ? "closed_while_idle" : windows.ResumeIdleTimedDisconnects > 0 ? "stale_on_resume" : "kept";
+            else connection = windows.IdleTimedDisconnects > 0 ? "closed_while_idle" : windows.ResumeIdleTimedDisconnects > 0 ? "stale_on_resume"
+                : windows.ResumeTimeoutReconnect ? "timed_out_on_resume" : "kept";
         }
         string status = invalid.Count > 0 ? "invalid" : incomplete.Count > 0 ? "incomplete" : "complete_valid";
         int up = reports.Count == 0 ? 0 : reports.Max(report => report.Brokers.Values.Count(b => UpSources.Contains(b.Source) && b.State == "UP"));
@@ -176,7 +187,7 @@ internal static class IdleObservationJudgement
         string? summary = status != "complete_valid" ? null
             : repeats.Any(r => r.ConnectionClass == "first_failed") ? "first_failed"
             : repeats.All(r => r.ConnectionClass == "kept") ? "kept"
-            : repeats.All(r => r.ConnectionClass is "closed_while_idle" or "stale_on_resume") ? "not_kept" : "unequal";
+            : repeats.All(r => r.ConnectionClass is "closed_while_idle" or "stale_on_resume" or "timed_out_on_resume") ? "not_kept" : "unequal";
         return new(id, status, summary, sha256, repeats);
     }
 

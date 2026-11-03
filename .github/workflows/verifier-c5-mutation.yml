@@ -41,7 +41,15 @@ jobs:
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: single-action-configuration-p6
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
-          - shard: idle-observation
+          - shard: single-action-configuration-p7
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p8
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: idle-observation-p1
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: idle-observation-p2
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: idle-observation-p3
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}

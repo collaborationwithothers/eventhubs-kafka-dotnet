@@ -187,7 +187,7 @@ spec:
               value: "idle-observation"
             - name: Telemetry__RunId
               value: {{ $r.run_id | quote }}
-            {{- $fields := dict "RunKind" $r.run_kind "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "ServiceAccount" $r.service_accounts.verifier.name "WorkloadIdentityClientId" $r.service_accounts.verifier.client_id "ScenarioRoot" "/app" "BlobServiceUri" $r.blob.account_url "LedgerContainer" $r.blob.containers.ledger "VerifierContainer" "verifier" "LoadGenImage" $r.loadgen_image "VerifierImage" $r.verifier_image "CapturePods" $r.capture_pods -}}
+            {{- $fields := dict "RunKind" $r.run_kind "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "ServiceAccount" $r.service_accounts.verifier.name "WorkloadIdentityClientId" $r.service_accounts.verifier.client_id "ScenarioRoot" "/app" "BlobServiceUri" $r.blob.account_url "LedgerContainer" $r.blob.containers.ledger "VerifierContainer" "verifier" "LoadGenImage" $r.loadgen_image "VerifierImage" $r.verifier_image "CapturePods" $r.capture_pods "Items" $r.judge_items -}}
             {{- range $key, $value := $r.bounds.idle_observation.judge -}}{{- $_ := set $fields (printf "Limits__%s" $key) $value -}}{{- end -}}
             {{- range $key, $value := $r.bounds.scenario_parsing -}}{{- $_ := set $fields (printf "ScenarioLoadOptions__%s" $key) $value -}}{{- end }}
             {{- range $key, $value := $fields }}

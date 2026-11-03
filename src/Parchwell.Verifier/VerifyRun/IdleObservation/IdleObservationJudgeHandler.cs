@@ -39,7 +39,7 @@ internal sealed class IdleObservationResolver(IdleObservationJudgeOptions option
     }
 }
 
-/// <summary>Judges the seven idle-observation captures of a run and publishes one candidate per item.</summary>
+/// <summary>Judges the idle-observation captures of the selected items of a run and publishes one candidate per selected item.</summary>
 internal sealed class IdleObservationJudgeHandler(IdleObservationJudgeOptions options, IIdleLedger ledger, IVerifierArtifactStore store,
     ScenarioLoader loader, IdleObservationResolver resolver, TimeProvider clock)
 {
@@ -47,7 +47,7 @@ internal sealed class IdleObservationJudgeHandler(IdleObservationJudgeOptions op
     {
         var references = new List<IdleCandidateReference>();
         var pods = options.Pods();
-        foreach (string item in IdleObservationJudgement.Items)
+        foreach (string item in options.SelectedItems())
         {
             LoadedScenario scenario = await loader.LoadAsync(item, cancellationToken).ConfigureAwait(false);
             if (scenario.Definition.IdleObservation is null) throw new InvalidOperationException("idle_declaration_required");

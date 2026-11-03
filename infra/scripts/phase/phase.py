@@ -124,6 +124,16 @@ def batch_items():
     return selected
 
 
+def idle_items():
+    value = os.environ.get('PARCHWELL_BATCH_ITEMS')
+    if value == 'all':
+        return list(IDLE_ITEMS)
+    selected = (value or '').split(',')
+    if selected != [item for item in IDLE_ITEMS if item in selected]:
+        raise Failure("unsupported idle observation selection")
+    return selected
+
+
 def require(name):
     value = os.environ.get(name)
     if not value or "\r" in value or "\n" in value:
@@ -306,9 +316,9 @@ class Phase:
 
     def validate_idle_observation(self):
         if (scenario() != IDLE_MODE or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch")
-                or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all" or capture_authentication_metadata()
-                or test_handler_refresh_path() or test_native_authentication()):
+                or capture_authentication_metadata() or test_handler_refresh_path() or test_native_authentication()):
             raise Failure("unsupported idle observation selection")
+        idle_items()
         return 0
 
     def allow_images(self):
@@ -329,7 +339,7 @@ class Phase:
         self.validate_batch()
         selected = scenario()
         if selected == IDLE_MODE:
-            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=list(IDLE_ITEMS))
+            return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=idle_items())
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
         refresh_test = test_handler_refresh_path() if selected == 'probe-batch-2' else False
         native_test = test_native_authentication() if selected == 'probe-batch-2' else False

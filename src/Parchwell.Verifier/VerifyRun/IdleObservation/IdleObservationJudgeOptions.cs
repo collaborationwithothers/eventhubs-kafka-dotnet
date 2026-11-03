@@ -26,6 +26,7 @@ internal sealed partial class IdleObservationJudgeOptions
     public string LoadGenImage { get; set; } = "";
     public string VerifierImage { get; set; } = "";
     public string CapturePods { get; set; } = "";
+    public string Items { get; set; } = "";
     public IdleObservationJudgeLimits Limits { get; set; } = new();
     public ScenarioLoadOptions ScenarioLoadOptions { get; set; } = new();
 
@@ -42,7 +43,7 @@ internal sealed partial class IdleObservationJudgeOptions
             uri.Scheme != "https" || uri.UserInfo.Length != 0 || uri.AbsolutePath != "/" ||
             uri.Query.Length != 0 || uri.Fragment.Length != 0 || !ImagePattern().IsMatch(LoadGenImage) || !ImagePattern().IsMatch(VerifierImage) ||
             GetType().GetProperties().Where(x => x.PropertyType == typeof(string)).Select(x => (string)x.GetValue(this)!).Any(x => x.Length == 0 || x.Contains('\r') || x.Contains('\n')) ||
-            !PodsAreValid())
+            !ItemsAreValid() || !PodsAreValid())
             throw new InvalidOperationException("idle_judge_identity");
         Limits.Validate();
         if (ScenarioLoadOptions.MaxDocumentCharacters != 1048576 || ScenarioLoadOptions.MaxNestingDepth != 32 ||
@@ -64,13 +65,22 @@ internal sealed partial class IdleObservationJudgeOptions
         return pods;
     }
 
+    /// <summary>The items named by <see cref="Items"/>, such as A02 and A04, in the order given.</summary>
+    internal string[] SelectedItems() => Items.Split(',');
+
+    private bool ItemsAreValid()
+    {
+        string[] items = SelectedItems();
+        return items.SequenceEqual(IdleObservationJudgement.Items.Where(item => Array.IndexOf(items, item) >= 0));
+    }
+
     private bool PodsAreValid()
     {
         try
         {
             foreach (var (key, (pod, uid)) in Pods())
             {
-                if (Array.IndexOf(PodKeys, key) < 0 || !DnsPattern().IsMatch(pod) ||
+                if (Array.IndexOf(PodKeys, key) < 0 || Array.IndexOf(SelectedItems(), key[..3]) < 0 || !DnsPattern().IsMatch(pod) ||
                     !pod.StartsWith($"{RunId}-{key[..3].ToLowerInvariant()}-{key[3..].ToLowerInvariant()}-idle-", StringComparison.Ordinal) ||
                     string.IsNullOrWhiteSpace(uid) || uid.Contains(':') || uid.Contains(','))
                     return false;

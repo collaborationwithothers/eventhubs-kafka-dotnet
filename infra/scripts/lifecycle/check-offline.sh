@@ -75,7 +75,7 @@ def check_workflows(repository):
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2', 'idle-observation']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
-            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all)', 'type': 'string', 'required': 'false', 'default': 'all'},
+            'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all or ordered A02,A03,A04)', 'type': 'string', 'required': 'false', 'default': 'all'},
             'capture_authentication_metadata': {'description': 'Collect bounded authentication metadata (selected authentication controls only)', 'type': 'boolean', 'required': 'false', 'default': 'false'},
             'test_handler_refresh_path': {'description': 'Test our handler refresh path with a 5000 ms advertised expiry cap (selected authentication controls only)', 'type': 'boolean', 'required': 'false', 'default': 'false'},
             'test_native_authentication': {'description': 'Build three native librdkafka OIDC producers beside the custom-handler control (selected authentication controls only)', 'type': 'boolean', 'required': 'false', 'default': 'false'}}}},

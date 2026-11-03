@@ -7,12 +7,14 @@ assessment_rules:
   replacement_repeats: 0
   idle_seconds: 420
   statistics_interval_ms: 15000
-  connection_classes: [kept, closed_while_idle, stale_on_resume, first_failed]
+  connection_classes: [kept, closed_while_idle, stale_on_resume, timed_out_on_resume, first_failed]
   quiet_period: "smaller of txidle and rxidle in the report before the disconnect, in ms; one -1 uses the other; both -1 or a key absent from that report gives 0, so other_cause"
   idle_timed_threshold_ms: 225000
   idle_timed_threshold_basis: "harness choice, not a measurement; Microsoft's stated 240000 ms idle limit minus one 15000 ms report interval"
-  survival: "only idle_timed disconnects count, on any broker including bootstrap; closed_while_idle is one in the idle window, stale_on_resume one in the resume window only; both are not_kept"
-  recorded_not_selecting: [other_cause disconnects, request timeouts, second produce outcome, client error callbacks]
+  survival: "only idle_timed disconnects and the resume timeout sequence count, on any broker including bootstrap; closed_while_idle is an idle_timed disconnect in the idle window, stale_on_resume one in the resume window only, and timed_out_on_resume, with neither, the resume timeout sequence; all three are not_kept"
+  resume_timeout_sequence: "on one broker key, reports Ra, Rb and Rc after R1 and at or before R2, with Ra at or before Rb and Rb at or before Rc, where req_timeouts rose at Ra, disconnects at Rb and connects at Rc, each against the report before it (0 when the key is absent there)"
+  recorded_not_selecting: [other_cause disconnects outside the resume timeout sequence, request timeouts outside the resume timeout sequence, second produce outcome, client error callbacks]
+  rule_history: "timed_out_on_resume was designed after batch run 41534423570 was seen (decision 6596426514) and applies only to runs at a source commit that contains it; run 41534423570 was judged at 9014b8effd4f8556d3446bcfbf8f951a52905bb2, without it; A03's published verdict comes from that run under those rules (decision 6596020684)"
   require_one_survival_in_all_five: true
   unequal_classes: no_verdict
   incomplete_configuration: no_verdict

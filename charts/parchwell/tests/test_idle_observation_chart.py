@@ -16,7 +16,7 @@ FIELDS = ('ScenarioId', 'ConfigurationId', 'RunId', 'RunKind', 'SourceCommit', '
 PARSING = ('MaxDocumentCharacters', 'MaxNestingDepth', 'MaxScalarCharacters', 'MaxParserEvents')
 JUDGE_FIELDS = ('RunKind', 'RunId', 'SourceCommit', 'JobName', 'NamespaceName', 'ServiceAccount', 'WorkloadIdentityClientId',
                 'ScenarioRoot', 'BlobServiceUri', 'LedgerContainer', 'VerifierContainer', 'LoadGenImage', 'VerifierImage',
-                'CapturePods', 'PodName', 'PodUid')
+                'CapturePods', 'Items', 'PodName', 'PodUid')
 CAPTURE_PODS = 'A02C0:idle-1-1-a02-c0-idle-x7k2p:uid-1,A04C1:idle-1-1-a04-c1-idle-q9m4z:uid-2'
 
 
@@ -37,9 +37,9 @@ def positive_cases():
     yield case('A02', 'C0', 'smoke')
 
 
-def judge_case(run_kind, capture_pods=CAPTURE_PODS):
+def judge_case(run_kind, capture_pods=CAPTURE_PODS, judge_items='A02,A03,A04'):
     values = case('A04', 'C1', run_kind)
-    values['runtime'].update(mode='idle-observation-judge', capture_pods=capture_pods)
+    values['runtime'].update(mode='idle-observation-judge', capture_pods=capture_pods, judge_items=judge_items)
     values['runtime']['service_accounts']['loadgen']['client_id'] = '00000000-0000-0000-0000-000000000001'
     values['runtime']['service_accounts']['verifier']['client_id'] = '00000000-0000-0000-0000-000000000002'
     return values
@@ -48,7 +48,7 @@ def judge_case(run_kind, capture_pods=CAPTURE_PODS):
 def judge_cases():
     yield judge_case('smoke')
     yield judge_case('batch')
-    yield judge_case('batch', 'none')
+    yield judge_case('batch', 'none', 'A02,A04')
 
 
 def judge_expected_names():
@@ -117,12 +117,13 @@ def verify_judge(document, values):
     assert container['image'] == runtime['verifier_image']
     env = {entry['name']: entry for entry in container['env']}
     assert len(env) == len(container['env'])
-    assert set(env) == judge_expected_names() and len(env) == 40, set(env) ^ judge_expected_names()
+    assert set(env) == judge_expected_names() and len(env) == 41, set(env) ^ judge_expected_names()
     assert env['Telemetry__ServiceName']['value'] == 'Parchwell.Verifier'
     assert env['Telemetry__ScenarioId']['value'] == 'idle-observation'
     assert env['IdleObservationJudge__LedgerContainer']['value'] == 'ledger'
     assert env['IdleObservationJudge__RunKind']['value'] == runtime['run_kind']
     assert env['IdleObservationJudge__CapturePods']['value'] == runtime['capture_pods']
+    assert env['IdleObservationJudge__Items']['value'] == runtime['judge_items']
     assert env['IdleObservationJudge__VerifierImage']['value'] == runtime['verifier_image']
     assert env['IdleObservationJudge__LoadGenImage']['value'] == runtime['loadgen_image']
     for key, value in LIMITS['judge'].items():
@@ -139,6 +140,8 @@ def judge_negatives():
         mutate(good, lambda d: d.update(scenario_id='A02')),
         mutate(good, lambda d: d.update(configuration_id='C0')),
         mutate(good, lambda d: d['runtime'].pop('capture_pods')),
+        mutate(good, lambda d: d['runtime'].pop('judge_items')),
+        mutate(good, lambda d: d['runtime'].update(judge_items='A04,A02')),
     ]
 
 
@@ -164,7 +167,7 @@ def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     const = schema['properties']['runtime']['properties']['bounds']['properties']['idle_observation']['const']
     assert DEFAULTS['idle_observation'] == LIMITS == const
-    assert len(expected_names()) == 45 and len(judge_expected_names()) == 40
+    assert len(expected_names()) == 45 and len(judge_expected_names()) == 41
     assert len(LIMITS['judge']) == 11 and LIMITS['execution']['judge_job_seconds'] == 720
     cases = list(positive_cases())
     assert len(cases) == 8
@@ -205,14 +208,14 @@ def main():
             checked = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0', str(output)])
             assert checked.returncode == 0, checked.stdout + checked.stderr
         judge_bad = judge_negatives()
-        assert len(judge_bad) == 3
+        assert len(judge_bad) == 5
         for index, values in enumerate(judge_bad):
             fixture = directory / f'judge-negative-{index}.yaml'
             with_case(values, fixture)
             rendered = run(['helm', 'template', 'synthetic', str(CHART), '--namespace', 'parchwell', '-f', str(fixture)])
             assert rendered.returncode != 0, index
             assert not any(o and o.get('kind') == 'Job' for o in yaml.safe_load_all(rendered.stdout)), index
-    print('idle-observation chart acceptance passed: 8 positive, 8 negative, 3 judge positive, 3 judge negative')
+    print('idle-observation chart acceptance passed: 8 positive, 8 negative, 3 judge positive, 5 judge negative')
 
 
 if __name__ == '__main__':
