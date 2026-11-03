@@ -12,7 +12,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 |---|---|---|---|---|
 | A01 | Timeout behaviour under throttling | No positive throttle sample in the valid synthetic probe; the full timeout and duplicate workloads were gated off. | untestable | [Report](results/A01/2026-10-25.md) |
 | A02 | TCP keepalive configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| A03 | Metadata refresh interval | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| A03 | Metadata refresh interval | With Microsoft's `metadata.max.age.ms=180000`, producers kept their connections across a 420 s idle period in five repeats (5 `kept`); with the default 900000, none did (5 `closed_while_idle`). Only disconnects after at least 225000 ms of quiet count. The expected outcome, inferred from the librdkafka source, was `not_kept` with 180000 too; in the idle period each 180000 ms producer sent two Metadata requests and each 900000 ms producer one. | confirmed | [Report](results/A03/2026-11-02.md) |
 | A04 | Idle connection configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | A05 | Kafka ports and network rules | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | A06 | Private DNS resolution | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
