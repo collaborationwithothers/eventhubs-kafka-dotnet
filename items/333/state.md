@@ -1,5 +1,5 @@
 # State: #333 Count connections that fail on resume as not kept; idle item subsets; C5 span splits (#301 child 10)
-Covers: comment 6598714347 created 2026-11-03; read at 2026-11-03 (follow-up pull request)
+Covers: comment 6598728624 created 2026-11-03T08:17:40Z; read at 2026-11-03T08:23:44Z
 Parent items: [#301](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301)
 Item plan: [split decision 6563452228](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6563452228) and [silent-drop decision 6596426514](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6596426514), which adds split entry 10
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent`; Claude Code by default
@@ -7,7 +7,8 @@ Approved plan: [Idle resume timeout judgement implementation-grade plan, Revisio
 Decisions in force:
 - Issue body: split entry 10 of #301; adds the judge's resume-timeout connection class, idle-observation item subsets and two more C5 span splits; dispatches nothing and publishes no verdict. Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333)
 - Adopts, in creation order, the #301 decisions 6562996229, 6563452228, 6563483800, 6563495437, 6563515099, 6563540913, 6569906599, 6588207250 and 6596426514, and decision 6596527645; under the override decision the plan may be approved under "Standing approval", including the expected-outcome changes the silent-drop decision authorizes, and the #301 control session may merge. Source: [decision 6596840872](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6596840872)
-- Resolves the Codex P1 on merged pull request #336 in a follow-up pull request that keeps idle-observation `items` rejection coverage as its own assertions, changes tests only, and is merged by the #301 control session once Codex has reviewed its head with no unresolved P0 or P1. Source: [decision 6598714347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6598714347)
+- The A03 `expected.yaml` edit in pull request #336 is an authorized expected-outcome edit, the same as the A02 and A04 edits; it must not change A03's published verdict, and A03's `text_must_state` stays as on `main`. Source: [decision 6598526821](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6598526821)
+- Resolves the Codex P1 on merged pull request #336 in a follow-up pull request that keeps idle-observation `items` rejection coverage as its own assertions, changes no verifier file, and is merged by the #301 control session once Codex has reviewed its head with no unresolved P0 or P1. Source: [decision 6598714347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6598714347)
 Open questions:
 - None
-Next action: the #301 control session merges the follow-up pull request after Codex review of its head; then dispatches a main-only C5 mutation campaign and one idle-observation batch with `items` `A02,A04`.
+Next action: the #301 control session merges the follow-up pull request after Codex review of its head. The post-merge C5 campaign and idle-observation batch were already dispatched from `main` at c878a9a ([comment 6598728624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6598728624)); this pull request does not affect them.

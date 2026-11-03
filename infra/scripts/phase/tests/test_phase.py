@@ -1033,11 +1033,13 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
             'empty list': '', 'separator only': ',', 'trailing separator': 'A02,', 'leading separator': ',A02',
             'doubled separator': 'A02,,A04', 'space after separator': 'A02, A04', 'leading space': ' A02', 'trailing space': 'A02 ',
             'lower case item': 'a02', 'mixed case list': 'A02,a04', 'upper case all': 'ALL', 'title case all': 'All',
-            'other separator': 'A02;A04', 'separator-joined without comma': 'A02A04'}
+            'other separator': 'A02;A04', 'separator-joined without comma': 'A02A04', 'unset': None}
         for kind in ('smoke', 'batch'):
             for label, items in refused.items():
                 with self.subTest(run_kind=kind, case=label, items=items), \
-                        patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items)):
+                        patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items or '')):
+                    if items is None:
+                        del os.environ['PARCHWELL_BATCH_ITEMS']
                     before = set(self.root.iterdir())
                     environment_before, output_before = self.env_file.read_bytes(), self.output_file.read_bytes()
                     with self.mocked():
@@ -1049,9 +1051,6 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                     self.assertEqual(before, set(self.root.iterdir()))
                     self.assertEqual(environment_before, self.env_file.read_bytes())
                     self.assertEqual(output_before, self.output_file.read_bytes())
-        with patch.dict(os.environ, self.idle_environment()), self.mocked():
-            del os.environ['PARCHWELL_BATCH_ITEMS']
-            self.assertEqual(2, self.main('validate-batch'))
         self.assertEqual([], self.fake.calls)
 
     def test_idle_observation_preparation_freezes_all_seven_configurations(self):

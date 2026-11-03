@@ -6,13 +6,21 @@ This pull request adds one test that refuses each invalid idle-observation `item
 
 - Deliverable: `test_idle_observation_refuses_invalid_items_before_side_effects` in `infra/scripts/phase/tests/test_phase.py`, plus `items/333/state.md` and this receipt.
 - Authorization: [decision 6598714347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/333#issuecomment-6598714347) on #333, which resolves the Codex P1 thread on #336 with a follow-up. The acceptance assertions for `A02`, `A02,A04` and `A02,A03,A04` stay under [silent-drop decision 6596426514](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/301#issuecomment-6596426514), point 3(a).
-- Mandatory gates: the repository checks, the cold review under AGENTS.md "Before opening a pull request" rule 8, Codex review of the head.
+- Mandatory gates: the exact commands under "Verification" below, the cold review under AGENTS.md "Before opening a pull request" rule 8, Codex review of the head.
 - Publication checkpoint: after the first cold review reports no P0 or P1.
 - Review budget: rule 8 as written. Exhaustion action: its review-budget handoff to Hari.
 
 ## Specification comparison
 
-The decision lists out of order, unknown, duplicate, empty or stray separators and wrong letter case. The test covers each, for run kinds `smoke` and `batch`, with these cases (24 labelled values) plus an unset `PARCHWELL_BATCH_ITEMS`. Each case must make `validate-batch`, `prepare-batch` and `prepare-stop` exit 2, write the error `unsupported idle observation selection`, create no file and leave the environment and output files unchanged. `phase.py` is unchanged: `idle_items()` implements exactly these refusals (value not `all` and not an ordered subset of `A02`, `A03`, `A04`). No admission defect was found.
+The decision lists out of order, unknown, duplicate, empty or stray separators and wrong letter case. The test covers each, for run kinds `smoke` and `batch`, with these cases (24 labelled values, one of them an unset `PARCHWELL_BATCH_ITEMS`). Each case must make `validate-batch`, `prepare-batch` and `prepare-stop` exit 2, write the error `unsupported idle observation selection`, create no file and leave the environment and output files unchanged. `phase.py` is unchanged: `idle_items()` implements exactly these refusals (value not `all` and not an ordered subset of `A02`, `A03`, `A04`). No admission defect was found.
+
+## Predicate map
+
+| Predicate | Tests |
+|---|---|
+| `idle_items()` refuses every value that is not `all` and not an ordered, duplicate-free subset of `A02`, `A03`, `A04`, including unset | `test_idle_observation_refuses_invalid_items_before_side_effects` (24 labelled values, both run kinds) |
+| Accepted values at the boundary: `all`, `A02`, `A03`, `A02,A04`, `A02,A03,A04` | `test_idle_observation_admits_only_the_smoke_and_batch_tuples_before_side_effects` (unchanged) |
+| Precedence with other selection checks (run kind, authentication switches, scenario case) | not changed here; covered by the rejected overrides in the unchanged test above |
 
 ## Verification
 
