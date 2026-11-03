@@ -1,6 +1,6 @@
 # Issue 333 follow-up receipt
 
-This pull request adds one test that refuses each invalid idle-observation `items` value on its own, so the rejection coverage the merged pull request #336 removed for `A02` and `A02,A03,A04` is backed by separate refusals. It changes tests only.
+This pull request adds one test that refuses each invalid idle-observation `items` value on its own, so the rejection coverage the merged pull request #336 removed for `A02` and `A02,A03,A04` is backed by separate refusals. It adds one test and updates the item state file, and changes no verifier file.
 
 ## Execution card
 
@@ -12,13 +12,13 @@ This pull request adds one test that refuses each invalid idle-observation `item
 
 ## Specification comparison
 
-The decision lists out of order, unknown, duplicate, empty or stray separators and wrong letter case. The test covers each, for run kinds `smoke` and `batch`, with these cases (24 labelled values, one of them an unset `PARCHWELL_BATCH_ITEMS`). Each case must make `validate-batch`, `prepare-batch` and `prepare-stop` exit 2, write the error `unsupported idle observation selection`, create no file and leave the environment and output files unchanged. `phase.py` is unchanged: `idle_items()` implements exactly these refusals (value not `all` and not an ordered subset of `A02`, `A03`, `A04`). No admission defect was found.
+The decision lists out of order, unknown, duplicate, empty or stray separators and wrong letter case. The test covers each, for run kinds `smoke` and `batch`, with these cases (25 labelled values, counted by script, one of them an unset `PARCHWELL_BATCH_ITEMS`). Each case must make `validate-batch`, `prepare-batch` and `prepare-stop` exit 2, create no file and leave the environment and output files unchanged. A separate `validate-batch` call per case must write the error `unsupported idle observation selection`; the message is not asserted for `prepare-batch` and `prepare-stop`. `phase.py` is unchanged: `idle_items()` implements exactly these refusals (value not `all` and not an ordered subset of `A02`, `A03`, `A04`). No admission defect was found.
 
 ## Predicate map
 
 | Predicate | Tests |
 |---|---|
-| `idle_items()` refuses every value that is not `all` and not an ordered, duplicate-free subset of `A02`, `A03`, `A04`, including unset | `test_idle_observation_refuses_invalid_items_before_side_effects` (24 labelled values, both run kinds) |
+| `idle_items()` refuses every value that is not `all` and not an ordered, duplicate-free subset of `A02`, `A03`, `A04`, including unset | `test_idle_observation_refuses_invalid_items_before_side_effects` (25 labelled values, both run kinds) |
 | Accepted values at the boundary: `all`, `A02`, `A03`, `A02,A04`, `A02,A03,A04` | `test_idle_observation_admits_only_the_smoke_and_batch_tuples_before_side_effects` (unchanged) |
 | Precedence with other selection checks (run kind, authentication switches, scenario case) | not changed here; covered by the rejected overrides in the unchanged test above |
 
