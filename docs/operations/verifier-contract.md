@@ -68,7 +68,7 @@ Per repeat, reports in capture order:
 
 - A repeat is `invalid` when it has an invalid reason, else `incomplete` when it has an incomplete reason, else `complete_valid`. Invalid reasons: `idle_identity` (repeat ordinal or client ID wrong), `idle_settings` (settings or omitted keys differ from the independently resolved baseline plus scenario selection), `idle_statistics_shape`, `idle_statistics_order`, `idle_counter_decreased` and `idle_window` (the idle period is shorter than `idle_seconds`, or the second produce is malformed). Incomplete reasons: `idle_diagnostics` (the repeat holds a diagnostic), `idle_first_not_terminal`, `idle_second_not_terminal` and `idle_reference_missing`. A repeat carries its connection class only when `complete_valid`.
 - A configuration is `invalid` if any repeat is invalid, `complete_valid` only when all five repeats are `complete_valid`, and `incomplete` otherwise. Replacement repeats do not exist.
-- The configuration summary applies to a `complete_valid` configuration only: `first_failed` if any repeat is `first_failed`; else `kept` if all five are `kept`; else `not_kept` if all five are `closed_while_idle` or `stale_on_resume`; else `unequal`.
+- The configuration summary applies to a `complete_valid` configuration only: `first_failed` if any repeat is `first_failed`; else `kept` if all five are `kept`; else `not_kept` if all five are `closed_while_idle`, `stale_on_resume` or `timed_out_on_resume`; else `unequal`.
 
 ### Item precedence and rules
 

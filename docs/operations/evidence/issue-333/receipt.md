@@ -30,7 +30,7 @@ This pull request adds the connection class `timed_out_on_resume` to the idle-ob
 
 Unreachable: a sequence whose disconnect is `idle_timed` is always `stale_on_resume` or `closed_while_idle` first, by precedence.
 
-`docs/operations/evidence/issue-321-a03-verdict/make_results.py` pins the SHA-256 of `scenarios/A03/expected.yaml` (L122) and reads that file from the working tree, so after C27 it reproduces only at the commit where it was merged; no check runs it.
+`docs/operations/evidence/issue-321-a03-verdict/make_results.py` pins the SHA-256 of `scenarios/A03/expected.yaml` (L122) and reads that file from the working tree, so after C27 it reproduces only at the commit where it was merged; no check runs it. `results/A03/2026-11-02.json` also records `expected_yaml_sha256` (L305), which equals the hash of that file on `main` before this pull request and no longer matches the head file; the published A03 verdict is unchanged, and no check reads that field.
 
 ## Commands and results
 
@@ -51,8 +51,16 @@ Branch `claude/issue-333-idle-resume-timeout` cut from `main` at `e921edeca6a0c4
 ## Deviations from the plan
 
 - Edits 23.2 and 25.4 insert text that starts with a space and continues the line they follow; they are applied inline, not on a new line.
+- The configuration summary rule in verifier-contract.md and one sentence in verifier-mutation.md are corrected after cold review round 1 (see "Cold review").
 - Acceptance 3 is cited to the hosted run for the stages that need Docker, as the plan allows.
 
 ## Cold review
 
-Not yet run. The record of each round, its input revision, comparison revision, specification sources, reviewer model and dispositions is added here by the session that runs it.
+Round 1 (comprehensive, pass 1 of 2): input revision b67c561, comparison revision origin/main e921edeca6a0c47090cccdf3f752b344da60370b, reviewer model claude-opus-5-5, specification sources as listed under "Execution card". Findings and dispositions:
+
+- P0 on `scenarios/A02/expected.yaml`, `scenarios/A04/expected.yaml` and `scenarios/A03/expected.yaml` (expected-outcome edits): kept, because the approved plan requires them (decision 6596426514 point 2 authorizes A02 and A04; the plan decides A03). Listed in the pull request description for Hari under rule 8, third paragraph.
+- P1 `docs/operations/verifier-contract.md`, configuration summary rule: fixed, `timed_out_on_resume` added to the `not_kept` list. Deviation from the plan.
+- P1 `docs/operations/verifier-mutation.md`, claim that more spans would not shorten the longest one: fixed, limited to the two `SingleAction` files.
+- P2 this receipt, `results/A03/2026-11-02.json` hash: fixed above.
+
+Focused correction round 1 follows on the fixes.
