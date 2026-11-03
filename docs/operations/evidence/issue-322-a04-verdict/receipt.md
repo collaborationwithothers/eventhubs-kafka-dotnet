@@ -19,7 +19,7 @@ This receipt describes how the A04 evidence pack in `results/A04/2026-11-03.md` 
 
 The generator was decoded from the plan comment (gzip and base64, Acceptance step 0) with SHA-256 `3d92de34755b23c726317bf3f8631e01f6718d1ddfa030864671f588235eeb7a`. The plan check's `apply in implementation` finding was then applied: the report title in `TEMPLATE` said the client closed idle producer connections, which the report itself lists as not tested. It now reads "each producer's first idle-window disconnect came before 225000 ms and every repeat was kept". The committed generator's SHA-256 is `c5f20c0c4e72de9926504794cd58088b86bc6ce79ef3b167e79baf50144be50d`, the value the plan check gave. No check, pinned value, recorded number or verdict changed.
 
-Cold review round 1 (comprehensive) raised one more prose finding, applied under the plan's stop rule for generator changes: the summary sentence now says that H_client_close is decided by the timing of the first idle-window disconnect whichever side closed it. No check, pinned value, recorded number or verdict changed. The generator's SHA-256 is now `08c08bfdf510c4aede06a6548571b5945afd3ca19492cbfdda4cda20d97a2462`. After that change Acceptance steps 2 to 5 were rerun with the same results.
+Cold review round 1 (comprehensive) raised one more prose finding, applied under the plan's stop rule for generator changes: the summary sentence now says that H_client_close is decided by the timing of the first idle-window disconnect whichever side closed it. No check, pinned value, recorded number or verdict changed. The generator's SHA-256 is now `08c08bfdf510c4aede06a6548571b5945afd3ca19492cbfdda4cda20d97a2462`. After that change Acceptance steps 2 to 8 were rerun with the same results.
 
 ## Specification comparison
 
