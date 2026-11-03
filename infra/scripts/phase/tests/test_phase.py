@@ -1024,6 +1024,36 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
             self.assertEqual(2, phase.main(['validate-batch']))
         self.assertEqual('unsupported idle observation selection', error.getvalue().strip())
 
+    def test_idle_observation_refuses_invalid_items_before_side_effects(self):
+        refused = {
+            'out of order': 'A04,A02', 'out of order, all three': 'A04,A03,A02', 'out of order, adjacent pair': 'A03,A02',
+            'unknown item': 'A05', 'unknown item after a valid one': 'A02,A05', 'item from another scenario': 'B08',
+            'duplicate item': 'A02,A02', 'duplicate item, non-adjacent': 'A02,A04,A02',
+            'all with another item': 'all,A02', 'all repeated': 'all,all',
+            'empty list': '', 'separator only': ',', 'trailing separator': 'A02,', 'leading separator': ',A02',
+            'doubled separator': 'A02,,A04', 'space after separator': 'A02, A04', 'leading space': ' A02', 'trailing space': 'A02 ',
+            'lower case item': 'a02', 'mixed case list': 'A02,a04', 'upper case all': 'ALL', 'title case all': 'All',
+            'other separator': 'A02;A04', 'separator-joined without comma': 'A02A04'}
+        for kind in ('smoke', 'batch'):
+            for label, items in refused.items():
+                with self.subTest(run_kind=kind, case=label, items=items), \
+                        patch.dict(os.environ, self.idle_environment(PARCHWELL_RUN_KIND=kind, PARCHWELL_BATCH_ITEMS=items)):
+                    before = set(self.root.iterdir())
+                    environment_before, output_before = self.env_file.read_bytes(), self.output_file.read_bytes()
+                    with self.mocked():
+                        for command in ('validate-batch', 'prepare-batch', 'prepare-stop'):
+                            self.assertEqual(2, self.main(command), command)
+                    with contextlib.redirect_stderr(io.StringIO()) as error:
+                        self.assertEqual(2, phase.main(['validate-batch']))
+                    self.assertEqual('unsupported idle observation selection', error.getvalue().strip())
+                    self.assertEqual(before, set(self.root.iterdir()))
+                    self.assertEqual(environment_before, self.env_file.read_bytes())
+                    self.assertEqual(output_before, self.output_file.read_bytes())
+        with patch.dict(os.environ, self.idle_environment()), self.mocked():
+            del os.environ['PARCHWELL_BATCH_ITEMS']
+            self.assertEqual(2, self.main('validate-batch'))
+        self.assertEqual([], self.fake.calls)
+
     def test_idle_observation_preparation_freezes_all_seven_configurations(self):
         self.prepare_idle()
         self.assertEqual({'scenario': 'idle-observation', 'phase': 'idle-observation', 'configuration': None,
