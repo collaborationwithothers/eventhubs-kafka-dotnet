@@ -1023,6 +1023,12 @@ class AggregationTests(unittest.TestCase):
             fixture.target_rows("workload")[2].pop("statusReason")
             fixture.save("workload")
 
+        def source_change(folder):
+            path = folder / "stryker/reports/mutation-report.json"
+            report = json.loads(path.read_text())
+            report["files"]["/synthetic/src/Parchwell.Verifier/" + WORKLOAD]["source"] += " "
+            write_json(path, report)
+
         cases = {
             "missing-entry": (edit_receipt(lambda r: r["isolated"].pop()), "workload: isolated invocation list mismatch"),
             "isolation-error": (edit_receipt(lambda r: r.update(isolation_error="isolated invocation of mutant 10 failed")),
@@ -1040,6 +1046,12 @@ class AggregationTests(unittest.TestCase):
                        "workload: unexpected isolated configuration"),
             "another-mutant": (rewrite_isolated("10", report_change(lambda rows: rows[0].update(status="Killed", statusReason=None))),
                                "workload: mutant 0 ran in the isolated invocation of mutant 10"),
+            "config-hash": (edit_receipt(lambda r: r["isolated"][1].update(config_sha256_before="0" * 64)),
+                            "workload: isolated config hash mismatch"),
+            "command-log-hash": (edit_receipt(lambda r: r["isolated"][1].update(command_log_sha256="0" * 64)),
+                                 "workload: isolated command log hash mismatch"),
+            "source-hash": (rewrite_isolated("10", source_change),
+                            "workload: report target source mismatch"),
         }
         for name, (change, message) in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory(dir=self.directory) as directory:
@@ -1519,6 +1531,15 @@ class RunnerTests(unittest.TestCase):
             outcome = launch(*arguments)
             time.sleep(1.2)
             return outcome
+
+        def broken(*arguments):
+            raise OSError("disk full")
+
+        with self.subTest(mode="isolation-oserror"), patch.object(workflow, "run_isolated", broken):
+            result, receipt, _ = self.invoke("static", output=self.root / "oserror")
+            self.assertEqual(1, result)
+            self.assertEqual("isolation failed: disk full", receipt["isolation_error"])
+            self.assertEqual([], receipt["isolated"])
 
         with self.subTest(mode="deadline"), patch.object(workflow, "launch", slow):
             result, receipt, _ = self.invoke("static", output=self.root / "deadline", timeout=1)
