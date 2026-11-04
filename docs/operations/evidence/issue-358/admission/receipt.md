@@ -29,6 +29,8 @@ Tools: `install-tools.sh ci` with Python 3.12 first on `PATH` (the script requir
 9. `npm ci --ignore-scripts && npm run check:docs` exited 0 with 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, `docs/operations/evidence/issue-124`, `issue-140` and `issue-211`). `docs/operations/ledger-batch-smoke.md` has no issues.
 10. An ASCII scan (`grep -P '[^\x00-\x7F]'`) of every changed text file printed nothing. `git diff origin/main...HEAD` contains no at-sign codex string.
 
+11. Added after final-head CI at `194351b` failed the "Lifecycle verification" job: `python3 infra/scripts/lifecycle/command.py 900 -- bash charts/parchwell/tests/check-loadgen-host.sh` failed at `assert len(cases)==7`, because change 9a adds four loadgen positive cases. The plan and its check missed this script, which runs from `check-loadgen-host.sh` and not from `check.sh`. The fix changes the expected count to 11 (and the printed count) in `charts/parchwell/tests/test_loadgen_host.py`. It is stricter, not looser: the published load generator host now also validates the four B06 and B07 rendered environments. After the fix the command exited 0 locally and printed `loadgen host check passed: 11 rendered environments, 1 missing-setting regression`. That file is the 17th changed path, outside the plan's 16 and its acceptance step 8; the plan authorizes no such path, so this is recorded for Hari's attention.
+
 ## Scope notes
 
 - Unchanged by this pull request: every verifier source file, every `expected.yaml`, `results/`, and every workflow other than `scenario.yml`.
