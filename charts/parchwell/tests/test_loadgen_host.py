@@ -221,7 +221,7 @@ def main():
             cwd=ROOT,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=625)
         assert proc.returncode==0, proc.stdout[-4000:]+proc.stderr[-4000:]
         host=['dotnet',str(publish/'Parchwell.LoadGen.dll'),'--validate-configuration']
-        cases=[d for d in positive_cases() if d['runtime']['mode']=='loadgen']; assert len(cases)==7
+        cases=[d for d in positive_cases() if d['runtime']['mode']=='loadgen']; assert len(cases)==11
         environments=[]
         for i,d in enumerate(cases):
             values=td/f'{i}.yaml'; with_case(d,values)
@@ -232,7 +232,7 @@ def main():
         broken=dict(environments[0]); del broken['LoadGen__PodUid']
         proc=bounded(60,host,td/'missing.host.out',host_environment(broken,td))
         assert proc.returncode==1 and 'loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:PodUid' in proc.stderr, proc.stderr
-        print('loadgen host check passed: 7 rendered environments, 1 missing-setting regression')
+        print('loadgen host check passed: 11 rendered environments, 1 missing-setting regression')
         single_action_host_acceptance(td, publish)
         probe_v2_host_acceptance(td, publish)
         idle_observation_host_acceptance(td, publish)

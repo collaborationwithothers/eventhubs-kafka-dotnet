@@ -29,7 +29,9 @@ public sealed class ChartContractTests
             value => Assert.Equal("F06", value.GetString()),
             value => Assert.Equal("A02", value.GetString()),
             value => Assert.Equal("A03", value.GetString()),
-            value => Assert.Equal("A04", value.GetString()));
+            value => Assert.Equal("A04", value.GetString()),
+            value => Assert.Equal("B06", value.GetString()),
+            value => Assert.Equal("B07", value.GetString()));
         Assert.False(schema.RootElement.GetProperty("additionalProperties").GetBoolean());
         JsonElement runtime = properties.GetProperty("runtime");
         Assert.False(runtime.GetProperty("additionalProperties").GetBoolean());

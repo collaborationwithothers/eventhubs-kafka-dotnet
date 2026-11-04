@@ -73,7 +73,7 @@ def check_workflows(repository):
     expected_triggers = {
         'cluster-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
-            'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2', 'idle-observation']},
+            'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
             'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all or ordered A02,A03,A04)', 'type': 'string', 'required': 'false', 'default': 'all'},
             'capture_authentication_metadata': {'description': 'Collect bounded authentication metadata (selected authentication controls only)', 'type': 'boolean', 'required': 'false', 'default': 'false'},

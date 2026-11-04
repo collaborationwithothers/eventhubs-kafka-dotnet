@@ -84,7 +84,7 @@ public sealed class WorkflowAuthenticationContractTests
         Assert.Contains("      test_handler_refresh_path:", lines);
         Assert.Contains("        description: Test our handler refresh path with a 5000 ms advertised expiry cap (selected authentication controls only)", lines);
         Assert.Equal(5, lines.Count(line => line == "      PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}"));
-        Assert.Contains("    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2' || inputs.scenario == 'idle-observation') && " + factor + " && " + NativeFactor, lines);
+        Assert.Contains("    if: (inputs.scenario == 'probe-batch' || inputs.scenario == 'probe-batch-2' || inputs.scenario == 'idle-observation' || inputs.scenario == 'ledger-batch') && " + factor + " && " + NativeFactor, lines);
         Assert.Contains(lines, line => line.StartsWith("    if: (always() && ((inputs.scenario ==", StringComparison.Ordinal) && line.EndsWith(" && " + factor + " && " + NativeFactor, StringComparison.Ordinal));
         Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", lines);
         Assert.Contains("        if: always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && steps.credentials.outcome == 'success'", lines);

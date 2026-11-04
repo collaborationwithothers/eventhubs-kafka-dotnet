@@ -35,6 +35,12 @@ BATCH_MATRIX = (
     ('F04', 'C2', 'probe'), ('F04', 'C3', 'loadgen'),
     ('F04', 'C4', 'probe'),
 )
+LEDGER_RUN = 'ledger-40121134428-1'
+LEDGER_STATS = (json.dumps({'schema_version': 1, 'raw_json': json.dumps({'ts': 1000, 'brokers': {'b0': {'req': {'Produce': 3}}, 'b1': {'req': {'Produce': 2, 'Metadata': 1}}, 'boot': {'req': {}}}, 'topics': {'document-events': {'batchcnt': {'cnt': 5, 'sum': 40, 'min': 1, 'max': 20, 'avg': 8, 'p50': 6}}}})}) + '\n'
+                + json.dumps({'schema_version': 1, 'raw_json': json.dumps({'ts': 2000, 'brokers': {'b0': {'req': {'Produce': 7}}, 'b1': {'req': {'Produce': 4}}}, 'topics': {'document-events': {'batchcnt': {'cnt': 0, 'sum': 0, 'min': 0, 'max': 0, 'avg': 0, 'p50': 0}}}})}) + '\n').encode()
+LEDGER_ROWS = (json.dumps({'delivered': True, 'delivery_latency_ms': 9.5}) + '\n' + json.dumps({'delivered': True, 'delivery_latency_ms': 4}) + '\n'
+               + json.dumps({'delivered': False, 'delivery_latency_ms': None}) + '\n').encode()
+LEDGER_CONFIGURATIONS = (('B06', 'C0'), ('B06', 'C1'), ('B07', 'C0'), ('B07', 'C1'))
 
 
 class ScriptedCommands:
@@ -45,6 +51,8 @@ class ScriptedCommands:
         self.download = b''
         self.properties = []
         self.artifact_mutator = None
+        self.collect_hook = None
+        self.blobs = {}
 
     def __call__(self, instance, args, seconds, output=None, maximum=4 * 1024 * 1024):
         args = list(map(str, args))
@@ -78,12 +86,19 @@ class ScriptedCommands:
                 (directory / 'collection-status.json').write_text(json.dumps(collection))
                 for name, content in logs.items():
                     (directory / name).write_text(content)
+            if self.collect_hook:
+                self.collect_hook(instance, job, values)
         elif args[:3] == ['kubectl', 'get', 'pods']:
             default = (0, '{"items": []}')
         elif args[:4] == ['az', 'storage', 'blob', 'show']:
-            default = self.properties.pop(0) if self.properties else (0, json.dumps({'etag': 'synthetic-etag', 'contentLength': len(self.download)}))
+            name = args[args.index('--name') + 1]
+            if name in self.blobs:
+                default = (0, json.dumps({'etag': 'synthetic-etag', 'contentLength': len(self.blobs[name])}))
+            else:
+                default = self.properties.pop(0) if self.properties else (0, json.dumps({'etag': 'synthetic-etag', 'contentLength': len(self.download)}))
         elif args[:4] == ['az', 'storage', 'blob', 'download']:
-            Path(args[args.index('--file') + 1]).write_bytes(self.download)
+            name = args[args.index('--name') + 1]
+            Path(args[args.index('--file') + 1]).write_bytes(self.blobs.get(name, self.download))
         elif args[:4] == ['az', 'acr', 'repository', 'show']:
             worker = args[args.index('--image') + 1].split('/')[1].split(':')[0].split('@')[0]
             default = (0, BATCH_DIGESTS[worker] + '\n')
@@ -132,6 +147,110 @@ class PhaseTests(unittest.TestCase):
         (self.private / 'ephemeral-output.json').write_text(json.dumps(EPHEMERAL))
         self.run_id = state['run_id']
         self.selected = selected
+
+    def prepare_ledger(self):
+        os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all')
+        self.assertEqual(0, self.main('prepare-batch'))
+        os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
+        self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
+        self.artifacts = Path(os.environ['PARCHWELL_ARTIFACT_DIRECTORY'])
+        self.candidate_dir = Path(os.environ['PARCHWELL_CANDIDATE_DIRECTORY'])
+        state = json.loads((self.private / 'phase.json').read_text())
+        state['images'] = {worker: {'digest': digest, 'reference': f'parchwellacr.azurecr.io/parchwell/{worker}@{digest}'} for worker, digest in DIGESTS.items()}
+        (self.private / 'phase.json').write_text(json.dumps(state))
+        (self.private / 'cluster-output.json').write_text(json.dumps({'workload_identity': {'value': {'namespace': 'parchwell', 'service_accounts': ACCOUNTS}}}))
+        (self.private / 'ephemeral-output.json').write_text(json.dumps(EPHEMERAL))
+
+        def producer_pod(instance, job, values):
+            if values['mode'] == 'loadgen':
+                directory = instance.artifacts / job
+                directory.mkdir()
+                (directory / 'pods.json').write_text(json.dumps({'items': [{'metadata': {'name': job + '-pod'}}]}))
+        self.fake.collect_hook = producer_pod
+        for item, configuration in LEDGER_CONFIGURATIONS:
+            run = f'{LEDGER_RUN}-{item.lower()}'
+            prefix = f'{run}/{configuration}/r1/producer/{run}-{configuration.lower()}-r1-loadgen-pod/publication/'
+            self.fake.blobs[prefix + 'statistics.jsonl'] = LEDGER_STATS
+            self.fake.blobs[prefix + 'ledger.jsonl'] = LEDGER_ROWS
+
+    def test_ledger_batch_selection(self):
+        os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all')
+        self.assertEqual(0, self.main('validate-batch'))
+        self.assertEqual(2, self.main('validate-scenario'))
+        for name, value in (('PARCHWELL_RUN_KIND', 'batch'), ('PARCHWELL_BATCH_ITEMS', 'B06'), ('PARCHWELL_BATCH_ITEMS', 'B06,B07'),
+                            ('PARCHWELL_CAPTURE_AUTHENTICATION_METADATA', 'true'), ('PARCHWELL_TEST_HANDLER_REFRESH_PATH', 'true'),
+                            ('PARCHWELL_TEST_NATIVE_AUTHENTICATION', 'true')):
+            with self.subTest(name=name, value=value), patch.dict(os.environ, {name: value}):
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
+                    self.assertEqual(2, phase.main(['validate-batch']))
+                self.assertEqual('unsupported ledger batch selection', stderr.getvalue().strip())
+
+    def test_prepare_ledger_batch(self):
+        self.prepare_ledger()
+        self.assertEqual({'scenario': 'ledger-batch', 'phase': 'ledger-batch', 'configuration': None, 'run_id': LEDGER_RUN,
+                          'source_commit': SHA, 'run_kind': 'smoke', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
+                         json.loads((self.private / 'phase.json').read_text()))
+
+    def test_prepare_ledger_batch_rejects_long_worker_run(self):
+        os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all',
+                          GITHUB_RUN_ID='4' * 19)
+        self.assertEqual(2, self.main('prepare-batch'))
+        self.assertEqual('', self.env_file.read_text())
+
+    def test_ledger_smoke_runs_every_configuration_and_summarises(self):
+        self.prepare_ledger()
+        with self.mocked():
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(0, self.main('run-single-action-batch'))
+            self.assertEqual(0, self.main('delete-workload'))
+        expected_jobs = [f'{LEDGER_RUN}-{item.lower()}-{configuration.lower()}-r1-{mode}'
+                         for item, configuration in LEDGER_CONFIGURATIONS for mode in ('start-line', 'loadgen', 'verify')]
+        self.assertEqual(expected_jobs, [call[0][3] for call in self.fake.calls if call[0][:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job']])
+        values = json.loads((self.private / f'values-{LEDGER_RUN}-b06-c1-r1-loadgen.json').read_text())
+        self.assertEqual(('B06', 'C1', f'{LEDGER_RUN}-b06', 'C1', 1, f'{LEDGER_RUN}-b06-c1-r1-loadgen'),
+                         (values['scenario_id'], values['configuration_id'], values['runtime']['run_id'], values['runtime']['phase'],
+                          values['runtime']['repeat'], values['runtime']['loadgen_job_name']))
+        shows = [call[0] for call in self.fake.calls if call[0][:4] == ['az', 'storage', 'blob', 'show']]
+        self.assertEqual(['ledger'] * 8, [args[args.index('--container-name') + 1] for args in shows])
+        summary = json.loads((self.candidate_dir / 'B06-C0-smoke-summary.json').read_text())
+        self.assertEqual({'schema_version': 1, 'item': 'B06', 'configuration': 'C0', 'repeat': 1, 'smoke_diagnostic': True,
+                          'complete': True, 'reason': None,
+                          'statistics': {'reports': 2, 'rows': [
+                              {'ts': 1000, 'produce_requests': 5, 'batchcnt': {'document-events': {'cnt': 5, 'sum': 40, 'min': 1, 'max': 20, 'avg': 8, 'p50': 6}}},
+                              {'ts': 2000, 'produce_requests': 11, 'batchcnt': {'document-events': {'cnt': 0, 'sum': 0, 'min': 0, 'max': 0, 'avg': 0, 'p50': 0}}}]},
+                          'ledger': {'rows': 3, 'delivered': 2, 'latency_count': 2, 'latency_min_ms': 4.0, 'latency_p50_ms': 4.0,
+                                     'latency_p95_ms': 9.5, 'latency_max_ms': 9.5}}, summary)
+        self.assertEqual([{'item': item, 'configuration': configuration, 'complete': True, 'reason': None} for item, configuration in LEDGER_CONFIGURATIONS],
+                         json.loads((self.artifacts / 'phase-status.json').read_text())['ledger_smoke'])
+        delete = [call[0] for call in self.fake.calls if call[0][:2] == ['kubectl', 'delete']]
+        self.assertEqual([['kubectl', 'delete', 'jobs', '-n', 'parchwell', '-l',
+                           f'app.kubernetes.io/instance in ({LEDGER_RUN}-b06,{LEDGER_RUN}-b07)', '--ignore-not-found', '--wait=false', '--request-timeout=30s']], delete)
+
+    def test_ledger_smoke_treats_wrong_shape_json_as_malformed_evidence(self):
+        self.prepare_ledger()
+        self.fake.blobs[f'{LEDGER_RUN}-b06/C0/r1/producer/{LEDGER_RUN}-b06-c0-r1-loadgen-pod/publication/statistics.jsonl'] = (
+            json.dumps({'raw_json': '[]'}) + '\n').encode()
+        self.fake.blobs[f'{LEDGER_RUN}-b07/C0/r1/producer/{LEDGER_RUN}-b07-c0-r1-loadgen-pod/publication/ledger.jsonl'] = b'[1]\n'
+        with self.mocked():
+            self.assertEqual(1, self.main('run-single-action-batch'))
+        self.assertEqual([('B06', 'C0', False, 'malformed_evidence'), ('B06', 'C1', True, None),
+                          ('B07', 'C0', False, 'malformed_evidence'), ('B07', 'C1', True, None)],
+                         [(entry['item'], entry['configuration'], entry['complete'], entry['reason'])
+                          for entry in json.loads((self.artifacts / 'phase-status.json').read_text())['ledger_smoke']])
+
+    def test_ledger_smoke_records_gaps_and_continues(self):
+        self.prepare_ledger()
+        del self.fake.blobs[f'{LEDGER_RUN}-b07/C1/r1/producer/{LEDGER_RUN}-b07-c1-r1-loadgen-pod/publication/statistics.jsonl']
+        self.fake.blobs[f'{LEDGER_RUN}-b06/C1/r1/producer/{LEDGER_RUN}-b06-c1-r1-loadgen-pod/publication/statistics.jsonl'] = (
+            json.dumps({'raw_json': {'ts': 1}}) + '\n').encode()
+        with self.mocked():
+            self.assertEqual(1, self.main('run-single-action-batch'))
+        self.assertEqual([('B06', 'C0', True, None), ('B06', 'C1', False, 'malformed_evidence'), ('B07', 'C0', True, None),
+                          ('B07', 'C1', False, 'download_failed:statistics.jsonl')],
+                         [(entry['item'], entry['configuration'], entry['complete'], entry['reason'])
+                          for entry in json.loads((self.artifacts / 'phase-status.json').read_text())['ledger_smoke']])
+        self.assertEqual(12, len([call for call in self.fake.calls if call[0][:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job']]))
 
     def mocked(self):
         stack = contextlib.ExitStack()
