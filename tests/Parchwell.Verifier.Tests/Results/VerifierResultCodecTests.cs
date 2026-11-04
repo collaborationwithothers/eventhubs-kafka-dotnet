@@ -252,6 +252,8 @@ public sealed class VerifierResultCodecTests
         "{\"batch_count\":0,\"batch_max_messages\":1}",
         "{\"batch_count\":1,\"batch_max_messages\":0}",
         "{\"batch_count\":-1,\"batch_max_messages\":0}",
+        "{\"batch_count\":-1,\"batch_max_messages\":1}",
+        "{\"batch_count\":1,\"batch_max_messages\":-1}",
     };
 
     [Theory, MemberData(nameof(MalformedBatchingEvidence))]
