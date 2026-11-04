@@ -1,0 +1,1438 @@
+{
+  "schema_version": 1,
+  "scenario_id": "B06",
+  "synthetic": true,
+  "verdict": "undocumented",
+  "reason": "not_in_librdkafka_table",
+  "not_tested": [
+    "D1"
+  ],
+  "provenance": {
+    "source_commit": "aca33589a3c69056dcbad3677698a53da7487bf8",
+    "run_id": 41866017867,
+    "attempt": 1,
+    "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867",
+    "status": "completed",
+    "conclusion": "success",
+    "artifacts": [
+      {
+        "id": 13353901810,
+        "name": "ledger-batch-candidates-41866017867-1",
+        "expires_at": "2027-02-02T16:19:12Z",
+        "expired": false,
+        "url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13353901810"
+      },
+      {
+        "id": 13352834167,
+        "name": "ledger-batch-pods-41866017867-1",
+        "expires_at": "2027-02-02T16:19:12Z",
+        "expired": false,
+        "url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+      }
+    ],
+    "candidate_members": [
+      {
+        "member": "B06-C0-candidate.json",
+        "sha256": "b8cd500e0d300f8874609e0ec83d9ff38145044cd42e2f5fa4d8441108c83c62"
+      },
+      {
+        "member": "B06-C1-candidate.json",
+        "sha256": "e3f2d5e612e38507a72c3141ed76db587686cdea33e44a034c85a9c95adf2ff7"
+      }
+    ],
+    "sources": {
+      "scenario": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aca33589a3c69056dcbad3677698a53da7487bf8/scenarios/B06/scenario.yaml",
+      "expected": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aca33589a3c69056dcbad3677698a53da7487bf8/scenarios/B06/expected.yaml",
+      "profile": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aca33589a3c69056dcbad3677698a53da7487bf8/scenarios/profiles/saturation-ramp.yaml",
+      "verifier_contract": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aca33589a3c69056dcbad3677698a53da7487bf8/docs/operations/verifier-contract.md"
+    },
+    "jobs": [
+      {
+        "id": 126703352594,
+        "name": "batch",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the main branch before login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check out the main head this run started from",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate the probe batch run kind",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install the pinned Terraform",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install and verify pinned lifecycle tools",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Set up pinned SDK",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Materialise and validate private batch inputs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Existing environment OIDC login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Enable renewable serialized Azure CLI session",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Publish full-SHA worker images and record registry digests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize cluster state",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start the existing cluster",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Plan cluster infrastructure",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Apply the saved cluster plan",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize ephemeral state",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Plan ephemeral infrastructure",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Apply the saved ephemeral plan",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require private endpoint DNS answers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Get cluster credentials",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reset the parchwell namespace",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run the separate F04 seed path",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run every action and judge path",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload single-action candidates and judge receipts",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload public pod evidence",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Delete this run's worker Jobs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Destroy ephemeral infrastructure",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Report the phase and cleanup outcomes",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Existing environment OIDC login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Set up pinned SDK",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Check out the main head this run started from",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 126703354349,
+        "name": "probe",
+        "status": "completed",
+        "conclusion": "skipped",
+        "steps": []
+      },
+      {
+        "id": 126703357055,
+        "name": "full-C0",
+        "status": "completed",
+        "conclusion": "skipped",
+        "steps": []
+      },
+      {
+        "id": 126703363097,
+        "name": "full-C3",
+        "status": "completed",
+        "conclusion": "skipped",
+        "steps": []
+      },
+      {
+        "id": 126792525997,
+        "name": "batch-stop",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the main branch before login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check out the main head this run started from",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare the dispatch-end stop",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Existing environment OIDC login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Enable renewable serialized Azure CLI session",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stop the cluster at dispatch end",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Report the phase and cleanup outcomes",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Existing environment OIDC login",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Check out the main head this run started from",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "environment": {
+    "sku": "Premium",
+    "processing_units": 1,
+    "region": "uksouth",
+    "observed_source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/job/126703352594",
+    "observed_source_detail": "Destroy-state log lines 4808-4833: Event Hubs namespace sku, capacity and location.",
+    "node_size": {
+      "value": "Standard_D4ds_v5",
+      "basis": "configured at source commit; not independently measured",
+      "source": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aca33589a3c69056dcbad3677698a53da7487bf8/infra/cluster/aks.tf"
+    }
+  },
+  "candidate_projections": {
+    "C0": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "B06",
+      "configuration_id": "C0",
+      "run_id": "ledger-41866017867-1-b06",
+      "phase": "C0",
+      "source_commit": "aca33589a3c69056dcbad3677698a53da7487bf8",
+      "status": "complete_valid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:d859583e1e3709e9b7e79ef6edce3247354c12a5c5e80aa749035e4a7998cc89",
+        "verifier": "sha256:16f791d1d42104e9a121d15319d7335ab17a516ca4c46c904287a33b258c6a7e"
+      },
+      "timings": {
+        "duration_seconds": 1710.0932002,
+        "judge_completed_utc": "2026-11-04T17:30:44.3016729+00:00",
+        "worker_started_utc": "2026-11-04T17:02:14.2084737+00:00"
+      },
+      "counts": {
+        "ok": 930000,
+        "loss": 0,
+        "phantom": 0,
+        "reported_failure": 0,
+        "duplicate": 0,
+        "reorder": 62
+      },
+      "reasons": [],
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c0-r1-loadgen-d4gjx",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 29
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c0-r1-loadgen-d4gjx",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5242,
+            "latency_p50_us": 12485,
+            "latency_p95_us": 35241,
+            "latency_max_us": 1624781,
+            "produce_requests": 49384,
+            "batch_count": 49384,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c0-r2-loadgen-6bzbc",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 24
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c0-r2-loadgen-6bzbc",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5139,
+            "latency_p50_us": 12682,
+            "latency_p95_us": 36851,
+            "latency_max_us": 1246892,
+            "produce_requests": 49340,
+            "batch_count": 49340,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c0-r3-loadgen-2tt6p",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 1
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c0-r3-loadgen-2tt6p",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5032,
+            "latency_p50_us": 12711,
+            "latency_p95_us": 37889,
+            "latency_max_us": 660071,
+            "produce_requests": 49375,
+            "batch_count": 49375,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c0-r4-loadgen-nn8fr",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 8
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c0-r4-loadgen-nn8fr",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5597,
+            "latency_p50_us": 12773,
+            "latency_p95_us": 37608,
+            "latency_max_us": 1172250,
+            "produce_requests": 49409,
+            "batch_count": 49409,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c0-r5-loadgen-chcrt",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c0-r5-loadgen-chcrt",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 4937,
+            "latency_p50_us": 12624,
+            "latency_p95_us": 37105,
+            "latency_max_us": 622441,
+            "produce_requests": 49395,
+            "batch_count": 49395,
+            "batch_max_messages": 10
+          }
+        }
+      ]
+    },
+    "C1": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "B06",
+      "configuration_id": "C1",
+      "run_id": "ledger-41866017867-1-b06",
+      "phase": "C1",
+      "source_commit": "aca33589a3c69056dcbad3677698a53da7487bf8",
+      "status": "complete_valid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:d859583e1e3709e9b7e79ef6edce3247354c12a5c5e80aa749035e4a7998cc89",
+        "verifier": "sha256:16f791d1d42104e9a121d15319d7335ab17a516ca4c46c904287a33b258c6a7e"
+      },
+      "timings": {
+        "duration_seconds": 1669.5606079,
+        "judge_completed_utc": "2026-11-04T17:58:45.3948235+00:00",
+        "worker_started_utc": "2026-11-04T17:30:55.8342167+00:00"
+      },
+      "counts": {
+        "ok": 930000,
+        "loss": 0,
+        "phantom": 0,
+        "reported_failure": 0,
+        "duplicate": 0,
+        "reorder": 11
+      },
+      "reasons": [],
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c1-r1-loadgen-4n8t7",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c1-r1-loadgen-4n8t7",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 4853,
+            "latency_p50_us": 12705,
+            "latency_p95_us": 36568,
+            "latency_max_us": 482458,
+            "produce_requests": 49394,
+            "batch_count": 49394,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c1-r2-loadgen-wql9t",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 5
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c1-r2-loadgen-wql9t",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 4689,
+            "latency_p50_us": 12564,
+            "latency_p95_us": 35288,
+            "latency_max_us": 1048062,
+            "produce_requests": 49400,
+            "batch_count": 49400,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c1-r3-loadgen-mhvr5",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 2
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c1-r3-loadgen-mhvr5",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5136,
+            "latency_p50_us": 12865,
+            "latency_p95_us": 35427,
+            "latency_max_us": 1224927,
+            "produce_requests": 49411,
+            "batch_count": 49411,
+            "batch_max_messages": 10
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c1-r4-loadgen-jkpc6",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c1-r4-loadgen-jkpc6",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 5195,
+            "latency_p50_us": 12754,
+            "latency_p95_us": 34046,
+            "latency_max_us": 604095,
+            "produce_requests": 49383,
+            "batch_count": 49383,
+            "batch_max_messages": 9
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "ledger-41866017867-1-b06-c1-r5-loadgen-nfl6h",
+          "counts": {
+            "ok": 186000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 4
+          },
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "ledger-41866017867-1-b06-c1-r5-loadgen-nfl6h",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "batching_recorded_evidence": {
+            "delivered_latency_count": 186000,
+            "latency_min_us": 4987,
+            "latency_p50_us": 12620,
+            "latency_p95_us": 33343,
+            "latency_max_us": 996463,
+            "produce_requests": 49402,
+            "batch_count": 49402,
+            "batch_max_messages": 10
+          }
+        }
+      ]
+    }
+  },
+  "derived": {
+    "C0": {
+      "repeats": [
+        {
+          "repeat": 1,
+          "messages_per_request": 3.7664020735460877,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 2,
+          "messages_per_request": 3.769760843129307,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 3,
+          "messages_per_request": 3.767088607594937,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 4,
+          "messages_per_request": 3.7644963468194055,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 5,
+          "messages_per_request": 3.765563316125114,
+          "batch_count_matches_produce_requests": true
+        }
+      ],
+      "medians": {
+        "produce_requests": 49384,
+        "messages_per_request": 3.7664020735460877,
+        "batch_count": 49384,
+        "batch_max_messages": 10
+      },
+      "gaps": []
+    },
+    "C1": {
+      "repeats": [
+        {
+          "repeat": 1,
+          "messages_per_request": 3.7656395513625136,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 2,
+          "messages_per_request": 3.7651821862348176,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 3,
+          "messages_per_request": 3.764343971990043,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 4,
+          "messages_per_request": 3.766478342749529,
+          "batch_count_matches_produce_requests": true
+        },
+        {
+          "repeat": 5,
+          "messages_per_request": 3.7650297558803287,
+          "batch_count_matches_produce_requests": true
+        }
+      ],
+      "medians": {
+        "produce_requests": 49400,
+        "messages_per_request": 3.7651821862348176,
+        "batch_count": 49400,
+        "batch_max_messages": 10
+      },
+      "gaps": []
+    }
+  },
+  "pod_evidence": [
+    {
+      "configuration": "C0",
+      "repeat": 1,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c0-r1-start-line",
+      "pod": "ledger-41866017867-1-b06-c0-r1-start-line-vwpzj",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:02:13Z",
+        "finishedAt": "2026-11-04T17:02:20Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r1-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r1-start-line/ledger-41866017867-1-b06-c0-r1-start-line-vwpzj.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 1,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c0-r1-loadgen",
+      "pod": "ledger-41866017867-1-b06-c0-r1-loadgen-d4gjx",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:02:37Z",
+        "finishedAt": "2026-11-04T17:07:07Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r1-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r1-loadgen/ledger-41866017867-1-b06-c0-r1-loadgen-d4gjx.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 1,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c0-r1-verify",
+      "pod": "ledger-41866017867-1-b06-c0-r1-verify-wdm7g",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:07:16Z",
+        "finishedAt": "2026-11-04T17:08:25Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r1-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r1-verify/ledger-41866017867-1-b06-c0-r1-verify-wdm7g.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 2,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c0-r2-start-line",
+      "pod": "ledger-41866017867-1-b06-c0-r2-start-line-hn6wf",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:08:33Z",
+        "finishedAt": "2026-11-04T17:08:36Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r2-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r2-start-line/ledger-41866017867-1-b06-c0-r2-start-line-hn6wf.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 2,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c0-r2-loadgen",
+      "pod": "ledger-41866017867-1-b06-c0-r2-loadgen-6bzbc",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:08:42Z",
+        "finishedAt": "2026-11-04T17:12:57Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r2-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r2-loadgen/ledger-41866017867-1-b06-c0-r2-loadgen-6bzbc.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 2,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c0-r2-verify",
+      "pod": "ledger-41866017867-1-b06-c0-r2-verify-b58gd",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:13:10Z",
+        "finishedAt": "2026-11-04T17:13:57Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r2-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r2-verify/ledger-41866017867-1-b06-c0-r2-verify-b58gd.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 3,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c0-r3-start-line",
+      "pod": "ledger-41866017867-1-b06-c0-r3-start-line-jfjw7",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:14:04Z",
+        "finishedAt": "2026-11-04T17:14:06Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r3-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r3-start-line/ledger-41866017867-1-b06-c0-r3-start-line-jfjw7.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 3,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c0-r3-loadgen",
+      "pod": "ledger-41866017867-1-b06-c0-r3-loadgen-2tt6p",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:14:13Z",
+        "finishedAt": "2026-11-04T17:18:43Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r3-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r3-loadgen/ledger-41866017867-1-b06-c0-r3-loadgen-2tt6p.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 3,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c0-r3-verify",
+      "pod": "ledger-41866017867-1-b06-c0-r3-verify-s2gtr",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:18:52Z",
+        "finishedAt": "2026-11-04T17:19:39Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r3-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r3-verify/ledger-41866017867-1-b06-c0-r3-verify-s2gtr.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 4,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c0-r4-start-line",
+      "pod": "ledger-41866017867-1-b06-c0-r4-start-line-dzrhh",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:19:46Z",
+        "finishedAt": "2026-11-04T17:19:48Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r4-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r4-start-line/ledger-41866017867-1-b06-c0-r4-start-line-dzrhh.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 4,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c0-r4-loadgen",
+      "pod": "ledger-41866017867-1-b06-c0-r4-loadgen-nn8fr",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:19:55Z",
+        "finishedAt": "2026-11-04T17:24:10Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r4-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r4-loadgen/ledger-41866017867-1-b06-c0-r4-loadgen-nn8fr.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 4,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c0-r4-verify",
+      "pod": "ledger-41866017867-1-b06-c0-r4-verify-4lkhr",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:24:23Z",
+        "finishedAt": "2026-11-04T17:25:10Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r4-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r4-verify/ledger-41866017867-1-b06-c0-r4-verify-4lkhr.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 5,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c0-r5-start-line",
+      "pod": "ledger-41866017867-1-b06-c0-r5-start-line-2tdw5",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:25:17Z",
+        "finishedAt": "2026-11-04T17:25:19Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r5-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r5-start-line/ledger-41866017867-1-b06-c0-r5-start-line-2tdw5.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 5,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c0-r5-loadgen",
+      "pod": "ledger-41866017867-1-b06-c0-r5-loadgen-chcrt",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:25:25Z",
+        "finishedAt": "2026-11-04T17:29:40Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r5-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r5-loadgen/ledger-41866017867-1-b06-c0-r5-loadgen-chcrt.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": 5,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c0-r5-verify",
+      "pod": "ledger-41866017867-1-b06-c0-r5-verify-6q8bf",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:29:47Z",
+        "finishedAt": "2026-11-04T17:30:36Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-r5-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-r5-verify/ledger-41866017867-1-b06-c0-r5-verify-6q8bf.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C0",
+      "repeat": null,
+      "mode": "judge",
+      "job": "ledger-41866017867-1-b06-c0-judge",
+      "pod": "ledger-41866017867-1-b06-c0-judge-lvgbn",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:30:43Z",
+        "finishedAt": "2026-11-04T17:30:44Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c0-judge/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c0-judge/ledger-41866017867-1-b06-c0-judge-lvgbn.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 1,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c1-r1-start-line",
+      "pod": "ledger-41866017867-1-b06-c1-r1-start-line-tssvq",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:30:55Z",
+        "finishedAt": "2026-11-04T17:30:57Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r1-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r1-start-line/ledger-41866017867-1-b06-c1-r1-start-line-tssvq.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 1,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c1-r1-loadgen",
+      "pod": "ledger-41866017867-1-b06-c1-r1-loadgen-4n8t7",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:31:04Z",
+        "finishedAt": "2026-11-04T17:35:18Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r1-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r1-loadgen/ledger-41866017867-1-b06-c1-r1-loadgen-4n8t7.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 1,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c1-r1-verify",
+      "pod": "ledger-41866017867-1-b06-c1-r1-verify-4vzk2",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:35:28Z",
+        "finishedAt": "2026-11-04T17:36:15Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r1-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r1-verify/ledger-41866017867-1-b06-c1-r1-verify-4vzk2.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 2,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c1-r2-start-line",
+      "pod": "ledger-41866017867-1-b06-c1-r2-start-line-44qmm",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:36:23Z",
+        "finishedAt": "2026-11-04T17:36:25Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r2-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r2-start-line/ledger-41866017867-1-b06-c1-r2-start-line-44qmm.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 2,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c1-r2-loadgen",
+      "pod": "ledger-41866017867-1-b06-c1-r2-loadgen-wql9t",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:36:32Z",
+        "finishedAt": "2026-11-04T17:40:47Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r2-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r2-loadgen/ledger-41866017867-1-b06-c1-r2-loadgen-wql9t.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 2,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c1-r2-verify",
+      "pod": "ledger-41866017867-1-b06-c1-r2-verify-dl9wr",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:40:59Z",
+        "finishedAt": "2026-11-04T17:41:46Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r2-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r2-verify/ledger-41866017867-1-b06-c1-r2-verify-dl9wr.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 3,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c1-r3-start-line",
+      "pod": "ledger-41866017867-1-b06-c1-r3-start-line-b8x98",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:41:54Z",
+        "finishedAt": "2026-11-04T17:41:56Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r3-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r3-start-line/ledger-41866017867-1-b06-c1-r3-start-line-b8x98.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 3,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c1-r3-loadgen",
+      "pod": "ledger-41866017867-1-b06-c1-r3-loadgen-mhvr5",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:42:02Z",
+        "finishedAt": "2026-11-04T17:46:17Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r3-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r3-loadgen/ledger-41866017867-1-b06-c1-r3-loadgen-mhvr5.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 3,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c1-r3-verify",
+      "pod": "ledger-41866017867-1-b06-c1-r3-verify-qptq2",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:46:30Z",
+        "finishedAt": "2026-11-04T17:47:18Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r3-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r3-verify/ledger-41866017867-1-b06-c1-r3-verify-qptq2.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 4,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c1-r4-start-line",
+      "pod": "ledger-41866017867-1-b06-c1-r4-start-line-v29ht",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:47:25Z",
+        "finishedAt": "2026-11-04T17:47:29Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r4-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r4-start-line/ledger-41866017867-1-b06-c1-r4-start-line-v29ht.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 4,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c1-r4-loadgen",
+      "pod": "ledger-41866017867-1-b06-c1-r4-loadgen-jkpc6",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:47:40Z",
+        "finishedAt": "2026-11-04T17:52:10Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r4-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r4-loadgen/ledger-41866017867-1-b06-c1-r4-loadgen-jkpc6.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 4,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c1-r4-verify",
+      "pod": "ledger-41866017867-1-b06-c1-r4-verify-t68n7",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:52:18Z",
+        "finishedAt": "2026-11-04T17:53:04Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r4-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r4-verify/ledger-41866017867-1-b06-c1-r4-verify-t68n7.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 5,
+      "mode": "start-line",
+      "job": "ledger-41866017867-1-b06-c1-r5-start-line",
+      "pod": "ledger-41866017867-1-b06-c1-r5-start-line-25c8m",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:53:13Z",
+        "finishedAt": "2026-11-04T17:53:15Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r5-start-line/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r5-start-line/ledger-41866017867-1-b06-c1-r5-start-line-25c8m.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 5,
+      "mode": "loadgen",
+      "job": "ledger-41866017867-1-b06-c1-r5-loadgen",
+      "pod": "ledger-41866017867-1-b06-c1-r5-loadgen-nfl6h",
+      "container": "loadgen",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:53:22Z",
+        "finishedAt": "2026-11-04T17:57:36Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r5-loadgen/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r5-loadgen/ledger-41866017867-1-b06-c1-r5-loadgen-nfl6h.containers.loadgen.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": 5,
+      "mode": "verify",
+      "job": "ledger-41866017867-1-b06-c1-r5-verify",
+      "pod": "ledger-41866017867-1-b06-c1-r5-verify-696rl",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:57:44Z",
+        "finishedAt": "2026-11-04T17:58:33Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-r5-verify/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-r5-verify/ledger-41866017867-1-b06-c1-r5-verify-696rl.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    },
+    {
+      "configuration": "C1",
+      "repeat": null,
+      "mode": "judge",
+      "job": "ledger-41866017867-1-b06-c1-judge",
+      "pod": "ledger-41866017867-1-b06-c1-judge-dqdtf",
+      "container": "verifier",
+      "termination": {
+        "exitCode": 0,
+        "reason": "Completed",
+        "startedAt": "2026-11-04T17:58:44Z",
+        "finishedAt": "2026-11-04T17:58:45Z"
+      },
+      "pod_json_member": "ledger-41866017867-1-b06-c1-judge/pods.json",
+      "log_member": "ledger-41866017867-1-b06-c1-judge/ledger-41866017867-1-b06-c1-judge-dqdtf.containers.verifier.log",
+      "artifact_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866017867/artifacts/13352834167"
+    }
+  ],
+  "pod_findings": [],
+  "mutation_acceptance": {
+    "historical_scenario_source": {
+      "run_id": 41866011149,
+      "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41866011149",
+      "source_commit": "aca33589a3c69056dcbad3677698a53da7487bf8",
+      "status": "completed",
+      "conclusion": "success",
+      "measurement_complete": true,
+      "break_passed": true,
+      "summary_sha256": "ca44c0fbabe62cdfc56a17421f974ad55f67491e2e3a5b255be79fc1b70a3389"
+    },
+    "latest_applicable": {
+      "run_id": 41892353617,
+      "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41892353617",
+      "source_commit": "3f4b29e79883ec520eaed78bbf4390b3b7abeb5b",
+      "status": "completed",
+      "conclusion": "success",
+      "measurement_complete": true,
+      "break_passed": true,
+      "summary_sha256": "e8075e53c93cd775e2aee8147b02561ce0569141dc85a5879a5aa87654b224b2"
+    },
+    "pending_run_url": null
+  }
+}
