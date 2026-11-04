@@ -204,6 +204,34 @@ public sealed class RestartManifestReaderTests
     }
 
     [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Given_InvalidTenantWithMatchingKey_When_Read_Then_RejectsTenant(string tenant)
+    {
+        JsonNode root = Fixture();
+        SetLogical(root, 0, "tenant_id", JsonValue.Create(tenant));
+        SetLogical(root, 0, "key", JsonValue.Create(tenant + "-d0"));
+        Reject(root, "invalid_restart_planned_entry", "restart.planned[0]");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("d00")]
+    [InlineData("d-1")]
+    [InlineData("d+1")]
+    [InlineData("d 1")]
+    [InlineData("D1")]
+    [InlineData("d")]
+    [InlineData("d9223372036854775808")]
+    public void Given_InvalidDocumentWithMatchingKey_When_Read_Then_RejectsDocument(string document)
+    {
+        JsonNode root = Fixture();
+        SetLogical(root, 0, "document_id", JsonValue.Create(document));
+        SetLogical(root, 0, "key", JsonValue.Create("t-" + document));
+        Reject(root, "invalid_restart_planned_entry", "restart.planned[0]");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void Given_NonIncreasingLogicalSlots_When_Read_Then_RejectsSecondEntry(bool descending)
