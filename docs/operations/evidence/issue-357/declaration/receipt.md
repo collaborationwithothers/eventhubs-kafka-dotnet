@@ -12,7 +12,7 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
 - Earliest publication checkpoint: after the first comprehensive cold review has no open P0 or P1.
 - Review budget: two comprehensive passes, then at most two focused rounds. Exhaustion action: push -wip and hand off to Hari (rule 8).
 
-## Commands run (base `179667e`, on the working tree that became commit `81dd95e`)
+## Commands run (base `179667e`, steps 1 to 4 and 6 on the working tree that became commit `81dd95e`, step 5 as it states)
 
 1. `./scripts/verify-dotnet.sh` with SDK 10.0.402 (installed from dot.net into the session scratch directory). Locked restore, solution build (warnings as errors), Kafka XML inventory consistency, architecture tests (15) and Enrichment tests (56) passed. The Kafka test step then failed on `PhantomSpikeTests`, which needs a Docker daemon (`DockerUnavailableException`); the script stops at the first failing step.
 2. The remaining unit projects were run directly with `dotnet test --project <p> --configuration Release --no-build`:
@@ -21,7 +21,7 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
    - `Parchwell.LoadGen.Tests`: 926 passed, 4 failed. `Parchwell.Verifier.Tests`: 4993 passed, 12 failed. All 16 were classified by script from the test log and, for three, from their evidence directories. 12 fail in the test fixture's Docker endpoint helper (`get_Endpoint`, `NullReferenceException`), 1 with `DockerUnavailableException: Failed to connect to Docker endpoint at 'unix:///var/run/docker.sock'`, and 3 (`VerifierOutcomeComponentTests`) report that no trial yielded its witness, and every trial's evidence shows the same `get_Endpoint` failure. `docker info` in this session shows a client and no reachable server. Some of the 16 exercise code this pull request changes: the three `VerifierOutcomeComponentTests` and the `VerifierWindowComponentTests` build a harness or call the scenario loader and resolver for A01, which reach `IsIntegerBaseline`, `MeasurementCatalog` and `ScenarioPhases`. I checked the other classes only for direct references (none found), not transitively. I did not run the same 16 on unmodified `main`. Final-head CI, which has Docker, is the evidence for them.
 3. `npm ci --ignore-scripts && npm run check:docs` exited 0 with 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, `docs/operations/evidence/issue-124`, `issue-140` and `issue-211`).
 4. `git diff --check origin/main` printed nothing.
-5. A script compared `git diff --name-only origin/main HEAD` with the allowed list of changes 1 to 10 of the plan and printed `PATHS-MATCH`; a second pattern check found no path under `.github/`, `infra/`, `charts/` or `results/`, no `Parchwell.Verifier` file, no `*.csproj` and no `expected.yaml`. The 16 paths:
+5. Run later, with HEAD at `fbb9b3a`, and repeated for `81dd95e` and `a521023` with the same result: a script compared `git diff --name-only origin/main HEAD` with the allowed list of changes 1 to 10 of the plan and printed `PATHS-MATCH`; a second pattern check found no path under `.github/`, `infra/`, `charts/` or `results/`, no `Parchwell.Verifier` file, no `*.csproj` and no `expected.yaml`. The 16 paths:
    - `docs/operations/evidence/issue-357/declaration/receipt.md`
    - `docs/operations/scenario-contract.md`
    - `docs/operations/statistics-bridge.md`
