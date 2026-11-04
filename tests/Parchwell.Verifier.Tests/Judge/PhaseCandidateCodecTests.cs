@@ -1,3 +1,4 @@
+using Parchwell.Verifier.Common.Phase;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Parchwell.Verifier.Common.Results;
@@ -14,6 +15,7 @@ public sealed class PhaseCandidateCodecTests
     private static readonly string[] ExpectedB04EvidenceFields = ["delivery_error_codes", "fatal_errors"];
     private static readonly int[] ExpectedB04DeliveryErrorCodes = [int.MinValue, 0, int.MaxValue];
     private static readonly string[] ExpectedFatalErrorFields = ["code", "name"];
+    private static readonly string[] B10PublicationNames = ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
 
     // The phase wire format uses exactly the same passive measurement bounds as a repeat result.
     [Fact]
@@ -453,6 +455,238 @@ public sealed class PhaseCandidateCodecTests
 
         if (accepted) using (PhaseCandidateCodec.Read(bytes)) { }
         else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(bytes));
+    }
+
+    [Theory]
+    [InlineData("C0", 1)]
+    [InlineData("C0", 5)]
+    [InlineData("C1", 1)]
+    [InlineData("C1", 5)]
+    public void Given_B10Pair_When_CandidateRoundTrips_Then_PreservesBothRolesAndSnapshots(string phase, int ordinal)
+    {
+        PhaseCandidate candidate = B10Candidate(phase, ordinal);
+        using JsonDocument document = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate));
+        JsonElement repeat = document.RootElement.GetProperty("repeats")[0];
+        B10IntakeEvidence actual = PhaseWireCodec.ReadB10Intake(repeat.GetProperty("b10_intake"));
+        B10IntakeEvidence expected = candidate.Repeats[0].B10Intake!;
+        Assert.Equal(phase, actual.Phase);
+        Assert.Equal(ordinal, actual.RepeatNumber);
+        Assert.Equal("pod-first", repeat.GetProperty("identity").GetString());
+        Assert.Equal(2, actual.Producers.Count);
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.Equal(expected.Producers[i].Identity, actual.Producers[i].Identity);
+            Assert.Equal(expected.Producers[i].JobName, actual.Producers[i].JobName);
+            Assert.Equal(expected.Producers[i].PredecessorInstanceId, actual.Producers[i].PredecessorInstanceId);
+            PublicationAcceptanceSnapshot expectedSnapshot = expected.Producers[i].PublicationAcceptance!;
+            PublicationAcceptanceSnapshot actualSnapshot = Assert.IsType<PublicationAcceptanceSnapshot>(actual.Producers[i].PublicationAcceptance);
+            Assert.Equal(expectedSnapshot.ProducerPrefix, actualSnapshot.ProducerPrefix);
+            Assert.Equal(expectedSnapshot.ProducerIdentity, actualSnapshot.ProducerIdentity);
+            Assert.Equal(expectedSnapshot.SourceCommit, actualSnapshot.SourceCommit);
+            Assert.Equal(expectedSnapshot.StartLine, actualSnapshot.StartLine);
+            Assert.Equal(expectedSnapshot.BrokerInventory, actualSnapshot.BrokerInventory);
+            Assert.Equal(expectedSnapshot.ProducerReceipt, actualSnapshot.ProducerReceipt);
+            Assert.Equal(expectedSnapshot.Objects, actualSnapshot.Objects);
+        }
+        Assert.False(document.RootElement.TryGetProperty("counts", out _));
+        Assert.False(repeat.TryGetProperty("counts", out _));
+    }
+
+    [Theory]
+    [InlineData("C0")]
+    [InlineData("C1")]
+    public void Given_B10WithoutTrustedIntake_When_CandidateRoundTrips_Then_AllowsOmission(string phase)
+    {
+        PhaseCandidate candidate = B10Candidate(phase, 1);
+        candidate = candidate with { Repeats = [candidate.Repeats[0] with { B10Intake = null }] };
+        using JsonDocument document = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate));
+        Assert.False(document.RootElement.GetProperty("repeats")[0].TryGetProperty("b10_intake", out _));
+        Assert.Equal("incomplete", document.RootElement.GetProperty("status").GetString());
+    }
+
+    [Theory]
+    [InlineData("root-status", true)]
+    [InlineData("root-status", false)]
+    [InlineData("repeat-status", true)]
+    [InlineData("repeat-status", false)]
+    [InlineData("root-counts", true)]
+    [InlineData("root-counts", false)]
+    [InlineData("repeat-counts", true)]
+    [InlineData("repeat-counts", false)]
+    public void Given_B10FinalityOrCounts_When_ReadOrWritten_Then_RejectsEvenWithoutIntake(string change, bool hasIntake)
+    {
+        PhaseCandidate candidate = B10Candidate("C0", 1);
+        if (!hasIntake) candidate = candidate with { Repeats = [candidate.Repeats[0] with { B10Intake = null }] };
+        JsonObject root = JsonNode.Parse(PhaseCandidateCodec.Write(candidate))!.AsObject();
+        var zero = new OutcomeCounts(0, 0, 0, 0, 0, 0);
+        PhaseCandidate invalid = change switch
+        {
+            "root-status" => candidate with { Status = "complete_valid" },
+            "repeat-status" => candidate with { Repeats = [candidate.Repeats[0] with { Status = "complete_valid" }] },
+            "root-counts" => candidate with { Counts = zero },
+            "repeat-counts" => candidate with { Repeats = [candidate.Repeats[0] with { Counts = zero }] },
+            _ => throw new ArgumentOutOfRangeException(nameof(change))
+        };
+        JsonObject target = change.StartsWith("root", StringComparison.Ordinal) ? root : root["repeats"]![0]!.AsObject();
+        if (change.EndsWith("status", StringComparison.Ordinal)) target["status"] = "complete_valid";
+        else target["counts"] = JsonNode.Parse("{\"ok\":0,\"loss\":0,\"phantom\":0,\"reported_failure\":0,\"duplicate\":0,\"reorder\":0}");
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(invalid));
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
+
+    [Theory]
+    [InlineData("non-b10")]
+    [InlineData("run")]
+    [InlineData("configuration")]
+    [InlineData("phase")]
+    [InlineData("ordinal")]
+    [InlineData("identity")]
+    [InlineData("identity-null")]
+    [InlineData("zero-producers")]
+    [InlineData("one-producer")]
+    [InlineData("three-producers")]
+    [InlineData("swapped-roles")]
+    [InlineData("duplicate-instance")]
+    [InlineData("predecessor")]
+    [InlineData("first-predecessor")]
+    [InlineData("snapshot-path")]
+    [InlineData("snapshot-source")]
+    public void Given_MalformedTypedB10Candidate_When_Written_Then_Rejects(string change)
+    {
+        PhaseCandidate candidate = B10Candidate("C0", 1);
+        PhaseRepeatResult repeat = candidate.Repeats[0];
+        B10IntakeEvidence intake = repeat.B10Intake!;
+        B10ProducerEvidence first = intake.Producers[0], second = intake.Producers[1];
+        PublicationAcceptanceSnapshot snapshot = second.PublicationAcceptance!;
+        candidate = change switch
+        {
+            "non-b10" => candidate with { ScenarioId = "A01" },
+            "run" => candidate with { RunId = "foreign" },
+            "configuration" => candidate with { ConfigurationId = "C1", Phase = "C1" },
+            "phase" => candidate with { Phase = "C1", ConfigurationId = "C1", Repeats = [repeat with
+                { B10Intake = B10Candidate("C1", 1).Repeats[0].B10Intake! with { Phase = "C0" } }] },
+            "ordinal" => candidate with { Repeats = [repeat with { Repeat = 5 }] },
+            "identity" => candidate with { Repeats = [repeat with { Identity = "pod-other" }] },
+            "identity-null" => candidate with { Repeats = [repeat with { Identity = null }] },
+            "zero-producers" => WithIntake(intake with { Producers = [] }),
+            "one-producer" => WithIntake(intake with { Producers = [first] }),
+            "three-producers" => WithIntake(intake with { Producers = [first, second, second] }),
+            "swapped-roles" => WithIntake(intake with { Producers = [second, first] }),
+            "duplicate-instance" => WithIntake(intake with { Producers = [first, second with { Identity = first.Identity }] }),
+            "predecessor" => WithIntake(intake with { Producers = [first, second with { PredecessorInstanceId = "pod-other" }] }),
+            "first-predecessor" => WithIntake(intake with { Producers = [first with { PredecessorInstanceId = "pod-other" }, second] }),
+            "snapshot-path" => WithIntake(intake with { Producers = [first, second with { PublicationAcceptance = snapshot with
+                { ProducerReceipt = snapshot.ProducerReceipt with { Name = "foreign.json" } } }] }),
+            "snapshot-source" => WithIntake(intake with { Producers = [first, second with { PublicationAcceptance = snapshot with { SourceCommit = new string('b', 40) } }] }),
+            _ => throw new ArgumentOutOfRangeException(nameof(change))
+        };
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(candidate));
+
+        PhaseCandidate WithIntake(B10IntakeEvidence value) => candidate with { Repeats = [repeat with { B10Intake = value }] };
+    }
+
+    [Theory]
+    [InlineData("non-b10")]
+    [InlineData("null-intake")]
+    [InlineData("run")]
+    [InlineData("configuration")]
+    [InlineData("phase")]
+    [InlineData("ordinal")]
+    [InlineData("identity")]
+    [InlineData("identity-null")]
+    [InlineData("identity-object")]
+    [InlineData("zero-producers")]
+    [InlineData("one-producer")]
+    [InlineData("three-producers")]
+    [InlineData("swapped-roles")]
+    [InlineData("duplicate-instance")]
+    [InlineData("predecessor")]
+    [InlineData("first-predecessor")]
+    [InlineData("snapshot-path")]
+    [InlineData("snapshot-source")]
+    [InlineData("unknown-intake-field")]
+    [InlineData("unknown-producer-field")]
+    [InlineData("unknown-snapshot-field")]
+    [InlineData("private-key")]
+    public void Given_MalformedB10WireCandidate_When_Read_Then_Rejects(string change)
+    {
+        JsonObject root = JsonNode.Parse(PhaseCandidateCodec.Write(B10Candidate("C0", 1)))!.AsObject();
+        JsonObject repeat = root["repeats"]![0]!.AsObject();
+        JsonObject intake = repeat["b10_intake"]!.AsObject();
+        JsonArray producers = intake["producers"]!.AsArray();
+        JsonObject second = producers[1]!.AsObject();
+        JsonObject snapshot = second["publication_acceptance"]!.AsObject();
+        switch (change)
+        {
+            case "non-b10": root["scenario_id"] = "A01"; break;
+            case "null-intake": repeat["b10_intake"] = null; break;
+            case "run": root["run_id"] = "foreign"; break;
+            case "configuration": root["configuration_id"] = "C1"; root["phase"] = "C1"; break;
+            case "phase": intake["phase"] = "C1"; break;
+            case "ordinal": repeat["repeat"] = 5; break;
+            case "identity": repeat["identity"] = "pod-other"; break;
+            case "identity-null": repeat["identity"] = null; break;
+            case "identity-object": repeat["identity"] = new JsonObject(); break;
+            case "zero-producers": producers.Clear(); break;
+            case "one-producer": producers.RemoveAt(1); break;
+            case "three-producers": producers.Add(second.DeepClone()); break;
+            case "swapped-roles": intake["producers"] = new JsonArray(second.DeepClone(), producers[0]!.DeepClone()); break;
+            case "duplicate-instance": second["identity"] = producers[0]!["identity"]!.DeepClone(); break;
+            case "predecessor": second["predecessor_instance_id"] = "pod-other"; break;
+            case "first-predecessor": producers[0]!["predecessor_instance_id"] = "pod-other"; break;
+            case "snapshot-path": snapshot["producer_receipt"]!["name"] = "foreign.json"; break;
+            case "snapshot-source": snapshot["source_commit"] = new string('b', 40); break;
+            case "unknown-intake-field": intake["unknown"] = 1; break;
+            case "unknown-producer-field": second["unknown"] = 1; break;
+            case "unknown-snapshot-field": snapshot["unknown"] = 1; break;
+            case "private-key": snapshot["connection_string"] = "private"; break;
+            default: throw new ArgumentOutOfRangeException(nameof(change));
+        }
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
+
+    [Theory]
+    [InlineData("\"b10_intake\":{", "\"b10_intake\":{\"phase\":\"C0\",")]
+    [InlineData("\"job_name\":", "\"job_name\":\"duplicate\",\"job_name\":")]
+    [InlineData("\"producer_prefix\":", "\"producer_prefix\":\"duplicate\",\"producer_prefix\":")]
+    public void Given_DuplicateB10NestedField_When_Read_Then_Rejects(string existing, string replacement)
+    {
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(B10Candidate("C0", 1)));
+        Assert.Contains(existing, json, StringComparison.Ordinal);
+        json = json.Replace(existing, replacement, StringComparison.Ordinal);
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
+    }
+
+    private static PhaseCandidate B10Candidate(string phase, int ordinal)
+    {
+        const string run = "synthetic-c5";
+        string source = new('a', 40);
+        B10ProducerEvidence Producer(string instance, string client, string job, string? predecessor)
+        {
+            var identity = new Parchwell.Verifier.Common.Contracts.RunIdentity("B10", phase, run, instance, instance, client);
+            ArtifactReference Reference(string container, string name) => new(container, name, 1, new string('b', 64));
+            var snapshot = new PublicationAcceptanceSnapshot(PhasePaths.ProducerPrefix(run, phase, ordinal, instance), identity, source,
+                Reference("verifier", PhasePaths.StartLine(run, phase, ordinal)),
+                Reference("verifier", PhasePaths.BrokerInventory(run, phase, ordinal)),
+                Reference("ledger", PhasePaths.ProducerCompletion(run, phase, ordinal, instance)),
+                B10PublicationNames.Select(name => Reference("ledger", PhasePaths.Publication(run, phase, ordinal, instance, name))).ToArray());
+            return new(identity, job, predecessor, snapshot);
+        }
+        var intake = new B10IntakeEvidence(phase, ordinal,
+        [
+            Producer("pod-first", "client-first", PhaseIdentity.JobName(run, phase, ordinal), null),
+            Producer("pod-second", "client-second", PhaseIdentity.RestartJobName(run, phase, ordinal), "pod-first")
+        ]);
+        PhaseCandidate candidate = Candidate();
+        return candidate with
+        {
+            ScenarioId = "B10", Phase = phase, ConfigurationId = phase, Status = "incomplete", Counts = null,
+            Repeats = [candidate.Repeats[0] with
+            {
+                Repeat = ordinal, Status = "incomplete", Counts = null, Identity = "pod-first", B10Intake = intake,
+                ProbeObservation = null, WorkloadObservation = null, BrokerCount = null
+            }]
+        };
     }
 
     private static byte[] WithBrokerCountJson(string countJson)

@@ -561,13 +561,15 @@ public sealed class B10TwoInstanceVerifyTests
         Assert.Equal(0, fixture.Creates);
     }
 
-    private static HostEvidenceBuilder CreateSyntheticB10Intake(bool secondHasAttempt = false)
+    internal static HostEvidenceBuilder CreateSyntheticB10Intake(bool secondHasAttempt = false, int repeat = 1)
     {
         var fixture = new HostEvidenceBuilder(instanceId: First, clientId: First, scenarioId: "B10", scenarioSourceId: "A01");
+        fixture.ConfigureRepeat(repeat, "C0");
         fixture.Options.PodName = First;
         fixture.Options.PodUid = First;
         fixture.RebuildPublicationReferences();
         using var second = new HostEvidenceBuilder(instanceId: Second, clientId: Second, scenarioId: "B10", scenarioSourceId: "A01");
+        second.ConfigureRepeat(repeat, "C0");
         second.Options.PodName = Second;
         second.Options.PodUid = Second;
         JsonObject manifest = second.Json("manifest.json");
