@@ -13,6 +13,11 @@ internal static class StartLineNoteCodec
         "verifier_commit", "confluent_kafka_version", "librdkafka_version"
     };
 
+    private static readonly IReadOnlySet<string> AllowedRootFields = new HashSet<string>(RootFields, StringComparer.Ordinal)
+    {
+        "expected_job_names"
+    };
+
     private static readonly IReadOnlySet<string> IdentityFields = new HashSet<string>(StringComparer.Ordinal)
     {
         "scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id"
@@ -34,6 +39,16 @@ internal static class StartLineNoteCodec
         {
             throw new ArgumentException("Start-line notes must use schema version 1.", nameof(note));
         }
+
+        if (note.Identity.ScenarioId == "B10")
+        {
+            if (note.ExpectedJobNames is not { Count: 2 } || note.ExpectedJobNames.Any(name =>
+                string.IsNullOrWhiteSpace(name) || name.Length > 253 ||
+                name.Any(c => char.IsControl(c) || c is '/' or '\\')))
+                throw new ArgumentException("B10 start-line notes require two bounded expected Job names.", nameof(note));
+        }
+        else if (note.ExpectedJobNames is not null)
+            throw new ArgumentException("Expected Job names are only supported for B10 start-line notes.", nameof(note));
 
         using var stream = new BoundedMemoryStream(limits.MaxOutputBytes);
         using (var writer = new Utf8JsonWriter(stream))
@@ -58,6 +73,12 @@ internal static class StartLineNoteCodec
             writer.WriteString("verifier_commit", note.VerifierCommit);
             writer.WriteString("confluent_kafka_version", note.ConfluentKafkaVersion);
             writer.WriteString("librdkafka_version", note.LibrdkafkaVersion);
+            if (note.ExpectedJobNames is not null)
+            {
+                writer.WriteStartArray("expected_job_names");
+                foreach (string name in note.ExpectedJobNames) writer.WriteStringValue(name);
+                writer.WriteEndArray();
+            }
             writer.WriteEndObject();
         }
 
@@ -80,7 +101,7 @@ internal static class StartLineNoteCodec
         using JsonDocument parsed = document.Value!;
         JsonElement root = parsed.RootElement;
         IReadOnlyList<StructuralProblem> rootProblems = StrictJson.ValidateProperties(
-            root, "$", RootFields, RootFields, artifact, checkNumber: 7);
+            root, "$", RootFields, AllowedRootFields, artifact, checkNumber: 7);
         if (rootProblems.Count > 0)
         {
             return ParseResult<StartLineNote>.Failure(rootProblems);
@@ -106,6 +127,22 @@ internal static class StartLineNoteCodec
         if (!TryString(root, "verifier_commit", out string? verifierCommit)) return Failure(artifact, "verifier_commit", "wrong_json_kind");
         if (!TryString(root, "confluent_kafka_version", out string? kafkaVersion)) return Failure(artifact, "confluent_kafka_version", "wrong_json_kind");
         if (!TryString(root, "librdkafka_version", out string? librdkafkaVersion)) return Failure(artifact, "librdkafka_version", "wrong_json_kind");
+
+        List<string>? expectedJobNames = null;
+        if (root.TryGetProperty("expected_job_names", out JsonElement jobs))
+        {
+            if (jobs.ValueKind != JsonValueKind.Array)
+                return Failure(artifact, "expected_job_names", "wrong_json_kind");
+            expectedJobNames = new List<string>(jobs.GetArrayLength());
+            foreach (JsonElement job in jobs.EnumerateArray())
+            {
+                if (!StrictJson.TryGetString(job, out string name))
+                    return Failure(artifact, "expected_job_names", "wrong_json_kind");
+                expectedJobNames.Add(name);
+            }
+            if (identity!.ScenarioId != "B10")
+                return Failure(artifact, "expected_job_names", "unknown_property");
+        }
 
         JsonElement highsElement = root.GetProperty("partition_highs");
         if (highsElement.ValueKind != JsonValueKind.Array)
@@ -133,7 +170,7 @@ internal static class StartLineNoteCodec
         }
 
         return ParseResult<StartLineNote>.Success(new StartLineNote(
-            schemaVersion, identity!, topic!, highs, capturedAt!, verifierCommit!, kafkaVersion!, librdkafkaVersion!));
+            schemaVersion, identity!, topic!, highs, capturedAt!, verifierCommit!, kafkaVersion!, librdkafkaVersion!, expectedJobNames));
     }
 
     private static void WriteIdentity(Utf8JsonWriter writer, RunIdentity identity)

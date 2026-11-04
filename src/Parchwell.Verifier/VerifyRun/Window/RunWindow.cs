@@ -12,7 +12,8 @@ internal sealed record RunWindow(
     IReadOnlyDictionary<int, long> EndHighs,
     IReadOnlyList<PartitionWindow> Partitions,
     IReadOnlyList<CheckAssessment> Assessments,
-    bool CanAssign)
+    bool CanAssign,
+    IReadOnlyList<RunIdentity>? ProducerIdentities = null)
 {
     internal const string Topic = "document-events";
 
@@ -22,8 +23,14 @@ internal sealed record RunWindow(
 
     internal static RunWindow Create(ParseResult<StartLineNote> parsedStartNote,
         RunIdentity expectedProducerIdentity, RunIdentity expectedStartIdentity,
-        IReadOnlyDictionary<int, long>? endHighs = null)
+        IReadOnlyDictionary<int, long>? endHighs = null) =>
+        Create(parsedStartNote, [expectedProducerIdentity], expectedStartIdentity, [], endHighs);
+
+    internal static RunWindow Create(ParseResult<StartLineNote> parsedStartNote,
+        IReadOnlyList<RunIdentity> expectedProducerIdentities, RunIdentity expectedStartIdentity,
+        IReadOnlyList<string> expectedJobNames, IReadOnlyDictionary<int, long>? endHighs = null)
     {
+        RunIdentity[] producerIdentities = expectedProducerIdentities.ToArray();
         IReadOnlyDictionary<int, long> recordedEnds = endHighs is null
             ? new Dictionary<int, long>() : new Dictionary<int, long>(endHighs);
         if (parsedStartNote.IsExecutionFailure)
@@ -35,11 +42,14 @@ internal sealed record RunWindow(
             CheckAssessment[] failures = parsedStartNote.Problems.Select(p => new CheckAssessment(7,
                 AssessmentEvaluation.Evaluated, AssessmentDisposition.Fail, AssessmentClassification.Invalid,
                 p.Artifact, p.Row, p.Field, p.Code, p.Snippet)).ToArray();
-            return new([], recordedEnds, [], failures.Length == 0 ? [Failure(7)] : failures, false);
+            return new([], recordedEnds, [], failures.Length == 0 ? [Failure(7)] : failures, false, producerIdentities);
         }
 
         var assessments = new List<CheckAssessment>();
         if (note.Identity != expectedStartIdentity) assessments.Add(Failure(7, "identity"));
+        if (expectedStartIdentity.ScenarioId == "B10" &&
+            (note.ExpectedJobNames is null || !note.ExpectedJobNames.SequenceEqual(expectedJobNames, StringComparer.Ordinal)))
+            assessments.Add(Failure(7, "expected_job_names"));
         if (!string.Equals(note.Topic, Topic, StringComparison.Ordinal)) assessments.Add(Failure(7, "topic"));
         if (note.PartitionHighs.Count == 0) assessments.Add(Failure(7, "partition_highs"));
         var seen = new HashSet<int>();
@@ -48,12 +58,12 @@ internal sealed record RunWindow(
             if (!seen.Add(high.Partition)) assessments.Add(Failure(7, "partition_highs"));
             if (high.High < 0) assessments.Add(Failure(7, "partition_highs"));
         }
-        if (assessments.Count != 0) return new(note.PartitionHighs, recordedEnds, [], assessments, false);
+        if (assessments.Count != 0) return new(note.PartitionHighs, recordedEnds, [], assessments, false, producerIdentities);
         assessments.Add(Pass(7));
-        if (endHighs is null) return new(note.PartitionHighs, recordedEnds, [], assessments, false);
+        if (endHighs is null) return new(note.PartitionHighs, recordedEnds, [], assessments, false, producerIdentities);
         foreach (PartitionHigh high in note.PartitionHighs)
             if (!endHighs.ContainsKey(high.Partition)) assessments.Add(Failure(8, "partition_highs"));
-        if (assessments.Any(a => a.CheckNumber == 8)) return new(note.PartitionHighs, recordedEnds, [], assessments, false);
+        if (assessments.Any(a => a.CheckNumber == 8)) return new(note.PartitionHighs, recordedEnds, [], assessments, false, producerIdentities);
         assessments.Add(Pass(8));
 
         Dictionary<int, long> starts = note.PartitionHighs.ToDictionary(p => p.Partition, p => p.High);
@@ -62,7 +72,7 @@ internal sealed record RunWindow(
         foreach (PartitionWindow partition in partitions)
             if (partition.End < partition.Start) assessments.Add(Failure(9, "partition_highs"));
         return new(note.PartitionHighs, recordedEnds, partitions, assessments,
-            !assessments.Any(a => a.CheckNumber == 9));
+            !assessments.Any(a => a.CheckNumber == 9), producerIdentities);
     }
 
     internal static CheckAssessment Pass(int check) => new(check, AssessmentEvaluation.Evaluated,

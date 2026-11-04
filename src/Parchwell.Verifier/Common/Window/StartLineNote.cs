@@ -11,7 +11,8 @@ internal sealed record StartLineNote(
     string CapturedAt,
     string VerifierCommit,
     string ConfluentKafkaVersion,
-    string LibrdkafkaVersion);
+    string LibrdkafkaVersion,
+    IReadOnlyList<string>? ExpectedJobNames = null);
 
 /// <summary>Records one partition's high watermark at the start boundary.</summary>
 internal sealed record PartitionHigh(int Partition, long High);
