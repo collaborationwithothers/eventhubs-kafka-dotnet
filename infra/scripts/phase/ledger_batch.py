@@ -1,4 +1,4 @@
-"""Run one repeat of every B06 and B07 configuration in one job and summarise the producer evidence.
+"""Run every B06 and B07 configuration in one job: one repeat with a summary (smoke), or five repeats and a judge (batch).
 
 The summaries are smoke diagnostics for planning the B06 and B07 judgement; they are not results, and the
 verifier owns every judgement.
@@ -6,12 +6,19 @@ verifier owns every judgement.
 import json
 import math
 import re
+import time
 
 ITEMS = ("B06", "B07")
 CONFIGURATIONS = (("B06", "C0"), ("B06", "C1"), ("B07", "C0"), ("B07", "C1"))
 MODE = "ledger-batch"
 MODES = ("start-line", "loadgen", "verify")
 REPEAT = 1
+SLOTS = (1, 2, 3, 4, 5)
+CONFIGURATION_DEADLINE = 3300  # harness cap per configuration: about 1.9 times B04's measured 1726 s and 1729 s; not a vendor limit
+JUDGE_RESERVATION = 870  # 120 render + 60 apply + 180 wait + 210 collect + 120 delete + 30 confirm + 120 candidate download + 30 reserve
+ADMISSION_SECONDS = 14400  # equals phase.py BATCH_START_CAP
+CANDIDATE_MAXIMUM = 16777216  # PhaseCandidateCodec.MaximumBytes
+BAD_OUTCOMES = frozenset(("render_failed", "apply_failed", "unknown", "collect_error", "not_attempted"))  # equals phase.py BAD_OUTCOMES
 BLOB_MAXIMUM = 268435456  # per-blob download cap; a larger blob is recorded as a gap, never truncated
 LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
 WINDOW_FIELDS = ("cnt", "sum", "min", "max", "avg", "p50")
@@ -57,6 +64,49 @@ class LedgerBatch:
         if len(run) > 29 or not re.fullmatch(LABEL, run):
             raise ValueError("ledger run identity invalid")
         return run
+
+    def run(self):
+        return self.run_batch() if self.p.read("phase.json").get("run_kind") == "batch" else self.run_smoke()
+
+    def run_batch(self):
+        """Run five repeats and a judge per configuration; a judge that exits 1 still published its candidate."""
+        phase = self.p.read("phase.json")
+        if phase.get("scenario") != MODE or phase.get("run_kind") != "batch" or phase.get("items") != list(ITEMS):
+            raise ValueError("unsupported ledger batch selection")
+        clock = self.p.start_batch_clock()
+        passed = clock
+        end = self.p.read("phase.json")["batch_started_monotonic"] + ADMISSION_SECONDS
+        for item, configuration in CONFIGURATIONS:
+            admitted = clock and self.p.admission_allowed() and end - time.monotonic() >= CONFIGURATION_DEADLINE
+            reason = None if admitted else "start_cap"
+            finish = min(end, time.monotonic() + CONFIGURATION_DEADLINE)
+            records = [self.p.run_mode(mode, repeat, item, configuration, skip_reason=reason,
+                                       absolute_deadline=finish - JUDGE_RESERVATION)
+                       for repeat in SLOTS for mode in MODES]
+            judge = self.p.run_mode("judge", None, item, configuration, skip_reason=reason, absolute_deadline=finish)
+            if any(record["outcome"] in BAD_OUTCOMES for record in [*records, judge]):
+                passed = False
+            if not self.accept_candidate(item, configuration, judge, finish):
+                passed = False
+        return int(not passed or self.p.state().get("safety_stop", False))
+
+    def accept_candidate(self, item, configuration, judge, deadline):
+        run = self.worker_run(item)
+        target = self.p.candidates / f"{item}-{configuration}-candidate.json"
+        if judge["outcome"] == "not_attempted":
+            self.p.candidate_gap(item, configuration, judge.get("reason") or "not_attempted")
+            return False
+        content = self.p.download_blob(f"{run}/{configuration}/candidate.json", target, CANDIDATE_MAXIMUM, deadline)
+        expected = {"scenario": item, "run_id": run, "phase": configuration, "configuration": configuration}
+        if content is None or not self.p.candidate_valid(content, expected):
+            target.unlink(missing_ok=True)
+            self.p.candidate_gap(item, configuration, "download_failed" if content is None else "candidate_contract")
+            return False
+        state = self.p.state()
+        state.setdefault("candidates", []).append({"item": item, "configuration": configuration, "accepted": True,
+                                                   "candidate": target.name, "judge_completion": None})
+        self.p.save_state(state)
+        return True
 
     def run_smoke(self):
         phase = self.p.read("phase.json")

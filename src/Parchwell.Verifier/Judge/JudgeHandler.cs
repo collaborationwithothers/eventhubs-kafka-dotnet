@@ -45,7 +45,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             bool startAccepted=false,publicationAccepted=false,receiptValid=false,knownInvalid=false,trustedIncomplete=false;
             bool? jobBinding=null,registrationCount=null,inventoryCoverage=null;
             OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
-            BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null;
+            BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null; BatchingRecordedEvidence? batchingEvidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
@@ -213,6 +213,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                                 workload=result.WorkloadObservation;
                                 brokerCount=result.BrokerCount;
                                 b04Evidence=result.B04RecordedEvidence;
+                                batchingEvidence=result.BatchingRecordedEvidence;
                                 if(result.A01RecordedEvidence is not null)acceptedA01.Add(result.A01RecordedEvidence);
                                 string? producerKafkaVersion=null,producerNativeVersion=null,producerDotnetVersion=null;
                                 result.RuntimeVersions?.TryGetValue("confluent_kafka",out producerKafkaVersion);
@@ -240,7 +241,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;
             }
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots);

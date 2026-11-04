@@ -21,7 +21,8 @@
       "VerifyRun/A01/WorkloadRecorder.cs",
       "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
       "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
-      "VerifyRun/IdleObservation/IdleObservationJudgement.cs"
+      "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+      "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs"
     ],
     "coverage-analysis": "off"
   }

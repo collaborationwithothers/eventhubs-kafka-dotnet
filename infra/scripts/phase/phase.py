@@ -333,7 +333,7 @@ class Phase:
         return 0
 
     def validate_ledger_batch(self):
-        if (scenario() != LEDGER_MODE or os.environ.get("PARCHWELL_RUN_KIND") != "smoke"
+        if (scenario() != LEDGER_MODE or os.environ.get("PARCHWELL_RUN_KIND") not in ("smoke", "batch")
                 or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all"
                 or capture_authentication_metadata() or test_handler_refresh_path() or test_native_authentication()):
             raise Failure("unsupported ledger batch selection")
@@ -359,7 +359,7 @@ class Phase:
         if selected == LEDGER_MODE:
             if len(f"ledger-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}-b06") > 29:
                 raise Failure("invalid run or source commit")
-            return self.prepare_shared(selected, LEDGER_MODE, None, "ledger", run_kind="smoke", items=list(LEDGER_ITEMS))
+            return self.prepare_shared(selected, LEDGER_MODE, None, "ledger", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=list(LEDGER_ITEMS))
         if selected == IDLE_MODE:
             return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=idle_items())
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
@@ -539,7 +539,7 @@ class Phase:
         return host
 
     def mode_job(self, phase, mode, repeat, item=None, configuration=None, action_role=None):
-        if mode in MODES and item is not None:
+        if (mode in MODES or mode == "judge") and item is not None:
             return job_name(self.ledger_batch().worker_run(item), configuration, mode, repeat)
         return job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
 
@@ -565,7 +565,7 @@ class Phase:
         persistent = self.read("persistent-output.json")
         accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
         single = mode in SINGLE_ACTION_MODES
-        ledger = mode in MODES and item is not None
+        ledger = (mode in MODES or mode == "judge") and item is not None
         run_id = self.ledger_batch().worker_run(item) if ledger else phase["run_id"]
         runtime = {"run_id": run_id, "phase": configuration if single or ledger else phase["phase"], "mode": mode,
                    "source_commit": phase["source_commit"],
@@ -616,7 +616,7 @@ class Phase:
             record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
         elif mode in (IDLE_MODE, IDLE_JUDGE_MODE):
             record.update(item=item, configuration=configuration, role=action_role)
-        elif mode in MODES and item is not None:
+        elif (mode in MODES or mode == "judge") and item is not None:
             record.update(item=item, configuration=configuration)
         state["modes"].append(record)
 
@@ -919,14 +919,14 @@ class Phase:
             return self.idle_observation().run_batch()
         if isinstance(frozen, dict) and frozen.get('scenario') == LEDGER_MODE:
             self.validate_ledger_batch()
-            return self.ledger_batch().run_smoke()
+            return self.ledger_batch().run()
         self.validate_batch()
         if scenario() == "probe-batch-2":
             return self.probe_v2().run_batch()
         if scenario() == IDLE_MODE:
             return self.idle_observation().run_batch()
         if scenario() == LEDGER_MODE:
-            return self.ledger_batch().run_smoke()
+            return self.ledger_batch().run()
         selected = self.read('phase.json')['items']
         state = self.state()
         state['not_selected'] = [
@@ -1090,7 +1090,7 @@ class Phase:
             write_json(self.candidates / (stem + "-gap.json"), {"item": item, "configuration": configuration, "reason": "candidate_transport"})
         return accepted
 
-    def check_candidate(self, content):
+    def check_candidate(self, content, expected=None):
         if not 0 < len(content) <= CANDIDATE_MAXIMUM:
             raise Failure("candidate size invalid", 1)
         try:
@@ -1100,14 +1100,16 @@ class Phase:
             phase = self.read("phase.json")
             statuses = ("complete_valid", "invalid", "incomplete")
             valid = isinstance(candidate, dict) and type(candidate.get("schema_version")) is int and candidate["schema_version"] == 1
-            valid = valid and candidate.get("synthetic") is True and candidate.get("scenario_id") == phase["scenario"]
-            for key, expected in (("run_id", phase["run_id"]), ("phase", phase["phase"]),
-                                  ("configuration_id", phase["configuration"]), ("source_commit", phase["source_commit"])):
-                valid = valid and candidate.get(key) == expected
+            identity = expected or {"scenario": phase["scenario"], "run_id": phase["run_id"],
+                                    "phase": phase["phase"], "configuration": phase["configuration"]}
+            valid = valid and candidate.get("synthetic") is True and candidate.get("scenario_id") == identity["scenario"]
+            for key, value in (("run_id", identity["run_id"]), ("phase", identity["phase"]),
+                               ("configuration_id", identity["configuration"]), ("source_commit", phase["source_commit"])):
+                valid = valid and candidate.get(key) == value
             valid = valid and candidate.get("status") in statuses
             gate = candidate.get("gate")
             valid = valid and "gate" in candidate and (gate in ("pass", "untestable_at_build_scale", "inconclusive")
-                    if phase["phase"] == "probe" else gate is None)
+                    if identity["phase"] == "probe" else gate is None)
             valid = valid and candidate.get("image_digests") == {worker: phase["images"][worker]["digest"] for worker in ("loadgen", "verifier")}
             repeats = candidate.get("repeats")
             valid = valid and isinstance(repeats, list) and len(repeats) == 5
@@ -1119,6 +1121,13 @@ class Phase:
             return candidate
         except (ValueError, UnicodeError, KeyError, TypeError, Failure) as error:
             raise Failure("candidate contract invalid", 1) from error
+
+    def candidate_valid(self, content, expected):
+        try:
+            self.check_candidate(content, expected)
+            return True
+        except Failure:
+            return False
 
     def candidate(self):
         output = require("GITHUB_OUTPUT")
