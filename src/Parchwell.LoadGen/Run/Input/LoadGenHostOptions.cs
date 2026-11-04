@@ -97,7 +97,13 @@ public sealed class LoadGenHostOptions
             throw new InvalidOperationException("phase_configuration_pair_invalid");
         if (RepeatNumber is < 1 or > 5) throw new InvalidOperationException("repeat_number_out_of_range");
         string expectedJobName = $"{RunId}-{Phase.ToLowerInvariant()}-r{RepeatNumber}-loadgen";
-        if (!StringComparer.Ordinal.Equals(JobName, expectedJobName))
+        // ADR-021: only a B10 repeat runs a second load generator Job, named with the suffix "loadgen2".
+        if (StringComparer.Ordinal.Equals(JobName, expectedJobName + "2"))
+        {
+            if (!StringComparer.Ordinal.Equals(ScenarioId, "B10"))
+                throw new InvalidOperationException("restart_instance_requires_b10");
+        }
+        else if (!StringComparer.Ordinal.Equals(JobName, expectedJobName))
             throw new InvalidOperationException("job_name_must_match_run_phase_repeat");
         if (PodUid.Any(char.IsWhiteSpace) || PodUid.Any(char.IsControl))
             throw new InvalidOperationException("pod_uid_must_not_contain_whitespace_or_controls");

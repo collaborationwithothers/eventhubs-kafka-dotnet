@@ -67,6 +67,25 @@ public sealed class ProducerRunLifecycleTests
     }
 
     [Fact]
+    public async Task Given_PredecessorThatDoesNotMatchTheJob_When_Registering_Then_RejectsWithoutUploading()
+    {
+        using var handler = new RecordingHandler();
+        var lifecycle = new BlobProducerRunLifecycle(CreateClient(handler), TimeProvider.System);
+        ProducerRunContext second = Context() with { JobName = "run-1-c0-r3-loadgen2" };
+
+        foreach (ProducerRunContext context in new[] { Context() with { PredecessorInstanceId = "pod-zero" }, second })
+            Assert.Equal("producer_registration_predecessor_mismatch", (await Assert.ThrowsAsync<InvalidDataException>(() =>
+                lifecycle.RegisterAsync(context, Options(NewDirectory()), TestContext.Current.CancellationToken))).Message);
+        Assert.Empty(handler.Requests);
+        using JsonDocument marker = JsonDocument.Parse(BlobProducerRunLifecycle.SerializeRegistration(second with
+        {
+            Identity = second.Identity with { ScenarioId = "B10" }, PredecessorInstanceId = "pod-zero"
+        }));
+        Assert.Equal([.. RegistrationFieldNames, "predecessor_instance_id"], marker.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("pod-zero", marker.RootElement.GetProperty("predecessor_instance_id").GetString());
+    }
+
+    [Fact]
     public async Task Given_FailedRunArtifacts_When_PublishingDiagnostics_Then_UploadsOnlyKnownPayloadsUnderDiagnosticPrefix()
     {
         string directory = NewDirectory();

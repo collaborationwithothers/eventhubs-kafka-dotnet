@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Publication;
+using Parchwell.LoadGen.Tests.Restart;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.Publication;
@@ -67,6 +68,35 @@ public sealed class BlobRunArtifactPublisherTests
         await Assert.ThrowsAsync<ArgumentException>(() => publisher.PublishAsync(IncompleteResult(),
             new RunPublicationOptions("https://storage.example.test", "other-container", TimeSpan.FromSeconds(5), 4096, 8192),
             TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("first", true, "publication_restart_role_mismatch")]
+    [InlineData("second", false, "publication_restart_role_mismatch")]
+    [InlineData("other-predecessor", true, "publication_restart_role_mismatch")]
+    [InlineData("none", true, "publication_restart_role_mismatch")]
+    [InlineData("second", true, "publication_evidence_expectations_missing")]
+    [InlineData("first", false, "publication_evidence_expectations_missing")]
+    [InlineData("none", false, "publication_evidence_expectations_missing")]
+    public async Task Given_JobAndManifestKind_When_Publishing_Then_OnlyTheSecondJobPublishesARestartManifest(string job, bool restart, string error)
+    {
+        // ADR-021. These results carry no evidence expectations, so a result that passes the role check fails on the next check.
+        var first = new ProducerRunContext(RestartFixture.Second, "C0", 1, "run-1-c0-r1-loadgen", "pod-b", "uid-b", new string('a', 40));
+        ProducerRunContext? context = job switch
+        {
+            "first" => first,
+            "second" => first with { JobName = "run-1-c0-r1-loadgen2", PredecessorInstanceId = "pod-a" },
+            "other-predecessor" => first with { JobName = "run-1-c0-r1-loadgen2", PredecessorInstanceId = "pod-z" },
+            _ => null
+        };
+        RunManifest manifest = restart ? RestartFixture.Restarted() : RestartFixture.Manifest(RestartFixture.Second, [], 0);
+
+        InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() => CreatePublisher("https://storage.example.test")
+            .PublishOpenedSourcesAsync(new RunExecutionResult(0, manifest, ImmutableDictionary<string, string>.Empty),
+                new RunPublicationOptions("https://storage.example.test", "ledger", TimeSpan.FromSeconds(5), 4096, 8192) { Context = context },
+                ImmutableArray<BlobRunArtifactPublisher.ArtifactSource>.Empty, TestContext.Current.CancellationToken));
+
+        Assert.Equal(error, failure.Message);
     }
 
     private static BlobRunArtifactPublisher CreatePublisher(string endpoint)

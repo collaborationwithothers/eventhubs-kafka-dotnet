@@ -21,6 +21,9 @@ public sealed record RunArtifactIndex(int SchemaVersion, RunIdentity Identity, s
 /// <summary>One closed local payload named by the publication index.</summary>
 public sealed record RunArtifactDescriptor(string Name, long Length, string Sha256);
 
+/// <summary>The sealed manifest and ledger rows of a publication that passed every index and payload check.</summary>
+public sealed record RunArtifactSet(RunManifest Manifest, ImmutableArray<LedgerRow> Rows);
+
 /// <summary>Strict bounded reader for the index-last artifact acceptance protocol.</summary>
 public static class RunArtifactIndexReader
 {
@@ -96,6 +99,14 @@ public static class RunArtifactIndexReader
     public static async Task ValidateArtifactSetAsync(RunArtifactIndex index, int? observedWorkerExitCode,
         RunEvidenceExpectations expectations, IReadOnlyCollection<string> observedPrefixMemberNames,
         Func<string, CancellationToken, ValueTask<Stream>> openArtifact, long maximumArtifactBytes,
+        long maximumAggregateArtifactBytes, CancellationToken cancellationToken = default) =>
+        _ = await ReadArtifactSetAsync(index, observedWorkerExitCode, expectations, observedPrefixMemberNames,
+            openArtifact, maximumArtifactBytes, maximumAggregateArtifactBytes, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Applies every check of <see cref="ValidateArtifactSetAsync"/> and returns the accepted manifest and ledger rows.</summary>
+    public static async Task<RunArtifactSet> ReadArtifactSetAsync(RunArtifactIndex index, int? observedWorkerExitCode,
+        RunEvidenceExpectations expectations, IReadOnlyCollection<string> observedPrefixMemberNames,
+        Func<string, CancellationToken, ValueTask<Stream>> openArtifact, long maximumArtifactBytes,
         long maximumAggregateArtifactBytes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(index);
@@ -148,14 +159,19 @@ public static class RunArtifactIndexReader
                 throw Invalid("publication_artifact_content_mismatch:" + descriptor.Name);
         }
 
-        _ = ValidatePayloadSemantics(index.Identity, expectations, payloads.ToImmutable(), maximumArtifactBytes,
+        return ValidatePayloadSet(index.Identity, expectations, payloads.ToImmutable(), maximumArtifactBytes,
             cancellationToken);
     }
 
     /// <summary>Reconciles bounded payload bytes against caller-supplied evidence expectations for local publication and index readback.</summary>
     internal static RunManifest ValidatePayloadSemantics(RunIdentity identity, RunEvidenceExpectations expectations,
         IReadOnlyDictionary<string, byte[]> payloads, long maximumArtifactBytes,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ValidatePayloadSet(identity, expectations, payloads, maximumArtifactBytes, cancellationToken).Manifest;
+
+    private static RunArtifactSet ValidatePayloadSet(RunIdentity identity, RunEvidenceExpectations expectations,
+        IReadOnlyDictionary<string, byte[]> payloads, long maximumArtifactBytes,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(expectations);
@@ -187,8 +203,8 @@ public static class RunArtifactIndexReader
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows = ParseLedgerRows(ledgerBytes, manifest.Inventory.Length, maximumArtifactBytes, cancellationToken);
-            _ = LedgerValidator.Validate(rows, manifest, identity);
+            rows = LedgerValidator.Validate(
+                ParseLedgerRows(ledgerBytes, manifest.Inventory.Length, maximumArtifactBytes, cancellationToken), manifest, identity);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or OverflowException)
         {
@@ -228,7 +244,7 @@ public static class RunArtifactIndexReader
         else if (!evidence.StatisticsComplete.Value) RequireGuard("statistics_guard_incomplete");
         if (!evidence.RequestCapabilitySupported) RequireGuard("request_lifecycle_capture_unsupported");
         RequireGuard("broker_lifecycle_inventory_unproven");
-        return manifest;
+        return new RunArtifactSet(manifest, rows);
 
         void RequireGuard(string observation)
         {

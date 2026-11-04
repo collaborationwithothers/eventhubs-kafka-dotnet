@@ -472,7 +472,7 @@ public sealed class RunArtifactIndexReaderTests
         await Assert.ThrowsAsync<InvalidDataException>(() => ValidateAsync(index, expectations, payloads));
     }
 
-    private static RunEvidenceExpectations Expectations(RunIdentity identity) =>
+    internal static RunEvidenceExpectations Expectations(RunIdentity identity) =>
         new(CreateResolvedConfiguration(identity), requireStatisticsEvidence: true,
             expectedBrokerNames: ImmutableArray.Create("broker-1"));
 

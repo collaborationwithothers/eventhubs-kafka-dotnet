@@ -6,8 +6,10 @@ using Microsoft.Extensions.Configuration;
 using System.Runtime.ExceptionServices;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Publication;
+using Parchwell.LoadGen.Run.Restart;
 using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Execution;
@@ -34,14 +36,15 @@ public sealed class LoadGenWorker : BackgroundService
     private readonly IWorkerAdmission _admission;
     private readonly IRunArtifactPublisher _publisher;
     private readonly IProducerRunLifecycle _lifecycle;
+    private readonly IPredecessorEvidenceSource _predecessorSource;
     private readonly IConfiguration _configuration;
     private readonly TimeProvider _clock;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<LoadGenWorker> _logger;
     public LoadGenWorker(IOptions<LoadGenHostOptions> hostOptions, ScenarioLoader loader,
         ScenarioResolver resolver, RunSessionFactory runSessionFactory, IWorkerAdmission admission,
-        IRunArtifactPublisher publisher, IProducerRunLifecycle lifecycle, IConfiguration configuration,
-        TimeProvider clock, IHostApplicationLifetime lifetime, ILogger<LoadGenWorker> logger)
+        IRunArtifactPublisher publisher, IProducerRunLifecycle lifecycle, IPredecessorEvidenceSource predecessorSource,
+        IConfiguration configuration, TimeProvider clock, IHostApplicationLifetime lifetime, ILogger<LoadGenWorker> logger)
     {
         _hostOptions = hostOptions.Value;
         _loader = loader;
@@ -50,6 +53,7 @@ public sealed class LoadGenWorker : BackgroundService
         _admission = admission;
         _publisher = publisher;
         _lifecycle = lifecycle;
+        _predecessorSource = predecessorSource;
         _configuration = configuration;
         _clock = clock;
         _lifetime = lifetime;
@@ -111,6 +115,24 @@ public sealed class LoadGenWorker : BackgroundService
         runContext.Validate();
         var lifecycleOptions = new ProducerLifecycleOptions(options.BlobEndpoint, options.BlobContainer,
             options.CleanupTimeout, options.UploadTimeout, options.MaxArtifactBytes, options.MaxAggregateArtifactBytes, options.OutputRoot);
+        bool requiresStatistics = resolved.Definition.Measures.Any(measure => measure.Role == KafkaClientRole.LoadGenProducer &&
+            measure.Id.StartsWith("stats.", StringComparison.Ordinal));
+        bool requiresRequests = resolved.Definition.Measures.Any(measure => measure.Role == KafkaClientRole.LoadGenProducer &&
+            string.Equals(measure.Id, "producer.request_timeout", StringComparison.Ordinal));
+
+        // ADR-021: B10's second Job reads the first instance's evidence before it registers, so a failure here leaves no registration.
+        RestartInstance? restart = null;
+        if (runContext.IsRestartInstance)
+        {
+            using var discoveryDeadline = new CancellationTokenSource(options.UploadTimeout, _clock);
+            using var discoveryToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, discoveryDeadline.Token);
+            RunArtifactSet predecessor = await PredecessorEvidenceLoader.LoadAsync(_predecessorSource, runContext,
+                RunEvidenceExpectations.CaptureOnly(role, requiresStatistics || options.RequireStatisticsEvidence!.Value),
+                options.MaxArtifactBytes, options.MaxAggregateArtifactBytes, discoveryToken.Token).ConfigureAwait(false);
+            restart = RestartInstance.Create(identity, predecessor.Manifest, predecessor.Rows);
+            runContext = runContext with { PredecessorInstanceId = restart.Plan.PredecessorInstanceId };
+            runContext.Validate();
+        }
 
         using (var registrationActivity = LoadGenTelemetry.Begin(_clock, identity.ScenarioId, identity.RunId, identity.ClientId, "registration"))
         using (var registrationDeadline = new CancellationTokenSource(options.CleanupTimeout, _clock))
@@ -120,10 +142,6 @@ public sealed class LoadGenWorker : BackgroundService
             registrationActivity.Succeed();
         }
 
-        bool requiresStatistics = resolved.Definition.Measures.Any(measure => measure.Role == KafkaClientRole.LoadGenProducer &&
-            measure.Id.StartsWith("stats.", StringComparison.Ordinal));
-        bool requiresRequests = resolved.Definition.Measures.Any(measure => measure.Role == KafkaClientRole.LoadGenProducer &&
-            string.Equals(measure.Id, "producer.request_timeout", StringComparison.Ordinal));
         RunExecutionResult? result = null;
         try
         {
@@ -133,7 +151,9 @@ public sealed class LoadGenWorker : BackgroundService
             Exception? executionFailure = null;
             try
             {
-                result = await session.ExecuteAsync(resolved.Profile, cancellationToken).ConfigureAwait(false);
+                result = restart is null
+                    ? await session.ExecuteAsync(resolved.Profile, cancellationToken).ConfigureAwait(false)
+                    : await session.ExecuteAsync(resolved.Profile, restart, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {

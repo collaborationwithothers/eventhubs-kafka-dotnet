@@ -72,12 +72,16 @@ def positive_cases():
         for mode in ('start-line','loadgen','verify'):
           d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode,repeat=1,loadgen_job_name=f"{r['run_id']}-{config.lower()}-r1-loadgen")
           yield d
+    # ADR-021's second load generator Job renders for every scenario the schema admits; the load generator rejects it outside B10.
+    for item,phase,config,repeat in [('A01','probe','C0',1),('A01','C0','C0',5),('A01','C3','C3',1),('B04','C1','C1',1),('B06','C0','C0',1),('B07','C1','C1',5)]:
+      d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode='loadgen2',repeat=repeat,loadgen_job_name=f"{r['run_id']}-{phase.lower()}-r{repeat}-loadgen")
+      yield d
 
 def scalar(value):
     if isinstance(value, bool): return str(value).lower()
     return str(value)
 def expected_environment(d):
-    r=d['runtime']; mode=r['mode']; repeat=r.get('repeat'); phase=r['phase']; job=jobname(d)
+    r=d['runtime']; mode=role_mode(r['mode']); repeat=r.get('repeat'); phase=r['phase']; job=jobname(d)
     prefix=f"{r['run_id']}/{phase}/r{repeat}/" if repeat else None
     expected={
       'PARCHWELL_SOURCE_COMMIT':('value',r['source_commit']),'PARCHWELL_JOB_NAME':('value',job),
@@ -111,6 +115,7 @@ def expected_environment(d):
         expected.update({'Verifier__PhasePrefix':('value',p),'Verifier__CandidateOutputName':('value',p+'candidate.json'),'Verifier__LoadGenImage':('value',r['loadgen_image']),'Verifier__VerifierImage':('value',r['verifier_image'])})
     return expected
 
+def role_mode(mode): return 'loadgen' if mode=='loadgen2' else mode
 def verify(doc,d):
     objs=list(yaml.safe_load_all(doc)); assert len(objs)==3
     assert sorted(o['kind'] for o in objs)==['Job','ServiceAccount','ServiceAccount']
@@ -119,7 +124,7 @@ def verify(doc,d):
     assert job['metadata']['namespace']=='parchwell'
     pod=job['spec']['template']['spec']; assert len(pod['containers'])==1 and pod['restartPolicy']=='Never'
     assert job['spec']['completions']==job['spec']['parallelism']==1 and job['spec']['backoffLimit']==0
-    mode=d['runtime']['mode']; expected_deadline={'loadgen':1140,'verify':750,'start-line':150,'judge':90}[mode]
+    mode=role_mode(d['runtime']['mode']); expected_deadline={'loadgen':1140,'verify':750,'start-line':150,'judge':90}[mode]
     assert job['spec']['activeDeadlineSeconds']==expected_deadline
     assert pod['terminationGracePeriodSeconds']==30
     assert pod['automountServiceAccountToken'] is False
@@ -127,7 +132,7 @@ def verify(doc,d):
     assert pod['serviceAccountName']==('loadgen' if mode=='loadgen' else 'verifier')
     assert pod.get('tolerations',[])==([{'key':'workload','operator':'Equal','value':'loadgen','effect':'NoSchedule'}] if mode=='loadgen' else [])
     assert job['spec'].get('podReplacementPolicy')==('Failed' if mode=='loadgen' else None)
-    c=pod['containers'][0]; role='loadgen' if d['runtime']['mode']=='loadgen' else 'verifier'
+    c=pod['containers'][0]; role='loadgen' if mode=='loadgen' else 'verifier'
     assert c['name']==role and c['image']==d['runtime'][role+'_image']
     assert not pod.get('initContainers') and all(v['name'] in ('work','tmp') for v in pod.get('volumes',[]))
     assert job['metadata'].get('annotations') is None
@@ -161,7 +166,7 @@ def main():
   assert DEFAULTS['execution']==BOUNDS['execution']
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
-    positives=list(positive_cases()); assert len(positives)==37
+    positives=list(positive_cases()); assert len(positives)==43
     for i,d in enumerate(positives):
       f=td/f'{i}.yaml';out=td/f'{i}.rendered.yaml';with_case(d,f)
       lint=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(td/f'{i}.lint'),'--max-bytes','4194304','--','helm','lint',str(CHART),'-f',str(f)])
@@ -172,7 +177,11 @@ def main():
       assert valid.returncode==0,valid.stdout+valid.stderr
       document=out.read_text()
       verify(document,d)
-      if i >= 21:
+      if i >= 37:
+        job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job'); r=d['runtime']
+        names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
+        assert r['mode']=='loadgen2' and job['metadata']['name']==names['PARCHWELL_JOB_NAME']==names['LoadGen__JobName']==r['loadgen_job_name']+'2'
+      elif i >= 21:
         assert (d['scenario_id']=='B04')==(i<25)
         assert d['scenario_id'] in ('B04','B06','B07') and d['runtime']['phase']==d['configuration_id']
         assert d['configuration_id']=='C1' if d['scenario_id']=='B04' else d['configuration_id'] in ('C0','C1')
@@ -218,7 +227,11 @@ def main():
     mut(lambda d:(d['runtime'].update(bounds=deepcopy(BOUNDS)),d['runtime']['bounds']['loadgen'].update(MaxAttempts=186001)))
     mut(lambda d:(d['runtime'].update(bounds=deepcopy(BOUNDS)),d['runtime']['bounds']['verifier_verify'].update(MaxInputEntries=None)))
     mut(lambda d:d['runtime'].update(loadgen_job_name='synthetic-c3-c3-r1-loadgen'))
-    assert len(negatives)==32
+    second=deepcopy(positives[37])
+    mut(lambda d:d['runtime'].pop('loadgen_job_name'),second)
+    mut(lambda d:d['runtime'].update(loadgen_job_name=d['runtime']['loadgen_job_name']+'2'),second)
+    mut(lambda d:d.update(scenario_id='B10'),second)
+    assert len(negatives)==35
     for i,d in enumerate(negatives):
       f=td/f'n{i}.yaml';out=td/f'n{i}.out';with_case(d,f)
       proc=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(out),'--max-bytes','4194304','--','helm','template','synthetic',str(CHART),'-f',str(f)])
@@ -232,5 +245,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 37 positive, 32 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 43 positive, 35 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()
