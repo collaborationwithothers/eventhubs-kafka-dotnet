@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Reflection;
@@ -63,6 +64,10 @@ public sealed class RunExecutor
         var workerFailed = false;
         long admittedAttemptCount = 0;
         string[] expectedBrokerNames = [];
+        var retryPolicy = options.ApplicationRetry ?? ApplicationRetryPolicy.None;
+        var retryCandidates = new ConcurrentQueue<RetryCandidate>();
+        var retriesBySlot = new Dictionary<long, int>();
+        long scheduledInvocationCount = 0;
 
         void AddDiagnostic(string diagnostic)
         {
@@ -83,12 +88,133 @@ public sealed class RunExecutor
             return true;
         }
 
+        // Invokes one attempt. A scheduled event passes its due time; a retry passes null and is exempt from the lateness limit.
+        // Returns false when admission must stop.
+        bool TryInvoke(PlannedEvent planned, long? dueTimestamp)
+        {
+            var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
+            long invocationOrdinal = admittedAttemptCount;
+            string attemptId = string.Concat(identity.InstanceId, "-", invocationOrdinal.ToString(CultureInfo.InvariantCulture));
+            var reservation = new AttemptEntry(identity.InstanceId, attemptId, invocationOrdinal, planned.TenantId,
+                planned.DocumentId, planned.Key, planned.Sequence, planned.EventType, planned.DueMicroseconds,
+                planned.DueMicroseconds);
+            AttemptEntry? attempt = null;
+            long invokedTimestamp = 0;
+            var message = new Message<byte[], byte[]>
+            {
+                Key = Encoding.UTF8.GetBytes(planned.Key),
+                Value = payload,
+                Headers = CreateHeaders(identity, planned, attemptId)
+            };
+            var callbackSeen = 0;
+            Action<DeliveryReport<byte[], byte[]>> deliveryHandler = report =>
+                RecordDelivery(report, identity, attempt!, invokedTimestamp, startTimestamp,
+                    () => Interlocked.Exchange(ref callbackSeen, 1) == 0,
+                    () => Interlocked.Or(ref guardFlags, AsynchronousFailure),
+                    () => Interlocked.Or(ref guardFlags, MissingPersistence),
+                    () => Interlocked.Or(ref guardFlags, PossiblyPersisted),
+                    () => Interlocked.Or(ref guardFlags, CallbackFailure),
+                    () => Interlocked.Or(ref guardFlags, LedgerFailure),
+                    row =>
+                    {
+                        // The handler only queues the retry; the executor thread invokes it.
+                        if (retryPolicy.MaxRetriesPerEvent > 0 && ApplicationRetryPolicy.IsPermittedTimeout(row))
+                            retryCandidates.Enqueue(new RetryCandidate(planned, row.Attempt));
+                    });
+            inventory.Reserve(reservation);
+            bool invocationCommitted = false;
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (ObserveInitialAuthenticationFailure()) return false;
+                if (evidence is { IsFaulted: true })
+                {
+                    workerFailed = true;
+                    AddDiagnostic("evidence_capture_faulted");
+                    return false;
+                }
+                if (ledger.IsFaulted || (Volatile.Read(ref guardFlags) & (CallbackFailure | LedgerFailure)) != 0)
+                {
+                    workerFailed = true;
+                    AddDiagnostic("callback_or_ledger_capture_faulted");
+                    return false;
+                }
+                invokedTimestamp = clock.GetTimestamp();
+                if (dueTimestamp is long due)
+                {
+                    var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - due), clock.TimestampFrequency);
+                    if (lateness > DurationMicroseconds(options.MaxScheduleLateness))
+                    {
+                        AddDiagnostic("schedule_lateness_limit_exceeded");
+                        return false;
+                    }
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                if (ObserveInitialAuthenticationFailure()) return false;
+                attempt = inventory.CommitReservation(ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
+                invocationCommitted = true;
+                admittedAttemptCount = checked(admittedAttemptCount + 1);
+                if (dueTimestamp.HasValue) scheduledInvocationCount = checked(scheduledInvocationCount + 1);
+                try
+                {
+                    producer!.Produce(options.Topic, message, deliveryHandler);
+                }
+                catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
+                {
+                    var completedTimestamp = clock.GetTimestamp();
+                    var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
+                        (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
+                        ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency), null,
+                        ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency));
+                    if (!ledger.TryAppend(row))
+                    {
+                        Interlocked.Or(ref guardFlags, LedgerFailure);
+                        AddDiagnostic("ledger_append_failed");
+                        workerFailed = true;
+                        return false;
+                    }
+                }
+                catch
+                {
+                    Interlocked.Or(ref guardFlags, NativeProducerException);
+                    AddDiagnostic("native_produce_exception");
+                    throw;
+                }
+            }
+            finally
+            {
+                if (!invocationCommitted) inventory.CancelReservation();
+            }
+            return true;
+        }
+
+        // Invokes every queued retry within the per-event limit. Returns false when admission must stop.
+        bool TryAdmitRetries()
+        {
+            while (retryCandidates.TryDequeue(out RetryCandidate? queued))
+            {
+                long slot = LedgerValidator.GetLogicalScheduleOrdinal(queued.Failed);
+                int used = retriesBySlot.GetValueOrDefault(slot);
+                if (used >= retryPolicy.MaxRetriesPerEvent)
+                {
+                    AddDiagnostic("application_retry_limit_reached");
+                    continue;
+                }
+                retriesBySlot[slot] = used + 1;
+                if (!TryInvoke(queued.Planned, dueTimestamp: null)) return false;
+            }
+            return true;
+        }
+
         try
         {
             expectedBrokerNames = options.ExpectedBrokerNames.ToArray();
             plannedCount = WorkloadGenerator.GetPlannedAttemptCount(profile);
             if (plannedCount > options.MaxAttempts)
                 throw new InvalidOperationException("planned_attempt_limit_exceeded");
+            if (retryPolicy.MaxRetriesPerEvent > 0 &&
+                checked(plannedCount * (1L + retryPolicy.MaxRetriesPerEvent)) > options.MaxAttempts)
+                throw new InvalidOperationException("retry_attempt_limit_exceeded");
             _ = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken).GetEnumerator();
             if (options.RequireRequestEvidence && (evidence is null || !evidence.RequestCapabilitySupported))
                 throw new InvalidOperationException("required_request_evidence_unavailable");
@@ -116,91 +242,11 @@ public sealed class RunExecutor
                     AddDiagnostic("callback_or_ledger_capture_faulted");
                     break;
                 }
+                if (!TryAdmitRetries()) break;
                 var dueTimestamp = AddMicroseconds(startTimestamp, planned.DueMicroseconds, clock.TimestampFrequency);
                 await DelayUntilAsync(dueTimestamp, authentication?.InitialFailureTask, cancellationToken).ConfigureAwait(false);
                 if (ObserveInitialAuthenticationFailure()) break;
-                var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
-                string attemptId = string.Concat(identity.InstanceId, "-", planned.Ordinal.ToString(CultureInfo.InvariantCulture));
-                var reservation = new AttemptEntry(identity.InstanceId, attemptId, planned.Ordinal, planned.TenantId,
-                    planned.DocumentId, planned.Key, planned.Sequence, planned.EventType, planned.DueMicroseconds,
-                    planned.DueMicroseconds);
-                AttemptEntry? attempt = null;
-                long invokedTimestamp = 0;
-                var message = new Message<byte[], byte[]>
-                {
-                    Key = Encoding.UTF8.GetBytes(planned.Key),
-                    Value = payload,
-                    Headers = CreateHeaders(identity, planned, attemptId)
-                };
-                var callbackSeen = 0;
-                Action<DeliveryReport<byte[], byte[]>> deliveryHandler = report =>
-                    RecordDelivery(report, identity, attempt!, invokedTimestamp, startTimestamp,
-                        () => Interlocked.Exchange(ref callbackSeen, 1) == 0,
-                        () => Interlocked.Or(ref guardFlags, AsynchronousFailure),
-                        () => Interlocked.Or(ref guardFlags, MissingPersistence),
-                        () => Interlocked.Or(ref guardFlags, PossiblyPersisted),
-                        () => Interlocked.Or(ref guardFlags, CallbackFailure),
-                        () => Interlocked.Or(ref guardFlags, LedgerFailure));
-                inventory.Reserve(reservation);
-                bool invocationCommitted = false;
-                try
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (ObserveInitialAuthenticationFailure()) break;
-                    if (evidence is { IsFaulted: true })
-                    {
-                        workerFailed = true;
-                        AddDiagnostic("evidence_capture_faulted");
-                        break;
-                    }
-                    if (ledger.IsFaulted || (Volatile.Read(ref guardFlags) & (CallbackFailure | LedgerFailure)) != 0)
-                    {
-                        workerFailed = true;
-                        AddDiagnostic("callback_or_ledger_capture_faulted");
-                        break;
-                    }
-                    invokedTimestamp = clock.GetTimestamp();
-                    var lateness = ToMicroseconds(Math.Max(0, invokedTimestamp - dueTimestamp), clock.TimestampFrequency);
-                    if (lateness > DurationMicroseconds(options.MaxScheduleLateness))
-                    {
-                        AddDiagnostic("schedule_lateness_limit_exceeded");
-                        break;
-                    }
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (ObserveInitialAuthenticationFailure()) break;
-                    attempt = inventory.CommitReservation(ToMicroseconds(invokedTimestamp - startTimestamp, clock.TimestampFrequency));
-                    invocationCommitted = true;
-                    admittedAttemptCount = checked(admittedAttemptCount + 1);
-                    try
-                    {
-                        producer.Produce(options.Topic, message, deliveryHandler);
-                    }
-                    catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
-                    {
-                        var completedTimestamp = clock.GetTimestamp();
-                        var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
-                            (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
-                            ToMicroseconds(completedTimestamp - startTimestamp, clock.TimestampFrequency), null,
-                            ElapsedMilliseconds(invokedTimestamp, completedTimestamp, clock.TimestampFrequency));
-                        if (!ledger.TryAppend(row))
-                        {
-                            Interlocked.Or(ref guardFlags, LedgerFailure);
-                            AddDiagnostic("ledger_append_failed");
-                            workerFailed = true;
-                            break;
-                        }
-                    }
-                    catch
-                    {
-                        Interlocked.Or(ref guardFlags, NativeProducerException);
-                        AddDiagnostic("native_produce_exception");
-                        throw;
-                    }
-                }
-                finally
-                {
-                    if (!invocationCommitted) inventory.CancelReservation();
-                }
+                if (!TryInvoke(planned, dueTimestamp)) break;
             }
             cancellationToken.ThrowIfCancellationRequested();
             admissionStopped = true;
@@ -218,18 +264,30 @@ public sealed class RunExecutor
             AddDiagnostic("execution_failed:" + exception.GetType().Name);
         }
 
-        var entries = inventory.Seal();
-        if (admittedAttemptCount != entries.Length)
-        {
-            workerFailed = true;
-            AddDiagnostic("admission_inventory_count_mismatch");
-        }
+        // Retries continue during the drain only after the whole schedule was invoked without a worker failure.
+        bool retryDuringDrain = retryPolicy.MaxRetriesPerEvent > 0 && !workerFailed &&
+            scheduledInvocationCount == plannedCount;
         try
         {
             if (producer is not null)
             {
                 using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "producer_drain");
-                if (!await DrainProducerAsync(producer, options.ProducerDrainTimeout, CancellationToken.None).ConfigureAwait(false))
+                long drainStarted = clock.GetTimestamp();
+                var drained = false;
+                while (true)
+                {
+                    var remaining = options.ProducerDrainTimeout - clock.GetElapsedTime(drainStarted, clock.GetTimestamp());
+                    if (remaining <= TimeSpan.Zero) break;
+                    if (!await DrainProducerAsync(producer, remaining, CancellationToken.None).ConfigureAwait(false)) break;
+                    // A completed Flush has run every delivery callback, so the retry queue is final for the attempts so far.
+                    if (!retryDuringDrain || retryCandidates.IsEmpty || cancellationToken.IsCancellationRequested)
+                    {
+                        drained = true;
+                        break;
+                    }
+                    if (!TryAdmitRetries()) retryDuringDrain = false;
+                }
+                if (!drained)
                 {
                     workerFailed = true;
                     AddDiagnostic("producer_drain_timeout");
@@ -241,6 +299,13 @@ public sealed class RunExecutor
         {
             workerFailed = true;
             AddDiagnostic("producer_drain_failed:" + exception.GetType().Name);
+        }
+
+        var entries = inventory.Seal();
+        if (admittedAttemptCount != entries.Length)
+        {
+            workerFailed = true;
+            AddDiagnostic("admission_inventory_count_mismatch");
         }
 
         if (!admissionStopped) AddDiagnostic("admission_state_unresolved");
@@ -423,7 +488,7 @@ public sealed class RunExecutor
             AddDiagnostic("execution_cancelled");
         }
         _ = ObserveInitialAuthenticationFailure();
-        var bookkeepingComplete = readbackComplete && !workerFailed && admittedAttemptCount == plannedCount &&
+        var bookkeepingComplete = readbackComplete && !workerFailed && CountScheduleProgress(entries) == plannedCount &&
             (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
             (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
             evidence is not { IsFaulted: true };
@@ -499,7 +564,7 @@ public sealed class RunExecutor
 
     private void RecordDelivery(DeliveryReport<byte[], byte[]> report, RunIdentity identity, AttemptEntry attempt,
         long invokedTimestamp, long startTimestamp, Func<bool> tryStart,
-        Action asyncFailure, Action missingPersistence, Action possiblyPersisted, Action callbackFailure, Action ledgerFailure)
+        Action asyncFailure, Action missingPersistence, Action possiblyPersisted, Action callbackFailure, Action ledgerFailure, Action<LedgerRow> recorded)
     {
         try
         {
@@ -524,6 +589,7 @@ public sealed class RunExecutor
             {
                 ledgerFailure();
             }
+            else recorded(row);
         }
         catch
         {
@@ -566,7 +632,8 @@ public sealed class RunExecutor
         long admittedAttemptCount, long plannedCount, long startTimestamp, List<string> diagnostics, ImmutableDictionary<string, string> evidenceFiles,
         ImmutableArray<string> guardObservations, bool failed, bool bookkeepingComplete, long frequency)
     {
-        string status = !failed && bookkeepingComplete && admittedAttemptCount == plannedCount ? "complete"
+        long scheduleProgress = CountScheduleProgress(entries);
+        string status = !failed && bookkeepingComplete && scheduleProgress == plannedCount ? "complete"
             : failed ? "failed" : "incomplete";
         ImmutableArray<string> diagnosticSnapshot;
         lock (diagnostics) diagnosticSnapshot = diagnostics.ToImmutableArray();
@@ -577,8 +644,19 @@ public sealed class RunExecutor
             .Add("workload_generator", WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture));
         return new RunManifest(1, identity, WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture),
             plannedCount, admittedAttemptCount, entries, frequency, startTimestamp, status, bookkeepingComplete,
-            entries.Length < plannedCount ? entries.Length : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
+            scheduleProgress < plannedCount ? scheduleProgress : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
     }
+
+    // Counts first-seen logical slots. The inventory admits them as a contiguous prefix, so a retry never advances the count.
+    private static long CountScheduleProgress(ImmutableArray<AttemptEntry> entries)
+    {
+        long progress = 0;
+        foreach (AttemptEntry entry in entries)
+            if (LedgerValidator.GetLogicalScheduleOrdinal(entry) == progress) progress = checked(progress + 1);
+        return progress;
+    }
+
+    private sealed record RetryCandidate(PlannedEvent Planned, AttemptEntry Failed);
 
     private static string GetManagedKafkaVersion()
     {

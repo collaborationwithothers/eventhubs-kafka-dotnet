@@ -89,7 +89,8 @@ public sealed class RunSessionFactory
                 options.OutputRoot, "document-events", [],
                 requiresRequestEvidence || options.RequireRequestEvidence!.Value,
                 requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
-                options.LedgerDrainTimeout, options.StatisticsCompletionTimeout, options.EvidenceCompletionTimeout);
+                options.LedgerDrainTimeout, options.StatisticsCompletionTimeout, options.EvidenceCompletionTimeout,
+                ApplicationRetryPolicy.ForScenario(identity.ScenarioId));
             var executor = new RunExecutor(() => _producerFactory(
                 producerConfig, statistics, evidence, authentication), ledger, _timeProvider, statistics, evidence, authentication);
             return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions);

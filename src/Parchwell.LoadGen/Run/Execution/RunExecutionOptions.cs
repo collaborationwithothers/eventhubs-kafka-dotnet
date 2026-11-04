@@ -17,7 +17,8 @@ public sealed record RunExecutionOptions(
     bool RequireStatisticsEvidence = false,
     TimeSpan? LedgerDrainTimeout = null,
     TimeSpan? StatisticsCompletionTimeout = null,
-    TimeSpan? EvidenceCompletionTimeout = null)
+    TimeSpan? EvidenceCompletionTimeout = null,
+    ApplicationRetryPolicy? ApplicationRetry = null)
 {
     /// <summary>Validates every finite budget and the output destination before a producer is constructed.</summary>
     public void Validate()
@@ -36,6 +37,8 @@ public sealed record RunExecutionOptions(
         ArgumentException.ThrowIfNullOrWhiteSpace(OutputRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(Topic);
         ArgumentNullException.ThrowIfNull(ExpectedBrokerNames);
+        if (ApplicationRetry is { MaxRetriesPerEvent: < 0 })
+            throw new ArgumentOutOfRangeException(nameof(ApplicationRetry), "application_retry_limit_must_be_nonnegative");
         if (ExpectedBrokerNames.Any(string.IsNullOrWhiteSpace) ||
             ExpectedBrokerNames.Distinct(StringComparer.Ordinal).Count() != ExpectedBrokerNames.Count)
             throw new ArgumentException("expected_broker_names_must_be_nonempty_and_unique", nameof(ExpectedBrokerNames));
