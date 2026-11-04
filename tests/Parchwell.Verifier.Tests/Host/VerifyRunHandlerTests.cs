@@ -18,6 +18,22 @@ public sealed class VerifyRunHandlerTests
     ];
 
     [Fact]
+    public async Task Given_B07C0Fixture_When_Verifying_Then_RecordsBatchingEvidence()
+    {
+        using var fixture=new HostEvidenceBuilder(scenarioId:"B07",phase:"C0");
+        Assert.Equal(0,await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output=JsonDocument.Parse(fixture.Output!);
+        JsonElement result=output.RootElement;
+        Assert.Equal("B07",result.GetProperty("identity").GetProperty("scenario_id").GetString());
+        Assert.Equal("C0",result.GetProperty("identity").GetProperty("configuration_id").GetString());
+        Assert.Equal("complete_valid",result.GetProperty("status").GetString());
+        Assert.Equal(1,result.GetProperty("ok").GetInt64());
+        foreach(string count in new[]{"loss","phantom","reported_failure","duplicate","reorder"})Assert.Equal(0,result.GetProperty(count).GetInt64());
+        Assert.Equal(JsonValueKind.Object,result.GetProperty("batching_recorded_evidence").ValueKind);
+        Assert.False(result.TryGetProperty("b04_recorded_evidence",out _));
+    }
+
+    [Fact]
     public async Task Given_B04C1Fixture_When_Verifying_Then_RecordsB04EvidenceAndSixCounts()
     {
         using var fixture=new HostEvidenceBuilder(scenarioId:"B04",phase:"C1");

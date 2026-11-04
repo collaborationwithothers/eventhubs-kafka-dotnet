@@ -148,8 +148,8 @@ class PhaseTests(unittest.TestCase):
         self.run_id = state['run_id']
         self.selected = selected
 
-    def prepare_ledger(self):
-        os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all')
+    def prepare_ledger(self, run_kind='smoke'):
+        os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND=run_kind, PARCHWELL_BATCH_ITEMS='all')
         self.assertEqual(0, self.main('prepare-batch'))
         os.environ.update(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()))
         self.private = Path(os.environ['PARCHWELL_PRIVATE_DIRECTORY'])
@@ -177,7 +177,9 @@ class PhaseTests(unittest.TestCase):
         os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all')
         self.assertEqual(0, self.main('validate-batch'))
         self.assertEqual(2, self.main('validate-scenario'))
-        for name, value in (('PARCHWELL_RUN_KIND', 'batch'), ('PARCHWELL_BATCH_ITEMS', 'B06'), ('PARCHWELL_BATCH_ITEMS', 'B06,B07'),
+        with patch.dict(os.environ, {'PARCHWELL_RUN_KIND': 'batch'}):
+            self.assertEqual(0, self.main('validate-batch'))
+        for name, value in (('PARCHWELL_RUN_KIND', 'full'), ('PARCHWELL_BATCH_ITEMS', 'B06'), ('PARCHWELL_BATCH_ITEMS', 'B06,B07'),
                             ('PARCHWELL_CAPTURE_AUTHENTICATION_METADATA', 'true'), ('PARCHWELL_TEST_HANDLER_REFRESH_PATH', 'true'),
                             ('PARCHWELL_TEST_NATIVE_AUTHENTICATION', 'true')):
             with self.subTest(name=name, value=value), patch.dict(os.environ, {name: value}):
@@ -251,6 +253,98 @@ class PhaseTests(unittest.TestCase):
                          [(entry['item'], entry['configuration'], entry['complete'], entry['reason'])
                           for entry in json.loads((self.artifacts / 'phase-status.json').read_text())['ledger_smoke']])
         self.assertEqual(12, len([call for call in self.fake.calls if call[0][:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job']]))
+
+    def ledger_candidate(self, item, configuration, **changes):
+        return json.dumps({'schema_version': 1, 'synthetic': True, 'scenario_id': item,
+                           'run_id': f'{LEDGER_RUN}-{item.lower()}', 'phase': configuration,
+                           'configuration_id': configuration, 'source_commit': SHA, 'status': 'complete_valid',
+                           'gate': None, 'image_digests': dict(DIGESTS),
+                           'repeats': [{'repeat': n, 'status': 'complete_valid'} for n in range(1, 6)], **changes}).encode()
+
+    def prepare_ledger_batch_candidates(self):
+        self.prepare_ledger('batch')
+        for item, configuration in LEDGER_CONFIGURATIONS:
+            self.fake.blobs[f'{LEDGER_RUN}-{item.lower()}/{configuration}/candidate.json'] = self.ledger_candidate(item, configuration)
+
+    def run_ledger_batch(self, code, *patches):
+        with self.mocked(), patch.object(phase.Phase, 'boot_identity', return_value='00000000-0000-0000-0000-000000000000'), contextlib.ExitStack() as stack:
+            for extra in patches:
+                stack.enter_context(extra)
+            self.assertEqual(0, self.main('single-action-seed'))
+            self.assertEqual(code, self.main('run-single-action-batch'))
+            self.assertEqual(0, self.main('delete-workload'))
+        return [call[0][3] for call in self.fake.calls if call[0][:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job']]
+
+    def ledger_gaps(self):
+        return {path.name: json.loads(path.read_text())['reason'] for path in self.candidate_dir.glob('*-gap.json')}
+
+    # The dispatch selection must survive preparation so it chooses the five-repeat path.
+    def test_prepare_ledger_batch_records_batch_kind(self):
+        self.prepare_ledger('batch')
+        self.assertEqual({'scenario': 'ledger-batch', 'phase': 'ledger-batch', 'configuration': None, 'run_id': LEDGER_RUN,
+                          'source_commit': SHA, 'run_kind': 'batch', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
+                         json.loads((self.private / 'phase.json').read_text()))
+
+    # Each configuration must publish a candidate after its own ordered repeats and judge.
+    def test_ledger_batch_runs_five_repeats_and_a_judge_per_configuration(self):
+        self.prepare_ledger_batch_candidates()
+        jobs = self.run_ledger_batch(0)
+        expected_jobs = []
+        for item, configuration in LEDGER_CONFIGURATIONS:
+            prefix = f'{LEDGER_RUN}-{item.lower()}-{configuration.lower()}'
+            expected_jobs.extend(f'{prefix}-r{n}-{mode}' for n in range(1, 6) for mode in ('start-line', 'loadgen', 'verify'))
+            expected_jobs.append(f'{prefix}-judge')
+            self.assertEqual(self.ledger_candidate(item, configuration),
+                             (self.candidate_dir / f'{item}-{configuration}-candidate.json').read_bytes())
+        self.assertEqual(64, len(jobs))
+        self.assertEqual(expected_jobs, jobs)
+        values = json.loads((self.private / f'values-{LEDGER_RUN}-b07-c1-judge.json').read_text())
+        self.assertEqual(('B07', 'C1', f'{LEDGER_RUN}-b07', 'C1', 'judge'),
+                         (values['scenario_id'], values['configuration_id'], values['runtime']['run_id'],
+                          values['runtime']['phase'], values['runtime']['mode']))
+        self.assertNotIn('repeat', values['runtime'])
+        self.assertNotIn('loadgen_job_name', values['runtime'])
+        self.assertEqual([], list(self.candidate_dir.glob('*-smoke-summary.json')))
+        self.assertEqual({}, self.ledger_gaps())
+        self.assertEqual([{'item': item, 'configuration': configuration, 'accepted': True,
+                           'candidate': f'{item}-{configuration}-candidate.json', 'judge_completion': None}
+                          for item, configuration in LEDGER_CONFIGURATIONS],
+                         json.loads((self.artifacts / 'phase-status.json').read_text())['candidates'])
+        self.assertEqual('CLOCK_MONOTONIC', json.loads((self.private / 'phase.json').read_text())['batch_clock_source'])
+        shows = [call[0] for call in self.fake.calls if call[0][:4] == ['az', 'storage', 'blob', 'show']]
+        self.assertEqual(['verifier'] * 4, [args[args.index('--container-name') + 1] for args in shows])
+        delete = [call[0] for call in self.fake.calls if call[0][:2] == ['kubectl', 'delete']]
+        self.assertEqual([['kubectl', 'delete', 'jobs', '-n', 'parchwell', '-l',
+                           f'app.kubernetes.io/instance in ({LEDGER_RUN}-b06,{LEDGER_RUN}-b07)', '--ignore-not-found', '--wait=false', '--request-timeout=30s']], delete)
+
+    # A missing or misidentified candidate is a gap without suppressing later configurations.
+    def test_ledger_batch_rejects_wrong_identity_and_continues(self):
+        self.prepare_ledger_batch_candidates()
+        self.fake.blobs[f'{LEDGER_RUN}-b06/C1/candidate.json'] = self.ledger_candidate('B06', 'C1', scenario_id='B07')
+        del self.fake.blobs[f'{LEDGER_RUN}-b07/C0/candidate.json']
+        self.assertEqual(64, len(self.run_ledger_batch(1)))
+        self.assertEqual([('B06', 'C0', True), ('B06', 'C1', False), ('B07', 'C0', False), ('B07', 'C1', True)],
+                         [(entry['item'], entry['configuration'], entry['accepted'])
+                          for entry in json.loads((self.artifacts / 'phase-status.json').read_text())['candidates']])
+        self.assertEqual({'B06-C1-gap.json': 'candidate_contract', 'B07-C0-gap.json': 'download_failed'}, self.ledger_gaps())
+        for stem in ('B06-C1', 'B07-C0'):
+            self.assertFalse((self.candidate_dir / f'{stem}-candidate.json').exists())
+
+    # The admission cap records every skipped configuration without starting its Jobs.
+    def test_ledger_batch_skips_configurations_past_the_admission_cap(self):
+        self.prepare_ledger_batch_candidates()
+        jobs = self.run_ledger_batch(1, patch.object(phase.Phase, 'admission_allowed', side_effect=[True, True, False, False]))
+        self.assertEqual(32, len(jobs))
+        self.assertTrue(all(job.startswith(f'{LEDGER_RUN}-b06-') for job in jobs))
+        self.assertEqual({'B07-C0-gap.json': 'start_cap', 'B07-C1-gap.json': 'start_cap'}, self.ledger_gaps())
+
+    # The separate orchestration module shares the phase's caps and repeat contract.
+    def test_ledger_batch_constants_match_phase(self):
+        spec = importlib.util.spec_from_file_location('ledger_batch_constants', REPO / 'infra/scripts/phase/ledger_batch.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual((phase.BATCH_START_CAP, phase.CANDIDATE_MAXIMUM, phase.SLOTS, phase.BAD_OUTCOMES),
+                         (module.ADMISSION_SECONDS, module.CANDIDATE_MAXIMUM, module.SLOTS, set(module.BAD_OUTCOMES)))
 
     def mocked(self):
         stack = contextlib.ExitStack()

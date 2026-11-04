@@ -212,6 +212,69 @@ public sealed class VerifierResultCodecTests
         Assert.Throws<FormatException>(()=>VerifierResultCodec.Write(malformed,OutputLimits));
     }
 
+    // Passive bounds must preserve absence without accepting partial or inconsistent measurements.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{}")]
+    [InlineData("{\"produce_requests\":0}")]
+    [InlineData("{\"batch_count\":0,\"batch_max_messages\":0}")]
+    [InlineData("{\"delivered_latency_count\":4,\"latency_min_us\":4000,\"latency_p50_us\":9500,\"latency_p95_us\":2372592,\"latency_max_us\":2372592,\"produce_requests\":9223372036854775807,\"batch_count\":11,\"batch_max_messages\":8}")]
+    public void Given_BatchingEvidenceShape_When_RoundTripped_Then_PreservesAbsenceAndValues(string? json)
+    {
+        BatchingRecordedEvidence? evidence = null;
+        if (json is not null)
+        {
+            ParseResult<VerifierResult> parsed = ReadProjection("\"batching_recorded_evidence\":" + json);
+            Assert.True(parsed.IsSuccess);
+            evidence = parsed.Value!.BatchingRecordedEvidence;
+        }
+        VerifierResult result = RoundTrip(Result(VerifierResultStatus.Invalid) with { BatchingRecordedEvidence = evidence });
+        Assert.Equal(evidence, result.BatchingRecordedEvidence);
+    }
+
+    public static TheoryData<string> MalformedBatchingEvidence => new()
+    {
+        "{\"unexpected\":1}",
+        "{\"produce_requests\":null}",
+        "{\"produce_requests\":-1}",
+        "{\"produce_requests\":1.5}",
+        "{\"produce_requests\":\"1\"}",
+        "{\"produce_requests\":9223372036854775808}",
+        "{\"delivered_latency_count\":1}",
+        "[]",
+        "{\"delivered_latency_count\":0,\"latency_min_us\":0,\"latency_p50_us\":0,\"latency_p95_us\":0,\"latency_max_us\":0}",
+        "{\"delivered_latency_count\":1,\"latency_min_us\":-1,\"latency_p50_us\":0,\"latency_p95_us\":0,\"latency_max_us\":0}",
+        "{\"delivered_latency_count\":1,\"latency_min_us\":2,\"latency_p50_us\":1,\"latency_p95_us\":2,\"latency_max_us\":2}",
+        "{\"delivered_latency_count\":1,\"latency_min_us\":1,\"latency_p50_us\":3,\"latency_p95_us\":2,\"latency_max_us\":3}",
+        "{\"delivered_latency_count\":1,\"latency_min_us\":1,\"latency_p50_us\":1,\"latency_p95_us\":3,\"latency_max_us\":2}",
+        "{\"batch_count\":1}",
+        "{\"batch_max_messages\":1}",
+        "{\"batch_count\":0,\"batch_max_messages\":1}",
+        "{\"batch_count\":1,\"batch_max_messages\":0}",
+        "{\"batch_count\":-1,\"batch_max_messages\":0}",
+    };
+
+    [Theory, MemberData(nameof(MalformedBatchingEvidence))]
+    public void Given_MalformedBatchingEvidence_When_Read_Then_Rejects(string json)
+    {
+        Assert.False(ReadProjection("\"batching_recorded_evidence\":" + json).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(1L, 2L, 1L, 2L, 2L, null, null, null)]
+    [InlineData(1L, null, null, null, null, null, null, null)]
+    [InlineData(null, null, null, null, null, -1L, null, null)]
+    [InlineData(null, null, null, null, null, null, 1L, 0L)]
+    public void Given_MalformedBatchingObject_When_Written_Then_ThrowsFormatException(long? count, long? minimum,
+        long? p50, long? p95, long? maximum, long? produce, long? batches, long? largest)
+    {
+        VerifierResult malformed = Result(VerifierResultStatus.Invalid) with
+        {
+            BatchingRecordedEvidence = new(count, minimum, p50, p95, maximum, produce, batches, largest)
+        };
+        Assert.Throws<FormatException>(() => VerifierResultCodec.Write(malformed, OutputLimits));
+    }
+
     [Fact]
     public void Given_MissingManifestProvenance_When_RoundTripped_Then_SchemaOneOmitsBothFields()
     {

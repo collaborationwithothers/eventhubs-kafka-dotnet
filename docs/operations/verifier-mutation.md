@@ -7589,3 +7589,7 @@ Replay directories are relative to `.artifacts/verifier-mutation/fresh-replays/`
 | 3824 | VerifyRun/Input/NativeStatisticsReader.cs | 164:90-164:114 | String mutation | <code>&quot;\&quot;\&quot;&quot;</code> | Survived | not reviewed / not reviewed | not reviewed | not reviewed | not reviewed | not reviewed | not reviewed |
 
 Cold-review round 18 Fix did not run a mutation campaign. The two authorized campaigns remain exhausted and incomplete; no score or survivor disposition is inferred.
+
+## Issue 359 batching target
+
+This plan adds `VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs` as an eighth C5 target with one shard, 19 shards in all; runner, configuration, matrix and literal fixtures agree. The sections above that say seven targets or 18 shards describe the scope before this change. A main-only campaign after merge must report `measurement_complete: true` and `break_passed: true` before any B06 or B07 verdict is published ([docs/agents/factory.md](../agents/factory.md) "Evidence pack"). Survivor review is capped at 50, `record the gap and continue`. The implementation pull request claims no passing result.
