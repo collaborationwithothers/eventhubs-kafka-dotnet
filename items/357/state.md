@@ -1,5 +1,5 @@
 # State: #357 B06 and B07 declaration and resolution (#349 entry 1)
-Covers: comment 6618751693 created 2026-11-04T00:07:01Z; read at 2026-11-04T00:20:00Z
+Covers: comment 6618751693 created 2026-11-04T00:07:01Z; read at 2026-11-04T00:24:12Z
 Parent items: [#349](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/349), [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [split adoption on #349](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/349#issuecomment-6617607805), adopting recommendations 1 to 6 of the [split proposal](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/349#issuecomment-6617362572)
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent` (applied to #347 and #349 on 2026-11-03); Claude Code by default

@@ -12,13 +12,13 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
 - Earliest publication checkpoint: after the first comprehensive cold review has no open P0 or P1.
 - Review budget: two comprehensive passes, then at most two focused rounds. Exhaustion action: push -wip and hand off to Hari (rule 8).
 
-## Commands run (source commit `179667e`)
+## Commands run (base `179667e`, on the working tree that became commit `81dd95e`)
 
 1. `./scripts/verify-dotnet.sh` with SDK 10.0.402 (installed from dot.net into the session scratch directory). Locked restore, solution build (warnings as errors), Kafka XML inventory consistency, architecture tests (15) and Enrichment tests (56) passed. The Kafka test step then failed on `PhantomSpikeTests`, which needs a Docker daemon (`DockerUnavailableException`); the script stops at the first failing step.
 2. The remaining unit projects were run directly with `dotnet test --project <p> --configuration Release --no-build`:
    - `Parchwell.Scenarios.Tests`: 331 passed, 0 failed. `B06B07DeclarationTests` accounts for 21 of them.
    - `Parchwell.Kafka.Tests` without `PhantomSpikeTests`: 485 passed, 0 failed.
-   - `Parchwell.LoadGen.Tests`: 926 passed, 4 failed. `Parchwell.Verifier.Tests`: 4993 passed, 12 failed. Every failure is a component test that starts a local Kafka broker through Testcontainers. The `VerifierOAuthComponentTests` failure was re-run alone and reported `DockerUnavailableException: Failed to connect to Docker endpoint at 'unix:///var/run/docker.sock'`. The other 15 were not each inspected; they sit in classes named `*Component*`, `*Integration*` and `ProbeV2Component`, which run a local broker. These tests did not run here. Final-head CI, which has Docker, is the evidence for them.
+   - `Parchwell.LoadGen.Tests`: 926 passed, 4 failed. `Parchwell.Verifier.Tests`: 4993 passed, 12 failed. All 16 were classified by script from the test log and, for three, from their evidence directories. 12 fail in the test fixture's Docker endpoint helper (`get_Endpoint`, `NullReferenceException`), 1 with `DockerUnavailableException: Failed to connect to Docker endpoint at 'unix:///var/run/docker.sock'`, and 3 (`VerifierOutcomeComponentTests`) report that no trial yielded its witness, and every trial's evidence shows the same `get_Endpoint` failure. `docker info` in this session shows a client and no reachable server. None of the 16 runs the code this pull request changes. I did not run the same 16 on unmodified `main`. Final-head CI, which has Docker, is the evidence for them.
 3. `npm ci --ignore-scripts && npm run check:docs` exited 0 with 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, `docs/operations/evidence/issue-124`, `issue-140` and `issue-211`).
 4. `git diff --check origin/main` printed nothing.
 5. `git diff --name-only origin/main` listed 16 paths, each named by changes 1 to 10 of the plan: three files under `docs/operations/`, `items/357/state.md`, this receipt, `scenarios/B06/scenario.yaml`, `scenarios/B07/scenario.yaml`, five files under `src/` and four under `tests/`. No path is under `.github/`, `infra/`, `charts/` or `results/`, no `Parchwell.Verifier` file, no `*.csproj` and no `expected.yaml`.
@@ -30,3 +30,8 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
 - Known stale message for entry 3: `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs:27` says "Verifier:ScenarioId must be A01 or B04 for C5 modes." That file is protected and outside this issue, and `ScenarioPhases` now also admits B06 and B07.
 - `Resolve` throws `invalid_baseline_value` whenever `IsIntegerBaseline` returns `false` (`ScenarioResolver.cs`, the Integer branch). A non-numeric baseline cannot reach `Resolve` from scenario input or a test, so the rejection half is tested at `IsIntegerBaseline`, as decision 6618177974 point 2 and the plan state.
 - The statistics fields `stats.broker.req.produce` and `stats.topic.batchcnt` are declared only. No collector reads them. Whether Event Hubs emits them is unknown until entry 2's smoke run.
+
+## Cold review
+
+- Round 1 (comprehensive, 1 of 2): input commit `81dd95e` against merge base `179667e`. Reported 3 P1 and 2 P2, all fixed in one consolidated correction: the state file read time (now the real time of the authority refresh), the Docker attribution above (now classified for all 16), the inferred label and counting lines in `statistics-bridge.md`, the commit this receipt describes, and these counts.
+- Cumulative before round 2: 1 comprehensive, 0 focused. Later rounds are recorded in the pull request description.
