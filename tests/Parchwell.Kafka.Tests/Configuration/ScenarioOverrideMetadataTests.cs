@@ -15,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(19, settings.Length);
+        Assert.Equal(21, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -54,7 +54,9 @@ public sealed class ScenarioOverrideMetadataTests
                 AssertNewEntry(setting, "connections.max.idle.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "A04", 0, int.MaxValue);
                 Assert.Equal(["A04"], setting.OmissionInventoryIds);
                 Assert.Equal(2, setting.Sources.Length);
-            });
+            },
+            setting => AssertNewEntry(setting, "acks", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B06", -1, 1000),
+            setting => AssertNewEntry(setting, "linger.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B07", 0, 900_000));
         Assert.All(settings.Where(setting => setting.Key != "connections.max.idle.ms"), setting => Assert.Empty(setting.OmissionInventoryIds));
     }
 
@@ -63,6 +65,8 @@ public sealed class ScenarioOverrideMetadataTests
     [InlineData("socket.timeout.ms", 10, 300_000, "A01")]
     [InlineData("max.in.flight", 1, 1_000_000, "B04")]
     [InlineData("enable.idempotence", 0, 1, "B04")]
+    [InlineData("acks", -1, 1000, "B06")]
+    [InlineData("linger.ms", 0, 900_000, "B07")]
     public void Given_OverrideKey_When_LookingUpPolicy_Then_ExposesPinnedNativeBoundsAndCitation(
         string key, int minimum, int maximum, string inventoryId)
     {
@@ -83,6 +87,8 @@ public sealed class ScenarioOverrideMetadataTests
     [InlineData("enable.idempotence")]
     [InlineData("partitioner")]
     [InlineData("max.in.flight")]
+    [InlineData("acks")]
+    [InlineData("linger.ms")]
     public void Given_OverrideKey_When_CheckingRolePolicy_Then_AllowsOnlyLoadGenProducer(string key)
     {
         Assert.True(KafkaScenarioOverridePolicy.TryGetSetting(key, out var setting));

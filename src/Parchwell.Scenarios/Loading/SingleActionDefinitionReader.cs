@@ -15,7 +15,7 @@ internal static class SingleActionDefinitionReader
             if (expected.Count != 0) validation.Error(definition.Source, "single_action", "single_action_required", "This item requires its single-action declaration.");
             return null;
         }
-        if (definition.Id is "A01" or "B04")
+        if (definition.Id is "A01" or "B04" or "B06" or "B07")
             validation.Error(node, "single_action", "single_action_unexpected", "Legacy items cannot declare single_action.");
         else if (expected.Count == 0)
             validation.Error(node, "single_action", "single_action_item", "The item is not an approved single-action experiment.");

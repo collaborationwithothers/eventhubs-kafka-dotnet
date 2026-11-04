@@ -1,0 +1,34 @@
+schema_version: 1
+id: B06
+baseline: Parchwell.Kafka
+roles:
+  - LoadGenProducer
+  - VerifierConsumer
+profile: profiles/saturation-ramp.yaml
+
+configurations:
+  C0: {}
+  C1:
+    LoadGenProducer:
+      acks: 1
+
+fault:
+  live: {kind: none}
+  component: {kind: none}
+
+repeats: 5
+
+gate: {kind: none}
+
+measures:
+  - {id: ledger.delivery_error_code, role: LoadGenProducer}
+  - {id: ledger.delivery_latency_ms, role: LoadGenProducer}
+  - {id: client.fatal_error, role: LoadGenProducer}
+  - {id: stats.broker.req.produce, role: LoadGenProducer}
+  - {id: stats.topic.batchcnt, role: LoadGenProducer}
+  - {id: verifier.ok, role: VerifierConsumer}
+  - {id: verifier.loss, role: VerifierConsumer}
+  - {id: verifier.phantom, role: VerifierConsumer}
+  - {id: verifier.reported_failure, role: VerifierConsumer}
+  - {id: verifier.duplicate, role: VerifierConsumer}
+  - {id: verifier.reorder, role: VerifierConsumer}

@@ -105,7 +105,7 @@ public sealed class ScenarioResolver
                         if (setting.ValueKind == KafkaScenarioOverrideValueKind.Boolean && inherited.Value is not ("true" or "false"))
                             throw Invalid(definition, fieldPath, "invalid_baseline_value", "The boolean baseline is invalid.", item.Value.Location);
                         if (setting.ValueKind == KafkaScenarioOverrideValueKind.Integer &&
-                            !int.TryParse(inherited.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                            !IsIntegerBaseline(inherited.Value))
                             throw Invalid(definition, fieldPath, "invalid_baseline_value", "The numeric baseline is invalid.", item.Value.Location);
                         if (string.Equals(normalized, inherited.Value, StringComparison.Ordinal))
                             throw Invalid(definition, fieldPath, "no_op_override", "An override must change the baseline value.", item.Value.Location);
@@ -212,6 +212,10 @@ public sealed class ScenarioResolver
             throw Invalid(definition, fieldPath, "unsupported_setting", "The setting is not supported for this inventory item.", location);
         return setting;
     }
+
+    // A numeric baseline may carry a leading sign, as the acks baseline -1 does, and must fit a 32-bit integer.
+    internal static bool IsIntegerBaseline(string value) =>
+        int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _);
 
     private static ScenarioValidationException Invalid(ScenarioDefinition definition, string fieldPath,
         string code, string message, SourceLocation? location = null)

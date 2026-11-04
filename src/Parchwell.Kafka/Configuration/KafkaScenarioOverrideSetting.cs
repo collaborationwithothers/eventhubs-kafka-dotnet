@@ -148,7 +148,10 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.SocketKeepaliveEnable, KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["A02"], [NativeConfiguration]),
         new(KafkaSettingKeys.MetadataMaxAgeMs, KafkaScenarioOverrideValueKind.Integer, 1, 86_400_000, [KafkaClientRole.LoadGenProducer], ["A02", "A03", "A04"], [NativeConfiguration]),
         new(KafkaSettingKeys.TopicMetadataRefreshIntervalMs, KafkaScenarioOverrideValueKind.Integer, -1, 3_600_000, [KafkaClientRole.LoadGenProducer], ["A02", "A03", "A04"], [NativeConfiguration]),
-        new(KafkaSettingKeys.ConnectionsMaxIdleMs, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["A04"], ["A04"], [NativeConfiguration, NativeSource])
+        new(KafkaSettingKeys.ConnectionsMaxIdleMs, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["A04"], ["A04"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.Acks, KafkaScenarioOverrideValueKind.Integer, -1, 1000, [KafkaClientRole.LoadGenProducer], ["B06"], [NativeConfiguration]),
+        // librdkafka types linger.ms as a float from 0 to 900000; this policy admits whole milliseconds in that range only.
+        new(KafkaSettingKeys.LingerMs, KafkaScenarioOverrideValueKind.Integer, 0, 900_000, [KafkaClientRole.LoadGenProducer], ["B07"], [NativeConfiguration])
     ];
 
     /// <summary>Gets the immutable list of exact keys accepted by the override policy.</summary>
