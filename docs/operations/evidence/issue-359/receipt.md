@@ -12,6 +12,38 @@ This change records delivery latency and batching evidence for B06 and B07 and a
 - Earliest publication: the tested diff with applicable cold-review coverage, then independent CI and hosted review together.
 - Budget: at most two comprehensive and two focused cold-review rounds across sessions, with the rule 8 handoff to Hari at exhaustion or unsafe focus. Documentation dispositions capped at 10, then push -wip and hand off to the next session. Post-merge survivor review cap 50, record the gap and continue.
 
+## Conflict-resolution continuation
+
+- Current request: resolve pull request 379 conflicts with current main in a fresh implementation context and retain the approved Revision 3 behavior. The user subsequently directed, "Push it first and then review"; this continuation follows that publication order.
+- Input revisions: reviewed branch head `ddb6a0abde28759d60735fe445fc4a5ab3062571`; incoming main `e844587dfbcb4493b89eb844ec916097c31ae5ed`. Merge main without rebasing or replacing branch history.
+- Authority catch-up: the control session refreshed issue 359 through handoff comment 6634891128 and parent issues 347 and 349 at 2026-11-04T15:48:24Z; no later decision changes Revision 3.
+- Scope: reconcile the shared phase-contract paragraph, preserve incoming B10 phase mappings and packet-flow label work, and update this receipt and the item state. No design, expectation or verifier-predicate change is planned.
+- Verification: run the Scenarios test project; the LoadGen restart-identity and packet-flow label test classes; `npm run check:docs`; workflow-copy comparison; staged whitespace, conflict-marker and path checks. Exact commands and measured results follow below.
+- Gates and publication: the user explicitly directs pushing this resolved merge before its focused cold review, superseding the earlier pre-push review ordering for this continuation. The control session commits and pushes, then obtains focused conflict-resolution review against `ddb6a0abde28759d60735fe445fc4a5ab3062571`, with the full PR diff as context. Final-head CI, hosted review, the cross-vendor review and Hari's merge remain required.
+- Cumulative review budget entering this continuation: two comprehensive passes and zero focused rounds used. Focused round 1 is next; two focused rounds remain. Unsafe focus or budget exhaustion requires the rule 8 handoff to Hari.
+
+### Resolution and affected scope
+
+Git reported one content conflict, in `docs/operations/verifier-contract.md` at the first C5 phase-contract paragraph. The merged paragraph keeps main's B10 C0/C1 phase mapping and its statement that B10 has no committed scenario file, while retaining this PR's removal of the stale B06/B07 packaging statement. `Parchwell.Verifier.csproj` still packages both B06 and B07 scenario definitions. The batching-evidence paragraph is unchanged from the previously reviewed branch.
+
+The other incoming paths are copied unchanged from main: the private packet-flow label source, tests, contract and receipt; item 334 state; the shared scenario phase table and tests; LoadGen restart-identity tests; LoadGen and scenario contracts; and item 374 receipt and state. Their source/test changes were inspected with the phase-table callers in `LoadGenHostOptions` and `ProducerRunContext`. No incoming runtime change intersects this PR's recorder or judgement implementation. The only newly authored changes beyond the composed contract are this continuation receipt and the issue 359 catch-up state.
+
+### Continuation verification
+
+Commands ran on 2026-11-04 against the staged merge of the two input revisions above, before its merge commit. All synthetic test counts come from the test runner; path counts come from the comparison script.
+
+- `PATH=/tmp/dotnet-359:$PATH DOTNET_PROCESSOR_COUNT=2 dotnet test --project tests/Parchwell.Scenarios.Tests/Parchwell.Scenarios.Tests.csproj --configuration Release`: exit 0, 336 passed, zero failed or skipped. Coverage includes B06/B07 mappings and the incoming B10 positive and invalid-phase/case cases.
+- `PATH=/tmp/dotnet-359:$PATH DOTNET_PROCESSOR_COUNT=2 dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release -- --filter-class '*RestartJobIdentityTests' --filter-class '*PacketFlowLabelTableTests'`: exit 0, 22 passed, zero failed or skipped. These are the incoming restart-identity and private-label boundaries. Parallel project builds caused one MSB3026 file-copy retry in the shared Scenarios project; it recovered and both commands succeeded.
+- A Python comparison against both Git trees verified all 12 nonconflicting incoming paths are byte-identical to main; the PR still changes exactly the original 32 approved paths against main; all 29 approved paths other than the shared contract, receipt and item state are byte-identical to the last reviewed branch. It also required the contract to equal the prior branch plus exactly the two B10 text additions, the workflow and its committed copy to match byte for byte, no unmerged index entries, and no conflict markers in any staged changed file. Every assertion passed.
+- `npm run check:docs`: exit 0, eight advisory warnings, all in unchanged files; the existing blanket disposition remains. No changed-file documentation warning needed a disposition.
+- `git diff --cached --check`: exit 0.
+
+The prior full runtime and phase verification above remains applicable to unchanged batching code. Final-head CI must validate the merged commit. No verifier predicate changed in this continuation; the existing predicate map remains applicable.
+
+### Focused review input
+
+Mode: focused conflict-resolution round 1. Comparison revision: `ddb6a0abde28759d60735fe445fc4a5ab3062571`, which completed comprehensive pass 2. Input revision: the merged commit that the control session publishes under the user's push-first instruction, containing this frozen staged merge tree. Review the delta against that comparison, the composed contract and affected phase-table callers/tests/contracts; use the full PR diff against `e844587dfbcb4493b89eb844ec916097c31ae5ed` as context. The incoming main work does not change the batching design, scope or assumptions, so focused review remains appropriate. The control session records the frozen tree identifier, complete report, dispositions and resulting cumulative counts in the PR self-review record. This receipt does not claim a review result before that review runs.
+
 ## Source verification
 
 Read on 2026-11-04: librdkafka v2.16.0 CONFIGURATION.md (acks -1, linger.ms 5), STATISTICS.md (window gauges reset), rdkafka.c (producer req.Produce emission and topic batchcnt), rdkafka_broker.c (request counter increment), rdkafka_request.c (one batch sample per request built), and rdavg.h (window rollover). The contract links the pinned sources. Microsoft's current Kafka client configurations page places acks and linger guidance in the Java table and its lowest-latency row has no client label. The page describes replication configuration as managed by Event Hubs. Completeness of the post-drain sum and captured batch windows remains explicitly inferred. Callback latency follows the existing load generator contract; it is not wire latency.
