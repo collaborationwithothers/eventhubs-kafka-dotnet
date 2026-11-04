@@ -18,7 +18,10 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
 
     /// <inheritdoc />
     public Task RegisterAsync(ProducerRunContext context, ProducerLifecycleOptions options, CancellationToken cancellationToken) =>
-        UploadRecordAsync(context, options, context.RegistrationPath, CreateRecord(context, completion: false), options.CleanupTimeout, cancellationToken);
+        // ADR-021: the second B10 instance's marker names the first instance; no other marker names one.
+        context.IsRestartInstance != (context.PredecessorInstanceId is not null)
+            ? throw new InvalidDataException("producer_registration_predecessor_mismatch")
+            : UploadRecordAsync(context, options, context.RegistrationPath, CreateRecord(context, completion: false), options.CleanupTimeout, cancellationToken);
 
     /// <inheritdoc />
     public async Task WriteCompletionAsync(ProducerRunContext context, ProducerLifecycleOptions options,
@@ -212,6 +215,11 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
         public IReadOnlyCollection<string> Gaps { get; } = gaps;
     }
 
+    // Serialization only; callers validate the context first.
+    internal static byte[] SerializeRegistration(ProducerRunContext context) => JsonSerializer.SerializeToUtf8Bytes(new RegistrationRecord(context));
+
+    internal static byte[] SerializeCompletion(ProducerRunContext context) => JsonSerializer.SerializeToUtf8Bytes(new CompletionRecord(context));
+
     private static object CreateRecord(ProducerRunContext context, bool completion)
     {
         context.Validate();
@@ -227,9 +235,10 @@ public sealed class BlobProducerRunLifecycle(BlobServiceClient client, TimeProvi
         [property: JsonPropertyName("job_name")] string JobName,
         [property: JsonPropertyName("pod_name")] string PodName,
         [property: JsonPropertyName("pod_uid")] string PodUid,
-        [property: JsonPropertyName("source_commit")] string SourceCommit)
+        [property: JsonPropertyName("source_commit")] string SourceCommit,
+        [property: JsonPropertyName("predecessor_instance_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PredecessorInstanceId)
     {
-        public RegistrationRecord(ProducerRunContext c) : this(1, IdentityOf(c), c.Phase, c.RepeatNumber, c.JobName, c.PodName, c.PodUid, c.SourceCommit) { }
+        public RegistrationRecord(ProducerRunContext c) : this(1, IdentityOf(c), c.Phase, c.RepeatNumber, c.JobName, c.PodName, c.PodUid, c.SourceCommit, c.PredecessorInstanceId) { }
     }
     private sealed record CompletionRecord([property: JsonPropertyName("schema_version")] int SchemaVersion,
         [property: JsonPropertyName("identity")] object Identity,

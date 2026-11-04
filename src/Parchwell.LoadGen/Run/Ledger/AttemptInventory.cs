@@ -17,14 +17,22 @@ public sealed class AttemptInventory
     private bool sealedInventory;
     private AttemptEntry? reservedAttempt;
     private long reservedLogicalSlot;
+    private readonly RestartManifest? restart;
 
     /// <summary>Creates an inventory with a finite memory bound.</summary>
-    public AttemptInventory(RunIdentity identity, int maximumAttempts)
+    public AttemptInventory(RunIdentity identity, int maximumAttempts) : this(identity, maximumAttempts, restart: null)
+    {
+    }
+
+    /// <summary>Creates an inventory that, for a restarted B10 instance, admits only the entries of its resend list, in order.</summary>
+    public AttemptInventory(RunIdentity identity, int maximumAttempts, RestartManifest? restart)
     {
         this.identity = identity ?? throw new ArgumentNullException(nameof(identity));
         identity.Validate();
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumAttempts);
+        if (restart is { Planned.IsDefault: true }) throw new ArgumentException("restart_planned_required", nameof(restart));
         this.maximumAttempts = maximumAttempts;
+        this.restart = restart;
     }
 
     /// <summary>Registers an attempt before the corresponding native Produce call.</summary>
@@ -107,6 +115,12 @@ public sealed class AttemptInventory
             throw new InvalidOperationException("inventory_ordinal_must_be_contiguous");
         if (attemptIds.Contains(entry.AttemptId) || ordinals.Contains(entry.Ordinal))
             throw new InvalidOperationException("duplicate_inventory_attempt_or_ordinal");
+        if (restart is not null)
+        {
+            if (entries.Count >= restart.Planned.Length || !LedgerValidator.MatchesPlanned(restart.Planned[entries.Count], entry))
+                throw new InvalidDataException("restart_inventory_mismatch");
+            return scheduleProgress;
+        }
         long logicalSlot = LedgerValidator.GetLogicalScheduleOrdinal(entry);
         if (logicalSlot != scheduleProgress &&
             (logicalSlot > scheduleProgress || !logicalAttempts.TryGetValue(logicalSlot, out AttemptEntry? firstAttempt) ||

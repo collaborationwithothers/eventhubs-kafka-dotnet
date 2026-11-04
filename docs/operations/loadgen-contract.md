@@ -70,7 +70,41 @@ The delivery handler only queues the retry; the executor thread invokes it. Duri
 
 A retry is a new invocation. It takes the next inventory ordinal and the attempt ID `<instance ID>-<inventory ordinal>`. It keeps the tenant, document, key, sequence, event type, planned time and payload bytes of the attempt it retries, and sends a new `attempt-id` header. The schedule lateness limit applies to scheduled events only. Before it constructs the producer, the worker requires the maximum attempt count to be at least twice the planned count, so a retry never exceeds the inventory capacity.
 
-Worker status and `first_unexecuted_ordinal` follow schedule progress, not the invocation count, so a complete schedule with retries is `complete`. Permitted timeout rows still raise the `async_delivery_failure_observed` guard observation, and `possibly_persisted_observed` when their status is `PossiblyPersisted`. ADR-021 has the verifier judge the rows behind those markers. Resending, from a restarted instance, attempts an earlier instance reported as failed is outside this section.
+Worker status and `first_unexecuted_ordinal` follow schedule progress, not the invocation count, so a complete schedule with retries is `complete`. Permitted timeout rows still raise the `async_delivery_failure_observed` guard observation, and `possibly_persisted_observed` when their status is `PossiblyPersisted`. ADR-021 has the verifier judge the rows behind those markers. A restarted instance does not retry; it resends as "Restarted instance (B10)" below defines.
+
+## Restarted instance (B10)
+
+ADR-021 in [the blueprint](../blueprint.md) lets a B10 repeat run a second load generator instance after the first has ended. It resends only sends the first instance reported as timed out. "Second load generator Job (B10)" below defines how it starts and reads the first instance's published evidence.
+
+It accepts the first instance's sealed manifest and ledger rows only when the manifest is for B10, is `complete` and has no `restart` field, and the rows pass the read-back rule above. It has the first instance's scenario, configuration and run IDs and a different instance ID.
+
+It resends a logical slot when the slot's latest attempt, in inventory order, has a row that "Application retry (B10)" permits, in ascending slot order. Each resend is one invocation with no application retry. It keeps the tenant, document, key, sequence, event type and planned microseconds of the attempt it resends; its payload equals the original, because the payload stream starts from the event ordinal. It is due at that planned offset from the second instance's start, under the schedule lateness limit. Its attempt ID is `<instance ID>-<inventory ordinal>`. Before constructing a producer, the instance regenerates the workload and requires each resend's event to match its entry (`restart_workload_mismatch`). With nothing to resend, it sends nothing and its manifest is `complete` with a planned count of 0.
+
+Its manifest ends with a `restart` object: `predecessor_instance_id`, the first instance's ID, and `planned`, the resend list. Each planned entry holds `ordinal`, `predecessor_attempt_id`, `tenant_id`, `document_id`, `key`, `sequence`, `event_type` and `planned_microseconds`. A first instance's manifest has no `restart` field, and its bytes are unchanged. A `null` value, or an unknown or missing field inside `restart`, is rejected. A manifest with `restart` replaces the schedule-slot rules above with these checks:
+1. The scenario is B10 (`restart_manifest_requires_b10`).
+2. `predecessor_instance_id` is nonblank, has no whitespace or control characters, and differs from the manifest's own instance ID (`restart_predecessor_invalid`).
+3. `planned_attempt_count` equals the number of planned entries, which may be 0 (`restart_planned_count_mismatch`).
+4. Planned ordinals run from 0 without gaps, predecessor attempt IDs are unique, each entry has a valid workload identity and nonnegative planned microseconds, and logical slots strictly increase (`invalid_restart_planned_entry`).
+5. Inventory entry i keeps the tenant, document, key, sequence, event type and planned microseconds of planned entry i, and no inventory entry lies beyond the list (`restart_inventory_mismatch`).
+6. `first_unexecuted_ordinal` is the inventory length when that is below the planned count, and null otherwise; a `complete` manifest has neither an unexecuted entry nor incomplete bookkeeping (`manifest_unexecuted_suffix_mismatch`).
+7. Given the first instance's manifest and rows, the planned list equals the selection recomputed from them, and the scenario, configuration and run IDs match (`restart_plan_mismatch`, `restart_identity_mismatch`).
+
+Checks 1 to 6 need only the manifest. The second instance applies check 7 at read-back.
+
+## Second load generator Job (B10)
+
+Chart mode `loadgen2` runs the second instance as Job `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`, otherwise rendered as `loadgen`. That name alone marks the second instance. Configuration validation rejects it outside B10. The host reports only the generic invalid-inputs message; `restart_instance_requires_b10` is the reason the tests assert, not a line in the pod log.
+
+Before registering or constructing a producer, the second instance lists `<repeat prefix>producer/` and reads the first instance's evidence within one `UploadTimeout`. A failed check stops it before registration:
+1. Every name lies in an instance directory named by its escaped pod name (`predecessor_listing_invalid`). A listing over 64 names is rejected (`predecessor_listing_incomplete`).
+2. Nothing exists under the second instance's own prefix (`predecessor_successor_already_registered`).
+3. Exactly one other instance prefix exists (`predecessor_instance_count_invalid`).
+4. It holds exactly `registration.json`, `completion.json` and the six accepted publication names under `publication/`, and no diagnostics (`predecessor_member_set_invalid`).
+5. `registration.json` has exactly the registration fields below: schema version 1, the first instance's identity under this repeat's scenario, configuration and run IDs, this phase and repeat number, the first Job's name, its pod name, a pod UID without whitespace or controls, and the second instance's source commit (`predecessor_registration_invalid`).
+6. `completion.json` has exactly the completion fields, passes item 5's checks, repeats the registration's pod UID, and records `mode: "loadgen"`, `handler_exit_code: 0` and `cleanup_completed: true` (`predecessor_completion_invalid`).
+7. The publication passes every reader check in "Publication and storage paths", with the completion record as the observed exit code 0.
+
+The second instance then applies "Restarted instance (B10)" to the accepted manifest and rows. Its registration ends with `predecessor_instance_id`, the first instance's ID. The publisher accepts a manifest with `restart` only from the second Job, and only when its `predecessor_instance_id` equals the registration's; it rejects a second Job's manifest without `restart` (`publication_restart_role_mismatch`).
 
 ## Worker inputs and completion
 
@@ -78,7 +112,7 @@ The Generic Host binds every writable property in [LoadGenHostOptions](../../src
 
 `--validate-configuration` builds the host from the process environment and resolves the validated `LoadGenHostOptions` without starting the host. It prints `{"loadgen_configuration_valid":true}` and exits 0, or writes `loadgen_configuration_invalid:<exception type>:<message>` to standard error and exits 1. The chart's [worker settings checks](chart-contract.md#worker-settings-checks) use it.
 
-The accepted phase/configuration pairs are `probe/C0`, `C0/C0` and `C3/C3`; repeat numbers are 1 through 5. Run IDs are lowercase DNS labels of at most 29 characters. The Job name is exactly `<run-id>-<lowercase-phase>-r<repeat>-loadgen`. Pod, actual instance, expected instance and producer client IDs remain equal to the downward-API pod name. The separately recorded pod UID is nonblank and contains no whitespace or control characters.
+The accepted phase/configuration pairs are `probe/C0`, `C0/C0` and `C3/C3`; repeat numbers are 1 through 5. Run IDs are lowercase DNS labels of at most 29 characters. The Job name is exactly `<run-id>-<lowercase-phase>-r<repeat>-loadgen`, or `<run-id>-<lowercase-phase>-r<repeat>-loadgen2` for B10's second instance ("Second load generator Job (B10)"). Pod, actual instance, expected instance and producer client IDs remain equal to the downward-API pod name. The separately recorded pod UID is nonblank and contains no whitespace or control characters.
 
 The filesystem adapter reads only logical scenario and profile paths beneath its configured root and rejects links and path traversal. The existing loader and resolver select the configuration; `expected.yaml` is never read. Effective producer settings and their baseline/override metadata are retained in `capabilities.json`. Resolving a verifier role does not construct a verifier.
 
@@ -112,7 +146,7 @@ The production composition root uses Azure.Storage.Blobs 12.30.1 and Azure.Core 
 
 For run `run-001`, phase `C0`, repeat 1 and pod `pod-001`, the repeat prefix is `run-001/C0/r1/` and the instance prefix is `run-001/C0/r1/producer/pod-001/`. Registration is `registration.json`; accepted payloads use `publication/`; diagnostics use `diagnostics/`; completion is `completion.json`.
 
-Registration JSON contains schema version 1, the existing six-field artifact identity, phase, repeat number, Job name, pod name, pod UID and source commit. Completion adds `mode: "loadgen"`, `handler_exit_code: 0` and `cleanup_completed: true`. Both records are UTF-8, at most 65,536 bytes and create-only. An ambiguous response or conflict is failure; no read-back fallback manufactures success.
+Registration JSON contains schema version 1, the existing six-field artifact identity, phase, repeat number, Job name, pod name, pod UID and source commit. Only B10's second instance adds a final `predecessor_instance_id`. Completion adds `mode: "loadgen"`, `handler_exit_code: 0` and `cleanup_completed: true`. Both records are UTF-8, at most 65,536 bytes and create-only. An ambiguous response or conflict is failure; no read-back fallback manufactures success.
 
 The accepted publication contains exactly `ledger.jsonl`, `manifest.json`, `statistics.jsonl`, `request-lifecycle.jsonl`, `capabilities.json` and `index.json`. The manifest holds portable evidence names; local paths remain in the execution result. The publisher retains its successful-result validation, semantic checks, identity, hashes, lengths, per-file and aggregate ceilings, mutation checks and index-last behavior. Failure diagnostics consider only the five known payload paths. Each available regular file is copied once under a fresh cleanup deadline if it fits its byte limit and the aggregate snapshot budget, then uploaded create-only under one fresh bounded upload deadline. Missing, locked, changing or oversized files remain gaps. Diagnostics have no index or completion record and cannot repair a failed result or satisfy normal publication validation.
 

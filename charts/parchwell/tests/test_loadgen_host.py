@@ -232,7 +232,17 @@ def main():
         broken=dict(environments[0]); del broken['LoadGen__PodUid']
         proc=bounded(60,host,td/'missing.host.out',host_environment(broken,td))
         assert proc.returncode==1 and 'loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:PodUid' in proc.stderr, proc.stderr
-        print('loadgen host check passed: 11 rendered environments, 1 missing-setting regression')
+        # ADR-021: outside B10, the second Job's name is the only setting the host rejects.
+        second=[d for d in positive_cases() if d['runtime']['mode']=='loadgen2']; assert len(second)==6
+        for i,d in enumerate(second):
+            values=td/f'second-{i}.yaml'; with_case(d,values)
+            rendered=rendered_environment(values,td,f'second-{i}')
+            proc=bounded(60,host,td/f'second-{i}.host.out',host_environment(rendered,td))
+            assert proc.returncode==1 and 'loadgen_configuration_invalid:OptionsValidationException:LoadGen host inputs or finite budgets are invalid.' in proc.stderr, (i,proc.stderr)
+            rendered['LoadGen__JobName']=d['runtime']['loadgen_job_name']; out=td/f'second-{i}.first-name.host.out'
+            proc=bounded(60,host,out,host_environment(rendered,td))
+            assert proc.returncode==0 and out.read_bytes()==EXPECTED, (i,proc.stderr)
+        print('loadgen host check passed: 11 rendered environments, 1 missing-setting regression, 6 second-Job environments rejected outside B10')
         single_action_host_acceptance(td, publish)
         probe_v2_host_acceptance(td, publish)
         idle_observation_host_acceptance(td, publish)

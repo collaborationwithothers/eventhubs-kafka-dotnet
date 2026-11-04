@@ -22,6 +22,9 @@ public static class LedgerValidator
     private static readonly string[] IdentityProperties = ["scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id"];
     private static readonly string[] AttemptProperties = ["instance_id", "attempt_id", "ordinal", "tenant_id", "document_id", "key", "sequence", "event_type", "planned_microseconds", "invoked_microseconds"];
     private static readonly string[] ManifestProperties = ["schema_version", "identity", "generator_version", "planned_attempt_count", "attempt_count", "inventory", "timestamp_frequency", "start_timestamp", "worker_status", "bookkeeping_complete", "first_unexecuted_ordinal", "diagnostics", "runtime_versions", "evidence_files", "guard_observations"];
+    private static readonly string[] ManifestOptionalProperties = ["restart"];
+    private static readonly string[] RestartProperties = ["predecessor_instance_id", "planned"];
+    private static readonly string[] RestartPlannedProperties = ["ordinal", "predecessor_attempt_id", "tenant_id", "document_id", "key", "sequence", "event_type", "planned_microseconds"];
 
     /// <summary>Serializes a validated row as one compact UTF-8 JSON value.</summary>
     public static byte[] SerializeRow(LedgerRow row)
@@ -74,12 +77,20 @@ public static class LedgerValidator
         ArgumentOutOfRangeException.ThrowIfNegative(maximumInventoryEntries);
         using var document = JsonDocument.Parse(utf8Json.ToArray(), new JsonDocumentOptions { MaxDepth = 32 });
         RejectDuplicateProperties(document.RootElement);
-        ValidateObject(document.RootElement, ManifestProperties);
+        ValidateObject(document.RootElement, ManifestProperties, ManifestOptionalProperties);
         ValidateObjectProperty(document.RootElement, "identity", IdentityProperties);
         if (!document.RootElement.TryGetProperty("inventory", out var inventory) || inventory.ValueKind != JsonValueKind.Array)
             throw new JsonException("manifest_inventory_must_be_array");
         if (inventory.GetArrayLength() > maximumInventoryEntries) throw new InvalidDataException("manifest_inventory_row_limit_exceeded");
         foreach (var item in inventory.EnumerateArray()) ValidateObject(item, AttemptProperties);
+        if (document.RootElement.TryGetProperty("restart", out var restart))
+        {
+            ValidateObject(restart, RestartProperties);
+            JsonElement planned = restart.GetProperty("planned");
+            if (planned.ValueKind != JsonValueKind.Array) throw new JsonException("manifest_restart_planned_must_be_array");
+            if (planned.GetArrayLength() > maximumInventoryEntries) throw new InvalidDataException("manifest_inventory_row_limit_exceeded");
+            foreach (var item in planned.EnumerateArray()) ValidateObject(item, RestartPlannedProperties);
+        }
         var manifest = document.RootElement.Deserialize<RunManifest>(JsonOptions) ?? throw new JsonException("null_manifest");
         ValidateManifest(manifest);
         return manifest;
@@ -178,6 +189,11 @@ public static class LedgerValidator
             manifest.TimestampFrequency <= 0 || manifest.StartTimestamp < 0 ||
             manifest.FirstUnexecutedOrdinal is < 0 || manifest.FirstUnexecutedOrdinal >= manifest.PlannedAttemptCount && manifest.FirstUnexecutedOrdinal.HasValue)
             throw new InvalidDataException("invalid_manifest_range_or_count");
+        if (manifest.Restart is not null)
+        {
+            ValidateRestartManifest(manifest, manifest.Restart);
+            return;
+        }
         var ids = new HashSet<string>(StringComparer.Ordinal);
         var ordinals = new HashSet<long>();
         var logicalAttempts = new Dictionary<long, AttemptEntry>();
@@ -239,19 +255,19 @@ public static class LedgerValidator
             entry.Ordinal < 0 || entry.Sequence < 0 || entry.PlannedMicroseconds < 0 || entry.InvokedMicroseconds < entry.PlannedMicroseconds)
             throw new InvalidDataException("invalid_attempt_entry");
 
-        if (entry.Sequence >= LifecycleEvents.Length ||
-            !string.Equals(entry.EventType, LifecycleEvents[(int)entry.Sequence], StringComparison.Ordinal) ||
-            !IsCanonicalDocumentId(entry.DocumentId) ||
-            !string.Equals(entry.Key, string.Concat(entry.TenantId, "-", entry.DocumentId), StringComparison.Ordinal))
+        if (!IsWorkloadIdentity(entry.TenantId, entry.DocumentId, entry.Key, entry.Sequence, entry.EventType))
             throw new InvalidDataException("attempt_workload_identity_mismatch");
     }
 
-    internal static long GetLogicalScheduleOrdinal(AttemptEntry entry)
+    internal static long GetLogicalScheduleOrdinal(AttemptEntry entry) =>
+        GetLogicalScheduleOrdinal(entry.DocumentId, entry.Sequence);
+
+    internal static long GetLogicalScheduleOrdinal(string documentId, long sequence)
     {
-        var documentOrdinal = long.Parse(entry.DocumentId.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture);
+        var documentOrdinal = long.Parse(documentId.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture);
         try
         {
-            return checked(documentOrdinal * LifecycleEvents.Length + entry.Sequence);
+            return checked(documentOrdinal * LifecycleEvents.Length + sequence);
         }
         catch (OverflowException exception)
         {
@@ -265,6 +281,65 @@ public static class LedgerValidator
         string.Equals(first.Key, retry.Key, StringComparison.Ordinal) && first.Sequence == retry.Sequence &&
         first.PlannedMicroseconds == retry.PlannedMicroseconds &&
         string.Equals(first.EventType, retry.EventType, StringComparison.Ordinal);
+
+    internal static bool MatchesPlanned(RestartPlannedEntry planned, AttemptEntry entry) =>
+        string.Equals(planned.TenantId, entry.TenantId, StringComparison.Ordinal) &&
+        string.Equals(planned.DocumentId, entry.DocumentId, StringComparison.Ordinal) &&
+        string.Equals(planned.Key, entry.Key, StringComparison.Ordinal) && planned.Sequence == entry.Sequence &&
+        string.Equals(planned.EventType, entry.EventType, StringComparison.Ordinal) &&
+        planned.PlannedMicroseconds == entry.PlannedMicroseconds;
+
+    // A restart manifest replaces the schedule-slot rules: its inventory is a prefix of its resend list, with no retry.
+    private static void ValidateRestartManifest(RunManifest manifest, RestartManifest restart)
+    {
+        if (restart.Planned.IsDefault) throw new InvalidDataException("invalid_manifest_required_field");
+        if (!string.Equals(manifest.Identity.ScenarioId, "B10", StringComparison.Ordinal))
+            throw new InvalidDataException("restart_manifest_requires_b10");
+        if (!IsIdentityText(restart.PredecessorInstanceId) ||
+            string.Equals(restart.PredecessorInstanceId, manifest.Identity.InstanceId, StringComparison.Ordinal))
+            throw new InvalidDataException("restart_predecessor_invalid");
+        if (manifest.PlannedAttemptCount != restart.Planned.Length)
+            throw new InvalidDataException("restart_planned_count_mismatch");
+        var predecessorAttempts = new HashSet<string>(StringComparer.Ordinal);
+        long previousSlot = -1;
+        for (var index = 0; index < restart.Planned.Length; index++)
+        {
+            RestartPlannedEntry planned = restart.Planned[index];
+            if (planned is null || planned.Ordinal != index || !IsSafeControlText(planned.PredecessorAttemptId) ||
+                !predecessorAttempts.Add(planned.PredecessorAttemptId) || planned.PlannedMicroseconds < 0 ||
+                !IsSafeControlText(planned.TenantId) || !IsSafeControlText(planned.DocumentId) ||
+                !IsSafeControlText(planned.Key) || !IsSafeControlText(planned.EventType) ||
+                !IsWorkloadIdentity(planned.TenantId, planned.DocumentId, planned.Key, planned.Sequence, planned.EventType))
+                throw new InvalidDataException("invalid_restart_planned_entry");
+            long slot = GetLogicalScheduleOrdinal(planned.DocumentId, planned.Sequence);
+            if (slot <= previousSlot) throw new InvalidDataException("invalid_restart_planned_entry");
+            previousSlot = slot;
+        }
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < manifest.Inventory.Length; index++)
+        {
+            AttemptEntry entry = manifest.Inventory[index];
+            ValidateAttempt(entry, manifest.Identity);
+            if (entry.Ordinal != index || !ids.Add(entry.AttemptId))
+                throw new InvalidDataException("duplicate_manifest_inventory_entry");
+            if (index >= restart.Planned.Length || !MatchesPlanned(restart.Planned[index], entry))
+                throw new InvalidDataException("restart_inventory_mismatch");
+        }
+        long progress = manifest.Inventory.Length;
+        var expectedSuffix = progress < manifest.PlannedAttemptCount ? progress : (long?)null;
+        if (manifest.FirstUnexecutedOrdinal != expectedSuffix ||
+            (manifest.WorkerStatus == "complete" && (expectedSuffix.HasValue || !manifest.BookkeepingComplete)))
+            throw new InvalidDataException("manifest_unexecuted_suffix_mismatch");
+    }
+
+    private static bool IsWorkloadIdentity(string tenantId, string documentId, string key, long sequence, string eventType) =>
+        sequence >= 0 && sequence < LifecycleEvents.Length &&
+        string.Equals(eventType, LifecycleEvents[(int)sequence], StringComparison.Ordinal) &&
+        IsCanonicalDocumentId(documentId) &&
+        string.Equals(key, string.Concat(tenantId, "-", documentId), StringComparison.Ordinal);
+
+    private static bool IsIdentityText(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && !value.Any(character => char.IsControl(character) || char.IsWhiteSpace(character));
 
     private static bool IsCanonicalDocumentId(string documentId)
     {
@@ -297,7 +372,8 @@ public static class LedgerValidator
         manifest.Diagnostics,
         ToOrdinalDictionary(manifest.RuntimeVersions),
         ToOrdinalDictionary(manifest.EvidenceFiles),
-        manifest.GuardObservations);
+        manifest.GuardObservations,
+        manifest.Restart);
 
     private static SortedDictionary<string, string> ToOrdinalDictionary(ImmutableDictionary<string, string> values)
     {
@@ -313,14 +389,16 @@ public static class LedgerValidator
         ValidateObject(element, expected);
     }
 
-    private static void ValidateObject(JsonElement value, string[] expected)
+    private static void ValidateObject(JsonElement value, string[] expected, string[]? optional = null)
     {
         if (value.ValueKind != JsonValueKind.Object) throw new JsonException("object_required");
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var property in value.EnumerateObject())
         {
             if (!names.Add(property.Name)) throw new JsonException($"duplicate_property:{property.Name}");
-            if (!expected.Contains(property.Name, StringComparer.Ordinal)) throw new JsonException($"unknown_property:{property.Name}");
+            if (!expected.Contains(property.Name, StringComparer.Ordinal) &&
+                (optional is null || !optional.Contains(property.Name, StringComparer.Ordinal)))
+                throw new JsonException($"unknown_property:{property.Name}");
         }
         foreach (var property in expected)
             if (!names.Contains(property)) throw new JsonException($"missing_property:{property}");
@@ -433,5 +511,6 @@ public static class LedgerValidator
         ImmutableArray<string> Diagnostics,
         SortedDictionary<string, string> RuntimeVersions,
         SortedDictionary<string, string> EvidenceFiles,
-        ImmutableArray<string> GuardObservations);
+        ImmutableArray<string> GuardObservations,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RestartManifest? Restart);
 }

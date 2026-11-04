@@ -90,6 +90,7 @@
           "enum": [
             "start-line",
             "loadgen",
+            "loadgen2",
             "verify",
             "judge",
             "single-action",
@@ -766,6 +767,7 @@
                       "enum": [
                         "start-line",
                         "loadgen",
+                        "loadgen2",
                         "verify"
                       ]
                     }
