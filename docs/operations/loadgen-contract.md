@@ -70,7 +70,26 @@ The delivery handler only queues the retry; the executor thread invokes it. Duri
 
 A retry is a new invocation. It takes the next inventory ordinal and the attempt ID `<instance ID>-<inventory ordinal>`. It keeps the tenant, document, key, sequence, event type, planned time and payload bytes of the attempt it retries, and sends a new `attempt-id` header. The schedule lateness limit applies to scheduled events only. Before it constructs the producer, the worker requires the maximum attempt count to be at least twice the planned count, so a retry never exceeds the inventory capacity.
 
-Worker status and `first_unexecuted_ordinal` follow schedule progress, not the invocation count, so a complete schedule with retries is `complete`. Permitted timeout rows still raise the `async_delivery_failure_observed` guard observation, and `possibly_persisted_observed` when their status is `PossiblyPersisted`. ADR-021 has the verifier judge the rows behind those markers. Resending, from a restarted instance, attempts an earlier instance reported as failed is outside this section.
+Worker status and `first_unexecuted_ordinal` follow schedule progress, not the invocation count, so a complete schedule with retries is `complete`. Permitted timeout rows still raise the `async_delivery_failure_observed` guard observation, and `possibly_persisted_observed` when their status is `PossiblyPersisted`. ADR-021 has the verifier judge the rows behind those markers. A restarted instance does not retry; it resends as "Restarted instance (B10)" below defines.
+
+## Restarted instance (B10)
+
+ADR-021 in [the blueprint](../blueprint.md) lets a B10 repeat run a second load generator instance after the first has ended. It resends only sends the first instance reported as timed out. Starting it and reading the first instance's published evidence are outside this section.
+
+It accepts the first instance's sealed manifest and ledger rows only when the manifest is for B10, is `complete` and has no `restart` field, and the rows pass the read-back rule above. It has the first instance's scenario, configuration and run IDs and a different instance ID.
+
+It resends a logical slot when the slot's latest attempt, in inventory order, has a row that "Application retry (B10)" permits, in ascending slot order. Each resend is one invocation with no application retry. It keeps the tenant, document, key, sequence, event type and planned microseconds of the attempt it resends; its payload equals the original, because the payload stream starts from the event ordinal. It is due at that planned offset from the second instance's start, under the schedule lateness limit. Its attempt ID is `<instance ID>-<inventory ordinal>`. Before constructing a producer, the instance regenerates the workload and requires each resend's event to match its entry (`restart_workload_mismatch`). With nothing to resend, it sends nothing and its manifest is `complete` with a planned count of 0.
+
+Its manifest ends with a `restart` object: `predecessor_instance_id`, the first instance's ID, and `planned`, the resend list. Each planned entry holds `ordinal`, `predecessor_attempt_id`, `tenant_id`, `document_id`, `key`, `sequence`, `event_type` and `planned_microseconds`. A first instance's manifest has no `restart` field, and its bytes are unchanged. A `null` value, or an unknown or missing field inside `restart`, is rejected. A manifest with `restart` replaces the schedule-slot rules above with these checks:
+1. The scenario is B10 (`restart_manifest_requires_b10`).
+2. `predecessor_instance_id` is nonblank, has no whitespace or control characters, and differs from the manifest's own instance ID (`restart_predecessor_invalid`).
+3. `planned_attempt_count` equals the number of planned entries, which may be 0 (`restart_planned_count_mismatch`).
+4. Planned ordinals run from 0 without gaps, predecessor attempt IDs are unique, each entry has a valid workload identity and nonnegative planned microseconds, and logical slots strictly increase (`invalid_restart_planned_entry`).
+5. Inventory entry i keeps the tenant, document, key, sequence, event type and planned microseconds of planned entry i, and no inventory entry lies beyond the list (`restart_inventory_mismatch`).
+6. `first_unexecuted_ordinal` is the inventory length when that is below the planned count, and null otherwise; a `complete` manifest has neither an unexecuted entry nor incomplete bookkeeping (`manifest_unexecuted_suffix_mismatch`).
+7. Given the first instance's manifest and rows, the planned list equals the selection recomputed from them, and the scenario, configuration and run IDs match (`restart_plan_mismatch`, `restart_identity_mismatch`).
+
+Checks 1 to 6 need only the manifest. The second instance applies check 7 at read-back. Which published object may carry `restart` is defined with the second load generator Job.
 
 ## Worker inputs and completion
 
