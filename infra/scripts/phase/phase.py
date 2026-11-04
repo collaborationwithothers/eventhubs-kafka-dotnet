@@ -35,6 +35,8 @@ SINGLE_ACTION_MODES = ("single-action", "single-action-judge", "single-action-se
 IDLE_MODE = "idle-observation"
 IDLE_JUDGE_MODE = "idle-observation-judge"
 IDLE_ITEMS = ("A02", "A03", "A04")
+LEDGER_MODE = "ledger-batch"
+LEDGER_ITEMS = ("B06", "B07")
 SMOKE_MARKER = {"native_loaded": True, "scenario_files": 3, "uid_expected": 1654}
 SEED_SMOKE_MARKER = {"mode": "single-action-seed-smoke", "native_loaded": True, "uid_expected": 1654}
 SEED_RECEIPT_MARKER = "PARCHWELL_F04_SEED_RECEIPT "
@@ -59,7 +61,7 @@ class Failure(Exception):
 
 def scenario():
     selected = os.environ.get("PARCHWELL_SCENARIO", "A01")
-    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2", IDLE_MODE):
+    if selected not in (*SCENARIOS, "probe-batch", "probe-batch-2", IDLE_MODE, LEDGER_MODE):
         raise Failure("unsupported scenario")
     return selected
 
@@ -263,6 +265,13 @@ class Phase:
         spec.loader.exec_module(module)
         return module.IdleObservation(self)
 
+    def ledger_batch(self):
+        source = Path(__file__).with_name("ledger_batch.py")
+        spec = importlib.util.spec_from_file_location("parchwell_ledger_batch", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.LedgerBatch(self)
+
     def read(self, name):
         return strict_json((self.private / name).read_bytes())
 
@@ -304,6 +313,8 @@ class Phase:
         return 0
 
     def validate_batch(self):
+        if scenario() == LEDGER_MODE:
+            return self.validate_ledger_batch()
         if scenario() == IDLE_MODE:
             return self.validate_idle_observation()
         if scenario() == "probe-batch-2":
@@ -319,6 +330,13 @@ class Phase:
                 or capture_authentication_metadata() or test_handler_refresh_path() or test_native_authentication()):
             raise Failure("unsupported idle observation selection")
         idle_items()
+        return 0
+
+    def validate_ledger_batch(self):
+        if (scenario() != LEDGER_MODE or os.environ.get("PARCHWELL_RUN_KIND") != "smoke"
+                or os.environ.get("PARCHWELL_BATCH_ITEMS") != "all"
+                or capture_authentication_metadata() or test_handler_refresh_path() or test_native_authentication()):
+            raise Failure("unsupported ledger batch selection")
         return 0
 
     def allow_images(self):
@@ -338,6 +356,10 @@ class Phase:
     def prepare_batch(self):
         self.validate_batch()
         selected = scenario()
+        if selected == LEDGER_MODE:
+            if len(f"ledger-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}-b06") > 29:
+                raise Failure("invalid run or source commit")
+            return self.prepare_shared(selected, LEDGER_MODE, None, "ledger", run_kind="smoke", items=list(LEDGER_ITEMS))
         if selected == IDLE_MODE:
             return self.prepare_shared(selected, IDLE_MODE, None, "idle", run_kind=os.environ["PARCHWELL_RUN_KIND"], items=idle_items())
         capture = capture_authentication_metadata() if selected == 'probe-batch-2' else False
@@ -437,7 +459,7 @@ class Phase:
     def prepare_stop(self):
         refresh_test = test_handler_refresh_path()
         native_test = test_native_authentication()
-        if scenario() in ("probe-batch-2", IDLE_MODE) or refresh_test or native_test:
+        if scenario() in ("probe-batch-2", IDLE_MODE, LEDGER_MODE) or refresh_test or native_test:
             self.validate_batch()
         temporary, environment, output = require("RUNNER_TEMP"), require("GITHUB_ENV"), require("GITHUB_OUTPUT")
         self.validate_resource()
@@ -516,6 +538,11 @@ class Phase:
             raise Failure("invalid blob host")
         return host
 
+    def mode_job(self, phase, mode, repeat, item=None, configuration=None, action_role=None):
+        if mode in MODES and item is not None:
+            return job_name(self.ledger_batch().worker_run(item), configuration, mode, repeat)
+        return job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
+
     def check_dns(self):
         ephemeral = self.read("ephemeral-output.json")
         eventhubs = unwrap(ephemeral["eventhubs"])["namespace_name"] + ".servicebus.windows.net"
@@ -538,7 +565,9 @@ class Phase:
         persistent = self.read("persistent-output.json")
         accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
         single = mode in SINGLE_ACTION_MODES
-        runtime = {"run_id": phase["run_id"], "phase": configuration if single else phase["phase"], "mode": mode,
+        ledger = mode in MODES and item is not None
+        run_id = self.ledger_batch().worker_run(item) if ledger else phase["run_id"]
+        runtime = {"run_id": run_id, "phase": configuration if single or ledger else phase["phase"], "mode": mode,
                    "source_commit": phase["source_commit"],
                    "loadgen_image": phase["images"]["loadgen"]["reference"],
                    "verifier_image": phase["images"]["verifier"]["reference"],
@@ -554,13 +583,13 @@ class Phase:
             if mode == "single-action-judge" and item == "F04" and not runtime["image_smoke"]:
                 runtime["seed_receipt_configmap"] = phase["run_id"] + "-f04-seed-receipt"
         elif mode != "judge":
-            runtime.update(repeat=repeat, loadgen_job_name=job_name(phase["run_id"], phase["phase"], "loadgen", repeat))
-        return {"scenario_id": item if single else phase["scenario"],
-                "configuration_id": configuration if single else phase["configuration"], "runtime": runtime}
+            runtime.update(repeat=repeat, loadgen_job_name=job_name(run_id, runtime["phase"], "loadgen", repeat))
+        return {"scenario_id": item if single or ledger else phase["scenario"],
+                "configuration_id": configuration if single or ledger else phase["configuration"], "runtime": runtime}
 
     def render(self, mode, repeat, item=None, configuration=None, action_role=None):
         phase = self.read("phase.json")
-        job = job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
+        job = self.mode_job(phase, mode, repeat, item, configuration, action_role)
         values = self.private / f"values-{job}.json"
         rendered = self.private / f"rendered-{job}.yaml"
         write_json(values, self.values(mode, repeat, item, configuration, action_role))
@@ -578,7 +607,7 @@ class Phase:
         previous_deadline = self.command_deadline
         self.command_deadline = absolute_deadline
         phase = self.read("phase.json")
-        job = job_name(phase["run_id"], phase["phase"], mode, repeat, item, configuration, action_role)
+        job = self.mode_job(phase, mode, repeat, item, configuration, action_role)
         state = self.state()
         record = {"job": job, "repeat": repeat, "mode": mode,
                   **{step: None for step in ("render", "apply", "wait", "collect", "delete", "confirm")},
@@ -587,6 +616,8 @@ class Phase:
             record.update(item=item, configuration=configuration, role=action_role, image_smoke=phase["run_kind"] == "smoke")
         elif mode in (IDLE_MODE, IDLE_JUDGE_MODE):
             record.update(item=item, configuration=configuration, role=action_role)
+        elif mode in MODES and item is not None:
+            record.update(item=item, configuration=configuration)
         state["modes"].append(record)
 
         def save():
@@ -848,10 +879,16 @@ class Phase:
         if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
             self.idle_observation().selection(frozen)
             return 0
+        if isinstance(frozen, dict) and frozen.get('scenario') == LEDGER_MODE:
+            self.validate_ledger_batch()
+            return 0
         if scenario() == 'probe-batch-2':
             self.validate_batch()
             return 0
         if scenario() == IDLE_MODE:
+            self.validate_batch()
+            return 0
+        if scenario() == LEDGER_MODE:
             self.validate_batch()
             return 0
         self.validate_batch()
@@ -880,11 +917,16 @@ class Phase:
             return self.probe_v2().run_batch()
         if isinstance(frozen, dict) and frozen.get('scenario') == IDLE_MODE:
             return self.idle_observation().run_batch()
+        if isinstance(frozen, dict) and frozen.get('scenario') == LEDGER_MODE:
+            self.validate_ledger_batch()
+            return self.ledger_batch().run_smoke()
         self.validate_batch()
         if scenario() == "probe-batch-2":
             return self.probe_v2().run_batch()
         if scenario() == IDLE_MODE:
             return self.idle_observation().run_batch()
+        if scenario() == LEDGER_MODE:
+            return self.ledger_batch().run_smoke()
         selected = self.read('phase.json')['items']
         state = self.state()
         state['not_selected'] = [
@@ -923,14 +965,14 @@ class Phase:
             "accepted": False, "candidate": None, "judge_completion": None})
         self.save_state(state)
 
-    def download_blob(self, name, target, maximum, deadline):
+    def download_blob(self, name, target, maximum, deadline, container="verifier"):
         previous = self.command_deadline
         self.command_deadline = deadline
         partial = Path(str(target) + ".partial")
         properties = self.private / (target.name + ".properties.json")
         account = self.blob_host().split(".")[0]
         try:
-            args = ["az", "storage", "blob", "show", "--account-name", account, "--container-name", "verifier",
+            args = ["az", "storage", "blob", "show", "--account-name", account, "--container-name", container,
                     "--name", name, "--auth-mode", "login", "--query", "properties", "--only-show-errors", "-o", "json"]
             if self.run(args, 60, output=properties, maximum=MIB):
                 return None
@@ -938,7 +980,7 @@ class Phase:
             length, etag = data["contentLength"], data["etag"]
             if type(length) is not int or not 0 < length <= maximum or not isinstance(etag, str) or not etag:
                 return None
-            args = ["az", "storage", "blob", "download", "--account-name", account, "--container-name", "verifier",
+            args = ["az", "storage", "blob", "download", "--account-name", account, "--container-name", container,
                     "--name", name, "--file", str(partial), "--auth-mode", "login", "--if-match", etag,
                     "--overwrite", "false", "--only-show-errors", "-o", "none"]
             if self.run(args, 60) or partial.stat().st_size != length:
@@ -1132,8 +1174,11 @@ class Phase:
 
     def delete_workload(self):
         phase = self.read("phase.json")
+        selector = f"app.kubernetes.io/instance={phase['run_id']}"
+        if phase["scenario"] == LEDGER_MODE:
+            selector = "app.kubernetes.io/instance in (" + ",".join(f"{phase['run_id']}-{item.lower()}" for item in LEDGER_ITEMS) + ")"
         return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") else "jobs", "-n", "parchwell", "-l",
-                         f"app.kubernetes.io/instance={phase['run_id']}", "--ignore-not-found", "--wait=false",
+                         selector, "--ignore-not-found", "--wait=false",
                          "--request-timeout=30s"], 60)
 
     def report(self):
@@ -1167,6 +1212,8 @@ class Phase:
                 lines += [f"{candidate['item']}-{candidate['configuration']}: accepted={candidate['accepted']} candidate={candidate['candidate']} judge_completion={candidate['judge_completion']}"]
                 if "smoke_valid" in candidate:
                     lines += [f"{candidate['item']}-{candidate['configuration']}: smoke_valid={candidate['smoke_valid']}"]
+            for entry in state.get("ledger_smoke", []):
+                lines += [f"{entry['item']}-{entry['configuration']}: smoke_summary_complete={entry['complete']} reason={entry['reason']}"]
             if state["candidate"] is not None:
                 lines += [f"candidate status: {state['candidate']['status']}", f"candidate gate: {state['candidate']['gate']}"]
         text = "\n".join(lines) + "\n"

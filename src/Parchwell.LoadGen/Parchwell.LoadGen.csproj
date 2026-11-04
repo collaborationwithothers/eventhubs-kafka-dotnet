@@ -10,6 +10,8 @@
   <ItemGroup>
     <Content Include="../../scenarios/A01/scenario.yaml" Link="scenarios/A01/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/B04/scenario.yaml" Link="scenarios/B04/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/B06/scenario.yaml" Link="scenarios/B06/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/B07/scenario.yaml" Link="scenarios/B07/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/B01/scenario.yaml" Link="scenarios/B01/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/B03/scenario.yaml" Link="scenarios/B03/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/B05/scenario.yaml" Link="scenarios/B05/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

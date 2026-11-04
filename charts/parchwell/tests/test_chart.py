@@ -67,6 +67,11 @@ def positive_cases():
       if mode=='judge': r.pop('repeat',None);r.pop('loadgen_job_name',None)
       else: r.update(repeat=1,loadgen_job_name=f"{r['run_id']}-c1-r1-loadgen")
       yield d
+    for item in ('B06','B07'):
+      for config in ('C0','C1'):
+        for mode in ('start-line','loadgen','verify'):
+          d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode,repeat=1,loadgen_job_name=f"{r['run_id']}-{config.lower()}-r1-loadgen")
+          yield d
 
 def scalar(value):
     if isinstance(value, bool): return str(value).lower()
@@ -156,7 +161,7 @@ def main():
   assert DEFAULTS['execution']==BOUNDS['execution']
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
-    positives=list(positive_cases()); assert len(positives)==25
+    positives=list(positive_cases()); assert len(positives)==37
     for i,d in enumerate(positives):
       f=td/f'{i}.yaml';out=td/f'{i}.rendered.yaml';with_case(d,f)
       lint=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(td/f'{i}.lint'),'--max-bytes','4194304','--','helm','lint',str(CHART),'-f',str(f)])
@@ -168,13 +173,15 @@ def main():
       document=out.read_text()
       verify(document,d)
       if i >= 21:
-        assert d['scenario_id']=='B04' and d['configuration_id']=='C1' and d['runtime']['phase']=='C1'
+        assert (d['scenario_id']=='B04')==(i<25)
+        assert d['scenario_id'] in ('B04','B06','B07') and d['runtime']['phase']==d['configuration_id']
+        assert d['configuration_id']=='C1' if d['scenario_id']=='B04' else d['configuration_id'] in ('C0','C1')
         job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job')
-        assert '-c1-' in job['metadata']['name']
+        assert f"-{d['configuration_id'].lower()}-" in job['metadata']['name']
         names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
-        assert names['Telemetry__ScenarioId']=='B04'
-        if d['runtime']['mode']=='loadgen': assert names['LoadGen__ScenarioId']=='B04'
-        else: assert names['Verifier__ScenarioId']=='B04'
+        assert names['Telemetry__ScenarioId']==d['scenario_id']
+        if d['runtime']['mode']=='loadgen': assert names['LoadGen__ScenarioId']==d['scenario_id']
+        else: assert names['Verifier__ScenarioId']==d['scenario_id']
     base=deepcopy(positives[0])
     negatives=[]
     def mut(fn,source=base):
@@ -225,5 +232,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 25 positive, 32 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 37 positive, 32 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()
