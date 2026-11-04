@@ -14,7 +14,7 @@ This pull request makes the load generator retry a timed-out send in B10 repeats
 
 ## Specification comparison
 
-Changes 1 to 7 are applied as written. Two additions beyond the plan text: the `apply in implementation` P2 of the plan check (the worker-sequence sentence in `loadgen-contract.md`), and the test-helper type `ImmutableArray<LedgerRow>` in place of the plan's `LedgerRow[]`, which does not compile because `LedgerValidator.ReadValidatedAsync` returns an `ImmutableArray`.
+Changes 1 to 7 are applied as written, with these additions. The `apply in implementation` P2 of the plan check (the worker-sequence sentence in `loadgen-contract.md`) is applied. Change 6's helper list names `Identity`, `Profile`, `HeaderValue`, `Options` and `ScriptedProducer`. The test file also holds two helpers the plan does not name, `RunAsync` and `NewLedger`, which hold the temporary directory, ledger store and read-back steps that tests 1 to 5 share; they keep the behaviour change 6 describes. `RunAsync` passes the read-back rows to each test as `ImmutableArray<LedgerRow>`, the type `LedgerValidator.ReadValidatedAsync` returns.
 
 ## Verification (source base `b233149`, working tree before commit)
 
