@@ -31,6 +31,7 @@ FILTERED = {"status": "Ignored", "statusReason": "Removed by mutate filter"}
 REPEAT = "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs"
 CONFIGURATION = "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs"
 IDLE = "VerifyRun/IdleObservation/IdleObservationJudgement.cs"
+RESTART_MANIFEST = "VerifyRun/Input/RestartManifestReader.cs"
 WORKLOAD = "VerifyRun/A01/WorkloadRecorder.cs"
 STATIC_SOURCE = SOURCE + b"    private static readonly int[] A=[1];\n"
 MUTATE_FILTER = "Removed by mutate filter"
@@ -196,6 +197,7 @@ class CommittedContractTests(unittest.TestCase):
             "single-action-repeat": (REPEAT, 3),
             "single-action-configuration": (CONFIGURATION, 8),
             "idle-observation": (IDLE, 3),
+            "b10-restart-manifest": (RESTART_MANIFEST, 1),
         }
         shards = {
             "phase": "Judge/PhaseJudge.cs",
@@ -216,6 +218,7 @@ class CommittedContractTests(unittest.TestCase):
             "idle-observation-p1": IDLE,
             "idle-observation-p2": IDLE,
             "idle-observation-p3": IDLE,
+            "b10-restart-manifest": RESTART_MANIFEST,
         }
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(targets, workflow.TARGETS)
@@ -227,7 +230,8 @@ class CommittedContractTests(unittest.TestCase):
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(18, len(matrix))
+        self.assertEqual(19, len(matrix))
+        self.assertEqual(("b10-restart-manifest", 1, 1), workflow.PARTS["b10-restart-manifest"])
 
     def test_workflow_keeps_stryker_logs_out_of_aggregate_input(self):
         import yaml
@@ -550,7 +554,7 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
     def test_combined_threshold_keeps_below_threshold_shards(self):
-        populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"], ["Killed"]]
+        populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"], ["Killed"], ["Killed"]]
         fixture = AggregateFixture(self.directory, populations)
         for key in workflow.TARGETS:
             fixture.add_shared(key, [mutant("extra-CompileError", "CompileError"), mutant("extra-Ignored", "Ignored")])
@@ -559,10 +563,10 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((9, 13), (summary["numerator"], summary["denominator"]))
-        self.assertEqual(7, summary["status_counts"]["CompileError"])
-        self.assertEqual(7, summary["status_counts"]["RuntimeError"])
-        self.assertEqual(7, summary["status_counts"]["Ignored"])
+        self.assertEqual((10, 14), (summary["numerator"], summary["denominator"]))
+        self.assertEqual(8, summary["status_counts"]["CompileError"])
+        self.assertEqual(8, summary["status_counts"]["RuntimeError"])
+        self.assertEqual(8, summary["status_counts"]["Ignored"])
         self.assertEqual(2, fixture.receipts["phase"]["child_exit_code"])
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
@@ -613,7 +617,7 @@ class AggregationTests(unittest.TestCase):
     def test_complete_below_threshold_stays_complete(self):
         fixture = AggregateFixture(self.directory, [
             ["Survived"], ["Killed", "Killed", "Survived"], ["Killed"],
-            ["Killed", "Killed", "Survived", "Survived", "Survived"], ["Survived"], ["Survived"], ["Killed"],
+            ["Killed", "Killed", "Survived", "Survived", "Survived"], ["Survived"], ["Survived"], ["Killed"], ["Killed"],
         ])
         for key in workflow.TARGETS:
             fixture.add_shared(key, [mutant("extra-CompileError", "CompileError"), mutant("extra-Ignored", "Ignored")])
@@ -622,18 +626,18 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(1, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], False)
-        self.assertEqual((6, 13), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((7, 14), (summary["numerator"], summary["denominator"]))
 
     def test_timeout_and_no_coverage_score_populations(self):
         fixture = AggregateFixture(self.directory, [
             ["Killed", "Timeout", "Survived"], ["Killed", "Timeout", "NoCoverage"],
-            ["Killed", "Timeout", "NoCoverage"], ["Killed"], ["Killed"], ["Killed"], ["Killed"],
+            ["Killed", "Timeout", "NoCoverage"], ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"],
         ])
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
-        self.assertEqual((10, 13), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((11, 14), (summary["numerator"], summary["denominator"]))
         self.assertGreaterEqual(100 * summary["numerator"], 60 * summary["denominator"])
-        self.assertEqual({"Killed": 7, "Timeout": 3, "Survived": 1, "NoCoverage": 2,
+        self.assertEqual({"Killed": 8, "Timeout": 3, "Survived": 1, "NoCoverage": 2,
                           "CompileError": 0, "RuntimeError": 0, "Ignored": 0}, summary["status_counts"])
 
     def test_identity_and_completeness_failures(self):
@@ -750,7 +754,7 @@ class AggregationTests(unittest.TestCase):
             fixture.save(shard)
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
-        self.assertEqual(7, summary["denominator"])
+        self.assertEqual(8, summary["denominator"])
         self.assertEqual(0, summary["status_counts"]["Ignored"])
 
     def test_foreign_compile_errors_do_not_enter_score_population(self):
@@ -766,8 +770,8 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((7, 7), (summary["numerator"], summary["denominator"]))
-        self.assertEqual({"Killed": 7, "Timeout": 0, "Survived": 0, "NoCoverage": 0,
+        self.assertEqual((8, 8), (summary["numerator"], summary["denominator"]))
+        self.assertEqual({"Killed": 8, "Timeout": 0, "Survived": 0, "NoCoverage": 0,
                           "CompileError": 0, "RuntimeError": 0, "Ignored": 0}, summary["status_counts"])
         survivors = json.loads((fixture.output / "survivors.json").read_text())
         self.assertEqual([], survivors["survivors"])
@@ -802,11 +806,11 @@ class AggregationTests(unittest.TestCase):
 
     def test_survivor_sampling_does_not_change_raw_score(self):
         fixture = AggregateFixture(self.directory, [["Killed"] + ["Survived"] * 51,
-                                                     ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"]])
+                                                     ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"]])
         result, summary = fixture.invoke()
         self.assertEqual(1, result)
         self.assertIs(summary["measurement_complete"], True)
-        self.assertEqual((7, 58), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((8, 59), (summary["numerator"], summary["denominator"]))
         survivors = json.loads((fixture.output / "survivors.json").read_text())
         self.assertEqual(51, len(survivors["survivors"]))
         self.assertEqual(50, len(survivors["disposition_sample"]))
@@ -826,10 +830,10 @@ class AggregationTests(unittest.TestCase):
 
     def test_span_shards_combine_into_one_target_population(self):
         fixture = AggregateFixture(self.directory, [["Killed"]] * 4 + [
-            ["Killed", "Survived", "Killed"], ["Killed"] * 6 + ["Survived"] * 2, ["Killed"]])
+            ["Killed", "Survived", "Killed"], ["Killed"] * 6 + ["Survived"] * 2, ["Killed"], ["Killed"]])
         result, summary = fixture.invoke()
         self.assertEqual(0, result)
-        self.assertEqual((13, 16), (summary["numerator"], summary["denominator"]))
+        self.assertEqual((14, 17), (summary["numerator"], summary["denominator"]))
         target = summary["targets"]["single-action-configuration"]
         self.assertEqual(8, target["parts"])
         self.assertEqual((6, 2), (target["status_counts"]["Killed"], target["status_counts"]["Survived"]))
@@ -838,7 +842,7 @@ class AggregationTests(unittest.TestCase):
                                                     for i in range(1, 9)])
         self.assertEqual([104, 130], summary["shards"]["single-action-configuration-p5"]["span"])
         self.assertIsNone(summary["shards"]["phase"]["span"])
-        self.assertEqual(18, len(summary["shards"]))
+        self.assertEqual(19, len(summary["shards"]))
         self.assertEqual([], summary["rebalance_needed"])
         self.assertEqual(7200, summary["rebalance_threshold_seconds"])
 
@@ -1155,7 +1159,7 @@ class ProjectionTests(unittest.TestCase):
                     else:
                         with self.assertRaisesRegex(ValueError, "invalid projection inventory"):
                             projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
-            for bound, accepted in ((6, False), (7, True), (8, True)):
+            for bound, accepted in ((7, False), (8, True), (9, True)):
                 with self.subTest(source_bound=bound), patch.object(projection, "MAX_VERIFIER_FILES", bound):
                     if accepted: projection.validate(valid, root / "projection-src", workflow.SHARDS["phase"], original)
                     else:
