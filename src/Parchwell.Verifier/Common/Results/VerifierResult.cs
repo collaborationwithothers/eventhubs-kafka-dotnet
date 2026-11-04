@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 
 namespace Parchwell.Verifier.Common.Results;
 
@@ -36,7 +37,8 @@ internal sealed record VerifierResult(
     IReadOnlyList<ResultDiagnostic> Diagnostics,
     WorkloadObservation? WorkloadObservation = null,
     B04RecordedEvidence? B04RecordedEvidence = null,
-    BatchingRecordedEvidence? BatchingRecordedEvidence = null);
+    BatchingRecordedEvidence? BatchingRecordedEvidence = null,
+    B10IntakeEvidence? B10Intake = null);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);

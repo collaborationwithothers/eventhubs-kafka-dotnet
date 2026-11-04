@@ -68,6 +68,29 @@ internal static partial class PhaseWireCodec
         return value;
     }
 
+    internal static ProducerCompletionReceipt ReadProducerCompletion(ReadOnlyMemory<byte> bytes, string expectedPhase,
+        int expectedRepeat, ProducerRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        ValidateUntrustedCoordinates(registration.Phase, registration.RepeatNumber, "Registration");
+        ValidateRegistration(registration);
+        using JsonDocument document = Parse(bytes);
+        JsonElement root = document.RootElement;
+        Exact(root, ProducerCompletionFields);
+        var value = new ProducerCompletionReceipt(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")),
+            Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"),
+            Str(root, "pod_uid"), Str(root, "source_commit"), Str(root, "mode"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"));
+        if (registration.Phase != expectedPhase || registration.RepeatNumber != expectedRepeat ||
+            value.SchemaVersion != registration.SchemaVersion || value.Identity != registration.Identity ||
+            value.Phase != registration.Phase || value.RepeatNumber != registration.RepeatNumber ||
+            value.JobName != registration.JobName || value.PodName != registration.PodName ||
+            value.PodUid != registration.PodUid || value.SourceCommit != registration.SourceCommit)
+            throw new PhaseWireIdentityException("Producer completion receipt does not bind to its registration.");
+        if (value.Mode != "loadgen" || value.HandlerExitCode != 0 || !value.CleanupCompleted)
+            throw new FormatException("Producer completion receipt does not establish successful cleanup.");
+        return value;
+    }
+
     internal static byte[] WriteReceipt(WorkerReceipt value)
     {
         ArgumentNullException.ThrowIfNull(value); ValidateReceipt(value);
@@ -76,7 +99,9 @@ internal static partial class PhaseWireCodec
 
     internal static WorkerReceipt ReadReceipt(ReadOnlyMemory<byte> bytes)
     {
-        using JsonDocument document = Parse(bytes); JsonElement root = document.RootElement; Exact(root, ReceiptFields);
+        using JsonDocument document = Parse(bytes); JsonElement root = document.RootElement;
+        bool hasB10Intake = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("b10_intake", out _);
+        Exact(root, hasB10Intake ? [.. ReceiptFields, "b10_intake"] : ReceiptFields);
         string mode = Str(root, "mode");
         JsonElement repeatElement = Prop(root, "repeat");
         int? repeat = repeatElement.ValueKind == JsonValueKind.Null ? null : Integer(repeatElement);
@@ -89,7 +114,7 @@ internal static partial class PhaseWireCodec
         JsonElement artifacts = Prop(root, "artifacts");
         if (artifacts.ValueKind != JsonValueKind.Array) throw new FormatException("Receipt artifacts must be an array.");
         var refs = artifacts.EnumerateArray().Select(ReadReference).ToArray();
-        var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks);
+        var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks, hasB10Intake ? ReadB10Intake(Prop(root, "b10_intake")) : null);
         ValidateUntrustedCoordinates(receipt.Phase, receipt.Repeat, "Receipt");
         try { ValidateReceipt(receipt); }
         catch (ArgumentException ex) { throw new PhaseWireIdentityException($"Receipt identity is invalid: {ex.Message}"); }
@@ -119,6 +144,7 @@ internal static partial class PhaseWireCodec
         w.WritePropertyName("artifacts"); w.WriteStartArray(); foreach (var a in r.Artifacts) WriteReference(w, a); w.WriteEndArray();
         if (r.PublicationAcceptance is null) w.WriteNull("publication_acceptance"); else WriteAcceptance(w, r.PublicationAcceptance);
         if (r.RepeatChecks is null) w.WriteNull("repeat_checks"); else { w.WritePropertyName("repeat_checks"); w.WriteStartObject(); w.WriteString("producer_job_binding", r.RepeatChecks.ProducerJobBinding); w.WriteString("registered_producer_count", r.RepeatChecks.RegisteredProducerCount); w.WriteString("broker_inventory_coverage", r.RepeatChecks.BrokerInventoryCoverage); w.WriteEndObject(); }
+        if (r.B10Intake is not null) WriteB10Intake(w, r.B10Intake);
         w.WriteEndObject();
     }
 
@@ -139,6 +165,15 @@ internal static partial class PhaseWireCodec
         if (r.Mode == "start-line" && r.HandlerExitCode != 0) throw new FormatException("Start-line receipt must record successful handler completion.");
         if (r.Mode == "verify" && (r.RepeatChecks is null || (r.PublicationAcceptance is not null && r.PublicationAcceptance.Objects.Count != 6))) throw new FormatException("Verify receipt acceptance fields are invalid.");
         if (r.Mode != "verify" && (r.PublicationAcceptance is not null || r.RepeatChecks is not null)) throw new FormatException("Only verify receipts can carry acceptance fields.");
+        if (r.B10Intake is not null)
+        {
+            if (r.Mode != "verify" || r.Identity is null || r.B10Intake.Phase != r.Phase || r.B10Intake.RepeatNumber != r.Repeat)
+                throw new FormatException("B10 intake does not bind to its verify receipt.");
+            ValidateB10Intake(r.B10Intake, r.Identity, r.SourceCommit);
+        }
+        if (r.ScenarioId == "B10" && r.Mode == "verify" &&
+            (r.HandlerExitCode != 1 || r.PublicationAcceptance is not null || r.B10Intake is null))
+            throw new FormatException("B10 verify receipts require nonfinal independent intake evidence.");
         if (r.Mode == "judge" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
         if (r.Mode == "judge")
         {
@@ -173,18 +208,84 @@ internal static partial class PhaseWireCodec
         }
     }
 
-    private static void ValidateAcceptance(WorkerReceipt receipt,PublicationAcceptanceSnapshot acceptance)
+    private static void ValidateAcceptance(WorkerReceipt receipt, PublicationAcceptanceSnapshot acceptance) =>
+        ValidateAcceptance(receipt.Identity!, receipt.Phase, receipt.Repeat!.Value, receipt.SourceCommit, acceptance);
+
+    private static void ValidateAcceptance(RunIdentity identity, string phase, int repeat, string sourceCommit,
+        PublicationAcceptanceSnapshot acceptance)
     {
-        int repeat=receipt.Repeat!.Value;
-        RunIdentity identity=receipt.Identity!;
-        string prefix=PhasePaths.ProducerPrefix(receipt.RunId,receipt.Phase,repeat,identity.InstanceId);
-        if(acceptance.ProducerPrefix!=prefix || acceptance.ProducerIdentity!=identity || acceptance.SourceCommit!=receipt.SourceCommit ||
-            acceptance.StartLine.Container!="verifier" || acceptance.StartLine.Name!=PhasePaths.StartLine(receipt.RunId,receipt.Phase,repeat) ||
-            acceptance.BrokerInventory.Container!="verifier" || acceptance.BrokerInventory.Name!=PhasePaths.BrokerInventory(receipt.RunId,receipt.Phase,repeat) ||
-            acceptance.ProducerReceipt.Container!="ledger" || acceptance.ProducerReceipt.Name!=PhasePaths.ProducerCompletion(receipt.RunId,receipt.Phase,repeat,identity.InstanceId) ||
-            acceptance.Objects.Count!=6 || !acceptance.Objects.Select(x=>(x.Container,x.Name)).SequenceEqual(
-                PublicationPaths(receipt.RunId,receipt.Phase,repeat,identity.InstanceId),EqualityComparer<(string,string)>.Default))
+        string run = identity.RunId;
+        string prefix = PhasePaths.ProducerPrefix(run, phase, repeat, identity.InstanceId);
+        if (acceptance.ProducerPrefix != prefix || acceptance.ProducerIdentity != identity || acceptance.SourceCommit != sourceCommit ||
+            acceptance.StartLine.Container != "verifier" || acceptance.StartLine.Name != PhasePaths.StartLine(run, phase, repeat) ||
+            acceptance.BrokerInventory.Container != "verifier" || acceptance.BrokerInventory.Name != PhasePaths.BrokerInventory(run, phase, repeat) ||
+            acceptance.ProducerReceipt.Container != "ledger" || acceptance.ProducerReceipt.Name != PhasePaths.ProducerCompletion(run, phase, repeat, identity.InstanceId) ||
+            acceptance.Objects.Count != 6 || !acceptance.Objects.Select(x => (x.Container, x.Name)).SequenceEqual(
+                PublicationPaths(run, phase, repeat, identity.InstanceId), EqualityComparer<(string, string)>.Default))
             throw new FormatException("Verify publication acceptance does not bind its fixed evidence paths.");
+    }
+
+    internal static void ValidateB10Intake(B10IntakeEvidence intake, RunIdentity rootIdentity, string sourceCommit)
+    {
+        if (rootIdentity.ScenarioId != "B10" || !PhaseIdentity.IsRunId(rootIdentity.RunId) ||
+            !ScenarioPhases.TryGetConfiguration(rootIdentity.ScenarioId, intake.Phase, out string? configuration) ||
+            configuration != rootIdentity.ConfigurationId || intake.RepeatNumber is < 1 or > 5 || intake.Producers.Count != 2)
+            throw new FormatException("B10 intake coordinates or producer count are invalid.");
+        B10ProducerEvidence first = intake.Producers[0];
+        B10ProducerEvidence second = intake.Producers[1];
+        if (first.Identity != rootIdentity || first.Identity.InstanceId == second.Identity.InstanceId ||
+            first.JobName != PhaseIdentity.JobName(rootIdentity.RunId, intake.Phase, intake.RepeatNumber) ||
+            second.JobName != PhaseIdentity.RestartJobName(rootIdentity.RunId, intake.Phase, intake.RepeatNumber) ||
+            first.PredecessorInstanceId is not null || second.PredecessorInstanceId != first.Identity.InstanceId)
+            throw new FormatException("B10 intake producer roles are invalid.");
+        foreach (B10ProducerEvidence producer in intake.Producers)
+        {
+            RunIdentity identity = producer.Identity;
+            if (identity.ScenarioId != rootIdentity.ScenarioId || identity.ConfigurationId != rootIdentity.ConfigurationId ||
+                identity.RunId != rootIdentity.RunId || identity.InstanceId != identity.ExpectedInstanceId ||
+                !Segment(identity.InstanceId) || !Text(identity.ClientId, 253, true))
+                throw new FormatException("B10 intake producer identity is invalid.");
+            if (producer.PublicationAcceptance is { } acceptance)
+            {
+                if (!CommitRegex().IsMatch(acceptance.SourceCommit)) throw new FormatException("B10 intake source commit is malformed.");
+                ValidateAcceptance(identity, intake.Phase, intake.RepeatNumber, sourceCommit, acceptance);
+                foreach (ArtifactReference reference in new[] { acceptance.StartLine, acceptance.BrokerInventory, acceptance.ProducerReceipt }.Concat(acceptance.Objects))
+                    if (reference.Length < 0 || !ShaRegex().IsMatch(reference.Sha256))
+                        throw new FormatException("B10 intake reference is malformed.");
+            }
+        }
+    }
+
+    internal static B10IntakeEvidence ReadB10Intake(JsonElement element)
+    {
+        Exact(element, ["phase", "repeat", "producers"]);
+        JsonElement producers = Prop(element, "producers");
+        if (producers.ValueKind != JsonValueKind.Array) throw new FormatException("B10 producers must be an array.");
+        return new(Str(element, "phase"), Int(element, "repeat"), producers.EnumerateArray().Select(producer =>
+        {
+            Exact(producer, ["identity", "job_name", "predecessor_instance_id", "publication_acceptance"]);
+            JsonElement predecessor = Prop(producer, "predecessor_instance_id");
+            JsonElement acceptance = Prop(producer, "publication_acceptance");
+            return new B10ProducerEvidence(ReadIdentity(Prop(producer, "identity")), Str(producer, "job_name"),
+                predecessor.ValueKind == JsonValueKind.Null ? null : Str(producer, "predecessor_instance_id"),
+                acceptance.ValueKind == JsonValueKind.Null ? null : ReadAcceptance(acceptance));
+        }).ToArray());
+    }
+
+    internal static void WriteB10Intake(Utf8JsonWriter writer, B10IntakeEvidence intake)
+    {
+        writer.WritePropertyName("b10_intake"); writer.WriteStartObject();
+        writer.WriteString("phase", intake.Phase); writer.WriteNumber("repeat", intake.RepeatNumber);
+        writer.WritePropertyName("producers"); writer.WriteStartArray();
+        foreach (B10ProducerEvidence producer in intake.Producers)
+        {
+            writer.WriteStartObject(); WriteIdentity(writer, producer.Identity); writer.WriteString("job_name", producer.JobName);
+            writer.WriteString("predecessor_instance_id", producer.PredecessorInstanceId);
+            if (producer.PublicationAcceptance is null) writer.WriteNull("publication_acceptance");
+            else WriteAcceptance(writer, producer.PublicationAcceptance);
+            writer.WriteEndObject();
+        }
+        writer.WriteEndArray(); writer.WriteEndObject();
     }
 
     private static IEnumerable<(string Container,string Name)> PublicationPaths(string run,string phase,int repeat,string instance)

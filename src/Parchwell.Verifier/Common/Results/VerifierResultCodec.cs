@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
 
 namespace Parchwell.Verifier.Common.Results;
@@ -44,6 +45,7 @@ internal static class VerifierResultCodec
             writer.WriteStartObject();
             writer.WriteNumber("schema_version", result.SchemaVersion);
             WriteIdentity(writer, result.Identity);
+            if (result.B10Intake is not null) PhaseWireCodec.WriteB10Intake(writer, result.B10Intake);
             if (result.GeneratorVersion is not null) writer.WriteString("generator_version", result.GeneratorVersion);
             if (result.RuntimeVersions is not null) WriteStringMap(writer, "runtime_versions", result.RuntimeVersions);
             writer.WriteString("verifier_commit", result.VerifierCommit);
@@ -185,9 +187,25 @@ internal static class VerifierResultCodec
             return ParseResult<VerifierResult>.Failure(diagnosticsProblem!);
         ValidateInputDiagnostics(diagnostics!, fidelity?.Assessment, maxDiagnosticsPerCheck);
 
+        B10IntakeEvidence? b10Intake = null;
+        try
+        {
+            if (root.TryGetProperty("b10_intake", out JsonElement intakeElement))
+            {
+                b10Intake = PhaseWireCodec.ReadB10Intake(intakeElement);
+                PhaseWireCodec.ValidateB10Intake(b10Intake, identity!, verifierCommit!);
+            }
+            if (identity!.ScenarioId == "B10" && (b10Intake is null || status == VerifierResultStatus.CompleteValid))
+                return Failure(artifact, "b10_intake", "invalid_b10_intake");
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            return Failure(artifact, "b10_intake", "invalid_b10_intake");
+        }
+
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -196,6 +214,14 @@ internal static class VerifierResultCodec
         ArgumentNullException.ThrowIfNull(result.FailedChecks);
         ArgumentNullException.ThrowIfNull(result.JudgedFileHashes);
         ArgumentNullException.ThrowIfNull(result.Diagnostics);
+        if (result.Identity.ScenarioId == "B10" && (result.B10Intake is null || result.Status == VerifierResultStatus.CompleteValid))
+            throw new ArgumentException("B10 results require nonfinal intake evidence.", nameof(result));
+        if (result.B10Intake is not null)
+        {
+            try { PhaseWireCodec.ValidateB10Intake(result.B10Intake, result.Identity, result.VerifierCommit); }
+            catch (Exception ex) when (ex is FormatException or ArgumentException)
+            { throw new ArgumentException("B10 intake evidence is invalid.", nameof(result), ex); }
+        }
         if (result.Status == VerifierResultStatus.CompleteValid && result.Counts is null)
             throw new ArgumentException("A complete_valid result requires all six supplied outcome counts.", nameof(result));
         if (result.DrainTimeMilliseconds is not null && result.DrainElapsedAtStopMilliseconds is not null)
@@ -991,7 +1017,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake"
         };
         fields.UnionWith(CountFields);
         return fields;
