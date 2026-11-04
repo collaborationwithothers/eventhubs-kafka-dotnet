@@ -13,12 +13,13 @@ public static class ScenarioPhases
             new("A01", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("probe", "C0"), new("C0", "C0"), new("C3", "C3") })),
             new("B04", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("C0", "C0"), new("C1", "C1") })),
             new("B06", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("C0", "C0"), new("C1", "C1") })),
-            new("B07", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("C0", "C0"), new("C1", "C1") }))
+            new("B07", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("C0", "C0"), new("C1", "C1") })),
+            new("B10", ImmutableDictionary.CreateRange(StringComparer.Ordinal, new KeyValuePair<string, string>[] { new("C0", "C0"), new("C1", "C1") }))
         });
 
     /// <summary>Checks whether a scenario has workflow phases.</summary>
     /// <param name="scenarioId">The exact scenario identifier.</param>
-    /// <returns><see langword="true"/> for A01, B04, B06 and B07.</returns>
+    /// <returns><see langword="true"/> for A01, B04, B06, B07 and B10.</returns>
     public static bool IsExecutableScenario(string? scenarioId) => scenarioId is not null && Table.ContainsKey(scenarioId);
 
     /// <summary>Finds the configuration a scenario phase runs.</summary>

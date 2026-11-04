@@ -11,7 +11,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 
 #pragma warning disable CA1707 // Repository test naming convention.
 
-// ADR-021: "loadgen2" is B10's second Job. B10 has no phases yet, so A01 identities reach the Job name check.
+// ADR-021: "loadgen2" is B10's second Job. A01 cases show it is rejected outside B10; B10 cases show it passes for B10.
 public sealed class RestartJobIdentityTests
 {
     [Theory]
@@ -41,5 +41,36 @@ public sealed class RestartJobIdentityTests
         Assert.Equal("run-1-c3-r5-loadgen", context.FirstJobName);
         Assert.Equal(jobName.EndsWith('2'), context.IsRestartInstance);
         Assert.Equal(error, Record.Exception(context.Validate)?.Message);
+    }
+
+    [Theory]
+    [InlineData("C0", "run-1-c0-r5-loadgen", null, null)]
+    [InlineData("C1", "run-1-c1-r5-loadgen2", "pod-zero", null)]
+    [InlineData("C1", "run-1-c1-r5-loadgen3", null, "producer_run_context_identity_mismatch")]
+    [InlineData("C3", "run-1-c3-r5-loadgen", null, "producer_run_context_invalid")]
+    public void Given_B10RunContext_When_Validating_Then_ItsPhasesReachTheJobNameCheck(string phase, string jobName, string? predecessor, string? error)
+    {
+        var context = new ProducerRunContext(new RunIdentity("B10", phase, "run-1", "pod-one", "pod-one", "pod-one"), phase, 5, jobName,
+            "pod-one", "pod-uid-1", new string('a', 40)) { PredecessorInstanceId = predecessor };
+
+        Assert.Equal(error, Record.Exception(context.Validate)?.Message);
+    }
+
+    [Theory]
+    [InlineData("C1", "child-run-c1-r1-loadgen")]
+    [InlineData("C1", "child-run-c1-r1-loadgen2")]
+    public void Given_B10Worker_When_ValidatingHostOptions_Then_AcceptsBothJobNames(string phase, string jobName)
+    {
+        string[] args = LoadGenHostProcessTests.CreateInputs(Path.Combine(Path.GetTempPath(), "restart-" + Guid.NewGuid().ToString("N")))
+            .Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+        using IHost host = Program.BuildHostCore(args, _ => { }, (_, configure) => configure(new ParchwellTelemetryOptions()));
+        LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+
+        options.ScenarioId = "B10";
+        options.ConfigurationId = phase;
+        options.Phase = phase;
+        options.JobName = jobName;
+
+        Assert.Null(Record.Exception(options.Validate));
     }
 }

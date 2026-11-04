@@ -18,6 +18,8 @@ public sealed class ScenarioPhasesTests
     [InlineData("B06", "C1", "C1")]
     [InlineData("B07", "C0", "C0")]
     [InlineData("B07", "C1", "C1")]
+    [InlineData("B10", "C0", "C0")]
+    [InlineData("B10", "C1", "C1")]
     public void Given_ExecutableScenarioPhase_When_LookingUpConfiguration_Then_ReturnsExactMapping(
         string scenarioId, string phase, string expectedConfiguration)
     {
@@ -36,6 +38,9 @@ public sealed class ScenarioPhasesTests
     [InlineData("B06", "probe")]
     [InlineData("B07", "C3")]
     [InlineData("b06", "C0")]
+    [InlineData("B10", "probe")]
+    [InlineData("B10", "C3")]
+    [InlineData("b10", "C0")]
     public void Given_UnknownScenarioPhasePair_When_LookingUpConfiguration_Then_ReturnsFalse(string? scenarioId, string? phase)
     {
         Assert.False(ScenarioPhases.TryGetConfiguration(scenarioId, phase, out var configuration));
