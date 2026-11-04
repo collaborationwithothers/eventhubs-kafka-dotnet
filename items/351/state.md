@@ -1,5 +1,5 @@
 # State: #351 B10 oracle amendment: late-write guard and producer restart (#348 entry 1)
-Covers: comment 6624892579 created 2026-11-04T07:08:49Z; read at 2026-11-04T07:13:14Z
+Covers: comment 6625271946 created 2026-11-04T07:30:51Z; read at 2026-11-04T07:33:00Z
 Parent items: [#348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348), [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [split adoption on #348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617607468), with the [split handoff 6617284257](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617284257) it adopts (split entry 1)
 Implementing tool: Claude Code. Source: no comment on the issue or its listed parents before `ready-for-agent` (applied to #347 and #348 on 2026-11-03); Claude Code by default
@@ -13,6 +13,7 @@ Decisions in force:
 - Two sequential load generator Jobs per B10 repeat; late copies classified up to a phase sweep line. Source: [decision 6623554949](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/351#issuecomment-6623554949)
 - A late record of an earlier repeat inside a later repeat's window is excluded from the later repeat. Source: [decision 6623766068](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/351#issuecomment-6623766068)
 - Hari approves Revision 3 including the exact ADR-021 text and both P2 fixes. Source: [approval 6624892579](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/351#issuecomment-6624892579)
+- Add an ADR-021 pointer to the two ADR-013 sentences containing "excluded from classification" and "applies to one repeat's window"; amends Revision 3. Source: [decision 6625271946](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/351#issuecomment-6625271946)
 Open questions:
 - None
 Next action: #348 entry 2, after this pull request merges.
