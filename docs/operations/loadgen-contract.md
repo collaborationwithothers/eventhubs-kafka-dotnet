@@ -93,7 +93,7 @@ Checks 1 to 6 need only the manifest. The second instance applies check 7 at rea
 
 ## Second load generator Job (B10)
 
-Chart mode `loadgen2` runs the second instance as Job `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`, otherwise rendered as `loadgen`. That name alone marks the second instance. Configuration validation rejects it outside B10 (`restart_instance_requires_b10`).
+Chart mode `loadgen2` runs the second instance as Job `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`, otherwise rendered as `loadgen`. That name alone marks the second instance. Configuration validation rejects it outside B10. The host reports only the generic invalid-inputs message; `restart_instance_requires_b10` is the reason the tests assert, not a line in the pod log.
 
 Before registering or constructing a producer, the second instance lists `<repeat prefix>producer/` and reads the first instance's evidence within one `UploadTimeout`. A failed check stops it before registration:
 1. Every name lies in an instance directory named by its escaped pod name (`predecessor_listing_invalid`). A listing over 64 names is rejected (`predecessor_listing_incomplete`).
