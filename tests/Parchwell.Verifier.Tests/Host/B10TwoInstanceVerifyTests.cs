@@ -24,6 +24,35 @@ public sealed class B10TwoInstanceVerifyTests
     private static readonly string[] Counts = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
     private static readonly string[] PayloadNames = ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
 
+    [Theory]
+    [InlineData("B10", true)]
+    [InlineData("A01", false)]
+    public async Task Given_ScenarioStartLine_When_HandlerPublishes_Then_OnlyB10CarriesBothJobsAndBothArtifactsUseFirstJobIdentity(string scenario, bool hasPair)
+    {
+        using var fixture = new HostEvidenceBuilder(scenarioId: scenario, scenarioSourceId: "A01");
+        fixture.Options.Mode = "start-line";
+        fixture.Options.JobName = $"{fixture.Options.RunId}-c0-r1-start-line";
+        string firstJob = $"{fixture.Options.RunId}-c0-r1-loadgen";
+        Assert.Equal(0, await fixture.StartLine().ExecuteAsync(TestContext.Current.CancellationToken));
+        Assert.Equal([fixture.Options.StartLineOutputName!, fixture.Options.BrokerInventoryOutputName!], fixture.CreateNames);
+        using JsonDocument note = JsonDocument.Parse(fixture.CreatedObjects[fixture.Options.StartLineOutputName!]);
+        using JsonDocument inventory = JsonDocument.Parse(fixture.CreatedObjects[fixture.Options.BrokerInventoryOutputName!]);
+        Assert.Equal(hasPair, note.RootElement.TryGetProperty("expected_job_names", out JsonElement jobs));
+        if (hasPair)
+            Assert.Equal([firstJob, firstJob + "2"], jobs.EnumerateArray().Select(job => job.GetString()));
+        foreach (JsonElement artifact in new[] { note.RootElement, inventory.RootElement })
+        {
+            JsonElement identity = artifact.GetProperty("identity");
+            Assert.Equal(6, identity.EnumerateObject().Count());
+            Assert.Equal(scenario, identity.GetProperty("scenario_id").GetString());
+            Assert.Equal("C0", identity.GetProperty("configuration_id").GetString());
+            Assert.Equal(fixture.Options.RunId, identity.GetProperty("run_id").GetString());
+            Assert.Equal(firstJob, identity.GetProperty("instance_id").GetString());
+            Assert.Equal(firstJob, identity.GetProperty("expected_instance_id").GetString());
+            Assert.Equal(firstJob, identity.GetProperty("client_id").GetString());
+        }
+    }
+
     [Fact]
     public async Task Given_CoherentSyntheticB10Pair_When_Verifying_Then_BothSnapshotsAreAcceptedButResultAndReceiptRemainNonfinal()
     {
