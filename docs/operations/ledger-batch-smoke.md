@@ -12,7 +12,7 @@ Configurations run in this order: B06 C0, B06 C1, B07 C0, B07 C1. Each runs the 
 
 ## Output
 
-For each configuration the job writes `<item>-<configuration>-smoke-summary.json` to the `ledger-batch-candidates-<run>-<attempt>` artifact. The phase script downloads that configuration's `statistics.jsonl` and `ledger.jsonl` from the `ledger` container into its private directory, at most 268435456 bytes each, and publishes only the summary:
+For each configuration the job writes `<item>-<configuration>-smoke-summary.json` to the `ledger-batch-candidates-<run>-<attempt>` artifact. The phase script downloads that configuration's `statistics.jsonl` and `ledger.jsonl` from the `ledger` container into its private directory, at most 268435456 bytes each (a cap chosen for this harness, not a measured or vendor limit: `BLOB_MAXIMUM` in `infra/scripts/phase/ledger_batch.py` and the approved plan's answer (a)), and publishes only the summary:
 
 - `statistics.rows`: per statistics report, `ts`, the sum of each broker's `req.Produce` counter, and each topic's `batchcnt` fields `cnt`, `sum`, `min`, `max`, `avg` and `p50` as reported.
 - `ledger`: row count, delivered rows, and the count, minimum, nearest-rank 50th and 95th percentiles and maximum of `delivery_latency_ms`.
