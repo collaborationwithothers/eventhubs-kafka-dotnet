@@ -67,10 +67,21 @@ internal static class PublicationAcceptance
         else if(manifest.Identity!=registration.Identity)rejected.Add("publication_manifest_identity_invalid");
         if(producerReceipt is null){rejected.Add("producer_completion_unavailable");incomplete=true;}
         else if(!Matches(producerReceipt,registration))rejected.Add("producer_completion_invalid");
+        bool b10=registration.Identity.ScenarioId=="B10";
+        string firstJob=b10?PhaseIdentity.JobName(registration.Identity.RunId,registration.Phase,registration.RepeatNumber):registration.JobName;
         RunIdentity expectedStart=new(registration.Identity.ScenarioId,registration.Identity.ConfigurationId,registration.Identity.RunId,
-            registration.JobName,registration.JobName,registration.JobName);
+            firstJob,firstJob,firstJob);
+        if(b10&&manifest is not null)
+        {
+            bool restarted=registration.JobName==PhaseIdentity.RestartJobName(registration.Identity.RunId,registration.Phase,registration.RepeatNumber);
+            if(restarted?(manifest.Restart is null||manifest.Restart.PredecessorInstanceId!=registration.PredecessorInstanceId):manifest.Restart is not null)
+                rejected.Add("publication_restart_role_mismatch");
+        }
         if(startLine is null){rejected.Add("start_line_unavailable");incomplete=true;}
-        else if(startLine.Identity!=expectedStart||startLine.VerifierCommit!=sourceCommit)rejected.Add("start_line_invalid");
+        else if(startLine.Identity!=expectedStart||startLine.VerifierCommit!=sourceCommit||
+            b10&&(startLine.ExpectedJobNames is null||!startLine.ExpectedJobNames.SequenceEqual(
+                new[]{firstJob,PhaseIdentity.RestartJobName(registration.Identity.RunId,registration.Phase,registration.RepeatNumber)},StringComparer.Ordinal)))
+            rejected.Add("start_line_invalid");
         if(inventory is null){rejected.Add("broker_inventory_unavailable");incomplete=true;}
         else if(inventory.Identity!=expectedStart||inventory.SourceCommit!=sourceCommit)rejected.Add("broker_inventory_invalid");
         if(registration.SourceCommit!=sourceCommit||startReference is not null&&registration.Identity.RunId!=startReference.Name.Split('/')[0])

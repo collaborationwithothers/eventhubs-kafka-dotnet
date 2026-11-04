@@ -35,7 +35,8 @@ internal sealed class StartLineHandler(IOptions<VerifierHostOptions> configured,
             var note = new StartLineNote(1, identity, VerifierKafkaSession.Topic,
                 highs.OrderBy(p => p.Key).Select(p => new PartitionHigh(p.Key, p.Value)).ToArray(),
                 clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture), options.VerifierCommit!,
-                typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString);
+                typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString,
+                options.ScenarioId == "B10" ? options.ExpectedProducerJobNames.ToArray() : null);
             if (options.BrokerInventoryOutputName is not null)
                 inventory = BrokerInventoryCodec.Write(identity, session.MetadataBrokers!, options.VerifierCommit!,
                     options.MaxOutputBytes!.Value);
