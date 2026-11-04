@@ -18,10 +18,26 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
 2. The remaining unit projects were run directly with `dotnet test --project <p> --configuration Release --no-build`:
    - `Parchwell.Scenarios.Tests`: 331 passed, 0 failed. `B06B07DeclarationTests` accounts for 21 of them.
    - `Parchwell.Kafka.Tests` without `PhantomSpikeTests`: 485 passed, 0 failed.
-   - `Parchwell.LoadGen.Tests`: 926 passed, 4 failed. `Parchwell.Verifier.Tests`: 4993 passed, 12 failed. All 16 were classified by script from the test log and, for three, from their evidence directories. 12 fail in the test fixture's Docker endpoint helper (`get_Endpoint`, `NullReferenceException`), 1 with `DockerUnavailableException: Failed to connect to Docker endpoint at 'unix:///var/run/docker.sock'`, and 3 (`VerifierOutcomeComponentTests`) report that no trial yielded its witness, and every trial's evidence shows the same `get_Endpoint` failure. `docker info` in this session shows a client and no reachable server. None of the 16 runs the code this pull request changes. I did not run the same 16 on unmodified `main`. Final-head CI, which has Docker, is the evidence for them.
+   - `Parchwell.LoadGen.Tests`: 926 passed, 4 failed. `Parchwell.Verifier.Tests`: 4993 passed, 12 failed. All 16 were classified by script from the test log and, for three, from their evidence directories. 12 fail in the test fixture's Docker endpoint helper (`get_Endpoint`, `NullReferenceException`), 1 with `DockerUnavailableException: Failed to connect to Docker endpoint at 'unix:///var/run/docker.sock'`, and 3 (`VerifierOutcomeComponentTests`) report that no trial yielded its witness, and every trial's evidence shows the same `get_Endpoint` failure. `docker info` in this session shows a client and no reachable server. Some of the 16 exercise code this pull request changes: the three `VerifierOutcomeComponentTests` and the `VerifierWindowComponentTests` build a harness or call the scenario loader and resolver for A01, which reach `IsIntegerBaseline`, `MeasurementCatalog` and `ScenarioPhases`. I checked the other classes only for direct references (none found), not transitively. I did not run the same 16 on unmodified `main`. Final-head CI, which has Docker, is the evidence for them.
 3. `npm ci --ignore-scripts && npm run check:docs` exited 0 with 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, `docs/operations/evidence/issue-124`, `issue-140` and `issue-211`).
 4. `git diff --check origin/main` printed nothing.
-5. `git diff --name-only origin/main` listed 16 paths, each named by changes 1 to 10 of the plan: three files under `docs/operations/`, `items/357/state.md`, this receipt, `scenarios/B06/scenario.yaml`, `scenarios/B07/scenario.yaml`, five files under `src/` and four under `tests/`. No path is under `.github/`, `infra/`, `charts/` or `results/`, no `Parchwell.Verifier` file, no `*.csproj` and no `expected.yaml`.
+5. A script compared `git diff --name-only origin/main HEAD` with the allowed list of changes 1 to 10 of the plan and printed `PATHS-MATCH`; a second pattern check found no path under `.github/`, `infra/`, `charts/` or `results/`, no `Parchwell.Verifier` file, no `*.csproj` and no `expected.yaml`. The 16 paths:
+   - `docs/operations/evidence/issue-357/declaration/receipt.md`
+   - `docs/operations/scenario-contract.md`
+   - `docs/operations/statistics-bridge.md`
+   - `docs/operations/verifier-contract.md`
+   - `items/357/state.md`
+   - `scenarios/B06/scenario.yaml`
+   - `scenarios/B07/scenario.yaml`
+   - `src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs`
+   - `src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs`
+   - `src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs`
+   - `src/Parchwell.Scenarios/Loading/SingleActionDefinitionReader.cs`
+   - `src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs`
+   - `tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs`
+   - `tests/Parchwell.Scenarios.Tests/B06B07DeclarationTests.cs`
+   - `tests/Parchwell.Scenarios.Tests/ScenarioPhasesTests.cs`
+   - `tests/Parchwell.Scenarios.Tests/ScenarioValidationBoundaryTests.cs`
 6. An ASCII scan (`grep -P '[^\x00-\x7F]'`) of every changed text file printed nothing.
 
 ## Scope notes
@@ -34,4 +50,5 @@ This pull request lets a scenario vary `acks` (B06) and `linger.ms` (B07) for th
 ## Cold review
 
 - Round 1 (comprehensive, 1 of 2): input commit `81dd95e` against merge base `179667e`. Reported 3 P1 and 2 P2, all fixed in one consolidated correction: the state file read time (now the real time of the authority refresh), the Docker attribution above (now classified for all 16), the inferred label and counting lines in `statistics-bridge.md`, the commit this receipt describes, and these counts.
-- Cumulative before round 2: 1 comprehensive, 0 focused. Later rounds are recorded in the pull request description.
+- Round 2 (comprehensive re-review, 2 of 2): input `fbb9b3a`, comparison `81dd95e`. Reported 2 P1 and 1 P2, all fixed in one consolidated correction: the false "none of the 16" sentence, the missing source for the `Produce` key name, and the exact path list with the script check.
+- Cumulative before the first focused round: 2 comprehensive, 0 focused. Later rounds are recorded in the pull request description.
