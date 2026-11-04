@@ -23,7 +23,9 @@
         "F06",
         "A02",
         "A03",
-        "A04"
+        "A04",
+        "B06",
+        "B07"
       ]
     },
     "configuration_id": {
@@ -1101,7 +1103,9 @@
                   "scenario_id": {
                     "enum": [
                       "A01",
-                      "B04"
+                      "B04",
+                      "B06",
+                      "B07"
                     ]
                   },
                   "configuration_id": {
