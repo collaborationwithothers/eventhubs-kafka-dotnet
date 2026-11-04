@@ -9,6 +9,7 @@ using Parchwell.Kafka.Authentication;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Run.Restart;
 using Parchwell.LoadGen.Run.Workload;
 using Parchwell.Scenarios;
 
@@ -44,8 +45,13 @@ public sealed class RunExecutor
     }
 
     /// <summary>Runs the offered schedule once, drains native callbacks, persists a final manifest and returns its exit code.</summary>
+    public Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, RunIdentity identity,
+        RunExecutionOptions options, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(profile, identity, options, restart: null, cancellationToken);
+
+    /// <summary>Runs the offered schedule, or for a restarted B10 instance only its resend list, then finalises as the overload above does.</summary>
     public async Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, RunIdentity identity,
-        RunExecutionOptions options, CancellationToken cancellationToken = default)
+        RunExecutionOptions options, RestartInstance? restart, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(identity);
@@ -54,7 +60,7 @@ public sealed class RunExecutor
         identity.Validate();
 
         var diagnostics = new List<string>();
-        var inventory = new AttemptInventory(identity, options.MaxAttempts);
+        var inventory = new AttemptInventory(identity, options.MaxAttempts, restart?.Plan);
         long plannedCount = 0;
         long startTimestamp = clock.GetTimestamp();
         IProducer<byte[], byte[]>? producer = null;
@@ -64,7 +70,8 @@ public sealed class RunExecutor
         var workerFailed = false;
         long admittedAttemptCount = 0;
         string[] expectedBrokerNames = [];
-        var retryPolicy = options.ApplicationRetry ?? ApplicationRetryPolicy.None;
+        // A restarted B10 instance sends each resend once, with no application retry.
+        var retryPolicy = restart is null ? options.ApplicationRetry ?? ApplicationRetryPolicy.None : ApplicationRetryPolicy.None;
         var retryCandidates = new ConcurrentQueue<RetryCandidate>();
         var retriesBySlot = new Dictionary<long, int>();
         long scheduledInvocationCount = 0;
@@ -209,13 +216,18 @@ public sealed class RunExecutor
         try
         {
             expectedBrokerNames = options.ExpectedBrokerNames.ToArray();
-            plannedCount = WorkloadGenerator.GetPlannedAttemptCount(profile);
+            plannedCount = restart is null ? WorkloadGenerator.GetPlannedAttemptCount(profile) : restart.Plan.Planned.Length;
             if (plannedCount > options.MaxAttempts)
                 throw new InvalidOperationException("planned_attempt_limit_exceeded");
             if (retryPolicy.MaxRetriesPerEvent > 0 &&
                 checked(plannedCount * (1L + retryPolicy.MaxRetriesPerEvent)) > options.MaxAttempts)
                 throw new InvalidOperationException("retry_attempt_limit_exceeded");
             _ = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken).GetEnumerator();
+            if (restart is not null)
+            {
+                if (restart.Identity != identity) throw new InvalidOperationException("restart_identity_mismatch");
+                _ = RestartPlan.Events(profile, restart.Plan, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken).Count();
+            }
             if (options.RequireRequestEvidence && (evidence is null || !evidence.RequestCapabilitySupported))
                 throw new InvalidOperationException("required_request_evidence_unavailable");
             if (options.RequireStatisticsEvidence && statistics is null)
@@ -225,7 +237,9 @@ public sealed class RunExecutor
             producer = producerFactory() ?? throw new InvalidOperationException("producer_factory_returned_null");
             if (ObserveInitialAuthenticationFailure()) admissionStopped = true;
             startTimestamp = clock.GetTimestamp();
-            var events = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken);
+            var events = restart is null
+                ? WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken)
+                : RestartPlan.Events(profile, restart.Plan, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken);
             foreach (var planned in events)
             {
                 if (ObserveInitialAuthenticationFailure()) break;
@@ -465,7 +479,7 @@ public sealed class RunExecutor
 
         var readbackComplete = false;
         var candidate = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
-            evidenceFiles, guardObservations, workerFailed, readbackComplete, clock.TimestampFrequency);
+            evidenceFiles, guardObservations, workerFailed, readbackComplete, clock.TimestampFrequency, restart?.Plan);
         try
         {
             using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "ledger_readback");
@@ -473,6 +487,8 @@ public sealed class RunExecutor
             var rows = await ReadLedgerRowsAsync(artifactPaths["ledger"], options.MaxAttempts,
                 options.MaxRowBytes, options.MaxLedgerReadbackBytes, ledgerReadbackDeadline.Token).ConfigureAwait(false);
             _ = LedgerValidator.Validate(rows, candidate, identity);
+            if (restart is not null)
+                RestartPlan.ValidateAgainstPredecessor(candidate, restart.PredecessorManifest, restart.PredecessorRows);
             readbackComplete = true;
             activity.Succeed();
         }
@@ -488,12 +504,12 @@ public sealed class RunExecutor
             AddDiagnostic("execution_cancelled");
         }
         _ = ObserveInitialAuthenticationFailure();
-        var bookkeepingComplete = readbackComplete && !workerFailed && CountScheduleProgress(entries) == plannedCount &&
+        var bookkeepingComplete = readbackComplete && !workerFailed && CountScheduleProgress(entries, restart?.Plan) == plannedCount &&
             (guardFlags & (CallbackFailure | LedgerFailure | NativeProducerException)) == 0 &&
             (!options.RequireStatisticsEvidence || statisticsCompletion is { IsComplete: true }) &&
             evidence is not { IsFaulted: true };
         var manifest = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
-            evidenceFiles, guardObservations, workerFailed, bookkeepingComplete, clock.TimestampFrequency);
+            evidenceFiles, guardObservations, workerFailed, bookkeepingComplete, clock.TimestampFrequency, restart?.Plan);
         try
         {
             using var activity = LoadGenTelemetry.Begin(clock, identity.ScenarioId, identity.RunId, identity.ClientId, "manifest_save");
@@ -507,7 +523,7 @@ public sealed class RunExecutor
             workerFailed = true;
             AddDiagnostic("manifest_save_failed:" + exception.GetType().Name);
             manifest = CreateManifest(identity, entries, admittedAttemptCount, plannedCount, startTimestamp, diagnostics,
-                evidenceFiles, guardObservations, workerFailed, false, clock.TimestampFrequency);
+                evidenceFiles, guardObservations, workerFailed, false, clock.TimestampFrequency, restart?.Plan);
         }
 
         return new RunExecutionResult(bookkeepingComplete && !workerFailed ? 0 : 1, manifest, artifactPaths,
@@ -630,9 +646,10 @@ public sealed class RunExecutor
 
     internal static RunManifest CreateManifest(RunIdentity identity, ImmutableArray<AttemptEntry> entries,
         long admittedAttemptCount, long plannedCount, long startTimestamp, List<string> diagnostics, ImmutableDictionary<string, string> evidenceFiles,
-        ImmutableArray<string> guardObservations, bool failed, bool bookkeepingComplete, long frequency)
+        ImmutableArray<string> guardObservations, bool failed, bool bookkeepingComplete, long frequency,
+        RestartManifest? restart = null)
     {
-        long scheduleProgress = CountScheduleProgress(entries);
+        long scheduleProgress = CountScheduleProgress(entries, restart);
         string status = !failed && bookkeepingComplete && scheduleProgress == plannedCount ? "complete"
             : failed ? "failed" : "incomplete";
         ImmutableArray<string> diagnosticSnapshot;
@@ -644,12 +661,15 @@ public sealed class RunExecutor
             .Add("workload_generator", WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture));
         return new RunManifest(1, identity, WorkloadGenerator.GeneratorVersion.ToString(CultureInfo.InvariantCulture),
             plannedCount, admittedAttemptCount, entries, frequency, startTimestamp, status, bookkeepingComplete,
-            scheduleProgress < plannedCount ? scheduleProgress : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations);
+            scheduleProgress < plannedCount ? scheduleProgress : null, diagnosticSnapshot, versions, evidenceFiles, guardObservations,
+            restart);
     }
 
     // Counts first-seen logical slots. The inventory admits them as a contiguous prefix, so a retry never advances the count.
-    private static long CountScheduleProgress(ImmutableArray<AttemptEntry> entries)
+    // A restarted instance admits its resend list in order and never retries, so each of its entries advances the count by one.
+    private static long CountScheduleProgress(ImmutableArray<AttemptEntry> entries, RestartManifest? restart)
     {
+        if (restart is not null) return entries.Length;
         long progress = 0;
         foreach (AttemptEntry entry in entries)
             if (LedgerValidator.GetLogicalScheduleOrdinal(entry) == progress) progress = checked(progress + 1);

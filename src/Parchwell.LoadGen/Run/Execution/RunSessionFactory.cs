@@ -7,6 +7,7 @@ using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Run.Restart;
 using Parchwell.LoadGen.Run.Workload;
 using Parchwell.Scenarios;
 
@@ -140,6 +141,12 @@ public sealed class RunSession : IAsyncDisposable
 
     public Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, CancellationToken cancellationToken) =>
         _executor.ExecuteAsync(profile, _identity, _executionOptions, cancellationToken);
+
+    /// <summary>Runs a restarted B10 instance: only the resends selected from its predecessor, with no application retry.</summary>
+    public Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, RestartInstance restart,
+        CancellationToken cancellationToken) =>
+        _executor.ExecuteAsync(profile, _identity, _executionOptions,
+            restart ?? throw new ArgumentNullException(nameof(restart)), cancellationToken);
 
     public async ValueTask DisposeAsync()
     {
