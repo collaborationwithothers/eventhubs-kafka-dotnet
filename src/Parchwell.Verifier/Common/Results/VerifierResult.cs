@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Parchwell.Verifier.Common.Contracts;
 
 namespace Parchwell.Verifier.Common.Results;
@@ -34,7 +35,8 @@ internal sealed record VerifierResult(
     IReadOnlyList<JudgedFileHash> JudgedFileHashes,
     IReadOnlyList<ResultDiagnostic> Diagnostics,
     WorkloadObservation? WorkloadObservation = null,
-    B04RecordedEvidence? B04RecordedEvidence = null);
+    B04RecordedEvidence? B04RecordedEvidence = null,
+    BatchingRecordedEvidence? BatchingRecordedEvidence = null);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);
@@ -83,6 +85,40 @@ internal sealed record B04RecordedEvidence(IReadOnlyList<int>? DeliveryErrorCode
 
 /// <summary>Records one distinct fatal client error supplied by captured lifecycle evidence.</summary>
 internal sealed record B04FatalError(int Code, string Name);
+
+/// <summary>Contains bounded recorded latency, Produce-request and batch evidence for the B06 and B07 scenarios.</summary>
+/// <remarks>Latencies are microseconds. The five latency fields are all present or all absent, and so are the two batch fields.</remarks>
+internal sealed record BatchingRecordedEvidence(long? DeliveredLatencyCount, long? LatencyMinimumMicroseconds, long? LatencyP50Microseconds,
+    long? LatencyP95Microseconds, long? LatencyMaximumMicroseconds, long? ProduceRequests, long? BatchCount, long? BatchMaximumMessages)
+{
+    /// <summary>The wire names, in record order.</summary>
+    internal static readonly string[] FieldNames = ["delivered_latency_count", "latency_min_us", "latency_p50_us", "latency_p95_us",
+        "latency_max_us", "produce_requests", "batch_count", "batch_max_messages"];
+
+    /// <summary>Builds the record from values in <see cref="FieldNames"/> order.</summary>
+    internal static BatchingRecordedEvidence FromValues(IReadOnlyList<long?> v) => new(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+
+    /// <summary>Writes the present fields into the open JSON object.</summary>
+    internal void WriteFields(Utf8JsonWriter writer)
+    {
+        long?[] values = [DeliveredLatencyCount, LatencyMinimumMicroseconds, LatencyP50Microseconds, LatencyP95Microseconds,
+            LatencyMaximumMicroseconds, ProduceRequests, BatchCount, BatchMaximumMessages];
+        for (int index = 0; index < values.Length; index++)
+            if (values[index] is long present) writer.WriteNumber(FieldNames[index], present);
+    }
+
+    /// <summary>Returns whether the values satisfy the passive codec bounds.</summary>
+    internal bool HasValidShape()
+    {
+        if (ProduceRequests is < 0 || BatchCount is null != BatchMaximumMessages is null) return false;
+        if (BatchCount is long batches && (batches < 0 || BatchMaximumMessages < 0 || (batches == 0) != (BatchMaximumMessages == 0))) return false;
+        long?[] latency = [DeliveredLatencyCount, LatencyMinimumMicroseconds, LatencyP50Microseconds, LatencyP95Microseconds, LatencyMaximumMicroseconds];
+        if (latency.All(value => value is null)) return true;
+        return latency.All(value => value is not null) && DeliveredLatencyCount >= 1 && LatencyMinimumMicroseconds >= 0 &&
+            LatencyMinimumMicroseconds <= LatencyP50Microseconds && LatencyP50Microseconds <= LatencyP95Microseconds &&
+            LatencyP95Microseconds <= LatencyMaximumMicroseconds;
+    }
+}
 
 /// <summary>Records supplied increments and selected native values for one A01 window.</summary>
 internal sealed record A01WindowEvidence(

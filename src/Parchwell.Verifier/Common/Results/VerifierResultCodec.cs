@@ -78,6 +78,7 @@ internal static class VerifierResultCodec
             if (result.A01RecordedEvidence is not null) WriteA01RecordedEvidence(writer, result.A01RecordedEvidence);
             if (result.WorkloadObservation is not null) WriteWorkloadObservation(writer, result.WorkloadObservation);
             if (result.B04RecordedEvidence is not null) WriteB04RecordedEvidence(writer, result.B04RecordedEvidence);
+            if (result.BatchingRecordedEvidence is not null) WriteBatchingRecordedEvidence(writer, result.BatchingRecordedEvidence);
             WriteJudgedHashes(writer, result.JudgedFileHashes);
             WriteDiagnostics(writer, result.Diagnostics);
             writer.WriteEndObject();
@@ -176,6 +177,8 @@ internal static class VerifierResultCodec
             return ParseResult<VerifierResult>.Failure(workloadProblem!);
         if (!TryOptionalObject(root, "b04_recorded_evidence", artifact, ParseB04Evidence, out B04RecordedEvidence? b04, out StructuralProblem? b04Problem))
             return ParseResult<VerifierResult>.Failure(b04Problem!);
+        if (!TryOptionalObject(root, "batching_recorded_evidence", artifact, ParseBatchingEvidence, out BatchingRecordedEvidence? batching, out StructuralProblem? batchingProblem))
+            return ParseResult<VerifierResult>.Failure(batchingProblem!);
         if (!TryHashes(root, artifact, out IReadOnlyList<JudgedFileHash>? hashes, out StructuralProblem? hashesProblem))
             return ParseResult<VerifierResult>.Failure(hashesProblem!);
         if (!TryDiagnostics(root, artifact, limits.MaxDiagnosticBytes, out IReadOnlyList<ResultDiagnostic>? diagnostics, out StructuralProblem? diagnosticsProblem))
@@ -184,7 +187,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -388,6 +391,15 @@ internal static class VerifierResultCodec
             { writer.WriteStartObject(); writer.WriteNumber("code", error.Code); writer.WriteString("name", error.Name); writer.WriteEndObject(); }
             writer.WriteEndArray();
         }
+        writer.WriteEndObject();
+    }
+
+    private static void WriteBatchingRecordedEvidence(Utf8JsonWriter writer, BatchingRecordedEvidence value)
+    {
+        if (!value.HasValidShape()) throw new FormatException("Batching recorded evidence is malformed.");
+        writer.WritePropertyName("batching_recorded_evidence");
+        writer.WriteStartObject();
+        value.WriteFields(writer);
         writer.WriteEndObject();
     }
 
@@ -753,6 +765,19 @@ internal static class VerifierResultCodec
         return true;
     }
 
+    private static bool ParseBatchingEvidence(JsonElement element, string path, string artifact, out BatchingRecordedEvidence? value, out StructuralProblem? problem)
+    {
+        value = null;
+        if (!Validate(element, path, Set(), Set(BatchingRecordedEvidence.FieldNames), artifact, out problem)) return false;
+        var values = new long?[BatchingRecordedEvidence.FieldNames.Length];
+        for (int index = 0; index < values.Length; index++)
+            if (!TryOptionalInt64(element, BatchingRecordedEvidence.FieldNames[index], artifact, path, out values[index], out problem)) return false;
+        BatchingRecordedEvidence parsed = BatchingRecordedEvidence.FromValues(values);
+        if (!parsed.HasValidShape()) { problem = Problem(artifact, path, "invalid_batching_evidence"); return false; }
+        value = parsed;
+        return true;
+    }
+
     private static bool TryHashes(JsonElement root, string artifact, out IReadOnlyList<JudgedFileHash>? values, out StructuralProblem? problem)
     {
         values = null;
@@ -966,7 +991,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence"
         };
         fields.UnionWith(CountFields);
         return fields;

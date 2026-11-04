@@ -12,7 +12,7 @@ This change reads the second B10 producer registration and restart manifest. It 
 - Earliest publication: tested diff with applicable cold-review coverage, followed by authority refresh. Parent session owns publication.
 - Budget: the plan's Runtime-sized work and exhaustion actions cap changed-file warning dispositions at 8 and implementation failure root causes at 12; exhaustion means push -wip and hand off to the next session. Cold review follows rule 8: at most two comprehensive and two focused correction rounds cumulatively; exhaustion or unsafe focus means backup push and Hari handoff. No local mutation campaign is authorized.
 
-## Verification
+## Verification of the initial B10 revision
 
 Verification used SDK 10.0.402 and the pinned actionlint 1.7.12 through `/tmp/issue375-dotnet` and `/tmp/issue375-tools` on PATH. Generated logs and reports remain outside the repository. The passing full run is `/tmp/issue375-implementation-verify-final.log`, with checked reports in `/tmp/parchwell-dotnet-verification.OuUFRdtR`; the failed pre-correction run remains `/tmp/issue375-implementation-verify.log` for traceability.
 
@@ -111,8 +111,81 @@ The new registration tests are in [B10RegistrationTests.cs](../../tests/Parchwel
 
 ## Review record
 
-No cold-review round has started. Cumulative comprehensive/focused counts: 0/0. Parent session will freeze the full authored diff and this receipt for a fresh-context review.
+The first comprehensive cold review was clean on staged tree `ee3d19a9a7a05d38242347f01d48c36e88c58dc7`, published as `e61bef91a2f04fa570ce75ab3a98263385f61242`. Its complete report is in the [PR 380 self-review record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/380). Cumulative comprehensive/focused counts before the merge correction: 1/0.
+
+Hosted [code review](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/380#issuecomment-6636014142) and both [automatic security review](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/380#issuecomment-6636049285) and [requested security review](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/380#issuecomment-6636057789) completed on `e61bef91a2` without findings. All reports completed before merge edits began. These reviews do not cover the later merged head.
 
 ## Compatibility and continuation
 
 Ordinary manifests retain parse-only treatment. Registration intake does not authorize second-Job completion or publication acceptance. Two-instance verify and binding belong to issue 376, judge to issue 377, per-repeat judgement to issue 373 and the late-write scan to issue 365. Post-merge C5 acceptance must measure main containing this target with `measurement_complete: true` and `break_passed: true`; no mutation success is claimed here.
+
+## Merge compatibility with the batching target
+
+Main advanced to `aca33589a3c69056dcbad3677698a53da7487bf8` through [PR 379](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/379), adding batching evidence and its mutation target. The merge combines that main revision with the reviewed B10 commit `e61bef91a2f04fa570ce75ab3a98263385f61242`. Incoming main changes retain their own authority; this correction preserves both targets and changes no B10 intake predicate or scientific rule.
+
+The workflow matrix, Stryker configuration and target/part/shard maps retain main's `batching` entry before the appended `b10-restart-manifest` entry. They now contain nine targets and 20 shards. Literal aggregate fixtures include both singleton populations; their expected scores are 11/15, 8/15, 12/15, 9/60 and 15/18. Per-target status totals and projection boundaries move with the added target, while failure assertions, scoring thresholds and survivor-sampling bounds stay in force. Current-method documentation includes both additions; the earlier verification and calculation above remain evidence for the initial B10 revision only.
+
+| Merge verification command | Result |
+| --- | --- |
+| `./scripts/verify-dotnet.sh` | Passed on the combined source: 7404 tests, including 5331 verifier tests, with no failures or skips; locked restore, Release build/analyzers and warning-as-error negative control passed. Log: `/tmp/issue375-merge-verify.log`; checked reports: `/tmp/parchwell-dotnet-verification.rzMJAUqV`. |
+| `python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p test_c5_workflow.py` | Passed: 78 tests. |
+| `actionlint .github/workflows/verifier-c5-mutation.yml` | Passed. |
+| `python3 /tmp/issue375-merge-calculations.py` | Passed: nine targets, 20 shards, both singleton assignments and all listed aggregate expectations. The YAML comparison with pinned main permits only the added B10 row. |
+| `npm run test:docs` | Passed: 28 tests, no failures or skips. |
+| `npm run check:docs` | Passed: eight advisory warnings, all outside the PR diff against the new main. |
+| `git diff --check` and `git diff --cached --check` | Passed after conflict resolution. |
+
+The four conflict sites were the known overlapping matrix, configuration, target-map and test changes. No new implementation failure cause has occurred during resolution; the cumulative failure-cause count remains two of 12. The next review is the second comprehensive cold review of the full PR diff against `aca33589a3c69056dcbad3677698a53da7487bf8`, with the comparison against `e61bef91a2f04fa570ce75ab3a98263385f61242` supplied as context. It and final-head CI/hosted review remain pending; no additional completed cold-review round is claimed here. Post-merge C5 acceptance remains pending.
+
+The merge calculation uses this authored script, retained here for reproducibility:
+
+```python
+import ast, copy, json, subprocess, sys
+from collections import Counter
+from pathlib import Path
+import yaml
+sys.path.insert(0,'tests/Parchwell.Verifier.Tests/Mutation')
+import c5_workflow as workflow
+assert len(workflow.TARGETS)==9
+assert sum(count for _,count in workflow.TARGETS.values())==20
+assert workflow.TARGETS['batching']==('VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs',1)
+assert workflow.TARGETS['b10-restart-manifest']==('VerifyRun/Input/RestartManifestReader.cs',1)
+print('target_count=9 shard_count=20 new_target_count=1')
+p='.github/workflows/verifier-c5-mutation.yml'
+a=yaml.safe_load(subprocess.check_output(['git','show','aca33589a3c69056dcbad3677698a53da7487bf8:'+p],text=True));b=yaml.safe_load(Path(p).read_text())
+assert a[True]==b[True]=={'workflow_dispatch':None}
+assert a['permissions']==b['permissions']=={'contents':'read'}
+old=a['jobs']['mutation']['strategy']['matrix']['include'];new=b['jobs']['mutation']['strategy']['matrix']['include']
+assert old==new[:-1]
+assert new[-1]=={'shard':'b10-restart-manifest','target':'VerifyRun/Input/RestartManifestReader.cs'}
+for job in b['jobs'].values():assert "github.ref == 'refs/heads/main'" in job['if']
+b['jobs']['mutation']['strategy']['matrix']['include'].pop();assert a==b
+print('YAML unchanged apart from appended matrix row; dispatch only; both jobs main-only')
+source=ast.parse(Path('tests/Parchwell.Verifier.Tests/Mutation/test_c5_workflow.py').read_text())
+expected={
+ 'test_combined_threshold_keeps_below_threshold_shards':(11,15),
+ 'test_complete_below_threshold_stays_complete':(8,15),
+ 'test_timeout_and_no_coverage_score_populations':(12,15),
+ 'test_survivor_sampling_does_not_change_raw_score':(9,60),
+ 'test_span_shards_combine_into_one_target_population':(15,18),
+}
+for node in ast.walk(source):
+ if isinstance(node,ast.FunctionDef) and node.name in expected:
+  assignment=node.body[0]
+  value=assignment.value
+  expr=value.args[1] if isinstance(value,ast.Call) else value
+  population=eval(compile(ast.Expression(expr),'<literal synthetic populations>','eval'),{'__builtins__':{}})
+  assert len(population)==9
+  counts=Counter(status for rows in population for status in rows)
+  score=(counts['Killed']+counts['Timeout'],sum(counts[x] for x in ['Killed','Timeout','Survived','NoCoverage']))
+  assert score==expected[node.name]
+  print(node.name,score,dict(counts))
+assert 1844674407370955161*5+2==9223372036854775807
+print('checked-slot boundary:',[1844674407370955161*5+s for s in (1,2,3)])
+```
+
+### Focused prose correction review input
+
+The second comprehensive review of tree `870244d481c944a07836dfe00630779de44d0113` completed with no P0 or P1. It reported one P2: the mutation helper docstring still said eight populations after the merge added a ninth target. The correction changes that word to nine; executable code and test expectations are unchanged. The complete report and disposition are retained in the [PR self-review record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/380).
+
+The next review is the single focused P2-correction review under pull-requests.md rule 8. Its comparison revision is that reviewed tree, its scope is this correction and this receipt addition, and it reports only P0 or P1. The full PR diff against `aca33589a3c69056dcbad3677698a53da7487bf8` remains context. Comprehensive rounds used: two; focused rounds before this review: zero.

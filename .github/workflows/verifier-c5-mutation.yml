@@ -51,6 +51,8 @@ jobs:
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
           - shard: idle-observation-p3
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: batching
+            target: VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs
           - shard: b10-restart-manifest
             target: VerifyRun/Input/RestartManifestReader.cs
     env:

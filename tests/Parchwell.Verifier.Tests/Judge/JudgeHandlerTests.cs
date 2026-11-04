@@ -224,6 +224,35 @@ public sealed class JudgeHandlerTests
         }
     }
 
+    [Fact]
+    public async Task GivenFiveAcceptedBatchingEvidenceResults_WhenJudged_ThenProjectsEachIntoItsOwnRepeat()
+    {
+        PhaseStores stores=await BuildFiveRepeats("C0",null);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            string resultName=PhasePaths.Result("synthetic-c5","C0",repeat);
+            JsonObject result=JsonNode.Parse(stores.Verifier[resultName])!.AsObject();
+            result["batching_recorded_evidence"]=new JsonObject{["delivered_latency_count"]=1,["latency_min_us"]=repeat,["latency_p50_us"]=repeat,["latency_p95_us"]=repeat,["latency_max_us"]=repeat,["produce_requests"]=100+repeat,["batch_count"]=200+repeat,["batch_max_messages"]=repeat};
+            byte[] bytes=Encoding.UTF8.GetBytes(result.ToJsonString());stores.Verifier[resultName]=bytes;
+            string receiptName=PhasePaths.VerifyCompletion("synthetic-c5","C0",repeat);
+            JsonObject receipt=JsonNode.Parse(stores.Verifier[receiptName])!.AsObject();
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(),resultName,bytes);
+            stores.Verifier[receiptName]=Encoding.UTF8.GetBytes(receipt.ToJsonString());
+        }
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var handler=new JudgeHandler(Microsoft.Extensions.Options.Options.Create(Options()),verifier,new MemoryProducerStore(stores.Ledger),TimeProvider.System);
+        Assert.Equal(0,await handler.ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        JsonElement[] projected=candidate.RootElement.GetProperty("repeats").EnumerateArray().ToArray();
+        for(int i=1;i<=5;i++)
+        {
+            JsonElement evidence=projected[i-1].GetProperty("batching_recorded_evidence");
+            Assert.Equal(i,evidence.GetProperty("latency_p50_us").GetInt64());
+            Assert.Equal(100+i,evidence.GetProperty("produce_requests").GetInt64());
+            Assert.Equal(200+i,evidence.GetProperty("batch_count").GetInt64());
+        }
+    }
+
     [Theory]
     [InlineData("omitted")]
     [InlineData("measurements-omitted")]

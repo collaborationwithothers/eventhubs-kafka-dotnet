@@ -15,6 +15,41 @@ public sealed class PhaseCandidateCodecTests
     private static readonly int[] ExpectedB04DeliveryErrorCodes = [int.MinValue, 0, int.MaxValue];
     private static readonly string[] ExpectedFatalErrorFields = ["code", "name"];
 
+    // The phase wire format uses exactly the same passive measurement bounds as a repeat result.
+    [Fact]
+    public void Given_BatchingCandidate_When_RoundTripped_Then_ProjectsEvidenceAndAllowsAbsence()
+    {
+        PhaseCandidate source = Candidate();
+        PhaseCandidate batching = source with
+        {
+            ScenarioId = "B07", ConfigurationId = "C1", Phase = "C1",
+            Repeats = [source.Repeats[0] with { BatchingEvidence = new(4, 4000, 9500, 2372592, 2372592, 11, 11, 8) }]
+        };
+        using JsonDocument document = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(batching));
+        JsonElement evidence = Assert.Single(document.RootElement.GetProperty("repeats").EnumerateArray()).GetProperty("batching_recorded_evidence");
+        Assert.Equal(BatchingRecordedEvidence.FieldNames, evidence.EnumerateObject().Select(x => x.Name));
+        Assert.Equal(9500, evidence.GetProperty("latency_p50_us").GetInt64());
+        Assert.Equal(11, evidence.GetProperty("produce_requests").GetInt64());
+        Assert.Equal(8, evidence.GetProperty("batch_max_messages").GetInt64());
+        PhaseCandidate noEvidence = batching with { Repeats = [batching.Repeats[0] with { BatchingEvidence = null }] };
+        using JsonDocument absent = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(noEvidence));
+        Assert.False(Assert.Single(absent.RootElement.GetProperty("repeats").EnumerateArray()).TryGetProperty("batching_recorded_evidence", out _));
+    }
+
+    [Theory, MemberData(nameof(Results.VerifierResultCodecTests.MalformedBatchingEvidence), MemberType = typeof(Results.VerifierResultCodecTests))]
+    public void Given_MalformedBatchingCandidateEvidence_When_Read_Then_Rejects(string json)
+    {
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(CandidateWithBatching(json))));
+    }
+
+    [Fact]
+    public void Given_MalformedBatchingRecord_When_Written_Then_ThrowsFormatException()
+    {
+        PhaseCandidate candidate = Candidate();
+        PhaseCandidate malformed = candidate with { Repeats = [candidate.Repeats[0] with { BatchingEvidence = new(1, 2, 1, 2, 2, null, null, null) }] };
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(malformed));
+    }
+
     [Fact]
     public void Given_B04Candidate_When_RoundTripped_Then_ProjectsExactEvidenceAndAllowsAbsence()
     {
@@ -427,6 +462,12 @@ public sealed class PhaseCandidateCodecTests
         string json = root.ToJsonString();
         Assert.Contains("\"repeat\":1,", json, StringComparison.Ordinal);
         return System.Text.Encoding.UTF8.GetBytes(json.Replace("\"repeat\":1,", "\"repeat\":1,\"broker_count\":" + countJson + ",", StringComparison.Ordinal));
+    }
+
+    private static string CandidateWithBatching(string evidenceJson)
+    {
+        string json=System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        return json.Replace("\"workload_observation\":", "\"batching_recorded_evidence\":"+evidenceJson+",\"workload_observation\":", StringComparison.Ordinal);
     }
 
     private static string CandidateWithB04(string evidenceJson)

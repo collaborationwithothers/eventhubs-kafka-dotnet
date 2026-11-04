@@ -69,8 +69,10 @@ def positive_cases():
       yield d
     for item in ('B06','B07'):
       for config in ('C0','C1'):
-        for mode in ('start-line','loadgen','verify'):
-          d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode,repeat=1,loadgen_job_name=f"{r['run_id']}-{config.lower()}-r1-loadgen")
+        for mode in ('start-line','loadgen','verify','judge'):
+          d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode)
+          if mode=='judge': r.pop('repeat',None);r.pop('loadgen_job_name',None)
+          else: r.update(repeat=1,loadgen_job_name=f"{r['run_id']}-{config.lower()}-r1-loadgen")
           yield d
     # ADR-021's second load generator Job renders for every scenario the schema admits; the load generator rejects it outside B10.
     for item,phase,config,repeat in [('A01','probe','C0',1),('A01','C0','C0',5),('A01','C3','C3',1),('B04','C1','C1',1),('B06','C0','C0',1),('B07','C1','C1',5)]:
@@ -166,7 +168,7 @@ def main():
   assert DEFAULTS['execution']==BOUNDS['execution']
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
-    positives=list(positive_cases()); assert len(positives)==43
+    positives=list(positive_cases()); assert len(positives)==47
     for i,d in enumerate(positives):
       f=td/f'{i}.yaml';out=td/f'{i}.rendered.yaml';with_case(d,f)
       lint=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(td/f'{i}.lint'),'--max-bytes','4194304','--','helm','lint',str(CHART),'-f',str(f)])
@@ -177,7 +179,7 @@ def main():
       assert valid.returncode==0,valid.stdout+valid.stderr
       document=out.read_text()
       verify(document,d)
-      if i >= 37:
+      if i >= 41:
         job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job'); r=d['runtime']
         names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
         assert r['mode']=='loadgen2' and job['metadata']['name']==names['PARCHWELL_JOB_NAME']==names['LoadGen__JobName']==r['loadgen_job_name']+'2'
@@ -227,7 +229,7 @@ def main():
     mut(lambda d:(d['runtime'].update(bounds=deepcopy(BOUNDS)),d['runtime']['bounds']['loadgen'].update(MaxAttempts=186001)))
     mut(lambda d:(d['runtime'].update(bounds=deepcopy(BOUNDS)),d['runtime']['bounds']['verifier_verify'].update(MaxInputEntries=None)))
     mut(lambda d:d['runtime'].update(loadgen_job_name='synthetic-c3-c3-r1-loadgen'))
-    second=deepcopy(positives[37])
+    second=deepcopy(positives[41])
     mut(lambda d:d['runtime'].pop('loadgen_job_name'),second)
     mut(lambda d:d['runtime'].update(loadgen_job_name=d['runtime']['loadgen_job_name']+'2'),second)
     mut(lambda d:d.update(scenario_id='B10'),second)
@@ -245,5 +247,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 43 positive, 35 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 47 positive, 35 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()

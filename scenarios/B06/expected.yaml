@@ -1,0 +1,51 @@
+schema_version: 1
+id: B06
+
+assessment_rules:
+  authoritative_verifier_counts: complete_valid_runs_only
+  invalid_or_incomplete_run_counts: absent
+  missing_counts_are_zero: false
+  missing_counts_refute_hypotheses: false
+  diagnostic_evidence: retain
+  changed_expectations_require_human_approval: true
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  phase_counts_published: only_when_all_five_repeats_complete_valid
+  measures_source: "batching_recorded_evidence and counts in each repeat of the C0 and C1 phase candidates (docs/operations/verifier-contract.md, C5 phase, blob and receipt contract)"
+  messages_per_request: "per repeat, ok divided by produce_requests, computed by script; absent when either is absent or produce_requests is 0"
+  offered_rate_limit: "the saturation-ramp profile offers a fixed rate, so these measures describe batching and latency at that rate, not the maximum rate a producer reaches (split adoption decision 3)"
+  judgement_contract: docs/operations/verifier-contract.md#c5-phase-blob-and-receipt-contract
+
+hypotheses:
+  H_throughput:
+    question: "Does acks=1 change Produce requests or messages per request against acks=-1 at the offered rate?"
+    configurations: [C0, C1]
+    decision: "recorded_only; per repeat produce_requests, messages_per_request, batch_count and batch_max_messages for C0 and C1, and their medians over five repeats"
+  H_latency:
+    question: "Does acks=1 change delivery latency against acks=-1?"
+    configurations: [C0, C1]
+    decision: "recorded_only; per repeat latency_p50_us, latency_p95_us and latency_max_us for C0 and C1"
+
+not_tested:
+  D1:
+    question: "Does acks=1 lose acknowledged messages that acks=-1 keeps?"
+    reason: "inference: acks=1 loses data only if the partition leader fails after acknowledging and before replicating; Event Hubs offers clients no broker or replication configuration (Microsoft, What you can and can't configure), the harness has no fault that fails a leader, and ADR-016 records no reliable way to cause real broker loss"
+    publication: not_tested
+
+verdict:
+  decision: "undocumented, `not_in_librdkafka_table`, whatever the recorded measures show"
+  basis: "Microsoft gives acks guidance only in the Java table Configurations to keep at defaults; ADR-015: labels in Microsoft's Java table do not apply to a librdkafka client; the librdkafka section does not list acks"
+  precedence: "smoke run -> null, `smoke_only`; a missing candidate or a configuration not `complete_valid` -> null, `incomplete_configuration`; then the item rule"
+  no_verdict_when: "smoke run, incomplete or missing configuration; no pooling or replacement repeats"
+  text_must_state: "the measures describe batching and latency at the profile's offered rate, not maximum throughput; delivery latency is application callback latency, not wire latency; durability (D1) was not tested; workload data is synthetic"
+
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-11-04"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-11-04"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md
+  version: v2.16.0
+  read_date: "2026-11-04"
