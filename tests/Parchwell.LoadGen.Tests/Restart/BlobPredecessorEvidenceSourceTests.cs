@@ -27,6 +27,30 @@ public sealed class BlobPredecessorEvidenceSourceTests
         Assert.Equal(2, handler.Requests.Count);
     }
 
+    [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public async Task Given_ListingAtAndAboveTheEntryLimit_When_Listing_Then_ReturnsOrRejectsIt(int count, bool accepted)
+    {
+        using var handler = new Handler(_ => ListPage([.. Enumerable.Range(0, count).Select(i => $"{Prefix}pod-a/{i:D3}")], null));
+        BlobPredecessorEvidenceSource source = Source(handler);
+
+        if (accepted) Assert.Equal(count, (await source.ListAsync(Prefix, TestContext.Current.CancellationToken)).Count);
+        else Assert.Equal("predecessor_listing_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() =>
+            source.ListAsync(Prefix, TestContext.Current.CancellationToken))).Message);
+    }
+
+    [Fact]
+    public void Given_ContainerOtherThanLedger_When_Creating_Then_Rejects()
+    {
+        using var handler = new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = new BlobServiceClient(new Uri("https://predecessor.blob.test/"), new Credential(),
+            new BlobClientOptions { Transport = new HttpClientTransport(new HttpClient(handler, disposeHandler: false)) });
+
+        Assert.StartsWith("predecessor_source_container_invalid", Assert.Throws<ArgumentException>(() =>
+            new BlobPredecessorEvidenceSource(client, "verifier")).Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Given_ObjectWithinAndBeyondTheLimit_When_Reading_Then_ReturnsOrRejectsIt()
     {

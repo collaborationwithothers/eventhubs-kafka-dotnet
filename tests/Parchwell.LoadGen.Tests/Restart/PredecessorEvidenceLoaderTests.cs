@@ -41,6 +41,7 @@ public sealed class PredecessorEvidenceLoaderTests
     [InlineData("none", "predecessor_instance_count_invalid")]
     [InlineData("run-1/C0/r1/producer/pod-c/registration.json", "predecessor_instance_count_invalid")]
     [InlineData("run-1/C0/r1/producer/pod-b/registration.json", "predecessor_successor_already_registered")]
+    [InlineData("run-1/C0/r1/producer/stray.json", "predecessor_listing_invalid")]
     [InlineData(Instance + "diagnostics/ledger.jsonl", "predecessor_member_set_invalid")]
     [InlineData("no-completion", "predecessor_member_set_invalid")]
     [InlineData("first-job", "predecessor_requires_restart_instance")]
@@ -54,6 +55,17 @@ public sealed class PredecessorEvidenceLoaderTests
 
         Assert.Equal(error, (await Assert.ThrowsAsync<InvalidDataException>(() =>
             LoadAsync(source, change == "first-job" ? FirstJob : Successor))).Message);
+        Assert.Empty(source.Reads);
+    }
+
+    [Fact]
+    public async Task Given_PredecessorDirectoryThatIsNotAnEscapedPodName_When_Loading_Then_RejectsBeforeReadingAnObject()
+    {
+        Dictionary<string, byte[]> objects = (await PublishedAsync()).ToDictionary(
+            entry => "run-1/C0/r1/producer/pod a/" + entry.Key[Instance.Length..], entry => entry.Value);
+        var source = new Source(objects);
+
+        Assert.Equal("predecessor_listing_invalid", (await Assert.ThrowsAsync<InvalidDataException>(() => LoadAsync(source, Successor))).Message);
         Assert.Empty(source.Reads);
     }
 
