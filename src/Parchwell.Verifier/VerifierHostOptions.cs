@@ -46,6 +46,19 @@ internal sealed class VerifierHostOptions
     public string? SourceCommit { get; set; }
     public string? InstanceId { get; set; }
     public string? ExpectedInstanceId { get; set; }
+
+    // Used only after startup validation in repeat modes.
+    internal IReadOnlyList<string> ExpectedProducerJobNames
+    {
+        get
+        {
+            string first = Common.Phase.PhaseIdentity.JobName(RunId!, Phase!, Repeat!.Value);
+            return ScenarioId == "B10"
+                ? [first, Common.Phase.PhaseIdentity.RestartJobName(RunId!, Phase!, Repeat.Value)]
+                : [first];
+        }
+    }
+
     public string? ClientId { get; set; }
     public string? VerifierClientId { get; set; }
     public string? NamespaceName { get; set; }

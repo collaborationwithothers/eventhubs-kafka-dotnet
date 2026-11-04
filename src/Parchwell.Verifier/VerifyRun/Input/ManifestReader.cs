@@ -5,13 +5,15 @@ using Parchwell.Verifier.Common.Serialization;
 namespace Parchwell.Verifier.VerifyRun.Input;
 
 /// <summary>Reads the independently sealed manifest as structural evidence for check 2.</summary>
-internal static class ManifestReader
+internal static partial class ManifestReader
 {
     private const string Artifact = "manifest.json";
     private static readonly IReadOnlySet<string> ManifestFields = Fields(
         "schema_version", "identity", "generator_version", "planned_attempt_count", "attempt_count", "inventory",
         "timestamp_frequency", "start_timestamp", "worker_status", "bookkeeping_complete", "first_unexecuted_ordinal",
         "diagnostics", "runtime_versions", "evidence_files", "guard_observations");
+    private static readonly IReadOnlySet<string> ManifestAllowedFields =
+        new HashSet<string>([.. ManifestFields, "restart"], StringComparer.Ordinal);
     private static readonly IReadOnlySet<string> IdentityFields = Fields(
         "scenario_id", "configuration_id", "run_id", "instance_id", "expected_instance_id", "client_id");
     private static readonly IReadOnlySet<string> AttemptFields = Fields(
@@ -39,13 +41,13 @@ internal static class ManifestReader
 
     private static HashSet<string> Fields(params string[] names) => new(names, StringComparer.Ordinal);
 
-    private sealed class ManifestParser(string artifact, InputBudget budget, long maxInventoryEntries)
+    private sealed partial class ManifestParser(string artifact, InputBudget budget, long maxInventoryEntries)
     {
         public List<StructuralProblem> Problems { get; } = [];
 
         public SealedRunManifest? Read(JsonElement root)
         {
-            Validate(root, "$", ManifestFields);
+            Problems.AddRange(StrictJson.ValidateProperties(root, "$", ManifestFields, ManifestAllowedFields, artifact, 2));
             int? schema = Int32(root, "schema_version", "schema_version");
             if (schema is not null && schema != 1) Add("unsupported_schema_version", "schema_version");
             RunIdentity? identity = ReadIdentity(Object(root, "identity", "identity"), "identity");
@@ -62,6 +64,7 @@ internal static class ManifestReader
             Dictionary<string, string>? runtimeVersions = ReadStringMap(root, "runtime_versions", "runtime_versions");
             Dictionary<string, string>? evidenceFiles = ReadStringMap(root, "evidence_files", "evidence_files");
             List<string>? guards = ReadStringArray(root, "guard_observations", "guard_observations");
+            RestartManifest? restart = ReadRestart(root);
 
             if (Problems.Count != 0 || schema is null || identity is null || generatorVersion is null || plannedCount is null ||
                 attemptCount is null || inventory is null || frequency is null || start is null || workerStatus is null ||
@@ -70,9 +73,11 @@ internal static class ManifestReader
                 return null;
             }
 
-            return new SealedRunManifest(schema.Value, identity, generatorVersion, plannedCount.Value, attemptCount.Value,
+            var manifest = new SealedRunManifest(schema.Value, identity, generatorVersion, plannedCount.Value, attemptCount.Value,
                 inventory, frequency.Value, start.Value, workerStatus, bookkeeping.Value, firstUnexecuted, diagnostics,
-                runtimeVersions, evidenceFiles, guards);
+                runtimeVersions, evidenceFiles, guards, restart);
+            ValidateRestartManifest(manifest);
+            return Problems.Count == 0 ? manifest : null;
         }
 
         private RunIdentity? ReadIdentity(JsonElement value, string path)

@@ -22,7 +22,8 @@
       "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
       "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
       "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
-      "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs"
+      "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs",
+      "VerifyRun/Input/RestartManifestReader.cs"
     ],
     "coverage-analysis": "off"
   }

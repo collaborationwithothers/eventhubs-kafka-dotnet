@@ -14,6 +14,7 @@ internal static partial class PhaseWireCodec
 {
     internal const int MaximumBytes = 65_536;
     private static readonly HashSet<string> RegistrationFields = ["schema_version", "identity", "phase", "repeat_number", "job_name", "pod_name", "pod_uid", "source_commit"];
+    private static readonly HashSet<string> RestartRegistrationFields = [.. RegistrationFields, "predecessor_instance_id"];
     private static readonly HashSet<string> ProducerCompletionFields = ["schema_version", "identity", "phase", "repeat_number", "job_name", "pod_name", "pod_uid", "source_commit", "mode", "handler_exit_code", "cleanup_completed"];
     private static readonly HashSet<string> ReceiptFields = ["schema_version", "mode", "scenario_id", "configuration_id", "run_id", "phase", "repeat", "job_name", "pod_name", "identity", "source_commit", "handler_exit_code", "cleanup_completed", "started_utc", "completed_utc", "artifacts", "publication_acceptance", "repeat_checks"];
 
@@ -24,15 +25,19 @@ internal static partial class PhaseWireCodec
         {
         writer.WriteStartObject(); writer.WriteNumber("schema_version", value.SchemaVersion); WriteIdentity(writer, value.Identity);
         writer.WriteString("phase", value.Phase); writer.WriteNumber("repeat_number", value.RepeatNumber); writer.WriteString("job_name", value.JobName);
-        writer.WriteString("pod_name", value.PodName); writer.WriteString("pod_uid", value.PodUid); writer.WriteString("source_commit", value.SourceCommit); writer.WriteEndObject();
+        writer.WriteString("pod_name", value.PodName); writer.WriteString("pod_uid", value.PodUid); writer.WriteString("source_commit", value.SourceCommit);
+        if (value.PredecessorInstanceId is not null) writer.WriteString("predecessor_instance_id", value.PredecessorInstanceId);
+        writer.WriteEndObject();
         });
     }
 
     internal static ProducerRegistration ReadRegistration(ReadOnlyMemory<byte> bytes)
     {
         using JsonDocument document = Parse(bytes);
-        JsonElement root = document.RootElement; Exact(root, RegistrationFields);
-        var value = new ProducerRegistration(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"));
+        JsonElement root = document.RootElement;
+        bool hasPredecessor = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("predecessor_instance_id", out _);
+        Exact(root, hasPredecessor ? RestartRegistrationFields : RegistrationFields);
+        var value = new ProducerRegistration(Int(root, "schema_version"), ReadIdentity(Prop(root, "identity")), Str(root, "phase"), Int(root, "repeat_number"), Str(root, "job_name"), Str(root, "pod_name"), Str(root, "pod_uid"), Str(root, "source_commit"), hasPredecessor ? Str(root, "predecessor_instance_id") : null);
         ValidateUntrustedCoordinates(value.Phase, value.RepeatNumber, "Registration");
         ValidateRegistration(value);
         return value;
@@ -190,7 +195,9 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateRegistration(ProducerRegistration v)
     {
-        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || !ScenarioPhases.TryGetConfiguration(v.Identity.ScenarioId, v.Phase, out string? expectedConfiguration) || v.Identity.ConfigurationId != expectedConfiguration || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || v.JobName != PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
+        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || !ScenarioPhases.TryGetConfiguration(v.Identity.ScenarioId, v.Phase, out string? expectedConfiguration) || v.Identity.ConfigurationId != expectedConfiguration || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || !((v.JobName == PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) && v.PredecessorInstanceId is null) ||
+            (v.Identity.ScenarioId == "B10" && v.JobName == PhaseIdentity.RestartJobName(v.Identity.RunId, v.Phase, v.RepeatNumber) &&
+                v.PredecessorInstanceId is not null && Segment(v.PredecessorInstanceId) && !string.Equals(v.PredecessorInstanceId, v.Identity.InstanceId, StringComparison.Ordinal))) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
     }
 
     private static DateTimeOffset ParseUtc(string value)

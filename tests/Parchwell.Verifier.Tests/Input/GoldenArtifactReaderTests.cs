@@ -54,6 +54,7 @@ public sealed class GoldenArtifactReaderTests
         AssertIdentity(manifest.Value.Identity);
         Assert.Equal(1, manifest.Value.SchemaVersion);
         Assert.Equal("1", manifest.Value.GeneratorVersion);
+        Assert.Null(manifest.Value.Restart);
         Assert.Equal(2L, manifest.Value.PlannedAttemptCount);
         Assert.Equal(2L, manifest.Value.AttemptCount);
         Assert.Equal(2, manifest.Value.Inventory.Count);

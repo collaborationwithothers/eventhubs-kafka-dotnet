@@ -29,6 +29,14 @@ internal static partial class PhaseIdentity
         return $"{runId}-{phase.ToLowerInvariant()}-r{repeat}-loadgen";
     }
 
+    internal static string RestartJobName(string runId, string phase, int repeat)
+    {
+        ValidateRunId(runId);
+        ValidatePhase(phase);
+        ValidateRepeat(repeat);
+        return $"{runId}-{phase.ToLowerInvariant()}-r{repeat}-loadgen2";
+    }
+
     internal static string StartLineJobName(string runId, string phase, int repeat) =>
         $"{runId}-{ValidatePhase(phase).ToLowerInvariant()}-r{ValidateRepeat(repeat)}-start-line";
 

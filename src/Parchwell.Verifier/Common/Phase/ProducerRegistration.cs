@@ -11,7 +11,8 @@ internal sealed record ProducerRegistration(
     string JobName,
     string PodName,
     string PodUid,
-    string SourceCommit);
+    string SourceCommit,
+    string? PredecessorInstanceId = null);
 
 /// <summary>The successful LoadGen final-action receipt shape.</summary>
 internal sealed record ProducerCompletionReceipt(

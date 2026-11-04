@@ -96,6 +96,8 @@ The run ID `U` is 1-29 lowercase ASCII alphanumerics/hyphens with alphanumeric e
 
 The six-field producer identity records the actual registered instance, expected instance and Kafka client ID. `instance_id` equals `expected_instance_id`; it does not have to equal the observed pod name. Producer Job and pod details are separately bound by a closed registration receipt. Start-line identity uses the expected LoadGen Job in all three instance/client fields; it does not claim to know the producer pod. Verification checks the captured start-line identity independently from the registered actual producer identity.
 
+B10 intake recognizes the second producer Job named `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`. Its registration must include `predecessor_instance_id`, a distinct bounded instance segment; every first-Job registration and every other scenario omit that property. Validated repeat-mode options expose both derived Job names in first-then-second order. Restart manifests follow checks 1 to 6 of [Restarted instance (B10)](loadgen-contract.md#restarted-instance-b10); the reader accounts for the planned list within its existing input limits. These readers do not establish two-instance publication acceptance or a final B10 result. Start-line and result binding, per-instance verification, judgement and the late-write scan are implemented by the later B10 slices.
+
 | Container | Fixed path | Content |
 | --- | --- | --- |
 | verifier | `U/phase/rN/start-line.json` | Schema-one start-line note |

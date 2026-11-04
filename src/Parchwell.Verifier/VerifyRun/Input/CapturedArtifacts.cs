@@ -47,7 +47,19 @@ internal sealed record SealedRunManifest(
     IReadOnlyList<string> Diagnostics,
     IReadOnlyDictionary<string, string> RuntimeVersions,
     IReadOnlyDictionary<string, string> EvidenceFiles,
-    IReadOnlyList<string> GuardObservations);
+    IReadOnlyList<string> GuardObservations,
+    RestartManifest? Restart = null);
+
+/// <summary>Retains the predecessor and ordered resend list declared by a restarted producer.</summary>
+internal sealed record RestartManifest(
+    string PredecessorInstanceId,
+    IReadOnlyList<RestartPlannedEntry> Planned);
+
+/// <summary>Identifies one predecessor attempt selected for resend in the new instance.</summary>
+internal sealed record RestartPlannedEntry(
+    long Ordinal, string PredecessorAttemptId, string TenantId,
+    string DocumentId, string Key, long Sequence,
+    string EventType, long PlannedMicroseconds);
 
 /// <summary>Retains a producer-declared payload name, byte length, and digest string.</summary>
 internal sealed record ArtifactDescriptor(string Name, long Length, string Sha256);
