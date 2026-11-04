@@ -18,6 +18,7 @@ using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Publication;
+using Parchwell.LoadGen.Run.Restart;
 using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen;
@@ -380,6 +381,13 @@ internal static class Program
             var client = new BlobServiceClient(new Uri(hostOptions.BlobEndpoint, UriKind.Absolute),
                 new WorkloadIdentityCredential(), new BlobClientOptions());
             return new BlobProducerRunLifecycle(client, provider.GetRequiredService<TimeProvider>());
+        });
+        builder.Services.AddSingleton<IPredecessorEvidenceSource>(provider =>
+        {
+            LoadGenHostOptions hostOptions = provider.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
+            var client = new BlobServiceClient(new Uri(hostOptions.BlobEndpoint, UriKind.Absolute),
+                new WorkloadIdentityCredential(), new BlobClientOptions());
+            return new BlobPredecessorEvidenceSource(client, hostOptions.BlobContainer);
         });
         builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
             provider => (configuration, statistics, evidence, authentication) => provider

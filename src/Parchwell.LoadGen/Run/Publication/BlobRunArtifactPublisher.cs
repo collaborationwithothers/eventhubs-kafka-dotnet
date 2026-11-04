@@ -66,6 +66,7 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
     internal async Task PublishOpenedSourcesAsync(RunExecutionResult result, RunPublicationOptions options,
         ImmutableArray<ArtifactSource> sources, CancellationToken cancellationToken)
     {
+        ValidateRestartRole(options.Context, result.Manifest);
         var expectations = result.EvidenceExpectations
             ?? throw new InvalidDataException("publication_evidence_expectations_missing");
         ImmutableDictionary<string, byte[]> payloads = await ReadAndVerifySourcesAsync(sources,
@@ -103,6 +104,16 @@ public sealed class BlobRunArtifactPublisher : IRunArtifactPublisher
         await using var indexStream = new MemoryStream(indexBytes, writable: false);
         BlobClient indexBlob = container.GetBlobClient(prefix + "/index.json");
         await indexBlob.UploadAsync(indexStream, overwrite: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    // ADR-021: only B10's second load generator Job publishes a restart manifest, naming the predecessor it read,
+    // and that Job publishes no other kind of manifest.
+    private static void ValidateRestartRole(ProducerRunContext? context, RunManifest manifest)
+    {
+        bool restartJob = context is { IsRestartInstance: true };
+        if (restartJob != (manifest.Restart is not null) || (restartJob &&
+                !StringComparer.Ordinal.Equals(context!.PredecessorInstanceId, manifest.Restart!.PredecessorInstanceId)))
+            throw new InvalidDataException("publication_restart_role_mismatch");
     }
 
     private static void ValidateSuccessfulResult(RunExecutionResult result)

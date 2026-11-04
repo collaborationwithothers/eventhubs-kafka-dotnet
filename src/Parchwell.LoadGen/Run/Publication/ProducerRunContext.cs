@@ -26,6 +26,12 @@ public sealed record ProducerRunContext(RunIdentity Identity, string Phase, int 
     public string DiagnosticsPrefix => InstancePrefix + "diagnostics/";
     /// <summary>Gets the create-only completion object path.</summary>
     public string CompletionPath => InstancePrefix + "completion.json";
+    /// <summary>Gets the name of the repeat's first load generator Job.</summary>
+    public string FirstJobName => $"{Identity.RunId}-{Phase.ToLowerInvariant()}-r{RepeatNumber}-loadgen";
+    /// <summary>Gets whether this is the second load generator Job of a B10 repeat (ADR-021).</summary>
+    public bool IsRestartInstance => StringComparer.Ordinal.Equals(JobName, FirstJobName + "2");
+    /// <summary>Gets the first instance's ID, which the second instance sets after it has read that instance's evidence.</summary>
+    public string? PredecessorInstanceId { get; init; }
 
     /// <summary>Validates the stable identity, phase, repeat and Job relationships.</summary>
     public void Validate()
@@ -42,8 +48,18 @@ public sealed record ProducerRunContext(RunIdentity Identity, string Phase, int 
         if (!System.Text.RegularExpressions.Regex.IsMatch(Identity.RunId, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant) || Identity.RunId.Length > 29)
             throw new InvalidDataException("producer_run_context_run_id_invalid");
-        if (!StringComparer.Ordinal.Equals(JobName, $"{Identity.RunId}-{Phase.ToLowerInvariant()}-r{RepeatNumber}-loadgen") ||
-            !StringComparer.Ordinal.Equals(PodName, Identity.InstanceId))
+        if (IsRestartInstance)
+        {
+            if (!StringComparer.Ordinal.Equals(Identity.ScenarioId, "B10"))
+                throw new InvalidDataException("restart_instance_requires_b10");
+        }
+        else if (!StringComparer.Ordinal.Equals(JobName, FirstJobName))
             throw new InvalidDataException("producer_run_context_identity_mismatch");
+        if (!StringComparer.Ordinal.Equals(PodName, Identity.InstanceId))
+            throw new InvalidDataException("producer_run_context_identity_mismatch");
+        if (PredecessorInstanceId is not null && (!IsRestartInstance || PredecessorInstanceId.Length == 0 ||
+                PredecessorInstanceId.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)) ||
+                StringComparer.Ordinal.Equals(PredecessorInstanceId, Identity.InstanceId)))
+            throw new InvalidDataException("producer_run_context_predecessor_invalid");
     }
 }
