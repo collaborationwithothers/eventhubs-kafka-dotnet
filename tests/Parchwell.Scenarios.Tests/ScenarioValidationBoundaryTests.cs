@@ -104,6 +104,12 @@ public sealed class ScenarioValidationBoundaryTests
     [InlineData("max.in.flight", "1000001", "setting_out_of_range")]
     [InlineData("max.in.flight", "1000000", "no_op_override")]
     [InlineData("request.timeout.ms", "true", "setting_out_of_range")]
+    [InlineData("acks", "-1", "no_op_override")]
+    [InlineData("acks", "-2", "setting_out_of_range")]
+    [InlineData("acks", "1001", "setting_out_of_range")]
+    [InlineData("linger.ms", "5", "no_op_override")]
+    [InlineData("linger.ms", "-1", "setting_out_of_range")]
+    [InlineData("linger.ms", "900001", "setting_out_of_range")]
     public async Task Given_InvalidB04Override_When_Resolving_Then_UsesSnakeCaseDiagnosticWithOriginalSource(
         string key, string value, string code)
     {

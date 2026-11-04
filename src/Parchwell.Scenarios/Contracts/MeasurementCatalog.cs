@@ -44,6 +44,10 @@ internal static class MeasurementCatalog
         entries.Add("stats.broker.req_timeouts", new("statistics", "count", "count", "broker_cumulative", AllRoles, Statistics, "v2.16.0"));
         entries.Add("stats.broker.disconnects", new("statistics", "count", "count", "broker_cumulative", AllRoles, Statistics, "v2.16.0"));
         entries.Add("stats.broker.rtt.p99", new("statistics", "duration", "us", "broker_window", AllRoles, Statistics, "v2.16.0"));
+        entries.Add("stats.broker.req.produce", new("statistics", "count", "count", "broker_cumulative",
+            [KafkaClientRole.LoadGenProducer], Statistics, "v2.16.0"));
+        entries.Add("stats.topic.batchcnt", new("statistics", "count", "messages", "topic_window",
+            [KafkaClientRole.LoadGenProducer], Statistics, "v2.16.0"));
         entries.Add("producer.request_timeout", new("request_evidence", "event", "none", "request",
             [KafkaClientRole.LoadGenProducer, KafkaClientRole.EnrichmentProducer],
             "https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L1043-L1049", "v2.16.0; collector pending"));

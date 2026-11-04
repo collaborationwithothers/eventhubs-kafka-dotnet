@@ -56,6 +56,8 @@ Inventory traceability follows the [frozen inventory and amendment][inventory]: 
 | `stats.broker.disconnects` | `Disconnects` | `kafka.broker.disconnects`, counter | count |
 | `stats.broker.rtt.p99` | `RoundTripTime.Value`, when `RoundTripTime.Count > 0` | `kafka.broker.rtt.p99_us`, histogram | us |
 
+`stats.broker.req.produce` and `stats.topic.batchcnt` have no typed field. They name the `Produce` key of each broker's `req` counters and each topic's `batchcnt` window in the original report ([librdkafka v2.16.0][statistics]). The typed parser does not read them. A later verifier change reads them from the original reports kept in evidence. Both count a retried message again, because librdkafka moves retryable messages back to the partition queue and builds a new request ([rdkafka_request.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_request.c#L4666-L4675)).
+
 The probe reads `stats.broker.throttle.max` from captured evidence, with the role and threshold in its declaration. Missing or unusable evidence makes it inconclusive and blocks gated execution under the [scenario contract][scenario]. KQL is not the probe's evidence source.
 
 The meter is `Parchwell.Kafka.Statistics`. Tags are `scenario`, `run`, `role`, `client_id` and `broker`. Session IDs and native timestamps remain in evidence. Topic, partition, tenant and message dimensions are excluded from this initial bridge. These dimensions follow decision 9 of the agreed design. The broker-series limit applies within a session; it does not bound distinct run or client identities across executions. Later exporter integration must validate that cardinality and its ingestion cost.
