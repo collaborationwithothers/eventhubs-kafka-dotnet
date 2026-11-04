@@ -227,6 +227,18 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual([['kubectl', 'delete', 'jobs', '-n', 'parchwell', '-l',
                            f'app.kubernetes.io/instance in ({LEDGER_RUN}-b06,{LEDGER_RUN}-b07)', '--ignore-not-found', '--wait=false', '--request-timeout=30s']], delete)
 
+    def test_ledger_smoke_treats_wrong_shape_json_as_malformed_evidence(self):
+        self.prepare_ledger()
+        self.fake.blobs[f'{LEDGER_RUN}-b06/C0/r1/producer/{LEDGER_RUN}-b06-c0-r1-loadgen-pod/publication/statistics.jsonl'] = (
+            json.dumps({'raw_json': '[]'}) + '\n').encode()
+        self.fake.blobs[f'{LEDGER_RUN}-b07/C0/r1/producer/{LEDGER_RUN}-b07-c0-r1-loadgen-pod/publication/ledger.jsonl'] = b'[1]\n'
+        with self.mocked():
+            self.assertEqual(1, self.main('run-single-action-batch'))
+        self.assertEqual([('B06', 'C0', False, 'malformed_evidence'), ('B06', 'C1', True, None),
+                          ('B07', 'C0', False, 'malformed_evidence'), ('B07', 'C1', True, None)],
+                         [(entry['item'], entry['configuration'], entry['complete'], entry['reason'])
+                          for entry in json.loads((self.artifacts / 'phase-status.json').read_text())['ledger_smoke']])
+
     def test_ledger_smoke_records_gaps_and_continues(self):
         self.prepare_ledger()
         del self.fake.blobs[f'{LEDGER_RUN}-b07/C1/r1/producer/{LEDGER_RUN}-b07-c1-r1-loadgen-pod/publication/statistics.jsonl']

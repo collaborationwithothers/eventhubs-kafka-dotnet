@@ -96,7 +96,7 @@ class LedgerBatch:
             summary["complete"] = True
         except Gap as error:
             summary["reason"] = str(error)
-        except (OSError, ValueError, KeyError, TypeError, IndexError, UnicodeError):
+        except (OSError, ValueError, KeyError, TypeError, IndexError, UnicodeError, AttributeError):
             summary["reason"] = "malformed_evidence"
         target = self.p.candidates / f"{item}-{configuration}-smoke-summary.json"
         target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
