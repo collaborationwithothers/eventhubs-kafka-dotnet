@@ -68,9 +68,9 @@ internal static class PhaseJudge
             if (invalid && e?.KnownInvalid == true) rr.Add("trusted_result_invalid");
             if (sweepFailed) rr.Add("b10_sweep_failed");
             if (scenarioId == "B10" && e?.B10Finality is null) rr.Add("b10_intake_only");
-            if (finalization is not null) rr.AddRange(finalization.Reasons);
+            if (finalization is not null) rr.AddRange(finalization.Reasons.Where(reason => reason != "trusted_result_invalid"));
             bool complete=status=="complete_valid";
-            repeats.Add(new(number,status,rr,new(j1,j2,j3,j4,j5,j6,j8),complete ? scenarioId == "B10" ? finalization?.Counts : e?.Counts : null,
+            repeats.Add(new(number,status,rr.Distinct(StringComparer.Ordinal).ToArray(),new(j1,j2,j3,j4,j5,j6,j8),complete ? scenarioId == "B10" ? finalization?.Counts : e?.Counts : null,
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.ProbeObservation : null,e?.Identity,
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,

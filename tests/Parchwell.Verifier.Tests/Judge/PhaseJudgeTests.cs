@@ -57,6 +57,39 @@ public sealed class PhaseJudgeTests
         Assert.All(judgement.Repeats,r=>{Assert.Null(r.ProbeObservation);Assert.Null(r.WorkloadObservation);Assert.Null(r.BrokerCount);Assert.Null(r.BatchingEvidence);});
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Given_AcceptedSweepWithInvalidOriginal_When_Judged_Then_OnlyJudgeTrustControlsProvenance(bool knownInvalid, bool receiptValid)
+    {
+        PhaseRepeatEvidence[] evidence = Enumerable.Range(1, 5).Select(i => Complete(i, null) with
+        {
+            B10Finality = new(false, new(i, null, null, true, VerifierResultStatus.CompleteValid, new(3, 0, 2, 0, 2, 2), []))
+        }).ToArray();
+        evidence[2] = evidence[2] with
+        {
+            KnownInvalid = knownInvalid,
+            VerifierReceiptValid = receiptValid,
+            B10Finality = new(false, new(3, null, null, false, VerifierResultStatus.Invalid, null,
+                ["trusted_result_invalid", "record_join_failed", "record_join_failed"]))
+        };
+
+        PhaseJudgement judgement = PhaseJudge.Evaluate("C0", evidence, "B10");
+        PhaseRepeatResult repeat = judgement.Repeats[2];
+        Assert.Equal("invalid", judgement.Status);
+        Assert.Equal("invalid", repeat.Status);
+        Assert.False(repeat.ClassificationFinal);
+        Assert.Null(repeat.Counts);
+        Assert.Null(judgement.Counts);
+        Assert.Equal(knownInvalid ? 1 : 0, repeat.Reasons.Count(reason => reason == "trusted_result_invalid"));
+        Assert.Equal(1, repeat.Reasons.Count(reason => reason == "record_join_failed"));
+        Assert.Equal(!receiptValid, repeat.Reasons.Contains("j3_verifier_receipt", StringComparer.Ordinal));
+        Assert.Equal(repeat.Reasons.Count, repeat.Reasons.Distinct(StringComparer.Ordinal).Count());
+        Assert.DoesNotContain("b10_sweep_failed", repeat.Reasons);
+    }
+
     [Fact]
     public void Given_B10FinalCountsOverflow_When_Judged_Then_PreservesRepeatFinalityWithoutPhaseTotals()
     {
