@@ -12,6 +12,7 @@
       "enum": [
         "A01",
         "B04",
+        "B10",
         "B01",
         "B03",
         "B05",
@@ -93,6 +94,8 @@
             "loadgen2",
             "verify",
             "judge",
+            "b10-sweep-line",
+            "b10-sweep",
             "single-action",
             "single-action-judge",
             "single-action-seed",
@@ -107,6 +110,8 @@
           "minimum": 1,
           "maximum": 5
         },
+        "b10_last_verifier_completed_utc": { "type": "string", "format": "date-time", "minLength": 1 },
+        "b10_last_loadgen_terminated_utc": { "type": "string", "format": "date-time", "minLength": 1 },
         "loadgen_job_name": {
           "type": "string",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
@@ -329,6 +334,8 @@
             "single_action_judge"
           ],
           "properties": {
+            "b10_capture": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000 } },
+            "b10_sweep": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000 } },
             "scenario_parsing": {
               "type": "object",
               "const": {
@@ -634,6 +641,19 @@
       },
       "allOf": [
         {
+          "if": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] },
+          "then": { "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] } }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "b10-sweep-line" } }, "required": ["mode"] },
+          "then": { "required": ["b10_last_verifier_completed_utc", "b10_last_loadgen_terminated_utc"], "properties": { "bounds": { "required": ["b10_capture"] } } },
+          "else": { "not": { "anyOf": [{ "required": ["b10_last_verifier_completed_utc"] }, { "required": ["b10_last_loadgen_terminated_utc"] }] } }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "b10-sweep" } }, "required": ["mode"] },
+          "then": { "properties": { "bounds": { "required": ["b10_sweep"] } } }
+        },
+        {
           "if": { "properties": { "mode": { "const": "idle-observation-judge" } }, "required": ["mode"] },
           "then": { "required": ["run_kind", "capture_pods", "judge_items"], "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] }, "properties": { "bounds": { "required": ["idle_observation"] } } }
         },
@@ -897,6 +917,23 @@
   },
   "allOf": [
     {
+      "if": { "properties": { "scenario_id": { "const": "B10" } }, "required": ["scenario_id"] },
+      "then": {
+        "properties": {
+          "configuration_id": { "enum": ["C0", "C1"] },
+          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "runtime": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] } }, "required": ["runtime"] },
+      "then": { "properties": { "scenario_id": { "const": "B10" } } }
+    },
+    {
+      "if": { "properties": { "scenario_id": { "const": "B10" }, "runtime": { "properties": { "mode": { "const": "judge" } }, "required": ["mode"] } }, "required": ["scenario_id", "runtime"] },
+      "then": { "properties": { "runtime": { "properties": { "bounds": { "required": ["b10_sweep"] } } } } }
+    },
+    {
       "if": {
         "properties": {
           "runtime": {
@@ -1107,7 +1144,8 @@
                       "A01",
                       "B04",
                       "B06",
-                      "B07"
+                      "B07",
+                      "B10"
                     ]
                   },
                   "configuration_id": {

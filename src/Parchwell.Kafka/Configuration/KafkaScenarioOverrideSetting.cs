@@ -131,10 +131,10 @@ public static class KafkaScenarioOverridePolicy
     [
         new("request.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 1, 900_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
         new("socket.timeout.ms", KafkaScenarioOverrideValueKind.Integer, 10, 300_000, [KafkaClientRole.LoadGenProducer], ["A01"], [NativeConfiguration]),
-        new("enable.idempotence", KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["B04", "B05"], [NativeConfiguration]),
-        new("max.in.flight", KafkaScenarioOverrideValueKind.Integer, 1, 1_000_000, [KafkaClientRole.LoadGenProducer], ["B04", "B05"], [NativeConfiguration]),
+        new("enable.idempotence", KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["B04", "B05", "B10"], [NativeConfiguration]),
+        new("max.in.flight", KafkaScenarioOverrideValueKind.Integer, 1, 1_000_000, [KafkaClientRole.LoadGenProducer], ["B04", "B05", "B10"], [NativeConfiguration]),
         new(KafkaSettingKeys.MessageMaxBytes, KafkaScenarioOverrideValueKind.Integer, 1000, 1_000_000_000, [KafkaClientRole.LoadGenProducer], ["B01"], [NativeConfiguration]),
-        new(KafkaSettingKeys.MessageTimeoutMs, KafkaScenarioOverrideValueKind.Integer, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration]),
+        new(KafkaSettingKeys.MessageTimeoutMs, KafkaScenarioOverrideValueKind.Integer, 0, int.MaxValue, [KafkaClientRole.LoadGenProducer], ["B05", "B10"], [NativeConfiguration]),
         new(KafkaSettingKeys.CompressionType, ["none", "gzip", "snappy", "lz4", "zstd"], false, false, [KafkaClientRole.LoadGenProducer], ["B03"], [NativeConfiguration]),
         new(KafkaSettingKeys.Partitioner, ["consistent_random", "murmur2_random"], false, false, [KafkaClientRole.LoadGenProducer], ["B08"], [NativeConfiguration]),
         new(KafkaSettingKeys.TransactionalId, [], true, true, [KafkaClientRole.LoadGenProducer], ["B05"], [NativeConfiguration, NativeSource]),

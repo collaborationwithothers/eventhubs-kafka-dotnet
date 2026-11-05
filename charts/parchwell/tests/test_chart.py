@@ -37,6 +37,9 @@ VERIFIER_REQUIRED={
   'start-line':VERIFIER_COMMON+VERIFIER_REPEAT+('StartLineOutputName','BrokerInventoryOutputName','MaxPartitions','MaxInputDepth'),
   'verify':VERIFIER_COMMON+VERIFIER_REPEAT+('IoTimeout','ResultOutputName','ScenarioRoot','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInventoryEntries','MaxInputEntries','MaxPartitions','MaxInputDepth','MaxNativeReportBytes','MaxBrokerEntries','SafetyStop','StartLineInputName','ArtifactPrefix')+VERIFIER_SCENARIO,
   'judge':VERIFIER_COMMON+('IoTimeout','CandidateOutputName','LoadGenImage','VerifierImage','MaxArtifactBytes','MaxTotalInputBytes')+VERIFIER_SCENARIO}
+VERIFIER_PHASE_KAFKA=('VerifierClientId','NamespaceName','TokenTimeout','MetadataTimeout','WatermarkTimeout','PollSlice','BlobIoTimeout','MaxPartitions','MaxInputDepth')
+VERIFIER_REQUIRED['b10-sweep-line']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10LastVerifierCompletedUtc','B10LastLoadgenTerminatedUtc','B10SettleIntervalMilliseconds')
+VERIFIER_REQUIRED['b10-sweep']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10SettleIntervalMilliseconds','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInputEntries','SafetyStop')
 def verifier_known(key):
     nested='ScenarioLoadOptions__'
     return key[len(nested):] in VERIFIER_SCENARIO_PROPERTIES if key.startswith(nested) else key in VERIFIER_PROPERTIES
@@ -55,6 +58,7 @@ def run(args, timeout=125):
 def with_case(d, path): path.write_text(yaml.safe_dump(d,sort_keys=False))
 def jobname(d):
     r=d['runtime']; phase=r['phase'].lower()
+    if r['mode'] in ('b10-sweep-line','b10-sweep'): return f"{r['run_id']}-{phase}-{r['mode']}"
     return f"{r['run_id']}-{phase}-judge" if r['mode']=='judge' else f"{r['run_id']}-{phase}-r{r['repeat']}-{r['mode']}"
 def positive_cases():
     for phase,config in [('probe','C0'),('C0','C0'),('C3','C3')]:
@@ -78,6 +82,16 @@ def positive_cases():
     for item,phase,config,repeat in [('A01','probe','C0',1),('A01','C0','C0',5),('A01','C3','C3',1),('B04','C1','C1',1),('B06','C0','C0',1),('B07','C1','C1',5)]:
       d=deepcopy(FIXTURE);d['scenario_id']=item;d['configuration_id']=config;r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=phase,mode='loadgen2',repeat=repeat,loadgen_job_name=f"{r['run_id']}-{phase.lower()}-r{repeat}-loadgen")
       yield d
+
+    for config in ('C0','C1'):
+      for mode in ('start-line','loadgen','loadgen2','verify'):
+        for repeat in (1,5):
+          d=deepcopy(FIXTURE);d.update(scenario_id='B10',configuration_id=config);r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode,repeat=repeat,loadgen_job_name=f"{r['run_id']}-{config.lower()}-r{repeat}-loadgen")
+          yield d
+      for mode in ('b10-sweep-line','b10-sweep','judge'):
+        d=deepcopy(FIXTURE);d.update(scenario_id='B10',configuration_id=config);r=d['runtime'];r['bounds']=deepcopy(DEFAULTS);r.update(phase=config,mode=mode);r.pop('repeat',None);r.pop('loadgen_job_name',None)
+        if mode=='b10-sweep-line': r.update(b10_last_verifier_completed_utc='2026-11-05T12:00:00.0000000Z',b10_last_loadgen_terminated_utc='2026-11-05T11:59:00.0000000Z')
+        yield d
 
 def scalar(value):
     if isinstance(value, bool): return str(value).lower()
@@ -107,11 +121,20 @@ def expected_environment(d):
       expected['Verifier__VerifierClientId']=('field','metadata.name')
       if mode!='judge':
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_kafka'].items()})
-        x={'NamespaceName':r['eventhubs']['namespace_name'],'Repeat':repeat,'ExpectedInstanceId':r['loadgen_job_name'],'RepeatPrefix':prefix,'ArtifactPrefix':prefix+'producer/','StartLineOutputName':prefix+'start-line.json','BrokerInventoryOutputName':prefix+'broker-inventory.json','StartLineInputName':prefix+'start-line.json','ResultOutputName':prefix+'result.json'}
+        if mode in ('b10-sweep-line','b10-sweep'):
+          x={'NamespaceName':r['eventhubs']['namespace_name'],'PhasePrefix':f"{r['run_id']}/{phase}/"}
+          section='b10_capture' if mode=='b10-sweep-line' else 'b10_sweep'
+          x.update(r['bounds'][section])
+          if mode=='b10-sweep-line': x.update(B10LastVerifierCompletedUtc=r['b10_last_verifier_completed_utc'],B10LastLoadgenTerminatedUtc=r['b10_last_loadgen_terminated_utc'])
+        else:
+          x={'NamespaceName':r['eventhubs']['namespace_name'],'Repeat':repeat,'ExpectedInstanceId':r['loadgen_job_name'],'RepeatPrefix':prefix,'ArtifactPrefix':prefix+'producer/','StartLineOutputName':prefix+'start-line.json','BrokerInventoryOutputName':prefix+'broker-inventory.json','StartLineInputName':prefix+'start-line.json','ResultOutputName':prefix+'result.json'}
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in x.items()})
-        section='verifier_start_line' if mode=='start-line' else 'verifier_verify'
+        section='verifier_start_line' if mode in ('start-line','b10-sweep-line') else 'verifier_verify'
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds'][section].items()})
       else:
+        if d['scenario_id']=='B10':
+          expected['Verifier__MaxPartitions']=('value',scalar(r['bounds']['verifier_kafka']['MaxPartitions']))
+          expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['b10_sweep'].items()})
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_gate'].items()})
         p=f"{r['run_id']}/{phase}/"
         expected.update({'Verifier__PhasePrefix':('value',p),'Verifier__CandidateOutputName':('value',p+'candidate.json'),'Verifier__LoadGenImage':('value',r['loadgen_image']),'Verifier__VerifierImage':('value',r['verifier_image'])})
@@ -126,7 +149,7 @@ def verify(doc,d):
     assert job['metadata']['namespace']=='parchwell'
     pod=job['spec']['template']['spec']; assert len(pod['containers'])==1 and pod['restartPolicy']=='Never'
     assert job['spec']['completions']==job['spec']['parallelism']==1 and job['spec']['backoffLimit']==0
-    mode=role_mode(d['runtime']['mode']); expected_deadline={'loadgen':1140,'verify':750,'start-line':150,'judge':90}[mode]
+    mode=role_mode(d['runtime']['mode']); expected_deadline={'loadgen':1140,'verify':750,'start-line':150,'judge':90,'b10-sweep-line':150,'b10-sweep':750}[mode]
     assert job['spec']['activeDeadlineSeconds']==expected_deadline
     assert pod['terminationGracePeriodSeconds']==30
     assert pod['automountServiceAccountToken'] is False
@@ -168,7 +191,7 @@ def main():
   assert DEFAULTS['execution']==BOUNDS['execution']
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
-    positives=list(positive_cases()); assert len(positives)==47
+    positives=list(positive_cases()); assert len(positives)==69
     for i,d in enumerate(positives):
       f=td/f'{i}.yaml';out=td/f'{i}.rendered.yaml';with_case(d,f)
       lint=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(td/f'{i}.lint'),'--max-bytes','4194304','--','helm','lint',str(CHART),'-f',str(f)])
@@ -179,11 +202,11 @@ def main():
       assert valid.returncode==0,valid.stdout+valid.stderr
       document=out.read_text()
       verify(document,d)
-      if i >= 41:
+      if 41 <= i < 47:
         job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job'); r=d['runtime']
         names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
         assert r['mode']=='loadgen2' and job['metadata']['name']==names['PARCHWELL_JOB_NAME']==names['LoadGen__JobName']==r['loadgen_job_name']+'2'
-      elif i >= 21:
+      elif 21 <= i < 41:
         assert (d['scenario_id']=='B04')==(i<25)
         assert d['scenario_id'] in ('B04','B06','B07') and d['runtime']['phase']==d['configuration_id']
         assert d['configuration_id']=='C1' if d['scenario_id']=='B04' else d['configuration_id'] in ('C0','C1')
@@ -193,6 +216,26 @@ def main():
         assert names['Telemetry__ScenarioId']==d['scenario_id']
         if d['runtime']['mode']=='loadgen': assert names['LoadGen__ScenarioId']==d['scenario_id']
         else: assert names['Verifier__ScenarioId']==d['scenario_id']
+      if i >= 47:
+        r=d['runtime'];job=next(o for o in yaml.safe_load_all(document) if o and o['kind']=='Job')
+        names={item['name']:item.get('value') for item in job['spec']['template']['spec']['containers'][0]['env']}
+        assert d['scenario_id']=='B10' and r['phase']==d['configuration_id'] and d['configuration_id'] in ('C0','C1')
+        assert names['Telemetry__ScenarioId']=='B10'
+        if r['mode'] in ('loadgen','loadgen2'):
+          assert names['LoadGen__ScenarioId']=='B10'
+          assert names['LoadGen__JobName']==r['loadgen_job_name']+('2' if r['mode']=='loadgen2' else '')
+        else:
+          assert names['Verifier__ScenarioId']=='B10'
+        if r['mode'] in ('b10-sweep-line','b10-sweep','judge'):
+          assert not {'Verifier__Repeat','Verifier__RepeatPrefix','Verifier__ExpectedInstanceId','Verifier__ArtifactPrefix'} & names.keys()
+          assert names['Verifier__B10SettleIntervalMilliseconds']=='60000'
+          assert names['Verifier__MaxPartitions']=='32'
+          assert job['metadata']['name']==f"{r['run_id']}-{r['phase'].lower()}-{r['mode']}"
+        if r['mode']=='b10-sweep-line':
+          assert names['Verifier__B10LastVerifierCompletedUtc']==r['b10_last_verifier_completed_utc']
+          assert names['Verifier__B10LastLoadgenTerminatedUtc']==r['b10_last_loadgen_terminated_utc']
+        else:
+          assert not {'Verifier__B10LastVerifierCompletedUtc','Verifier__B10LastLoadgenTerminatedUtc'} & names.keys()
     base=deepcopy(positives[0])
     negatives=[]
     def mut(fn,source=base):
@@ -234,6 +277,19 @@ def main():
     mut(lambda d:d['runtime'].update(loadgen_job_name=d['runtime']['loadgen_job_name']+'2'),second)
     mut(lambda d:d.update(scenario_id='B10'),second)
     assert len(negatives)==35
+    capture=deepcopy(positives[55]); assert capture['runtime']['mode']=='b10-sweep-line'
+    mut(lambda d:d['runtime'].pop('b10_last_verifier_completed_utc'),capture)
+    mut(lambda d:d['runtime'].pop('b10_last_loadgen_terminated_utc'),capture)
+    mut(lambda d:d['runtime']['bounds']['b10_capture'].update(B10SettleIntervalMilliseconds=None),capture)
+    mut(lambda d:d['runtime']['bounds']['b10_capture'].update(B10SettleIntervalMilliseconds=0),capture)
+    mut(lambda d:d.update(scenario_id='A01'),capture)
+    mut(lambda d:d['runtime'].update(phase='probe'),capture)
+    mut(lambda d:d['runtime'].update(repeat=1),capture)
+    mut(lambda d:d['runtime'].update(loadgen_job_name='synthetic-c0-r1-loadgen'),capture)
+    sweep=deepcopy(positives[56]); assert sweep['runtime']['mode']=='b10-sweep'
+    mut(lambda d:d['runtime']['bounds']['b10_sweep'].update(B10SettleIntervalMilliseconds=None),sweep)
+    mut(lambda d:d['runtime'].update(repeat=1),sweep)
+    assert len(negatives)==45
     for i,d in enumerate(negatives):
       f=td/f'n{i}.yaml';out=td/f'n{i}.out';with_case(d,f)
       proc=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(out),'--max-bytes','4194304','--','helm','template','synthetic',str(CHART),'-f',str(f)])
@@ -247,5 +303,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 47 positive, 35 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 69 positive, 45 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()

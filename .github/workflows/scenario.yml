@@ -11,6 +11,7 @@ on:
         options:
           - A01
           - B04
+          - B10
           - probe-batch
           - probe-batch-2
           - idle-observation
@@ -73,7 +74,7 @@ jobs:
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
       PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
-      PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C0' || 'probe' }}
+      PARCHWELL_PHASE: ${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10') && 'C0' || 'probe' }}
     steps:
       - name: Require the main branch before login
         id: guard
@@ -215,7 +216,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || 'a01-probe' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || inputs.scenario == 'B10' && 'b10-C0' || 'a01-probe' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
           retention-days: 90
           if-no-files-found: error
@@ -225,7 +226,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || 'a01-probe' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C0' || inputs.scenario == 'B10' && 'b10-C0' || 'a01-probe' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
           retention-days: 90
           if-no-files-found: error
@@ -252,7 +253,7 @@ jobs:
         run: bash infra/scripts/phase/phase.sh report
   full-C0:
     needs: [probe]
-    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch' && inputs.scenario != 'B04' && needs.probe.outputs.full_allowed == 'true') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
+    if: (inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch' && inputs.scenario != 'B04' && inputs.scenario != 'B10' && needs.probe.outputs.full_allowed == 'true') && (!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata)) && (!inputs.test_native_authentication || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata && !inputs.test_handler_refresh_path))
     runs-on: ${{ vars.PARCHWELL_RUNNER_LABEL }}
     environment: parchwell-scenarios
     timeout-minutes: 360
@@ -464,7 +465,7 @@ jobs:
       PARCHWELL_TEST_HANDLER_REFRESH_PATH: ${{ inputs.test_handler_refresh_path && 'true' || 'false' }}
       PARCHWELL_TEST_NATIVE_AUTHENTICATION: ${{ inputs.test_native_authentication && 'true' || 'false' }}
       PARCHWELL_SCENARIO: ${{ inputs.scenario || 'A01' }}
-      PARCHWELL_PHASE: ${{ inputs.scenario == 'B04' && 'C1' || 'C3' }}
+      PARCHWELL_PHASE: ${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10') && 'C1' || 'C3' }}
     steps:
       - name: Require the main branch before login
         id: guard
@@ -497,7 +498,7 @@ jobs:
         run: |
           case "$PARCHWELL_SCENARIO" in
             A01) bash infra/scripts/phase/phase.sh allow-c3 ;;
-            B04) bash infra/scripts/phase/phase.sh allow-images ;;
+            B04|B10) bash infra/scripts/phase/phase.sh allow-images ;;
             *) exit 2 ;;
           esac
       - name: Prepare the dispatch-end stop
@@ -639,7 +640,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || 'a01-C3' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || inputs.scenario == 'B10' && 'b10-C1' || 'a01-C3' }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json
           retention-days: 90
           if-no-files-found: error
@@ -649,7 +650,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         timeout-minutes: 5
         with:
-          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || 'a01-C3' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ inputs.scenario == 'B04' && 'b04-C1' || inputs.scenario == 'B10' && 'b10-C1' || 'a01-C3' }}-pods-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}
           retention-days: 90
           if-no-files-found: error

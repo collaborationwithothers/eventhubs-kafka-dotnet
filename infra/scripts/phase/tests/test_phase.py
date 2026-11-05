@@ -22,7 +22,8 @@ RESOURCE = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/r
 PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwellacr.azurecr.io'}}, 'application_insights_connection_string': {'value': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'}}
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
-DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
+DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90,
+             'loadgen2': 1140, 'b10-sweep-line': 150, 'b10-sweep': 750}
 BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 420}
 BATCH_MATRIX = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
@@ -172,6 +173,346 @@ class PhaseTests(unittest.TestCase):
             prefix = f'{run}/{configuration}/r1/producer/{run}-{configuration.lower()}-r1-loadgen-pod/publication/'
             self.fake.blobs[prefix + 'statistics.jsonl'] = LEDGER_STATS
             self.fake.blobs[prefix + 'ledger.jsonl'] = LEDGER_ROWS
+
+    def prepare_b10(self, selected='C0'):
+        os.environ['PARCHWELL_SCENARIO'] = 'B10'
+        self.prepare(selected)
+        self.clock = 100.0
+        self.wall = 1_767_225_600.0  # Synthetic 2026-01-01 UTC.
+        self.addCleanup(patch.stopall)
+        patch.object(phase.time, 'monotonic', side_effect=lambda: self.clock).start()
+        patch.object(phase.time, 'time', side_effect=lambda: self.wall).start()
+        patch.object(phase.Phase, 'boot_identity', return_value='00000000-0000-0000-0000-000000000000').start()
+
+        def collect(instance, job, values):
+            if values['mode'] not in ('loadgen', 'loadgen2'):
+                return
+            path = instance.artifacts / job
+            path.mkdir(exist_ok=True)
+            pod = {'metadata': {'name': job + '-pod', 'uid': 'synthetic-uid',
+                                'ownerReferences': [{'controller': True, 'kind': 'Job', 'name': job}]},
+                   'spec': {'serviceAccountName': 'loadgen', 'containers': [
+                       {'name': 'loadgen', 'image': values['loadgen_image'], 'env': [
+                           {'name': 'PARCHWELL_SOURCE_COMMIT', 'value': SHA},
+                           {'name': 'PARCHWELL_JOB_NAME', 'value': job}]}]},
+                   'status': {'containerStatuses': [{'name': 'loadgen', 'state': {'terminated':
+                       {'exitCode': 1, 'finishedAt': '2026-01-01T00:00:00Z'}}}]}}
+            if getattr(self, 'b10_pod_mutator', None):
+                self.b10_pod_mutator(pod, values)
+            (path / 'pods.json').write_text(json.dumps({'items': [pod]}))
+        self.fake.collect_hook = collect
+        for repeat in phase.SLOTS:
+            receipt = {'schema_version': 1, 'mode': 'verify', 'scenario_id': 'B10',
+                       'configuration_id': selected, 'run_id': self.run_id, 'phase': selected, 'repeat': repeat,
+                       'job_name': self.name('verify', repeat), 'pod_name': self.name('verify', repeat) + '-pod',
+                       'source_commit': SHA, 'cleanup_completed': True, 'handler_exit_code': 1,
+                       'started_utc': '2026-01-01T00:00:00.0000000+00:00',
+                       'completed_utc': '2026-01-01T00:00:00.0000000+00:00',
+                       'identity': {'scenario_id': 'B10', 'configuration_id': selected, 'run_id': self.run_id,
+                                    'instance_id': self.name('loadgen', repeat) + '-pod',
+                                    'expected_instance_id': self.name('loadgen', repeat) + '-pod', 'client_id': 'synthetic'}}
+            self.fake.blobs[f'{self.run_id}/{selected}/r{repeat}/verify-completion.json'] = json.dumps(receipt).encode()
+
+    def test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep(self):
+        for selected in ('C0', 'C1'):
+            with self.subTest(selected=selected):
+                self.fake = ScriptedCommands()
+                self.prepare_b10(selected)
+                with self.mocked():
+                    self.assertEqual(0, self.main('run-repeats'))
+                    self.assertEqual(0, self.main('judge'))
+                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in phase.B10_MODES]
+                                 + [(None, 'b10-sweep-line'), (None, 'b10-sweep'), (None, 'judge')],
+                                 [(r['repeat'], r['mode']) for r in self.records()])
+                self.assertEqual(('start-line', 'loadgen', 'verify'), phase.MODES)
+                second = json.loads((self.private / f"values-{self.name('loadgen2')}.json").read_text())['runtime']
+                self.assertEqual(self.name('loadgen'), second['loadgen_job_name'])
+                for mode in (*phase.B10_PHASE_MODES, 'judge'):
+                    runtime = json.loads((self.private / f"values-{self.name(mode, None)}.json").read_text())['runtime']
+                    self.assertNotIn('repeat', runtime)
+                    self.assertNotIn('loadgen_job_name', runtime)
+                    self.assertEqual(mode == 'b10-sweep-line', 'b10_last_loadgen_terminated_utc' in runtime)
+                self.assertEqual([60.0] * (1 if selected == 'C0' else 2), self.delays)
+                state = phase.Phase().state()['b10_lifecycle']
+                self.assertEqual((10, 5, []), (len(state['producers']), len(state['verifiers']), state['gaps']))
+                self.assertTrue(all(item['exit_code'] == 1 for item in state['producers']))
+                shows = [call for call in self.fake.calls if call[0][:4] == ['az', 'storage', 'blob', 'show']]
+                self.assertEqual(5, len(shows))
+
+    def test_b10_nonfinal_verifier_failure_is_retained_and_later_slots_run(self):
+        self.prepare_b10()
+        self.fake.responses[self.wait('verify')] = (1, '')
+        with self.mocked():
+            self.assertEqual(0, self.main('run-repeats'))
+        self.assertEqual('failed', self.records()[3]['outcome'])
+        self.assertEqual('complete', self.records()[19]['outcome'])
+        self.assertEqual(22, len(self.records()))
+
+    def test_b10_missing_first_termination_blocks_second_without_exit_success_gate(self):
+        self.prepare_b10()
+        self.b10_pod_mutator = lambda pod, values: pod['status']['containerStatuses'][0]['state'].clear() if values['repeat'] == 1 and values['mode'] == 'loadgen' else None
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+        second = self.records()[2]
+        self.assertEqual(('not_attempted', 'first_producer_termination_unavailable'), (second['outcome'], second['reason']))
+        self.assertNotIn(self.wait('loadgen2'), [tuple(call[0]) for call in self.fake.calls])
+        self.assertIn(self.delete('loadgen'), [tuple(call[0]) for call in self.fake.calls])
+        self.assertEqual(('not_attempted', 'lifecycle_evidence_gap'), (self.records()[20]['outcome'], self.records()[20]['reason']))
+        self.assertEqual('complete', self.records()[21]['outcome'])
+        self.assertFalse((self.private / f"values-{self.name('b10-sweep-line', None)}.json").exists())
+
+    def test_b10_unknown_live_pod_stops_every_subsequent_launch(self):
+        self.prepare_b10()
+        self.fake.responses[self.wait('loadgen')] = (124, '')
+        self.fake.responses[self.confirm('loadgen')] = (0, '{"items": [{}]}')
+        with self.mocked():
+            self.assertEqual(1, self.main('run-repeats'))
+            self.assertEqual(1, self.main('judge'))
+        self.assertEqual(2, sum(call[0][0] == 'helm' for call in self.fake.calls))
+        self.assertEqual(23, len(self.records()))
+        self.assertTrue(phase.Phase().state()['safety_stop'])
+        self.assertTrue(all(record['reason'] == 'safety_stop' for record in self.records()[2:]))
+
+    def test_b10_uses_actual_pod_time_and_latest_receipt_time(self):
+        self.prepare_b10()
+        self.b10_pod_mutator = lambda pod, values: pod['status']['containerStatuses'][0]['state']['terminated'].update(
+            finishedAt='2026-01-01T00:00:02.1234567Z' if values['repeat'] == 5 else '2026-01-01T00:00:00Z')
+        name = f'{self.run_id}/C0/r2/verify-completion.json'
+        receipt = json.loads(self.fake.blobs[name])
+        receipt['completed_utc'] = '2026-01-01T00:00:03.0000000+00:00'
+        self.fake.blobs[name] = json.dumps(receipt).encode()
+        with self.mocked():
+            self.assertEqual(0, self.main('run-repeats'))
+        runtime = phase.Phase().values('b10-sweep-line', None)['runtime']
+        self.assertEqual('2026-01-01T00:00:02.1234567+00:00', runtime['b10_last_loadgen_terminated_utc'])
+        self.assertEqual('2026-01-01T00:00:03.0000000+00:00', runtime['b10_last_verifier_completed_utc'])
+        self.assertAlmostEqual(62.1234567, sum(self.delays), places=5)
+
+    def test_b10_settle_boundary_waits_only_remaining_time(self):
+        for elapsed, delay in ((59.999, .001), (60, 0), (60.001, 0)):
+            with self.subTest(elapsed=elapsed):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                self.wall += elapsed
+                self.delays.clear()
+                with self.mocked():
+                    self.assertEqual(0, self.main('run-repeats'))
+                self.assertAlmostEqual(delay, sum(self.delays), places=5)
+
+    def test_b10_lifecycle_rejects_missing_malformed_and_wrong_binding_receipts(self):
+        cases = [('completed_utc', None), ('completed_utc', 'not-a-time'),
+                 ('completed_utc', '2026-01-01T00:00:00+01:00'), ('cleanup_completed', False),
+                 ('schema_version', True), ('repeat', True), ('run_id', 'other'), ('source_commit', 'b' * 40),
+                 ('job_name', 'other'), ('phase', 'C1'), ('configuration_id', 'C1'), ('scenario_id', 'B04'),
+                 ('identity', None), ('started_utc', '2026-01-01T00:01:00Z')]
+        for key, value in cases:
+            with self.subTest(key=key, value=value):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                name = f'{self.run_id}/C0/r1/verify-completion.json'
+                receipt = json.loads(self.fake.blobs[name])
+                receipt[key] = value
+                self.fake.blobs[name] = json.dumps(receipt).encode()
+                with self.mocked():
+                    self.assertEqual(1, self.main('run-repeats'))
+                self.assertEqual('lifecycle_evidence_gap', self.records()[20]['reason'])
+                self.assertEqual(1, len(phase.Phase().state()['b10_lifecycle']['gaps']))
+
+    def test_b10_pod_identity_and_source_cannot_supply_lifecycle_time(self):
+        for mutation in (lambda p: p['metadata']['ownerReferences'][0].update(name='other'),
+                         lambda p: p['spec']['containers'][0]['env'][0].update(value='b' * 40),
+                         lambda p: p['status']['containerStatuses'][0]['state']['terminated'].update(finishedAt='bad')):
+            with self.subTest(mutation=mutation):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                self.b10_pod_mutator = lambda pod, values: mutation(pod) if values['repeat'] == 1 else None
+                with self.mocked():
+                    self.assertEqual(1, self.main('run-repeats'))
+                self.assertEqual('not_attempted', self.records()[2]['outcome'])
+
+    def test_b10_shared_deadline_stops_second_capture_sweep_and_judge(self):
+        for last_mode in ('loadgen', 'verify', 'b10-sweep-line', 'b10-sweep'):
+            with self.subTest(last_mode=last_mode):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                original = self.fake.collect_hook
+                def exhaust(instance, job, values):
+                    original(instance, job, values)
+                    if values['mode'] == last_mode and (values.get('repeat') in (None, 1) if last_mode == 'loadgen' else values.get('repeat') in (None, 5)):
+                        self.clock = 18100
+                self.fake.collect_hook = exhaust
+                with self.mocked():
+                    self.assertEqual(1 if last_mode != 'b10-sweep' else 0, self.main('run-repeats'))
+                    self.assertEqual(1, self.main('judge'))
+                self.assertEqual(23, len(self.records()))
+                if last_mode == 'loadgen':
+                    self.assertEqual('not_attempted', self.records()[2]['outcome'])
+                self.assertEqual('orchestration_deadline', self.records()[-1]['reason'])
+                self.assertEqual('not_attempted', self.records()[-1]['outcome'])
+                clock = phase.Phase().read('phase.json')['b10_clock']
+                self.assertEqual(18000, clock['deadline'] - clock['started'])
+
+    def test_b10_judge_fails_closed_with_missing_or_wrong_clock(self):
+        for mutation in (None, {'boot_id': 'other'}, {'run_id': 'other'}, {'source_commit': 'other'}, {'deadline': float('inf')}):
+            with self.subTest(mutation=mutation):
+                self.prepare_b10()
+                if mutation is not None:
+                    phase.Phase().b10_deadline(start=True)
+                    document = phase.Phase().read('phase.json')
+                    document['b10_clock'].update(mutation)
+                    # strict JSON correctly rejects nonfinite values; use a finite invalid deadline here.
+                    if mutation.get('deadline') == float('inf'):
+                        document['b10_clock']['deadline'] = 999999
+                    phase.write_json(self.private / 'phase.json', document)
+                with self.mocked():
+                    before = len(self.fake.calls)
+                    self.assertEqual(1, self.main('judge'))
+                self.assertEqual(before, len(self.fake.calls))
+                self.assertEqual('orchestration_deadline', self.records()[-1]['reason'])
+
+    def test_b10_receipt_missing_or_over_capacity_records_gap_without_retry(self):
+        for size in (None, 65535, 65536, 65537):
+            with self.subTest(content_length=size):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                name = f'{self.run_id}/C0/r3/verify-completion.json'
+                if size is None:
+                    del self.fake.blobs[name]
+                else:
+                    self.fake.blobs[name] += b' ' * (size - len(self.fake.blobs[name]))
+                rejected = size is None or size > 65536
+                with self.mocked():
+                    self.assertEqual(int(rejected), self.main('run-repeats'))
+                if rejected:
+                    self.assertEqual('lifecycle_evidence_gap', self.records()[20]['reason'])
+                else:
+                    self.assertEqual('complete', self.records()[20]['outcome'])
+                shows = [call for call in self.fake.calls if call[0][:4] == ['az', 'storage', 'blob', 'show']]
+                self.assertEqual(5, len(shows))
+                self.assertEqual(1, sum(call[0][call[0].index('--name') + 1] == name for call in shows))
+                self.assertEqual('complete', self.records()[21]['outcome'])
+
+    def test_b10_lifecycle_budget_is_shared_across_all_fifteen_observations(self):
+        self.prepare_b10()
+        observe = phase.Phase.b10_pod_termination
+        download = phase.Phase.download_blob
+        deadlines = []
+        def costly_observation(instance, record):
+            result = observe(instance, record)
+            self.clock += 2
+            return result
+        def costly_lookup(instance, name, target, maximum, deadline, container='verifier'):
+            deadlines.append(deadline)
+            self.assertEqual(65536, maximum)
+            result = download(instance, name, target, maximum, deadline, container)
+            self.clock += 25
+            return result
+        with self.mocked(), patch.object(phase.Phase, 'b10_pod_termination', autospec=True, side_effect=costly_observation) as pods, \
+                patch.object(phase.Phase, 'download_blob', autospec=True, side_effect=costly_lookup) as receipts:
+            self.assertEqual(1, self.main('run-repeats'))
+        self.assertEqual(10, pods.call_count)
+        self.assertEqual(4, receipts.call_count)
+        self.assertEqual([220.0] * 4, deadlines)
+        self.assertEqual(1, len(phase.Phase().state()['b10_lifecycle']['gaps']))
+        self.assertEqual('lifecycle_evidence_gap', self.records()[20]['reason'])
+
+    def test_b10_phase_worker_failures_preserve_sweep_and_separate_judge(self):
+        for failed_mode in ('b10-sweep-line', 'b10-sweep'):
+            with self.subTest(failed_mode=failed_mode):
+                self.fake = ScriptedCommands()
+                self.prepare_b10()
+                job = self.name(failed_mode, None)
+                args = ('helm', 'template', 'parchwell', 'charts/parchwell', '--values', str(self.private / f'values-{job}.json'))
+                self.fake.responses[args] = (1, '')
+                with self.mocked():
+                    self.assertEqual(1, self.main('run-repeats'))
+                    self.assertEqual(0, self.main('judge'))
+                self.assertEqual('render_failed', self.records()[20 if failed_mode == 'b10-sweep-line' else 21]['outcome'])
+                self.assertEqual('complete', self.records()[-1]['outcome'])
+                if failed_mode == 'b10-sweep-line':
+                    self.assertEqual('complete', self.records()[21]['outcome'])
+
+    def test_b10_all_command_types_and_sleep_obey_remaining_deadline(self):
+        self.prepare_b10()
+        instance = phase.Phase()
+        instance.command_deadline = 120
+        with patch.object(phase.subprocess, 'call', return_value=0) as invoke:
+            for args in (['helm', 'template'], ['kubectl', 'apply'], ['bash', 'wait-job'], ['bash', 'collect-job'],
+                         ['kubectl', 'delete'], ['kubectl', 'get', 'pods'], ['az', 'storage', 'blob', 'show'],
+                         ['az', 'storage', 'blob', 'download']):
+                self.assertEqual(0, instance.run(args, 1200))
+                self.assertEqual('15', invoke.call_args[0][0][2])
+            self.clock = 115
+            before = invoke.call_count
+            self.assertEqual(124, instance.run(['helm', 'template'], 120))
+            self.assertEqual(before, invoke.call_count)
+        self.clock = 100
+        self.fake.collect_hook_original = self.fake.collect_hook
+        def almost_exhaust(instance, job, values):
+            self.fake.collect_hook_original(instance, job, values)
+            if values['mode'] == 'verify' and values['repeat'] == 5:
+                self.clock = 18090
+        self.fake.collect_hook = almost_exhaust
+        def advance_sleep(seconds):
+            self.delays.append(seconds)
+            self.clock += seconds
+        with self.mocked(), patch.object(phase.Phase, 'sleep', side_effect=advance_sleep):
+            self.assertEqual(1, self.main('run-repeats'))
+        self.assertEqual([5.0], self.delays)
+        self.assertEqual('orchestration_deadline', self.records()[20]['reason'])
+
+    def test_b10_phase_values_render_the_actual_chart(self):
+        for selected in ('C0', 'C1'):
+            self.prepare_b10(selected)
+            document = phase.Phase().read('phase.json')
+            document['b10_lifecycle_inputs'] = {
+                'b10_last_loadgen_terminated_utc': '2026-01-01T00:00:00.0000000+00:00',
+                'b10_last_verifier_completed_utc': '2026-01-01T00:00:00.0000000+00:00'}
+            phase.write_json(self.private / 'phase.json', document)
+            instance = phase.Phase()
+            for mode in (*phase.B10_MODES, *phase.B10_PHASE_MODES, 'judge'):
+                with self.subTest(selected=selected, mode=mode):
+                    repeat = 1 if mode in phase.B10_MODES else None
+                    self.assertEqual(DEADLINES[mode], instance.render(mode, repeat))
+                    text = (self.private / f'rendered-{self.name(mode, repeat)}.yaml').read_text()
+                    if mode == 'b10-sweep-line':
+                        self.assertIn('Verifier__B10LastLoadgenTerminatedUtc', text)
+                        self.assertIn('Verifier__B10LastVerifierCompletedUtc', text)
+                    if mode in (*phase.B10_PHASE_MODES, 'judge'):
+                        self.assertIn('Verifier__B10SettleIntervalMilliseconds', text)
+
+    def test_b10_candidate_retrieval_uses_stored_deadline_and_cleanup_remains_available(self):
+        self.prepare_b10()
+        phase.Phase().b10_deadline(start=True)
+        self.fake.download = json.dumps({**self.candidate(None), 'scenario_id': 'B10'}).encode()
+        original = self.fake
+        observed_deadlines = []
+        def bounded_commands(instance, *args, **options):
+            observed_deadlines.append(instance.command_deadline)
+            return original(instance, *args, **options)
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=bounded_commands):
+            self.assertEqual(0, self.main('candidate'))
+        self.assertEqual([18100, 18100], observed_deadlines)
+        self.clock = 18100
+        (self.candidate_dir / 'candidate.json.partial').write_text('stale')
+        self.output_file.write_text('')
+        before = len(self.fake.calls)
+        with self.mocked():
+            self.assertEqual(1, self.main('candidate'))
+            self.assertEqual(before, len(self.fake.calls))
+            self.assertEqual(0, self.main('delete-workload'))
+        self.assertFalse((self.candidate_dir / 'candidate.json').exists())
+        self.assertFalse((self.candidate_dir / 'candidate.json.partial').exists())
+        self.assertEqual('full_allowed=false\n', self.output_file.read_text())
+        self.assertEqual('orchestration_deadline', phase.Phase().state()['b10_candidate_gap'])
+        instance = phase.Phase()
+        instance.command_deadline = 18110
+        with patch.object(phase.time, 'sleep') as sleep:
+            instance.sleep(100)
+            sleep.assert_called_once_with(5)
+            self.clock = 18105
+            instance.sleep(100)
+            sleep.assert_called_once_with(5)
 
     def test_ledger_batch_selection(self):
         os.environ.update(PARCHWELL_SCENARIO='ledger-batch', PARCHWELL_RUN_KIND='smoke', PARCHWELL_BATCH_ITEMS='all')

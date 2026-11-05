@@ -2,6 +2,7 @@
 """Run scenario phase commands while keeping private inputs separate from evidence."""
 
 import ctypes
+from datetime import datetime, timezone
 import math
 import json
 import os
@@ -17,8 +18,14 @@ from urllib.parse import urlsplit
 
 MIB = 1024 * 1024
 SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
-             "B04": {"C0": "C0", "C1": "C1"}}
+             "B04": {"C0": "C0", "C1": "C1"},
+             "B10": {"C0": "C0", "C1": "C1"}}
 MODES = ("start-line", "loadgen", "verify")
+B10_MODES = ("start-line", "loadgen", "loadgen2", "verify")
+B10_PHASE_MODES = ("b10-sweep-line", "b10-sweep")
+B10_ORCHESTRATION_SECONDS = 18000
+B10_LIFECYCLE_SECONDS = 120
+B10_RECEIPT_MAXIMUM = 65536
 SINGLE_ACTION_CONFIGURATIONS = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
     ('B03', 'C1', 'loadgen'), ('B03', 'C2', 'loadgen'),
@@ -207,8 +214,8 @@ def job_name(run, phase, mode, repeat=None, item=None, configuration=None, actio
     if mode in SINGLE_ACTION_MODES:
         suffix = "single-judge" if mode == "single-action-judge" else "single"
         return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
-    if mode == "judge":
-        return f"{run}-{phase.lower()}-judge"
+    if mode in ("judge", *B10_PHASE_MODES):
+        return f"{run}-{phase.lower()}-{mode}"
     return f"{run}-{phase.lower()}-r{repeat}-{mode}"
 
 
@@ -295,7 +302,10 @@ class Phase:
         return subprocess.call(command + ["--", *map(str, args)], cwd=self.repo)
 
     def sleep(self, seconds):
-        time.sleep(seconds)
+        if self.command_deadline is not None:
+            seconds = min(seconds, max(0, self.command_deadline - time.monotonic() - TERMINATION_RESERVE))
+        if seconds > 0:
+            time.sleep(seconds)
 
     def validate_resource(self):
         if not re.fullmatch(RESOURCE, require("PARCHWELL_CLUSTER_RESOURCE_ID")):
@@ -582,8 +592,10 @@ class Phase:
                            enrichment_image=phase["images"]["enrichment"]["reference"])
             if mode == "single-action-judge" and item == "F04" and not runtime["image_smoke"]:
                 runtime["seed_receipt_configmap"] = phase["run_id"] + "-f04-seed-receipt"
-        elif mode != "judge":
+        elif mode not in ("judge", *B10_PHASE_MODES):
             runtime.update(repeat=repeat, loadgen_job_name=job_name(run_id, runtime["phase"], "loadgen", repeat))
+        if mode == "b10-sweep-line":
+            runtime.update(phase["b10_lifecycle_inputs"])
         return {"scenario_id": item if single or ledger else phase["scenario"],
                 "configuration_id": configuration if single or ledger else phase["configuration"], "runtime": runtime}
 
@@ -635,7 +647,7 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
-                if mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE):
+                if phase["scenario"] == "B10" or mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE):
                     record["reason"] = "safety_stop"
                     save()
                 return record
@@ -704,11 +716,203 @@ class Phase:
             print("::endgroup::", flush=True)
 
     def run_repeats(self):
+        if self.read("phase.json")["scenario"] == "B10":
+            return self.run_b10_repeats()
         records = [self.run_mode(mode, repeat) for repeat in SLOTS for mode in MODES]
         return int(any(record["outcome"] in BAD_OUTCOMES for record in records))
 
     def judge(self):
+        if self.read("phase.json")["scenario"] == "B10":
+            return int(self.run_mode("judge", None, absolute_deadline=self.b10_deadline())["outcome"] in BAD_OUTCOMES)
         return int(self.run_mode("judge", None)["outcome"] in BAD_OUTCOMES)
+
+    @staticmethod
+    def b10_utc(value):
+        """Normalize UTC transport timestamps without dropping their seventh decimal."""
+        match = re.fullmatch(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,7}))?(?:Z|\+00:00)", value or "")
+        if match is None:
+            raise ValueError("UTC lifecycle timestamp required")
+        instant = datetime.strptime(match[1], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        fraction = (match[2] or "").ljust(7, "0")
+        return match[1] + "." + fraction + "+00:00", int(instant.timestamp()) * 10_000_000 + int(fraction)
+
+    def b10_deadline(self, start=False):
+        phase = self.read("phase.json")
+        clock = phase.get("b10_clock")
+        now = time.monotonic()
+        if clock is None and start:
+            clock = {"started": now, "deadline": now + B10_ORCHESTRATION_SECONDS,
+                     "boot_id": self.boot_identity(), "run_id": phase["run_id"],
+                     "source_commit": phase["source_commit"], "source": "CLOCK_MONOTONIC"}
+            phase["b10_clock"] = clock
+            write_json(self.private / "phase.json", phase)
+        if (not isinstance(clock, dict) or type(clock.get("started")) not in (int, float)
+                or type(clock.get("deadline")) not in (int, float)
+                or not 0 <= clock["started"] <= now < float("inf")
+                or clock["deadline"] != clock["started"] + B10_ORCHESTRATION_SECONDS
+                or clock.get("boot_id") is None or clock["boot_id"] != self.boot_identity()
+                or clock.get("run_id") != phase["run_id"] or clock.get("source_commit") != phase["source_commit"]
+                or clock.get("source") != "CLOCK_MONOTONIC"):
+            return 0
+        return clock["deadline"]
+
+    def b10_pod_termination(self, record):
+        """Observe the actual producer pod once; receipt time cannot replace finishedAt."""
+        phase = self.read("phase.json")
+        path = self.artifacts / record["job"] / "pods.json"
+        if not 0 < path.stat().st_size <= 4 * MIB:
+            raise ValueError("producer pod size")
+        pods = single_action_json(path.read_bytes())["items"]
+        if not isinstance(pods, list) or len(pods) != 1:
+            raise ValueError("producer pod count")
+        pod = pods[0]
+        metadata, spec = pod["metadata"], pod["spec"]
+        if (not isinstance(metadata["name"], str) or not re.fullmatch(LABEL, metadata["name"])
+                or not isinstance(metadata["uid"], str) or not metadata["uid"]):
+            raise ValueError("producer pod identity")
+        owners = [owner for owner in metadata["ownerReferences"] if owner.get("controller") is True]
+        if len(owners) != 1 or owners[0].get("kind") != "Job" or owners[0].get("name") != record["job"]:
+            raise ValueError("producer pod Job binding")
+        worker = [container for container in spec["containers"] if container["name"] == "loadgen"]
+        accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
+        if (len(worker) != 1 or worker[0]["image"] != phase["images"]["loadgen"]["reference"]
+                or spec["serviceAccountName"] != accounts["loadgen"]["name"]):
+            raise ValueError("producer pod worker binding")
+        for name, expected in (("PARCHWELL_SOURCE_COMMIT", phase["source_commit"]), ("PARCHWELL_JOB_NAME", record["job"])):
+            entries = [entry for entry in worker[0]["env"] if entry["name"] == name]
+            if len(entries) != 1 or entries[0].get("value") != expected:
+                raise ValueError("producer pod source binding")
+        statuses = [entry for entry in pod["status"]["containerStatuses"] if entry["name"] == "loadgen"]
+        if len(statuses) != 1:
+            raise ValueError("producer termination count")
+        terminated = statuses[0]["state"]["terminated"]
+        if type(terminated["exitCode"]) is not int:
+            raise ValueError("producer exit status")
+        completed, ticks = self.b10_utc(terminated["finishedAt"])
+        return {"job": record["job"], "pod_name": metadata["name"], "completed_utc": completed,
+                "ticks": ticks, "exit_code": terminated["exitCode"]}
+
+    def b10_stop_unobserved(self, record, deadline):
+        # A missing observation blocks the restart and requires proof that no pod remains.
+        if record["apply"] is None or record["confirm"] == 0 and not self.state()["safety_stop"]:
+            return
+        previous = self.command_deadline
+        self.command_deadline = deadline
+        try:
+            deleted = self.run(["kubectl", "delete", "job", record["job"], "-n", "parchwell", "--ignore-not-found",
+                                "--cascade=foreground", "--wait=true", "--timeout=90s", "--request-timeout=30s"], 120)
+            path = self.private / f"confirm-{record['job']}.json"
+            confirmed = self.run(["kubectl", "get", "pods", "-n", "parchwell", "-l", f"job-name={record['job']}",
+                                  "-o", "json", "--request-timeout=30s"], 30, output=path, maximum=4 * MIB)
+            empty = False
+            if not confirmed:
+                try:
+                    empty = single_action_json(path.read_bytes()).get("items") == []
+                except (OSError, ValueError, TypeError, AttributeError, Failure):
+                    pass
+            state = self.state()
+            saved = next(entry for entry in state["modes"] if entry["job"] == record["job"])
+            saved.update(delete=deleted, confirm=confirmed)
+            if deleted or confirmed or not empty:
+                state["safety_stop"] = True
+            self.save_state(state)
+        finally:
+            self.command_deadline = previous
+
+    def b10_verify_completed(self, content, repeat):
+        phase = self.read("phase.json")
+        receipt = single_action_json(content)
+        expected = {"schema_version": 1, "mode": "verify", "scenario_id": "B10",
+                    "configuration_id": phase["configuration"], "run_id": phase["run_id"], "phase": phase["phase"],
+                    "repeat": repeat, "job_name": self.mode_job(phase, "verify", repeat),
+                    "source_commit": phase["source_commit"], "cleanup_completed": True}
+        if any(type(receipt.get(key)) is not type(value) or receipt[key] != value for key, value in expected.items()):
+            raise ValueError("verifier lifecycle binding")
+        identity = receipt["identity"]
+        for key in ("scenario_id", "configuration_id", "run_id"):
+            if identity[key] != expected[key]:
+                raise ValueError("verifier producer binding")
+        if (not isinstance(identity["instance_id"], str) or not re.fullmatch(LABEL, identity["instance_id"])
+                or identity["instance_id"] != identity["expected_instance_id"]):
+            raise ValueError("verifier producer instance")
+        completed, ticks = self.b10_utc(receipt["completed_utc"])
+        _, started = self.b10_utc(receipt["started_utc"])
+        if ticks < started:
+            raise ValueError("verifier completion precedes start")
+        return {"job": receipt["job_name"], "completed_utc": completed, "ticks": ticks}
+
+    def b10_prepare_sweep(self, observations, gaps, spent, deadline):
+        lookup_deadline = min(deadline, time.monotonic() + max(0, B10_LIFECYCLE_SECONDS - spent))
+        phase = self.read("phase.json")
+        completions = []
+        for repeat in SLOTS:
+            name = f"{phase['run_id']}/{phase['phase']}/r{repeat}/verify-completion.json"
+            try:
+                if lookup_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                    raise ValueError("lifecycle deadline")
+                content = self.download_blob(name, self.private / f"b10-verify-r{repeat}-completion.json",
+                                             B10_RECEIPT_MAXIMUM, lookup_deadline)
+                if content is None:
+                    raise ValueError("verifier receipt unavailable")
+                completion = self.b10_verify_completed(content, repeat)
+                if time.monotonic() > lookup_deadline:
+                    raise ValueError("lifecycle deadline")
+                completions.append(completion)
+            except (OSError, ValueError, UnicodeError, KeyError, TypeError, AttributeError, Failure):
+                gaps.append({"object": name, "reason": "verifier_completion_unavailable"})
+        state = self.state()
+        state["b10_lifecycle"] = {"producers": observations, "verifiers": completions, "gaps": gaps}
+        self.save_state(state)
+        if gaps or len(observations) != 10 or len(completions) != 5:
+            return "lifecycle_evidence_gap"
+        last_producer = max(observations, key=lambda item: item["ticks"])
+        last_verifier = max(completions, key=lambda item: item["ticks"])
+        settle_until = max(last_verifier["ticks"], last_producer["ticks"] + 600_000_000) / 10_000_000
+        remaining = max(0, settle_until - time.time())
+        while remaining > 0:
+            available = max(0, deadline - time.monotonic() - TERMINATION_RESERVE)
+            if available <= 0:
+                return "orchestration_deadline"
+            delay = min(remaining, available, 60)
+            self.sleep(delay)
+            remaining -= delay
+        if deadline - time.monotonic() <= TERMINATION_RESERVE:
+            return "orchestration_deadline"
+        phase["b10_lifecycle_inputs"] = {
+            "b10_last_loadgen_terminated_utc": last_producer["completed_utc"],
+            "b10_last_verifier_completed_utc": last_verifier["completed_utc"]}
+        write_json(self.private / "phase.json", phase)
+        return None
+
+    def run_b10_repeats(self):
+        deadline = self.b10_deadline(start=True)
+        observations, gaps, records = [], [], []
+        spent = 0
+        for repeat in SLOTS:
+            first_terminated = False
+            for mode in B10_MODES:
+                reason = "first_producer_termination_unavailable" if mode == "loadgen2" and not first_terminated else None
+                record = self.run_mode(mode, repeat, skip_reason=reason, absolute_deadline=deadline)
+                records.append(record)
+                if mode in ("loadgen", "loadgen2"):
+                    began = time.monotonic()
+                    try:
+                        if spent >= B10_LIFECYCLE_SECONDS or deadline - began <= TERMINATION_RESERVE:
+                            raise ValueError("lifecycle deadline")
+                        observation = self.b10_pod_termination(record)
+                        if spent + time.monotonic() - began > B10_LIFECYCLE_SECONDS:
+                            raise ValueError("lifecycle deadline")
+                        observations.append(observation)
+                        if mode == "loadgen":
+                            first_terminated = True
+                    except (OSError, ValueError, UnicodeError, KeyError, TypeError, AttributeError, Failure):
+                        gaps.append({"object": record["job"] + "/pods.json", "reason": "producer_termination_unavailable"})
+                        self.b10_stop_unobserved(record, deadline)
+                    spent += time.monotonic() - began
+        reason = self.b10_prepare_sweep(observations, gaps, spent, deadline)
+        records.append(self.run_mode("b10-sweep-line", None, skip_reason=reason, absolute_deadline=deadline))
+        records.append(self.run_mode("b10-sweep", None, absolute_deadline=deadline))
+        return int(any(record["outcome"] in BAD_OUTCOMES for record in records))
 
     def smoke_complete(self, record):
         """Check worker evidence from collect-job's public artifacts."""
@@ -1130,6 +1334,25 @@ class Phase:
             return False
 
     def candidate(self):
+        if self.read("phase.json")["scenario"] != "B10":
+            return self.candidate_download()
+        previous = self.command_deadline
+        self.command_deadline = self.b10_deadline()
+        try:
+            if self.command_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                (self.candidates / "candidate.json").unlink(missing_ok=True)
+                (self.candidates / "candidate.json.partial").unlink(missing_ok=True)
+                append_lines(require("GITHUB_OUTPUT"), ["full_allowed=false"])
+                raise Failure("candidate retrieval orchestration deadline", 1)
+            return self.candidate_download()
+        finally:
+            if self.command_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                state = self.state()
+                state["b10_candidate_gap"] = "orchestration_deadline"
+                self.save_state(state)
+            self.command_deadline = previous
+
+    def candidate_download(self):
         output = require("GITHUB_OUTPUT")
         partial = self.candidates / "candidate.json.partial"
         target = self.candidates / "candidate.json"
@@ -1163,6 +1386,8 @@ class Phase:
                         code = self.run(args, 60)
                         if not code and partial.stat().st_size == length:
                             candidate = self.check_candidate(partial.read_bytes())
+                            if self.command_deadline is not None and self.command_deadline - time.monotonic() <= TERMINATION_RESERVE:
+                                raise Failure("candidate retrieval orchestration deadline", 1)
                             partial.replace(target)
                             state = self.state()
                             state["candidate"] = {"status": candidate["status"], "gate": candidate["gate"],

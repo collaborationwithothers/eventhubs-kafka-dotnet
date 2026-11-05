@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Confluent.Kafka;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Kafka;
@@ -20,7 +21,7 @@ namespace Parchwell.Verifier.VerifyRun;
 /// <summary>Authenticates immutable B10 repeat evidence and classifies one bounded phase-wide sweep.</summary>
 internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
     VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore,
-    VerifierCompletionState? completion=null) : IVerifierModeHandler
+    VerifierCompletionState? completion=null, ILogger<B10SweepHandler>? logger=null) : IVerifierModeHandler
 {
     public VerifierMode Mode=>VerifierMode.B10Sweep;
 
@@ -83,6 +84,10 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
                     repeat.Counts=judgement.Counts;
                     repeat.Status=judgement.Valid?VerifierResultStatus.CompleteValid:VerifierResultStatus.Invalid;
                     repeat.Reasons=judgement.Reasons;
+                    if(judgement.Valid&&logger is not null)
+                        repeat.Observation=B10LateObservationDiagnostics.TryProject(repeat.Number,
+                            repeat.Producers.Select(p=>p.Identity.InstanceId).ToArray(),windows.Original,windows.Late,late,
+                            repeats.Select(r=>new B10LateObservationWindow(r.Number,r.Result!.StartLine!,r.Result.EndLine!)).ToArray());
                 }
                 scanComplete=true;
 
@@ -127,6 +132,10 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
             started.ToString("O",CultureInfo.InvariantCulture),clock.GetUtcNow().ToString("O",CultureInfo.InvariantCulture),
             [Reference("verifier",finalName,finalBytes)],null,null);
         completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.B10SweepCompletion(options.RunId!,options.Phase!),PhaseWireCodec.WriteReceipt(receipt));
+        if(logger is not null)
+            foreach(RepeatInput repeat in repeats)
+                B10LateObservationDiagnostics.Write(logger,options.RunId!,options.Phase!,repeat.Number,
+                    scanComplete&&repeat.Final,repeat.Observation);
         return exit;
 
         async Task ReadRepeat(RepeatInput input,IReadOnlyList<ProducerRegistration> producers)
@@ -307,6 +316,7 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
         internal bool Final { get; set; }
         internal VerifierResultStatus Status { get; set; }=VerifierResultStatus.Incomplete;
         internal OutcomeCounts? Counts { get; set; }
+        internal B10LateObservation? Observation { get; set; }
         internal IReadOnlyList<string> Reasons { get; set; }=[];
     }
 }

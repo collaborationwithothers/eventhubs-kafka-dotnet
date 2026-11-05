@@ -25,6 +25,8 @@
     <Content Include="../../scenarios/A03/scenario.yaml" Link="scenarios/A03/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/A04/scenario.yaml" Link="scenarios/A04/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/profiles/saturation-ramp.yaml" Link="scenarios/profiles/saturation-ramp.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/B10/scenario.yaml" Link="scenarios/B10/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/profiles/b10-timeout.yaml" Link="scenarios/profiles/b10-timeout.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" />
