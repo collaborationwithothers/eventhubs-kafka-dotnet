@@ -15,6 +15,7 @@ internal static class LateWriteChecks
 
     internal static IReadOnlyList<CheckResult> Evaluate(RunJudgementRequest request)
     {
+        bool b10 = request.Identity.ScenarioId == "B10";
         var delivery = new List<ResultDiagnostic>();
         var persistence = new List<ResultDiagnostic>();
         if (request.Ledger.Value is { } ledger)
@@ -23,9 +24,10 @@ internal static class LateWriteChecks
             {
                 LedgerRow row = ledger[i];
                 if (!StringComparer.Ordinal.Equals(row.CompletionSource, "callback")) continue;
-                if (!row.Delivered) delivery.Add(Failure(12, "ledger.jsonl", i + 1L, "delivered"));
+                bool permitted = b10 && B10RepeatChecks.IsPermittedTimeout(row);
+                if (!row.Delivered && !permitted) delivery.Add(Failure(12, "ledger.jsonl", i + 1L, "delivered"));
                 // PersistenceStatus 1 is PossiblyPersisted in the pinned v2.16.0 enum (blueprint S29).
-                if (row.PersistenceStatus.Presence != FieldPresence.Value || row.PersistenceStatus.Value == 1)
+                if ((row.PersistenceStatus.Presence != FieldPresence.Value || row.PersistenceStatus.Value == 1) && !permitted)
                     persistence.Add(Failure(13, "ledger.jsonl", i + 1L, "persistence_status"));
             }
         }
@@ -35,7 +37,8 @@ internal static class LateWriteChecks
             markers.Add(Failure(14, "capabilities.json", null, "guard_observations_complete"));
         if (request.Manifest.Value is { } manifest)
             for (int i = 0; i < manifest.GuardObservations.Count; i++)
-                if (!StandingMarkers.Contains(manifest.GuardObservations[i]))
+                if (!StandingMarkers.Contains(manifest.GuardObservations[i]) &&
+                    !(b10 && B10RepeatChecks.IsPermittedGuardMarker(manifest.GuardObservations[i], request)))
                     markers.Add(Failure(14, "manifest.json", null, $"guard_observations[{i}]"));
 
         var counters = new List<ResultDiagnostic>();
@@ -50,15 +53,15 @@ internal static class LateWriteChecks
             }
             foreach (NativeBrokerReport broker in native.Brokers.Value.Values)
             {
-                CheckCounter(broker.RequestTimeouts, "req_timeouts");
-                CheckCounter(broker.TransmissionRetries, "txretries");
-                CheckCounter(broker.TransmissionErrors, "txerrs");
-                CheckCounter(broker.ReceiveErrors, "rxerrs");
+                CheckCounter(broker.RequestTimeouts, "req_timeouts", permittedForB10: true);
+                CheckCounter(broker.TransmissionRetries, "txretries", permittedForB10: true);
+                CheckCounter(broker.TransmissionErrors, "txerrs", permittedForB10: false);
+                CheckCounter(broker.ReceiveErrors, "rxerrs", permittedForB10: false);
 
-                void CheckCounter(ParsedField<long> counter, string field)
+                void CheckCounter(ParsedField<long> counter, string field, bool permittedForB10)
                 {
                     if (counter.Presence != FieldPresence.Value) countersAvailable = false;
-                    else if (counter.Value != 0)
+                    else if (counter.Value != 0 && !(b10 && permittedForB10))
                         counters.Add(Failure(15, "statistics.jsonl", i + 1L, $"brokers.{broker.DictionaryKey}.{field}"));
                 }
             }

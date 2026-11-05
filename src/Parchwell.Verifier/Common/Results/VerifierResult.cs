@@ -38,7 +38,8 @@ internal sealed record VerifierResult(
     WorkloadObservation? WorkloadObservation = null,
     B04RecordedEvidence? B04RecordedEvidence = null,
     BatchingRecordedEvidence? BatchingRecordedEvidence = null,
-    B10IntakeEvidence? B10Intake = null);
+    B10IntakeEvidence? B10Intake = null,
+    bool? ClassificationFinal = null);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);

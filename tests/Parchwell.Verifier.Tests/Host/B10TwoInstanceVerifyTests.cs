@@ -19,8 +19,8 @@ public sealed class B10TwoInstanceVerifyTests
 {
     private static readonly int[] ForeignInstanceChecks = [3, 6];
     private static readonly int[] MissingInstanceChecks = [6];
-    private const string First = "pod-first";
-    private const string Second = "pod-second";
+    internal const string First = "pod-first";
+    internal const string Second = "pod-second";
     private static readonly string[] Counts = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
     private static readonly string[] PayloadNames = ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
 
@@ -304,21 +304,55 @@ public sealed class B10TwoInstanceVerifyTests
     }
 
     [Theory]
-    [InlineData(First)]
-    [InlineData(Second)]
-    public async Task Given_PermittedTimeoutRow_When_VerifyingInterimSlice_Then_CheckTwelveStillFails(string instance)
+    [InlineData(First, 0)]
+    [InlineData(First, 1)]
+    [InlineData(Second, 0)]
+    [InlineData(Second, 1)]
+    public async Task Given_PermittedTimeoutRow_When_VerifyingB10_Then_GuardsPassButClassificationRemainsNonfinal(string instance, int persistenceStatus)
     {
         using var fixture = CreateSyntheticB10Intake(secondHasAttempt: true);
         ChangePayload(fixture, instance, "ledger.jsonl", row =>
         {
             row["delivered"] = false;
             row["error_code"] = -192;
+            row["error_name"] = "Local_MsgTimedOut";
+            row["persistence_status"] = persistenceStatus;
+        });
+        if (instance == First && persistenceStatus == 0)
+            ChangePayload(fixture, First, "manifest.json", manifest =>
+            {
+                JsonArray observations = manifest["guard_observations"]!.AsArray();
+                JsonNode marker = observations.Single(value =>
+                    value!.GetValue<string>() == "possibly_persisted_observed")!;
+                observations.Remove(marker);
+            });
+        Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument output = JsonDocument.Parse(fixture.Output!);
+        AssertStatus(output.RootElement, "incomplete");
+        Assert.Empty(FailedChecks(output.RootElement));
+        Assert.False(output.RootElement.GetProperty("classification_final").GetBoolean());
+        AssertPair(output.RootElement, true, true);
+    }
+
+    [Theory]
+    [InlineData(First, -193)]
+    [InlineData(First, -191)]
+    [InlineData(Second, -193)]
+    [InlineData(Second, -191)]
+    public async Task Given_NonTimeoutDeliveryError_When_VerifyingB10_Then_DeliveryAndPersistenceGuardsFail(string instance, int errorCode)
+    {
+        using var fixture = CreateSyntheticB10Intake(secondHasAttempt: true);
+        ChangePayload(fixture, instance, "ledger.jsonl", row =>
+        {
+            row["delivered"] = false;
+            row["error_code"] = errorCode;
             row["persistence_status"] = 1;
         });
         Assert.Equal(1, await fixture.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         AssertStatus(output.RootElement, "invalid");
         AssertQualifiedFailure(output.RootElement, 12, instance);
+        AssertQualifiedFailure(output.RootElement, 13, instance);
     }
 
     [Theory]
@@ -568,6 +602,22 @@ public sealed class B10TwoInstanceVerifyTests
         fixture.Options.PodName = First;
         fixture.Options.PodUid = First;
         fixture.RebuildPublicationReferences();
+        if (secondHasAttempt)
+        {
+            ChangePayload(fixture, First, "ledger.jsonl", row =>
+            {
+                row["delivered"] = false;
+                row["error_code"] = -192;
+                row["error_name"] = "Local_MsgTimedOut";
+                row["persistence_status"] = 1;
+            });
+            ChangePayload(fixture, First, "manifest.json", firstManifest =>
+            {
+                firstManifest["guard_observations"]!.AsArray().Add("async_delivery_failure_observed");
+                firstManifest["guard_observations"]!.AsArray().Add("possibly_persisted_observed");
+            });
+            fixture.RebuildPublicationReferences();
+        }
         using var second = new HostEvidenceBuilder(instanceId: Second, clientId: Second, scenarioId: "B10", scenarioSourceId: "A01");
         second.ConfigureRepeat(repeat, "C0");
         second.Options.PodName = Second;
@@ -580,7 +630,11 @@ public sealed class B10TwoInstanceVerifyTests
             manifest["inventory"] = new JsonArray();
             second.Inputs["ledger.jsonl"] = [];
         }
-        manifest["restart"] = Restart(manifest, First);
+        IReadOnlyList<string>? predecessorAttemptIds = secondHasAttempt
+            ? PayloadJson(fixture, First, "manifest.json")["inventory"]!.AsArray()
+                .Select(attempt => attempt!["attempt_id"]!.GetValue<string>()).ToArray()
+            : null;
+        manifest["restart"] = Restart(manifest, First, predecessorAttemptIds);
         second.Set("manifest.json", manifest);
         second.RebuildPublicationReferences();
         foreach ((string path, byte[] bytes) in second.LedgerObjects) fixture.AddLedgerObject(path, bytes);
@@ -595,13 +649,13 @@ public sealed class B10TwoInstanceVerifyTests
         return fixture;
     }
 
-    private static JsonObject Restart(JsonObject manifest, string predecessor)
+    private static JsonObject Restart(JsonObject manifest, string predecessor, IReadOnlyList<string>? predecessorAttemptIds = null)
     {
         var planned = new JsonArray();
         foreach (JsonNode? item in manifest["inventory"]!.AsArray())
         {
             JsonObject attempt = item!.AsObject();
-            var entry = new JsonObject { ["predecessor_attempt_id"] = "predecessor-" + planned.Count };
+            var entry = new JsonObject { ["predecessor_attempt_id"] = predecessorAttemptIds?[planned.Count] ?? "predecessor-" + planned.Count };
             foreach (string field in new[] { "ordinal", "tenant_id", "document_id", "key", "sequence", "event_type", "planned_microseconds" }) entry[field] = attempt[field]!.DeepClone();
             planned.Add(entry);
         }
@@ -613,22 +667,22 @@ public sealed class B10TwoInstanceVerifyTests
     private static string RegistrationPath(HostEvidenceBuilder fixture, string instance) => Prefix(fixture, instance) + "registration.json";
     private static string CompletionPath(HostEvidenceBuilder fixture, string instance) => Prefix(fixture, instance) + "completion.json";
     private static byte[]? Payload(HostEvidenceBuilder fixture, string instance, string name) => instance == First ? fixture.Inputs[name] : fixture.LedgerObjects.GetValueOrDefault(PublicationPath(fixture, instance, name));
-    private static JsonObject PayloadJson(HostEvidenceBuilder fixture, string instance, string name) => JsonNode.Parse(Payload(fixture, instance, name)!)!.AsObject();
-    private static void SetPayload(HostEvidenceBuilder fixture, string instance, string name, byte[]? bytes)
+    internal static JsonObject PayloadJson(HostEvidenceBuilder fixture, string instance, string name) => JsonNode.Parse(Payload(fixture, instance, name)!)!.AsObject();
+    internal static void SetPayload(HostEvidenceBuilder fixture, string instance, string name, byte[]? bytes)
     {
         if (instance == First) fixture.Inputs[name] = bytes;
         string path = PublicationPath(fixture, instance, name);
         if (bytes is null) fixture.RemoveLedgerObject(path);
         else fixture.AddLedgerObject(path, bytes);
     }
-    private static void ChangePayload(HostEvidenceBuilder fixture, string instance, string name, Action<JsonObject> change, bool refresh = true)
+    internal static void ChangePayload(HostEvidenceBuilder fixture, string instance, string name, Action<JsonObject> change, bool refresh = true)
     {
         JsonObject value = PayloadJson(fixture, instance, name);
         change(value);
         SetPayload(fixture, instance, name, Encoding.UTF8.GetBytes(value.ToJsonString() + (name.EndsWith(".jsonl", StringComparison.Ordinal) ? "\n" : "")));
         if (refresh && name != "index.json") RefreshDescriptors(fixture, instance);
     }
-    private static void ChangeRows(HostEvidenceBuilder fixture, string instance, string name, Action<JsonObject> change)
+    internal static void ChangeRows(HostEvidenceBuilder fixture, string instance, string name, Action<JsonObject> change)
     {
         if (!name.EndsWith(".jsonl", StringComparison.Ordinal)) { ChangePayload(fixture, instance, name, change); return; }
         string[] rows = Encoding.UTF8.GetString(Payload(fixture, instance, name)!).Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -646,7 +700,7 @@ public sealed class B10TwoInstanceVerifyTests
         change(value);
         fixture.AddLedgerObject(path, Encoding.UTF8.GetBytes(value.ToJsonString()));
     }
-    private static void RefreshDescriptors(HostEvidenceBuilder fixture, string instance)
+    internal static void RefreshDescriptors(HostEvidenceBuilder fixture, string instance)
     {
         ChangePayload(fixture, instance, "index.json", index =>
         {
@@ -678,13 +732,13 @@ public sealed class B10TwoInstanceVerifyTests
         fixture.Kafka.Position = _ => new Offset(position);
         fixture.ConsumeRecord = () => position < records.Length ? records[position++] : null;
     }
-    private static int[] FailedChecks(JsonElement result) => result.GetProperty("failed_checks").EnumerateArray().Select(check => check.GetInt32()).ToArray();
-    private static void AssertStatus(JsonElement result, string status)
+    internal static int[] FailedChecks(JsonElement result) => result.GetProperty("failed_checks").EnumerateArray().Select(check => check.GetInt32()).ToArray();
+    internal static void AssertStatus(JsonElement result, string status)
     {
         Assert.Equal(status, result.GetProperty("status").GetString());
         foreach (string count in Counts) Assert.False(result.TryGetProperty(count, out _));
     }
-    private static void AssertPair(JsonElement result, bool firstAccepted, bool secondAccepted)
+    internal static void AssertPair(JsonElement result, bool firstAccepted, bool secondAccepted)
     {
         JsonElement intake = result.GetProperty("b10_intake");
         Assert.Equal("C0", intake.GetProperty("phase").GetString());
@@ -696,7 +750,7 @@ public sealed class B10TwoInstanceVerifyTests
         Assert.Equal(firstAccepted ? JsonValueKind.Object : JsonValueKind.Null, producers[0].GetProperty("publication_acceptance").ValueKind);
         Assert.Equal(secondAccepted ? JsonValueKind.Object : JsonValueKind.Null, producers[1].GetProperty("publication_acceptance").ValueKind);
     }
-    private static void AssertQualifiedFailure(JsonElement result, int check, string instance)
+    internal static void AssertQualifiedFailure(JsonElement result, int check, string instance)
     {
         Assert.Contains(check, FailedChecks(result));
         Assert.Contains(result.GetProperty("diagnostics").EnumerateArray(), diagnostic =>
