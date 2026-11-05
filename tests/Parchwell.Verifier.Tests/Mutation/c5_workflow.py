@@ -14,7 +14,9 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import stat
 import subprocess
+import sys
 import time
 import tempfile
 
@@ -76,6 +78,149 @@ RECEIPT_FIELDS = set("""shard target commit tree run_id run_attempt argv cwd
 ISOLATED_FIELDS = set("""mutant_id span exclusions argv started_at_utc finished_at_utc
     elapsed_seconds child_exit_code termination_reason command_completed config_sha256_before
     config_sha256_after report_sha256 command_log_sha256""".split())
+LOG_SCAN_LIMIT = 64
+LOG_FILE_LIMIT = 8
+LOG_BYTE_LIMIT = 16777216
+LOG_TOTAL_LIMIT = 67108864
+PROC_ROOT = Path("/proc")
+PROC_SCAN_LIMIT = 4096
+PROC_PID_LIMIT = 64
+STATUS_BYTE_LIMIT = 16384
+STAT_BYTE_LIMIT = 4096
+FD_ENTRY_LIMIT = 512
+MAPS_BYTE_LIMIT = 262144
+MEMINFO_BYTE_LIMIT = 16384
+PROCESS_FIELDS = ("Name", "State", "PPid", "VmSize", "VmRSS", "VmData", "VmSwap", "Threads", "FDSize")
+MEMORY_FIELDS = ("MemTotal", "MemFree", "MemAvailable", "SwapTotal", "SwapFree")
+
+
+def diagnostic_warning(error: Exception) -> None:
+    try:
+        print(f"C5 diagnostic unavailable: {type(error).__name__}: {error}", file=sys.stderr)
+    except Exception:
+        pass
+
+
+def diagnostic(action, *arguments) -> None:
+    """Diagnostic collection cannot replace a child's execution outcome."""
+    try:
+        action(*arguments)
+    except Exception as error:
+        diagnostic_warning(error)
+
+
+def bounded_read(path: Path, limit: int) -> tuple[bytes, bool]:
+    with path.open("rb") as stream:
+        data = stream.read(limit + 1)
+    return data[:limit], len(data) <= limit
+
+
+def resource_fields(path: Path, limit: int, names: tuple[str, ...]) -> dict:
+    data, complete = bounded_read(path, limit)
+    fields = {}
+    errors = []
+    for line in data.decode("utf-8", errors="replace").splitlines():
+        name, separator, value = line.partition(":")
+        if name in names:
+            if separator and value.strip():
+                text = value.strip()
+                numeric = name not in ("Name", "State")
+                pattern = r"[0-9]+(?: kB)?" if name.startswith(("Vm", "Mem", "Swap")) else r"[0-9]+"
+                if numeric and re.fullmatch(pattern, text) is None:
+                    errors.append(f"malformed field: {name}")
+                else:
+                    fields[name] = text
+            else:
+                errors.append(f"malformed field: {name}")
+    return {"fields": fields, "complete": complete, "errors": errors}
+
+
+def descriptor_count(path: Path) -> dict:
+    count = 0
+    with os.scandir(path) as entries:
+        for _ in entries:
+            count += 1
+            if count == FD_ENTRY_LIMIT:
+                break
+    return {"count": count, "complete": count < FD_ENTRY_LIMIT}
+
+
+def mapping_count(path: Path) -> dict:
+    data, complete = bounded_read(path, MAPS_BYTE_LIMIT)
+    complete = complete and len(data) < MAPS_BYTE_LIMIT
+    # An unterminated final sampled line is not a complete mapping record.
+    return {"count": data.count(b"\n") + int(complete and bool(data) and not data.endswith(b"\n")),
+            "complete": complete}
+
+
+def collect_resources(cwd: Path, directory: Path, phase: str, child_pid: int | None) -> dict:
+    result = {"purpose": "diagnostic_only", "phase": phase, "observed_at_utc": utc_now(),
+              "launcher_pid": os.getpid(), "child_pid": child_pid, "processes": [], "gaps": []}
+
+    def component(name, action):
+        try:
+            value = action()
+            if value.get("complete") is False:
+                result["gaps"].append({"component": name, "reason": "collection limit reached"})
+            return value
+        except (OSError, ValueError, IndexError) as error:
+            result["gaps"].append({"component": name, "reason": f"{type(error).__name__}: {error}"})
+            return {"status": "unavailable"}
+
+    pids = []
+    inspected = 0
+    try:
+        with os.scandir(PROC_ROOT) as entries:
+            for entry in entries:
+                inspected += 1
+                if entry.name.isascii() and entry.name.isdecimal() and entry.is_dir(follow_symlinks=False):
+                    pids.append(int(entry.name))
+                    if len(pids) == PROC_PID_LIMIT:
+                        result["gaps"].append({"component": "processes", "reason": "PID limit reached"})
+                        break
+                if inspected == PROC_SCAN_LIMIT:
+                    result["gaps"].append({"component": "processes", "reason": "directory scan limit reached"})
+                    break
+        result["proc_status"] = "sampled"
+    except OSError as error:
+        result["proc_status"] = "unavailable"
+        result["gaps"].append({"component": "processes", "reason": f"{type(error).__name__}: {error}"})
+    result["proc_entries_inspected"] = inspected
+    for pid in sorted(pids):
+        root = PROC_ROOT / str(pid)
+        item = {"pid": pid}
+        item["status"] = component(f"{pid}/status", lambda: resource_fields(root / "status", STATUS_BYTE_LIMIT, PROCESS_FIELDS))
+
+        def start_time():
+            data, complete = bounded_read(root / "stat", STAT_BYTE_LIMIT)
+            if not complete:
+                return {"complete": False, "status": "truncated"}
+            # comm is parenthesized and may itself contain spaces or parentheses.
+            fields = data.decode("utf-8").rsplit(")", 1)[1].split()
+            token = fields[19]
+            if not token.isdecimal():
+                raise ValueError("malformed process start-time token")
+            return {"token": token, "complete": True}
+
+        item["start_time"] = component(f"{pid}/stat", start_time)
+        item["file_descriptors"] = component(f"{pid}/fd", lambda: descriptor_count(root / "fd"))
+        item["memory_mappings"] = component(f"{pid}/maps", lambda: mapping_count(root / "maps"))
+        result["processes"].append(item)
+    result["memory"] = component("meminfo", lambda: resource_fields(PROC_ROOT / "meminfo", MEMINFO_BYTE_LIMIT, MEMORY_FIELDS))
+    result["disk"] = {}
+    for name, path in (("working", cwd), ("output", directory)):
+        def disk():
+            usage = shutil.disk_usage(path)
+            return {"total_bytes": usage.total, "used_bytes": usage.used, "free_bytes": usage.free}
+        result["disk"][name] = component(f"disk/{name}", disk)
+    return result
+
+
+def capture_resources(cwd: Path, directory: Path, phase: str, child_pid: int | None) -> None:
+    value = collect_resources(cwd, directory, phase, child_pid)
+    destination = directory / "diagnostics"
+    destination.mkdir(exist_ok=True)
+    write_json(destination / f"{phase}.json", value)
 
 
 def sha256(path: Path) -> str:
@@ -252,6 +397,7 @@ def launch(argv: list[str], cwd: Path, log_path: Path, timeout: float) -> tuple[
 
     signal.signal(signal.SIGTERM, interrupt)
     try:
+        diagnostic(capture_resources, cwd, log_path.parent, "before", None)
         with log_path.open("xb") as log:
             process = subprocess.Popen(argv, cwd=cwd, env={**os.environ, **OVERRIDES},
                                        stdout=log, stderr=subprocess.STDOUT,
@@ -274,6 +420,7 @@ def launch(argv: list[str], cwd: Path, log_path: Path, timeout: float) -> tuple[
             child_exit = process.returncode
     finally:
         signal.signal(signal.SIGTERM, previous_termination_handler)
+        diagnostic(capture_resources, cwd, log_path.parent, "after", process.pid if process is not None else None)
     return child_exit, reason
 
 
@@ -387,6 +534,58 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
                  and projection_valid and config_before == config_after and receipt["report_sha256"]) else 1
 
 
+def retain_test_server_logs(directory: Path) -> None:
+    source = directory / "stryker/logs/test-servers"
+    value = {"purpose": "diagnostic_only", "source_directory": str(source),
+             "status": "available", "files": [], "gaps": []}
+    retained = 0
+    inspected = 0
+    try:
+        if source.is_symlink():
+            raise ValueError("source directory is a symlink")
+        with os.scandir(source) as entries:
+            for entry in entries:
+                inspected += 1
+                if entry.name.startswith("rpc-") and entry.name.endswith(".log"):
+                    try:
+                        if not entry.is_file(follow_symlinks=False):
+                            raise ValueError("not a regular non-symlink file")
+                        if len(value["files"]) >= LOG_FILE_LIMIT:
+                            raise ValueError("file count limit reached")
+                        path = Path(entry.path)
+                        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as stream:
+                            metadata = os.fstat(stream.fileno())
+                            if not stat.S_ISREG(metadata.st_mode):
+                                raise ValueError("not a regular file")
+                            if metadata.st_size > LOG_BYTE_LIMIT:
+                                raise ValueError("per-file byte limit exceeded")
+                            if metadata.st_size > LOG_TOTAL_LIMIT - retained:
+                                raise ValueError("total byte limit exceeded")
+                            data = stream.read(min(LOG_BYTE_LIMIT, LOG_TOTAL_LIMIT - retained) + 1)
+                            if len(data) > LOG_BYTE_LIMIT or len(data) > LOG_TOTAL_LIMIT - retained:
+                                raise ValueError("file grew beyond byte limit")
+                        destination = directory / "test-server-logs" / entry.name
+                        destination.parent.mkdir(exist_ok=True)
+                        with destination.open("xb") as output:
+                            output.write(data)
+                        retained += len(data)
+                        value["files"].append({"source": str(path.relative_to(directory)),
+                                               "retained": str(destination.relative_to(directory)),
+                                               "source_bytes": len(data), "retained_bytes": len(data)})
+                    except (OSError, ValueError) as error:
+                        value["gaps"].append({"component": entry.name, "reason": f"{type(error).__name__}: {error}"})
+                if inspected == LOG_SCAN_LIMIT:
+                    value["gaps"].append({"component": "source_directory", "reason": "directory scan limit reached"})
+                    break
+    except (OSError, ValueError) as error:
+        value["status"] = "unavailable"
+        value["gaps"].append({"component": "source_directory", "reason": f"{type(error).__name__}: {error}"})
+    value["entries_inspected"] = inspected
+    destination = directory / "diagnostics"
+    destination.mkdir(exist_ok=True)
+    write_json(destination / "test-server-logs.json", value)
+
+
 def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], main_report: Path,
                  output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     """Run each mutant of the shard's static field regions in its own Stryker invocation, with fresh test processes."""
@@ -411,6 +610,7 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
         started = utc_now()
         start = time.monotonic()
         child_exit, reason = launch(argv, cwd, log_path, remaining)
+        diagnostic(retain_test_server_logs, directory)
         logs = directory / "stryker/logs"
         if logs.is_dir():
             try:

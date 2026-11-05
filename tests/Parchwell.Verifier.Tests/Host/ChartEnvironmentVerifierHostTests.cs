@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Diagnostics.Tracing;
+using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,7 @@ public sealed class VerifierEnvironmentScopeDefinition { }
 
 [Collection("VerifierEnvironment")]
 #pragma warning disable CA1707
-public sealed class ChartEnvironmentVerifierHostTests
+public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
 {
     private static readonly int[] Check27Only=[27];
     [Theory]
@@ -31,7 +32,10 @@ public sealed class ChartEnvironmentVerifierHostTests
         fixture.ConfigureRepeat(1,"C0");
         if(mismatch)fixture.SetCapturedClientId("other-client-c5");
         using var environment=new ChartEnvironmentScope(ChartVerifyEnvironment());
-        using var requestGuard=new OfflineRequestGuard();
+        var requestGuard=new OfflineRequestGuard();
+        try
+        {
+        requestGuard.RecordPhase("host_starting");
         var resourceReset=new OfflineResourceReset();
         var publisher=new FixtureReceiptPublisher(fixture);
 
@@ -47,6 +51,7 @@ public sealed class ChartEnvironmentVerifierHostTests
             services.AddSingleton(new VerifierKafkaSessionFactory(_=>fixture.Kafka.Session));
             services.RemoveAll<ICompletionReceiptPublisher>();services.AddSingleton<ICompletionReceiptPublisher>(publisher);
         }).WaitAsync(TimeSpan.FromSeconds(5),TestContext.Current.CancellationToken);
+        requestGuard.RecordPhase("host_returned",exit);
         Assert.False(requestGuard.UnexpectedRequest,$"The offline chart-host proof attempted an HTTP request: {requestGuard.LastRequest}");
         Assert.Equal(0,resourceReset.DetectCalls);
 
@@ -77,6 +82,129 @@ public sealed class ChartEnvironmentVerifierHostTests
         Assert.Equal(mismatch?1:0,receipt.HandlerExitCode);
         Assert.NotNull(receipt.PublicationAcceptance);
         Assert.DoesNotContain(Environment.GetEnvironmentVariables().Keys.Cast<string>(),key=>key is "Verifier__InstanceId" or "Verifier__ClientId" or "Verifier__ExpectedBrokerNames");
+        }
+        finally
+        {
+            requestGuard.RecordPhase("guard_disposing");
+            requestGuard.Dispose();
+            requestGuard.RecordPhase("guard_disposed");
+            requestGuard.WriteDiagnostics(output.WriteLine);
+        }
+    }
+
+    [Fact]
+    public void GivenSyntheticRequestEvents_WhenRecorded_ThenPreservesPredicateAndAttribution()
+    {
+        Activity? original=Activity.Current;
+        Activity.Current=null;
+        try
+        {
+            using var guard=new OfflineRequestGuard();
+            guard.RecordPhase("host_starting");
+            Guid activityId=Guid.Parse("11111111-1111-1111-1111-111111111111");
+            Guid relatedActivityId=Guid.Parse("22222222-2222-2222-2222-222222222222");
+            guard.RecordRequest("SyntheticRequestStart",1,activityId,relatedActivityId,["host"],["127.0.0.1"],null);
+            Assert.Equal("host=127.0.0.1",guard.LastRequest);
+            Assert.False(guard.UnexpectedRequest);
+            guard.RecordRequest("SyntheticRequestStart",1,activityId,relatedActivityId,["host"],["dc.services.visualstudio.com"],null);
+            Assert.Equal("host=dc.services.visualstudio.com",guard.LastRequest);
+            Assert.True(guard.UnexpectedRequest);
+            guard.RecordRequest("SyntheticRequestStart",1,activityId,relatedActivityId,["host"],["127.0.0.1"],null);
+            Assert.Equal("host=127.0.0.1",guard.LastRequest);
+            Assert.True(guard.UnexpectedRequest);
+            GuardDiagnostic snapshot=guard.Snapshot();
+            Assert.Equal("diagnostic_only",snapshot.Purpose);
+            Assert.NotEmpty(snapshot.GuardId);
+            Assert.Equal(snapshot.GuardId,snapshot.Phases[0].GuardId);
+            RequestDiagnostic request=snapshot.Requests[1];
+            Assert.Equal(snapshot.GuardId,request.GuardId);
+            Assert.Equal("SyntheticRequestStart",request.EventName);
+            Assert.Equal(1,request.EventId);
+            Assert.Equal(activityId,request.ActivityId);
+            Assert.Equal(relatedActivityId,request.RelatedActivityId);
+            Assert.Equal("host_starting",request.Phase);
+            Assert.Equal("host=dc.services.visualstudio.com",request.Payload);
+            Assert.Equal(Environment.CurrentManagedThreadId,request.ManagedThreadId);
+            Assert.Equal("unavailable",request.CurrentActivityId);
+            Assert.Equal("unavailable",request.CurrentActivityParentId);
+            Assert.Equal("unavailable",request.CurrentActivityOperation);
+            Assert.Equal("unavailable",request.CurrentActivitySource);
+            Assert.NotEmpty(request.CallbackStack);
+            Assert.Contains("\"callback_stack\":",JsonSerializer.Serialize(snapshot),StringComparison.Ordinal);
+            guard.RecordPhase("guard_disposing");
+            guard.Dispose();
+            guard.RecordPhase("guard_disposed");
+            string? rendered=null;
+            guard.WriteDiagnostics(value=>rendered=value);
+            Assert.NotNull(rendered);
+            Assert.Contains("guard_disposed",rendered,StringComparison.Ordinal);
+        }
+        finally{Activity.Current=original;}
+    }
+
+    [Fact]
+    public void GivenCurrentActivity_WhenRecorded_ThenRetainsCorrelationWithoutChangingAcceptance()
+    {
+        using var guard=new OfflineRequestGuard();
+        using var activity=new Activity("synthetic-operation").SetParentId("synthetic-parent").Start();
+        guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["127.0.0.1"],activity);
+        RequestDiagnostic record=Assert.Single(guard.Snapshot().Requests);
+        Assert.Equal(activity.Id,record.CurrentActivityId);
+        Assert.Equal("synthetic-parent",record.CurrentActivityParentId);
+        Assert.Equal("synthetic-operation",record.CurrentActivityOperation);
+        Assert.Equal(activity.Source.Name,record.CurrentActivitySource);
+        Assert.False(guard.UnexpectedRequest);
+    }
+
+    [Theory]
+    [InlineData(2047,2047,false)]
+    [InlineData(2048,2048,false)]
+    [InlineData(2049,2045,true)]
+    public void GivenScalarBoundary_WhenFormatted_ThenMarksTruncationWithinLimit(int length,int retained,bool truncated)
+    {
+        Assert.Equal(new string('x',retained)+(truncated?"...":""),OfflineRequestGuard.Bound(new string('x',length),2048));
+        Assert.Equal("unavailable",OfflineRequestGuard.Bound(null,2048));
+    }
+
+    [Theory]
+    [InlineData(8191,8191,false)]
+    [InlineData(8192,8192,false)]
+    [InlineData(8193,8189,true)]
+    public void GivenStackBoundary_WhenFormatted_ThenMarksTruncationWithinLimit(int length,int retained,bool truncated)
+        =>Assert.Equal(new string('x',retained)+(truncated?"...":""),OfflineRequestGuard.Bound(new string('x',length),8192));
+
+    [Theory]
+    [InlineData(15,15,0)]
+    [InlineData(16,16,0)]
+    [InlineData(17,16,1)]
+    public void GivenDiagnosticRecordBoundary_WhenRecorded_ThenKeepsSeparateDropCounts(int attempted,int retained,int dropped)
+    {
+        using var guard=new OfflineRequestGuard();
+        for(int i=0;i<attempted;i++)
+            guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["127.0.0.1"],null);
+        for(int i=1;i<attempted;i++)guard.RecordPhase("host_starting");
+        GuardDiagnostic snapshot=guard.Snapshot();
+        Assert.Equal(retained,snapshot.Requests.Length);
+        Assert.Equal(retained,snapshot.Phases.Length);
+        Assert.Equal(dropped,snapshot.DroppedRequests);
+        Assert.Equal(dropped,snapshot.DroppedPhases);
+        // Collection bounds never suppress the original sticky guard decision.
+        guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["dc.services.visualstudio.com"],null);
+        Assert.True(guard.UnexpectedRequest);
+    }
+
+    [Fact]
+    public void GivenLongPayloadAndFailingDiagnosticOutput_WhenRecorded_ThenPreservesRawGuardEvidence()
+    {
+        using var guard=new OfflineRequestGuard();
+        string payload=new('x',2049);
+        guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],[payload],null);
+        Assert.Equal("host="+payload,guard.LastRequest);
+        Assert.Equal("host="+new string('x',2040)+"...",Assert.Single(guard.Snapshot().Requests).Payload);
+        guard.WriteDiagnostics(_=>throw new InvalidOperationException("synthetic-output-failure"));
+        Assert.True(guard.UnexpectedRequest);
+        Assert.Equal("host="+payload,guard.LastRequest);
+        Assert.Equal(1,guard.Snapshot().DiagnosticErrors);
     }
 
     private static Dictionary<string,string?> ChartVerifyEnvironment()
@@ -128,9 +256,24 @@ public sealed class ChartEnvironmentVerifierHostTests
 
     private sealed class OfflineRequestGuard:EventListener
     {
+        private const int RecordLimit=16;
+        private const int ScalarLimit=2048;
+        private const int StackLimit=8192;
+        private readonly object diagnosticLock=new();
+        private readonly List<RequestDiagnostic> requests=[];
+        private readonly List<PhaseDiagnostic> phases=[];
+        private readonly string guardId=Guid.NewGuid().ToString("N");
+        private readonly long started=TimeProvider.System.GetTimestamp();
+        private string phase="guard_created";
+        private int droppedRequests;
+        private int droppedPhases;
+        private int diagnosticErrors;
         private int unexpectedRequest;
         internal string? LastRequest{get;private set;}
         internal bool UnexpectedRequest=>Volatile.Read(ref unexpectedRequest)!=0;
+
+        internal OfflineRequestGuard()=>RecordPhase("guard_created");
+
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
             if(eventSource.Name=="System.Net.Http")EnableEvents(eventSource,EventLevel.Informational);
@@ -138,13 +281,74 @@ public sealed class ChartEnvironmentVerifierHostTests
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
         {
             if(eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
-            {
-                LastRequest=string.Join(";",(eventData.PayloadNames??[]).Zip(eventData.Payload??[],(name,value)=>$"{name}={value}"));
-                if(!(eventData.Payload?.Any(value=>value?.ToString()?.Contains("127.0.0.1",StringComparison.Ordinal)==true)??false))
-                    Interlocked.Exchange(ref unexpectedRequest,1);
-            }
+                RecordRequest(eventData.EventName,eventData.EventId,eventData.ActivityId,eventData.RelatedActivityId,
+                    eventData.PayloadNames,eventData.Payload,Activity.Current);
         }
+
+        internal void RecordRequest(string? eventName,int eventId,Guid activityId,Guid relatedActivityId,
+            IReadOnlyList<string>? payloadNames,IReadOnlyList<object?>? payload,Activity? activity)
+        {
+            string request=string.Join(";",(payloadNames??[]).Zip(payload??[],(name,value)=>$"{name}={value}"));
+            LastRequest=request;
+            if(!(payload?.Any(value=>value?.ToString()?.Contains("127.0.0.1",StringComparison.Ordinal)==true)??false))
+                Interlocked.Exchange(ref unexpectedRequest,1);
+            try
+            {
+                lock(diagnosticLock)
+                {
+                    if(requests.Count==RecordLimit){droppedRequests++;return;}
+                    requests.Add(new RequestDiagnostic(guardId,Bound(eventName,ScalarLimit),eventId,
+                        activityId,relatedActivityId,Environment.CurrentManagedThreadId,Elapsed(),phase,
+                        Bound(request,ScalarLimit),Bound(activity?.Id,ScalarLimit),Bound(activity?.ParentId,ScalarLimit),
+                        Bound(activity?.OperationName,ScalarLimit),Bound(activity?.Source.Name,ScalarLimit),
+                        Bound(Environment.StackTrace,StackLimit)));
+                }
+            }
+            catch(Exception){Interlocked.Increment(ref diagnosticErrors);}
+        }
+
+        internal void RecordPhase(string name,int? exitCode=null)
+        {
+            try
+            {
+                lock(diagnosticLock)
+                {
+                    phase=Bound(name,ScalarLimit);
+                    if(phases.Count==RecordLimit){droppedPhases++;return;}
+                    phases.Add(new PhaseDiagnostic(guardId,phase,Environment.ProcessId,
+                        TimeProvider.System.GetUtcNow(),TimeProvider.System.GetTimestamp(),Elapsed(),exitCode));
+                }
+            }
+            catch(Exception){Interlocked.Increment(ref diagnosticErrors);}
+        }
+
+        internal GuardDiagnostic Snapshot()
+        {
+            lock(diagnosticLock)
+                return new GuardDiagnostic("diagnostic_only",guardId,
+                    "Callback stacks and Activity values are correlation evidence and may not identify the issuing provider/host.",
+                    [..requests],[..phases],droppedRequests,droppedPhases,Volatile.Read(ref diagnosticErrors));
+        }
+
+        internal void WriteDiagnostics(Action<string> write)
+        {
+            try{write(JsonSerializer.Serialize(Snapshot()));}
+            catch(Exception){Interlocked.Increment(ref diagnosticErrors);}
+        }
+
+        internal static string Bound(string? value,int cap)
+            =>value is null?"unavailable":value.Length<=cap?value:value[..(cap-3)]+"...";
+        private double Elapsed()=>TimeProvider.System.GetElapsedTime(started).TotalMilliseconds;
     }
+
+    private sealed record RequestDiagnostic(string GuardId,string EventName,int EventId,Guid ActivityId,
+        Guid RelatedActivityId,int ManagedThreadId,double ElapsedMilliseconds,string Phase,string Payload,
+        string CurrentActivityId,string CurrentActivityParentId,string CurrentActivityOperation,
+        string CurrentActivitySource,[property:System.Text.Json.Serialization.JsonPropertyName("callback_stack")]string CallbackStack);
+    private sealed record PhaseDiagnostic(string GuardId,string Phase,int ProcessId,DateTimeOffset ObservedAtUtc,
+        long MonotonicTimestamp,double ElapsedMilliseconds,int? ExitCode);
+    private sealed record GuardDiagnostic(string Purpose,string GuardId,string AttributionLimit,
+        RequestDiagnostic[] Requests,PhaseDiagnostic[] Phases,int DroppedRequests,int DroppedPhases,int DiagnosticErrors);
 
     private sealed class OfflineResourceReset:IResourceDetector
     {
