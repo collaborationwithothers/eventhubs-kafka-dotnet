@@ -192,8 +192,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     judgements.Add(ApplyPublicationOutcome(evaluated,input.Acceptance));
                 }
                 RunJudgementRequest request=requests[0];
-                RunJudgementResult judgement=b10?B10IntakeChecks.Aggregate(judgements[0],judgements[1],
-                    producers.Select(producer=>producer.Identity.InstanceId).ToArray(),outputLimits):judgements[0];
+                RunJudgementResult judgement=b10?B10RepeatChecks.Evaluate(requests[0],requests[1],judgements[0],judgements[1],
+                    producers.Select(producer=>producer.Identity.InstanceId).ToArray(),outputLimits).Judgement:judgements[0];
                 A01EvidenceRecording a01=b10?new(null,null,[]):options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
                 B04EvidenceRecording b04=b10?new(null,[],null):B04EvidenceRecorder.Record(request);
                 BatchingEvidenceRecording batching=b10?new(null,[],null):BatchingEvidenceRecorder.Record(request,judgement);
@@ -207,7 +207,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
-                    b04.Evidence,batching.Evidence,b10Intake);
+                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
                 coverage=b10?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";

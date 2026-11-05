@@ -46,6 +46,7 @@ internal static class VerifierResultCodec
             writer.WriteNumber("schema_version", result.SchemaVersion);
             WriteIdentity(writer, result.Identity);
             if (result.B10Intake is not null) PhaseWireCodec.WriteB10Intake(writer, result.B10Intake);
+            if (result.ClassificationFinal is bool final) writer.WriteBoolean("classification_final", final);
             if (result.GeneratorVersion is not null) writer.WriteString("generator_version", result.GeneratorVersion);
             if (result.RuntimeVersions is not null) WriteStringMap(writer, "runtime_versions", result.RuntimeVersions);
             writer.WriteString("verifier_commit", result.VerifierCommit);
@@ -112,6 +113,13 @@ internal static class VerifierResultCodec
         if (schemaVersion != 1) return Failure(artifact, "schema_version", "unsupported_schema_version");
         if (!TryIdentity(root, artifact, out RunIdentity? identity, out StructuralProblem? identityProblem))
             return ParseResult<VerifierResult>.Failure(identityProblem!);
+        bool? classificationFinal = null;
+        if (root.TryGetProperty("classification_final", out JsonElement classificationFinalElement))
+        {
+            if (identity!.ScenarioId != "B10" || classificationFinalElement.ValueKind != JsonValueKind.False)
+                return Failure(artifact, "classification_final", "invalid_classification_final");
+            classificationFinal = false;
+        }
         string? generatorVersion = null;
         if (root.TryGetProperty("generator_version", out _) && !TryString(root, "generator_version", out generatorVersion))
             return Failure(artifact, "generator_version", "wrong_json_kind");
@@ -205,7 +213,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -214,6 +222,8 @@ internal static class VerifierResultCodec
         ArgumentNullException.ThrowIfNull(result.FailedChecks);
         ArgumentNullException.ThrowIfNull(result.JudgedFileHashes);
         ArgumentNullException.ThrowIfNull(result.Diagnostics);
+        if (result.ClassificationFinal is bool final && (final || result.Identity.ScenarioId != "B10"))
+            throw new ArgumentException("classification_final may only be false on B10 results.", nameof(result));
         if (result.Identity.ScenarioId == "B10" && (result.B10Intake is null || result.Status == VerifierResultStatus.CompleteValid))
             throw new ArgumentException("B10 results require nonfinal intake evidence.", nameof(result));
         if (result.B10Intake is not null)
@@ -1017,7 +1027,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final"
         };
         fields.UnionWith(CountFields);
         return fields;

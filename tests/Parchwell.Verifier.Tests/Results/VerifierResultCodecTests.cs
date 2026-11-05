@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Parchwell.Verifier.Common.Contracts;
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Window;
@@ -18,6 +20,141 @@ public sealed class VerifierResultCodecTests
     private static readonly OutputLimits OutputLimits = new(65_536, 8, 256);
     private static readonly string[] OutcomeCountNames = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
     private static readonly int[] FailedThreeAndEleven = [3, 11];
+
+    // Classification finality is passive metadata and never grants B10 authoritative counts.
+    [Theory]
+    [InlineData("invalid")] [InlineData("incomplete")]
+    public void Given_B10FalseFinality_When_RoundTripped_Then_StatusAndCountAbsenceArePreserved(string status)
+    {
+        VerifierResult result = B10Result(Status(status)) with { ClassificationFinal = false };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        Assert.False(json.RootElement.GetProperty("classification_final").GetBoolean());
+        Assert.All(OutcomeCountNames, name => Assert.False(json.RootElement.TryGetProperty(name, out _)));
+        VerifierResult parsed = Read(bytes);
+        Assert.Equal(false, parsed.ClassificationFinal);
+        Assert.Equal(Status(status), parsed.Status);
+        Assert.Null(parsed.Counts);
+    }
+
+    [Theory]
+    [InlineData("invalid")] [InlineData("incomplete")]
+    public void Given_HistoricalB10WithoutFinality_When_Read_Then_OmissionRemainsNull(string status)
+    {
+        byte[] bytes = VerifierResultCodec.Write(B10Result(Status(status)), OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        Assert.False(json.RootElement.TryGetProperty("classification_final", out _));
+        Assert.Null(Read(bytes).ClassificationFinal);
+    }
+
+    [Theory]
+    [InlineData("true")] [InlineData("null")] [InlineData("0")]
+    [InlineData("\"false\"")] [InlineData("[]")] [InlineData("{}")]
+    public void Given_B10FinalityOtherThanFalse_When_Read_Then_StructuralProblemHasNoScientificCheck(string value)
+    {
+        JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(B10Result(VerifierResultStatus.Incomplete), OutputLimits))!.AsObject();
+        json["classification_final"] = JsonNode.Parse(value);
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json.ToJsonString()),
+            "result.json", RecordedEvidence.SmallLimits, 8);
+        Assert.False(parsed.IsSuccess);
+        StructuralProblem problem = Assert.Single(parsed.Problems);
+        Assert.Null(problem.CheckNumber);
+        Assert.Equal("classification_final", problem.Field);
+        Assert.Equal("invalid_classification_final", problem.Code);
+    }
+
+    [Theory]
+    [InlineData("A01", "false")] [InlineData("A01", "true")] [InlineData("A01", "null")]
+    [InlineData("A01", "0")] [InlineData("A01", "\"false\"")] [InlineData("A01", "[]")]
+    [InlineData("A01", "{}")] [InlineData("b10", "false")]
+    public void Given_FinalityPresentOutsideExactB10_When_Read_Then_EveryKindIsRejected(string scenario, string value)
+    {
+        JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits))!.AsObject();
+        json["identity"]!["scenario_id"] = scenario;
+        json["classification_final"] = JsonNode.Parse(value);
+        ParseResult<VerifierResult> parsed = VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json.ToJsonString()),
+            "result.json", RecordedEvidence.SmallLimits, 8);
+        Assert.False(parsed.IsSuccess);
+        StructuralProblem problem = Assert.Single(parsed.Problems);
+        Assert.Equal("invalid_classification_final", problem.Code);
+        Assert.Equal("classification_final", problem.Field);
+        Assert.Null(problem.CheckNumber);
+    }
+
+    [Theory]
+    [InlineData("B10", true)] [InlineData("A01", false)] [InlineData("A01", true)]
+    [InlineData("b10", false)] [InlineData("b10", true)]
+    public void Given_InvalidFinalityObjectModel_When_Written_Then_ArgumentExceptionRejectsIt(string scenario, bool final)
+    {
+        VerifierResult result = scenario == "B10" ? B10Result(VerifierResultStatus.Incomplete) :
+            Result(VerifierResultStatus.Invalid) with { Identity = Identity with { ScenarioId = scenario } };
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(result with { ClassificationFinal = final }, OutputLimits));
+    }
+
+    [Fact]
+    public void Given_NonB10Result_When_Written_Then_FinalOptionalFieldIsOmitted()
+    {
+        byte[] bytes = VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid), OutputLimits);
+        using JsonDocument json = JsonDocument.Parse(bytes);
+        Assert.False(json.RootElement.TryGetProperty("classification_final", out _));
+        Assert.Null(Read(bytes).ClassificationFinal);
+    }
+
+    [Fact]
+    public void Given_B10CompleteValidWithFalseAndSixCounts_When_ReadOrWritten_Then_FinalStatusRestrictionStillRejects()
+    {
+        VerifierResult result = B10Result(VerifierResultStatus.CompleteValid) with
+        { ClassificationFinal = false, Counts = new(0, 0, 0, 0, 0, 0) };
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(result, OutputLimits));
+        JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(B10Result(VerifierResultStatus.Incomplete) with { ClassificationFinal = false }, OutputLimits))!.AsObject();
+        json["status"] = "complete_valid";
+        foreach (string name in OutcomeCountNames) json[name] = 0;
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json.ToJsonString()), "result.json", RecordedEvidence.SmallLimits, 8).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData(-1)] [InlineData(0)] [InlineData(1)]
+    public void Given_FinalFieldAtByteAndEntryBoundaries_When_ReadOrWritten_Then_ItConsumesExistingBudgets(int allowance)
+    {
+        VerifierResult result = B10Result(VerifierResultStatus.Incomplete) with { ClassificationFinal = false };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        long entries = EntryCount(document.RootElement);
+        InputLimits byteLimits = RecordedEvidence.SmallLimits with { MaxArtifactBytes = bytes.Length + allowance };
+        InputLimits entryLimits = RecordedEvidence.SmallLimits with { MaxEntries = entries + allowance };
+        OutputLimits output = OutputLimits with { MaxOutputBytes = bytes.Length + allowance };
+        if (allowance < 0)
+        {
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Write(result, output));
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Read(bytes, "result.json", byteLimits, 8));
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Read(bytes, "result.json", entryLimits, 8));
+        }
+        else
+        {
+            Assert.Equal(bytes, VerifierResultCodec.Write(result, output));
+            Assert.Equal(false, Read(bytes, byteLimits).ClassificationFinal);
+            Assert.Equal(false, Read(bytes, entryLimits).ClassificationFinal);
+        }
+        byte[] historical = VerifierResultCodec.Write(result with { ClassificationFinal = null }, OutputLimits);
+        Assert.True(historical.Length < bytes.Length);
+        Assert.Null(Read(historical, RecordedEvidence.SmallLimits with { MaxEntries = entries - 1 }).ClassificationFinal);
+    }
+
+    private static long EntryCount(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.Object => element.EnumerateObject().Sum(property => 1 + EntryCount(property.Value)),
+        JsonValueKind.Array => element.EnumerateArray().Sum(item => 1 + EntryCount(item)),
+        _ => 0
+    };
+
+    private static VerifierResult B10Result(VerifierResultStatus status)
+    {
+        var first = new RunIdentity("B10", "C0", "synthetic-c5", "pod-first", "pod-first", "pod-first");
+        RunIdentity second = first with { InstanceId = "pod-second", ExpectedInstanceId = "pod-second", ClientId = "pod-second" };
+        var intake = new B10IntakeEvidence("C0", 1,
+        [new(first, "synthetic-c5-c0-r1-loadgen", null, null), new(second, "synthetic-c5-c0-r1-loadgen2", "pod-first", null)]);
+        return Result(status) with { Identity = first, B10Intake = intake };
+    }
 
     [Fact]
     public void GivenWorkloadCountsMissingOrObservedZero_WhenRoundTripped_ThenPreservesAbsenceAndZero()
