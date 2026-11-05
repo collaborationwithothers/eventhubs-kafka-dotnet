@@ -61,6 +61,16 @@ jobs:
             target: Judge/B10JudgeChecks.cs
           - shard: b10-repeat
             target: VerifyRun/Judgement/B10RepeatChecks.cs
+          - shard: b10-phase-registrations
+            target: VerifyRun/Input/B10PhaseRegistrationReader.cs
+          - shard: b10-late-write
+            target: VerifyRun/Judgement/B10LateWriteChecks.cs
+          - shard: b10-sweep
+            target: VerifyRun/B10SweepHandler.cs
+          - shard: b10-sweep-judge
+            target: Judge/B10SweepChecks.cs
+          - shard: b10-sweep-codec
+            target: Common/Phase/B10SweepEvidenceCodec.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
     steps:

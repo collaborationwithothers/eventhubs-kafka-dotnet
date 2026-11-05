@@ -21,12 +21,12 @@ internal sealed record PhaseRepeatEvidence(
     WorkloadObservation? WorkloadObservation = null,
     BrokerConnectionCount? BrokerCount = null,
     B04RecordedEvidence? B04Evidence = null,
-    BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null);
+    BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null, B10RepeatFinality? B10Finality = null);
 
 internal sealed record PhaseRepeatChecks(bool J1, bool J2, bool J3, bool J4, bool J5, bool J6, bool J8);
 internal sealed record PhaseRepeatResult(int Repeat, string Status, IReadOnlyList<string> Reasons, PhaseRepeatChecks Checks,
     OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null,
-    BrokerConnectionCount? BrokerCount = null, B04RecordedEvidence? B04Evidence = null, BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null);
+    BrokerConnectionCount? BrokerCount = null, B04RecordedEvidence? B04Evidence = null, BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null, bool? ClassificationFinal = null);
 internal sealed record PhaseJudgement(string Status, string? Gate, OutcomeCounts? Counts,
     IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons);
 
@@ -60,12 +60,17 @@ internal static class PhaseJudge
             if (!j4) rr.Add("j4_producer_job_binding");
             if (!j5) rr.Add("j5_registered_producer_count");
             if (!j6) rr.Add("j6_broker_inventory_coverage");
-            bool invalid = e?.KnownInvalid == true || (e is not null && (e.JobBindingPass == false || e.RegistrationCountPass == false || e.InventoryCoveragePass == false));
-            string status = invalid ? "invalid" : scenarioId != "B10" && j1 && j2 && j3 && j4 && j5 && j6 && !e!.TrustedIncomplete ? "complete_valid" : "incomplete";
+            bool sweepFailed = scenarioId == "B10" && e?.B10Finality?.SweepFailed == true;
+            B10RepeatFinalization? finalization = scenarioId == "B10" ? e?.B10Finality?.Finalization : null;
+            bool finalized = finalization is { ClassificationFinal: true, Status: VerifierResultStatus.CompleteValid, Counts: not null };
+            bool invalid = sweepFailed || finalization?.Status == VerifierResultStatus.Invalid || e?.KnownInvalid == true || (e is not null && (e.JobBindingPass == false || e.RegistrationCountPass == false || e.InventoryCoveragePass == false));
+            string status = invalid ? "invalid" : (scenarioId != "B10" || finalized) && j1 && j2 && j3 && j4 && j5 && j6 && !e!.TrustedIncomplete ? "complete_valid" : "incomplete";
             if (invalid && e?.KnownInvalid == true) rr.Add("trusted_result_invalid");
-            if (scenarioId == "B10") rr.Add("b10_intake_only");
+            if (sweepFailed) rr.Add("b10_sweep_failed");
+            if (scenarioId == "B10" && e?.B10Finality is null) rr.Add("b10_intake_only");
+            if (finalization is not null) rr.AddRange(finalization.Reasons.Where(reason => reason != "trusted_result_invalid"));
             bool complete=status=="complete_valid";
-            repeats.Add(new(number,status,rr,new(j1,j2,j3,j4,j5,j6,j8),complete?e?.Counts:null,
+            repeats.Add(new(number,status,rr.Distinct(StringComparer.Ordinal).ToArray(),new(j1,j2,j3,j4,j5,j6,j8),complete ? scenarioId == "B10" ? finalization?.Counts : e?.Counts : null,
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.ProbeObservation : null,e?.Identity,
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
@@ -76,7 +81,7 @@ internal static class PhaseJudge
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.B04Evidence : null,
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.BatchingEvidence : null,
-                scenarioId == "B10" && j2 && j3 && j4 && j5 && j6 ? e?.B10Intake : null));
+                scenarioId == "B10" && j2 && j3 && j4 && j5 && j6 ? e?.B10Intake : null, scenarioId == "B10" && e?.B10Finality is not null ? complete && finalized : null));
             reasons.AddRange(rr);
         }
         if (extra || evidence.GroupBy(x => x.Repeat).Any(g => g.Count() > 1)) reasons.Add("j1_repeat_slots");

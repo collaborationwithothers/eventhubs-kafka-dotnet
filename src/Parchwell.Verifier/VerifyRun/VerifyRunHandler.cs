@@ -68,6 +68,15 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 throw new InvalidOperationException("producer_registration_binding_invalid");
             producers=[single];
         }
+        var earlierInstances=new HashSet<string>(StringComparer.Ordinal);
+        if(b10 && options.Repeat.Value > 1)
+        {
+            IReadOnlyList<IReadOnlyList<ProducerRegistration>> earlier=await B10PhaseRegistrationReader.ReadAsync(
+                options,options.Repeat.Value-1,producerStore,budget,ReadLedgerRequired,clock,cancellationToken).ConfigureAwait(false);
+            foreach(ProducerRegistration previous in earlier.SelectMany(pair=>pair)) earlierInstances.Add(previous.Identity.InstanceId);
+            if(producers.Any(producer=>earlierInstances.Contains(producer.Identity.InstanceId)))
+                throw new InvalidOperationException("b10_phase_registration_identity_duplicate");
+        }
         ProducerRegistration registration=producers[0];
 
         byte[]? startReceiptBytes=await ReadVerifier(PhasePaths.StartLineCompletion(options.RunId!,options.Phase!,options.Repeat.Value),cancellationToken).ConfigureAwait(false);
@@ -180,7 +189,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     ProducerInputs input=inputs[producerIndex];
                     IReadOnlyList<ConsumedRecord> records=drain?.Records??[];
                     if(b10)
-                        records=records.Where(record=>producerIndex==1
+                        records=records.Where(record=>record.InstanceId is null||!earlierInstances.Contains(record.InstanceId))
+                            .Where(record=>producerIndex==1
                             ?record.InstanceId==producers[1].Identity.InstanceId
                             :record.InstanceId!=producers[1].Identity.InstanceId).ToArray();
                     var perInstance=new RunJudgementRequest(input.Registration.Identity,input.Index,input.Ledger,input.Manifest,input.Statistics,
@@ -192,8 +202,9 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     judgements.Add(ApplyPublicationOutcome(evaluated,input.Acceptance));
                 }
                 RunJudgementRequest request=requests[0];
-                RunJudgementResult judgement=b10?B10RepeatChecks.Evaluate(requests[0],requests[1],judgements[0],judgements[1],
-                    producers.Select(producer=>producer.Identity.InstanceId).ToArray(),outputLimits).Judgement:judgements[0];
+                B10RepeatJudgement? b10Evaluation=b10?B10RepeatChecks.Evaluate(requests[0],requests[1],judgements[0],judgements[1],
+                    producers.Select(producer=>producer.Identity.InstanceId).ToArray(),outputLimits):null;
+                RunJudgementResult judgement=b10Evaluation?.Judgement??judgements[0];
                 A01EvidenceRecording a01=b10?new(null,null,[]):options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
                 B04EvidenceRecording b04=b10?new(null,[],null):B04EvidenceRecorder.Record(request);
                 BatchingEvidenceRecording batching=b10?new(null,[],null):BatchingEvidenceRecorder.Record(request,judgement);
@@ -207,7 +218,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
-                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null);
+                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?b10Evaluation!.InWindowCounts is not null:null);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
                 coverage=b10?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";

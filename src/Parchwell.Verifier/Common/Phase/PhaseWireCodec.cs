@@ -154,10 +154,10 @@ internal static partial class PhaseWireCodec
             r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
                 startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
-        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
+        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
         if (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) || r.ConfigurationId != expectedConfiguration) throw new FormatException("Receipt scenario or configuration does not match its phase.");
-        if (r.Mode == "judge" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
+        if (r.Mode is "judge" or "b10-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
         if (r.Repeat is int repeat) PhaseIdentity.ValidateRepeat(repeat);
         if (!Text(r.JobName,253,true) || !Text(r.PodName,253,true)) throw new FormatException("Receipt Job and pod names must be bounded text.");
         DateTimeOffset started = ParseUtc(r.StartedUtc); DateTimeOffset completed = ParseUtc(r.CompletedUtc);
@@ -174,8 +174,15 @@ internal static partial class PhaseWireCodec
         if (r.ScenarioId == "B10" && r.Mode == "verify" &&
             (r.HandlerExitCode != 1 || r.PublicationAcceptance is not null || r.B10Intake is null))
             throw new FormatException("B10 verify receipts require nonfinal independent intake evidence.");
-        if (r.Mode == "judge" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
-        if (r.Mode == "judge")
+        if (r.Mode is "judge" or "b10-sweep" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
+        if (r.Mode == "b10-sweep")
+        {
+            ArtifactReference finalization = r.Artifacts[0];
+            if (r.ScenarioId != "B10" || r.JobName != PhaseIdentity.B10SweepJobName(r.RunId, r.Phase) ||
+                finalization.Container != "verifier" || finalization.Name != PhasePaths.B10Finalization(r.RunId, r.Phase))
+                throw new FormatException("B10 sweep receipt does not bind its fixed finalization path.");
+        }
+        else if (r.Mode == "judge")
         {
             ArtifactReference candidate=r.Artifacts[0];
             if (r.JobName != PhaseIdentity.JudgeJobName(r.RunId,r.Phase) || candidate.Container != "verifier" || candidate.Name != PhasePaths.Candidate(r.RunId,r.Phase))

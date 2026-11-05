@@ -17,6 +17,10 @@ internal static class PhasePaths
     internal static string Candidate(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "candidate.json";
     internal static string JudgeCompletion(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "judge-completion.json";
 
+    internal static string SweepLine(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "sweep-line.json";
+    internal static string B10Finalization(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-finalization.json";
+    internal static string B10SweepCompletion(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-sweep-completion.json";
+
     private static string ValidateSegment(string value)
     {
         if (string.IsNullOrEmpty(value) || value.Length > 128 || value.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_')))

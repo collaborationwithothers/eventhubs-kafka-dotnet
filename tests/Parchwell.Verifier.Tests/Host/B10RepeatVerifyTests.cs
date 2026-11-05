@@ -130,6 +130,7 @@ public sealed class B10RepeatVerifyTests
         Assert.Equal(1, await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken));
         using JsonDocument output = JsonDocument.Parse(fixture.Output!);
         AssertNonfinal(output.RootElement, "incomplete");
+        Assert.True(output.RootElement.GetProperty("b10_window_checks_complete").GetBoolean());
         Assert.Empty(FailedChecks(output.RootElement));
         AssertPair(output.RootElement, true, true);
         Assert.False(completion.TryGetBlobReceipt(out _, out _, out _));
@@ -315,6 +316,7 @@ public sealed class B10RepeatVerifyTests
     {
         AssertStatus(result, status);
         Assert.False(result.GetProperty("classification_final").GetBoolean());
+        if (status == "invalid") Assert.False(result.GetProperty("b10_window_checks_complete").GetBoolean());
     }
 
     private static void AssertQualifiedCode(JsonElement result, string code, string instance, string artifact)

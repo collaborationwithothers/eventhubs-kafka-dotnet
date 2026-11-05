@@ -20,6 +20,7 @@ public sealed class VerifierResultCodecTests
     private static readonly OutputLimits OutputLimits = new(65_536, 8, 256);
     private static readonly string[] OutcomeCountNames = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
     private static readonly int[] FailedThreeAndEleven = [3, 11];
+    private static readonly string[] EligibilityObjects = ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
 
     // Classification finality is passive metadata and never grants B10 authoritative counts.
     [Theory]
@@ -146,6 +147,80 @@ public sealed class VerifierResultCodecTests
         JsonValueKind.Array => element.EnumerateArray().Sum(item => 1 + EntryCount(item)),
         _ => 0
     };
+
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void Given_B10Eligibility_When_RoundTripped_Then_RemainsNonfinalAndCountFree(bool eligible)
+    {
+        VerifierResult result = EligibleB10Result() with { B10WindowChecksComplete = eligible };
+        VerifierResult actual = RoundTrip(result);
+        Assert.Equal(eligible, actual.B10WindowChecksComplete);
+        Assert.Equal(false, actual.ClassificationFinal);
+        Assert.Equal(VerifierResultStatus.Incomplete, actual.Status);
+        Assert.Null(actual.Counts);
+    }
+
+    [Fact]
+    public void Given_LegacyB10EligibilityOmitted_When_Read_Then_DoesNotEstablishEligibility() =>
+        Assert.Null(RoundTrip(B10Result(VerifierResultStatus.Incomplete)).B10WindowChecksComplete);
+
+    [Theory]
+    [InlineData("null")] [InlineData("0")] [InlineData("\"true\"")] [InlineData("[]")] [InlineData("{}")]
+    public void Given_NonbooleanEligibility_When_Read_Then_Rejects(string value)
+    {
+        JsonObject root = JsonNode.Parse(VerifierResultCodec.Write(EligibleB10Result(), OutputLimits))!.AsObject();
+        root["b10_window_checks_complete"] = JsonNode.Parse(value);
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString()), "result.json", RecordedEvidence.SmallLimits, 8).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("true")] [InlineData("false")]
+    public void Given_NonB10Eligibility_When_ReadOrWritten_Then_Rejects(string value)
+    {
+        VerifierResult ordinary = Result(VerifierResultStatus.Incomplete);
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(ordinary with { B10WindowChecksComplete = value == "true" }, OutputLimits));
+        JsonObject root = JsonNode.Parse(VerifierResultCodec.Write(ordinary, OutputLimits))!.AsObject();
+        root["b10_window_checks_complete"] = JsonNode.Parse(value);
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString()), "result.json", RecordedEvidence.SmallLimits, 8).IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("status")] [InlineData("failed_checks")] [InlineData("classification_final")]
+    [InlineData("start_line")] [InlineData("end_line")] [InlineData("first_publication")] [InlineData("second_publication")]
+    public void Given_EligibilityWithoutRequiredEvidence_When_ReadOrWritten_Then_Rejects(string missing)
+    {
+        VerifierResult value = EligibleB10Result();
+        VerifierResult changed = missing switch
+        {
+            "status" => value with { Status = VerifierResultStatus.Invalid },
+            "failed_checks" => value with { FailedChecks = [3] },
+            "classification_final" => value with { ClassificationFinal = null },
+            "start_line" => value with { StartLine = null },
+            "end_line" => value with { EndLine = null },
+            _ => value with { B10Intake = value.B10Intake! with { Producers = value.B10Intake.Producers.Select((p, i) =>
+                i == (missing == "first_publication" ? 0 : 1) ? p with { PublicationAcceptance = null } : p).ToArray() } }
+        };
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(changed, OutputLimits));
+        JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(changed with { B10WindowChecksComplete = false }, OutputLimits))!.AsObject();
+        json["b10_window_checks_complete"] = true;
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json.ToJsonString()), "result.json", RecordedEvidence.SmallLimits, 8).IsSuccess);
+    }
+
+    private static VerifierResult EligibleB10Result()
+    {
+        VerifierResult value = B10Result(VerifierResultStatus.Incomplete) with { FailedChecks = [], ClassificationFinal = false,
+            B10WindowChecksComplete = true, VerifierCommit = new string('a', 40), StartLine = [new(0, 0)], EndLine = [new(0, 1)] };
+        return value with { B10Intake = value.B10Intake! with { Producers = value.B10Intake.Producers.Select(p => p with
+        {
+            PublicationAcceptance = new(PhasePaths.ProducerPrefix(value.Identity.RunId, "C0", 1, p.Identity.InstanceId), p.Identity, value.VerifierCommit,
+                EligibilityReference("verifier", PhasePaths.StartLine(value.Identity.RunId, "C0", 1)),
+                EligibilityReference("verifier", PhasePaths.BrokerInventory(value.Identity.RunId, "C0", 1)),
+                EligibilityReference("ledger", PhasePaths.ProducerCompletion(value.Identity.RunId, "C0", 1, p.Identity.InstanceId)),
+                EligibilityObjects.Select(name => EligibilityReference("ledger", PhasePaths.Publication(value.Identity.RunId, "C0", 1, p.Identity.InstanceId, name))).ToArray())
+        }).ToArray() } };
+    }
+
+    private static ArtifactReference EligibilityReference(string container, string path) => new(container, path, 1, new string('a', 64));
 
     private static VerifierResult B10Result(VerifierResultStatus status)
     {

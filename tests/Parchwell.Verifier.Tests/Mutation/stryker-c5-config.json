@@ -26,7 +26,12 @@
       "VerifyRun/Input/RestartManifestReader.cs",
       "VerifyRun/Judgement/B10IntakeChecks.cs",
       "Judge/B10JudgeChecks.cs",
-      "VerifyRun/Judgement/B10RepeatChecks.cs"
+      "VerifyRun/Judgement/B10RepeatChecks.cs",
+      "VerifyRun/Input/B10PhaseRegistrationReader.cs",
+      "VerifyRun/Judgement/B10LateWriteChecks.cs",
+      "VerifyRun/B10SweepHandler.cs",
+      "Judge/B10SweepChecks.cs",
+      "Common/Phase/B10SweepEvidenceCodec.cs"
     ],
     "coverage-analysis": "off"
   }

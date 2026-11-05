@@ -47,6 +47,7 @@ internal static class VerifierResultCodec
             WriteIdentity(writer, result.Identity);
             if (result.B10Intake is not null) PhaseWireCodec.WriteB10Intake(writer, result.B10Intake);
             if (result.ClassificationFinal is bool final) writer.WriteBoolean("classification_final", final);
+            if (result.B10WindowChecksComplete is bool eligible) writer.WriteBoolean("b10_window_checks_complete", eligible);
             if (result.GeneratorVersion is not null) writer.WriteString("generator_version", result.GeneratorVersion);
             if (result.RuntimeVersions is not null) WriteStringMap(writer, "runtime_versions", result.RuntimeVersions);
             writer.WriteString("verifier_commit", result.VerifierCommit);
@@ -119,6 +120,13 @@ internal static class VerifierResultCodec
             if (identity!.ScenarioId != "B10" || classificationFinalElement.ValueKind != JsonValueKind.False)
                 return Failure(artifact, "classification_final", "invalid_classification_final");
             classificationFinal = false;
+        }
+        bool? windowChecksComplete = null;
+        if (root.TryGetProperty("b10_window_checks_complete", out JsonElement windowChecks))
+        {
+            if (identity!.ScenarioId != "B10" || windowChecks.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                return Failure(artifact, "b10_window_checks_complete", "invalid_b10_window_checks_complete");
+            windowChecksComplete = windowChecks.GetBoolean();
         }
         string? generatorVersion = null;
         if (root.TryGetProperty("generator_version", out _) && !TryString(root, "generator_version", out generatorVersion))
@@ -211,9 +219,12 @@ internal static class VerifierResultCodec
             return Failure(artifact, "b10_intake", "invalid_b10_intake");
         }
 
+        if (windowChecksComplete == true && !EligibleShape(status, failedChecks!, classificationFinal, startLine, endLine, b10Intake))
+            return Failure(artifact, "b10_window_checks_complete", "invalid_b10_window_checks_complete");
+
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -226,6 +237,9 @@ internal static class VerifierResultCodec
             throw new ArgumentException("classification_final may only be false on B10 results.", nameof(result));
         if (result.Identity.ScenarioId == "B10" && (result.B10Intake is null || result.Status == VerifierResultStatus.CompleteValid))
             throw new ArgumentException("B10 results require nonfinal intake evidence.", nameof(result));
+        if (result.B10WindowChecksComplete is bool eligible && (result.Identity.ScenarioId != "B10" ||
+            eligible && !EligibleShape(result.Status, result.FailedChecks, result.ClassificationFinal, result.StartLine, result.EndLine, result.B10Intake)))
+            throw new ArgumentException("B10 window eligibility requires complete independent nonfinal evidence.", nameof(result));
         if (result.B10Intake is not null)
         {
             try { PhaseWireCodec.ValidateB10Intake(result.B10Intake, result.Identity, result.VerifierCommit); }
@@ -1022,12 +1036,18 @@ internal static class VerifierResultCodec
         return decimal.ToInt64(truncated);
     }
 
+    private static bool EligibleShape(VerifierResultStatus status, IReadOnlyList<int> failedChecks, bool? classificationFinal,
+        IReadOnlyList<WatermarkOffset>? start, IReadOnlyList<WatermarkOffset>? end, B10IntakeEvidence? intake) =>
+        status == VerifierResultStatus.Incomplete && failedChecks.Count == 0 && classificationFinal == false &&
+        start is not null && end is not null && intake?.Producers.Count == 2 &&
+        intake.Producers.All(producer => producer.PublicationAcceptance is not null);
+
     private static HashSet<string> BuildOptionalRootFields()
     {
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete"
         };
         fields.UnionWith(CountFields);
         return fields;

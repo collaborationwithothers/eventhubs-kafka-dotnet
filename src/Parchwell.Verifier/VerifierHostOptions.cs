@@ -8,7 +8,8 @@ internal enum VerifierMode
     Verify,
     Judge,
     ProbeGate,
-    SingleActionJudge
+    SingleActionJudge,
+    B10Sweep
 }
 
 /// <summary>Holds runner-supplied verifier settings until startup validation completes.</summary>
@@ -27,6 +28,7 @@ internal sealed class VerifierHostOptions
     public TimeSpan? ProcessLifetime { get; set; }
     public TimeSpan? CleanupTimeout { get; set; }
     public TimeSpan? IoTimeout { get; set; }
+    public long? B10SettleIntervalMilliseconds { get; set; }
     public long? MaxOutputBytes { get; set; }
     public int? MaxDiagnosticsPerCheck { get; set; }
     public int? MaxDiagnosticBytes { get; set; }
@@ -134,9 +136,10 @@ internal static class VerifierModeParser
             "judge" => VerifierMode.Judge,
             "single-action-judge" => VerifierMode.SingleActionJudge,
             "probe-gate" => VerifierMode.ProbeGate,
+            "b10-sweep" => VerifierMode.B10Sweep,
             _ => default
         };
 
-        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge";
+        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep";
     }
 }

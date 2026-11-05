@@ -140,7 +140,7 @@ internal static partial class Program
             services.AddSingleton<IVerifierModeHandler,VerifyRun.SingleAction.SingleActionHandler>();
             return;
         }
-        if (mode is not ("start-line" or "verify" or "judge")) return;
+        if (mode is not ("start-line" or "verify" or "judge" or "b10-sweep")) return;
 
         var preflight=new VerifierHostOptions();
         new VerifierHostOptionsSetup(configuration).Configure(preflight);
@@ -148,7 +148,7 @@ internal static partial class Program
         if(!preflightResult.Succeeded)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),preflightResult.Failures??[]);
         RegisterTelemetry(services,configuration);
 
-        if (mode is "start-line" or "verify")
+        if (mode is "start-line" or "verify" or "b10-sweep")
         {
             services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
             {
@@ -174,6 +174,16 @@ internal static partial class Program
         if (mode == "start-line")
         {
             services.AddSingleton<IVerifierModeHandler, StartLineHandler>();
+            return;
+        }
+        if (mode == "b10-sweep")
+        {
+            services.AddSingleton<IProducerArtifactStore>(provider =>
+            {
+                var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+                return new BlobProducerArtifactStore(CreateBlobContainer(options, options.LedgerContainer!), options.MaxArtifactBytes!.Value);
+            });
+            services.AddSingleton<IVerifierModeHandler, B10SweepHandler>();
             return;
         }
         services.AddParchwellScenarios(options =>
@@ -454,17 +464,17 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         string? mode = _configuration["Verifier:Mode"];
         if(mode=="single-action-judge")ValidateSingleActionFields();
         var usedBudgets = new HashSet<string>(AlwaysReadBudgets, StringComparer.OrdinalIgnoreCase);
-        if (mode is "start-line" or "verify")
+        if (mode is "start-line" or "verify" or "b10-sweep")
         {
             usedBudgets.UnionWith(KafkaBudgets);
         }
 
-        if (mode is "probe-gate" or "verify" or "judge")
+        if (mode is "probe-gate" or "verify" or "judge" or "b10-sweep")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.IoTimeout));
         }
 
-        if (mode == "verify")
+        if (mode is "verify" or "b10-sweep")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.SafetyStop));
         }
@@ -531,7 +541,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         if (property.Equals(nameof(VerifierHostOptions.MaxConsumedRecords), StringComparison.OrdinalIgnoreCase)
             || property.Equals(nameof(VerifierHostOptions.MaxConsumedBytes), StringComparison.OrdinalIgnoreCase))
         {
-            return mode == "verify";
+            return mode is "verify" or "b10-sweep";
         }
 
         return !IsBudget(property) || usedBudgets.Contains(property);

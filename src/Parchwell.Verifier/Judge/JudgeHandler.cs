@@ -37,6 +37,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         var inputBudget=new InputBudget(limits);
         inputBudget.ConsumeEntries(listing.Names.Count);
         var slots=new List<PhaseRepeatEvidence>(5);
+        var originals=new List<B10OriginalEvidence>(5);
         var acceptedVersions=new List<(string? Generator,string? Kafka,string? Native,string? Dotnet)>();
         var acceptedA01=new List<Parchwell.Verifier.Common.Results.A01RecordedEvidence>();
         for(int i=1;i<=5;i++)
@@ -49,6 +50,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null; BatchingRecordedEvidence? batchingEvidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             B10IntakeEvidence? b10Intake=null;
+            ArtifactReference? originalResult=null,originalReceipt=null;
+            bool windowChecksComplete=false; DateTimeOffset? verifyCompleted=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
             {
@@ -188,11 +191,12 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                 if(completionBytes is not null)
                 {
                     inputBudget.ConsumeBytes(completionBytes.LongLength);
+                    originalReceipt=Reference(completionName,completionBytes);
                     WorkerReceipt r=PhaseWireCodec.ReadReceipt(completionBytes);
                     string resultName=PhasePaths.Result(options.RunId!,options.Phase!,i);
                     ArtifactReference resultRef=r.Artifacts.SingleOrDefault()??throw new FormatException("Verify receipt must name one result.");
                     byte[]? resultBytes=await Bounded(ct=>verifier.ReadAsync(resultName,ct),options,clock,cancellationToken).ConfigureAwait(false);
-                    if(resultBytes is not null)inputBudget.ConsumeBytes(resultBytes.LongLength);
+                    if(resultBytes is not null) { inputBudget.ConsumeBytes(resultBytes.LongLength);originalResult=Reference(resultName,resultBytes); }
                     ProducerCompletionReceipt? producerReceipt=null;
                     byte[]? producerReceiptBytes=null;
                     if(!b10&&registration is not null)
@@ -276,7 +280,12 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             // Once that binding fails, its status and check projections are untrusted.
                             if(receiptValid)
                             {
-                                if(b10)b10Intake=result.B10Intake;
+                                if(b10)
+                                {
+                                    b10Intake=result.B10Intake;
+                                    windowChecksComplete=result.B10WindowChecksComplete==true;
+                                    if(DateTimeOffset.TryParse(r.CompletedUtc,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out DateTimeOffset completed))verifyCompleted=completed;
+                                }
                                 jobBinding=Combine(jobBinding,r.RepeatChecks?.ProducerJobBinding);
                                 registrationCount=Combine(registrationCount,r.RepeatChecks?.RegisteredProducerCount);
                                 inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
@@ -313,18 +322,58 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     }
                     else trustedIncomplete=true;
                 }
-                if(!producerListing.IsComplete)trustedIncomplete=true;
+                if(!producerListing.IsComplete) { trustedIncomplete=true;windowChecksComplete=false; }
             }
             // Exhausting the aggregate phase input budget is an execution failure.
             // It must stop the judge rather than publish a candidate that looks like
             // ordinary unavailable evidence for one slot.
             catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or OverflowException or TimeoutException || ex is OperationCanceledException&&!cancellationToken.IsCancellationRequested)
             {
-                trustedIncomplete=true;
+                trustedIncomplete=true;windowChecksComplete=false;
             }
+            originals.Add(new(i,originalResult,originalReceipt,windowChecksComplete && receiptValid && publicationAccepted && !knownInvalid && jobBinding==true && registrationCount==true && inventoryCoverage==true,verifyCompleted));
             slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
+        B10SweepProjection? sweepProjection=null;
+        if(b10)
+        {
+            ArtifactReference? finalizationReference=null,receiptReference=null,noteReference=null;
+            B10Finalization? finalization=null; bool accepted=false;
+            try
+            {
+                string finalizationName=PhasePaths.B10Finalization(options.RunId!,options.Phase!);
+                string receiptName=PhasePaths.B10SweepCompletion(options.RunId!,options.Phase!);
+                string noteName=PhasePaths.SweepLine(options.RunId!,options.Phase!);
+                async Task<byte[]?> Read(string name)
+                {
+                    byte[]? content=await Bounded(ct=>verifier.ReadAsync(name,ct),options,clock,cancellationToken).ConfigureAwait(false);
+                    if(content is not null)inputBudget.ConsumeBytes(content.LongLength);
+                    return content;
+                }
+                byte[]? finalizationBytes=await Read(finalizationName).ConfigureAwait(false);
+                byte[]? receiptBytes=await Read(receiptName).ConfigureAwait(false);
+                byte[]? noteBytes=await Read(noteName).ConfigureAwait(false);
+                if(finalizationBytes is not null)finalizationReference=Reference(finalizationName,finalizationBytes);
+                if(receiptBytes is not null)receiptReference=Reference(receiptName,receiptBytes);
+                if(noteBytes is not null)noteReference=Reference(noteName,noteBytes);
+                if(finalizationBytes is not null && receiptBytes is not null)
+                {
+                    finalization=B10SweepEvidenceCodec.ReadFinalization(finalizationBytes,limits);
+                    WorkerReceipt sweepReceipt=PhaseWireCodec.ReadReceipt(receiptBytes);
+                    B10SweepLine? sweepLine=noteBytes is null?null:B10SweepEvidenceCodec.ReadSweepLine(noteBytes,limits,100_000);
+                    accepted=B10SweepChecks.Accept(options,finalization,sweepReceipt,finalizationReference!,sweepLine,noteReference,originals);
+                }
+            }
+            catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException or OverflowException or TimeoutException || ex is OperationCanceledException&&!cancellationToken.IsCancellationRequested)
+            { accepted=false; }
+            sweepProjection=new(accepted,finalizationReference,receiptReference,noteReference,B10SweepEvidence.ResidualRisk);
+            slots=slots.Select((slot,index)=>slot with
+            {
+                B10Finality=accepted ? new(false,finalization!.Repeats[index]) : new(true),
+                TrustedIncomplete=slot.TrustedIncomplete && !(accepted && originals[index].Eligible && listing.IsComplete && finalization!.Repeats[index].ClassificationFinal)
+            }).ToList();
+        }
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots,options.ScenarioId);
         string? CommonVersion(Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?> select)
         {
@@ -345,7 +394,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             new Dictionary<string,string?>(StringComparer.Ordinal){["loadgen"]=Digest(options.LoadGenImage),["verifier"]=Digest(options.VerifierImage)},
             new Dictionary<string,object?>(StringComparer.Ordinal){["worker_started_utc"]=phaseStarted?.ToString("O",System.Globalization.CultureInfo.InvariantCulture),["judge_completed_utc"]=phaseStarted is null?null:clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),["duration_seconds"]=phaseStarted is null?null:(decimal?)(clock.GetUtcNow()-phaseStarted.Value).TotalSeconds},
             new Dictionary<string,object?>(StringComparer.Ordinal){["error_codes"]=acceptedA01.SelectMany(e=>e.DeliveryErrorCodes??Array.Empty<int>()).Select(x=>x.ToString(System.Globalization.CultureInfo.InvariantCulture)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Concat(listing.IsComplete?Array.Empty<string>():new[]{listing.FailureCode??"listing_incomplete"}).ToArray(),["max_throttle_ms"]=a01Windows.Where(w=>w.ThrottleMaximumMilliseconds.HasValue).Select(w=>(long?)w.ThrottleMaximumMilliseconds!.Value).Max(),["request_timeout_increment"]=Sum(w=>w.RequestTimeoutsIncrement),["disconnect_increment"]=Sum(w=>w.DisconnectsIncrement),["rtt_p99_ms"]=a01Windows.Where(w=>w.RoundTripP99Microseconds.HasValue).Select(w=>(decimal?)w.RoundTripP99Microseconds!.Value/1000m).Max()},
-            judgement.Repeats,judgement.Counts,judgement.Reasons.Concat(versionReasons).Concat(timingReasons).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray());
+            judgement.Repeats,judgement.Counts,judgement.Reasons.Concat(versionReasons).Concat(timingReasons).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray(),sweepProjection);
         byte[] bytes=PhaseCandidateCodec.Write(candidate);
         string name=PhasePaths.Candidate(options.RunId!,options.Phase!);
         if(options.CandidateOutputName!=name)throw new InvalidOperationException("Candidate path is not the derived phase path.");
@@ -379,6 +428,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         instance=candidate;
         return true;
     }
+
+    private static ArtifactReference Reference(string name,byte[] bytes)=>new("verifier",name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
 
     private static bool Matches(ArtifactReference reference,string container,string name,byte[]? bytes)=>
         bytes is not null&&reference.Container==container&&reference.Name==name&&reference.Length==bytes.LongLength&&
