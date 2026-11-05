@@ -30,7 +30,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     private bool fixtureIdentityInitialized;
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier",string scenarioId="A01",string phase="C0")
+    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier",string scenarioId="A01",string phase="C0",string? scenarioSourceId=null)
     {
         Options.ScenarioId=scenarioId;
         SetRepeatCoordinates(Options.Repeat!.Value,phase);
@@ -58,7 +58,8 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         string scenarioPath = "scenarios/" + scenarioId + "/scenario.yaml";
         scenarioDocuments = new(StringComparer.Ordinal)
         {
-            [scenarioPath] = File.ReadAllText(Path.Combine(root, scenarioPath)),
+            [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioSourceId ?? scenarioId, "scenario.yaml"))
+                .Replace("id: " + (scenarioSourceId ?? scenarioId) + "\n", "id: " + scenarioId + "\n", StringComparison.Ordinal),
             ["scenarios/profiles/lifecycle-1k.yaml"] = ""
         };
         // The profile reference is read from the selected repository scenario, independently of captured evidence.
@@ -428,7 +429,8 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         if (!OmitStartLineNote)
             Note ??= StartLineNoteCodec.Write(new StartLineNote(1, startIdentity, VerifierKafkaSession.Topic,
                 [new PartitionHigh(0, 0)], "2026-10-24T00:00:00.0000000+00:00", Options.SourceCommit!,
-                "synthetic-managed", "synthetic-native"), limits);
+                "synthetic-managed", "synthetic-native",
+                Options.ScenarioId == "B10" ? Options.ExpectedProducerJobNames.ToArray() : null), limits);
         if (!verifierObjects.TryGetValue(Options.BrokerInventoryOutputName!, out byte[]? inventory))
         {
             inventory = BrokerInventoryCodec.Write(startIdentity, [new BrokerMetadata(1, "broker-a", 9093)],

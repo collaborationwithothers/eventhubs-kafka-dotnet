@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retain one C5 shard and combine nine complete raw mutation populations."""
+"""Retain one C5 shard and combine ten complete raw mutation populations."""
 
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ TARGETS = {
     "idle-observation": ("VerifyRun/IdleObservation/IdleObservationJudgement.cs", 3),
     "batching": ("VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs", 1),
     "b10-restart-manifest": ("VerifyRun/Input/RestartManifestReader.cs", 1),
+    "b10-intake": ("VerifyRun/Judgement/B10IntakeChecks.cs", 1),
 }
 PARTS = {key if count == 1 else f"{key}-p{index}": (key, index, count)
          for key, (_, count) in TARGETS.items() for index in range(1, count + 1)}

@@ -60,6 +60,14 @@ internal sealed record WorkerReceipt(
     string CompletedUtc,
     IReadOnlyList<ArtifactReference> Artifacts,
     PublicationAcceptanceSnapshot? PublicationAcceptance,
-    RepeatChecks? RepeatChecks);
+    RepeatChecks? RepeatChecks,
+    B10IntakeEvidence? B10Intake = null);
 
 internal sealed record RepeatChecks(string ProducerJobBinding, string RegisteredProducerCount, string BrokerInventoryCoverage);
+
+internal sealed record B10ProducerEvidence(
+    RunIdentity Identity, string JobName, string? PredecessorInstanceId,
+    PublicationAcceptanceSnapshot? PublicationAcceptance);
+
+internal sealed record B10IntakeEvidence(
+    string Phase, int RepeatNumber, IReadOnlyList<B10ProducerEvidence> Producers);
