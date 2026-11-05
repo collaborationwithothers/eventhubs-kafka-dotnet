@@ -1424,14 +1424,14 @@
       "summary_sha256": "ca44c0fbabe62cdfc56a17421f974ad55f67491e2e3a5b255be79fc1b70a3389"
     },
     "latest_applicable": {
-      "run_id": 41892353617,
-      "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41892353617",
-      "source_commit": "3f4b29e79883ec520eaed78bbf4390b3b7abeb5b",
+      "run_id": 41930058127,
+      "run_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41930058127",
+      "source_commit": "4b47da2fcc078303122a79e84a0034d815983cf2",
       "status": "completed",
       "conclusion": "success",
       "measurement_complete": true,
       "break_passed": true,
-      "summary_sha256": "e8075e53c93cd775e2aee8147b02561ce0569141dc85a5879a5aa87654b224b2"
+      "summary_sha256": "6db15f28360210e5fa1e8a6e0fce6b38d92c96740232911a9ddfe9ec3fd25368"
     },
     "pending_run_url": null
   }

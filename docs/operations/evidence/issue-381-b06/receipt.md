@@ -22,7 +22,7 @@ Candidate byte hashes:
 - `B06-C0-candidate.json`: `b8cd500e0d300f8874609e0ec83d9ff38145044cd42e2f5fa4d8441108c83c62`.
 - `B06-C1-candidate.json`: `e3f2d5e612e38507a72c3141ed76db587686cdea33e44a034c85a9c95adf2ff7`.
 
-Extract the source block below to `/tmp/issue-381/verify-b06-publication.py`. It is the entire authored generation and validation script, including the report text; there is no unreviewed helper. Run from the repository root with the evidence directory populated as follows: named candidates in `candidates/`; expanded pod artifact in `pods/`; historical summary in `mutation/summary.json`; the run and artifact REST responses in `<run-id>-run.json`, `<run-id>-artifacts.json` and `<run-id>-jobs.json`; and the sanitized batch destroy-state excerpt in `infrastructure-log-evidence.txt`. On success, the latest summary goes in `latest-mutation/summary.json` with its run REST response in `41892353617-run.json`.
+Extract the source block below to `/tmp/issue-381/verify-b06-publication.py`. It is the entire authored generation and validation script, including the report text; there is no unreviewed helper. Run from the repository root with the evidence directory populated as follows: named candidates in `candidates/`; expanded pod artifact in `pods/`; historical summary in `mutation/summary.json`; the run and artifact REST responses in `<run-id>-run.json`, `<run-id>-artifacts.json` and `<run-id>-jobs.json`; and the sanitized batch destroy-state excerpt in `infrastructure-log-evidence.txt`. On success, the latest summary goes in `latest-mutation/summary.json` with its run REST response in `41930058127-run.json`.
 
 The source-pinned scenario, expected outcome, profile and contracts are linked by the JSON/report. Microsoft's configuration page was read from the cached official page on 2026-11-04: the `acks` row is in the Java defaults table; the complete librdkafka section contains no `acks` row. No claim about replication or guaranteed durability is added.
 
@@ -39,7 +39,7 @@ git diff --name-only origin/main
 
 The rendering command writes only the two approved publication files and does not certify acceptance. Validation compares the complete selected dictionaries, exact repeat ordinals, phase sums, ratios, medians and report rendering against the named sources. Pod records are bound to phase-status Jobs, pod owner references and artifact paths. The final gate checks measured commit ancestry and every current configured mutation target against origin/main; an older pass cannot mask a later target change.
 
-The checker passed source identity, exact projection, arithmetic, pod binding, manuscript, four-path scope and latest mutation acceptance, and printed `B06 publication checks passed`. The accepted [mutation summary](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41892353617/artifacts/13360514326) identifies `3f4b29e79883ec520eaed78bbf4390b3b7abeb5b`, with `measurement_complete=true`, `break_passed=true` and no incomplete reasons. That commit includes the scenario source and the latest configured-target change; main is unchanged since it. JSON parsing, working-tree and staged whitespace checks passed. The path listing contained only the four planned files. Documentation checks completed with 8 warnings, all in unchanged files and outside this publication scope. No runtime code changed, so no runtime tests were added or repeated.
+The checker passed source identity, exact projection, arithmetic, pod binding, manuscript, four-path scope and latest mutation acceptance, and printed `B06 publication checks passed`. The accepted [mutation summary](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41930058127/artifacts/13377806456) identifies `4b47da2fcc078303122a79e84a0034d815983cf2`, with `measurement_complete=true`, `break_passed=true` and no incomplete reasons. That commit includes the scenario source and the latest configured-target change, including `B10IntakeChecks.cs`; main is unchanged since it. The checker results in this paragraph describe the earlier publication verification; the acceptance-reference refresh is verified separately below. JSON parsing, working-tree and staged whitespace checks passed. The path listing contained only the four planned files. Documentation checks completed with 8 warnings, all in unchanged files and outside this publication scope. No runtime code changed, so no runtime tests were added or repeated.
 
 Cold-review mode: focused correction, comparing against `67a9abe50a4d30a0e66d16602043a3d0e8d68b53`, with the full diff against base `3f4b29e79883ec520eaed78bbf4390b3b7abeb5b` as context. The frozen input commit is identified by the full SHA in the supplied review-diff filename. Scope is the stale shared-state next action and required authority/review bookkeeping. Hari [explicitly authorized one additional focused review per PR](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/381#issuecomment-6643640899) after the prior budget was exhausted. This round uses that authorization; it does not reset other budgets. Prior review reports, cumulative counts and the completed report for this round belong in the PR description. Final-head CI, hosted Codex review, fresh Claude review and Hari's verdict merge remain required.
 
@@ -54,6 +54,16 @@ Verification uses the same commands above after extracting the updated embedded 
 ## Shared-state follow-up
 
 The latest Claude review of the acknowledgement publication identified a stale next action: it still instructed a later session to apply corrections already present in both PRs. Under the explicit approval linked above, both state files now say that corrections are applied and retain the final-head verification and Hari-only merge gates. The state catch-up records that approval. This follow-up changes only state and receipt prose; the report, structured result and embedded helper are unchanged. Verification: `npm run check:docs`, `git diff --check`, and comparison of the report, JSON and embedded helper with the comparison revision.
+
+## Current-main acceptance refresh
+
+Authorization: the user directly requested mutation run 41930058127 on main `4b47da2fcc078303122a79e84a0034d815983cf2` in reports, receipts and shared state, and a main update for PR #384. Verdict words, measurements and expected outcomes must remain unchanged. The embedded checker's run identifier is refreshed as part of this reference update; its logic is unchanged.
+
+Read `summary.json` from [summary artifact](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41930058127/artifacts/13377806456). Its SHA-256 is `6db15f28360210e5fa1e8a6e0fce6b38d92c96740232911a9ddfe9ec3fd25368`. The summary records `measurement_complete=true`, `break_passed=true`, no incomplete reasons and the configured `B10IntakeChecks.cs` target. Run metadata confirms successful completion on the same main commit.
+
+Verification: `python /tmp/update-mutation.py`, `npm run check:docs`, and `git diff --check`. The reference-only comparison preserves all JSON outside latest mutation acceptance and all report text outside that reference; the existing embedded renderer reproduces the report. Shared state is identical across both branches. No full publication-checker rerun is claimed for this refresh.
+
+Publication checkpoint: the cumulative cold-review allowance is exhausted (two comprehensive and three focused reports for PR #383; two comprehensive and four focused for PR #384). Under pull-request rule 8, save this change to the existing branch's `-wip` backup and request one additional focused review per PR before publishing it. Final-head CI, hosted Codex review, fresh Claude review and Hari-only merge remain required. Predicate map: not applicable; no verifier predicate changed.
 
 ## Full authored script
 
@@ -71,7 +81,7 @@ REPO = 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet'
 SOURCE = 'aca33589a3c69056dcbad3677698a53da7487bf8'
 BASE = '3f4b29e79883ec520eaed78bbf4390b3b7abeb5b'
 RUN = 41866017867
-LATEST = 41892353617
+LATEST = 41930058127
 TOP = 'schema_version synthetic scenario_id configuration_id run_id phase source_commit status gate versions image_digests timings counts reasons'.split()
 REPEAT = 'repeat status reasons checks identity counts broker_count batching_recorded_evidence'.split()
 COUNTS = 'ok loss phantom reported_failure duplicate reorder'.split()
