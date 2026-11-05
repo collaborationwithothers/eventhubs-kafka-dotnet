@@ -1,3 +1,4 @@
+using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Judge;
 using Xunit;
@@ -378,6 +379,128 @@ public sealed class PhaseJudgeTests
         Assert.Equal("phase",error.ParamName);
         Assert.Equal("Unsupported phase. (Parameter 'phase')",error.Message);
     }
+
+    [Theory]
+    [InlineData("C0", false)]
+    [InlineData("C0", true)]
+    [InlineData("C1", false)]
+    [InlineData("C1", true)]
+    public void Given_B10WithStaleCounts_When_Judged_Then_RemainsNonfinalWithOrWithoutIntake(string phase, bool hasIntake)
+    {
+        PhaseRepeatEvidence[] evidence = B10Repeats(phase);
+        if (!hasIntake) evidence = evidence.Select(e => e with { B10Intake = null }).ToArray();
+        PhaseJudgement result = PhaseJudge.Evaluate(phase, evidence, "B10");
+        Assert.Equal("incomplete", result.Status);
+        Assert.Null(result.Counts);
+        Assert.Null(result.Gate);
+        Assert.All(result.Repeats, repeat =>
+        {
+            Assert.Equal("incomplete", repeat.Status);
+            Assert.Null(repeat.Counts);
+            Assert.Contains("b10_intake_only", repeat.Reasons);
+            Assert.Equal(new PhaseRepeatChecks(true, true, true, true, true, true, false), repeat.Checks);
+            Assert.Equal(hasIntake, repeat.B10Intake is not null);
+        });
+        evidence[2] = evidence[2] with { KnownInvalid = true };
+        result = PhaseJudge.Evaluate(phase, evidence, "B10");
+        Assert.Equal("invalid", result.Status);
+        Assert.Equal("invalid", result.Repeats[2].Status);
+        Assert.Contains("trusted_result_invalid", result.Repeats[2].Reasons);
+        Assert.Equal(evidence[2].B10Intake, result.Repeats[2].B10Intake);
+        Assert.Null(result.Counts);
+        Assert.All(result.Repeats, repeat => Assert.Null(repeat.Counts));
+    }
+
+    [Theory]
+    [InlineData("start", false, "incomplete")]
+    [InlineData("publication", false, "incomplete")]
+    [InlineData("receipt", false, "incomplete")]
+    [InlineData("job", false, "invalid")]
+    [InlineData("job", null, "incomplete")]
+    [InlineData("registration", false, "invalid")]
+    [InlineData("registration", null, "incomplete")]
+    [InlineData("inventory", false, "invalid")]
+    [InlineData("inventory", null, "incomplete")]
+    public void Given_B10UntrustedPredicate_When_Judged_Then_OnlyAffectedSlotLosesIntake(string predicate, bool? pass, string status)
+    {
+        foreach (string phase in new[] { "C0", "C1" })
+        {
+            PhaseRepeatEvidence[] evidence = B10Repeats(phase);
+            evidence[2] = predicate switch
+            {
+                "start" => evidence[2] with { StartLineAccepted = pass == true },
+                "publication" => evidence[2] with { PublicationAccepted = pass == true },
+                "receipt" => evidence[2] with { VerifierReceiptValid = pass == true },
+                "job" => evidence[2] with { JobBindingPass = pass },
+                "registration" => evidence[2] with { RegistrationCountPass = pass },
+                "inventory" => evidence[2] with { InventoryCoveragePass = pass },
+                _ => throw new ArgumentOutOfRangeException(nameof(predicate))
+            };
+            PhaseJudgement result = PhaseJudge.Evaluate(phase, evidence, "B10");
+            Assert.Equal(status, result.Status);
+            Assert.Equal(status, result.Repeats[2].Status);
+            Assert.Null(result.Repeats[2].B10Intake);
+            for (int i = 0; i < 5; i++)
+                if (i != 2) Assert.Same(evidence[i].B10Intake, result.Repeats[i].B10Intake);
+            Assert.Null(result.Counts);
+            Assert.All(result.Repeats, repeat => Assert.Null(repeat.Counts));
+        }
+    }
+
+    [Theory]
+    [InlineData("C0")]
+    [InlineData("C1")]
+    public void Given_B10SlotOnlyFailureOrDuplicate_When_Judged_Then_RetainsOnlyUniquelySelectedIntake(string phase)
+    {
+        PhaseRepeatEvidence[] evidence = B10Repeats(phase);
+        evidence[2] = evidence[2] with { SlotPresent = false };
+        PhaseJudgement missing = PhaseJudge.Evaluate(phase, evidence, "B10");
+        Assert.False(missing.Repeats[2].Checks.J1);
+        Assert.Same(evidence[2].B10Intake, missing.Repeats[2].B10Intake);
+        PhaseJudgement duplicate = PhaseJudge.Evaluate(phase, evidence.Append(evidence[2]).ToArray(), "B10");
+        Assert.False(duplicate.Repeats[2].Checks.J1);
+        Assert.Null(duplicate.Repeats[2].B10Intake);
+        Assert.Same(evidence[1].B10Intake, duplicate.Repeats[1].B10Intake);
+        Assert.Null(missing.Counts);
+        Assert.Null(duplicate.Counts);
+    }
+
+    [Theory]
+    [InlineData("C0")]
+    [InlineData("C1")]
+    public void Given_B10FirstOnlyObservations_When_Judged_Then_SuppressesEveryMeasurement(string phase)
+    {
+        PhaseRepeatEvidence[] evidence = B10Repeats(phase).Select(e => e with
+        {
+            ProbeObservation = new(true, true, "broker", 0, 1, 20_001),
+            WorkloadObservation = new(true, 1, 1, 1, true, null, null),
+            BrokerCount = new("LoadGenProducer", "client-first", 1, 1, true),
+            B04Evidence = new([1], []),
+            BatchingEvidence = new(1, 1, 1, 1, 1, 1, 1, 1)
+        }).ToArray();
+        Assert.All(PhaseJudge.Evaluate(phase, evidence, "B10").Repeats, repeat =>
+        {
+            Assert.Null(repeat.ProbeObservation);
+            Assert.Null(repeat.WorkloadObservation);
+            Assert.Null(repeat.BrokerCount);
+            Assert.Null(repeat.B04Evidence);
+            Assert.Null(repeat.BatchingEvidence);
+            Assert.NotNull(repeat.B10Intake);
+        });
+        Assert.All(PhaseJudge.Evaluate(phase, evidence).Repeats, repeat => Assert.Null(repeat.B10Intake));
+    }
+
+    private static PhaseRepeatEvidence[] B10Repeats(string phase) => Enumerable.Range(1, 5).Select(i =>
+        Complete(i, null) with
+        {
+            B10Intake = new(phase, i,
+            [
+                new(new("B10", phase, "synthetic-c5", "pod-first", "pod-first", "client-first"),
+                    PhaseIdentity.JobName("synthetic-c5", phase, i), null, null),
+                new(new("B10", phase, "synthetic-c5", "pod-second", "pod-second", "client-second"),
+                    PhaseIdentity.RestartJobName("synthetic-c5", phase, i), "pod-first", null)
+            ])
+        }).ToArray();
 
     private static PhaseRepeatEvidence[] MeasuredRepeats() => Enumerable.Range(1, 5).Select(i =>
         Complete(i, new(true, true, "broker", 0, 1, 20_001)) with

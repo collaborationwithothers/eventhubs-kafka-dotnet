@@ -23,6 +23,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         VerifierHostOptions options=configured.Value;
+        bool b10=options.ScenarioId=="B10";
         DateTimeOffset judgeStarted=clock.GetUtcNow();
         DateTimeOffset? phaseStarted=null;
         string prefix=PhaseIdentity.PhasePrefix(options.RunId!,options.Phase!);
@@ -47,6 +48,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
             BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null; BatchingRecordedEvidence? batchingEvidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
+            B10IntakeEvidence? b10Intake=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
             try
             {
@@ -54,8 +56,40 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                 inputBudget.ConsumeEntries(producerListing.Names.Count);
                 string[] registrationNames=producerListing.Names.Where(n=>n.EndsWith("/registration.json",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
                 registrationCount=producerListing.IsComplete && registrationNames.Length>1 ? false : null;
-                ProducerRegistration? registration=null;
-                if(registrationNames.Length==1 && TryGetRegistrationInstance(registrationNames[0],producersPrefix,out string? registeredInstance))
+                ProducerRegistration? registration=null,restartRegistration=null;
+                if(b10)
+                {
+                    var registrations=new List<(string PathInstance,ProducerRegistration Registration)>(2);
+                    bool malformed=false;
+                    try
+                    {
+                        foreach(string registrationName in registrationNames.Take(2))
+                        {
+                            if(!TryGetRegistrationInstance(registrationName,producersPrefix,out string? instance))
+                            {
+                                malformed=true;
+                                continue;
+                            }
+                            byte[]? registrationContent=await Bounded(ct=>producer.ReadAsync(registrationName,ct),options,clock,cancellationToken).ConfigureAwait(false);
+                            if(registrationContent is null)continue;
+                            inputBudget.ConsumeBytes(registrationContent.LongLength);
+                            try { registrations.Add((instance!,PhaseWireCodec.ReadRegistration(registrationContent))); }
+                            catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
+                            { malformed=true; }
+                        }
+                    }
+                    finally
+                    {
+                        B10RegistrationJudgement observed=B10JudgeChecks.EvaluateRegistrations(options,i,producerListing.IsComplete,
+                            registrations,registrationNames.Length,malformed);
+                        jobBinding=observed.JobBinding;
+                        registrationCount=observed.RegisteredProducerCount;
+                        registration=observed.First;
+                        restartRegistration=observed.Restart;
+                        identity=registration?.Identity.InstanceId;
+                    }
+                }
+                else if(registrationNames.Length==1 && TryGetRegistrationInstance(registrationNames[0],producersPrefix,out string? registeredInstance))
                 {
                     byte[]? registrationBytes=await Bounded(ct=>producer.ReadAsync(registrationNames[0],ct),options,clock,cancellationToken).ConfigureAwait(false);
                     if(registrationBytes is not null)
@@ -135,7 +169,11 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         var parsedNote=StartLineNoteCodec.Read(note,noteName,limits,100_000);
                         var parsedInventory=BrokerInventoryReader.Read(inventory,inventoryName,r.Identity,options.SourceCommit!,limits);
                         startContentsValid=parsedNote.IsSuccess&&parsedInventory.IsSuccess&&parsedNote.Value!.Identity==r.Identity&&
-                            parsedNote.Value.VerifierCommit==options.SourceCommit;
+                            parsedNote.Value.VerifierCommit==options.SourceCommit && (!b10 ||
+                            parsedNote.Value.ExpectedJobNames is { } names && names.SequenceEqual(new[] {
+                                PhaseIdentity.JobName(options.RunId!,options.Phase!,i),
+                                PhaseIdentity.RestartJobName(options.RunId!,options.Phase!,i)
+                            },StringComparer.Ordinal));
                     }
                     startAccepted=r.Mode=="start-line"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
                         r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
@@ -157,12 +195,33 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     if(resultBytes is not null)inputBudget.ConsumeBytes(resultBytes.LongLength);
                     ProducerCompletionReceipt? producerReceipt=null;
                     byte[]? producerReceiptBytes=null;
-                    if(registration is not null)
+                    if(!b10&&registration is not null)
                     {
                         string producerReceiptName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,i,registration.Identity.InstanceId);
                         producerReceiptBytes=await Bounded(ct=>producer.ReadAsync(producerReceiptName,ct),options,clock,cancellationToken).ConfigureAwait(false);
                         if(producerReceiptBytes is not null)inputBudget.ConsumeBytes(producerReceiptBytes.LongLength);
                         if(producerReceiptBytes is not null)producerReceipt=PhaseWireCodec.ReadProducerCompletion(producerReceiptBytes);
+                    }
+                    var b10Completions=new List<(ProducerCompletionReceipt? Receipt,byte[]? Bytes)>(2);
+                    if(b10)
+                    {
+                        foreach(ProducerRegistration? role in new[]{registration,restartRegistration})
+                        {
+                            byte[]? completionContent=null;
+                            ProducerCompletionReceipt? parsedCompletion=null;
+                            if(role is not null)
+                            {
+                                string completionObjectName=PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,i,role.Identity.InstanceId);
+                                completionContent=await Bounded(ct=>producer.ReadAsync(completionObjectName,ct),options,clock,cancellationToken).ConfigureAwait(false);
+                                if(completionContent is not null)
+                                {
+                                    inputBudget.ConsumeBytes(completionContent.LongLength);
+                                    try { parsedCompletion=PhaseWireCodec.ReadProducerCompletion(completionContent,options.Phase!,i,role); }
+                                    catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException) { }
+                                }
+                            }
+                            b10Completions.Add((parsedCompletion,completionContent));
+                        }
                     }
                     receiptValid=r.Mode=="verify"&&r.ScenarioId==options.ScenarioId&&r.ConfigurationId==options.ConfigurationId&&
                         r.Identity?.ScenarioId==options.ScenarioId&&r.Identity?.ConfigurationId==options.ConfigurationId&&
@@ -191,11 +250,33 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             bool same=result.Identity.ScenarioId==options.ScenarioId&&result.Identity.ConfigurationId==options.ConfigurationId&&
                                 registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
                             receiptValid&=same;
+                            if(b10)
+                            {
+                                receiptValid &= registration is not null && restartRegistration is not null &&
+                                    r.B10Intake is not null && result.B10Intake is not null &&
+                                    B10JudgeChecks.BindsIntake(r.B10Intake,registration,restartRegistration) &&
+                                    B10JudgeChecks.BindsIntake(result.B10Intake,registration,restartRegistration) &&
+                                    B10JudgeChecks.SameIntake(r.B10Intake,result.B10Intake);
+                                bool Accepted(int ordinal,ProducerRegistration? role)
+                                {
+                                    if(role is null || r.B10Intake is null || r.B10Intake.Producers.Count!=2)return false;
+                                    B10ProducerEvidence entry=r.B10Intake.Producers[ordinal];
+                                    PublicationAcceptanceSnapshot? accepted=entry.PublicationAcceptance;
+                                    return accepted is not null && entry.Identity==role.Identity && entry.JobName==role.JobName &&
+                                        entry.PredecessorInstanceId==role.PredecessorInstanceId && b10Completions[ordinal].Receipt is not null &&
+                                        Matches(accepted.StartLine,"verifier",PhasePaths.StartLine(options.RunId!,options.Phase!,i),note) &&
+                                        Matches(accepted.BrokerInventory,"verifier",PhasePaths.BrokerInventory(options.RunId!,options.Phase!,i),inventory) &&
+                                        Matches(accepted.ProducerReceipt,"ledger",PhasePaths.ProducerCompletion(options.RunId!,options.Phase!,i,role.Identity.InstanceId),b10Completions[ordinal].Bytes);
+                                }
+                                publicationAccepted=receiptValid&&startAccepted&&r.RepeatChecks is not null&&
+                                    Accepted(0,registration)&&Accepted(1,restartRegistration);
+                            }
                             publicationAccepted&=receiptValid;
                             // J3 binds the result to the verifier receipt and registered producer.
                             // Once that binding fails, its status and check projections are untrusted.
                             if(receiptValid)
                             {
+                                if(b10)b10Intake=result.B10Intake;
                                 jobBinding=Combine(jobBinding,r.RepeatChecks?.ProducerJobBinding);
                                 registrationCount=Combine(registrationCount,r.RepeatChecks?.RegisteredProducerCount);
                                 inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
@@ -207,8 +288,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                             // Probe evidence has an independent authorization path: a
                             // message-only invalid result can still carry a usable,
                             // accepted throttle observation. Counts remain status-gated.
-                            if(receiptValid&&publicationAccepted)probe=result.ProbeObservation;
-                            if(receiptValid&&publicationAccepted)
+                            if(!b10&&receiptValid&&publicationAccepted)probe=result.ProbeObservation;
+                            if(!b10&&receiptValid&&publicationAccepted)
                             {
                                 workload=result.WorkloadObservation;
                                 brokerCount=result.BrokerCount;
@@ -241,10 +322,10 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;
             }
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
-        PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots);
+        PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots,options.ScenarioId);
         string? CommonVersion(Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?> select)
         {
             if(acceptedVersions.Count==0)return null;

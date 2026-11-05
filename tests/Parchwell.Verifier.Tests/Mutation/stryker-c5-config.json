@@ -24,7 +24,8 @@
       "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
       "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs",
       "VerifyRun/Input/RestartManifestReader.cs",
-      "VerifyRun/Judgement/B10IntakeChecks.cs"
+      "VerifyRun/Judgement/B10IntakeChecks.cs",
+      "Judge/B10JudgeChecks.cs"
     ],
     "coverage-analysis": "off"
   }

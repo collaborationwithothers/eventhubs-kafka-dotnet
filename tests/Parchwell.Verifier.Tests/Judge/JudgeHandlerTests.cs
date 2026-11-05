@@ -791,6 +791,302 @@ public sealed class JudgeHandlerTests
         Assert.Equal("synthetic-c5/C0/candidate.json",receipt.RootElement.GetProperty("artifacts")[0].GetProperty("name").GetString());
     }
 
+    [Fact]
+    public async Task Given_FiveB10Intakes_When_Judged_Then_RetainsOrderedPairWithoutFinalCountsOrFirstOnlyObservations()
+    {
+        PhaseStores stores=await BuildFiveB10Repeats();
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        var producer=new MemoryProducerStore(stores.Ledger){ReverseListing=true};
+        var completion=new VerifierCompletionState();
+        VerifierHostOptions options=Options();options.ScenarioId="B10";
+        int exit=await new JudgeHandler(Microsoft.Extensions.Options.Options.Create(options),verifier,producer,TimeProvider.System,completion)
+            .ExecuteAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1,exit);
+        using JsonDocument candidate=JsonDocument.Parse(verifier.Created!);
+        Assert.Equal("incomplete",candidate.RootElement.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null,candidate.RootElement.GetProperty("gate").ValueKind);
+        Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+        Assert.Equal(5,candidate.RootElement.GetProperty("repeats").GetArrayLength());
+        foreach(JsonElement repeat in candidate.RootElement.GetProperty("repeats").EnumerateArray())
+        {
+            Assert.Equal("incomplete",repeat.GetProperty("status").GetString());
+            foreach(string check in new[]{"j1_repeat_slots","j2_publication_unaccepted","j3_verifier_receipt","j4_producer_job_binding","j5_registered_producer_count","j6_broker_inventory_coverage"})Assert.True(repeat.GetProperty("checks").GetProperty(check).GetBoolean());
+            foreach(string field in new[]{"counts","broker_count","b04_recorded_evidence","batching_recorded_evidence"})
+                Assert.False(repeat.TryGetProperty(field,out _));
+            Assert.Equal(JsonValueKind.Null,repeat.GetProperty("probe_observation").ValueKind);
+            Assert.Equal(JsonValueKind.Null,repeat.GetProperty("workload_observation").ValueKind);
+            using JsonDocument source=JsonDocument.Parse(stores.Verifier[PhasePaths.Result("synthetic-c5","C0",repeat.GetProperty("repeat").GetInt32())]);
+            Assert.True(JsonElement.DeepEquals(source.RootElement.GetProperty("b10_intake"),repeat.GetProperty("b10_intake")));
+            JsonElement producers=repeat.GetProperty("b10_intake").GetProperty("producers");
+            Assert.Equal(2,producers.GetArrayLength());
+            Assert.Equal("pod-first",producers[0].GetProperty("identity").GetProperty("instance_id").GetString());
+            Assert.Equal("pod-second",producers[1].GetProperty("identity").GetProperty("instance_id").GetString());
+            Assert.Equal(JsonValueKind.Null,producers[0].GetProperty("predecessor_instance_id").ValueKind);
+            Assert.Equal("pod-first",producers[1].GetProperty("predecessor_instance_id").GetString());
+            Assert.All(producers.EnumerateArray(),entry=>Assert.Equal(JsonValueKind.Object,entry.GetProperty("publication_acceptance").ValueKind));
+        }
+        completion.MarkReturned(options,exit,CancellationToken.None,CancellationToken.None);
+        Assert.True(completion.TryGetBlobReceipt(out _,out _,out byte[] receipt));
+        Assert.Equal(1,PhaseWireCodec.ReadReceipt(receipt).HandlerExitCode);
+        Assert.All(Enumerable.Range(1,5),repeat=>Assert.Equal(2,producer.Reads.Count(name=>
+            name.StartsWith(PhasePaths.ProducersPrefix("synthetic-c5","C0",repeat),StringComparison.Ordinal)&&name.EndsWith("/registration.json",StringComparison.Ordinal))));
+    }
+
+    [Theory]
+    [InlineData("empty","incomplete",false,false)]
+    [InlineData("first","incomplete",false,false)]
+    [InlineData("restart","incomplete",false,false)]
+    [InlineData("missing-bytes","incomplete",false,false)]
+    [InlineData("excess","invalid",true,false)]
+    [InlineData("incomplete","incomplete",true,false)]
+    [InlineData("excess-incomplete","invalid",true,false)]
+    [InlineData("malformed-path","invalid",false,false)]
+    [InlineData("malformed-json","invalid",false,false)]
+    [InlineData("duplicate-instance","invalid",false,false)]
+    [InlineData("predecessor","invalid",false,true)]
+    [InlineData("source","invalid",false,true)]
+    [InlineData("source-no-receipt","invalid",false,true)]
+    [InlineData("source-read-failure","invalid",false,false)]
+    [InlineData("excess-read-failure","invalid",false,false)]
+    public async Task Given_B10RegistrationEvidence_When_Judged_Then_KnownFailuresSurviveUnavailableEvidence(
+        string change,string status,bool j4,bool j5)
+    {
+        PhaseStores stores=await BuildFiveB10Repeats();
+        string first=PhasePaths.Registration("synthetic-c5","C0",1,"pod-first");
+        string second=PhasePaths.Registration("synthetic-c5","C0",1,"pod-second");
+        string extra=PhasePaths.Registration("synthetic-c5","C0",1,"z-third");
+        if(change is "empty" or "restart")stores.Ledger.Remove(first);
+        if(change is "empty" or "first")stores.Ledger.Remove(second);
+        if(change.StartsWith("excess",StringComparison.Ordinal))stores.Ledger[extra]=[];
+        if(change=="malformed-path") { stores.Ledger[first+"/registration.json"]=stores.Ledger[first];stores.Ledger.Remove(first); }
+        if(change=="malformed-json")stores.Ledger[first]=Encoding.UTF8.GetBytes("{");
+        if(change=="duplicate-instance")ChangeJson(stores.Ledger,second,node=>node["identity"]=JsonNode.Parse(stores.Ledger[first])!["identity"]!.DeepClone());
+        if(change=="predecessor")ChangeJson(stores.Ledger,second,node=>node["predecessor_instance_id"]="foreign");
+        if(change.StartsWith("source",StringComparison.Ordinal))ChangeJson(stores.Ledger,first,node=>node["source_commit"]=new string('b',40));
+        if(change=="source-no-receipt")stores.Verifier.Remove(PhasePaths.VerifyCompletion("synthetic-c5","C0",1));
+        var producer=new MemoryProducerStore(stores.Ledger)
+        {
+            IncompletePrefix=change.Contains("incomplete",StringComparison.Ordinal)?PhasePaths.ProducersPrefix("synthetic-c5","C0",1):null,
+            FailingRead=change.EndsWith("read-failure",StringComparison.Ordinal)?second:null,
+            MissingRead=change=="missing-bytes"?second:null
+        };
+        using JsonDocument candidate=await JudgeB10(stores,producer);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal(status,candidate.RootElement.GetProperty("status").GetString());
+        Assert.Equal(status,repeat.GetProperty("status").GetString());
+        Assert.Equal(j4,repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+        Assert.Equal(j5,repeat.GetProperty("checks").GetProperty("j5_registered_producer_count").GetBoolean());
+        Assert.False(repeat.TryGetProperty("b10_intake",out _));
+        Assert.False(repeat.TryGetProperty("counts",out _));
+        Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+        Assert.DoesNotContain(extra,producer.Reads);
+        if(change=="missing-bytes")
+        {
+            Assert.Contains(second,stores.Ledger.Keys);
+            Assert.Contains(first,producer.Reads);
+            Assert.Contains(second,producer.Reads);
+        }
+        Assert.True(producer.Reads.Count(name=>name.StartsWith(PhasePaths.ProducersPrefix("synthetic-c5","C0",1),StringComparison.Ordinal)&&name.EndsWith("/registration.json",StringComparison.Ordinal))<=2);
+    }
+
+    [Theory]
+    [InlineData(0,"null")]
+    [InlineData(1,"null")]
+    [InlineData(0,"missing-completion")]
+    [InlineData(1,"missing-completion")]
+    [InlineData(0,"client")]
+    [InlineData(1,"client")]
+    [InlineData(0,"pod")]
+    [InlineData(1,"pod")]
+    [InlineData(0,"pod-uid")]
+    [InlineData(1,"pod-uid")]
+    [InlineData(0,"source")]
+    [InlineData(1,"source")]
+    [InlineData(0,"completion-hash")]
+    [InlineData(1,"completion-hash")]
+    [InlineData(0,"completion-length")]
+    [InlineData(1,"completion-length")]
+    [InlineData(0,"start-hash")]
+    [InlineData(1,"start-hash")]
+    [InlineData(0,"inventory-hash")]
+    [InlineData(1,"inventory-hash")]
+    public async Task Given_OneB10PublicationUnavailable_When_Judged_Then_OtherPublicationCannotReplaceIt(int ordinal,string change)
+    {
+        PhaseStores stores=await BuildFiveB10Repeats();
+        string completion=PhasePaths.ProducerCompletion("synthetic-c5","C0",1,ordinal==0?"pod-first":"pod-second");
+        if(change=="missing-completion")stores.Ledger.Remove(completion);
+        else if(change is "client" or "pod" or "pod-uid" or "source")ChangeJson(stores.Ledger,completion,node=>
+        {
+            if(change=="client")node["identity"]!["client_id"]="foreign";
+            else node[change switch {"pod"=>"pod_name","pod-uid"=>"pod_uid",_=>"source_commit"}]=change=="source"?new string('b',40):"foreign";
+        });
+        else ChangeB10Intake(stores,intake=>
+        {
+            JsonNode entry=intake["producers"]![ordinal]!;
+            if(change=="null")entry["publication_acceptance"]=null;
+            else
+            {
+                JsonNode reference=entry["publication_acceptance"]![change.StartsWith("completion",StringComparison.Ordinal)?"producer_receipt":change=="start-hash"?"start_line":"broker_inventory"]!;
+                if(change=="completion-length")reference["length"]=reference["length"]!.GetValue<long>()+1;
+                else reference["sha256"]=new string('b',64);
+            }
+        });
+        using JsonDocument candidate=await JudgeB10(stores);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete",repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j2_publication_unaccepted").GetBoolean());
+        Assert.True(repeat.GetProperty("checks").GetProperty("j3_verifier_receipt").GetBoolean());
+        Assert.True(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+        Assert.True(repeat.GetProperty("checks").GetProperty("j5_registered_producer_count").GetBoolean());
+        Assert.False(repeat.TryGetProperty("b10_intake",out _));
+        Assert.False(repeat.TryGetProperty("counts",out _));
+        Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+    }
+
+    [Theory]
+    [InlineData("client")]
+    [InlineData("identity")]
+    [InlineData("object-hash")]
+    [InlineData("null")]
+    [InlineData("phase")]
+    [InlineData("repeat")]
+    [InlineData("job")]
+    [InlineData("predecessor")]
+    public async Task Given_B10ReceiptResultDisagreement_When_Judged_Then_UntrustedInvalidResultDoesNotSetInvalidity(string change)
+    {
+        PhaseStores stores=await BuildFiveB10Repeats();
+        ChangeJson(stores.Verifier,PhasePaths.Result("synthetic-c5","C0",1),result=>
+        {
+            result["status"]="invalid";
+            JsonNode intake=result["b10_intake"]!;
+            JsonNode second=intake["producers"]![1]!;
+            if(change=="client")
+            {
+                second["identity"]!["client_id"]="foreign";
+                second["publication_acceptance"]!["producer_identity"]!["client_id"]="foreign";
+            }
+            if(change=="identity")
+            {
+                second["identity"]!["instance_id"]="foreign";
+                second["identity"]!["expected_instance_id"]="foreign";
+                JsonNode acceptance=second["publication_acceptance"]!;
+                acceptance["producer_identity"]=second["identity"]!.DeepClone();
+                acceptance["producer_prefix"]=PhasePaths.ProducerPrefix("synthetic-c5","C0",1,"foreign");
+                acceptance["producer_receipt"]!["name"]=PhasePaths.ProducerCompletion("synthetic-c5","C0",1,"foreign");
+                foreach(JsonNode? reference in acceptance["objects"]!.AsArray())reference!["name"]=reference["name"]!.GetValue<string>().Replace("pod-second","foreign",StringComparison.Ordinal);
+            }
+            if(change=="object-hash")second["publication_acceptance"]!["objects"]![0]!["sha256"]=new string('b',64);
+            if(change=="null")second["publication_acceptance"]=null;
+            if(change=="phase")intake["phase"]="C1";
+            if(change=="repeat")intake["repeat"]=2;
+            if(change=="job")second["job_name"]="foreign";
+            if(change=="predecessor")second["predecessor_instance_id"]="foreign";
+        });
+        RefreshB10ResultReference(stores);
+        using JsonDocument candidate=await JudgeB10(stores);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal("incomplete",repeat.GetProperty("status").GetString());
+        Assert.False(repeat.GetProperty("checks").GetProperty("j3_verifier_receipt").GetBoolean());
+        Assert.DoesNotContain(repeat.GetProperty("reasons").EnumerateArray(),reason=>reason.GetString()=="trusted_result_invalid");
+        Assert.False(repeat.TryGetProperty("b10_intake",out _));
+        Assert.False(repeat.TryGetProperty("counts",out _));
+        Assert.False(candidate.RootElement.TryGetProperty("counts",out _));
+    }
+
+    [Theory]
+    [InlineData("valid",true)]
+    [InlineData("missing",false)]
+    [InlineData("one",false)]
+    [InlineData("reverse",false)]
+    [InlineData("duplicate",false)]
+    [InlineData("extra",false)]
+    [InlineData("foreign",false)]
+    [InlineData("source",false)]
+    [InlineData("slot",false)]
+    public async Task Given_B10StartJobList_When_Judged_Then_RequiresDerivedOrderedPair(string change,bool accepted)
+    {
+        PhaseStores stores=await BuildFiveB10Repeats();
+        string noteName=PhasePaths.StartLine("synthetic-c5","C0",1);
+        ChangeJson(stores.Verifier,noteName,note=>
+        {
+            JsonArray names=note["expected_job_names"]!.AsArray();
+            string first=names[0]!.GetValue<string>(),second=names[1]!.GetValue<string>();
+            if(change=="missing")note.Remove("expected_job_names");
+            if(change=="one")note["expected_job_names"]=new JsonArray(first);
+            if(change=="reverse")note["expected_job_names"]=new JsonArray(second,first);
+            if(change=="duplicate")note["expected_job_names"]=new JsonArray(first,first);
+            if(change=="extra")note["expected_job_names"]=new JsonArray(first,second,"foreign");
+            if(change=="foreign")note["expected_job_names"]=new JsonArray(first,"foreign");
+        });
+        ChangeJson(stores.Verifier,PhasePaths.StartLineCompletion("synthetic-c5","C0",1),receipt=>
+        {
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(),noteName,stores.Verifier[noteName]);
+            if(change=="source")receipt["source_commit"]=new string('b',40);
+            if(change=="slot")receipt["repeat"]=2;
+        });
+        ChangeB10Intake(stores,intake=>
+        {
+            foreach(JsonNode? producer in intake["producers"]!.AsArray())
+                UpdateReference(producer!["publication_acceptance"]!["start_line"]!.AsObject(),noteName,stores.Verifier[noteName]);
+        });
+        using JsonDocument candidate=await JudgeB10(stores);
+        JsonElement repeat=candidate.RootElement.GetProperty("repeats")[0];
+        Assert.Equal(accepted,repeat.GetProperty("checks").GetProperty("j2_publication_unaccepted").GetBoolean());
+        Assert.Equal(change is "source" or "slot"?"invalid":"incomplete",repeat.GetProperty("status").GetString());
+        if(change is "source" or "slot")Assert.False(repeat.GetProperty("checks").GetProperty("j4_producer_job_binding").GetBoolean());
+        Assert.Equal(accepted,repeat.TryGetProperty("b10_intake",out _));
+        Assert.False(repeat.TryGetProperty("counts",out _));
+    }
+
+    private static void ChangeJson(Dictionary<string,byte[]> objects,string name,Action<JsonObject> change)
+    {
+        JsonObject node=JsonNode.Parse(objects[name])!.AsObject();change(node);
+        objects[name]=Encoding.UTF8.GetBytes(node.ToJsonString());
+    }
+
+    private static void ChangeB10Intake(PhaseStores stores,Action<JsonNode> change)
+    {
+        foreach(string name in new[]{PhasePaths.VerifyCompletion("synthetic-c5","C0",1),PhasePaths.Result("synthetic-c5","C0",1)})
+            ChangeJson(stores.Verifier,name,node=>change(node["b10_intake"]!));
+        RefreshB10ResultReference(stores);
+    }
+
+    private static void RefreshB10ResultReference(PhaseStores stores)
+    {
+        string name=PhasePaths.Result("synthetic-c5","C0",1);
+        ChangeJson(stores.Verifier,PhasePaths.VerifyCompletion("synthetic-c5","C0",1),receipt=>
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(),name,stores.Verifier[name]));
+    }
+
+    private static async Task<JsonDocument> JudgeB10(PhaseStores stores,MemoryProducerStore? producer=null)
+    {
+        var verifier=new MemoryVerifierStore(stores.Verifier);
+        VerifierHostOptions options=Options();options.ScenarioId="B10";
+        int exit=await new JudgeHandler(Microsoft.Extensions.Options.Options.Create(options),verifier,
+            producer??new MemoryProducerStore(stores.Ledger),TimeProvider.System).ExecuteAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1,exit);
+        return JsonDocument.Parse(verifier.Created!);
+    }
+
+    private static async Task<PhaseStores> BuildFiveB10Repeats()
+    {
+        var verifierObjects=new Dictionary<string,byte[]>(StringComparer.Ordinal);
+        var ledgerObjects=new Dictionary<string,byte[]>(StringComparer.Ordinal);
+        for(int repeat=1;repeat<=5;repeat++)
+        {
+            using var fixture=Host.B10TwoInstanceVerifyTests.CreateSyntheticB10Intake(repeat:repeat);
+            var completion=new VerifierCompletionState();
+            int exit=await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(1,exit);
+            completion.MarkReturned(fixture.Options,exit,CancellationToken.None,CancellationToken.None);
+            Assert.True(completion.TryGetBlobReceipt(out _,out string name,out byte[] bytes));
+            await fixture.CreateAsync(name,bytes,CancellationToken.None);
+            foreach(var item in fixture.VerifierObjects)verifierObjects[item.Key]=item.Value;
+            foreach(var item in fixture.LedgerObjects)ledgerObjects[item.Key]=item.Value;
+        }
+        return new(verifierObjects,ledgerObjects);
+    }
+
     private static VerifierHostOptions Options()=>new()
     {
         Mode="judge",ScenarioId="A01",ConfigurationId="C0",RunId="synthetic-c5",Phase="C0",SourceCommit=new string('a',40),VerifierCommit=new string('a',40),
@@ -894,9 +1190,23 @@ public sealed class JudgeHandlerTests
     private sealed class MemoryProducerStore(Dictionary<string,byte[]> objects):IProducerArtifactStore
     {
         public string? IncompletePrefix{get;init;}
-        public Task<BlobListing> ListAsync(string prefix,CancellationToken cancellationToken)=>Task.FromResult(new BlobListing(
-            objects.Keys.Where(n=>n.StartsWith(prefix,StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray(),1,IncompletePrefix!=prefix,IncompletePrefix==prefix?"listing_unavailable":null));
-        public Task<byte[]?> ReadAsync(string name,CancellationToken cancellationToken)=>Task.FromResult(objects.TryGetValue(name,out var value)?(byte[]?)value:null);
+        public bool ReverseListing{get;init;}
+        public string? FailingRead{get;init;}
+        public string? MissingRead{get;init;}
+        public List<string> Reads{get;}=[];
+        public Task<BlobListing> ListAsync(string prefix,CancellationToken cancellationToken)
+        {
+            IEnumerable<string> names=objects.Keys.Where(n=>n.StartsWith(prefix,StringComparison.Ordinal)).Order(StringComparer.Ordinal);
+            if(ReverseListing)names=names.Reverse();
+            return Task.FromResult(new BlobListing(names.ToArray(),1,IncompletePrefix!=prefix,IncompletePrefix==prefix?"listing_unavailable":null));
+        }
+        public Task<byte[]?> ReadAsync(string name,CancellationToken cancellationToken)
+        {
+            Reads.Add(name);
+            if(name==FailingRead)throw new TimeoutException("Synthetic unavailable registration.");
+            if(name==MissingRead)return Task.FromResult<byte[]?>(null);
+            return Task.FromResult(objects.TryGetValue(name,out var value)?(byte[]?)value:null);
+        }
     }
 
     private sealed class VerifierStore:IVerifierArtifactStore
