@@ -44,6 +44,9 @@ internal sealed class KafkaSessionTestSupport : IDisposable
                 case "Assign":
                     Assign?.Invoke((IEnumerable<TopicPartitionOffset>)arguments![0]!);
                     return null;
+                case "Unassign":
+                    Events.Add("consumer-unassign");
+                    return null;
                 case "Position":
                     return Position?.Invoke((TopicPartition)arguments![0]!) ?? Offset.Unset;
                 case "QueryWatermarkOffsets":

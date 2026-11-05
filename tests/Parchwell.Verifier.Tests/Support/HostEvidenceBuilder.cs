@@ -62,6 +62,10 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
                 .Replace("id: " + (scenarioSourceId ?? scenarioId) + "\n", "id: " + scenarioId + "\n", StringComparison.Ordinal),
             ["scenarios/profiles/lifecycle-1k.yaml"] = ""
         };
+        // The B10 phase fixture reuses A01's synthetic baseline recipe for both admitted phase identities.
+        if (scenarioId == "B10" && scenarioSourceId == "A01" && phase == "C1")
+            scenarioDocuments[scenarioPath] = scenarioDocuments[scenarioPath]
+                .Replace("  C0: {}", "  C0: {}\n  C1: {}", StringComparison.Ordinal);
         // The profile reference is read from the selected repository scenario, independently of captured evidence.
         string profile = scenarioDocuments[scenarioPath].Split('\n')
             .Single(line => line.StartsWith("profile:", StringComparison.Ordinal))["profile:".Length..].Trim();

@@ -8,6 +8,66 @@ namespace Parchwell.Verifier.Tests.Judge;
 #pragma warning disable CA1707
 public sealed class PhaseJudgeTests
 {
+    [Theory]
+    [InlineData("valid", "complete_valid")]
+    [InlineData("slot", "incomplete")]
+    [InlineData("start", "incomplete")]
+    [InlineData("publication", "incomplete")]
+    [InlineData("receipt", "incomplete")]
+    [InlineData("job", "invalid")]
+    [InlineData("registration", "invalid")]
+    [InlineData("inventory", "invalid")]
+    [InlineData("original-invalid", "invalid")]
+    [InlineData("incomplete", "incomplete")]
+    [InlineData("sweep-failed", "invalid")]
+    [InlineData("repeat-invalid", "invalid")]
+    [InlineData("repeat-incomplete", "incomplete")]
+    public void Given_B10Finality_When_Judged_Then_PreservesEveryIndependentGateAndOriginalInvalidity(string change,string expected)
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with
+        {
+            B10Finality=new(false,new(i,null,null,true,VerifierResultStatus.CompleteValid,new(3,0,2,0,2,2),[]))
+        }).ToArray();
+        evidence[2]=change switch
+        {
+            "slot"=>evidence[2] with{SlotPresent=false},
+            "start"=>evidence[2] with{StartLineAccepted=false},
+            "publication"=>evidence[2] with{PublicationAccepted=false},
+            "receipt"=>evidence[2] with{VerifierReceiptValid=false},
+            "job"=>evidence[2] with{JobBindingPass=false},
+            "registration"=>evidence[2] with{RegistrationCountPass=false},
+            "inventory"=>evidence[2] with{InventoryCoveragePass=false},
+            "original-invalid"=>evidence[2] with{KnownInvalid=true},
+            "incomplete"=>evidence[2] with{TrustedIncomplete=true},
+            "sweep-failed"=>evidence[2] with{B10Finality=new(true)},
+            "repeat-invalid"=>evidence[2] with{B10Finality=new(false,new(3,null,null,false,VerifierResultStatus.Invalid,null,["join_failed"]))},
+            "repeat-incomplete"=>evidence[2] with{B10Finality=new(false,new(3,null,null,false,VerifierResultStatus.Incomplete,null,[]))},
+            _=>evidence[2]
+        };
+        PhaseJudgement judgement=PhaseJudge.Evaluate("C0",evidence,"B10");
+        Assert.Equal(expected,judgement.Status);
+        Assert.Equal(expected,judgement.Repeats[2].Status);
+        Assert.Equal(expected=="complete_valid",judgement.Repeats[2].ClassificationFinal);
+        if(change=="valid")Assert.Equal(new OutcomeCounts(15,0,10,0,10,10),judgement.Counts);
+        else { Assert.Null(judgement.Counts);Assert.Null(judgement.Repeats[2].Counts); }
+        Assert.Equal(change=="slot",judgement.Repeats[2].Reasons.Contains("j1_repeat_slots",StringComparer.Ordinal));
+        Assert.Equal(change=="original-invalid",judgement.Repeats[2].Reasons.Contains("trusted_result_invalid",StringComparer.Ordinal));
+        Assert.Equal(change=="sweep-failed",judgement.Repeats[2].Reasons.Contains("b10_sweep_failed",StringComparer.Ordinal));
+        Assert.DoesNotContain("b10_intake_only",judgement.Repeats[2].Reasons);
+        Assert.All(judgement.Repeats,r=>{Assert.Null(r.ProbeObservation);Assert.Null(r.WorkloadObservation);Assert.Null(r.BrokerCount);Assert.Null(r.BatchingEvidence);});
+    }
+
+    [Fact]
+    public void Given_B10FinalCountsOverflow_When_Judged_Then_PreservesRepeatFinalityWithoutPhaseTotals()
+    {
+        PhaseRepeatEvidence[] evidence=Enumerable.Range(1,5).Select(i=>Complete(i,null) with
+        { B10Finality=new(false,new(i,null,null,true,VerifierResultStatus.CompleteValid,new(long.MaxValue,0,0,0,0,0),[])) }).ToArray();
+        PhaseJudgement judgement=PhaseJudge.Evaluate("C0",evidence,"B10");
+        Assert.Equal("incomplete",judgement.Status);Assert.Null(judgement.Counts);
+        Assert.Contains("j7_counts_unavailable",judgement.Reasons);
+        Assert.All(judgement.Repeats,r=>Assert.True(r.ClassificationFinal));
+    }
+
     [Fact]
     public void Given_FiveCompleteNoSampleRepeats_When_Judged_Then_GateIsUsableAndUntestable()
     {

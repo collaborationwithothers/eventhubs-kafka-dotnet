@@ -657,6 +657,77 @@ public sealed class PhaseCandidateCodecTests
         Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(json)));
     }
 
+    [Theory]
+    [InlineData("valid",true)]
+    [InlineData("false-marker",false)]
+    [InlineData("omitted-marker",false)]
+    [InlineData("missing-counts",false)]
+    [InlineData("false-sweep",false)]
+    [InlineData("missing-sweep",false)]
+    [InlineData("missing-reference",false)]
+    [InlineData("reference-path",false)]
+    [InlineData("reference-hash",false)]
+    [InlineData("risk",false)]
+    [InlineData("duplicate",false)]
+    [InlineData("four",false)]
+    [InlineData("six",false)]
+    [InlineData("empty",false)]
+    [InlineData("ordinal-zero",false)]
+    [InlineData("ordinal-six",false)]
+    [InlineData("ordinal-text",false)]
+    [InlineData("repeat-invalid",false)]
+    [InlineData("root-incomplete",false)]
+    [InlineData("non-b10",false)]
+    public void Given_B10FinalCandidate_When_Read_Then_RequiresSweepShapeAndFiveFinalRepeats(string change,bool accepted)
+    {
+        PhaseCandidate candidate=B10Candidate("C0",1);
+        ArtifactReference Reference(string path)=>new("verifier",path,1,new('a',64));
+        candidate=candidate with
+        {
+            Status="complete_valid",Counts=new(15,0,10,0,10,10),
+            B10Sweep=new(true,Reference(PhasePaths.B10Finalization(candidate.RunId,"C0")),Reference(PhasePaths.B10SweepCompletion(candidate.RunId,"C0")),Reference(PhasePaths.SweepLine(candidate.RunId,"C0")),B10SweepEvidence.ResidualRisk),
+            Repeats=Enumerable.Range(1,5).Select(i=>candidate.Repeats[0] with{Repeat=i,B10Intake=null,Status="complete_valid",Counts=new(3,0,2,0,2,2),ClassificationFinal=true}).ToArray()
+        };
+        JsonObject root=JsonNode.Parse(PhaseCandidateCodec.Write(candidate))!.AsObject();
+        switch(change)
+        {
+            case "false-marker":root["repeats"]![0]!["classification_final"]=false;break;
+            case "omitted-marker":root["repeats"]![0]!.AsObject().Remove("classification_final");break;
+            case "missing-counts":root["repeats"]![0]!.AsObject().Remove("counts");break;
+            case "false-sweep":root["b10_sweep"]!["scan_complete"]=false;break;
+            case "missing-sweep":root.Remove("b10_sweep");break;
+            case "missing-reference":root["b10_sweep"]!["receipt"]=null;break;
+            case "reference-path":root["b10_sweep"]!["receipt"]!["name"]="other";break;
+            case "reference-hash":root["b10_sweep"]!["receipt"]!["sha256"]="bad";break;
+            case "risk":root["b10_sweep"]!["residual_risk"]="other";break;
+            case "duplicate":root["repeats"]![1]!["repeat"]=1;break;
+            case "four":root["repeats"]!.AsArray().RemoveAt(4);break;
+            case "six":root["repeats"]!.AsArray().Add(root["repeats"]![0]!.DeepClone());break;
+            case "empty":root["repeats"]=new JsonArray();break;
+            case "ordinal-zero":root["repeats"]![0]!["repeat"]=0;break;
+            case "ordinal-six":root["repeats"]![0]!["repeat"]=6;break;
+            case "ordinal-text":root["repeats"]![0]!["repeat"]="1";break;
+            case "repeat-invalid":root["repeats"]![0]!["status"]="invalid";break;
+            case "root-incomplete":root["status"]="incomplete";break;
+            case "non-b10":root["scenario_id"]="A01";break;
+        }
+        byte[] bytes=System.Text.Encoding.UTF8.GetBytes(root.ToJsonString());
+        if(accepted) { using JsonDocument document=PhaseCandidateCodec.Read(bytes);Assert.Equal(15,document.RootElement.GetProperty("counts").GetProperty("ok").GetInt64()); }
+        else Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Read(bytes));
+    }
+
+    [Fact]
+    public void Given_LegacyB10Candidate_When_Read_Then_AcceptsOmittedFinalityOnlyWithoutCounts()
+    {
+        JsonObject root=JsonNode.Parse(PhaseCandidateCodec.Write(B10Candidate("C0",1)))!.AsObject();
+        root.Remove("b10_sweep");root["repeats"]![0]!.AsObject().Remove("classification_final");
+        using JsonDocument document=PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString()));
+        Assert.Equal("incomplete",document.RootElement.GetProperty("status").GetString());
+        PhaseCandidate candidate=B10Candidate("C0",1);
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(candidate with{B10Sweep=null}));
+        Assert.Throws<FormatException>(()=>PhaseCandidateCodec.Write(candidate with{Repeats=[candidate.Repeats[0] with{ClassificationFinal=null}]}));
+    }
+
     private static PhaseCandidate B10Candidate(string phase, int ordinal)
     {
         const string run = "synthetic-c5";
@@ -681,9 +752,10 @@ public sealed class PhaseCandidateCodecTests
         return candidate with
         {
             ScenarioId = "B10", Phase = phase, ConfigurationId = phase, Status = "incomplete", Counts = null,
+            B10Sweep = new(false,null,null,null,B10SweepEvidence.ResidualRisk),
             Repeats = [candidate.Repeats[0] with
             {
-                Repeat = ordinal, Status = "incomplete", Counts = null, Identity = "pod-first", B10Intake = intake,
+                Repeat = ordinal, Status = "incomplete", Counts = null, Identity = "pod-first", B10Intake = intake, ClassificationFinal = false,
                 ProbeObservation = null, WorkloadObservation = null, BrokerCount = null
             }]
         };

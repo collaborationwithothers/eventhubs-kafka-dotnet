@@ -262,6 +262,44 @@ public sealed class PhaseWireCodecTests
         Assert.Throws<PhaseWireIdentityException>(() => PhaseWireCodec.ReadReceipt(Encoding.UTF8.GetBytes(json)));
     }
 
+    [Theory]
+    [InlineData("C0", 0)] [InlineData("C0", 1)] [InlineData("C1", 0)] [InlineData("C1", 1)]
+    public void Given_B10SweepReceipt_When_RoundTripped_Then_BindsPhaseRootWithoutProducerIdentity(string phase, int exit)
+    {
+        WorkerReceipt value = SweepReceipt(phase) with { HandlerExitCode = exit };
+        WorkerReceipt actual = PhaseWireCodec.ReadReceipt(PhaseWireCodec.WriteReceipt(value));
+        Assert.Null(actual.Identity); Assert.Null(actual.Repeat); Assert.Equal("b10-sweep", actual.Mode);
+        Assert.Equal($"synthetic-c5-{phase.ToLowerInvariant()}-b10-sweep", actual.JobName);
+        Assert.Equal($"synthetic-c5/{phase}/sweep-line.json", PhasePaths.SweepLine("synthetic-c5", phase));
+        Assert.Equal($"synthetic-c5/{phase}/b10-sweep-completion.json", PhasePaths.B10SweepCompletion("synthetic-c5", phase));
+        Assert.Equal(value.Artifacts, actual.Artifacts);
+    }
+
+    [Theory]
+    [InlineData("scenario")] [InlineData("repeat")] [InlineData("identity")]
+    [InlineData("job")] [InlineData("container")] [InlineData("path")]
+    [InlineData("cleanup")] [InlineData("exit")] [InlineData("checks")]
+    public void Given_B10SweepRoleSubstitution_When_Written_Then_Rejects(string field)
+    {
+        WorkerReceipt value = SweepReceipt("C0");
+        value = field switch
+        {
+            "scenario" => value with { ScenarioId = "A01" },
+            "repeat" => value with { Repeat = 1 },
+            "identity" => value with { Identity = new("B10", "C0", "synthetic-c5", "pod", "pod", "pod") },
+            "job" => value with { JobName = PhaseIdentity.JudgeJobName("synthetic-c5", "C0") },
+            "container" => value with { Artifacts = [value.Artifacts[0] with { Container = "ledger" }] },
+            "path" => value with { Artifacts = [value.Artifacts[0] with { Name = PhasePaths.Candidate("synthetic-c5", "C0") }] },
+            "cleanup" => value with { CleanupCompleted = false },
+            "exit" => value with { HandlerExitCode = 2 },
+            _ => value with { RepeatChecks = new("pass", "pass", "pass") }
+        };
+        Assert.Throws<FormatException>(() => PhaseWireCodec.WriteReceipt(value));
+    }
+
+    private static WorkerReceipt SweepReceipt(string phase) => Receipt(new("verifier", PhasePaths.B10Finalization("synthetic-c5", phase), 1, new string('a', 64))) with
+    { Mode = "b10-sweep", ScenarioId = "B10", ConfigurationId = phase, Phase = phase, JobName = PhaseIdentity.B10SweepJobName("synthetic-c5", phase) };
+
     private static WorkerReceipt Receipt(ArtifactReference reference)=>new(1,"judge","A01","C0","synthetic-c5","C0",null,
         PhaseIdentity.JudgeJobName("synthetic-c5","C0"),"judge-pod",null,new string('a',40),1,true,
         "2026-10-24T00:00:00.0000000+00:00","2026-10-24T00:00:01.0000000+00:00",[reference],null,null);

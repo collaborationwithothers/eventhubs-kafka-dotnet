@@ -16,15 +16,20 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         var errors = new List<string>();
         if (!VerifierModeParser.TryParse(options.Mode, out var mode))
         {
-            errors.Add("Verifier:Mode must be exactly start-line, verify, judge, or probe-gate.");
+            errors.Add("Verifier:Mode must be exactly start-line, verify, judge, probe-gate, single-action-judge, or b10-sweep.");
             return ValidateOptionsResult.Fail(errors);
         }
 
         if(mode==VerifierMode.SingleActionJudge)return ValidateSingleAction(options);
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
-        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
+        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10Sweep && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
             errors.Add("Verifier:ScenarioId must be A01 or B04 for C5 modes.");
+        if (mode == VerifierMode.B10Sweep && options.ScenarioId != "B10")
+            errors.Add("Verifier:b10-sweep mode requires ScenarioId B10.");
+        if ((mode == VerifierMode.B10Sweep || mode == VerifierMode.Judge && options.ScenarioId == "B10") &&
+            options.B10SettleIntervalMilliseconds is not (> 0 and <= int.MaxValue))
+            errors.Add("Verifier:B10SettleIntervalMilliseconds must be a positive integer no greater than Int32.MaxValue.");
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         RequireText(options.SourceCommit, "PARCHWELL_SOURCE_COMMIT", errors);
         if (options.SourceCommit is not null && options.VerifierCommit != options.SourceCommit) errors.Add("Verifier:VerifierCommit must equal PARCHWELL_SOURCE_COMMIT.");
@@ -36,16 +41,16 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         AddPositive(options.CleanupTimeout, "Verifier:CleanupTimeout", errors, requiredBudgets);
         AddPositive(options.ProcessLifetime, "Verifier:ProcessLifetime", errors, null);
 
-        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge)
+        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10Sweep)
         {
             if (options.SourceCommit is not null && (options.SourceCommit.Length != 40 ||
                 options.SourceCommit.Any(character => !(character is >= '0' and <= '9' or >= 'a' and <= 'f'))))
                 errors.Add("PARCHWELL_SOURCE_COMMIT must be 40 lowercase hexadecimal characters.");
             ValidateC5Identity(options, mode, errors);
-            if(mode is VerifierMode.Verify or VerifierMode.Judge)
+            if(mode is VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10Sweep)
                 AddPositive(options.IoTimeout, "Verifier:IoTimeout", errors, requiredBudgets);
             ValidateContainerName(options.LedgerContainer, "Verifier:LedgerContainer", errors);
-            if(mode is VerifierMode.StartLine or VerifierMode.Verify)
+            if(mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10Sweep)
             {
                 ValidatePodName(options.PodName, errors);
                 RequireText(options.VerifierClientId, "Verifier:VerifierClientId", errors);
@@ -53,7 +58,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             }
             if (StringComparer.Ordinal.Equals(options.VerifierContainer, options.LedgerContainer))
                 errors.Add("Verifier:VerifierContainer must be separate from Verifier:LedgerContainer.");
-            if (mode is VerifierMode.StartLine or VerifierMode.Verify)
+            if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10Sweep)
             {
                 AddPositive(options.TokenTimeout, "Verifier:TokenTimeout", errors, requiredBudgets);
                 AddPositive(options.MetadataTimeout, "Verifier:MetadataTimeout", errors, requiredBudgets);
@@ -75,6 +80,19 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
                 ValidateScenarioLoadOptions(options.ScenarioLoadOptions, errors);
                 if (options.Repeat.HasValue || options.RepeatPrefix is not null || options.ExpectedInstanceId is not null)
                     errors.Add("Judge mode cannot bind a single repeat or expected producer.");
+            }
+            else if (mode == VerifierMode.B10Sweep)
+            {
+                RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);
+                RequirePositive(options.MaxConsumedBytes, "Verifier:MaxConsumedBytes", errors);
+                RequirePositive(options.MaxArtifactBytes, "Verifier:MaxArtifactBytes", errors);
+                RequirePositive(options.MaxTotalInputBytes, "Verifier:MaxTotalInputBytes", errors);
+                RequirePositive(options.MaxRowBytes, "Verifier:MaxRowBytes", errors);
+                RequirePositive(options.MaxRowsPerArtifact, "Verifier:MaxRowsPerArtifact", errors);
+                RequirePositive(options.MaxInputEntries, "Verifier:MaxInputEntries", errors);
+                RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
+                RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
+                AddPositive(options.SafetyStop, "Verifier:SafetyStop", errors, requiredBudgets);
             }
             else if (mode == VerifierMode.StartLine)
             {
@@ -260,16 +278,27 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.FederatedTokenFilePath ?? Environment.GetEnvironmentVariable("AZURE_FEDERATED_TOKEN_FILE"), "Verifier:FederatedTokenFilePath/AZURE_FEDERATED_TOKEN_FILE", errors);
         RequireAbsoluteUri(options.BlobServiceUri, "Verifier:BlobServiceUri", errors);
         ValidateContainerName(options.VerifierContainer, "Verifier:VerifierContainer", errors);
-        if (mode == VerifierMode.Judge)
+        if (mode is VerifierMode.Judge or VerifierMode.B10Sweep)
         {
-            if (options.Repeat.HasValue) errors.Add("Judge mode forbids Verifier:Repeat.");
+            if (options.Repeat.HasValue) errors.Add(mode == VerifierMode.Judge
+                ? "Judge mode forbids Verifier:Repeat." : "B10 sweep mode forbids Verifier:Repeat.");
             if (Common.Phase.PhaseIdentity.IsRunId(options.RunId) && Common.Phase.PhaseIdentity.IsPhase(options.Phase))
             {
-                if (options.JobName != Common.Phase.PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!)) errors.Add("Verifier:JobName does not match the derived judge Job.");
+                string expectedJob = mode == VerifierMode.B10Sweep
+                    ? Common.Phase.PhaseIdentity.B10SweepJobName(options.RunId!, options.Phase!)
+                    : Common.Phase.PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!);
+                if (options.JobName != expectedJob) errors.Add(mode == VerifierMode.Judge
+                    ? "Verifier:JobName does not match the derived judge Job."
+                    : "Verifier:JobName does not match the derived B10 sweep Job.");
                 // The chart supplies RepeatPrefix for repeat workers. PhasePrefix is
                 // derived from the fixed run/phase identity and is optional input.
             }
-            if (options.RepeatPrefix is not null || options.ExpectedInstanceId is not null) errors.Add("Judge mode forbids repeat and producer binding fields.");
+            if (options.RepeatPrefix is not null || options.ExpectedInstanceId is not null) errors.Add(mode == VerifierMode.Judge
+                ? "Judge mode forbids repeat and producer binding fields."
+                : "B10 sweep mode forbids repeat and producer binding fields.");
+            if (mode == VerifierMode.B10Sweep && (options.InstanceId is not null || options.ArtifactPrefix is not null ||
+                options.StartLineInputName is not null || options.ResultOutputName is not null))
+                errors.Add("B10 sweep mode forbids repeat artifact and instance binding fields.");
         }
         else
         {

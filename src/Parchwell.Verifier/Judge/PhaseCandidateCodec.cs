@@ -15,6 +15,8 @@ internal static class PhaseCandidateCodec
     internal static byte[] Write(PhaseCandidate candidate)
     {
         ArgumentNullException.ThrowIfNull(candidate);
+        if (candidate.ScenarioId == "B10" && (candidate.B10Sweep is null || candidate.Repeats.Any(x => x.ClassificationFinal is null)))
+            throw new FormatException("New B10 candidates require explicit sweep and repeat finality evidence.");
         byte[] bytes=DeploymentJson.Write(MaximumBytes, w =>
         {
             w.WriteStartObject(); w.WriteNumber("schema_version",candidate.SchemaVersion); w.WriteBoolean("synthetic",candidate.Synthetic);
@@ -24,6 +26,7 @@ internal static class PhaseCandidateCodec
             WriteObjectMap(w,"timings",candidate.Timings); WriteObjectMap(w,"diagnostics",candidate.Diagnostics);
             w.WritePropertyName("repeats");w.WriteStartArray();foreach(var r in candidate.Repeats)WriteRepeat(w,r);w.WriteEndArray();
             if(candidate.Counts is not null)WriteCounts(w,candidate.Counts);
+            if(candidate.B10Sweep is not null)WriteSweep(w,candidate.B10Sweep);
             w.WritePropertyName("reasons");w.WriteStartArray();foreach(string reason in candidate.Reasons)w.WriteStringValue(reason);w.WriteEndArray();w.WriteEndObject();
         });
         using JsonDocument validated=Read(bytes);
@@ -34,10 +37,10 @@ internal static class PhaseCandidateCodec
     {
         if(bytes.Length>MaximumBytes)throw new InputLimitExceededException("Candidate exceeds its output byte limit.");
         var d=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=32});
-        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons"];
+        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons","b10_sweep"];
         try
         {
-            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n!="counts").Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
+            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n is not ("counts" or "b10_sweep")).Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
             CheckDuplicates(d.RootElement);
             CheckNoPrivateKeys(d.RootElement);
             ValidateNested(d.RootElement);
@@ -59,8 +62,28 @@ internal static class PhaseCandidateCodec
             root.GetProperty("source_commit").GetString()!.Length!=40||root.GetProperty("source_commit").GetString()!.Any(c=>!(c is >= '0' and <= '9' or >= 'a' and <= 'f'))||
             root.GetProperty("status").GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate identity or status is invalid.");
         bool b10 = root.GetProperty("scenario_id").GetString() == "B10";
+        bool hasSweep = root.TryGetProperty("b10_sweep", out JsonElement sweep);
+        bool sweepComplete = false;
+        if (hasSweep)
+        {
+            if (!b10) throw new FormatException("Only B10 can carry sweep evidence.");
+            Exact(sweep, ["scan_complete", "finalization", "receipt", "sweep_line", "residual_risk"]);
+            if (sweep.GetProperty("scan_complete").ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                sweep.GetProperty("residual_risk").ValueKind != JsonValueKind.String ||
+                sweep.GetProperty("residual_risk").GetString() != B10SweepEvidence.ResidualRisk)
+                throw new FormatException("Candidate sweep flags or residual risk are invalid.");
+            sweepComplete = sweep.GetProperty("scan_complete").GetBoolean();
+            ValidateSweepReference(sweep.GetProperty("finalization"), PhasePaths.B10Finalization(root.GetProperty("run_id").GetString()!, root.GetProperty("phase").GetString()!), sweepComplete);
+            ValidateSweepReference(sweep.GetProperty("receipt"), PhasePaths.B10SweepCompletion(root.GetProperty("run_id").GetString()!, root.GetProperty("phase").GetString()!), sweepComplete);
+            ValidateSweepReference(sweep.GetProperty("sweep_line"), PhasePaths.SweepLine(root.GetProperty("run_id").GetString()!, root.GetProperty("phase").GetString()!), sweepComplete);
+        }
         if (b10 && (root.GetProperty("status").GetString() == "complete_valid" || root.TryGetProperty("counts", out _)))
-            throw new FormatException("B10 candidates must remain nonfinal without outcome counts.");
+        {
+            JsonElement repeats = root.GetProperty("repeats");
+            if (!sweepComplete || root.GetProperty("status").GetString() != "complete_valid" ||
+                !root.TryGetProperty("counts", out _) || !HasFiveFinalRepeats(repeats))
+                throw new FormatException("B10 phase finality requires five final repeats and a complete sweep.");
+        }
         if(root.GetProperty("gate").ValueKind is not (JsonValueKind.Null or JsonValueKind.String))throw new FormatException("Candidate gate has the wrong kind.");
         if(root.GetProperty("gate").ValueKind==JsonValueKind.String&&root.GetProperty("gate").GetString() is not ("pass" or "untestable_at_build_scale" or "inconclusive"))throw new FormatException("Candidate gate is invalid.");
         Exact(root.GetProperty("versions"),["verifier","workload_generator","confluent_kafka","librdkafka","dotnet"]);
@@ -85,7 +108,7 @@ internal static class PhaseCandidateCodec
         foreach(var repeat in root.GetProperty("repeats").EnumerateArray())
         {
             string[] repeatFields=["repeat","status","reasons","checks","identity","probe_observation","workload_observation"];
-            if(repeat.ValueKind!=JsonValueKind.Object||repeat.EnumerateObject().Any(p=>!repeatFields.Contains(p.Name,StringComparer.Ordinal)&&p.Name is not ("counts" or "broker_count" or "b04_recorded_evidence" or "batching_recorded_evidence" or "b10_intake"))||repeatFields.Any(n=>!repeat.TryGetProperty(n,out _)))throw new FormatException("Candidate repeat has missing or unknown fields.");
+            if(repeat.ValueKind!=JsonValueKind.Object||repeat.EnumerateObject().Any(p=>!repeatFields.Contains(p.Name,StringComparer.Ordinal)&&p.Name is not ("counts" or "broker_count" or "b04_recorded_evidence" or "batching_recorded_evidence" or "b10_intake" or "classification_final"))||repeatFields.Any(n=>!repeat.TryGetProperty(n,out _)))throw new FormatException("Candidate repeat has missing or unknown fields.");
             Exact(repeat.GetProperty("checks"),["j1_repeat_slots","j2_publication_unaccepted","j3_verifier_receipt","j4_producer_job_binding","j5_registered_producer_count","j6_broker_inventory_coverage","j8_probe_inconclusive"]);
             if(repeat.GetProperty("probe_observation").ValueKind!=JsonValueKind.Null)
                 Exact(repeat.GetProperty("probe_observation"),["usable","qualifying","broker","report_index","window_count","window_maximum"]);
@@ -110,8 +133,14 @@ internal static class PhaseCandidateCodec
             if(repeat.TryGetProperty("counts",out JsonElement repeatCounts))Exact(repeatCounts,["ok","loss","phantom","reported_failure","duplicate","reorder"]);
             if(!repeat.GetProperty("repeat").TryGetInt32(out int ordinal)||ordinal is <1 or >5||repeat.GetProperty("status").ValueKind!=JsonValueKind.String||repeat.GetProperty("reasons").ValueKind!=JsonValueKind.Array||repeat.GetProperty("reasons").EnumerateArray().Any(x=>x.ValueKind!=JsonValueKind.String))throw new FormatException("Candidate repeat has invalid scalar fields.");
             if(repeat.GetProperty("status").GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate repeat status is invalid.");
-            if (b10 && (repeat.GetProperty("status").GetString() == "complete_valid" || repeat.TryGetProperty("counts", out _)))
-                throw new FormatException("B10 repeats must remain nonfinal without outcome counts.");
+            bool hasFinality = repeat.TryGetProperty("classification_final", out JsonElement marker);
+            if (hasFinality && (!b10 || marker.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))
+                throw new FormatException("Candidate finality marker is invalid.");
+            bool finalRepeat = hasFinality && marker.GetBoolean();
+            bool completeRepeat = repeat.GetProperty("status").GetString() == "complete_valid";
+            if (b10 && (hasSweep && !hasFinality || finalRepeat && (!sweepComplete || !completeRepeat || !repeat.TryGetProperty("counts", out _)) ||
+                !finalRepeat && (completeRepeat || repeat.TryGetProperty("counts", out _))))
+                throw new FormatException("B10 repeat finality, status and counts disagree.");
             if (repeat.TryGetProperty("b10_intake", out JsonElement intakeElement))
             {
                 if (!b10 || intakeElement.ValueKind != JsonValueKind.Object)
@@ -145,6 +174,51 @@ internal static class PhaseCandidateCodec
             }
         }
     }
+    private static bool HasFiveFinalRepeats(JsonElement repeats)
+    {
+        if (repeats.ValueKind != JsonValueKind.Array || repeats.GetArrayLength() != 5) return false;
+        var ordinals = new HashSet<int>();
+        foreach (JsonElement repeat in repeats.EnumerateArray())
+        {
+            if (repeat.ValueKind != JsonValueKind.Object ||
+                !repeat.TryGetProperty("repeat", out JsonElement ordinal) || ordinal.ValueKind != JsonValueKind.Number ||
+                !ordinal.TryGetInt32(out int number) || number is < 1 or > 5 || !ordinals.Add(number) ||
+                !repeat.TryGetProperty("status", out JsonElement status) || status.ValueKind != JsonValueKind.String || status.GetString() != "complete_valid" ||
+                !repeat.TryGetProperty("classification_final", out JsonElement final) || final.ValueKind != JsonValueKind.True ||
+                !repeat.TryGetProperty("counts", out _)) return false;
+        }
+        return true;
+    }
+
+    private static void ValidateSweepReference(JsonElement value, string path, bool required)
+    {
+        if (value.ValueKind == JsonValueKind.Null && !required) return;
+        Exact(value, ["container", "name", "length", "sha256"]);
+        if (value.GetProperty("container").ValueKind != JsonValueKind.String || value.GetProperty("container").GetString() != "verifier" ||
+            value.GetProperty("name").ValueKind != JsonValueKind.String || value.GetProperty("name").GetString() != path ||
+            !NonnegativeInt64(value.GetProperty("length")) || value.GetProperty("sha256").ValueKind != JsonValueKind.String ||
+            value.GetProperty("sha256").GetString() is not { Length: 64 } hash || hash.Any(c => !(c is >= '0' and <= '9' or >= 'a' and <= 'f')))
+            throw new FormatException("Candidate sweep reference is invalid.");
+    }
+
+    private static void WriteSweep(Utf8JsonWriter writer, B10SweepProjection sweep)
+    {
+        writer.WritePropertyName("b10_sweep"); writer.WriteStartObject();
+        writer.WriteBoolean("scan_complete", sweep.ScanComplete);
+        WriteReference(writer, "finalization", sweep.Finalization);
+        WriteReference(writer, "receipt", sweep.Receipt);
+        WriteReference(writer, "sweep_line", sweep.SweepLine);
+        writer.WriteString("residual_risk", sweep.ResidualRisk); writer.WriteEndObject();
+    }
+
+    private static void WriteReference(Utf8JsonWriter writer, string name, ArtifactReference? reference)
+    {
+        writer.WritePropertyName(name);
+        if (reference is null) { writer.WriteNullValue(); return; }
+        writer.WriteStartObject(); writer.WriteString("container", reference.Container); writer.WriteString("name", reference.Name);
+        writer.WriteNumber("length", reference.Length); writer.WriteString("sha256", reference.Sha256); writer.WriteEndObject();
+    }
+
     private static void ValidateB04Evidence(JsonElement value)
     {
         string[] allowed=["delivery_error_codes","fatal_errors"];
@@ -258,7 +332,7 @@ internal static class PhaseCandidateCodec
     }
     private static void WriteStringMap(Utf8JsonWriter w,string name,IReadOnlyDictionary<string,string?> values){w.WritePropertyName(name);w.WriteStartObject();foreach(var p in values.OrderBy(x=>x.Key,StringComparer.Ordinal)){if(p.Value is null)w.WriteNull(p.Key);else w.WriteString(p.Key,p.Value);}w.WriteEndObject();}
     private static void WriteObjectMap(Utf8JsonWriter w,string name,IReadOnlyDictionary<string,object?> values){w.WritePropertyName(name);w.WriteStartObject();foreach(var p in values.OrderBy(x=>x.Key,StringComparer.Ordinal)){w.WritePropertyName(p.Key);JsonSerializer.Serialize(w,p.Value);}w.WriteEndObject();}
-    private static void WriteRepeat(Utf8JsonWriter w,PhaseRepeatResult r){w.WriteStartObject();w.WriteNumber("repeat",r.Repeat);w.WriteString("status",r.Status);w.WritePropertyName("reasons");w.WriteStartArray();foreach(var x in r.Reasons)w.WriteStringValue(x);w.WriteEndArray();w.WritePropertyName("checks");w.WriteStartObject();w.WriteBoolean("j1_repeat_slots",r.Checks.J1);w.WriteBoolean("j2_publication_unaccepted",r.Checks.J2);w.WriteBoolean("j3_verifier_receipt",r.Checks.J3);w.WriteBoolean("j4_producer_job_binding",r.Checks.J4);w.WriteBoolean("j5_registered_producer_count",r.Checks.J5);w.WriteBoolean("j6_broker_inventory_coverage",r.Checks.J6);w.WriteBoolean("j8_probe_inconclusive",r.Checks.J8);w.WriteEndObject();if(r.Identity is null)w.WriteNull("identity");else w.WriteString("identity",r.Identity);if(r.ProbeObservation is null)w.WriteNull("probe_observation");else{w.WritePropertyName("probe_observation");w.WriteStartObject();w.WriteBoolean("usable",r.ProbeObservation.Usable);w.WriteBoolean("qualifying",r.ProbeObservation.Qualifying);WriteNullable(w,"broker",ProjectBroker(r.ProbeObservation.Broker));WriteNullable(w,"report_index",r.ProbeObservation.ReportIndex);WriteNullable(w,"window_count",r.ProbeObservation.WindowCount);WriteNullable(w,"window_maximum",r.ProbeObservation.WindowMaximum);w.WriteEndObject();}if(r.WorkloadObservation is null)w.WriteNull("workload_observation");else WriteWorkload(w,r.WorkloadObservation);if(r.BrokerCount is not null)WriteBrokerCount(w,r.BrokerCount);if(r.B04Evidence is not null)WriteB04Evidence(w,r.B04Evidence);if(r.BatchingEvidence is not null)WriteBatchingEvidence(w,r.BatchingEvidence);if(r.Counts is not null)WriteCounts(w,r.Counts);if(r.B10Intake is not null)PhaseWireCodec.WriteB10Intake(w,r.B10Intake);w.WriteEndObject();}
+    private static void WriteRepeat(Utf8JsonWriter w,PhaseRepeatResult r){w.WriteStartObject();w.WriteNumber("repeat",r.Repeat);w.WriteString("status",r.Status);w.WritePropertyName("reasons");w.WriteStartArray();foreach(var x in r.Reasons)w.WriteStringValue(x);w.WriteEndArray();w.WritePropertyName("checks");w.WriteStartObject();w.WriteBoolean("j1_repeat_slots",r.Checks.J1);w.WriteBoolean("j2_publication_unaccepted",r.Checks.J2);w.WriteBoolean("j3_verifier_receipt",r.Checks.J3);w.WriteBoolean("j4_producer_job_binding",r.Checks.J4);w.WriteBoolean("j5_registered_producer_count",r.Checks.J5);w.WriteBoolean("j6_broker_inventory_coverage",r.Checks.J6);w.WriteBoolean("j8_probe_inconclusive",r.Checks.J8);w.WriteEndObject();if(r.Identity is null)w.WriteNull("identity");else w.WriteString("identity",r.Identity);if(r.ProbeObservation is null)w.WriteNull("probe_observation");else{w.WritePropertyName("probe_observation");w.WriteStartObject();w.WriteBoolean("usable",r.ProbeObservation.Usable);w.WriteBoolean("qualifying",r.ProbeObservation.Qualifying);WriteNullable(w,"broker",ProjectBroker(r.ProbeObservation.Broker));WriteNullable(w,"report_index",r.ProbeObservation.ReportIndex);WriteNullable(w,"window_count",r.ProbeObservation.WindowCount);WriteNullable(w,"window_maximum",r.ProbeObservation.WindowMaximum);w.WriteEndObject();}if(r.WorkloadObservation is null)w.WriteNull("workload_observation");else WriteWorkload(w,r.WorkloadObservation);if(r.BrokerCount is not null)WriteBrokerCount(w,r.BrokerCount);if(r.B04Evidence is not null)WriteB04Evidence(w,r.B04Evidence);if(r.BatchingEvidence is not null)WriteBatchingEvidence(w,r.BatchingEvidence);if(r.Counts is not null)WriteCounts(w,r.Counts);if(r.B10Intake is not null)PhaseWireCodec.WriteB10Intake(w,r.B10Intake);if(r.ClassificationFinal is bool final)w.WriteBoolean("classification_final",final);w.WriteEndObject();}
     private static void WriteWorkload(Utf8JsonWriter w,WorkloadObservation value){w.WritePropertyName("workload_observation");w.WriteStartObject();w.WriteBoolean("synthetic",value.Synthetic);WriteNullable(w,"planned_attempts",value.PlannedAttempts);WriteNullable(w,"invoked_attempts",value.InvokedAttempts);WriteNullable(w,"terminal_observations",value.TerminalObservations);if(value.FixedProfileComplete is bool complete)w.WriteBoolean("fixed_profile_complete",complete);else w.WriteNull("fixed_profile_complete");WriteNullable(w,"first_unexecuted_ordinal",value.FirstUnexecutedOrdinal);if(value.Stages is null)w.WriteNull("stages");else{w.WritePropertyName("stages");w.WriteStartArray();foreach(var stage in value.Stages){w.WriteStartObject();w.WriteString("id",stage.Id);w.WriteNumber("offered_attempts_per_second",stage.OfferedAttemptsPerSecond);w.WriteNumber("duration_seconds",stage.DurationSeconds);WriteNullable(w,"invoked_attempts",stage.InvokedAttempts);WriteNullable(w,"delivered_observations",stage.DeliveredObservations);WriteNullable(w,"failed_observations",stage.FailedObservations);w.WriteEndObject();}w.WriteEndArray();}w.WriteEndObject();}
     private static string? ProjectBroker(string? broker)=>broker is null?null:"broker-"+Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(broker)))[..16];
     private static void WriteCounts(Utf8JsonWriter w,OutcomeCounts c){w.WritePropertyName("counts");w.WriteStartObject();w.WriteNumber("ok",c.Ok);w.WriteNumber("loss",c.Loss);w.WriteNumber("phantom",c.Phantom);w.WriteNumber("reported_failure",c.ReportedFailure);w.WriteNumber("duplicate",c.Duplicate);w.WriteNumber("reorder",c.Reorder);w.WriteEndObject();}
