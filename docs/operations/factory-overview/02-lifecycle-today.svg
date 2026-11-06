@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 960" width="1240" height="960" role="img" aria-label="Sequence of one work item today: Hari approves the plan and prompts the control session, which creates plan, check, implement and review sessions; Codex reviews the pull request; an agent dispatches the Azure run, Hari approves it, and Hari approves the verdict." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
-<rect x="0" y="0" width="1240" height="960" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1040" width="1240" height="1040" role="img" aria-label="Sequence of one work item today: Hari approves the plan and prompts the control session, which creates plan, check, implement and review sessions; Codex reviews the pull request; an agent dispatches the Azure run, Hari approves it, and Hari approves the verdict." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<rect x="0" y="0" width="1240" height="1040" fill="#FFFFFF"/>
 <text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">One work item from approval to verdict, today</text>
 <text x="24" y="50" font-size="13" fill="#4A5568">Read top to bottom. Each numbered arrow is one hand-off. Sessions never talk to each other except through the control session and GitHub.</text>
 <rect x="60.0" y="66" width="120" height="46" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
@@ -15,12 +15,12 @@
 <text x="985.0" y="94.0" font-size="13" font-weight="700" text-anchor="middle" fill="#1A202C">Codex connector</text>
 <rect x="1075.0" y="66" width="130" height="46" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
 <text x="1140.0" y="94.0" font-size="13" font-weight="700" text-anchor="middle" fill="#1A202C">Actions and Azure</text>
-<path d="M120,112 L120,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
-<path d="M320,112 L320,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
-<path d="M560,112 L560,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
-<path d="M800,112 L800,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
-<path d="M985,112 L985,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
-<path d="M1140,112 L1140,924" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M120,112 L120,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M320,112 L320,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M560,112 L560,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M800,112 L800,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M985,112 L985,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
+<path d="M1140,112 L1140,1004" fill="none" stroke="#A0AEC0" stroke-width="1.6" stroke-dasharray="5 4"/>
 <path d="M120,150 L800,150" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="460.0" y="143" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">1. Names the tool, applies ready-for-agent (item plan approved)</text>
 <path d="M120,204 L320,204" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
@@ -35,26 +35,27 @@
 <text x="680.0" y="305" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">check: no blocking findings</text>
 <path d="M320,366 L560,366" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="440.0" y="359" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">5. create_session: implement</text>
-<path d="M560,366 L800,366" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="680.0" y="359" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">branch, PR, state file</text>
 <path d="M320,420 L560,420" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="440.0" y="413" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">6. create_session: review</text>
-<text x="680" y="413" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round" font-style="italic">reads only diff + receipt</text>
-<path d="M800,474 L985,474" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="892.5" y="467" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">7. PR opened</text>
-<path d="M985,528 L800,528" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="892.5" y="521" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">8. review: P0, P1, security</text>
-<path d="M560,582 L800,582" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="680.0" y="575" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">9. fix, then merge or hand off to Hari</text>
-<path d="M560,636 L1140,636" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="850.0" y="629" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">10. dispatch scenario run (main only)</text>
-<path d="M120,690 L1140,690" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="630.0" y="683" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">11. Hari approves the environment gate; run, then destroy</text>
-<path d="M1140,744 L560,744" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="850.0" y="737" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">12. results and logs</text>
-<path d="M560,798 L800,798" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="680.0" y="791" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">13. verdict PR + evidence pack</text>
-<path d="M800,852 L120,852" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<text x="460.0" y="845" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">14. Hari approves or rejects the verdict</text>
-<text x="24" y="946" font-size="11.5" text-anchor="start" fill="#4A5568" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Steps 3 to 6 come from the control session. Step 4 follows the standing-approval rule in the factory document; whether every item uses it is an open question.</text>
+<text x="680" y="413" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round" font-style="italic">gets only diff + receipt</text>
+<path d="M560,474 L800,474" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="680.0" y="467" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">7. push branch, open PR</text>
+<path d="M800,528 L985,528" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="892.5" y="521" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">8. connector picks it up</text>
+<path d="M985,582 L800,582" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="892.5" y="575" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">9. review: P0, P1, security</text>
+<path d="M560,636 L800,636" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="680.0" y="629" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">10. fix, then merge or hand off</text>
+<path d="M560,690 L1140,690" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="850.0" y="683" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">11. dispatch scenario run (main only)</text>
+<path d="M120,744 L1140,744" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="630.0" y="737" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">12. Hari approves the environment gate; run, then destroy</text>
+<path d="M1140,798 L560,798" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="850.0" y="791" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">13. results and logs</text>
+<path d="M560,852 L800,852" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="680.0" y="845" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">14. verdict PR + evidence pack</text>
+<path d="M800,906 L120,906" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="460.0" y="899" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">15. Hari approves or rejects the verdict</text>
+<text x="24" y="1010" font-size="11.5" text-anchor="start" fill="#4A5568" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Steps 3 to 6 come from the control session. Step 4 follows the standing-approval rule in docs/agents/factory.md; whether every item uses it is an open question.</text>
+<text x="24" y="1026" font-size="11.5" text-anchor="start" fill="#4A5568" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">The review in step 6 runs as its own session, as Hari runs it. CLAUDE.md prescribes the repo-reviewer subagent for interactive sessions, so this departs from that rule.</text>
 </svg>

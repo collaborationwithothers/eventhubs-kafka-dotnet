@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 830" width="1240" height="830" role="img" aria-label="System overview today: Hari starts a control session by hand; it creates fresh Claude Code cloud sessions that share state through GitHub; Codex reviews pull requests automatically; Azure is reached only through a workflow Hari approves." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 830" width="1240" height="830" role="img" aria-label="System overview today: Hari starts a control session by hand; it creates fresh Claude Code cloud sessions that share state through GitHub; Codex reviews pull requests automatically; Azure is reached only through workflows that sit behind GitHub environment gates." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
 <rect x="0" y="0" width="1240" height="830" fill="#FFFFFF"/>
 <text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">How the factory runs today</text>
-<text x="24" y="50" font-size="13" fill="#4A5568">Sessions are started by hand. GitHub is the shared memory. Azure is reachable only through an approved workflow.</text>
+<text x="24" y="50" font-size="13" fill="#4A5568">Sessions are started by hand. GitHub is the shared memory. Azure is reached only through workflows that sit behind GitHub environment gates.</text>
 <rect x="20" y="70" width="1200" height="100" rx="10" fill="#F7F8FA" stroke="#D8DEE6"/>
 <text x="60" y="85" font-size="11.5" font-weight="700" fill="#4A5568">YOU</text>
 <rect x="20" y="185" width="1200" height="150" rx="10" fill="#F7F8FA" stroke="#D8DEE6"/>
@@ -15,7 +15,7 @@
 <rect x="90" y="90" width="250" height="60" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="215.0" y="109.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Hari</text>
 <text x="215.0" y="129.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Approves item plans, verdicts</text>
-<text x="215.0" y="145.0" font-size="12.5" text-anchor="middle" fill="#1A202C">and every Azure run</text>
+<text x="215.0" y="145.0" font-size="12.5" text-anchor="middle" fill="#1A202C">and every scenario run</text>
 <rect x="90" y="225" width="250" height="90" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
 <text x="215.0" y="259.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Control session</text>
 <text x="215.0" y="279.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Started by hand</text>
@@ -88,15 +88,15 @@
 <rect x="780" y="630" width="170" height="80" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="865.0" y="659.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Environment gate</text>
 <text x="865.0" y="679.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari approves</text>
-<text x="865.0" y="695.0" font-size="12.5" text-anchor="middle" fill="#1A202C">each run</text>
+<text x="865.0" y="695.0" font-size="12.5" text-anchor="middle" fill="#1A202C">each scenario run</text>
 <rect x="590" y="630" width="170" height="80" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
 <text x="675.0" y="659.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Azure</text>
 <text x="675.0" y="679.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Event Hubs and AKS;</text>
 <text x="675.0" y="695.0" font-size="12.5" text-anchor="middle" fill="#1A202C">OIDC identity only</text>
 <rect x="400" y="630" width="170" height="80" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
 <text x="485.0" y="659.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Sweeper workflow</text>
-<text x="485.0" y="679.0" font-size="12.5" text-anchor="middle" fill="#1A202C">destroys leftovers,</text>
-<text x="485.0" y="695.0" font-size="12.5" text-anchor="middle" fill="#1A202C">stops idle AKS</text>
+<text x="485.0" y="679.0" font-size="12.5" text-anchor="middle" fill="#1A202C">destroys leftovers on</text>
+<text x="485.0" y="695.0" font-size="12.5" text-anchor="middle" fill="#1A202C">a schedule, main only</text>
 <path d="M970,670 L950,670" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="960" y="624" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">needs approval</text>
 <path d="M780,670 L760,670" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
