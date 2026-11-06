@@ -59,3 +59,24 @@ The full verifier report includes both the original partition-add proof and the 
 Prepared mode: comprehensive. Input revision will be the staged tree against the baseline merge base. Cumulative rounds before this review: zero comprehensive, zero focused. The complete report and final-head CI will be linked in the PR description; the report will not be added to its own reviewed input.
 
 Models: Codex authoring session (model identifier not exposed), high-effort Codex planning and independent plan-check subagents; high-effort Codex cold reviewer (model identifier not exposed).
+
+
+## Review comment correction
+
+The user requested the PR comments be fixed on 2026-11-06. The [recorded decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/390#issuecomment-6678278415) authorizes the exact additional assertion proposed in [Claude's inline review](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/391#discussion_r4489501034). The timeout control will reject `last_observation=metadata not observed`, while retaining every existing assertion and accepting recorded metadata-request errors as the original plan allows. The readiness helper, produce and verifier predicates do not change.
+
+Correction execution card:
+
+- Deliverable: add the suggested `Assert.DoesNotContain` assertion to the missing-partition timeout control, update this receipt and the item state, reply in the review thread and retain final-head CI/Codex review.
+- Authorization: the user's direct "fix comments" request, recorded in the decision above, amends the original plan's exact negative control. No weakening or skipping is authorized.
+- Mandatory verification: Release build, the single two-test invocation below, documentation checks, focused cold review and final-head hosted gates. No workflow dispatch or merge.
+- Earliest publication: affected local checks and applicable focused cold review complete.
+- Review scope: focused correction review against `cccc72b43dbcad68da7cfcb4bdd73c2873b7356b`, with the full PR as context. The initial Codex comprehensive review and [Claude's comprehensive review](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/391#pullrequestreview-5796324618) together consume both comprehensive passes. Zero focused rounds have run before this correction; the existing two-focused-round limit and exhaustion handoff remain, without reset.
+
+```bash
+dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-restore
+dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 2 --results-directory /workspace/scratch/390/comment-fix/tests -- --filter-method '*Given_PartitionAddedAfterStart_When_RealHandlerDrains_Then_EndOnlyPartitionStartsAtZero' '*Given_MissingPartition_When_ReadinessBoundExpires_Then_FailureNamesTargetAndObservation' --report-xunit-xml --report-xunit-xml-filename results.xml
+npm run check:docs
+```
+
+Correction source: `cccc72b43dbcad68da7cfcb4bdd73c2873b7356b` plus the single additional assertion; tested component blob `dfc52034d0006dc1b1edd63c234fea1f730d86c8`. Release build passed with zero warnings/errors. The one affected-test invocation passed both named tests, zero failed/skipped, as independently parsed from `/workspace/scratch/390/comment-fix/tests/results.xml`. No retry was needed. Documentation validation is recorded by the scan before focused review. The earlier full-suite results above describe the original implementation, not an additional full local run for this assertion change. Predicate-map applicability remains unchanged because no verifier judgment predicate changes. The new assertion specifically rejects the diagnostic's unobserved default. The final focused report belongs in the PR self-review record rather than its own reviewed input. Focused input snapshot: `390-comment-fix-r1`, comparison commit `cccc72b43dbcad68da7cfcb4bdd73c2873b7356b`; full PR context is `/workspace/scratch/390/comment-fix/full-pr.diff`. The focused delta is `/workspace/scratch/390/comment-fix/focused.diff`.

@@ -57,6 +57,7 @@ public sealed class VerifierWindowComponentTests
         Assert.Contains("target=document-events[1]", exception.Message, StringComparison.Ordinal);
         Assert.Contains("bound_ms=200", exception.Message, StringComparison.Ordinal);
         Assert.Contains("last_observation=", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("last_observation=metadata not observed", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
