@@ -19,6 +19,7 @@ KINDS = {
     "azure": ("#EDE7F8", "#6B46C1"),
     "warn": ("#FDECEC", "#C53030"),
     "plain": ("#FFFFFF", "#718096"),
+    "target": ("#DDF4EF", "#0F766E"),
 }
 FONT = "font-family=\"Segoe UI, Helvetica, Arial, sans-serif\""
 warnings = []
@@ -36,10 +37,13 @@ class S:
         self.p.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="#F7F8FA" stroke="#D8DEE6"/>')
         self.p.append(f'<text x="{x+40}" y="{y+15}" font-size="11.5" font-weight="700" fill="{MUTED}">{escape(title)}</text>')
 
-    def box(self, x, y, w, h, title, lines=(), kind="plain", dash=False, tsize=13.5):
+    def box(self, x, y, w, h, title, lines=(), kind="plain", dash=False, tsize=13.5, sw=1.6, badge=None):
         fill, stroke = KINDS[kind]
         d = ' stroke-dasharray="6 4"' if dash else ""
-        self.p.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.6"{d}/>')
+        self.p.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{d}/>')
+        if badge:
+            self.p.append(f'<rect x="{x+10}" y="{y-9}" width="{len(badge)*7.4+14:.0f}" height="18" rx="9" fill="{stroke}"/>')
+            self.p.append(f'<text x="{x+17}" y="{y+4}" font-size="11" font-weight="700" fill="#FFFFFF">{escape(badge)}</text>')
         for t in [title] + list(lines):
             width = len(t) * (7.3 if t == title else 6.6)
             if width > w - 12:
@@ -306,10 +310,10 @@ def d05():
 
 # ---------------------------------------------------------------- 06 target
 def d06():
-    W, H = 1240, 780
-    s = S("06-target-state.svg", W, H, "Target state: sessions start themselves; merges are routed by rules, with a classifier on trial",
-          "Dashed boxes are not built yet. Hari still approves plans, verdicts and every escalation. The classifier can only add escalations.",
-          "Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules plus, if a trial succeeds, a risk classifier that can only add escalations; spot-checks and an escape count feed the decision to trial it.")
+    W, H = 1240, 850
+    s = S("06-target-state.svg", W, H, "Target state: sessions start themselves; a risk classifier lets low-risk pull requests merge automatically",
+          "Dashed boxes are not built yet. The teal box is Hari's target. Hari still approves plans, verdicts and every escalation.",
+          "Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules and a risk classifier. Hari's target is that a low classifier score lets a pull request merge automatically; anything flagged waits for Hari. The documented design differs, as the note states.")
     s.box(40, 80, 200, 70, "Hari", ["applies ready-for-agent"], "human")
     s.box(300, 80, 240, 70, "Orchestration workflow", ["GitHub Actions replaces the", "control session"], "claude", dash=True)
     s.box(600, 80, 300, 70, "Sessions started by the workflow", ["plan, check, implement, review;", "Codex implements in Actions too"], "claude", dash=True)
@@ -326,26 +330,32 @@ def d06():
     cx = [230, 600, 970]
     checks = [("Protected path touched?", ["ruleset requires Hari", "(built)"], "human", False),
               ("Codex silent for 60 minutes?", ["posts Review unavailable;", "waits for Hari"], "github", True),
-              ("Risk classifier (on trial)", ["Jev or another model; shadow mode", "first; can only add escalations"], "github", True)]
+              ("Risk classifier (on trial)", ["scores each pull request; shadow", "mode first: logs, no gating"], "github", True)]
     for x, (t, ls, k, d) in zip(cx, checks):
         s.arrow([(x, 330), (x, 360)])
         s.box(x - 150, 360, 300, 90, t, ls, k, dash=d)
-    s.arrow([(230, 450), (230, 480), (970, 480)], head=False)
-    for x in (600, 970):
+    s.arrow([(190, 480), (970, 480)], head=False)
+    for x in (230, 600, 970):
         s.arrow([(x, 450), (x, 480)], head=False)
-    s.arrow([(300, 480), (300, 520)])
-    s.arrow([(880, 480), (880, 520)])
-    s.label(310, 505, "nothing flagged", anchor="start", size=11.5)
-    s.label(890, 505, "anything flagged", anchor="start", size=11.5)
-    s.box(130, 520, 340, 70, "Agent merges its own PR", ["built today for unprotected paths", "under the merge rule"], "claude")
-    s.box(710, 520, 340, 70, "Waits for Hari", ["escalation, never silent"], "human")
-    s.box(40, 630, 230, 100, "Same-vendor label", ["labels PRs with a Codex or no", "tool trailer; merge commits and", "Hari's own untrailed commits", "are ignored"], "github", dash=True)
-    s.box(300, 630, 240, 100, "Weekly spot-check", ["Hari samples about 5 agent", "merges a week"], "human", dash=True)
-    s.box(570, 630, 240, 100, "Escape-count script", ["counts serious defects the", "cold review should have caught"], "github", dash=True)
-    s.box(840, 630, 330, 100, "Decision to trial the classifier", ["about 50 PRs labelled by spot-checks;", "a measured problem with the gate;", "general availability, or committed access", "with published pricing and data handling"], "human", dash=True)
+    s.arrow([(190, 480), (190, 530)])
+    s.arrow([(530, 480), (530, 530)])
+    s.arrow([(880, 480), (880, 530)])
+    s.label(200, 510, "today", anchor="start", size=11.5)
+    s.label(540, 510, "target: low score", anchor="start", size=11.5)
+    s.label(890, 510, "anything flagged", anchor="start", size=11.5)
+    s.box(40, 530, 300, 70, "Agent merge today (built)", ["unprotected paths only,", "under the merge rule"], "claude")
+    s.box(380, 530, 300, 70, "Automatic merge", ["a low classifier score lets the", "pull request merge itself"], "target", dash=True, sw=3, badge="TARGET")
+    s.box(720, 530, 320, 70, "Waits for Hari", ["any escalation; never silent"], "human")
+    s.box(40, 620, 1000, 62, "Not yet reconciled with the factory document", [
+        "docs/agents/factory.md today: an adopted classifier only adds escalations, so it can narrow automatic merge but not widen it.",
+        "Hari's target (6 November 2026): a low score lets a pull request merge automatically. See the open questions in issue 394."], "warn", dash=True)
+    s.box(40, 700, 230, 100, "Same-vendor label", ["labels PRs with a Codex or no", "tool trailer; merge commits and", "Hari's own untrailed commits", "are ignored"], "github", dash=True)
+    s.box(300, 700, 240, 100, "Weekly spot-check", ["Hari samples about 5 agent", "merges a week"], "human", dash=True)
+    s.box(570, 700, 240, 100, "Escape-count script", ["counts serious defects the", "cold review should have caught"], "github", dash=True)
+    s.box(840, 700, 330, 100, "Decision to trial the classifier", ["about 50 PRs labelled by spot-checks;", "a measured problem with the gate;", "general availability, or committed access", "with published pricing and data handling"], "human", dash=True)
     for x in (270, 540, 810):
-        s.arrow([(x, 680), (x + 30, 680)])
-    s.legend(750, [("human", "Hari", False), ("claude", "Claude Code", False), ("codex", "Codex", False), ("github", "GitHub", False), ("plain", "dashed outline = not built yet", True)])
+        s.arrow([(x, 750), (x + 30, 750)])
+    s.legend(822, [("human", "Hari", False), ("claude", "Claude Code", False), ("codex", "Codex", False), ("github", "GitHub", False), ("target", "Hari's target", True), ("plain", "dashed outline = not built yet", True)])
     s.save()
 
 
