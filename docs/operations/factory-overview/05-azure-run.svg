@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" role="img" aria-label="Azure run flow: an agent dispatches the workflow, Hari approves the environment gate, the job applies and destroys the ephemeral layer, AKS stops when the dispatch ends, and the sweeper cleans up if a job dies." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<rect x="0" y="0" width="1200" height="560" fill="#FFFFFF"/>
+<text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">One Azure scenario run, and how cleanup is guaranteed</text>
+<text x="24" y="50" font-size="13" fill="#4A5568">Agents start a run but cannot hold an Azure token. Cleanup does not depend on the run succeeding.</text>
+<rect x="40" y="100" width="160" height="90" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="120.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">1. Dispatch</text>
+<text x="120.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">agent starts the</text>
+<text x="120.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">workflow, main only</text>
+<rect x="230" y="100" width="160" height="90" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
+<text x="310.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">2. Gate</text>
+<text x="310.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari approves</text>
+<text x="310.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">this run</text>
+<rect x="420" y="100" width="160" height="90" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
+<text x="500.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">3. Apply</text>
+<text x="500.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">workflow applies the</text>
+<text x="500.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">ephemeral layer</text>
+<rect x="610" y="100" width="160" height="90" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
+<text x="690.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">4. Run</text>
+<text x="690.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">load, faults, repeats;</text>
+<text x="690.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">verifier judges</text>
+<rect x="800" y="100" width="160" height="90" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
+<text x="880.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">5. Destroy</text>
+<text x="880.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">ephemeral layer,</text>
+<text x="880.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">pass or fail</text>
+<rect x="990" y="100" width="160" height="90" rx="8" fill="#EDE7F8" stroke="#6B46C1" stroke-width="1.6"/>
+<text x="1070.0" y="134.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">6. Dispatch ends</text>
+<text x="1070.0" y="154.0" font-size="12.5" text-anchor="middle" fill="#1A202C">AKS stops once,</text>
+<text x="1070.0" y="170.0" font-size="12.5" text-anchor="middle" fill="#1A202C">pass or fail</text>
+<path d="M200,145 L230,145" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="215.0" y="92" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">waits</text>
+<path d="M390,145 L420,145" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="405.0" y="92" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">OIDC token</text>
+<path d="M580,145 L610,145" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M770,145 L800,145" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="785.0" y="92" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">success or failure</text>
+<path d="M960,145 L990,145" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="975.0" y="92" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">last job</text>
+<rect x="230" y="270" width="400" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="430.0" y="293.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Sweeper workflow (scheduled)</text>
+<text x="430.0" y="313.0" font-size="12.5" text-anchor="middle" fill="#1A202C">When no dispatch is active: destroys a leftover</text>
+<text x="430.0" y="329.0" font-size="12.5" text-anchor="middle" fill="#1A202C">ephemeral environment on its first sweep;</text>
+<text x="430.0" y="345.0" font-size="12.5" text-anchor="middle" fill="#1A202C">stops a running AKS cluster 60 minutes after</text>
+<text x="430.0" y="361.0" font-size="12.5" text-anchor="middle" fill="#1A202C">the last dispatch ended.</text>
+<path d="M500,270 L500,190" fill="none" stroke="#1A202C" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="510" y="232" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">safety net if a job dies</text>
+<rect x="40" y="430" width="520" height="74" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
+<text x="300.0" y="456.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Persistent layer</text>
+<text x="300.0" y="476.0" font-size="12.5" text-anchor="middle" fill="#1A202C">State, network and identity. Only Hari applies it;</text>
+<text x="300.0" y="492.0" font-size="12.5" text-anchor="middle" fill="#1A202C">agents never run terraform on it.</text>
+<rect x="620" y="430" width="540" height="74" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="890.0" y="456.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Evidence</text>
+<text x="890.0" y="476.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Checked results go into a verdict pull request;</text>
+<text x="890.0" y="492.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari approves or rejects it.</text>
+<path d="M690,190 L690,430" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="700" y="300" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">checked results only</text>
+<text x="24" y="546" font-size="11.5" text-anchor="start" fill="#4A5568" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Rules: at most one ephemeral environment exists at a time; no Azure workflow triggers on pull_request.</text>
+</svg>
