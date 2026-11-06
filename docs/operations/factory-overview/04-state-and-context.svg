@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 800" width="1240" height="800" role="img" aria-label="Fresh sessions are created by the control session; they read and write GitHub, which holds issue comments, the state file, pull request receipts, evidence and backup branches." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
 <rect x="0" y="0" width="1240" height="800" fill="#FFFFFF"/>
 <text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">How state and context are kept together</text>
-<text x="24" y="50" font-size="13" fill="#4A5568">Every session starts empty. GitHub is the memory. The control session is the only place that sees the whole batch.</text>
+<text x="24" y="50" font-size="13" fill="#4A5568">Every session starts empty. GitHub is the shared memory.</text>
 <rect x="420" y="70" width="400" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
 <text x="620.0" y="99.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Control session</text>
-<text x="620.0" y="119.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Creates sessions with create_session and send_message;</text>
-<text x="620.0" y="135.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reads their status and events. Its overview is not stored.</text>
+<text x="620.0" y="119.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Creates sessions with create_session and</text>
+<text x="620.0" y="135.0" font-size="12.5" text-anchor="middle" fill="#1A202C">messages them with send_message.</text>
 <rect x="120" y="220" width="260" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
 <text x="250.0" y="249.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Session A: plan</text>
 <text x="250.0" y="269.0" font-size="12.5" text-anchor="middle" fill="#1A202C">fresh context</text>
@@ -56,12 +56,12 @@
 <text x="959" y="350" font-size="11.5" text-anchor="end" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">writes</text>
 <path d="M1015,390 L1015,300" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="1021" y="350" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">catch-up read</text>
-<text x="620" y="580" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Catch-up: a script lists comment IDs and edit times, then selects only decision, approval, plan and handoff comments.</text>
-<text x="620" y="600" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">A session re-checks for new or edited comments before it plans, pushes or merges.</text>
+<text x="620" y="580" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Catch-up: a script lists comment IDs and edit times, then selects the comments the session's role needs.</text>
+<text x="620" y="600" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">A session re-checks for new or edited comments before it publishes a plan, pushes or merges.</text>
 <rect x="60" y="665" width="560" height="74" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
-<text x="340.0" y="691.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Stop hook</text>
-<text x="340.0" y="711.0" font-size="12.5" text-anchor="middle" fill="#1A202C">A session cannot end until it posts a comment that starts</text>
-<text x="340.0" y="727.0" font-size="12.5" text-anchor="middle" fill="#1A202C">with 'Decision needed:' (unverified in GitHub Actions)</text>
+<text x="340.0" y="691.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Stop hook (where enabled)</text>
+<text x="340.0" y="711.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Blocks a session from ending until it posts a comment that</text>
+<text x="340.0" y="727.0" font-size="12.5" text-anchor="middle" fill="#1A202C">starts with 'Decision needed:'; unverified in GitHub Actions</text>
 <rect x="640" y="665" width="540" height="74" rx="8" fill="#FDECEC" stroke="#C53030" stroke-width="1.6" stroke-dasharray="6 4"/>
 <text x="910.0" y="691.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Recovery when a session disappears</text>
 <text x="910.0" y="711.0" font-size="12.5" text-anchor="middle" fill="#1A202C">No handoff is written. The backup branch holds the work;</text>

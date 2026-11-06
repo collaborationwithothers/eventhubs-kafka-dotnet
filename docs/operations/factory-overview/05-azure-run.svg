@@ -45,8 +45,8 @@
 <text x="510" y="232" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">safety net if a job dies</text>
 <rect x="40" y="430" width="520" height="74" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="300.0" y="456.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Persistent layer</text>
-<text x="300.0" y="476.0" font-size="12.5" text-anchor="middle" fill="#1A202C">State, network and identity. Only Hari applies it;</text>
-<text x="300.0" y="492.0" font-size="12.5" text-anchor="middle" fill="#1A202C">agents never run terraform on it.</text>
+<text x="300.0" y="476.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Spoke network, registry, log workspace and identities.</text>
+<text x="300.0" y="492.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Only Hari applies it; agents never run terraform on it.</text>
 <rect x="620" y="430" width="540" height="74" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
 <text x="890.0" y="456.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Evidence</text>
 <text x="890.0" y="476.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Checked results go into a verdict pull request;</text>

@@ -17,10 +17,9 @@
 <text x="215.0" y="129.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Approves item plans, verdicts</text>
 <text x="215.0" y="145.0" font-size="12.5" text-anchor="middle" fill="#1A202C">and every Azure run</text>
 <rect x="90" y="225" width="250" height="90" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
-<text x="215.0" y="251.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Control session</text>
-<text x="215.0" y="271.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Started by hand</text>
-<text x="215.0" y="287.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Creates and watches sessions</text>
-<text x="215.0" y="303.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Only holder of the overview</text>
+<text x="215.0" y="259.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Control session</text>
+<text x="215.0" y="279.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Started by hand</text>
+<text x="215.0" y="295.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Creates the sessions below</text>
 <rect x="400" y="240" width="170" height="70" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
 <text x="485.0" y="272.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Plan session</text>
 <text x="485.0" y="292.0" font-size="12.5" text-anchor="middle" fill="#1A202C">posts the plan</text>
@@ -72,8 +71,8 @@
 <text x="215.0" y="565.0" font-size="12.5" text-anchor="middle" fill="#1A202C">assigned to Codex</text>
 <rect x="780" y="505" width="360" height="70" rx="8" fill="#E3F5EA" stroke="#2F855A" stroke-width="1.6"/>
 <text x="960.0" y="529.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Codex connector</text>
-<text x="960.0" y="549.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Reviews every pull request automatically</text>
-<text x="960.0" y="565.0" font-size="12.5" text-anchor="middle" fill="#1A202C">(P0, P1 and security findings)</text>
+<text x="960.0" y="549.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Reviews every pull request,</text>
+<text x="960.0" y="565.0" font-size="12.5" text-anchor="middle" fill="#1A202C">automatically or on @codex review</text>
 <path d="M90,120 L30,120 L30,540 L90,540" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="46" y="330" font-size="11.5" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round" transform="rotate(-90 46 330)">Hari starts by hand</text>
 <path d="M340,540 L580,540 L580,450" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
