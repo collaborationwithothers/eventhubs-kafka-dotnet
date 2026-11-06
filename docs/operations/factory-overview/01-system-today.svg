@@ -40,7 +40,6 @@
 <text x="700" y="216" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">create_session, model pinned per role</text>
 <path d="M215,150 L215,225" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="225" y="164" font-size="12" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">prompt: skill + issue number</text>
-<path d="M970,275 L950,275" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <rect x="90" y="370" width="250" height="80" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
 <text x="215.0" y="399.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">State file</text>
 <text x="215.0" y="419.0" font-size="12.5" text-anchor="middle" fill="#1A202C">items/N/state.md on main</text>

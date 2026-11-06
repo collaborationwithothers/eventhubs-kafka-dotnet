@@ -68,6 +68,6 @@
 <rect x="30" y="640" width="1180" height="100" rx="8" fill="#FDECEC" stroke="#C53030" stroke-width="1.6"/>
 <text x="620.0" y="671.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Known gaps today</text>
 <text x="620.0" y="691.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Agent merges are not audited: the weekly spot-check has not started, and GitHub shows one account as the author of every pull request.</text>
-<text x="620.0" y="707.0" font-size="12.5" text-anchor="middle" fill="#1A202C">The Stop hook acts only where enabled, releases after three blocks and is unverified in Actions. A dead session writes no handoff; any backup branch is the only trace.</text>
+<text x="620.0" y="707.0" font-size="12.5" text-anchor="middle" fill="#1A202C">The Stop hook acts only where enabled and is unverified in Actions. A dead session writes no handoff; its backup branch, if any, remains.</text>
 <text x="620.0" y="723.0" font-size="12.5" text-anchor="middle" fill="#1A202C">No technical block on terraform apply was identified; the rule is text.</text>
 </svg>

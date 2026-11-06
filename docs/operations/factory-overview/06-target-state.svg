@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 780" width="1240" height="780" role="img" aria-label="Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow combines deterministic rules and a risk classifier that can only add escalations; spot-checks and an escape count feed the decision to trial the classifier." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 780" width="1240" height="780" role="img" aria-label="Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules plus, if a trial succeeds, a risk classifier that can only add escalations; spot-checks and an escape count feed the decision to trial it." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
 <rect x="0" y="0" width="1240" height="780" fill="#FFFFFF"/>
-<text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">Target state: sessions start themselves and every merge is routed by rule and by risk score</text>
+<text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">Target state: sessions start themselves; merges are routed by rules, with a classifier on trial</text>
 <text x="24" y="50" font-size="13" fill="#4A5568">Dashed boxes are not built yet. Hari still approves plans, verdicts and every escalation. The classifier can only add escalations.</text>
 <rect x="40" y="80" width="200" height="70" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="140.0" y="112.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Hari</text>
@@ -15,7 +15,7 @@
 <text x="750.0" y="140.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Codex implements in Actions too</text>
 <rect x="960" y="80" width="200" height="70" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
 <text x="1060.0" y="112.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Pull request</text>
-<text x="1060.0" y="132.0" font-size="12.5" text-anchor="middle" fill="#1A202C">opened by the session</text>
+<text x="1060.0" y="132.0" font-size="12.5" text-anchor="middle" fill="#1A202C">opened after the cold review</text>
 <path d="M240,115 L300,115" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <text x="270" y="74" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">label</text>
 <path d="M540,115 L600,115" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
@@ -24,9 +24,9 @@
 <text x="930" y="74" font-size="11" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">opens</text>
 <path d="M1060,150 L1060,220" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <rect x="900" y="220" width="260" height="70" rx="8" fill="#E3F5EA" stroke="#2F855A" stroke-width="1.6"/>
-<text x="1030.0" y="244.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Reviews</text>
-<text x="1030.0" y="264.0" font-size="12.5" text-anchor="middle" fill="#1A202C">cold review, Codex review</text>
-<text x="1030.0" y="280.0" font-size="12.5" text-anchor="middle" fill="#1A202C">(security review too)</text>
+<text x="1030.0" y="244.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Codex review</text>
+<text x="1030.0" y="264.0" font-size="12.5" text-anchor="middle" fill="#1A202C">code review and</text>
+<text x="1030.0" y="280.0" font-size="12.5" text-anchor="middle" fill="#1A202C">security review</text>
 <path d="M900,255 L840,255" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <rect x="360" y="220" width="480" height="70" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
 <text x="600.0" y="244.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Merge workflow</text>
@@ -46,9 +46,9 @@
 <text x="600.0" y="430.0" font-size="12.5" text-anchor="middle" fill="#1A202C">waits for Hari</text>
 <path d="M970,330 L970,360" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <rect x="820" y="360" width="300" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="970.0" y="394.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Risk classifier (Jev or other)</text>
-<text x="970.0" y="414.0" font-size="12.5" text-anchor="middle" fill="#1A202C">shadow mode first; can only</text>
-<text x="970.0" y="430.0" font-size="12.5" text-anchor="middle" fill="#1A202C">add escalations</text>
+<text x="970.0" y="394.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Risk classifier (on trial)</text>
+<text x="970.0" y="414.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Jev or another model; shadow mode</text>
+<text x="970.0" y="430.0" font-size="12.5" text-anchor="middle" fill="#1A202C">first; can only add escalations</text>
 <path d="M230,450 L230,480 L970,480" fill="none" stroke="#1A202C" stroke-width="1.6"/>
 <path d="M600,450 L600,480" fill="none" stroke="#1A202C" stroke-width="1.6"/>
 <path d="M970,450 L970,480" fill="none" stroke="#1A202C" stroke-width="1.6"/>
@@ -63,26 +63,27 @@
 <rect x="710" y="520" width="340" height="70" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="880.0" y="552.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Waits for Hari</text>
 <text x="880.0" y="572.0" font-size="12.5" text-anchor="middle" fill="#1A202C">escalation, never silent</text>
-<rect x="40" y="640" width="260" height="80" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="170.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Same-vendor label</text>
-<text x="170.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">marks pull requests written and</text>
-<text x="170.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reviewed by one vendor</text>
-<rect x="330" y="640" width="260" height="80" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="460.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Weekly spot-check</text>
-<text x="460.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari samples about 5 agent merges;</text>
-<text x="460.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">labelled ones come first</text>
-<rect x="620" y="640" width="260" height="80" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="750.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Escape-count script</text>
-<text x="750.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">counts serious defects the</text>
-<text x="750.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">cold review should have caught</text>
-<rect x="910" y="640" width="260" height="80" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="1040.0" y="661.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Decision to trial the classifier</text>
-<text x="1040.0" y="681.0" font-size="12.5" text-anchor="middle" fill="#1A202C">about 50 labelled PRs, a measured</text>
-<text x="1040.0" y="697.0" font-size="12.5" text-anchor="middle" fill="#1A202C">problem, committed access with</text>
-<text x="1040.0" y="713.0" font-size="12.5" text-anchor="middle" fill="#1A202C">pricing and data handling</text>
-<path d="M300,680 L330,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<path d="M590,680 L620,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<path d="M880,680 L910,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="40" y="630" width="230" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="155.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Same-vendor label</text>
+<text x="155.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">on PRs with a Codex trailer or</text>
+<text x="155.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">no tool trailer; sampled first</text>
+<rect x="300" y="630" width="240" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="420.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Weekly spot-check</text>
+<text x="420.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari samples about 5 agent</text>
+<text x="420.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">merges a week</text>
+<rect x="570" y="630" width="240" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="690.0" y="669.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Escape-count script</text>
+<text x="690.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">counts serious defects the</text>
+<text x="690.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">cold review should have caught</text>
+<rect x="840" y="630" width="330" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="1005.0" y="653.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Decision to trial the classifier</text>
+<text x="1005.0" y="673.0" font-size="12.5" text-anchor="middle" fill="#1A202C">about 50 PRs labelled by spot-checks;</text>
+<text x="1005.0" y="689.0" font-size="12.5" text-anchor="middle" fill="#1A202C">a measured problem with the gate;</text>
+<text x="1005.0" y="705.0" font-size="12.5" text-anchor="middle" fill="#1A202C">general availability, or committed access</text>
+<text x="1005.0" y="721.0" font-size="12.5" text-anchor="middle" fill="#1A202C">with published pricing and data handling</text>
+<path d="M270,680 L300,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M540,680 L570,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M810,680 L840,680" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
 <rect x="24" y="750" width="16" height="12" rx="3" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.5"/>
 <text x="46" y="761" font-size="12" fill="#1A202C">Hari</text>
 <rect x="98.4" y="750" width="16" height="12" rx="3" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.5"/>
