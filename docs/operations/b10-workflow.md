@@ -1,6 +1,6 @@
 # B10 workflow
 
-The B10 workflow runs the committed synthetic timeout scenario with two sequential producer Jobs per repeat, followed by a phase sweep. The sweep captures late-record frequencies and locations for diagnosis. The second worker is currently blocked by the predecessor client-ID validation mismatch recorded in the [implementation receipt](../../items/355/receipt.md). Live expiry frequency, persistence and runtime viability remain unmeasured until Hari's later smoke.
+The B10 workflow runs the committed synthetic timeout scenario with two sequential producer Jobs per repeat, followed by a phase sweep. The sweep captures late-record frequencies and locations for diagnosis. The second worker validates predecessor evidence against that predecessor's authenticated client identity; the [implementation receipt](../../items/355/receipt.md) records the regression checks. Live expiry frequency, persistence and runtime viability remain unmeasured until Hari's later smoke.
 
 ## Inputs and execution
 

@@ -1,6 +1,6 @@
 # State: #355 B10 scenario, admission and smoke
 
-Covers: comment 6671933423 created 2026-11-05T23:10:13Z; read at 2026-11-05T23:12:40Z
+Covers: comment 6678364206; read at 2026-11-06T06:15:51Z. The full child and parent metadata snapshots are retained outside the repository for refresh.
 Parent items: [B10 design](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348), [producer investigation](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [adopted B10 split](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617607468)
 Implementing tool: Codex. Source: [tool assignment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6633648649)
@@ -13,6 +13,8 @@ Decisions in force:
 - Follow the per-repeat judgement predecessor. Source: [judgement dependency](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6632608182)
 - Codex implements; a separate Claude review gates the pull request and Hari merges workflow changes. Source: [review and merge adoption](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6633535243)
 - Codex may plan and independently check under standing approval, except for plans needing Hari's own approval. Source: [standing-approval amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6633795477)
+- Approve the scoped predecessor identity/chart amendment and fifteen-group cumulative failure cap, retaining eleven prior groups and every other gate. Source: [explicit chat approval recorded on the issue](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6678125827)
+- Approve the second-worker test-only comparison of production completion serialization and stored bytes, retaining the actual captured context and every other assertion. Source: [completion comparison approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6678364206)
 Open questions:
 - None
-Next action: Obtain approval for a scoped plan amendment: rebind predecessor evidence expectations to the authenticated first producer client ID without weakening any check, add its regression coverage, and add B10 to the architecture chart contract's exact scenario list. Revision 2 implementation is saved with passing focused capacity/capture/diagnostic/Python/chart/offline checks, but second-worker positives and full .NET acceptance are blocked. No cold review or PR exists. The current user defers every dispatch and smoke. Separate Claude review, Hari's workflow merge, expected outcomes and later main C5 acceptance remain required.
+Next action: Local acceptance passed: full .NET 9169, Python 307, chart, offline, mirror, whitespace and documentation checks (unchanged-file warnings retained). Cold-review the frozen full authored diff, then publish the tested draft PR from the normal branch and remove its backup. Final-head CI and hosted Codex review must pass before readiness; separate Claude review and Hari workflow merge remain required. All dispatches and smoke remain deferred. Expected outcomes and later main C5 acceptance remain successor work.
