@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 850" width="1240" height="850" role="img" aria-label="Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules and a risk classifier. Hari's target is that a low classifier score lets a pull request merge automatically; anything flagged waits for Hari. The documented design differs, as the note states." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
-<rect x="0" y="0" width="1240" height="850" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 868" width="1240" height="868" role="img" aria-label="Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules and a risk classifier. Hari's target is that a low classifier score lets a pull request merge automatically; anything flagged waits for Hari. The documented design differs, as the note states." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<rect x="0" y="0" width="1240" height="868" fill="#FFFFFF"/>
 <text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">Target state: sessions start themselves; a risk classifier lets low-risk pull requests merge automatically</text>
 <text x="24" y="50" font-size="13" fill="#4A5568">Dashed boxes are not built yet. The teal box is Hari's target. Hari still approves plans, verdicts and every escalation.</text>
 <rect x="40" y="80" width="200" height="70" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
@@ -72,43 +72,44 @@
 <rect x="720" y="530" width="320" height="70" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6"/>
 <text x="880.0" y="562.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Waits for Hari</text>
 <text x="880.0" y="582.0" font-size="12.5" text-anchor="middle" fill="#1A202C">any escalation; never silent</text>
-<rect x="40" y="620" width="1000" height="62" rx="8" fill="#FDECEC" stroke="#C53030" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="540.0" y="640.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Not yet reconciled with the factory document</text>
-<text x="540.0" y="660.0" font-size="12.5" text-anchor="middle" fill="#1A202C">docs/agents/factory.md today: an adopted classifier only adds escalations, so it can narrow automatic merge but not widen it.</text>
-<text x="540.0" y="676.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari's target (6 November 2026): a low score lets a pull request merge automatically. See the open questions in issue 394.</text>
-<rect x="40" y="700" width="230" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="155.0" y="723.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Same-vendor label</text>
-<text x="155.0" y="743.0" font-size="12.5" text-anchor="middle" fill="#1A202C">labels PRs with a Codex or no</text>
-<text x="155.0" y="759.0" font-size="12.5" text-anchor="middle" fill="#1A202C">tool trailer; merge commits and</text>
-<text x="155.0" y="775.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari's own untrailed commits</text>
-<text x="155.0" y="791.0" font-size="12.5" text-anchor="middle" fill="#1A202C">are ignored</text>
-<rect x="300" y="700" width="240" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="420.0" y="739.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Weekly spot-check</text>
-<text x="420.0" y="759.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari samples about 5 agent</text>
-<text x="420.0" y="775.0" font-size="12.5" text-anchor="middle" fill="#1A202C">merges a week</text>
-<rect x="570" y="700" width="240" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="690.0" y="739.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Escape-count script</text>
-<text x="690.0" y="759.0" font-size="12.5" text-anchor="middle" fill="#1A202C">counts serious defects the</text>
-<text x="690.0" y="775.0" font-size="12.5" text-anchor="middle" fill="#1A202C">cold review should have caught</text>
-<rect x="840" y="700" width="330" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="1005.0" y="723.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Decision to trial the classifier</text>
-<text x="1005.0" y="743.0" font-size="12.5" text-anchor="middle" fill="#1A202C">about 50 PRs labelled by spot-checks;</text>
-<text x="1005.0" y="759.0" font-size="12.5" text-anchor="middle" fill="#1A202C">a measured problem with the gate;</text>
-<text x="1005.0" y="775.0" font-size="12.5" text-anchor="middle" fill="#1A202C">general availability, or committed access</text>
-<text x="1005.0" y="791.0" font-size="12.5" text-anchor="middle" fill="#1A202C">with published pricing and data handling</text>
-<path d="M270,750 L300,750" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<path d="M540,750 L570,750" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<path d="M810,750 L840,750" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
-<rect x="24" y="822" width="16" height="12" rx="3" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.5"/>
-<text x="46" y="833" font-size="12" fill="#1A202C">Hari</text>
-<rect x="98.4" y="822" width="16" height="12" rx="3" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.5"/>
-<text x="120.4" y="833" font-size="12" fill="#1A202C">Claude Code</text>
-<rect x="219.0" y="822" width="16" height="12" rx="3" fill="#E3F5EA" stroke="#2F855A" stroke-width="1.5"/>
-<text x="241.0" y="833" font-size="12" fill="#1A202C">Codex</text>
-<rect x="300.0" y="822" width="16" height="12" rx="3" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.5"/>
-<text x="322.0" y="833" font-size="12" fill="#1A202C">GitHub</text>
-<rect x="387.6" y="822" width="16" height="12" rx="3" fill="#DDF4EF" stroke="#0F766E" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="409.6" y="833" font-size="12" fill="#1A202C">Hari's target</text>
-<rect x="521.4000000000001" y="822" width="16" height="12" rx="3" fill="#FFFFFF" stroke="#718096" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="543.4000000000001" y="833" font-size="12" fill="#1A202C">dashed outline = not built yet</text>
+<rect x="40" y="620" width="1000" height="80" rx="8" fill="#FDECEC" stroke="#C53030" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="540.0" y="641.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Not yet reconciled with the written rules</text>
+<text x="540.0" y="661.0" font-size="12.5" text-anchor="middle" fill="#1A202C">docs/agents/factory.md today: an adopted classifier only adds escalations.</text>
+<text x="540.0" y="677.0" font-size="12.5" text-anchor="middle" fill="#1A202C">AGENTS.md Merge rule: an agent merges only when its conditions hold; anything else waits for Hari.</text>
+<text x="540.0" y="693.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari's target (6 November 2026): a low score lets a pull request merge automatically. See the open questions in issue 394.</text>
+<rect x="40" y="718" width="230" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="155.0" y="741.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Same-vendor label</text>
+<text x="155.0" y="761.0" font-size="12.5" text-anchor="middle" fill="#1A202C">labels PRs with a Codex or no</text>
+<text x="155.0" y="777.0" font-size="12.5" text-anchor="middle" fill="#1A202C">tool trailer; merge commits and</text>
+<text x="155.0" y="793.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari's own untrailed commits</text>
+<text x="155.0" y="809.0" font-size="12.5" text-anchor="middle" fill="#1A202C">are ignored</text>
+<rect x="300" y="718" width="240" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="420.0" y="757.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Weekly spot-check</text>
+<text x="420.0" y="777.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Hari samples about 5 agent</text>
+<text x="420.0" y="793.0" font-size="12.5" text-anchor="middle" fill="#1A202C">merges a week</text>
+<rect x="570" y="718" width="240" height="100" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="690.0" y="757.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Escape-count script</text>
+<text x="690.0" y="777.0" font-size="12.5" text-anchor="middle" fill="#1A202C">counts serious defects the</text>
+<text x="690.0" y="793.0" font-size="12.5" text-anchor="middle" fill="#1A202C">cold review should have caught</text>
+<rect x="840" y="718" width="330" height="100" rx="8" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="1005.0" y="741.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Decision to trial the classifier</text>
+<text x="1005.0" y="761.0" font-size="12.5" text-anchor="middle" fill="#1A202C">about 50 PRs labelled by spot-checks;</text>
+<text x="1005.0" y="777.0" font-size="12.5" text-anchor="middle" fill="#1A202C">a measured problem with the gate;</text>
+<text x="1005.0" y="793.0" font-size="12.5" text-anchor="middle" fill="#1A202C">general availability, or committed access</text>
+<text x="1005.0" y="809.0" font-size="12.5" text-anchor="middle" fill="#1A202C">with published pricing and data handling</text>
+<path d="M270,768 L300,768" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M540,768 L570,768" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M810,768 L840,768" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="24" y="840" width="16" height="12" rx="3" fill="#FFF4DB" stroke="#B7791F" stroke-width="1.5"/>
+<text x="46" y="851" font-size="12" fill="#1A202C">Hari</text>
+<rect x="98.4" y="840" width="16" height="12" rx="3" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.5"/>
+<text x="120.4" y="851" font-size="12" fill="#1A202C">Claude Code</text>
+<rect x="219.0" y="840" width="16" height="12" rx="3" fill="#E3F5EA" stroke="#2F855A" stroke-width="1.5"/>
+<text x="241.0" y="851" font-size="12" fill="#1A202C">Codex</text>
+<rect x="300.0" y="840" width="16" height="12" rx="3" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.5"/>
+<text x="322.0" y="851" font-size="12" fill="#1A202C">GitHub</text>
+<rect x="387.6" y="840" width="16" height="12" rx="3" fill="#DDF4EF" stroke="#0F766E" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="409.6" y="851" font-size="12" fill="#1A202C">Hari's target</text>
+<rect x="521.4000000000001" y="840" width="16" height="12" rx="3" fill="#FFFFFF" stroke="#718096" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="543.4000000000001" y="851" font-size="12" fill="#1A202C">dashed outline = not built yet</text>
 </svg>

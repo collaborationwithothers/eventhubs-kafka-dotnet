@@ -310,7 +310,7 @@ def d05():
 
 # ---------------------------------------------------------------- 06 target
 def d06():
-    W, H = 1240, 850
+    W, H = 1240, 868
     s = S("06-target-state.svg", W, H, "Target state: sessions start themselves; a risk classifier lets low-risk pull requests merge automatically",
           "Dashed boxes are not built yet. The teal box is Hari's target. Hari still approves plans, verdicts and every escalation.",
           "Target state: Hari applies a label, a GitHub Actions workflow starts the sessions, and a merge workflow applies deterministic rules and a risk classifier. Hari's target is that a low classifier score lets a pull request merge automatically; anything flagged waits for Hari. The documented design differs, as the note states.")
@@ -346,16 +346,17 @@ def d06():
     s.box(40, 530, 300, 70, "Agent merge today (built)", ["unprotected paths only,", "under the merge rule"], "claude")
     s.box(380, 530, 300, 70, "Automatic merge", ["a low classifier score lets the", "pull request merge itself"], "target", dash=True, sw=3, badge="TARGET")
     s.box(720, 530, 320, 70, "Waits for Hari", ["any escalation; never silent"], "human")
-    s.box(40, 620, 1000, 62, "Not yet reconciled with the factory document", [
-        "docs/agents/factory.md today: an adopted classifier only adds escalations, so it can narrow automatic merge but not widen it.",
+    s.box(40, 620, 1000, 80, "Not yet reconciled with the written rules", [
+        "docs/agents/factory.md today: an adopted classifier only adds escalations.",
+        "AGENTS.md Merge rule: an agent merges only when its conditions hold; anything else waits for Hari.",
         "Hari's target (6 November 2026): a low score lets a pull request merge automatically. See the open questions in issue 394."], "warn", dash=True)
-    s.box(40, 700, 230, 100, "Same-vendor label", ["labels PRs with a Codex or no", "tool trailer; merge commits and", "Hari's own untrailed commits", "are ignored"], "github", dash=True)
-    s.box(300, 700, 240, 100, "Weekly spot-check", ["Hari samples about 5 agent", "merges a week"], "human", dash=True)
-    s.box(570, 700, 240, 100, "Escape-count script", ["counts serious defects the", "cold review should have caught"], "github", dash=True)
-    s.box(840, 700, 330, 100, "Decision to trial the classifier", ["about 50 PRs labelled by spot-checks;", "a measured problem with the gate;", "general availability, or committed access", "with published pricing and data handling"], "human", dash=True)
+    s.box(40, 718, 230, 100, "Same-vendor label", ["labels PRs with a Codex or no", "tool trailer; merge commits and", "Hari's own untrailed commits", "are ignored"], "github", dash=True)
+    s.box(300, 718, 240, 100, "Weekly spot-check", ["Hari samples about 5 agent", "merges a week"], "human", dash=True)
+    s.box(570, 718, 240, 100, "Escape-count script", ["counts serious defects the", "cold review should have caught"], "github", dash=True)
+    s.box(840, 718, 330, 100, "Decision to trial the classifier", ["about 50 PRs labelled by spot-checks;", "a measured problem with the gate;", "general availability, or committed access", "with published pricing and data handling"], "human", dash=True)
     for x in (270, 540, 810):
-        s.arrow([(x, 750), (x + 30, 750)])
-    s.legend(822, [("human", "Hari", False), ("claude", "Claude Code", False), ("codex", "Codex", False), ("github", "GitHub", False), ("target", "Hari's target", True), ("plain", "dashed outline = not built yet", True)])
+        s.arrow([(x, 768), (x + 30, 768)])
+    s.legend(840, [("human", "Hari", False), ("claude", "Claude Code", False), ("codex", "Codex", False), ("github", "GitHub", False), ("target", "Hari's target", True), ("plain", "dashed outline = not built yet", True)])
     s.save()
 
 
