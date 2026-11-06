@@ -18,6 +18,7 @@ public sealed class ChartContractTests
         Assert.Collection(properties.GetProperty("scenario_id").GetProperty("enum").EnumerateArray(),
             value => Assert.Equal("A01", value.GetString()),
             value => Assert.Equal("B04", value.GetString()),
+            value => Assert.Equal("B10", value.GetString()),
             value => Assert.Equal("B01", value.GetString()),
             value => Assert.Equal("B03", value.GetString()),
             value => Assert.Equal("B05", value.GetString()),

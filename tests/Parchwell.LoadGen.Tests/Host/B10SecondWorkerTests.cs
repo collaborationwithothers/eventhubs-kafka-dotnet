@@ -80,7 +80,10 @@ public sealed class B10SecondWorkerTests
         Assert.Equal(fixture.Producers[0].Messages[0].Value, fixture.Producers[1].Messages[0].Value);
         Assert.Equal(fixture.Producers[0].Messages[0].Value, fixture.Producers[0].Messages[1].Value);
         Assert.Equal(2, fixture.Store.Completions.Count);
-        Assert.Equal(registration, fixture.Store.Completions[1]);
+        Assert.Equal(BlobProducerRunLifecycle.SerializeCompletion(registration),
+            BlobProducerRunLifecycle.SerializeCompletion(fixture.Store.Completions[1]));
+        Assert.Equal(BlobProducerRunLifecycle.SerializeCompletion(registration),
+            fixture.Store.Objects[registration.CompletionPath]);
         Assert.Equal("complete:pod-second", fixture.Store.Events[^1]);
         foreach (ProducerRunContext context in fixture.Store.Registrations)
         {

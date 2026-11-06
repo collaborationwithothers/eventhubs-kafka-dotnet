@@ -1,7 +1,10 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Publication;
+using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.Run.Restart;
 
@@ -69,9 +72,38 @@ public static class PredecessorEvidenceLoader
         await using (Stream indexStream = await OpenAsync("index.json", cancellationToken).ConfigureAwait(false))
             index = await RunArtifactIndexReader.ReadAsync(indexStream, identity, maximumArtifactBytes, maximumArtifactBytes,
                 maximumAggregateArtifactBytes, cancellationToken).ConfigureAwait(false);
+        RunEvidenceExpectations predecessorExpectations = ForPredecessor(expectations, identity.ClientId);
         // The completion record checked above is the first Job's evidence that its worker exited with 0.
-        return await RunArtifactIndexReader.ReadArtifactSetAsync(index, 0, expectations, PublicationNames, OpenAsync,
+        return await RunArtifactIndexReader.ReadArtifactSetAsync(index, 0, predecessorExpectations, PublicationNames, OpenAsync,
             maximumArtifactBytes, maximumAggregateArtifactBytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static RunEvidenceExpectations ForPredecessor(RunEvidenceExpectations expectations, string predecessorClientId)
+    {
+        var services = new ServiceCollection();
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, options =>
+        {
+            options.NamespaceName = "reader-validation";
+            options.ClientId = predecessorClientId;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        KafkaSettingMetadata clientMetadata = provider.GetRequiredService<KafkaConfigurationFactory>()
+            .CreateLoadGenProducer().Settings.Single(setting => StringComparer.Ordinal.Equals(setting.Key, "client.id"));
+
+        ResolvedRoleConfiguration selected = expectations.ResolvedConfiguration;
+        ResolvedSetting selectedClient = selected.Settings["client.id"];
+        ResolvedRoleConfiguration predecessorRole = selected with
+        {
+            Settings = selected.Settings.SetItem("client.id", selectedClient with
+            {
+                Value = predecessorClientId,
+                Baseline = clientMetadata
+            })
+        };
+
+        return expectations.RequiresIndependentBrokerCoverage
+            ? new RunEvidenceExpectations(predecessorRole, expectations.RequireStatisticsEvidence, expectations.ExpectedBrokerNames)
+            : RunEvidenceExpectations.CaptureOnly(predecessorRole, expectations.RequireStatisticsEvidence);
     }
 
     private static async Task<JsonDocument> ReadRecordAsync(IPredecessorEvidenceSource source, string name, string[] names,
