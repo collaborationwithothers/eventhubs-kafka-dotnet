@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 800" width="1240" height="800" role="img" aria-label="Fresh sessions are created by the control session; they read and write GitHub, which holds issue comments, the state file, pull request receipts, evidence and backup branches." font-family="Segoe UI, Helvetica, Arial, sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A202C"/></marker></defs>
+<rect x="0" y="0" width="1240" height="800" fill="#FFFFFF"/>
+<text x="24" y="30" font-size="19" font-weight="700" fill="#1A202C">How state and context are kept together</text>
+<text x="24" y="50" font-size="13" fill="#4A5568">Every session starts empty. GitHub is the shared memory.</text>
+<rect x="420" y="70" width="400" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="620.0" y="99.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Control session</text>
+<text x="620.0" y="119.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Creates sessions with create_session and</text>
+<text x="620.0" y="135.0" font-size="12.5" text-anchor="middle" fill="#1A202C">messages them with send_message.</text>
+<rect x="120" y="220" width="260" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="250.0" y="249.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Session A: plan</text>
+<text x="250.0" y="269.0" font-size="12.5" text-anchor="middle" fill="#1A202C">fresh context</text>
+<text x="250.0" y="285.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reads a defined list, not the thread</text>
+<rect x="490" y="220" width="260" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="620.0" y="249.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Session B: implement</text>
+<text x="620.0" y="269.0" font-size="12.5" text-anchor="middle" fill="#1A202C">fresh context</text>
+<text x="620.0" y="285.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reads a defined list, not the thread</text>
+<rect x="860" y="220" width="260" height="80" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="990.0" y="249.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Session C: next session</text>
+<text x="990.0" y="269.0" font-size="12.5" text-anchor="middle" fill="#1A202C">fresh context</text>
+<text x="990.0" y="285.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reads a defined list, not the thread</text>
+<path d="M620,150 L620,185 L250,185 L250,220" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,185 L620,220" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,185 L990,185 L990,220" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="430" y="178" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">create_session: prompt names the skill and the issue</text>
+<rect x="60" y="390" width="1120" height="250" rx="10" fill="#F7F8FA" stroke="#D8DEE6"/>
+<text x="100" y="405" font-size="11.5" font-weight="700" fill="#4A5568">GITHUB: THE ONLY SHARED MEMORY</text>
+<rect x="90" y="430" width="198" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="189.0" y="464.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Issue comments</text>
+<text x="189.0" y="484.0" font-size="12.5" text-anchor="middle" fill="#1A202C">plans, plan checks,</text>
+<text x="189.0" y="500.0" font-size="12.5" text-anchor="middle" fill="#1A202C">decisions, handoffs</text>
+<rect x="304" y="430" width="198" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="403.0" y="464.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">State file</text>
+<text x="403.0" y="484.0" font-size="12.5" text-anchor="middle" fill="#1A202C">items/N/state.md:</text>
+<text x="403.0" y="500.0" font-size="12.5" text-anchor="middle" fill="#1A202C">what is in force now</text>
+<rect x="518" y="430" width="198" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="617.0" y="464.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">PR and receipt</text>
+<text x="617.0" y="484.0" font-size="12.5" text-anchor="middle" fill="#1A202C">description, review</text>
+<text x="617.0" y="500.0" font-size="12.5" text-anchor="middle" fill="#1A202C">reports, linked evidence</text>
+<rect x="732" y="430" width="198" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="831.0" y="464.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Evidence folders</text>
+<text x="831.0" y="484.0" font-size="12.5" text-anchor="middle" fill="#1A202C">results, logs, pod JSON,</text>
+<text x="831.0" y="500.0" font-size="12.5" text-anchor="middle" fill="#1A202C">verifier counts</text>
+<rect x="946" y="430" width="198" height="90" rx="8" fill="#EEF1F5" stroke="#4A5568" stroke-width="1.6"/>
+<text x="1045.0" y="464.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Backup branch</text>
+<text x="1045.0" y="484.0" font-size="12.5" text-anchor="middle" fill="#1A202C">name-wip: saved work</text>
+<text x="1045.0" y="500.0" font-size="12.5" text-anchor="middle" fill="#1A202C">when a session dies</text>
+<path d="M225,300 L225,390" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="219" y="350" font-size="11.5" text-anchor="end" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">writes</text>
+<path d="M275,390 L275,300" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="281" y="350" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">catch-up read</text>
+<path d="M595,300 L595,390" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="589" y="350" font-size="11.5" text-anchor="end" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">writes</text>
+<path d="M645,390 L645,300" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="651" y="350" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">catch-up read</text>
+<path d="M965,300 L965,390" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="959" y="350" font-size="11.5" text-anchor="end" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">writes</text>
+<path d="M1015,390 L1015,300" fill="none" stroke="#1A202C" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="1021" y="350" font-size="11.5" text-anchor="start" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">catch-up read</text>
+<text x="620" y="580" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">Catch-up: a script lists comment IDs and edit times, then selects the comments the session's role needs.</text>
+<text x="620" y="600" font-size="12" text-anchor="middle" fill="#1A202C" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" stroke-linejoin="round">A session re-checks for new or edited comments before it publishes a plan, pushes or merges.</text>
+<rect x="60" y="665" width="560" height="74" rx="8" fill="#E6F0FB" stroke="#2B6CB0" stroke-width="1.6"/>
+<text x="340.0" y="691.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">Stop hook (where enabled)</text>
+<text x="340.0" y="711.0" font-size="12.5" text-anchor="middle" fill="#1A202C">Blocks a session from ending until it posts a comment starting</text>
+<text x="340.0" y="727.0" font-size="12.5" text-anchor="middle" fill="#1A202C">'**Decision needed:**'; releases after three blocks; unverified in Actions</text>
+<rect x="640" y="665" width="540" height="74" rx="8" fill="#FDECEC" stroke="#C53030" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="910.0" y="691.0" font-size="13.5" font-weight="700" text-anchor="middle" fill="#1A202C">When a session disappears</text>
+<text x="910.0" y="711.0" font-size="12.5" text-anchor="middle" fill="#1A202C">No handoff can be written. Comments and reviewed pushes remain;</text>
+<text x="910.0" y="727.0" font-size="12.5" text-anchor="middle" fill="#1A202C">unpublished work survives only in a backup branch, if one was pushed.</text>
+</svg>
