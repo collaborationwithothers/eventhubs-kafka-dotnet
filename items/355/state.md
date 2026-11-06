@@ -1,6 +1,6 @@
 # State: #355 B10 scenario, admission and smoke
 
-Covers: comment 6678364206; read at 2026-11-06T06:15:51Z. The full child and parent metadata snapshots are retained outside the repository for refresh.
+Covers: comment 6679245795; read at 2026-11-06T07:22:20Z. Child/parent metadata and linked decisions were refreshed before correction-review freeze.
 Parent items: [B10 design](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348), [producer investigation](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [adopted B10 split](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617607468)
 Implementing tool: Codex. Source: [tool assignment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6633648649)
@@ -15,6 +15,7 @@ Decisions in force:
 - Codex may plan and independently check under standing approval, except for plans needing Hari's own approval. Source: [standing-approval amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6633795477)
 - Approve the scoped predecessor identity/chart amendment and fifteen-group cumulative failure cap, retaining eleven prior groups and every other gate. Source: [explicit chat approval recorded on the issue](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6678125827)
 - Approve the second-worker test-only comparison of production completion serialization and stored bytes, retaining the actual captured context and every other assertion. Source: [completion comparison approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6678364206)
+- Approve the exact combined host-check/phase-capacity correction and cap twenty, preserving seventeen groups and the existing review budget. Source: [combined amendment approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/355#issuecomment-6679245795)
 Open questions:
 - None
-Next action: Local acceptance passed: full .NET 9169, Python 307, chart, offline, mirror, whitespace and documentation checks (unchanged-file warnings retained). Cold-review the frozen full authored diff, then publish the tested draft PR from the normal branch and remove its backup. Final-head CI and hosted Codex review must pass before readiness; separate Claude review and Hari workflow merge remain required. All dispatches and smoke remain deferred. Expected outcomes and later main C5 acceptance remain successor work.
+Next action: Combined correction implemented and local acceptance passed: full .NET 9177 without skips, verifier selection 295, original producer capacity 3, Python 307, published hosts, chart69/51, strict offline, docs/mirror/whitespace. Complete focused correction review against bc1a670, then update draft PR 393 and remove its backup after the normal push. Cumulative review usage before that round is one comprehensive/zero focused; failure count eighteen of twenty. Final-head CI/hosted review must pass before readiness. Separate Claude review and Hari workflow merge remain required. All dispatches, live smoke, expected outcomes and later main C5 acceptance remain successor work.
