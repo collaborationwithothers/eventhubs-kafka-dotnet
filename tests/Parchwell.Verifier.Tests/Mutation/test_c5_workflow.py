@@ -1428,6 +1428,67 @@ class DiagnosticCollectorTests(unittest.TestCase):
         self.assertIn('synthetic snapshot write', errors.getvalue())
 
 
+    def related_pid(self, number, parent, session):
+        root = self.pid(number)
+        fields = ['S'] + ['0'] * 18 + ['12345']
+        fields[1], fields[3] = str(parent), str(session)
+        (root / 'stat').write_text(f'{number} (synthetic (name)) ' + ' '.join(fields))
+        return root
+
+    def test_crowded_process_sample_prioritizes_roots_descendants_and_orphaned_session(self):
+        for number in range(1, 71): self.pid(number)
+        self.related_pid(9000, 1, 8000)
+        self.related_pid(9100, 9000, 9100)
+        self.related_pid(9101, 9100, 9100)
+        self.related_pid(9102, 9101, 9100)
+        self.related_pid(9103, 1, 9100)
+        with patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow, 'PROC_PID_LIMIT', 5):
+            value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+        self.assertEqual([9000, 9100, 9101, 9102, 9103], [p['pid'] for p in value['processes']])
+        selection = value['process_selection']
+        self.assertEqual('launcher_then_child_then_related_then_other_pids', selection['rule'])
+        self.assertEqual('observed_parent_chain_or_child_session', selection['related_by'])
+        self.assertEqual([9000, 9100, 9101, 9102, 9103], selection['selected_pids'])
+        self.assertEqual(selection['selected_pids'], selection['selected_related_pids'])
+        self.assertEqual([], selection['unobserved_seed_pids'])
+        self.assertTrue(selection['scan_complete'])
+        self.assertTrue(any(g['reason'] == 'PID limit reached' for g in value['gaps']))
+        for limit, expected in ((1, [9000]), (2, [9000, 9100]), (3, [9000, 9100, 9101])):
+            with self.subTest(limit=limit), patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow, 'PROC_PID_LIMIT', limit):
+                value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+            self.assertEqual(expected, [p['pid'] for p in value['processes']])
+
+    def test_bounded_scan_still_samples_known_roots_beyond_directory_prefix(self):
+        self.pid(1)
+        self.related_pid(9000, 1, 8000)
+        self.related_pid(9100, 9000, 9100)
+        actual_scandir = os.scandir
+        @contextlib.contextmanager
+        def ordered_scandir(path):
+            with actual_scandir(path) as entries:
+                yield iter(sorted(entries, key=lambda entry: int(entry.name))) if Path(path) == self.proc else entries
+        with patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow.os, 'scandir', ordered_scandir), patch.object(workflow, 'PROC_SCAN_LIMIT', 1):
+            value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+        self.assertEqual(1, value['proc_entries_inspected'])
+        self.assertEqual([1, 9000, 9100], [p['pid'] for p in value['processes']])
+        self.assertEqual([9000, 9100], value['process_selection']['selected_related_pids'])
+        self.assertFalse(value['process_selection']['scan_complete'])
+        self.assertTrue(any(g['reason'] == 'directory scan limit reached' for g in value['gaps']))
+
+    def test_unobserved_roots_and_empty_proc_do_not_claim_process_exit(self):
+        with patch.object(workflow.os, 'getpid', return_value=9000):
+            value = self.collect()
+        self.assertEqual([], value['processes'])
+        self.assertEqual([9000, 99], value['process_selection']['unobserved_seed_pids'])
+        self.assertIn('absence does not establish process exit', value['process_selection']['coverage'])
+        self.pid(42)
+        with patch.object(workflow.os, 'getpid', return_value=9000):
+            value = self.collect()
+        self.assertEqual([42], value['process_selection']['selected_pids'])
+        self.assertEqual([], value['process_selection']['selected_related_pids'])
+        self.assertEqual([9000, 99], value['process_selection']['unobserved_seed_pids'])
+
+
 class RunnerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

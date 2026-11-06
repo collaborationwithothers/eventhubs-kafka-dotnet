@@ -153,6 +153,19 @@ def mapping_count(path: Path) -> dict:
             "complete": complete}
 
 
+def process_relationship(path: Path) -> dict:
+    data, complete = bounded_read(path, STAT_BYTE_LIMIT)
+    if not complete:
+        return {"start_time": {"complete": False, "status": "truncated"}, "complete": False}
+    # comm is parenthesized and may itself contain spaces or parentheses.
+    fields = data.decode("utf-8").rsplit(")", 1)[1].split()
+    token, parent, session = fields[19], fields[1], fields[3]
+    if not all(value.isdecimal() for value in (token, parent, session)):
+        raise ValueError("malformed process identity fields")
+    return {"start_time": {"token": token, "complete": True},
+            "parent_pid": int(parent), "session_id": int(session), "complete": True}
+
+
 def collect_resources(cwd: Path, directory: Path, phase: str, child_pid: int | None) -> dict:
     result = {"purpose": "diagnostic_only", "phase": phase, "observed_at_utc": utc_now(),
               "launcher_pid": os.getpid(), "child_pid": child_pid, "processes": [], "gaps": []}
@@ -167,42 +180,67 @@ def collect_resources(cwd: Path, directory: Path, phase: str, child_pid: int | N
             result["gaps"].append({"component": name, "reason": f"{type(error).__name__}: {error}"})
             return {"status": "unavailable"}
 
-    pids = []
+    pids = set()
     inspected = 0
+    scan_complete = True
     try:
         with os.scandir(PROC_ROOT) as entries:
             for entry in entries:
                 inspected += 1
                 if entry.name.isascii() and entry.name.isdecimal() and entry.is_dir(follow_symlinks=False):
-                    pids.append(int(entry.name))
-                    if len(pids) == PROC_PID_LIMIT:
-                        result["gaps"].append({"component": "processes", "reason": "PID limit reached"})
-                        break
+                    pids.add(int(entry.name))
                 if inspected == PROC_SCAN_LIMIT:
                     result["gaps"].append({"component": "processes", "reason": "directory scan limit reached"})
+                    scan_complete = False
                     break
         result["proc_status"] = "sampled"
     except OSError as error:
+        scan_complete = False
         result["proc_status"] = "unavailable"
         result["gaps"].append({"component": "processes", "reason": f"{type(error).__name__}: {error}"})
     result["proc_entries_inspected"] = inspected
-    for pid in sorted(pids):
+    seeds = [result["launcher_pid"], *([] if child_pid is None else [child_pid])]
+    # Known roots get direct lookups even when the bounded scan ends before them.
+    for pid in seeds:
+        try:
+            if (PROC_ROOT / str(pid)).is_dir():
+                pids.add(pid)
+        except OSError as error:
+            result["gaps"].append({"component": f"{pid}/selection", "reason": str(error)})
+    relationships = {pid: component(f"{pid}/stat", lambda pid=pid: process_relationship(PROC_ROOT / str(pid) / "stat"))
+                     for pid in sorted(pids)}
+    children = {}
+    for pid, relationship in relationships.items():
+        children.setdefault(relationship.get("parent_pid"), []).append(pid)
+    related = set(seeds)
+    related.update(pid for pid, relationship in relationships.items()
+                   if child_pid is not None and relationship.get("session_id") == child_pid)
+    pending = list(related)
+    for parent in pending:
+        for pid in children.get(parent, []):
+            if pid not in related:
+                related.add(pid)
+                pending.append(pid)
+    def priority(pid):
+        return (0 if pid == seeds[0] else 1 if pid == child_pid else 2 if pid in related else 3, pid)
+    selected = sorted(sorted(pids, key=priority)[:PROC_PID_LIMIT])
+    if len(pids) >= PROC_PID_LIMIT:
+        result["gaps"].append({"component": "processes", "reason": "PID limit reached"})
+    result["process_selection"] = {
+        "rule": "launcher_then_child_then_related_then_other_pids",
+        "related_by": "observed_parent_chain_or_child_session",
+        "scan_complete": scan_complete, "candidate_count": len(pids),
+        "sample_limit": PROC_PID_LIMIT, "selected_pids": selected,
+        "selected_related_pids": [pid for pid in selected if pid in related],
+        "unobserved_seed_pids": [pid for pid in seeds if pid not in pids],
+        "coverage": "Bounded boundary sample; absence does not establish process exit or complete process coverage.",
+    }
+    for pid in selected:
         root = PROC_ROOT / str(pid)
+        relationship = relationships[pid]
         item = {"pid": pid}
         item["status"] = component(f"{pid}/status", lambda: resource_fields(root / "status", STATUS_BYTE_LIMIT, PROCESS_FIELDS))
-
-        def start_time():
-            data, complete = bounded_read(root / "stat", STAT_BYTE_LIMIT)
-            if not complete:
-                return {"complete": False, "status": "truncated"}
-            # comm is parenthesized and may itself contain spaces or parentheses.
-            fields = data.decode("utf-8").rsplit(")", 1)[1].split()
-            token = fields[19]
-            if not token.isdecimal():
-                raise ValueError("malformed process start-time token")
-            return {"token": token, "complete": True}
-
-        item["start_time"] = component(f"{pid}/stat", start_time)
+        item["start_time"] = relationship.get("start_time", {"status": "unavailable"})
         item["file_descriptors"] = component(f"{pid}/fd", lambda: descriptor_count(root / "fd"))
         item["memory_mappings"] = component(f"{pid}/maps", lambda: mapping_count(root / "maps"))
         result["processes"].append(item)
