@@ -424,22 +424,28 @@ public sealed class B10SweepHandlerTests
                 var sweep=new B10SweepLine(1,"B10",result.Options.ConfigurationId!,result.Options.RunId!,phase,result.Options.SourceCommit!,
                     "document-events",[new PartitionHigh(0,result.TotalRecords)],capture,capture,capture.AddSeconds(-1),1000);
                 result.Verifier[PhasePaths.SweepLine(result.Options.RunId!,phase)]=B10SweepEvidenceCodec.WriteSweepLine(sweep);
-                result.Kafka.Poll=result.Kafka.Refresh;
+                // Capacity scans keep fake time fixed, so only initial token installation needs a callback.
+                result.Kafka.Poll=fullPhaseVolume
+                    ?()=>{result.Kafka.Refresh();result.Kafka.Poll=null;}
+                    :result.Kafka.Refresh;
                 result.Kafka.Query=_=>new WatermarkOffsets(0,result.TotalRecords);
                 result.Kafka.Position=_=>new Offset(result.position);
                 result.Kafka.Assign=partitions=>{result.position=partitions.Single().Offset.Value;result.assigned=true;result.Assignments++;};
+                long[] capacityRawBytes=fullPhaseVolume?result.capacityRecords.Select(RawBytes).ToArray():[];
                 result.Kafka.ReadRecord=()=>
                 {
                     if(!result.assigned||result.position>=result.TotalRecords)return null;
                     ConsumeResult<byte[],byte[]> record;
                     if(fullPhaseVolume)
                     {
-                        record=result.capacityRecords[(int)(result.position/CapacityCopiesPerOwner)];
+                        int owner=(int)(result.position/CapacityCopiesPerOwner);
+                        record=result.capacityRecords[owner];
                         record.Offset=result.position++;
+                        // Only the offset changes; key, value and headers keep their template byte size.
+                        result.ConsumedBytes+=capacityRawBytes[owner];
                     }
                     else record=result.records[(int)result.position++];
                     result.RecordsRead++;
-                    if(fullPhaseVolume)result.ConsumedBytes+=RawBytes(record);
                     result.AfterRecord?.Invoke();return record;
                 };
                 result.Kafka.AdminDispose=()=>result.Events.Add("admin-dispose");result.Kafka.ConsumerDispose=()=>result.Events.Add("consumer-dispose");

@@ -21,7 +21,8 @@ namespace Parchwell.Verifier.VerifyRun;
 /// <summary>Authenticates immutable B10 repeat evidence and classifies one bounded phase-wide sweep.</summary>
 internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
     VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore,
-    VerifierCompletionState? completion=null, ILogger<B10SweepHandler>? logger=null) : IVerifierModeHandler
+    VerifierCompletionState? completion=null, ILogger<B10SweepHandler>? logger=null,
+    B10LateObservationProjector? projectObservation=null) : IVerifierModeHandler
 {
     public VerifierMode Mode=>VerifierMode.B10Sweep;
 
@@ -85,9 +86,10 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
                     repeat.Status=judgement.Valid?VerifierResultStatus.CompleteValid:VerifierResultStatus.Invalid;
                     repeat.Reasons=judgement.Reasons;
                     if(judgement.Valid&&logger is not null)
-                        repeat.Observation=B10LateObservationDiagnostics.TryProject(repeat.Number,
-                            repeat.Producers.Select(p=>p.Identity.InstanceId).ToArray(),windows.Original,windows.Late,late,
-                            repeats.Select(r=>new B10LateObservationWindow(r.Number,r.Result!.StartLine!,r.Result.EndLine!)).ToArray());
+                    {
+                        repeat.ObservationWindows=windows;
+                        repeat.LateRecords=late;
+                    }
                 }
                 scanComplete=true;
 
@@ -134,8 +136,22 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
         completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.B10SweepCompletion(options.RunId!,options.Phase!),PhaseWireCodec.WriteReceipt(receipt));
         if(logger is not null)
             foreach(RepeatInput repeat in repeats)
+            {
+                // Projection is diagnostic work: scans, their timer and cleanup have already finished.
+                if(repeat.ObservationWindows is { } windows&&repeat.LateRecords is { } late)
+                {
+                    try
+                    {
+                        repeat.Observation=(projectObservation??B10LateObservationDiagnostics.TryProject)(repeat.Number,
+                            repeat.Producers.Select(p=>p.Identity.InstanceId).ToArray(),windows.Original,windows.Late,late,
+                            repeats.Select(r=>new B10LateObservationWindow(r.Number,r.Result!.StartLine!,r.Result.EndLine!)).ToArray());
+                    }
+                    catch(Exception) { repeat.Observation=null; }
+                }
                 B10LateObservationDiagnostics.Write(logger,options.RunId!,options.Phase!,repeat.Number,
                     scanComplete&&repeat.Final,repeat.Observation);
+                repeat.LateRecords=null;
+            }
         return exit;
 
         async Task ReadRepeat(RepeatInput input,IReadOnlyList<ProducerRegistration> producers)
@@ -317,6 +333,8 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
         internal VerifierResultStatus Status { get; set; }=VerifierResultStatus.Incomplete;
         internal OutcomeCounts? Counts { get; set; }
         internal B10LateObservation? Observation { get; set; }
+        internal B10SweepWindows? ObservationWindows { get; set; }
+        internal IReadOnlyList<ConsumedRecord>? LateRecords { get; set; }
         internal IReadOnlyList<string> Reasons { get; set; }=[];
     }
 }
