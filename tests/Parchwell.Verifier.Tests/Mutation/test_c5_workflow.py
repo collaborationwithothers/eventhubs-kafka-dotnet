@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import unittest
+from collections import namedtuple
 from unittest.mock import patch
 
 import c5_workflow as workflow
@@ -37,6 +38,8 @@ WORKLOAD = "VerifyRun/A01/WorkloadRecorder.cs"
 STATIC_SOURCE = SOURCE + b"    private static readonly int[] A=[1];\n"
 MUTATE_FILTER = "Removed by mutate filter"
 STATIC_PHASE = b"    private static readonly int[] A=[1];\n    bool B() => true;\n"
+STATIC_PHASE_TWO = b"    private static readonly int[] A=[1];\n    private static readonly int[] C=[2];\n    bool B() => true;\n"
+RPC_BYTES = b"Synthetic assertion\nSynthetic stack\ntime.duration-ms: 55\n"
 
 
 def digest(path):
@@ -1134,6 +1137,9 @@ if mode == 'config':
 if mode.startswith('static'):
     mutate = json.loads(args.config_file.read_text())['stryker-config']['mutate']
     isolated = '{' in mutate[0]
+    (args.output / 'logs/test-servers').mkdir(parents=True)
+    (args.output / 'logs/test-servers/rpc-synthetic.log').write_bytes(b'Synthetic assertion\nSynthetic stack\ntime.duration-ms: 55\n')
+    (args.output / 'logs/log.txt').write_text('synthetic log')
     if (mode == 'static-main-fails' and not isolated) or (mode == 'static-isolated-fails' and isolated):
         sys.exit(1)
     target = root / 'src/Parchwell.Verifier/Judge/PhaseJudge.cs'
@@ -1147,11 +1153,13 @@ if mode.startswith('static'):
     report = {'schemaVersion': '2', 'projectRoot': str(root / 'src/Parchwell.Verifier'), 'files': {str(target): {
         'language': 'cs', 'source': target.read_text(),
         'mutants': [located('1', not isolated, 2, 17, 21, False), located('2', isolated, 1, 37, 40, True)]}}}
+    if mode == 'static-two':
+        report['files'][str(target)]['mutants'] = [located('1', not isolated, 3, 17, 21, False),
+            located('2', '{36..39}' in mutate[0], 1, 37, 40, True),
+            located('3', '{77..80}' in mutate[0], 2, 37, 40, True)]
     path = args.output / 'reports/mutation-report.json'
     path.parent.mkdir(parents=True)
     path.write_text('{}' if mode == 'static-bad-report' else json.dumps(report))
-    (args.output / 'logs').mkdir()
-    (args.output / 'logs/log.txt').write_text('synthetic log')
     sys.exit(0)
 if mode == 'no-report':
     sys.exit(0)
@@ -1203,6 +1211,282 @@ class ProjectionTests(unittest.TestCase):
                 manifest[field] = {} if field != "disabled" else []
                 with self.subTest(empty=field), self.assertRaises(ValueError):
                     projection.validate(manifest, root / "projection-src", workflow.SHARDS["phase"], original)
+
+
+class DiagnosticCollectorTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+        self.proc = self.root / 'proc'
+        self.proc.mkdir()
+        self.output = self.root / 'output'
+        self.output.mkdir()
+        self.addCleanup(patch.stopall)
+        patch.object(workflow, 'PROC_ROOT', self.proc).start()
+
+    def rpc(self, name='rpc-synthetic.log', data=RPC_BYTES):
+        source = self.output / 'stryker/logs/test-servers'
+        source.mkdir(parents=True, exist_ok=True)
+        path = source / name
+        path.write_bytes(data)
+        return path
+
+    def retain(self):
+        workflow.diagnostic(workflow.retain_test_server_logs, self.output)
+        return json.loads((self.output / 'diagnostics/test-server-logs.json').read_text())
+
+    def fresh_output(self):
+        self.output = self.root / ('output-' + str(len(list(self.root.iterdir()))))
+        self.output.mkdir()
+
+    def test_rpc_bytes_and_selection_are_retained_without_rewriting_originals(self):
+        source = self.rpc()
+        self.rpc('other.log', b'not selected')
+        folder = source.parent / 'rpc-directory.log'
+        folder.mkdir()
+        (source.parent / 'rpc-link.log').symlink_to(source)
+        os.mkfifo(source.parent / 'rpc-fifo.log')
+        index = self.retain()
+        self.assertEqual('diagnostic_only', index['purpose'])
+        self.assertEqual('available', index['status'])
+        self.assertEqual(RPC_BYTES, source.read_bytes())
+        self.assertEqual(RPC_BYTES, (self.output / 'test-server-logs/rpc-synthetic.log').read_bytes())
+        self.assertEqual([{'source': 'stryker/logs/test-servers/rpc-synthetic.log',
+                          'retained': 'test-server-logs/rpc-synthetic.log',
+                          'source_bytes': len(RPC_BYTES), 'retained_bytes': len(RPC_BYTES)}], index['files'])
+        self.assertEqual({'rpc-directory.log', 'rpc-link.log', 'rpc-fifo.log'}, {v['component'] for v in index['gaps']})
+        self.assertFalse((self.output / 'test-server-logs/other.log').exists())
+
+    def test_absent_and_symlink_source_directories_record_gaps(self):
+        index = self.retain()
+        self.assertEqual('unavailable', index['status'])
+        self.assertEqual([], index['files'])
+        self.assertTrue(index['gaps'])
+        self.fresh_output()
+        source = self.output / 'stryker/logs/test-servers'
+        source.parent.mkdir(parents=True)
+        source.symlink_to(self.root, target_is_directory=True)
+        index = self.retain()
+        self.assertEqual('unavailable', index['status'])
+        self.assertIn('symlink', index['gaps'][0]['reason'])
+
+    def test_rpc_file_bytes_below_at_above_bound_and_growth(self):
+        for size in (3, 4, 5):
+            with self.subTest(size=size), patch.object(workflow, 'LOG_BYTE_LIMIT', 4):
+                self.fresh_output()
+                self.rpc(data=b'x' * size)
+                index = self.retain()
+                self.assertEqual(1 if size <= 4 else 0, len(index['files']))
+                self.assertEqual(size > 4, bool(index['gaps']))
+        self.fresh_output()
+        self.rpc(data=b'xxxxx')
+        metadata = namedtuple('Metadata', 'st_mode st_size')(0o100600, 0)
+        with patch.object(workflow, 'LOG_BYTE_LIMIT', 4), patch.object(workflow.os, 'fstat', return_value=metadata):
+            index = self.retain()
+        self.assertEqual([], index['files'])
+        self.assertIn('grew beyond', index['gaps'][0]['reason'])
+
+    def test_rpc_total_file_count_and_directory_scan_limits(self):
+        for total in (3, 4, 5):
+            with self.subTest(total=total), patch.object(workflow, 'LOG_TOTAL_LIMIT', 4):
+                self.fresh_output()
+                self.rpc('rpc-a.log', b'xx')
+                self.rpc('rpc-b.log', b'x' * (total - 2))
+                index = self.retain()
+                self.assertEqual(2 if total <= 4 else 1, len(index['files']))
+                self.assertEqual(total > 4, bool(index['gaps']))
+        for count in (1, 2, 3):
+            with self.subTest(count=count), patch.object(workflow, 'LOG_FILE_LIMIT', 2):
+                self.fresh_output()
+                for number in range(count):
+                    self.rpc(f'rpc-{number}.log', b'x')
+                index = self.retain()
+                self.assertEqual(min(count, 2), len(index['files']))
+                self.assertEqual(count > 2, bool(index['gaps']))
+            with self.subTest(scan=count), patch.object(workflow, 'LOG_SCAN_LIMIT', 2):
+                self.fresh_output()
+                for number in range(count):
+                    self.rpc(f'rpc-{number}.log', b'x')
+                index = self.retain()
+                self.assertEqual(min(count, 2), index['entries_inspected'])
+                self.assertEqual(count >= 2, bool(index['gaps']))
+
+    def test_copy_read_write_and_index_errors_are_diagnostic(self):
+        for error in (PermissionError('synthetic denied'), FileNotFoundError('synthetic disappeared')):
+            with self.subTest(error=type(error).__name__):
+                self.fresh_output()
+                self.rpc()
+                with patch.object(workflow.os, 'open', side_effect=error):
+                    index = self.retain()
+                self.assertEqual([], index['files'])
+                self.assertIn(str(error), index['gaps'][0]['reason'])
+        self.fresh_output()
+        self.rpc()
+        original = Path.open
+        def failing_write(path, *args, **kwargs):
+            if path.parent.name == 'test-server-logs':
+                raise OSError('synthetic write error')
+            return original(path, *args, **kwargs)
+        with patch.object(Path, 'open', failing_write):
+            index = self.retain()
+        self.assertEqual([], index['files'])
+        self.assertIn('synthetic write error', index['gaps'][0]['reason'])
+        self.fresh_output()
+        self.rpc()
+        with patch.object(workflow, 'write_json', side_effect=OSError('synthetic index error')), contextlib.redirect_stderr(io.StringIO()) as errors:
+            workflow.diagnostic(workflow.retain_test_server_logs, self.output)
+        self.assertEqual(1, len(errors.getvalue().splitlines()))
+        self.assertIn('synthetic index error', errors.getvalue())
+
+    def pid(self, number=42):
+        root = self.proc / str(number)
+        root.mkdir(exist_ok=True)
+        (root / 'status').write_text('Name:\tsynthetic\nState:\tS (sleeping)\nPPid:\t1\nVmSize:\t200 kB\nVmRSS:\t100 kB\nVmData:\t30 kB\nVmSwap:\t0 kB\nThreads:\t2\nFDSize:\t64\nIgnored:\tsecret\n')
+        (root / 'stat').write_text(f'{number} (synthetic (name)) ' + ' '.join(['S'] + ['0'] * 18 + ['12345']))
+        (root / 'fd').mkdir(exist_ok=True)
+        for fd in ('0', '1'):
+            (root / 'fd' / fd).touch()
+        (root / 'maps').write_bytes(b'map-a\nmap-b\n')
+        return root
+
+    def collect(self):
+        Usage = namedtuple('Usage', 'total used free')
+        with patch.object(workflow.shutil, 'disk_usage', return_value=Usage(1000, 300, 700)):
+            return workflow.collect_resources(self.root, self.output, 'before', 99)
+
+    def test_resource_snapshot_fixed_values_and_no_sensitive_inputs(self):
+        self.pid()
+        (self.proc / 'meminfo').write_text('MemTotal: 1000 kB\nMemFree: 50 kB\nMemAvailable: 100 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\nSecret: hidden\n')
+        value = self.collect()
+        self.assertEqual(('diagnostic_only', 'before', 99), (value['purpose'], value['phase'], value['child_pid']))
+        self.assertEqual([], value['gaps'])
+        [process] = value['processes']
+        self.assertEqual(42, process['pid'])
+        self.assertEqual({'token': '12345', 'complete': True}, process['start_time'])
+        self.assertEqual({'count': 2, 'complete': True}, process['file_descriptors'])
+        self.assertEqual({'count': 2, 'complete': True}, process['memory_mappings'])
+        self.assertEqual('100 kB', process['status']['fields']['VmRSS'])
+        self.assertEqual('1000 kB', value['memory']['fields']['MemTotal'])
+        self.assertEqual({'total_bytes': 1000, 'used_bytes': 300, 'free_bytes': 700}, value['disk']['working'])
+        for excluded in ('secret', 'hidden', 'map-a', 'map-b', 'cmdline', 'environ'):
+            self.assertNotIn(excluded, json.dumps(value))
+
+    def test_missing_malformed_and_inaccessible_components_record_individual_gaps(self):
+        root = self.pid()
+        (root / 'status').write_text('Name: synthetic\nPPid: wrong\nThreads\n')
+        (root / 'stat').write_text('malformed')
+        (root / 'maps').unlink()
+        value = self.collect()
+        [process] = value['processes']
+        self.assertEqual(['malformed field: PPid', 'malformed field: Threads'], process['status']['errors'])
+        self.assertEqual('unavailable', process['start_time']['status'])
+        self.assertEqual('unavailable', process['memory_mappings']['status'])
+        self.assertTrue({'42/stat', '42/maps', 'meminfo'} <= {g['component'] for g in value['gaps']})
+        with patch.object(workflow, 'resource_fields', side_effect=PermissionError('synthetic permission')):
+            value = self.collect()
+        self.assertEqual('unavailable', value['processes'][0]['status']['status'])
+        with patch.object(workflow, 'PROC_ROOT', self.root / 'absent-proc'):
+            value = self.collect()
+        self.assertEqual('unavailable', value['proc_status'])
+        self.assertEqual([], value['processes'])
+
+    def test_fd_maps_and_read_byte_boundaries_are_explicit(self):
+        root = self.pid()
+        for count in (1, 2, 3):
+            with self.subTest(fd=count), tempfile.TemporaryDirectory() as directory, patch.object(workflow, 'FD_ENTRY_LIMIT', 2):
+                path = Path(directory)
+                for number in range(count): (path / str(number)).touch()
+                self.assertEqual({'count': min(count, 2), 'complete': count < 2}, workflow.descriptor_count(path))
+        for length in (3, 4, 5):
+            with self.subTest(maps=length), patch.object(workflow, 'MAPS_BYTE_LIMIT', 4):
+                (root / 'maps').write_bytes(b'x\n' + b'x' * (length - 2))
+                self.assertEqual(length < 4, workflow.mapping_count(root / 'maps')['complete'])
+            with self.subTest(read=length):
+                (root / 'status').write_bytes(b'x' * length)
+                data, complete = workflow.bounded_read(root / 'status', 4)
+                self.assertEqual(min(length, 4), len(data))
+                self.assertEqual(length <= 4, complete)
+
+    def test_process_and_scan_limits_and_snapshot_write_failures(self):
+        for count in (1, 2, 3):
+            with self.subTest(count=count):
+                self.proc = self.root / f'proc-{count}'
+                self.proc.mkdir()
+                for number in range(count, 0, -1): self.pid(number)
+                with patch.object(workflow, 'PROC_ROOT', self.proc), patch.object(workflow, 'PROC_PID_LIMIT', 2):
+                    value = self.collect()
+                self.assertEqual(min(count, 2), len(value['processes']))
+                self.assertEqual(sorted(p['pid'] for p in value['processes']), [p['pid'] for p in value['processes']])
+                self.assertEqual(count >= 2, any(g['reason'] == 'PID limit reached' for g in value['gaps']))
+                with patch.object(workflow, 'PROC_ROOT', self.proc), patch.object(workflow, 'PROC_SCAN_LIMIT', 2):
+                    value = self.collect()
+                self.assertEqual(min(count, 2), value['proc_entries_inspected'])
+                self.assertEqual(count >= 2, any(g['reason'] == 'directory scan limit reached' for g in value['gaps']))
+        with patch.object(workflow, 'collect_resources', return_value={'purpose': 'diagnostic_only'}), patch.object(workflow, 'write_json', side_effect=OSError('synthetic snapshot write')), contextlib.redirect_stderr(io.StringIO()) as errors:
+            workflow.diagnostic(workflow.capture_resources, self.root, self.output, 'before', None)
+        self.assertIn('synthetic snapshot write', errors.getvalue())
+
+
+    def related_pid(self, number, parent, session):
+        root = self.pid(number)
+        fields = ['S'] + ['0'] * 18 + ['12345']
+        fields[1], fields[3] = str(parent), str(session)
+        (root / 'stat').write_text(f'{number} (synthetic (name)) ' + ' '.join(fields))
+        return root
+
+    def test_crowded_process_sample_prioritizes_roots_descendants_and_orphaned_session(self):
+        for number in range(1, 71): self.pid(number)
+        self.related_pid(9000, 1, 8000)
+        self.related_pid(9100, 9000, 9100)
+        self.related_pid(9101, 9100, 9100)
+        self.related_pid(9102, 9101, 9100)
+        self.related_pid(9103, 1, 9100)
+        with patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow, 'PROC_PID_LIMIT', 5):
+            value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+        self.assertEqual([9000, 9100, 9101, 9102, 9103], [p['pid'] for p in value['processes']])
+        selection = value['process_selection']
+        self.assertEqual('launcher_then_child_then_related_then_other_pids', selection['rule'])
+        self.assertEqual('observed_parent_chain_or_child_session', selection['related_by'])
+        self.assertEqual([9000, 9100, 9101, 9102, 9103], selection['selected_pids'])
+        self.assertEqual(selection['selected_pids'], selection['selected_related_pids'])
+        self.assertEqual([], selection['unobserved_seed_pids'])
+        self.assertTrue(selection['scan_complete'])
+        self.assertTrue(any(g['reason'] == 'PID limit reached' for g in value['gaps']))
+        for limit, expected in ((1, [9000]), (2, [9000, 9100]), (3, [9000, 9100, 9101])):
+            with self.subTest(limit=limit), patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow, 'PROC_PID_LIMIT', limit):
+                value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+            self.assertEqual(expected, [p['pid'] for p in value['processes']])
+
+    def test_bounded_scan_still_samples_known_roots_beyond_directory_prefix(self):
+        self.pid(1)
+        self.related_pid(9000, 1, 8000)
+        self.related_pid(9100, 9000, 9100)
+        actual_scandir = os.scandir
+        @contextlib.contextmanager
+        def ordered_scandir(path):
+            with actual_scandir(path) as entries:
+                yield iter(sorted(entries, key=lambda entry: int(entry.name))) if Path(path) == self.proc else entries
+        with patch.object(workflow.os, 'getpid', return_value=9000), patch.object(workflow.os, 'scandir', ordered_scandir), patch.object(workflow, 'PROC_SCAN_LIMIT', 1):
+            value = workflow.collect_resources(self.root, self.output, 'after', 9100)
+        self.assertEqual(1, value['proc_entries_inspected'])
+        self.assertEqual([1, 9000, 9100], [p['pid'] for p in value['processes']])
+        self.assertEqual([9000, 9100], value['process_selection']['selected_related_pids'])
+        self.assertFalse(value['process_selection']['scan_complete'])
+        self.assertTrue(any(g['reason'] == 'directory scan limit reached' for g in value['gaps']))
+
+    def test_unobserved_roots_and_empty_proc_do_not_claim_process_exit(self):
+        with patch.object(workflow.os, 'getpid', return_value=9000):
+            value = self.collect()
+        self.assertEqual([], value['processes'])
+        self.assertEqual([9000, 99], value['process_selection']['unobserved_seed_pids'])
+        self.assertIn('absence does not establish process exit', value['process_selection']['coverage'])
+        self.pid(42)
+        with patch.object(workflow.os, 'getpid', return_value=9000):
+            value = self.collect()
+        self.assertEqual([42], value['process_selection']['selected_pids'])
+        self.assertEqual([], value['process_selection']['selected_related_pids'])
+        self.assertEqual([9000, 99], value['process_selection']['unobserved_seed_pids'])
 
 
 class RunnerTests(unittest.TestCase):
@@ -1578,6 +1862,105 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(1, result)
             self.assertEqual("shard time limit reached before mutant 2", receipt["isolation_error"])
             self.assertEqual([], receipt["isolated"])
+
+    def test_rpc_failure_evidence_stays_adjacent_and_failure_is_not_replaced(self):
+        self.commit_target('Judge/PhaseJudge.cs', STATIC_PHASE)
+        result, receipt, output = self.invoke('static-isolated-fails')
+        self.assertEqual(1, result)
+        self.assertEqual('isolated invocation of mutant 2 failed', receipt['isolation_error'])
+        [entry] = receipt['isolated']
+        self.assertEqual(1, entry['child_exit_code'])
+        self.assertIsNone(entry['report_sha256'])
+        self.assertEqual(workflow.ISOLATED_FIELDS, set(entry))
+        self.assertEqual(workflow.RECEIPT_FIELDS, set(receipt))
+        self.assertEqual(['called', 'called'], (self.root / 'calls.txt').read_text().splitlines())
+        self.assertEqual(RPC_BYTES, (output / 'isolated/2/test-server-logs/rpc-synthetic.log').read_bytes())
+        self.assertEqual(RPC_BYTES, (output / 'stryker/logs/isolated-2/test-servers/rpc-synthetic.log').read_bytes())
+        self.assertEqual(b'\xffstdout\n\xfestderr\n', (output / 'isolated/2/command.log').read_bytes())
+        self.assertEqual(digest(output / 'isolated/2/command.log'), entry['command_log_sha256'])
+
+    def test_adjacent_copy_survives_move_failure_and_copy_failure_preserves_result(self):
+        self.commit_target('Judge/PhaseJudge.cs', STATIC_PHASE)
+        with patch.object(workflow.shutil, 'move', side_effect=OSError('synthetic move failure')):
+            result, receipt, output = self.invoke('static', output=self.root / 'move-failure')
+        self.assertEqual(0, result)
+        self.assertIsNone(receipt['isolation_error'])
+        self.assertEqual(RPC_BYTES, (output / 'isolated/2/test-server-logs/rpc-synthetic.log').read_bytes())
+        self.assertEqual(RPC_BYTES, (output / 'isolated/2/stryker/logs/test-servers/rpc-synthetic.log').read_bytes())
+        with patch.object(workflow, 'retain_test_server_logs', side_effect=OSError('synthetic collector failure')), contextlib.redirect_stderr(io.StringIO()):
+            result, receipt, output = self.invoke('static', output=self.root / 'copy-failure')
+        self.assertEqual(0, result)
+        self.assertIsNone(receipt['isolation_error'])
+        self.assertEqual(workflow.ISOLATED_FIELDS, set(receipt['isolated'][0]))
+        self.assertEqual(digest(output / 'isolated/2/command.log'), receipt['isolated'][0]['command_log_sha256'])
+        with patch.object(workflow, 'LOG_BYTE_LIMIT', 1):
+            result, receipt, output = self.invoke('static', output=self.root / 'copy-cap')
+        self.assertEqual(0, result)
+        index = json.loads((output / 'isolated/2/diagnostics/test-server-logs.json').read_text())
+        self.assertEqual([], index['files'])
+        self.assertTrue(index['gaps'])
+
+    def test_successful_static_invocations_have_adjacent_rpc_and_resource_snapshots(self):
+        self.commit_target('Judge/PhaseJudge.cs', STATIC_PHASE)
+        result, receipt, output = self.invoke('static')
+        self.assertEqual(0, result)
+        self.assertEqual(RPC_BYTES, (output / 'isolated/2/test-server-logs/rpc-synthetic.log').read_bytes())
+        self.assertEqual(digest(output / 'command.log'), receipt['command_log_sha256'])
+        for folder in (output, output / 'isolated/2'):
+            for phase in ('before', 'after'):
+                value = json.loads((folder / f'diagnostics/{phase}.json').read_text())
+                self.assertEqual(phase, value['phase'])
+                self.assertEqual('diagnostic_only', value['purpose'])
+                self.assertEqual(phase == 'before', value['child_pid'] is None)
+
+    def test_two_isolated_invocations_keep_snapshot_launch_snapshot_order(self):
+        self.commit_target('Judge/PhaseJudge.cs', STATIC_PHASE_TWO)
+        events = []
+        capture = workflow.capture_resources
+        popen = subprocess.Popen
+        def recording_capture(cwd, directory, phase, child_pid):
+            if directory.parent.name == 'isolated': events.append((directory.name, phase))
+            return capture(cwd, directory, phase, child_pid)
+        def recording_popen(argv, *args, **kwargs):
+            if '--config-file' in argv:
+                config = Path(argv[argv.index('--config-file') + 1])
+                if config.parent.parent.name == 'isolated': events.append((config.parent.name, 'launch'))
+            return popen(argv, *args, **kwargs)
+        with patch.object(workflow, 'capture_resources', recording_capture), patch.object(subprocess, 'Popen', recording_popen):
+            result, receipt, output = self.invoke('static-two')
+        self.assertEqual(0, result)
+        self.assertEqual(['2', '3'], [entry['mutant_id'] for entry in receipt['isolated']])
+        self.assertEqual([('2', 'before'), ('2', 'launch'), ('2', 'after'),
+                          ('3', 'before'), ('3', 'launch'), ('3', 'after')], events)
+        self.assertEqual(['called'] * 3, (self.root / 'calls.txt').read_text().splitlines())
+        for identifier in ('2', '3'):
+            self.assertEqual(RPC_BYTES, (output / f'isolated/{identifier}/test-server-logs/rpc-synthetic.log').read_bytes())
+
+    def test_snapshot_errors_preserve_child_exits_failed_launch_and_timeout_cleanup(self):
+        with patch.object(workflow, 'collect_resources', side_effect=OSError('synthetic collection failure')), contextlib.redirect_stderr(io.StringIO()):
+            for code in (0, 2, 1):
+                result, receipt, output = self.invoke(str(code))
+                self.assertEqual(0 if code in (0, 2) else 1, result)
+                self.assertEqual(code, receipt['child_exit_code'])
+                self.assertIsNone(receipt['termination_reason'])
+                self.assertEqual(b'\xffstdout\n\xfestderr\n', (output / 'command.log').read_bytes())
+                self.assertEqual(digest(output / 'command.log'), receipt['command_log_sha256'])
+            result, receipt, _ = self.invoke(output=self.root / 'missing-collector', command_prefix=[str(self.root / 'missing')])
+            self.assertEqual(1, result)
+            self.assertEqual('launch_failed', receipt['termination_reason'])
+            self.assertIs(receipt['command_completed'], False)
+            result, receipt, output = self.invoke('timeout', timeout=0.5)
+        self.assertEqual(1, result)
+        self.assertEqual('time_cap_exceeded', receipt['termination_reason'])
+        self.assertIs(receipt['command_completed'], False)
+        self.assertEqual(b'\xffstdout\n\xfestderr\n', (output / 'command.log').read_bytes())
+        pid = int((self.root / 'descendant.pid').read_text())
+        try:
+            child_state = Path(f'/proc/{pid}/stat').read_text().split()[2]
+        except FileNotFoundError:
+            child_state = 'exited'
+        self.assertIn(child_state, ('Z', 'exited'))
+        self.assertEqual(['called'] * 4, (self.root / 'calls.txt').read_text().splitlines())
 
     def test_member_boundaries_command_prints_offsets_and_lines(self):
         self.commit_configuration(SOURCE)
