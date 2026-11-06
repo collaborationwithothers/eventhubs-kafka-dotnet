@@ -86,6 +86,17 @@ public sealed class B10LateObservationDiagnosticsTests
     }
 
     [Fact]
+    public void Given_FilteredRecordsAndCoordinateTies_When_Projected_Then_EligibleTiesKeepInputOrder()
+    {
+        B10LateObservation observation=Assert.IsType<B10LateObservation>(Project([
+            Record(7) with {InstanceId="foreign"},Record(3) with {AttemptId=null},
+            Record(4) with {InstanceId="second"},Record(3),Record(4)]));
+        Assert.Equal(2,observation.Total);
+        Assert.Equal([(3L,"first"),(4L,"second")],observation.Samples.Select(s=>(s.Offset,s.InstanceId)));
+        Assert.Equal([new B10LateGroup("first",0,"2",1),new B10LateGroup("second",0,"2",1)],observation.Groups);
+    }
+
+    [Fact]
     public void Given_MultiplePartitionsAndOwners_When_Projected_Then_SamplesSortByPartitionAndOffsetAndGroupsCoverAllRecords()
     {
         RunWindow original=Window(0,3),late=Window(3,10) with {Partitions=[new(0,3,10),new(1,0,10)]};
@@ -204,6 +215,48 @@ public sealed class B10LateObservationDiagnosticsTests
         if(condition=="scan-fails-later")Assert.All(summaries,e=>Assert.Equal(false,e.Fields["observation_complete"]));
     }
 
+    [Theory]
+    [InlineData(-1,false)] [InlineData(0,false)] [InlineData(1,false)]
+    [InlineData(-1,true)] [InlineData(0,true)] [InlineData(1,true)]
+    public async Task Given_DiagnosticProjectionConsumesTheSafetyInterval_When_Swept_Then_ScansAndPublicationAlreadyFinished(
+        int boundaryMilliseconds,bool throws)
+    {
+        using DiagnosticsFixture disabled=await DiagnosticsFixture.Create();
+        using DiagnosticsFixture enabled=await DiagnosticsFixture.Create();
+        var logger=new CaptureLogger();
+        var cancelledDuringProjection=new List<bool>();
+        B10LateObservation? ProjectAfterScan(int repeat,IReadOnlyList<string> owners,RunWindow original,
+            RunWindow late,IReadOnlyList<ConsumedRecord> records,IReadOnlyList<B10LateObservationWindow> windows)
+        {
+            enabled.Events.Add("project");
+            enabled.Kafka.Clock.Advance(checked((int)enabled.Options.SafetyStop!.Value.TotalMilliseconds)+boundaryMilliseconds);
+            cancelledDuringProjection.Add(enabled.KafkaWork.IsCancellationRequested);
+            if(throws)throw new InvalidOperationException("synthetic projection failure");
+            return B10LateObservationDiagnostics.TryProject(repeat,owners,original,late,records,windows);
+        }
+
+        int expected=await disabled.Run(token:TestContext.Current.CancellationToken);
+        Assert.Equal(0,expected);
+        enabled.Projection=ProjectAfterScan;
+        Assert.Equal(expected,await enabled.Run(logger,TestContext.Current.CancellationToken));
+        Assert.Equal(["admin-dispose","consumer-dispose","create"],enabled.Events.Take(3));
+        Assert.Equal(Enumerable.Repeat("project",5),enabled.Events.Skip(3));
+        Assert.Equal(Enumerable.Repeat(false,5),cancelledDuringProjection);
+        Assert.True(enabled.Finalization().ScanComplete);
+        Assert.All(enabled.Finalization().Repeats,r=>Assert.True(r.ClassificationFinal));
+        string finalName=PhasePaths.B10Finalization(enabled.Options.RunId!,"C0");
+        Assert.Equal(disabled.Verifier[finalName],enabled.Verifier[finalName]);
+        foreach(string path in disabled.Verifier.Keys.Where(p=>p.EndsWith("/result.json",StringComparison.Ordinal)))
+            Assert.Equal(disabled.Verifier[path],enabled.Verifier[path]);
+        Captured[] summaries=logger.Events.Where(e=>e.Id.Name=="B10LateObservationSummary").ToArray();
+        Assert.Equal(5,summaries.Length);
+        Assert.All(summaries,e=>
+        {
+            Assert.Equal(!throws,e.Fields["observation_available"]);
+            Assert.Equal(!throws,e.Fields["observation_complete"]);
+        });
+    }
+
     private static ConsumedRecord Record(long offset)=>new("document-events",0,offset,"synthetic-key","first","same-attempt",1,[]);
     private static RunWindow Window(long start,long end)=>new([new(0,start)],new Dictionary<int,long>{{0,end}},[new(0,start,end)],[],true);
     private static B10LateObservationWindow[] Windows()=>[
@@ -246,6 +299,8 @@ public sealed class B10LateObservationDiagnosticsTests
         internal long ReadBytes { get; private set; }
         internal long ListedBytes { get; private set; }
         internal string? LastRead { get; private set; }
+        internal CancellationToken KafkaWork { get; private set; }
+        internal B10LateObservationProjector? Projection { get; set; }
 
         internal static async Task<DiagnosticsFixture> Create(string phase="C0")
         {
@@ -324,7 +379,7 @@ public sealed class B10LateObservationDiagnosticsTests
         }
 
         internal Task<int> Run(ILogger<B10SweepHandler>? logger=null,CancellationToken token=default)=>new B10SweepHandler(Microsoft.Extensions.Options.Options.Create(Options),Kafka.Clock,
-            new VerifierKafkaSessionFactory(_=>Kafka.Session),this,this,Completion,logger).ExecuteAsync(token);
+            new VerifierKafkaSessionFactory(work=>{KafkaWork=work;return Kafka.Session;}),this,this,Completion,logger,Projection).ExecuteAsync(token);
         internal B10Finalization Finalization()=>B10SweepEvidenceCodec.ReadFinalization(Verifier[PhasePaths.B10Finalization(Options.RunId!,Options.Phase!)]);
         internal void Change(string path,Action<JsonObject> change)
         {JsonObject json=JsonNode.Parse(Verifier[path])!.AsObject();change(json);Verifier[path]=Encoding.UTF8.GetBytes(json.ToJsonString());}

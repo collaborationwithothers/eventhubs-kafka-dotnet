@@ -18,6 +18,10 @@ internal sealed record B10LateObservation(long Total, IReadOnlyList<B10LateGroup
     internal long OmittedSamples => Total - Samples.Count;
 }
 
+internal delegate B10LateObservation? B10LateObservationProjector(int sourceRepeat, IReadOnlyList<string> owners,
+    RunWindow original, RunWindow late, IReadOnlyList<ConsumedRecord> records,
+    IReadOnlyList<B10LateObservationWindow> windows);
+
 /// <summary>Projects already reconciled late records without authorizing or changing scientific outcome counts.</summary>
 internal static partial class B10LateObservationDiagnostics
 {
@@ -41,22 +45,23 @@ internal static partial class B10LateObservationDiagnostics
         var groups = new Dictionary<(string Instance, int Partition, string Landing), long>();
         var samples = new List<B10LateLocation>(SampleLimit);
         long total = 0;
-        foreach (ConsumedRecord record in records.OrderBy(r => r.Partition).ThenBy(r => r.Offset))
+        foreach (ConsumedRecord record in records.Where(IsSelected).OrderBy(r => r.Partition).ThenBy(r => r.Offset))
         {
-            if (record.Topic != RunWindow.Topic || record.Problems.Count != 0 || record.InstanceId is null ||
-                record.AttemptId is null || record.Key is null || record.Sequence is null ||
-                !owners.Contains(record.InstanceId, StringComparer.Ordinal) || !Contains(late, record) ||
-                Contains(original, record) || !seen.Add((record.Topic, record.Partition, record.Offset))) continue;
+            if (!seen.Add((record.Topic, record.Partition, record.Offset))) continue;
             string landing = Landing(record);
-            var key = (record.InstanceId, record.Partition, landing);
+            var key = (record.InstanceId!, record.Partition, landing);
             groups[key] = groups.GetValueOrDefault(key) + 1;
             total++;
             if (samples.Count < SampleLimit)
-                samples.Add(new(record.InstanceId, record.AttemptId, record.Partition, record.Offset, landing));
+                samples.Add(new(record.InstanceId!, record.AttemptId!, record.Partition, record.Offset, landing));
         }
         // The fixed owner, partition and landing-label bounds permit at most 384 groups.
         return new(total, groups.OrderBy(g => g.Key.Instance, StringComparer.Ordinal).ThenBy(g => g.Key.Partition)
             .ThenBy(g => g.Key.Landing, StringComparer.Ordinal).Select(g => new B10LateGroup(g.Key.Instance, g.Key.Partition, g.Key.Landing, g.Value)).ToArray(), samples);
+
+        bool IsSelected(ConsumedRecord record) => record.Topic == RunWindow.Topic && record.Problems.Count == 0 &&
+            record.InstanceId is not null && record.AttemptId is not null && record.Key is not null && record.Sequence is not null &&
+            owners.Contains(record.InstanceId, StringComparer.Ordinal) && Contains(late, record) && !Contains(original, record);
 
         string Landing(ConsumedRecord record)
         {

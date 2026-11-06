@@ -104,7 +104,7 @@ The ten longest individual observations (parameter values distinguish theory row
 | `Parchwell.Verifier.Tests.ProbeGate.ProbeGateHostTests.Given_SynchronousBlockedGateRead_When_WatchdogExpires_Then_ProductionHostExits124` | 3.905 |
 | `Parchwell.Verifier.Tests.Host.B10SweepOptionsTests.Given_B10PhaseMode_When_Composed_Then_RegistersItsOwnDependencies(mode: "judge")` | 2.229 |
 
-Attribution uses each PR's first-parent diff, maps changed lines within current test-method bodies, and sums only the matched XML rows. Helper/fixture changes outside those bodies are reported separately and are not falsely charged as newly added test time. The current file contents for these mapped methods have no subsequent modifications at the measured source. This measures present cost, not incremental before/after cost.
+Attribution uses each PR's first-parent diff, maps changed lines within current test-method bodies, and sums only the matched XML rows. Helper/fixture changes outside those bodies are not charged here and are not quantified. The current file contents for these mapped methods have no subsequent modifications at the measured source. This measures present cost, not incremental before/after cost.
 
 | PR | Mapped methods / cases | Current summed seconds | Limits |
 |---|---:|---:|---|
