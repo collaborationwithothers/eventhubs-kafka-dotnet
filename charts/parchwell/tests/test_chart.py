@@ -13,7 +13,7 @@ CHART=ROOT/'charts/parchwell'
 FIXTURE=yaml.safe_load((CHART/'tests/fixture.yaml').read_text())
 LIMITS=json.loads((ROOT/'docs/operations/a01-runtime-limits.json').read_text())
 DEFAULTS=yaml.safe_load((CHART/'values.yaml').read_text())['runtime']['bounds']
-BOUNDS={k:LIMITS[k] for k in ('scenario_parsing','loadgen','verifier_shared','verifier_kafka','verifier_start_line','verifier_verify','verifier_gate')}
+BOUNDS={k:LIMITS[k] for k in ('scenario_parsing','loadgen','verifier_shared','verifier_kafka','verifier_start_line','verifier_verify','verifier_gate','b10_sweep')}
 BOUNDS['execution']={k:LIMITS['execution'][k] for k in ('loadgen_job_seconds','verify_job_seconds','start_line_job_seconds','gate_job_seconds','termination_grace_seconds')}
 
 OPTION_PROPERTY=re.compile(r'^\s+(?:\[[^\]\n]*\]\s*)*public\s+[^\s{}()=]+\s+(\w+)\s*\{([^}\n]*)\}',re.M)
@@ -130,11 +130,13 @@ def expected_environment(d):
           x={'NamespaceName':r['eventhubs']['namespace_name'],'Repeat':repeat,'ExpectedInstanceId':r['loadgen_job_name'],'RepeatPrefix':prefix,'ArtifactPrefix':prefix+'producer/','StartLineOutputName':prefix+'start-line.json','BrokerInventoryOutputName':prefix+'broker-inventory.json','StartLineInputName':prefix+'start-line.json','ResultOutputName':prefix+'result.json'}
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in x.items()})
         section='verifier_start_line' if mode in ('start-line','b10-sweep-line') else 'verifier_verify'
-        expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds'][section].items()})
+        inherited={k:v for k,v in r['bounds'][section].items()
+                   if mode!='b10-sweep' or k not in ('MaxConsumedRecords','MaxConsumedBytes')}
+        expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in inherited.items()})
       else:
         if d['scenario_id']=='B10':
           expected['Verifier__MaxPartitions']=('value',scalar(r['bounds']['verifier_kafka']['MaxPartitions']))
-          expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['b10_sweep'].items()})
+          expected['Verifier__B10SettleIntervalMilliseconds']=('value',scalar(r['bounds']['b10_sweep']['B10SettleIntervalMilliseconds']))
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_gate'].items()})
         p=f"{r['run_id']}/{phase}/"
         expected.update({'Verifier__PhasePrefix':('value',p),'Verifier__CandidateOutputName':('value',p+'candidate.json'),'Verifier__LoadGenImage':('value',r['loadgen_image']),'Verifier__VerifierImage':('value',r['verifier_image'])})
@@ -189,6 +191,9 @@ def main():
     assert DEFAULTS[name]==val
   assert schema['properties']['runtime']['properties']['bounds']['properties']['execution']['const']==BOUNDS['execution']
   assert DEFAULTS['execution']==BOUNDS['execution']
+  assert BOUNDS['b10_sweep']=={'B10SettleIntervalMilliseconds':60000,'MaxConsumedRecords':9300000,'MaxConsumedBytes':429496729600}
+  assert BOUNDS['verifier_verify']['MaxConsumedRecords']==372000
+  assert BOUNDS['verifier_verify']['MaxConsumedBytes']==17179869184
   with tempfile.TemporaryDirectory(prefix='parchwell-chart-') as td:
     td=Path(td)
     positives=list(positive_cases()); assert len(positives)==69
@@ -236,6 +241,14 @@ def main():
           assert names['Verifier__B10LastLoadgenTerminatedUtc']==r['b10_last_loadgen_terminated_utc']
         else:
           assert not {'Verifier__B10LastVerifierCompletedUtc','Verifier__B10LastLoadgenTerminatedUtc'} & names.keys()
+        if r['mode']=='b10-sweep':
+          assert names['Verifier__MaxConsumedRecords']=='9300000'
+          assert names['Verifier__MaxConsumedBytes']=='429496729600'
+        elif r['mode']=='verify':
+          assert names['Verifier__MaxConsumedRecords']=='372000'
+          assert names['Verifier__MaxConsumedBytes']=='17179869184'
+        elif r['mode'] in ('judge','b10-sweep-line'):
+          assert not {'Verifier__MaxConsumedRecords','Verifier__MaxConsumedBytes'} & names.keys()
     base=deepcopy(positives[0])
     negatives=[]
     def mut(fn,source=base):
@@ -290,6 +303,11 @@ def main():
     mut(lambda d:d['runtime']['bounds']['b10_sweep'].update(B10SettleIntervalMilliseconds=None),sweep)
     mut(lambda d:d['runtime'].update(repeat=1),sweep)
     assert len(negatives)==45
+    for key,limit in (('MaxConsumedRecords',9300000),('MaxConsumedBytes',429496729600)):
+      mut(lambda d,key=key:d['runtime']['bounds']['b10_sweep'].update({key:None}),sweep)
+      mut(lambda d,key=key,limit=limit:d['runtime']['bounds']['b10_sweep'].update({key:limit-1}),sweep)
+      mut(lambda d,key=key,limit=limit:d['runtime']['bounds']['b10_sweep'].update({key:limit+1}),sweep)
+    assert len(negatives)==51
     for i,d in enumerate(negatives):
       f=td/f'n{i}.yaml';out=td/f'n{i}.out';with_case(d,f)
       proc=run(['python3','infra/scripts/lifecycle/command.py','120','--stdout-file',str(out),'--max-bytes','4194304','--','helm','template','synthetic',str(CHART),'-f',str(f)])
@@ -303,5 +321,5 @@ def main():
   assert worker_setting_errors('judge',jd|{'Verifier__ScenarioLoadOptions__MaxDepth'})==['unknown_worker_setting:judge:Verifier__ScenarioLoadOptions__MaxDepth']
   try: parse_option_properties('public sealed class X\n{\n    public string A { get; init; }\n}','public sealed class X'); raise AssertionError('init accessor accepted')
   except ValueError as error: assert str(error)=='unsupported_option_property:A'
-  print('chart acceptance passed: 69 positive, 45 negative, 4 worker-setting regressions')
+  print('chart acceptance passed: 69 positive, 51 negative, 4 worker-setting regressions')
 if __name__=='__main__': main()

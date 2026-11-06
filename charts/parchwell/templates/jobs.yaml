@@ -169,17 +169,17 @@ spec:
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ else }}{{ range $key, $value := $r.bounds.verifier_verify }}
+            {{- if not (and (eq $mode "b10-sweep") (has $key (list "MaxConsumedRecords" "MaxConsumedBytes"))) }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
             {{- end }}{{ end }}
             {{- else }}
             {{- if eq $.Values.scenario_id "B10" }}
             - name: Verifier__MaxPartitions
               value: {{ $r.bounds.verifier_kafka.MaxPartitions | quote }}
-            {{- range $key, $value := $r.bounds.b10_sweep }}
-            - name: {{ printf "Verifier__%s" $key | quote }}
-              value: {{ include "parchwell.envValue" $value | quote }}
-            {{- end }}
+            - name: "Verifier__B10SettleIntervalMilliseconds"
+              value: {{ $r.bounds.b10_sweep.B10SettleIntervalMilliseconds | quote }}
             {{- end }}
             {{- range $key, $value := $r.bounds.verifier_gate }}
             - name: {{ printf "Verifier__%s" $key | quote }}
