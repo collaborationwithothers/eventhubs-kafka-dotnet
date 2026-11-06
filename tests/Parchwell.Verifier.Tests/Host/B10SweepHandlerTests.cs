@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Confluent.Kafka;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Phase;
@@ -244,6 +246,74 @@ public sealed class B10SweepHandlerTests
         Assert.Empty(fixture.Created);Assert.False(fixture.Completion.TryGetBlobReceipt(out _,out _,out _));
     }
 
+    [Theory]
+    [InlineData("C0","complete")] [InlineData("C1","complete")]
+    [InlineData("C0","record-count-minus-one")] [InlineData("C1","record-count-minus-one")]
+    [InlineData("C0","actual-byte-count-minus-one")] [InlineData("C1","actual-byte-count-minus-one")]
+    public async Task Given_MaximumAdmittedPhaseVolumeInFinalTail_When_Swept_Then_DeploymentLimitsFitAndActualSubLimitsFail(
+        string phase,string boundary)
+    {
+        using PhaseFixture fixture=await PhaseFixture.Create(phase,fullPhaseVolume:true);
+        Dictionary<string,byte[]> originals=fixture.Verifier.Where(p=>p.Key.EndsWith("/result.json",StringComparison.Ordinal))
+            .ToDictionary(p=>p.Key,p=>p.Value.ToArray());
+        long expectedBytes=fixture.ExpectedCapacityConsumedBytes();
+        Assert.Equal(212505000,expectedBytes);
+        Assert.Equal(9300000,fixture.Options.MaxConsumedRecords);
+        Assert.Equal(429496729600,fixture.Options.MaxConsumedBytes);
+        Assert.True(expectedBytes<fixture.Options.MaxConsumedBytes!.Value);
+        if(boundary=="record-count-minus-one")fixture.Options.MaxConsumedRecords=2324999;
+        if(boundary=="actual-byte-count-minus-one")fixture.Options.MaxConsumedBytes=expectedBytes-1;
+
+        int exit=await fixture.Run(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2325000,fixture.RecordsRead);
+        Assert.Equal(expectedBytes,fixture.ConsumedBytes);
+        Assert.Equal(5,fixture.Assignments);
+        Assert.Equal(["admin-dispose","consumer-dispose","create"],fixture.Events);
+        Assert.Equal(PhasePaths.B10Finalization(fixture.Options.RunId!,phase),Assert.Single(fixture.Created));
+        foreach((string path,byte[] bytes) in originals)Assert.Equal(bytes,fixture.Verifier[path]);
+        B10Finalization finalization=fixture.Finalization();
+        if(boundary=="complete")
+        {
+            Assert.Equal(0,exit);
+            Assert.True(finalization.ScanComplete);
+            Assert.Equal(B10SweepEvidence.ResidualRisk,finalization.ResidualRisk);
+            Assert.Equal(Enumerable.Range(1,5),finalization.Repeats.Select(r=>r.Repeat));
+            Assert.All(finalization.Repeats,r=>
+            {
+                Assert.True(r.ClassificationFinal);
+                Assert.Equal(VerifierResultStatus.CompleteValid,r.Status);
+                Assert.Equal(new OutcomeCounts(0,0,1,1,92999,0),r.Counts);
+            });
+        }
+        else
+        {
+            Assert.Equal(1,exit);
+            AssertFailedScan(finalization);
+        }
+        Assert.False(fixture.Completion.TryGetBlobReceipt(out _,out _,out _));
+        fixture.Completion.MarkReturned(fixture.Options,exit,CancellationToken.None,CancellationToken.None);
+        Assert.True(fixture.Completion.TryGetBlobReceipt(out string container,out string name,out byte[] receiptBytes));
+        Assert.Equal("verifier",container);
+        Assert.Equal(PhasePaths.B10SweepCompletion(fixture.Options.RunId!,phase),name);
+        WorkerReceipt receipt=PhaseWireCodec.ReadReceipt(receiptBytes);
+        Assert.Equal("b10-sweep",receipt.Mode);
+        Assert.True(receipt.CleanupCompleted);
+        Assert.Equal(exit,receipt.HandlerExitCode);
+        Assert.Equal(Reference(fixture.Created[0],fixture.Verifier[fixture.Created[0]]),Assert.Single(receipt.Artifacts));
+        TestContext.Current.TestOutputHelper?.WriteLine($"Synthetic full-phase volume: unique_tail_records=465000; reads={fixture.RecordsRead}; bytes={fixture.ConsumedBytes}; boundary={boundary}");
+    }
+
+    private static (long Records,long Bytes) PhaseCapacityLimits()
+    {
+        DirectoryInfo? root=new(AppContext.BaseDirectory);
+        while(root is not null&&!File.Exists(Path.Combine(root.FullName,"docs/operations/a01-runtime-limits.json")))root=root.Parent;
+        if(root is null)throw new DirectoryNotFoundException("repository_root_not_found");
+        using JsonDocument limits=JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root.FullName,"docs/operations/a01-runtime-limits.json")));
+        JsonElement phase=limits.RootElement.GetProperty("b10_sweep");
+        return(phase.GetProperty("MaxConsumedRecords").GetInt64(),phase.GetProperty("MaxConsumedBytes").GetInt64());
+    }
+
     private static void AssertFailedScan(B10Finalization finalization)
     {
         Assert.False(finalization.ScanComplete);Assert.All(finalization.Repeats,r=>
@@ -253,9 +323,13 @@ public sealed class B10SweepHandlerTests
 
     private sealed class PhaseFixture : IDisposable,IVerifierArtifactStore,IProducerArtifactStore
     {
+        private const int CapacityCopiesPerOwner=93000;
         private long position;
         private bool assigned;
         private readonly List<ConsumeResult<byte[],byte[]>> records=[];
+        private readonly List<ConsumeResult<byte[],byte[]>> capacityRecords=[];
+        private bool capacityMode;
+        private int TotalRecords=>capacityMode?capacityRecords.Count*CapacityCopiesPerOwner:records.Count;
         internal VerifierHostOptions Options { get; private set; }=null!;
         internal KafkaSessionTestSupport Kafka { get; }=new();
         internal VerifierCompletionState Completion { get; }=new();
@@ -266,21 +340,41 @@ public sealed class B10SweepHandlerTests
         internal List<string> Events { get; }=[];
         internal int Assignments { get; private set; }
         internal int RecordsRead { get; private set; }
+        internal long ConsumedBytes { get; private set; }
         internal Action? AfterRecord { get; set; }
         internal long ReadBytes { get; private set; }
         internal long ListedBytes { get; private set; }
         internal string? LastRead { get; private set; }
 
-        internal static async Task<PhaseFixture> Create(string phase="C0",bool secondHasAttempt=false)
+        internal static async Task<PhaseFixture> Create(string phase="C0",bool secondHasAttempt=false,bool fullPhaseVolume=false)
         {
-            var result=new PhaseFixture();
+            var result=new PhaseFixture { capacityMode=fullPhaseVolume };
             try
             {
                 for(int repeat=1;repeat<=5;repeat++)
                 {
-                    using HostEvidenceBuilder fixture=B10SweepFixture.CreateRepeat(repeat,phase,secondHasAttempt);
+                    using HostEvidenceBuilder fixture=B10SweepFixture.CreateRepeat(repeat,phase,secondHasAttempt||fullPhaseVolume);
+                    if(fullPhaseVolume)
+                    {
+                        string secondInstance=repeat==1?"pod-second":$"pod-second-r{repeat}";
+                        B10SweepFixture.ChangeRows(fixture,secondInstance,"ledger.jsonl",row=>
+                        {
+                            row["delivered"]=false;row["error_code"]=-192;
+                            row["error_name"]="Local_MsgTimedOut";row["persistence_status"]=1;
+                        });
+                        B10SweepFixture.ChangePayload(fixture,secondInstance,"manifest.json",manifest=>
+                        {
+                            manifest["guard_observations"]!.AsArray().Add("async_delivery_failure_observed");
+                            manifest["guard_observations"]!.AsArray().Add("possibly_persisted_observed");
+                        });
+                        ConsumeResult<byte[],byte[]> template=HostEvidenceBuilder.Record();
+                        template.Message.Value=new byte[16];
+                        template.Message.Headers.Remove("instance-id");
+                        template.Message.Headers.Add("instance-id",Encoding.UTF8.GetBytes(fixture.Options.InstanceId!));
+                        result.capacityRecords.Add(template);
+                    }
                     foreach((string name,byte[] bytes) in result.Ledger.Where(p=>p.Key.EndsWith("/registration.json",StringComparison.Ordinal)))fixture.AddLedgerObject(name,bytes);
-                    int count=secondHasAttempt?2:1;long start=(repeat-1)*count;long end=repeat*count;
+                    int count=fullPhaseVolume?0:secondHasAttempt?2:1;long start=(repeat-1)*count;long end=repeat*count;
                     JsonObject note=JsonNode.Parse(fixture.Note!)!.AsObject();note["partition_highs"]![0]!["high"]=start;
                     fixture.Note=Encoding.UTF8.GetBytes(note.ToJsonString());
                     string noteName=PhasePaths.StartLine(fixture.Options.RunId!,phase,repeat);
@@ -321,18 +415,31 @@ public sealed class B10SweepHandlerTests
                 result.Options.JobName=PhaseIdentity.B10SweepJobName(result.Options.RunId!,phase);result.Options.B10SettleIntervalMilliseconds=1000;
                 result.Options.MaxInputEntries=100_000;result.Options.MaxTotalInputBytes=4_194_304;
                 result.Options.MaxConsumedRecords=1000;result.Options.MaxConsumedBytes=1_048_576;
+                if(fullPhaseVolume)
+                {
+                    (long recordLimit,long byteLimit)=PhaseCapacityLimits();
+                    result.Options.MaxConsumedRecords=recordLimit;result.Options.MaxConsumedBytes=byteLimit;
+                }
                 DateTimeOffset capture=result.Kafka.Clock.GetUtcNow();
                 var sweep=new B10SweepLine(1,"B10",result.Options.ConfigurationId!,result.Options.RunId!,phase,result.Options.SourceCommit!,
-                    "document-events",[new PartitionHigh(0,result.records.Count)],capture,capture,capture.AddSeconds(-1),1000);
+                    "document-events",[new PartitionHigh(0,result.TotalRecords)],capture,capture,capture.AddSeconds(-1),1000);
                 result.Verifier[PhasePaths.SweepLine(result.Options.RunId!,phase)]=B10SweepEvidenceCodec.WriteSweepLine(sweep);
                 result.Kafka.Poll=result.Kafka.Refresh;
-                result.Kafka.Query=_=>new WatermarkOffsets(0,result.records.Count);
+                result.Kafka.Query=_=>new WatermarkOffsets(0,result.TotalRecords);
                 result.Kafka.Position=_=>new Offset(result.position);
                 result.Kafka.Assign=partitions=>{result.position=partitions.Single().Offset.Value;result.assigned=true;result.Assignments++;};
                 result.Kafka.ReadRecord=()=>
                 {
-                    if(!result.assigned||result.position>=result.records.Count)return null;
-                    ConsumeResult<byte[],byte[]> record=result.records[(int)result.position++];result.RecordsRead++;
+                    if(!result.assigned||result.position>=result.TotalRecords)return null;
+                    ConsumeResult<byte[],byte[]> record;
+                    if(fullPhaseVolume)
+                    {
+                        record=result.capacityRecords[(int)(result.position/CapacityCopiesPerOwner)];
+                        record.Offset=result.position++;
+                    }
+                    else record=result.records[(int)result.position++];
+                    result.RecordsRead++;
+                    if(fullPhaseVolume)result.ConsumedBytes+=RawBytes(record);
                     result.AfterRecord?.Invoke();return record;
                 };
                 result.Kafka.AdminDispose=()=>result.Events.Add("admin-dispose");result.Kafka.ConsumerDispose=()=>result.Events.Add("consumer-dispose");
@@ -342,7 +449,8 @@ public sealed class B10SweepHandlerTests
         }
 
         internal Task<int> Run(CancellationToken token=default)=>new B10SweepHandler(Microsoft.Extensions.Options.Options.Create(Options),Kafka.Clock,
-            new VerifierKafkaSessionFactory(_=>Kafka.Session),this,this,Completion).ExecuteAsync(token);
+            new VerifierKafkaSessionFactory(_=>Kafka.Session),this,this,Completion,
+            capacityMode?NullLogger<B10SweepHandler>.Instance:null).ExecuteAsync(token);
         internal B10Finalization Finalization()=>B10SweepEvidenceCodec.ReadFinalization(Verifier[PhasePaths.B10Finalization(Options.RunId!,Options.Phase!)]);
         internal void Change(string path,Action<JsonObject> change)
         {JsonObject json=JsonNode.Parse(Verifier[path])!.AsObject();change(json);Verifier[path]=Encoding.UTF8.GetBytes(json.ToJsonString());}
@@ -373,6 +481,9 @@ public sealed class B10SweepHandlerTests
             p.Key.EndsWith("/completion.json",StringComparison.Ordinal)||p.Key.EndsWith("/ledger.jsonl",StringComparison.Ordinal)).Sum(p=>p.Value.LongLength);
         internal long ExpectedConsumedBytes()=>records.Select((r,i)=>(i+1)*(r.Message.Key.LongLength+r.Message.Value.LongLength+
             r.Message.Headers.Sum(h=>(long)Encoding.UTF8.GetByteCount(h.Key)+h.GetValueBytes().LongLength))).Sum();
+        internal long ExpectedCapacityConsumedBytes()=>capacityRecords.Sum(RawBytes)*CapacityCopiesPerOwner*5;
+        private static long RawBytes(ConsumeResult<byte[],byte[]> record)=>record.Message.Key.LongLength+record.Message.Value.LongLength+
+            record.Message.Headers.Sum(header=>(long)Encoding.UTF8.GetByteCount(header.Key)+header.GetValueBytes().LongLength);
         public Task<byte[]?> ReadAsync(string name,CancellationToken cancellationToken)
         {
             if(ReadFailures.TryGetValue(name,out Exception? failure))return Task.FromException<byte[]?>(failure);

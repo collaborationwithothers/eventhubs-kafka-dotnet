@@ -221,7 +221,10 @@ def main():
             cwd=ROOT,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=625)
         assert proc.returncode==0, proc.stdout[-4000:]+proc.stderr[-4000:]
         host=['dotnet',str(publish/'Parchwell.LoadGen.dll'),'--validate-configuration']
-        cases=[d for d in positive_cases() if d['runtime']['mode']=='loadgen']; assert len(cases)==11
+        cases=[d for d in positive_cases() if d['runtime']['mode']=='loadgen' and d['scenario_id']!='B10']; assert len(cases)==11
+        b10_first=[d for d in positive_cases() if d['runtime']['mode']=='loadgen' and d['scenario_id']=='B10']; assert len(b10_first)==4
+        assert [(d['configuration_id'],d['runtime']['phase'],d['runtime']['repeat']) for d in b10_first]==[('C0','C0',1),('C0','C0',5),('C1','C1',1),('C1','C1',5)]
+        cases.extend(b10_first); assert len(cases)==15
         environments=[]
         for i,d in enumerate(cases):
             values=td/f'{i}.yaml'; with_case(d,values)
@@ -233,7 +236,7 @@ def main():
         proc=bounded(60,host,td/'missing.host.out',host_environment(broken,td))
         assert proc.returncode==1 and 'loadgen_configuration_invalid:InvalidOperationException:required_loadgen_setting_missing:PodUid' in proc.stderr, proc.stderr
         # ADR-021: outside B10, the second Job's name is the only setting the host rejects.
-        second=[d for d in positive_cases() if d['runtime']['mode']=='loadgen2']; assert len(second)==6
+        second=[d for d in positive_cases() if d['runtime']['mode']=='loadgen2' and d['scenario_id']!='B10']; assert len(second)==6
         for i,d in enumerate(second):
             values=td/f'second-{i}.yaml'; with_case(d,values)
             rendered=rendered_environment(values,td,f'second-{i}')
@@ -242,7 +245,15 @@ def main():
             rendered['LoadGen__JobName']=d['runtime']['loadgen_job_name']; out=td/f'second-{i}.first-name.host.out'
             proc=bounded(60,host,out,host_environment(rendered,td))
             assert proc.returncode==0 and out.read_bytes()==EXPECTED, (i,proc.stderr)
-        print('loadgen host check passed: 11 rendered environments, 1 missing-setting regression, 6 second-Job environments rejected outside B10')
+        b10_second=[d for d in positive_cases() if d['runtime']['mode']=='loadgen2' and d['scenario_id']=='B10']; assert len(b10_second)==4
+        assert [(d['configuration_id'],d['runtime']['phase'],d['runtime']['repeat']) for d in b10_second]==[('C0','C0',1),('C0','C0',5),('C1','C1',1),('C1','C1',5)]
+        for i,d in enumerate(b10_second):
+            values=td/f'b10-second-{i}.yaml'; with_case(d,values)
+            rendered=rendered_environment(values,td,f'b10-second-{i}')
+            out=td/f'b10-second-{i}.host.out'
+            proc=bounded(60,host,out,host_environment(rendered,td))
+            assert proc.returncode==0 and out.read_bytes()==EXPECTED, (i,proc.stderr)
+        print('loadgen host check passed: 15 rendered first-Job environments, 1 missing-setting regression, 6 second-Job environments rejected outside B10, 4 B10 second-Job environments accepted')
         single_action_host_acceptance(td, publish)
         probe_v2_host_acceptance(td, publish)
         idle_observation_host_acceptance(td, publish)

@@ -56,6 +56,11 @@
   "verifier_start_line": {
     "ProcessLifetime": "00:02:00"
   },
+  "b10_sweep": {
+    "B10SettleIntervalMilliseconds": 60000,
+    "MaxConsumedRecords": 9300000,
+    "MaxConsumedBytes": 429496729600
+  },
   "verifier_verify": {
     "ProcessLifetime": "00:12:00",
     "SafetyStop": "00:10:00",

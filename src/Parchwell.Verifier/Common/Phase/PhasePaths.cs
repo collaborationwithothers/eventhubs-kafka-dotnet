@@ -19,6 +19,7 @@ internal static class PhasePaths
 
     internal static string SweepLine(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "sweep-line.json";
     internal static string B10Finalization(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-finalization.json";
+    internal static string B10SweepLineCompletion(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-sweep-line-completion.json";
     internal static string B10SweepCompletion(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-sweep-completion.json";
 
     private static string ValidateSegment(string value)

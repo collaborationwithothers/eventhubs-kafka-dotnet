@@ -10,12 +10,13 @@
 {{- else -}}
 {{- $r := .Values.runtime -}}
 {{- $mode := $r.mode -}}
+{{- $phaseMode := has $mode (list "judge" "b10-sweep-line" "b10-sweep") -}}
 {{- $role := include "parchwell.role" . -}}
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts $role -}}
 {{- $phaseOK := or (and (eq $r.phase "probe") (eq $.Values.configuration_id "C0")) (eq $r.phase $.Values.configuration_id) -}}
 {{- if not $phaseOK }}{{ fail "phase/configuration must be probe/C0, C0/C0, C1/C1, or C3/C3" }}{{ end -}}
-{{- if and (ne $mode "judge") (ne $r.loadgen_job_name (printf "%s-%s-r%d-loadgen" $r.run_id (lower $r.phase) (int $r.repeat))) }}{{ fail "loadgen_job_name must equal the derived producer Job name" }}{{ end -}}
+{{- if and (not $phaseMode) (ne $r.loadgen_job_name (printf "%s-%s-r%d-loadgen" $r.run_id (lower $r.phase) (int $r.repeat))) }}{{ fail "loadgen_job_name must equal the derived producer Job name" }}{{ end -}}
 {{- if or (contains " " $r.blob.account_url) (contains "\t" $r.blob.account_url) }}{{ fail "blob account URL must be an HTTPS account-root URI" }}{{ end -}}
 {{- range $ip := list $r.eventhubs_ip $r.blob_ip -}}
 {{- $parts := splitList "." $ip -}}
@@ -24,7 +25,7 @@
 {{- end -}}
 {{- if ne $r.eventhubs.bootstrap_servers (printf "%s.servicebus.windows.net:9093" $r.eventhubs.namespace_name) }}{{ fail "bootstrap_servers must match namespace_name" }}{{ end -}}
 {{- $deadline := int $r.bounds.execution.gate_job_seconds -}}
-{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if eq $mode "verify" }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if eq $mode "start-line" }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
+{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if has $mode (list "verify" "b10-sweep") }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if has $mode (list "start-line" "b10-sweep-line") }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -138,18 +139,48 @@ spec:
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
+            {{- if $phaseMode }}
+            - name: Verifier__NamespaceName
+              value: {{ $r.eventhubs.namespace_name | quote }}
+            - name: Verifier__PhasePrefix
+              value: {{ include "parchwell.phasePrefix" $ | quote }}
+            {{- if eq $mode "b10-sweep-line" }}
+            - name: Verifier__B10LastVerifierCompletedUtc
+              value: {{ $r.b10_last_verifier_completed_utc | quote }}
+            - name: Verifier__B10LastLoadgenTerminatedUtc
+              value: {{ $r.b10_last_loadgen_terminated_utc | quote }}
+            {{- range $key, $value := $r.bounds.b10_capture }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
+            {{- else }}
+            {{- range $key, $value := $r.bounds.b10_sweep }}
+            - name: {{ printf "Verifier__%s" $key | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- else }}
             {{- range $key, $value := dict "NamespaceName" $r.eventhubs.namespace_name "Repeat" (printf "%d" (int $r.repeat)) "ExpectedInstanceId" $r.loadgen_job_name "RepeatPrefix" (include "parchwell.repeatPrefix" $) "ArtifactPrefix" (printf "%sproducer/" (include "parchwell.repeatPrefix" $)) "StartLineOutputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "BrokerInventoryOutputName" (printf "%sbroker-inventory.json" (include "parchwell.repeatPrefix" $)) "StartLineInputName" (printf "%sstart-line.json" (include "parchwell.repeatPrefix" $)) "ResultOutputName" (printf "%sresult.json" (include "parchwell.repeatPrefix" $)) }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
-            {{- if eq $mode "start-line" }}{{ range $key, $value := $r.bounds.verifier_start_line }}
+            {{- end }}
+            {{- if has $mode (list "start-line" "b10-sweep-line") }}{{ range $key, $value := $r.bounds.verifier_start_line }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ else }}{{ range $key, $value := $r.bounds.verifier_verify }}
+            {{- if not (and (eq $mode "b10-sweep") (has $key (list "MaxConsumedRecords" "MaxConsumedBytes"))) }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
             {{- end }}{{ end }}
             {{- else }}
+            {{- if eq $.Values.scenario_id "B10" }}
+            - name: Verifier__MaxPartitions
+              value: {{ $r.bounds.verifier_kafka.MaxPartitions | quote }}
+            - name: "Verifier__B10SettleIntervalMilliseconds"
+              value: {{ $r.bounds.b10_sweep.B10SettleIntervalMilliseconds | quote }}
+            {{- end }}
             {{- range $key, $value := $r.bounds.verifier_gate }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}

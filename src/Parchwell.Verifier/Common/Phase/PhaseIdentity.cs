@@ -49,6 +49,12 @@ internal static partial class PhaseIdentity
         return $"{runId}-{ValidatePhase(phase).ToLowerInvariant()}-judge";
     }
 
+    internal static string B10SweepLineJobName(string runId, string phase)
+    {
+        ValidateRunId(runId);
+        return $"{runId}-{ValidatePhase(phase).ToLowerInvariant()}-b10-sweep-line";
+    }
+
     internal static string B10SweepJobName(string runId, string phase)
     {
         ValidateRunId(runId);

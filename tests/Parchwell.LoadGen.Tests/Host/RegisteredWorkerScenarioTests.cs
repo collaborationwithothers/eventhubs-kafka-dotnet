@@ -18,6 +18,8 @@ public sealed class RegisteredWorkerScenarioTests
     [InlineData("A01", "C3", "C3")]
     [InlineData("B04", "C0", "C0")]
     [InlineData("B04", "C1", "C1")]
+    [InlineData("B10", "C0", "C0")]
+    [InlineData("B10", "C1", "C1")]
     public async Task Given_PackagedScenario_When_ResolvingRegisteredWorker_Then_SelectedConfigurationAndProducerIdentityComeFromItsOwnInputs(
         string scenarioId, string phase, string configuration)
     {

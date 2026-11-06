@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.VerifyRun.Window;
@@ -110,6 +111,62 @@ public sealed class ConsumedRecordBudgetTests
             Assert.Equal("Consumed-window accounting overflowed Int64.", exception.Message);
         }
         else Assert.Equal(long.MaxValue - 1 + amount, ConsumedRecordBudget.Add(long.MaxValue - 1, amount));
+    }
+
+    [Fact]
+    public void Given_DeployedPhaseRecordLimit_When_AccountingEmptyRecords_Then_EqualityPassesAndNextRecordCannotAdvanceCounters()
+    {
+        (long recordLimit,long byteLimit)=PhaseCapacityLimits();
+        Assert.Equal(9300000,recordLimit);
+        Assert.Equal(429496729600,byteLimit);
+        var budget=new ConsumedRecordBudget(recordLimit,byteLimit);
+        ConsumeResult<byte[],byte[]> record=Record();
+
+        for(long index=0;index<recordLimit;index++)budget.Account(record);
+
+        Assert.Equal(recordLimit,budget.Records);
+        Assert.Equal(0,budget.Bytes);
+        InputLimitExceededException exception=Assert.Throws<InputLimitExceededException>(()=>budget.Account(record));
+        Assert.Equal("The consumed window exceeds its configured record or byte limit.",exception.Message);
+        Assert.Equal(recordLimit,budget.Records);
+        Assert.Equal(0,budget.Bytes);
+    }
+
+    [Fact]
+    public void Given_DeployedPhaseByteLimit_When_AccountingSharedValueBuffer_Then_EqualityPassesAndNextByteCannotAdvanceCounters()
+    {
+        (long recordLimit,long byteLimit)=PhaseCapacityLimits();
+        Assert.Equal(9300000,recordLimit);
+        Assert.Equal(429496729600,byteLimit);
+        var budget=new ConsumedRecordBudget(recordLimit,byteLimit);
+        ConsumeResult<byte[],byte[]> record=Record();
+        record.Message.Key=null!;
+        record.Message.Headers=null;
+        record.Message.Value=new byte[65536];
+        long count=byteLimit/record.Message.Value.LongLength;
+        Assert.Equal(6553600,count);
+        Assert.Equal(byteLimit,count*record.Message.Value.LongLength);
+        Assert.True(count+1<recordLimit);
+
+        for(long index=0;index<count;index++)budget.Account(record);
+
+        Assert.Equal(count,budget.Records);
+        Assert.Equal(byteLimit,budget.Bytes);
+        record.Message.Value=[0];
+        InputLimitExceededException exception=Assert.Throws<InputLimitExceededException>(()=>budget.Account(record));
+        Assert.Equal("The consumed window exceeds its configured record or byte limit.",exception.Message);
+        Assert.Equal(count,budget.Records);
+        Assert.Equal(byteLimit,budget.Bytes);
+    }
+
+    private static (long Records,long Bytes) PhaseCapacityLimits()
+    {
+        DirectoryInfo? root=new(AppContext.BaseDirectory);
+        while(root is not null&&!File.Exists(Path.Combine(root.FullName,"docs/operations/a01-runtime-limits.json")))root=root.Parent;
+        if(root is null)throw new DirectoryNotFoundException("repository_root_not_found");
+        using JsonDocument limits=JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root.FullName,"docs/operations/a01-runtime-limits.json")));
+        JsonElement phase=limits.RootElement.GetProperty("b10_sweep");
+        return(phase.GetProperty("MaxConsumedRecords").GetInt64(),phase.GetProperty("MaxConsumedBytes").GetInt64());
     }
 
     private static ConsumeResult<byte[], byte[]> Record() => new()

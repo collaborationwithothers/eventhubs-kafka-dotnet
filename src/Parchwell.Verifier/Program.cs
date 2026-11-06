@@ -140,7 +140,7 @@ internal static partial class Program
             services.AddSingleton<IVerifierModeHandler,VerifyRun.SingleAction.SingleActionHandler>();
             return;
         }
-        if (mode is not ("start-line" or "verify" or "judge" or "b10-sweep")) return;
+        if (mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep")) return;
 
         var preflight=new VerifierHostOptions();
         new VerifierHostOptionsSetup(configuration).Configure(preflight);
@@ -148,7 +148,7 @@ internal static partial class Program
         if(!preflightResult.Succeeded)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),preflightResult.Failures??[]);
         RegisterTelemetry(services,configuration);
 
-        if (mode is "start-line" or "verify" or "b10-sweep")
+        if (mode is "start-line" or "verify" or "b10-sweep-line" or "b10-sweep")
         {
             services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
             {
@@ -174,6 +174,11 @@ internal static partial class Program
         if (mode == "start-line")
         {
             services.AddSingleton<IVerifierModeHandler, StartLineHandler>();
+            return;
+        }
+        if (mode == "b10-sweep-line")
+        {
+            services.AddSingleton<IVerifierModeHandler, B10SweepLineHandler>();
             return;
         }
         if (mode == "b10-sweep")
@@ -464,12 +469,12 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         string? mode = _configuration["Verifier:Mode"];
         if(mode=="single-action-judge")ValidateSingleActionFields();
         var usedBudgets = new HashSet<string>(AlwaysReadBudgets, StringComparer.OrdinalIgnoreCase);
-        if (mode is "start-line" or "verify" or "b10-sweep")
+        if (mode is "start-line" or "verify" or "b10-sweep-line" or "b10-sweep")
         {
             usedBudgets.UnionWith(KafkaBudgets);
         }
 
-        if (mode is "probe-gate" or "verify" or "judge" or "b10-sweep")
+        if (mode is "probe-gate" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.IoTimeout));
         }
