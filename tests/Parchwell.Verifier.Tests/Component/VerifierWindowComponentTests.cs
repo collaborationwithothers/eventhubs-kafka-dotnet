@@ -34,6 +34,7 @@ public sealed class VerifierWindowComponentTests
         Assert.Equal(0, await run.StartAsync(TestContext.Current.CancellationToken));
         using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = fixture.ObserverBootstrapServers }).Build();
         await admin.CreatePartitionsAsync([new PartitionsSpecification { Topic = "document-events", IncreaseTo = 2 }]);
+        await WaitForPartitionReadyAsync(admin, 1, TimeSpan.FromSeconds(30));
         await ProduceAsync(fixture.ObserverBootstrapServers, run.Options.InstanceId!, "synthetic-end-only", "k", 1);
         await run.SetAttemptsAsync(run.Row("synthetic-end-only", "k"));
         Assert.Equal(0, await run.VerifyAsync(TestContext.Current.CancellationToken));
@@ -41,6 +42,22 @@ public sealed class VerifierWindowComponentTests
         Assert.Single(result["start_line"]!.AsArray());
         Assert.Equal(2, result["end_line"]!.AsArray().Count);
         Assert.Equal(1, result["ok"]!.GetValue<long>());
+    }
+
+    [Fact]
+    public async Task Given_MissingPartition_When_ReadinessBoundExpires_Then_FailureNamesTargetAndObservation()
+    {
+        await using var fixture = await StartAsync();
+        using var admin = new AdminClientBuilder(new AdminClientConfig
+        {
+            BootstrapServers = fixture.ObserverBootstrapServers
+        }).Build();
+        var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
+            WaitForPartitionReadyAsync(admin, 1, TimeSpan.FromMilliseconds(200)));
+        Assert.Contains("target=document-events[1]", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("bound_ms=200", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("last_observation=", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("last_observation=metadata not observed", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -146,6 +163,61 @@ public sealed class VerifierWindowComponentTests
         foreach (string count in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
             Assert.Null(result[count]);
     }
+    private static async Task WaitForPartitionReadyAsync(IAdminClient admin, int partition, TimeSpan timeout)
+    {
+        const string topicName = "document-events";
+        var time = TimeProvider.System;
+        long started = time.GetTimestamp();
+        int attempts = 0;
+        string lastObservation = "metadata not observed";
+        var cancellationToken = TestContext.Current.CancellationToken;
+        for (int attempt = 1; attempt <= 300; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var remaining = timeout - time.GetElapsedTime(started);
+            if (remaining <= TimeSpan.Zero) break;
+            attempts = attempt;
+            bool ready = false;
+            try
+            {
+                var metadata = admin.GetMetadata(topicName,
+                    remaining < TimeSpan.FromSeconds(1) ? remaining : TimeSpan.FromSeconds(1));
+                var topic = metadata.Topics.FirstOrDefault(value => value.Topic == topicName);
+                var target = topic?.Partitions.FirstOrDefault(value => value.PartitionId == partition);
+                bool leaderPresent = target is not null
+                    && metadata.Brokers.Any(value => value.BrokerId == target.Leader);
+                ready = topic is not null && !topic.Error.IsError
+                    && target is not null && !target.Error.IsError && leaderPresent;
+                lastObservation = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    topicPresent = topic is not null,
+                    topicError = topic?.Error.Code.ToString(),
+                    partitionPresent = target is not null,
+                    partitionError = target?.Error.Code.ToString(),
+                    leader = target?.Leader,
+                    leaderPresent,
+                    partitions = topic?.Partitions.Select(value => value.PartitionId).ToArray(),
+                    brokers = metadata.Brokers.Select(value => value.BrokerId).ToArray()
+                });
+            }
+            catch (KafkaException exception)
+            {
+                lastObservation = $"metadata_error={exception.Error.Code};reason={exception.Error.Reason}";
+            }
+            var elapsed = time.GetElapsedTime(started);
+            TestContext.Current.TestOutputHelper!.WriteLine(
+                $"synthetic partition readiness: target={topicName}[{partition}];attempt={attempts};elapsed_ms={elapsed.TotalMilliseconds};ready={ready};observation={lastObservation}");
+            cancellationToken.ThrowIfCancellationRequested();
+            if (ready && elapsed < timeout) return;
+            remaining = timeout - time.GetElapsedTime(started);
+            if (remaining <= TimeSpan.Zero) break;
+            await Task.Delay(remaining < TimeSpan.FromMilliseconds(100)
+                ? remaining : TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+        throw new TimeoutException(
+            $"Synthetic partition readiness not established within bound: target={topicName}[{partition}];bound_ms={timeout.TotalMilliseconds};elapsed_ms={time.GetElapsedTime(started).TotalMilliseconds};attempts={attempts};required=topic without error, partition without error, leader present in broker metadata;last_observation={lastObservation}");
+    }
+
     private static async Task<LocalKafkaFixture> StartAsync()
     {
         var fixture = new LocalKafkaFixture();
