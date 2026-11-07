@@ -1862,6 +1862,16 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(receipt)
         self.assertFalse((self.root / "calls.txt").exists())
 
+    def test_single_primary_split_launches_nothing_even_if_layout_construction_is_bypassed(self):
+        with patch.object(workflow, "PRIMARY_CUTS", {"phase": ()}), \
+                patch.dict(workflow.PARTS, {"phase": ("phase", 2, 2)}), \
+                patch.object(workflow, "launch") as launch:
+            result, receipt, _ = self.invoke(shard="phase")
+        self.assertEqual(1, result)
+        self.assertIsNone(receipt)
+        launch.assert_not_called()
+        self.assertFalse((self.root / "calls.txt").exists())
+
     def test_local_check_runs_one_member_span_and_marks_it_diagnostic(self):
         self.commit_configuration(SOURCE)
         result, output, printed = self.local_check("local")
@@ -2247,6 +2257,23 @@ class PrimaryLayoutInputTests(unittest.TestCase):
     def selected(self, cuts, count=3, source=b"x" * 21):
         with patch.object(workflow, "TARGETS", {"synthetic": ("Synthetic.cs", count)}), patch.object(workflow, "PRIMARY_CUTS", {"synthetic": cuts}):
             return workflow.primary_spans("synthetic", source)
+
+    def test_parts_reject_singleton_splits_before_a_primary_can_be_overwritten(self):
+        target = "VerifyRun/A01/A01EvidenceRecorder.cs"
+        for count in (-1, 0, 1, True, 2.0, "2"):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "declared split must have at least two primary spans"):
+                workflow.build_parts({"a01": (target, count)}, {"a01": ()})
+        self.assertEqual({"a01": ("a01", 1, 1)}, workflow.build_parts({"a01": (target, 1)}, {}))
+        self.assertEqual({"a01-p1": ("a01", 1, 3), "a01-p2": ("a01", 2, 3),
+                          "a01-crossing": ("a01", 3, 3)},
+                         workflow.build_parts({"a01": (target, 2)}, {"a01": (1,)}))
+        self.assertEqual({"a01-p1": ("a01", 1, 4), "a01-p2": ("a01", 2, 4),
+                          "a01-p3": ("a01", 3, 4), "a01-crossing": ("a01", 4, 4)},
+                         workflow.build_parts({"a01": (target, 3)}, {"a01": (1, 2)}))
+
+    def test_primary_spans_reject_singleton_split_when_called_directly(self):
+        with self.assertRaisesRegex(ValueError, "declared split must have at least two primary spans"):
+            self.selected((), count=1)
 
     def test_cut_count_order_type_and_source_edges(self):
         self.assertEqual([(0, 10), (10, 20), (20, SPAN_END)], self.selected((10, 20)))

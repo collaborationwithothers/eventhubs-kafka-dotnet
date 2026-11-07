@@ -54,12 +54,22 @@ PRIMARY_CUTS = {
     "b10-repeat": (8428,),
     "b10-sweep-codec": (5934, 10787),
 }
-PARTS = {
-    key if count == 1 else (f"{key}-p{index}" if index <= count else f"{key}-crossing"):
-        (key, index, count + int(key in PRIMARY_CUTS))
-    for key, (_, count) in TARGETS.items()
-    for index in range(1, count + 1 + int(key in PRIMARY_CUTS))
-}
+def build_parts(targets: dict[str, tuple[str, int]],
+                primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
+    """Reject singleton splits before their crossing entry can overwrite the primary."""
+    for key in primary_cuts:
+        count = targets[key][1]
+        if type(count) is not int or count < 2:
+            raise ValueError("declared split must have at least two primary spans")
+    return {
+        key if count == 1 else (f"{key}-p{index}" if index <= count else f"{key}-crossing"):
+            (key, index, count + int(key in primary_cuts))
+        for key, (_, count) in targets.items()
+        for index in range(1, count + 1 + int(key in primary_cuts))
+    }
+
+
+PARTS = build_parts(TARGETS, PRIMARY_CUTS)
 SHARDS = {shard: TARGETS[key][0] for shard, (key, _, _) in PARTS.items()}
 SPAN_END = 2147483647
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -356,6 +366,8 @@ def primary_spans(key: str, source: bytes) -> list[tuple[int, int]]:
         return spans(text, count)
     if type(count) is not int or count < 1:
         raise ValueError("primary count must be a positive integer")
+    if count == 1:
+        raise ValueError("declared split must have at least two primary spans")
     cuts = PRIMARY_CUTS[key]
     if len(cuts) != count - 1:
         raise ValueError("primary cut count does not match primary count")
