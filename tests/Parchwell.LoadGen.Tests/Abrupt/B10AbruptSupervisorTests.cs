@@ -315,9 +315,106 @@ public sealed class B10AbruptSupervisorTests
     private static void SetPrivate(object owner, string name, object value) =>
         owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(owner, value);
 
+    [Theory]
+    [InlineData(null, "healthy")]
+    [InlineData(null, "before")]
+    [InlineData(null, "cleanup")]
+    [InlineData("DllNotFoundException", "healthy")]
+    [InlineData("DllNotFoundException", "before")]
+    [InlineData("DllNotFoundException", "cleanup")]
+    [InlineData("EntryPointNotFoundException", "healthy")]
+    [InlineData("EntryPointNotFoundException", "before")]
+    [InlineData("EntryPointNotFoundException", "cleanup")]
+    [InlineData("BadImageFormatException", "healthy")]
+    [InlineData("BadImageFormatException", "before")]
+    [InlineData("BadImageFormatException", "cleanup")]
+    public async Task Given_CleanupSignalFailure_When_SupervisorAborts_Then_OriginalCauseAndActualCleanupEvidenceSurvive(string? nativeException, string writerState)
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.AddPreparedAsync("original");
+        using var events = await CleanupFailureEventsAsync();
+        fixture.Child.EventInput = events;
+        fixture.BeforeFlush = () => throw new IOException("synthetic_writer_failure");
+        fixture.DelayNextFlush = writerState == "before";
+        var observation = new OwnedProducerProcess.SignalObservation(9, nativeException is null ? -1 : null,
+            nativeException is null ? 13 : null, nativeException);
+        fixture.Child.OnKill = () =>
+        {
+            if (writerState == "cleanup") fixture.DelayNextFlush = true;
+            throw new OwnedProducerProcess.SignalException("b10_abrupt_signal_failed", observation);
+        };
+        var original = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken));
+        string originalName = writerState == "before" ? "b10_abrupt_capture_gap" : "b10_abrupt_guard_failed";
+        Assert.Equal(originalName, B10AbruptSupervisor.FailureName(original));
+        using var diagnostic = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        JsonElement data = diagnostic.RootElement.GetProperty("data");
+        Assert.Equal("incomplete", data.GetProperty("mechanical_status").GetString());
+        Assert.Equal(originalName, data.GetProperty("failure").GetString());
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("signal_observation").ValueKind);
+        JsonElement cleanup = data.GetProperty("cleanup");
+        Assert.Equal("cleanup", cleanup.GetProperty("arm").GetString());
+        Assert.Equal("b10_abrupt_signal_failed", cleanup.GetProperty("failure").GetString());
+        Assert.Equal(observation, cleanup.GetProperty("signal_observation").Deserialize<OwnedProducerProcess.SignalObservation>(B10AbruptWire.JsonOptions));
+        Assert.Equal(writerState == "healthy" ? null : "b10_abrupt_capture_gap", cleanup.GetProperty("capture_failure").GetString());
+        if (writerState == "healthy")
+        {
+            Assert.Empty(fixture.Journal.Gaps);
+            var frame = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "signal");
+            Assert.Equal("cleanup", frame.Data.GetProperty("arm").GetString());
+            Assert.Equal(observation.ReturnValue, frame.Data.GetProperty("return_value").Deserialize<int?>());
+            Assert.Equal(observation.Errno, frame.Data.GetProperty("errno").Deserialize<int?>());
+        }
+        else
+        {
+            Assert.Equal("writer_failed", Assert.Single(fixture.Journal.Gaps));
+            Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal");
+        }
+        await fixture.Supervisor.AbortAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, fixture.Child.Kills);
+        Assert.Equal(0, fixture.Child.ExitObservations);
+        Assert.Empty(Directory.EnumerateFiles(fixture.Root, "termination.json", SearchOption.AllDirectories));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_CleanupReapFailure_When_SupervisorAborts_Then_ReapIsNotMislabelledAsWriterFailure(bool throws)
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.AddPreparedAsync("original");
+        using var events = await CleanupFailureEventsAsync();
+        fixture.Child.EventInput = events;
+        fixture.Child.ExitObserved = false;
+        if (throws) fixture.Child.OnObserveExit = () => throw new InvalidDataException("b10_abrupt_exit_unobserved");
+        var original = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_guard_failed", original.Message);
+        using var diagnostic = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        JsonElement data = diagnostic.RootElement.GetProperty("data");
+        Assert.Equal("b10_abrupt_guard_failed", data.GetProperty("failure").GetString());
+        JsonElement cleanup = data.GetProperty("cleanup");
+        Assert.Equal("cleanup", cleanup.GetProperty("arm").GetString());
+        Assert.Equal("b10_abrupt_exit_unobserved", cleanup.GetProperty("failure").GetString());
+        Assert.Equal(0, cleanup.GetProperty("signal_observation").GetProperty("return_value").GetInt32());
+        Assert.Equal(JsonValueKind.Null, cleanup.GetProperty("capture_failure").ValueKind);
+        Assert.Empty(fixture.Journal.Gaps);
+        Assert.Equal(1, fixture.Child.Kills);
+        Assert.Equal(1, fixture.Child.ExitObservations);
+    }
+
+    private static async Task<MemoryStream> CleanupFailureEventsAsync()
+    {
+        var events = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(events, new("synchronous_rejection", 2, B10AbruptWire.Element(new
+        {
+            attempt_id = "original", prepared_sequence = 1, error_code = -184, error_reason = "synthetic_rejection"
+        })), TestContext.Current.CancellationToken);
+        events.Position = 0;
+        return events;
+    }
+
     private sealed class DeadlineFixture : IAsyncDisposable
     {
-        private string Root { get; } = Path.Combine(Path.GetTempPath(), "b10-deadline-" + Guid.NewGuid().ToString("N"));
+        internal string Root { get; } = Path.Combine(Path.GetTempPath(), "b10-deadline-" + Guid.NewGuid().ToString("N"));
         internal ManualClock Clock { get; } = new();
         internal DeadlineChild Child { get; }
         internal B10AbruptJournal Journal { get; }
@@ -362,10 +459,12 @@ public sealed class B10AbruptSupervisorTests
     private sealed class DeadlineChild : IB10AbruptProcess
     {
         public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, "synthetic", 1);
-        public Stream Events => Stream.Null;
+        internal Stream EventInput { get; set; } = Stream.Null;
+        public Stream Events => EventInput;
         public Stream Acknowledgements => Stream.Null;
         public bool HasExited => false;
         internal int Kills { get; private set; }
+        internal int ExitObservations { get; private set; }
         internal bool ExitObserved { get; set; } = true;
         internal Action OnConfirmStopped { get; set; } = () => { };
         internal Action ArmCheckpointDelay { get; set; } = () => { };
@@ -375,7 +474,7 @@ public sealed class B10AbruptSupervisorTests
         public bool ConfirmStopped(TimeSpan timeout, TimeProvider clock) { OnConfirmStopped(); ArmCheckpointDelay(); return true; }
         public OwnedProducerProcess.SignalObservation Resume() => new(18, 0, null);
         public OwnedProducerProcess.SignalObservation Kill() { Kills++; OnKill(); return new(9, 0, null); }
-        public OwnedProducerProcess.ExitObservation ObserveExit() { OnObserveExit(); return new(ExitObserved, ExitObserved ? 137 : null, "synthetic"); }
+        public OwnedProducerProcess.ExitObservation ObserveExit() { ExitObservations++; OnObserveExit(); return new(ExitObserved, ExitObserved ? 137 : null, "synthetic"); }
         public B10AbruptCgroup.Observation CaptureBefore() => new("synthetic", "/group", "1:2", 0);
         public B10AbruptCgroup.Observation CaptureAfter(B10AbruptCgroup.Observation before) => before;
         public void Dispose() { }

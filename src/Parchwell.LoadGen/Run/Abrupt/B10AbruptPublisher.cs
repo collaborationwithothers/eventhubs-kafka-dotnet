@@ -124,9 +124,14 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
                 new Dictionary<string, byte[]>(StringComparer.Ordinal) { ["cross_restart-checkpoint.json"] = checkpointBytes });
             DateTimeOffset release = DateTimeOffset.ParseExact(checkpoint.GetProperty("data").GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
             if (root.GetProperty("release_utc").GetString() != Utc(release) || data.GetProperty("entries").GetArrayLength() != 1) throw Binding("selection_stale");
+            string[] selected = checkpoint.GetProperty("data").GetProperty("selected_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
+            string[] candidates = data.GetProperty("candidate_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
+            if (selected.Length != 1 || !candidates.SequenceEqual(selected, StringComparer.Ordinal) ||
+                data.GetProperty("terminal_exclusions").GetArrayLength() != 0) throw Binding("selection_stale");
             foreach (JsonElement entry in data.GetProperty("entries").EnumerateArray())
             {
                 B10AbruptWire.ExactMembers(entry, "attempt_id", "key", "sequence", "payload_length", "payload_sha256", "payload_base64");
+                if (entry.GetProperty("attempt_id").GetString() != selected[0]) throw Binding("selection_stale");
                 byte[] payload = Convert.FromBase64String(entry.GetProperty("payload_base64").GetString()!);
                 if (payload.Length > 900000 || payload.Length != entry.GetProperty("payload_length").GetInt64() || Hash(payload) != entry.GetProperty("payload_sha256").GetString() ||
                     entry.GetProperty("key").GetString() != $"B10/{options.RunId}/C1/1/cross_restart" || entry.GetProperty("sequence").GetInt64() != 0) throw Binding("selection_stale");

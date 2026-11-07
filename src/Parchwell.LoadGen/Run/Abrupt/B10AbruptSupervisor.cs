@@ -51,6 +51,8 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     private readonly Dictionary<string, long> _armStarts = new(StringComparer.Ordinal);
     private long _ackSequence;
     private bool _killRequested;
+    private CleanupDiagnostic? _cleanup;
+    private sealed record CleanupDiagnostic(string Arm, string? Failure, OwnedProducerProcess.SignalObservation? SignalObservation, string? CaptureFailure);
     private B10AbruptWire.Frame? _killCheckpoint;
     private IB10AbruptProcess? _child;
     private Channel<B10AbruptWire.Message>? _incoming;
@@ -117,15 +119,15 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             try
             {
                 using var diagnosticDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
-                await using var file = new FileStream(Path.Combine(options.OutputRoot, "abrupt", "failure.json"), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
                 byte[] diagnostic = B10AbruptWire.SerializeEnvelope("failed_diagnostic", options.Identity(), new
                 {
                     mechanical_status = "incomplete", failure = FailureName(failure),
                     process = child.Identity, kill_requested = _killRequested, has_exited = child.HasExited,
                     capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "not_implemented_pr3",
-                    signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation
+                    signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation, cleanup = _cleanup
                 });
                 Console.Error.WriteLine(Encoding.UTF8.GetString(diagnostic));
+                await using var file = new FileStream(Path.Combine(options.OutputRoot, "abrupt", "failure.json"), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
                 await file.WriteAsync(diagnostic, diagnosticDeadline.Token).ConfigureAwait(false);
                 file.Flush(true);
             }
@@ -498,12 +500,32 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     {
         if (_child is null || _child.HasExited || _killRequested) return;
         _killRequested = true;
+        _cleanup = new("cleanup", null, null, null);
+        OwnedProducerProcess.SignalObservation observation;
+        try { observation = _child.Kill(); }
+        catch (OwnedProducerProcess.SignalException exception)
+        {
+            observation = exception.Observation;
+            _cleanup = _cleanup with { Failure = FailureName(exception) };
+        }
+        catch (Exception exception)
+        {
+            _cleanup = _cleanup with { Failure = FailureName(exception) };
+            return;
+        }
+        _cleanup = _cleanup with { SignalObservation = observation };
+        try { await RecordSignalAsync("cleanup", observation, 0, cancellationToken).ConfigureAwait(false); }
+        catch (Exception exception)
+        {
+            // The journal owns capture gaps; a failed native call is not a failed writer.
+            _cleanup = _cleanup with { CaptureFailure = FailureName(exception) };
+        }
+        if (_cleanup.Failure is not null) return;
         try
         {
-            await RecordSignalAsync("cleanup", _child.Kill(), 0, cancellationToken).ConfigureAwait(false);
-            _ = _child.ObserveExit();
+            if (!_child.ObserveExit().WaitForExitObserved) _cleanup = _cleanup with { Failure = "b10_abrupt_exit_unobserved" };
         }
-        catch (Exception) { journal.LatchGap("writer_failed"); }
+        catch (Exception exception) { _cleanup = _cleanup with { Failure = FailureName(exception) }; }
     }
     internal static string FailureName(Exception exception)
     {

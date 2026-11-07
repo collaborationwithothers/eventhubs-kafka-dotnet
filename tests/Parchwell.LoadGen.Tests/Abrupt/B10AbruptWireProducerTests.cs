@@ -67,7 +67,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             DateTimeOffset release = DateTimeOffset.ParseExact(selection.GetProperty("data").GetProperty("checkpoint").GetProperty("data").GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
             byte[] validBinding = Binding(first, files, release, TimeProvider.System);
             string bindingPath = Path.Combine(root, "input.json");
-            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "legacy", "dialect", "purpose_removed", "schema_relabel" })
+            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "unselected_original", "changed_candidates", "terminal_exclusion", "legacy", "dialect", "purpose_removed", "schema_relabel" })
             {
                 JsonObject binding = JsonNode.Parse(validBinding)!.AsObject();
                 string detail = "receipt_changed";
@@ -88,6 +88,31 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                     case "same_pod": configure = values => values["PodName"] = first.PodName; detail = "pod_uid_reused"; break;
                     case "same_uid": configure = values => values["PodUid"] = first.PodUid; detail = "pod_uid_reused"; break;
                     case "stale_selection": binding["release_utc"] = B10AbruptPublisher.Utc(release.AddTicks(1)); detail = "selection_stale"; break;
+                    case "unselected_original":
+                    case "changed_candidates":
+                    case "terminal_exclusion":
+                        var changedSelection = JsonNode.Parse(binding["files"]!["kill-selection.json"]!.GetValue<string>())!;
+                        var selectionData = changedSelection["data"]!;
+                        if (fault == "unselected_original") selectionData["entries"]![0]!["attempt_id"] = "synthetic-first-timeout-0";
+                        if (fault == "changed_candidates") selectionData["candidate_attempt_ids"]![0] = "synthetic-first-timeout-0";
+                        if (fault == "terminal_exclusion") selectionData["terminal_exclusions"]!.AsArray().Add(new JsonObject
+                        {
+                            ["attempt_id"] = selectionData["entries"]![0]!["attempt_id"]!.GetValue<string>(),
+                            ["terminal_sequence"] = 1
+                        });
+                        byte[] selectionBytes = Encoding.UTF8.GetBytes(changedSelection.ToJsonString());
+                        binding["files"]!["kill-selection.json"] = Encoding.UTF8.GetString(selectionBytes);
+                        var changedManifest = JsonNode.Parse(binding["files"]!["abrupt-manifest.json"]!.GetValue<string>())!;
+                        changedManifest["data"]!["selection"] = JsonSerializer.SerializeToNode(
+                            B10AbruptPublisher.Describe("kill-selection.json", selectionBytes), B10AbruptWire.JsonOptions);
+                        byte[] manifestBytes = Encoding.UTF8.GetBytes(changedManifest.ToJsonString());
+                        binding["files"]!["abrupt-manifest.json"] = Encoding.UTF8.GetString(manifestBytes);
+                        var reboundTermination = JsonNode.Parse(binding["files"]!["termination.json"]!.GetValue<string>())!;
+                        reboundTermination["data"]!["manifest"] = JsonSerializer.SerializeToNode(
+                            B10AbruptPublisher.Describe("abrupt-manifest.json", manifestBytes), B10AbruptWire.JsonOptions);
+                        binding["files"]!["termination.json"] = reboundTermination.ToJsonString();
+                        detail = "selection_stale";
+                        break;
                     case "legacy": binding["files"]!["termination.json"] = Encoding.UTF8.GetString(legacy); break;
                     default:
                         var changed = JsonNode.Parse(binding["files"]!["termination.json"]!.GetValue<string>())!.AsObject();
