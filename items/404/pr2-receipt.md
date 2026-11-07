@@ -50,7 +50,7 @@ The mutation-only Compile item comparison and scripted preservation checks follo
 
 ## Verification and review status
 
-Local verification passed on the initial candidate `cb6d0cfa52e1ae7ad3d20af72133c19975c75a2b`. Two comprehensive cold reviews are complete. The second found a missing independent successor-membership check and a remaining cleanup instance of the failed-signal-observation defect; localized corrections await focused review. Linux CI remains pending. No live trial has run in this session.
+Local verification passed on the initial candidate `cb6d0cfa52e1ae7ad3d20af72133c19975c75a2b`. Two comprehensive cold reviews and the first focused correction review are complete; the focused review found no P0 or P1. The reviewed head passed the Ubuntu .NET job. Its lifecycle job exposed a shallow-checkout dependency in the new preservation test; the correction and CI receipt update await the final focused round. No live trial has run in this session.
 
 - `./scripts/verify-dotnet.sh` passed with locked restore, Release build (zero warnings/errors), architecture checks, all project tests, checked reports and the warning-as-error control. Measured report counts: Architecture 16, Enrichment 56, Kafka 486, LoadGen 1429, Scenarios 340 and Verifier 7389. Logs remained outside the repository.
 - Baseline, before chart changes, source `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`: `bash charts/parchwell/tests/check-loadgen-host.sh` passed. Bash `time -p` measured real 121.04 s, user 90.88 s, system 21.96 s. Initial candidate post-change: the same whole script passed, including E10/E11, with Bash `time -p` measuring real 114.19 s, user 89.66 s and system 29.36 s, within the unchanged 900 s bound. A local `timeout 900` enforced that bound.
@@ -94,7 +94,7 @@ The original candidate passed the full .NET and timed host commands. The correct
 
 ## Cold-review input
 
-Mode for the next review: focused correction review, not a third comprehensive pass. Input revision: the frozen HEAD on `codex/404-pr2-abrupt-restart`, identified exactly by the supplied diff filename. Full comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. Focused comparison revision: `cd3bae9df5dea3e03372a0ad42896f34d83b54f6`. Review the correction diff, both unresolved second-review findings and affected callers/tests/contracts, using the full authored diff as context. Cumulative completed reviews: two comprehensive, zero focused. Both complete reports follow. The focused report and final cumulative counts belong in the pull request self-review record, not its own reviewed receipt. If this scope cannot be reviewed safely, stop for Hari rather than starting another comprehensive pass.
+Mode for the next review: second and final focused correction review. Input revision: the frozen HEAD on `codex/404-pr2-abrupt-restart`, identified exactly by the supplied diff filename. Full comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. Focused comparison revision: `0de1514e040b0fe25fbd5786b8d1b47d808e41ed`. Review the shallow-checkout preservation-test correction, CI evidence and state/receipt updates, with affected tests/contracts and the full authored diff as context. There are no unresolved findings from the first focused review. Cumulative completed reviews: two comprehensive, one focused. Earlier complete reports follow. The final focused report and cumulative counts belong in the pull request self-review record, not its own reviewed receipt. If focus is unsafe or another required correction review is needed, stop for Hari under the review-budget handoff.
 
 Both the Codex and Claude reviews must explicitly check each choice under "Cap-covered choices": C1, C2, C3, report_length and UTF-8 RawJson. Hosted review and final-head Linux CI remain separate gates. This environment has no available Claude review tool or CLI; that review requires a Claude session before Hari merges.
 
@@ -306,3 +306,71 @@ Correction verification (working tree based on `cd3bae9df5dea3e03372a0ad42896f34
 - Fresh production-byte worker: eight tests passed in 12.038 s; independent Python checker: ten tests passed in 0.136 s with `b10_abrupt_produced_bytes_checked`. Export path: `/workspace/scratch/b10-export-cold2-fixed`.
 - Loaded versions measured by the worker: Confluent.Kafka assembly 2.16.0.0, librdkafka 2.16.0, .NET 10.0.13.
 - No new verification-failure group; the cumulative count remains 17 against the approved cap of 20. Scripted review-root grouping gives seven distinct roots across the two comprehensive reports.
+
+## First focused cold-review report
+
+Review mode: focused correction review (first focused round).
+Reviewed revision: 0de1514e040b0fe25fbd5786b8d1b47d808e41ed.
+Focused comparison revision: cd3bae9df5dea3e03372a0ad42896f34d83b54f6.
+Full-PR comparison revision: 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef.
+Focused input: /workspace/scratch/404-focused-focused1-0de1514e040b0fe25fbd5786b8d1b47d808e41ed.diff.
+Full context: /workspace/scratch/404-full-focused1-0de1514e040b0fe25fbd5786b8d1b47d808e41ed.diff.
+Authored receipt: items/404/pr2-receipt.md.
+Report: complete
+
+Applied the repository-owned .agents/skills/repo-review/SKILL.md. This round covers the changes since the second comprehensive review, both unresolved findings, and their affected callers, tests and contracts. It does not repeat a comprehensive review of the full PR. The two supplied diffs were compared byte-for-byte with git diff of the stated revisions and matched. The focused diff contains five paths; the full contextual diff contains 45 paths (script-computed).
+
+Focused file/rubric coverage:
+- items/404/pr2-receipt.md: general rubric, including governance, review protocol/budget, authority recognition, writing and claim provenance.
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs: general rubric and .NET engineering standards.
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs: general rubric and .NET engineering standards.
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSupervisorTests.cs: general rubric and .NET engineering/testing standards.
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs: general rubric and .NET engineering/testing standards.
+
+Applied AGENTS.md, CLAUDE.md, docs/agents/pull-requests.md, docs/agents/factory.md, docs/blueprint.md's ADRs and scope, and docs/engineering/dotnet.md. The skill and these governing sources are unchanged from origin/main. Affected context includes B10AbruptHost.RunValidatedSuccessorAsync and its producer continuation, the native signal/exit boundary in OwnedProducerProcess, journal failure handling and wire serialization, the phase reader's selection reconciliation, the abrupt contract, and the retained producer/statistics/report-binding tests. No changed governance document relaxes this review.
+
+Specification comparison:
+Read the approved Revision 6 plan at issue comment 6709851444, approval 6711868908 and cap decision 6711519349 through GitHub REST. The plan still matches the approval's updated_at (2026-11-07T18:45:47Z), character count (126836) and SHA-256 (4a6a093a00b909d8bbea623983c8aebd404773b3a81fe2c7bb116e4e76596376), computed from the fetched body. The corrections fit file-map items 6, 7 and 14, the closed Selection bookkeeping, E6, and the named signal/capture/successor failure rows. They preserve the fixed diagnostic-only scope, policy values, protocol sequence and single cleanup KILL request. No scientific claim, expected outcome, result, workflow, package, project/reference or identity/network permission changes in this focused diff. No missing, partial or incorrect requirement or scope expansion was identified in the reviewed correction scope.
+
+Disposition of the second comprehensive review's unresolved findings:
+1. Successor membership: resolved. LoadSelectionAsync now requires exactly one checkpoint-selected original, equality of candidate IDs with that checkpoint selection, no terminal exclusions, and an entry attempt ID equal to the selected original. These checks run before RunValidatedSuccessorAsync enters the continuation that registers and constructs the producer. The added production-byte mutations alter the entry identity, candidates or exclusions while rebinding selection and manifest descriptors; they assert the exact selection_stale failure and zero continuation entries. A valid production binding still enters once. This addresses the independently required successor boundary, alongside the existing workflow reader.
+2. Cleanup signal observations: resolved. AbortAsync retains cleanup's labelled observation and failure independently of the original abort cause, records actual signal return/errno when available, and retains native-import exception details with unavailable values left null. Journal failure is recorded separately as capture_failure. Native signal and reap failures no longer manufacture writer_failed. RunAsync emits the failed diagnostic to stderr before opening the local diagnostic file, preserving an output route if that file cannot be opened. Tests exercise actual RunAsync failure diagnostics for errno failure and each supported native-import failure with healthy, already-failed and cleanup-failing journals; they also cover false and throwing reap observations. They assert the original cause, labelled cleanup evidence, appropriate capture gaps, no successful termination publication and no second KILL.
+
+Cap-covered choices checked explicitly against approval 6711868908:
+- C1: the unknown-arm test supplies valid reports for both recognized arms, and retains only the unknown arm's binding-invalid latch.
+- C2: missing hand-off remains sample_missing; invalid binding remains binding_invalid with first-failure exclusivity. Overflow is a separate no-message case.
+- C3: overflow prevents SelectPreAcceptance from falling back to a previously numbered report; the retained producer test covers that behavior.
+- report_length: values outside 1..1048576 map to binding_invalid, with zero and oversized negative cases and file-size boundary coverage retained.
+- RawJson: the producer uses Encoding.UTF8.GetBytes on the selected raw report, and the retained test compares the actual file bytes and hash with that encoding.
+These choices remain within the recorded approval and are not changed by this correction round.
+
+Findings: none at P0 or P1
+
+Pre-existing (not blocking):
+None identified in the affected review context.
+
+Verification performed:
+- git diff --check cd3bae9df5dea3e03372a0ad42896f34d83b54f6 0de1514e040b0fe25fbd5786b8d1b47d808e41ed passed.
+- Ran the Release B10AbruptSupervisorTests and B10AbruptWireProducerTests classes together using /workspace/scratch/dotnet/dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptSupervisorTests -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptWireProducerTests. Result: 79 tests, zero errors/failures/skips/not-run, measured 11.403 s. Log: /workspace/scratch/404-focused1-tests.log.
+- SHA-256 checksums of both changed runtime sources and both changed test sources occur in their Release portable PDBs. The runtime DLL/PDB loaded from the test output are byte-identical to the source project's Release output. This ties the executed tests to the reviewed correction bytes.
+- Read the changed tests for masking failures: successor mutations rebind unrelated outer hashes, retain valid identities/payloads, and use a valid counterpart; cleanup tests inspect emitted failure.json rather than only the thrown exception.
+
+Cumulative cold-review budget after this complete report: two comprehensive passes and one focused correction round. One focused round remains under docs/agents/pull-requests.md rule 8; no additional comprehensive pass is authorized by this report. The earlier unchanged work retains its existing coverage. Hosted Codex review, Claude head review including the cap-covered choices, final-head Linux CI, Hari's merge, and any separately approved post-merge trial remain distinct gates. No Azure operation or live experiment was performed in this review.
+
+## Linux CI and shallow-checkout correction
+
+Reviewed source: `0de1514e040b0fe25fbd5786b8d1b47d808e41ed`, [PR 406](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406).
+
+- [Ubuntu-24.04 .NET verification job](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42415691021/job/128533153955) passed. The unchanged workflow checks out the PR head and runs `./scripts/verify-dotnet.sh`. The checked reports record Architecture 16, Enrichment 56, Kafka 486, LoadGen 1504, Scenarios 340 and Verifier 7389 passing tests. The Linux real-process facts are included in the LoadGen assembly and cannot skip on Linux; this is E2's required Linux CI proof. The warning-as-error control, Kafka mapping coverage and worker image checks also passed.
+- Terraform verification passed in that run. [Documentation CI](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42415691059) passed. The overall .NET workflow conclusion was failure because its separate [lifecycle job](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42415691021/job/128533154141) failed; no overall CI pass is claimed.
+- The lifecycle job ran 329 tests in 54.737 s with one error: `test_mirror_and_all_preexisting_workflows_unchanged` invoked `git ls-tree` for the pinned base commit, absent from Actions' shallow checkout. A local reproduction with full history passed 329 tests in 64.256 s; it did not reproduce the missing-history condition. The completed-run archive supplied the diagnosis after the job-log redirect returned HTTP 403.
+- Correction: the same preservation test compares current workflow bytes to SHA-256 values measured from all six existing workflows at the pinned base. It retains the new workflow's exact mirror assertion and requires every baseline file to exist. It needs no history, network fetch, workflow edit or skipped assertion. The constants were recomputed against the original base bytes; existing workflows remain byte-identical.
+- [Hosted review summary](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#issuecomment-6713205151) reports completed code and security reviews for this head; code review reports no findings and no inline finding was posted. The fresh-context focused review explicitly checked all five cap-covered choices. Claude review remains unavailable in this session and required before Hari merges. The final head still needs its own CI and hosted review, recorded in the PR description.
+
+Disposition accounting: the shallow-checkout test dependency adds one verification-failure root, and a corrected receipt trailing-blank-line `git diff --check` warning is conservatively counted as another. Scripted cumulative verification-failure count is 19 against the cap of 20. The GitHub log-download access issue is recorded as a read-access limitation, resolved by the completed-run archive, not a test failure. The review-finding root count remains seven.
+
+Correction verification before final focused review:
+
+- `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` passed all 329 tests in 72.837 s; wrapper wall time 73.212 s.
+- A scratch tree containing the current workflow test and its required files, with no `.git` directory or parent repository, passed all six B10AbruptWorkflowTests in 0.089 s. `git rev-parse` returned 128 there, confirming the missing-history condition. No repository workflow was edited.
+- A script recomputed all six pinned hashes from the original base and verified both the complete baseline file set and current byte equality. `git diff --check` passed.

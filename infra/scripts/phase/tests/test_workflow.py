@@ -1,6 +1,7 @@
 """Offline contract tests for the shared scenario workflow and batch smoke."""
 from pathlib import Path
 import importlib.util
+import hashlib
 import json
 import os
 import re
@@ -661,7 +662,16 @@ esac
 
 
 class B10AbruptWorkflowTests(unittest.TestCase):
-    BASE = '74be825cb6ac71c2c70a6612f3fa0910dcdc52ef'
+    # SHA-256 of exact workflow bytes at merged PR1 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef.
+    # Actions checks out one commit; preservation must not require Git history.
+    BASE_WORKFLOWS = {
+        '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
+        '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
+        '.github/workflows/dotnet-verification.yml': '7c2e0283f2cffa977760de381be619e233eebcb770524ed6940791c71f7ea017',
+        '.github/workflows/scenario.yml': 'c3323aca63fa977f75129ed9050c2d30f98a49ae18104d3f88240d40ecce7099',
+        '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
+        '.github/workflows/verifier-c5-mutation.yml': 'c483ee439a2682fb6bc4a578b69b014c45e39ae01c21f2f17940196ae6780f4e',
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -790,13 +800,8 @@ class B10AbruptWorkflowTests(unittest.TestCase):
 
     def test_mirror_and_all_preexisting_workflows_unchanged(self):
         self.assertEqual(self.path.read_bytes(), (REPO / 'docs/operations/workflows/b10-abrupt-trial.yml.txt').read_bytes())
-        listing = subprocess.run(['git', 'ls-tree', '-r', '--name-only', self.BASE, '.github/workflows'],
-                                 cwd=REPO, capture_output=True, text=True, check=True, timeout=30)
-        self.assertTrue(listing.stdout.splitlines())
-        for relative in listing.stdout.splitlines():
-            original = subprocess.run(['git', 'show', self.BASE + ':' + relative], cwd=REPO,
-                                      capture_output=True, check=True, timeout=30)
-            self.assertEqual(original.stdout, (REPO / relative).read_bytes(), relative)
+        for relative, expected in self.BASE_WORKFLOWS.items():
+            self.assertEqual(expected, hashlib.sha256((REPO / relative).read_bytes()).hexdigest(), relative)
 
 
 if __name__ == '__main__':
