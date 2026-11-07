@@ -40,7 +40,15 @@ internal sealed record VerifierResult(
     BatchingRecordedEvidence? BatchingRecordedEvidence = null,
     B10IntakeEvidence? B10Intake = null,
     bool? ClassificationFinal = null,
-    bool? B10WindowChecksComplete = null);
+    bool? B10WindowChecksComplete = null,
+    IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null);
+
+/// <summary>Retains one B10 producer's own provenance and checked broker measurements.</summary>
+internal sealed record B10ProducerObservation(
+    string InstanceId,
+    string? GeneratorVersion,
+    IReadOnlyDictionary<string, string>? RuntimeVersions,
+    BrokerConnectionCount? BrokerCount);
 
 /// <summary>Records an offset at a partition boundary.</summary>
 internal sealed record WatermarkOffset(int Partition, long Offset);

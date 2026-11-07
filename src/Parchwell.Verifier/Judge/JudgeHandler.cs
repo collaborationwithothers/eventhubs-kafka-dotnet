@@ -50,6 +50,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null; BatchingRecordedEvidence? batchingEvidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             B10IntakeEvidence? b10Intake=null;
+            IReadOnlyList<B10ProducerObservation>? b10Observations=null;
             ArtifactReference? originalResult=null,originalReceipt=null;
             bool windowChecksComplete=false; DateTimeOffset? verifyCompleted=null;
             string producersPrefix=PhasePaths.ProducersPrefix(options.RunId!,options.Phase!,i);
@@ -283,6 +284,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                                 if(b10)
                                 {
                                     b10Intake=result.B10Intake;
+                                    b10Observations=result.B10ProducerObservations;
                                     windowChecksComplete=result.B10WindowChecksComplete==true;
                                     if(DateTimeOffset.TryParse(r.CompletedUtc,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out DateTimeOffset completed))verifyCompleted=completed;
                                 }
@@ -331,8 +333,17 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             {
                 trustedIncomplete=true;windowChecksComplete=false;
             }
+            if(b10 && startAccepted && publicationAccepted && receiptValid && jobBinding==true && registrationCount==true && inventoryCoverage==true && b10Observations is not null)
+                foreach(B10ProducerObservation observation in b10Observations)
+                {
+                    string? kafka=null,native=null,dotnet=null;
+                    observation.RuntimeVersions?.TryGetValue("confluent_kafka",out kafka);
+                    observation.RuntimeVersions?.TryGetValue("librdkafka",out native);
+                    observation.RuntimeVersions?.TryGetValue("dotnet",out dotnet);
+                    acceptedVersions.Add((observation.GeneratorVersion,kafka,native,dotnet));
+                }
             originals.Add(new(i,originalResult,originalReceipt,windowChecksComplete && receiptValid && publicationAccepted && !knownInvalid && jobBinding==true && registrationCount==true && inventoryCoverage==true,verifyCompleted));
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake,B10ProducerObservations:b10Observations));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         B10SweepProjection? sweepProjection=null;
@@ -377,8 +388,9 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots,options.ScenarioId);
         string? CommonVersion(Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?> select)
         {
-            if(acceptedVersions.Count==0)return null;
+            if(acceptedVersions.Count==0 || b10 && acceptedVersions.Count!=5*2)return null;
             string? first=select(acceptedVersions[0]);
+            if(b10 && string.IsNullOrEmpty(first))return null;
             return first is not null&&acceptedVersions.All(v=>StringComparer.Ordinal.Equals(first,select(v)))?first:null;
         }
         long? Sum(Func<Parchwell.Verifier.Common.Results.A01WindowEvidence,long?> select)

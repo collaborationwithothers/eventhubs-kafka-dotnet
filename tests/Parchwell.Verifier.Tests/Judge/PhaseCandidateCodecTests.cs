@@ -11,6 +11,67 @@ namespace Parchwell.Verifier.Tests.Judge;
 #pragma warning disable CA1707
 public sealed class PhaseCandidateCodecTests
 {
+    [Fact]
+    public void Given_B10Observations_When_CandidateRoundTrips_Then_PreservesSeparateMeasurementsAndLegacyAbsence()
+    {
+        PhaseCandidate candidate = B10Candidate("C0", 1);
+        using (JsonDocument legacy = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate)))
+            Assert.False(legacy.RootElement.GetProperty("repeats")[0].TryGetProperty("b10_producer_observations", out _));
+        candidate = candidate with { Repeats = [candidate.Repeats[0] with
+        { B10ProducerObservations = Results.B10ProducerObservationsCodecTests.Observations(candidate.Repeats[0].B10Intake!) }] };
+        using JsonDocument document = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate));
+        JsonElement repeat = document.RootElement.GetProperty("repeats")[0];
+        Results.B10ProducerObservationsCodecTests.AssertPair(repeat.GetProperty("b10_producer_observations"));
+        Assert.False(repeat.TryGetProperty("broker_count", out _));
+        var absent = candidate.Repeats[0].B10ProducerObservations!.Select(x => x with { BrokerCount = null }).ToArray();
+        using JsonDocument missing = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate with
+        { Repeats = [candidate.Repeats[0] with { B10ProducerObservations = absent }] }));
+        Assert.All(missing.RootElement.GetProperty("repeats")[0].GetProperty("b10_producer_observations").EnumerateArray(),
+            entry => Assert.False(entry.TryGetProperty("broker_count", out _)));
+    }
+
+    [Theory]
+    [MemberData(nameof(Results.B10ProducerObservationsCodecTests.InvalidWireCases), MemberType = typeof(Results.B10ProducerObservationsCodecTests))]
+    public void Given_MalformedB10ObservationWire_When_CandidateRead_Then_Rejects(string name, string wire)
+    {
+        Assert.NotEmpty(name);
+        JsonObject root = JsonNode.Parse(PhaseCandidateCodec.Write(B10Candidate("C0", 1)))!.AsObject();
+        string repeat = root["repeats"]![0]!.ToJsonString();
+        string extended = repeat[..^1] + ",\"b10_producer_observations\":" + wire + "}";
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(root.ToJsonString().Replace(repeat, extended, StringComparison.Ordinal));
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(bytes));
+    }
+
+    [Theory]
+    [InlineData(0, 0L)] [InlineData(255, 1L)] [InlineData(256, long.MaxValue)]
+    public void Given_B10ObservationBoundaries_When_CandidateRoundTrips_Then_PreservesExactValues(int length, long count)
+    {
+        PhaseCandidate candidate = B10Candidate("C0", 1);
+        var observations = Results.B10ProducerObservationsCodecTests.Observations(candidate.Repeats[0].B10Intake!).Select(x => x with
+        { GeneratorVersion = new('x', length), BrokerCount = x.BrokerCount! with { Maximum = count, FirstPostDrain = null } }).ToArray();
+        using JsonDocument document = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate with
+        { Repeats = [candidate.Repeats[0] with { B10ProducerObservations = observations }] }));
+        foreach (JsonElement entry in document.RootElement.GetProperty("repeats")[0].GetProperty("b10_producer_observations").EnumerateArray())
+        {
+            Assert.Equal(new string('x', length), entry.GetProperty("generator_version").GetString());
+            Assert.Equal(count, entry.GetProperty("broker_count").GetProperty("maximum").GetInt64());
+            Assert.False(entry.GetProperty("broker_count").TryGetProperty("first_post_drain", out _));
+        }
+    }
+
+    [Theory]
+    [InlineData("missing-intake")] [InlineData("non-b10")] [InlineData("reverse")] [InlineData("foreign")]
+    public void Given_UnboundTypedB10Observations_When_CandidateWritten_Then_Rejects(string change)
+    {
+        PhaseCandidate candidate = B10Candidate("C0", 1);
+        var pair = Results.B10ProducerObservationsCodecTests.Observations(candidate.Repeats[0].B10Intake!).ToArray();
+        if (change == "reverse") Array.Reverse(pair);
+        if (change == "foreign") pair[1] = pair[1] with { InstanceId = "foreign" };
+        candidate = candidate with { ScenarioId = change == "non-b10" ? "A01" : "B10", Repeats = [candidate.Repeats[0] with
+        { B10ProducerObservations = pair, B10Intake = change == "missing-intake" ? null : candidate.Repeats[0].B10Intake }] };
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(candidate));
+    }
+
     private static readonly string[] BrokerCountFields = ["client_id", "first_post_drain", "lower_bound", "maximum", "role"];
     private static readonly string[] ExpectedB04EvidenceFields = ["delivery_error_codes", "fatal_errors"];
     private static readonly int[] ExpectedB04DeliveryErrorCodes = [int.MinValue, 0, int.MaxValue];

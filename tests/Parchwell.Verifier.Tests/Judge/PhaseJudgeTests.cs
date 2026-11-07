@@ -9,6 +9,43 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class PhaseJudgeTests
 {
     [Theory]
+    [InlineData("all", true)] [InlineData("slot", true)] [InlineData("invalid", true)]
+    [InlineData("incomplete", true)] [InlineData("sweep", true)]
+    [InlineData("start", false)] [InlineData("publication", false)] [InlineData("receipt", false)]
+    [InlineData("job-false", false)] [InlineData("job-null", false)]
+    [InlineData("registration-false", false)] [InlineData("registration-null", false)]
+    [InlineData("inventory-false", false)] [InlineData("inventory-null", false)]
+    [InlineData("non-b10", false)]
+    public void Given_B10ObservationTrustPredicates_When_Judged_Then_UsesOnlyIntakeAuthorization(string change, bool retained)
+    {
+        B10ProducerObservation[] observations = [new("first", "generator-a", null, new("LoadGenProducer", "first", 3, 1, true)),
+            new("second", "generator-a", null, new("LoadGenProducer", "second", 7, 0, true))];
+        PhaseRepeatEvidence entry = Complete(1, null) with { B10ProducerObservations = observations };
+        entry = change switch
+        {
+            "slot" => entry with { SlotPresent = false },
+            "invalid" => entry with { KnownInvalid = true },
+            "incomplete" => entry with { TrustedIncomplete = true },
+            "sweep" => entry with { B10Finality = new(true) },
+            "start" => entry with { StartLineAccepted = false },
+            "publication" => entry with { PublicationAccepted = false },
+            "receipt" => entry with { VerifierReceiptValid = false },
+            "job-false" => entry with { JobBindingPass = false },
+            "job-null" => entry with { JobBindingPass = null },
+            "registration-false" => entry with { RegistrationCountPass = false },
+            "registration-null" => entry with { RegistrationCountPass = null },
+            "inventory-false" => entry with { InventoryCoveragePass = false },
+            "inventory-null" => entry with { InventoryCoveragePass = null },
+            _ => entry
+        };
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", [entry, Complete(2,null), Complete(3,null), Complete(4,null), Complete(5,null)],
+            change == "non-b10" ? "A01" : "B10");
+        if (retained) Assert.Same(observations, result.Repeats[0].B10ProducerObservations);
+        else Assert.Null(result.Repeats[0].B10ProducerObservations);
+        if (change != "non-b10") { Assert.Null(result.Counts); Assert.Null(result.Repeats[0].Counts); }
+    }
+
+    [Theory]
     [InlineData("valid", "complete_valid")]
     [InlineData("slot", "incomplete")]
     [InlineData("start", "incomplete")]
