@@ -2,6 +2,16 @@
 
 This change carries both B10 producers' provenance and broker counts through verification into the candidate. Local synthetic tests establish the projection behavior; they establish no live B10 result.
 
+## Current correction and review inputs
+
+Hari's interactive instruction, "Fix Claude comments", authorizes the [oversize-version amendment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/401#issuecomment-6704292129) to the selected plan. It adopts the omission recommendation in the [complete Claude report](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/403#issuecomment-6704093578): the real verify handler omits only an individual generator/runtime observation value above the existing bound, allowing normal result and receipt publication. Supplied observation documents still face strict codec validation. The original scope decision and all other checks remain in force.
+
+Review mode for this correction: focused, comparing against reviewed/publication head `b7876dce0d8f8f3c3332049821d18283b2c5df4b`. The full PR diff is context; correction scope is the version-capture bound, its shared constant, synthetic regression tests, contract and authored receipt/state. Review the changed path and affected codec, manifest reader, common-version aggregation and publication lifecycle, without a third comprehensive pass.
+
+Cumulative history before this focused round: the [initial Astra report in the PR self-review record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/403) and the linked Claude report are two comprehensive passes. Claude explicitly identifies its report as a comprehensive cold review under rule 8; it consumes the remaining comprehensive pass. Focused usage is zero. Rule 8 permits two focused correction rounds; exhaustion or unsafe focus saves unpublished work under rule 12 and hands off to Hari. The earlier initial-review wording below describes the historical first round, not a reset.
+
+Correction acceptance: first demonstrate the publication regression with synthetic manifests at 255, 256 and 257 characters for each producer and selected version field; preserve every existing codec rejection assertion. Then build Release with warnings as errors, rerun the affected test classes, run `./scripts/verify-dotnet.sh`, run the staged `npm run check:docs` and whitespace validation. Record the source commit and actual results before focused review. No workflow dispatch, B10 run-data read or merge is authorized in this session. Prior caps on verification-failure and changed-file-warning root causes remain unchanged.
+
 ## Execution card
 
 - Deliverable and exact scope: [approved implementation-grade plan, Revision 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/401#issuecomment-6703603871), updated 2026-11-07T06:54:09Z.
@@ -12,7 +22,31 @@ This change carries both B10 producers' provenance and broker counts through ver
 - Review budget: AGENTS.md "Before opening a pull request" rule 8, cumulative across sessions. At most two comprehensive passes and two focused correction rounds; unsafe focus or exhaustion saves unpublished work to the backup branch and hands off to Hari. Initial cumulative usage: no comprehensive or focused review.
 - Runtime-sized work: the plan caps changed-file documentation-warning root causes and verification-failure root causes at 20 each; exhaustion saves to `-wip` and hands off to the next session. Required authority reads are exempt.
 
-## Source and verification
+## Correction verification and predicate map
+
+Correction production source: `40f04a251206368daf12451869e04ed59d746c15`. The new synthetic capture-boundary tests first ran against the prior implementation: 26 cases executed, with 16 passing and 10 failing specifically on `FormatException` from observation write validation. The failing cases were over-bound versions; the in-bound controls passed. The red report is `/tmp/issue-401-claude-red/results.xml` and its command output is `/tmp/issue-401-claude-red.log`.
+
+After the capture fix, the affected result-codec, two-instance verify, handler, phase-judge and candidate-codec classes passed all 869 cases with no failures or skips. The Release test-project build had no warnings or errors. The green report is `/tmp/issue-401-claude-green/results.xml`.
+
+The full `./scripts/verify-dotnet.sh` run passed on correction production commit `40f04a251206368daf12451869e04ed59d746c15`: locked restore, clean Release solution build, architecture and every selected suite/report gate, Kafka XML inventory and warning-as-error control. Scripted aggregation of `/tmp/parchwell-dotnet-verification.DiubzihZ/*/results.xml` reports 9497 passed, zero failed and zero skipped, including 7379 verifier tests. Command output is `/tmp/issue-401-claude-full.log`.
+
+Final source commit `b849dc2d0a9aba69a14f1935a642f0dc3fa4c0ed` adds only the zero-length capture rows to the new boundary dataset. A clean Release test-project build and the affected-class command below then passed 877 cases, zero failed/skipped; the report is `/tmp/issue-401-claude-final/results.xml`. This supplements unchanged full-suite evidence under rule 13; no production code changed after the full run. No generated report is committed.
+
+```bash
+dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-restore -m:2
+dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build --minimum-expected-tests 1 --results-directory /tmp/issue-401-claude-final -- --filter-class '*B10ProducerObservationsCodecTests' --filter-class '*B10TwoInstanceVerifyTests' --filter-class '*JudgeHandlerTests' --filter-class '*PhaseJudgeTests' --filter-class '*PhaseCandidateCodecTests' --report-xunit-xml --report-xunit-xml-filename results.xml
+./scripts/verify-dotnet.sh
+npm run check:docs
+git diff --check
+```
+
+The red run uses the same project/configuration/report arguments, `/tmp/issue-401-claude-red` as results directory, and `--filter-method '*Given_CapturedVersionAtObservationBoundary*' --filter-method '*Given_AllCapturedVersionsOversizeForOneProducer*'` instead of class filters. The green affected-class run uses `/tmp/issue-401-claude-green`. Environment and Docker-selector handling are the same as the initial verification below. Staged documentation and whitespace checks cover the final correction and receipt; unchanged-file advisory warnings retain the blanket disposition.
+
+The additional capture predicates are tested at zero length and below, at and above the unchanged string ceiling by `Given_CapturedVersionAtObservationBoundary_When_Verifying_Then_OnlyOversizeValueIsOmittedAndReceiptRemainsAvailable`, for each producer and generator/runtime field. The controls keep both publications accepted and all other fields valid. It checks normal nonfinal status, empty failed checks, window eligibility, both intake acceptances, ordered identities, preservation of other version values and broker counts, unchanged legacy root values, cleanup preceding result creation, and an available final receipt whose result length/hash match the actual result bytes. `Given_AllCapturedVersionsOversizeForOneProducer_When_Verifying_Then_EmptyObservationProvenanceStillPublishesReceipt` covers an empty resulting runtime map and absent generator value. Existing missing-map/manifest capture tests cover unavailable input, and the original codec zero-length and strict over-bound read/write tests remain intact. Existing judge tests turn a missing individual observation value into only that common version's null plus `version_unavailable`.
+
+The audit of this failure class covers both generator capture and every selected runtime key. Other observation strings come from already-bound instance/client identities and the recorder's producer role, so this correction adds no unrelated identity or broker-content gate. The shared ceiling constant replaces the codec's literal without changing its strict wire/typed validation. Input/output budgets, legacy provenance, authorization and finality remain as before.
+
+## Initial source and verification
 
 Baseline: `8e2ab2fbb1ca7fe1a02396af4a07ac9626c13c73`. Production implementation commit: `33c752f67265b9ebd07d83f35370170b3706d057`. The complete acceptance run began on the same source bytes before that local commit was created. Final source commit `1590a3c866c425158cba8236aaf98f562a4ae6fe` strengthens only the new candidate-scope test's control; production code is unchanged. Receipt and state changes do not change those source bytes.
 
@@ -62,7 +96,7 @@ The following map covers changed predicates and affected authorization interacti
 | Preserve separate measurements and omissions | Handler, result and candidate tests retain first 3/1 and second 7/0 measurements, never a pair sum; omitted second object and either omitted measurement stay absent. Observed zero remains a numeric zero. Unrelated message invalidity and missing/failed sweep retain authorized observations without authorizing outcome counts. |
 | Existing budgets, privacy, status and finality | The additive fields use the existing bounded output and input readers, and candidate recursive privacy/duplicate/scalar checks. Existing codec, handler, phase-judge, architecture and component tests run through full acceptance; their assertions are retained. |
 
-## Review inputs and downstream acceptance
+## Initial review inputs and downstream acceptance
 
 Review mode: comprehensive; reviewed source is the implementation commit above plus the staged receipt/state. The frozen staged tree and complete report will be identified in the pull request's self-review record. No prior pull request or cold-review round exists for this issue. The first review starts with cumulative usage zero comprehensive and zero focused; its complete report is kept out of its own reviewed receipt and linked or reproduced in the PR self-review record under rule 8.
 
