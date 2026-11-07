@@ -51,7 +51,7 @@ def load_yaml(text):
 
 def check_queue(document, filename):
     expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
-    required = filename in ('cluster-smoke.yml', 'sweeper.yml')
+    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml')
     allowed = required or filename == 'scenario.yml' and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
     if allowed and document.get('concurrency') != expected:
         raise ValueError(f'{filename}: concurrency must be exactly {expected}')
@@ -71,6 +71,9 @@ def check_queue(document, filename):
 
 def check_workflows(repository):
     expected_triggers = {
+        'b10-abrupt-trial.yml': {'workflow_dispatch': {'inputs': {
+            'confirm_diagnostic_trial': {'description': 'Confirm the single diagnostic-only B10 restart trial',
+                                         'type': 'boolean', 'required': 'true', 'default': 'false'}}}},
         'cluster-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
@@ -100,6 +103,8 @@ def check_workflows(repository):
             for job in jobs.values():
                 if job.get('permissions', {}).get('id-token') == 'write' or any(str(step.get('uses', '')).startswith('azure/login@') for step in job.get('steps', [])):
                     raise ValueError(f'{path.name}: PR job requests Azure identity')
+    if (repository / '.github/workflows/b10-abrupt-trial.yml').read_bytes() != (repository / 'docs/operations/workflows/b10-abrupt-trial.yml.txt').read_bytes():
+        raise ValueError('B10 abrupt trial mirror differs')
     if (repository / '.github/workflows/sweeper.yml').read_bytes() != (repository / 'docs/operations/workflows/sweeper.yml.txt').read_bytes():
         raise ValueError('sweeper mirror differs')
 
@@ -144,10 +149,11 @@ for script in scripts/*.sh; do
 done
 run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
 run cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt
-run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml
+run cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt
+run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml
 for workflow in .github/workflows/*.yml; do
   case "$workflow" in
-    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml) continue ;;
+    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml) continue ;;
   esac
   if [ "$workflow" = .github/workflows/scenario.yml ] && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
     run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' "$workflow"

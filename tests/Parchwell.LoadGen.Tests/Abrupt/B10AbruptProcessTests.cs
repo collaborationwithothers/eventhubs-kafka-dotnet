@@ -1,0 +1,229 @@
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text;
+using Parchwell.LoadGen.Run.Abrupt;
+using Xunit;
+
+namespace Parchwell.LoadGen.Tests.Abrupt;
+
+#pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
+
+public sealed class B10AbruptProcessTests(ITestOutputHelper output)
+{
+    [Fact]
+    public async Task Given_OwnedChild_When_StopResumeKill_Then_ObservesStoppedProgressExitAndEof()
+    {
+        var command = Command();
+        if (!OperatingSystem.IsLinux())
+        {
+            var exception = Assert.Throws<InvalidOperationException>(() => OwnedProducerProcess.Start(command, Options()));
+            Assert.Equal("b10_abrupt_platform_unsupported", exception.Message);
+            return;
+        }
+        Assert.Equal(0, OwnedProducerProcess.PreflightSignalEntryPoint().ReturnValue);
+        string bindingPath = Path.Combine(Path.GetTempPath(), "b10-start-" + Guid.NewGuid().ToString("N") + ".json");
+        await File.WriteAllTextAsync(bindingPath, "synthetic-start-line-binding", TestContext.Current.CancellationToken);
+        using var bindingCleanup = new FileCleanup(bindingPath);
+        using var process = OwnedProducerProcess.Start(command, Options(bindingPath));
+        var messages = new ConcurrentQueue<B10AbruptWire.Message>();
+        var pump = Task.Run(async () =>
+        {
+            long sequence = 2;
+            long acknowledgement = 0;
+            while (await B10AbruptWire.ReadMessageAsync(process.Events, sequence++, TestContext.Current.CancellationToken) is { } message)
+            {
+                messages.Enqueue(message);
+                await B10AbruptWire.WriteMessageAsync(process.Acknowledgements,
+                    new("ack", ++acknowledgement, B10AbruptWire.Element(new { acknowledged_sequence = message.Sequence })), TestContext.Current.CancellationToken);
+            }
+        }, TestContext.Current.CancellationToken);
+        await UntilAsync(() => messages.Count >= 3, TimeSpan.FromSeconds(10));
+        output.WriteLine($"runtime={Environment.Version};os={RuntimeInformation.OSDescription};kernel={File.ReadAllText("/proc/sys/kernel/osrelease").Trim()};start={TimeProvider.System.GetUtcNow():O}");
+        var notExited = process.ObserveExit(0);
+        Assert.False(notExited.WaitForExitObserved);
+        Assert.Null(notExited.ExitCodeLocalObservation);
+        Assert.Equal(0, process.RequestStop().ReturnValue);
+        Assert.True(process.ConfirmStopped());
+        output.WriteLine($"stopped={TimeProvider.System.GetUtcNow():O}");
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        int count = messages.Count;
+        await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        Assert.Equal(count, messages.Count);
+        Assert.Equal(0, process.Resume().ReturnValue);
+        await UntilAsync(() => messages.Count > count, TimeSpan.FromSeconds(5));
+        output.WriteLine($"resumed_progress={TimeProvider.System.GetUtcNow():O}");
+        Assert.Equal(0, process.RequestKill().ReturnValue);
+        output.WriteLine($"kill_requested={TimeProvider.System.GetUtcNow():O}");
+        var exit = process.ObserveExit();
+        Assert.True(exit.WaitForExitObserved);
+        Assert.NotNull(exit.ExitCodeLocalObservation);
+        await pump.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        output.WriteLine($"exit={TimeProvider.System.GetUtcNow():O};exit_code_local_observation={exit.ExitCodeLocalObservation};eof=true;heartbeats={messages.Count}");
+    }
+
+    [Theory]
+    [InlineData("worker", "123")]
+    [InlineData("worker (nested) space", "9223372036854775807")]
+    [InlineData("a ) ) ( b", "0")]
+    public void Given_CommContainsParentheses_When_ParseStartTime_Then_UsesLastDelimiter(string comm, string ticks)
+    {
+        var fields = Enumerable.Repeat("0", 23).ToArray();
+        fields[0] = "S"; fields[19] = ticks;
+        Assert.Equal(long.Parse(ticks, CultureInfo.InvariantCulture), B10AbruptProc.ReadStartTimeTicks(Encoding.ASCII.GetBytes("7 (" + comm + ")   " + string.Join("  ", fields) + "  ")));
+    }
+
+    [Theory]
+    [InlineData("no delimiter")]
+    [InlineData("1 (x) S 1")]
+    [InlineData("1 (x) S 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1")]
+    [InlineData("1 (x) S 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 9223372036854775808")]
+    [InlineData("1 (x) S 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5")]
+    public void Given_MalformedStat_When_Parse_Then_Rejects(string stat) =>
+        Assert.Equal("b10_abrupt_child_identity_mismatch", Assert.Throws<InvalidDataException>(() => B10AbruptProc.ReadStartTimeTicks(Encoding.ASCII.GetBytes(stat))).Message);
+
+    [Fact]
+    public void Given_PreflightErrno_When_Start_Then_FailsBeforeExecutableLaunch()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        var calls = new List<(int Pid, int Signal)>();
+        var exception = Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.Start(
+            new("/does/not/exist", [], new Dictionary<string, string>()), Options(), (pid, signal) =>
+            { calls.Add((pid, signal)); return new(signal, -1, 13); }));
+        Assert.Equal("b10_abrupt_signal_preflight_failed", exception.Message);
+        Assert.Equal(-1, exception.Observation.ReturnValue);
+        Assert.Equal(13, exception.Observation.Errno);
+        Assert.Equal([(Environment.ProcessId, 0)], calls);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Given_NativeLoadFailure_When_Preflight_Then_RetainsTypeWithoutFabricatedErrno(int kind)
+    {
+        Exception failure = kind switch { 0 => new DllNotFoundException(), 1 => new EntryPointNotFoundException(), _ => new BadImageFormatException() };
+        var exception = Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.PreflightSignalEntryPoint((_, _) => throw failure));
+        Assert.Equal("b10_abrupt_signal_preflight_failed", exception.Message);
+        Assert.Null(exception.Observation.Errno);
+        Assert.Null(exception.Observation.ReturnValue);
+        Assert.Equal(failure.GetType().Name, exception.Observation.NativeException);
+    }
+
+    [Theory]
+    [InlineData(0, 10, 1, false)]
+    [InlineData(5, 11, 1, false)]
+    [InlineData(5, 10, 2, false)]
+    [InlineData(5, 10, 1, true)]
+    public void Given_UnownedOrChangedTarget_When_Validate_Then_RejectsBeforeSignal(int pid, int parent, long ticks, bool exited)
+    {
+        var original = new OwnedProducerProcess.ProcessIdentity(5, 10, "boot", 1);
+        var current = new OwnedProducerProcess.ProcessIdentity(pid, parent, "boot", ticks);
+        Assert.Equal("b10_abrupt_target_invalid", Assert.Throws<InvalidOperationException>(() => OwnedProducerProcess.ValidateTarget(original, current, exited, 10)).Message);
+    }
+
+    [Fact]
+    public void Given_SignalFailure_When_Request_Then_RetainsActualErrno()
+    {
+        var target = new OwnedProducerProcess.ProcessIdentity(5, 10, "boot", 1);
+        var exception = Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.RequestSignal(target, target, false, 10, 19,
+            (pid, signal) => { Assert.Equal(5, pid); Assert.Equal(19, signal); return new(signal, -1, 3); }));
+        Assert.Equal("b10_abrupt_signal_failed", exception.Message);
+        Assert.Equal(-1, exception.Observation.ReturnValue);
+        Assert.Equal(3, exception.Observation.Errno);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void Given_NonArmSignal_When_Request_Then_NativeBoundaryIsNotCalled(int signal)
+    {
+        var target = new OwnedProducerProcess.ProcessIdentity(5, 10, "boot", 1);
+        int calls = 0;
+        Assert.Equal("b10_abrupt_target_invalid", Assert.Throws<InvalidOperationException>(() => OwnedProducerProcess.RequestSignal(target, target, false, 10, signal,
+            (_, _) => { calls++; return new(signal, 0, null); })).Message);
+        Assert.Equal(0, calls);
+    }
+
+    [Theory]
+    [InlineData("T", 1, 10)]
+    [InlineData("t", 0, 10)]
+    [InlineData("Z", 0, 10)]
+    [InlineData("?", 0, 10)]
+    [InlineData("S", 0, 11)]
+    public void Given_TracedAmbiguousOrForeignProc_When_ReadIdentity_Then_Rejects(string state, int tracer, int parent)
+    {
+        var fields = Enumerable.Repeat("0", 23).ToArray();
+        fields[0] = state; fields[1] = "10"; fields[19] = "1";
+        byte[] stat = Encoding.ASCII.GetBytes("5 (worker) " + string.Join(' ', fields));
+        Assert.Equal("b10_abrupt_target_invalid", Assert.Throws<InvalidOperationException>(() => OwnedProducerProcess.ParseIdentity(5, stat,
+            $"PPid:\t{parent}\nTracerPid:\t{tracer}\n", "boot")).Message);
+    }
+
+    [Theory]
+    [InlineData(65535, true)]
+    [InlineData(65536, true)]
+    [InlineData(65537, false)]
+    public void Given_ProcReadByteBoundary_When_Read_Then_RejectsExcess(int count, bool valid)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "b10-proc-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            File.WriteAllBytes(path, new byte[count]);
+            if (valid) Assert.Equal(count, B10AbruptProc.ReadBounded(path).Length);
+            else Assert.Throws<IOException>(() => B10AbruptProc.ReadBounded(path));
+        }
+        finally { File.Delete(path); }
+        Assert.Throws<FileNotFoundException>(() => B10AbruptProc.ReadBounded(path));
+    }
+
+    internal static B10AbruptOptions Options(string bindingPath = "/work/start-line.json") => B10AbruptOptions.Read(new Dictionary<string, string>
+    {
+        ["B10Abrupt__Enabled"] = "true", ["B10Abrupt__Purpose"] = "diagnostic_trial", ["B10Abrupt__Role"] = "supervisor",
+        ["B10Abrupt__RunId"] = "test", ["B10Abrupt__ScenarioId"] = "B10", ["B10Abrupt__ConfigurationId"] = "C1", ["B10Abrupt__Phase"] = "C1",
+        ["B10Abrupt__Repeat"] = "1", ["B10Abrupt__SourceCommit"] = new('a', 40), ["B10Abrupt__ImageReference"] = "example/image@sha256:" + new string('b', 64),
+        ["B10Abrupt__JobName"] = "test-c1-r1-loadgen", ["B10Abrupt__PodName"] = "first", ["B10Abrupt__PodUid"] = "uid",
+        ["B10Abrupt__NamespaceName"] = "parchwell", ["B10Abrupt__BlobEndpoint"] = "https://example.blob.core.windows.net",
+        ["B10Abrupt__ScenarioSourceRoot"] = "/scenarios", ["B10Abrupt__OutputRoot"] = "/work/loadgen", ["B10Abrupt__StartLineBindingPath"] = bindingPath,
+    });
+
+    private sealed class FileCleanup(string path) : IDisposable
+    {
+        public void Dispose() => File.Delete(path);
+    }
+
+    private static ChildCommand Command()
+    {
+        string executable = Environment.ProcessPath!;
+        List<string> arguments = ["-class", "Parchwell.LoadGen.Tests.Abrupt.B10AbruptProcessChildWorker"];
+        if (Path.GetFileNameWithoutExtension(executable) == "dotnet") arguments.Insert(0, typeof(B10AbruptProcessChildWorker).Assembly.Location);
+        return new(executable, arguments, new Dictionary<string, string> { ["PARCHWELL_B10_ABRUPT_PROCESS_CHILD"] = "1" });
+    }
+
+    private static async Task UntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        using var cancellation = new CancellationTokenSource(timeout);
+        while (!condition()) await Task.Delay(10, cancellation.Token);
+    }
+}
+
+public sealed class B10AbruptProcessChildWorker
+{
+    [Fact]
+    public async Task Given_ChildWorkerFlag_When_Run_Then_SendsHeartbeats()
+    {
+        if (Environment.GetEnvironmentVariable("PARCHWELL_B10_ABRUPT_PROCESS_CHILD") != "1") return;
+        Assert.Equal("synthetic-start-line-binding", await File.ReadAllTextAsync(Environment.GetEnvironmentVariable("B10Abrupt__StartLineBindingPath")!, TestContext.Current.CancellationToken));
+        Assert.Null(Environment.GetEnvironmentVariable("B10Abrupt__PredecessorBindingPath"));
+        await using var channel = B10AbruptChildChannel.Connect(Environment.GetEnvironmentVariable("B10Abrupt__EventsPipeHandle")!,
+            Environment.GetEnvironmentVariable("B10Abrupt__AckPipeHandle")!, Environment.GetEnvironmentVariable("B10Abrupt__IdentityChallenge")!);
+        for (int index = 0; index < 600; index++)
+        {
+            await channel.SendAsync("prepared", B10AbruptWire.Element(new { attempt_id = "heartbeat-" + index.ToString(CultureInfo.InvariantCulture),
+                invocation_ordinal = index, cohort = "same_instance", probe_id = "heartbeat", key = "heartbeat", sequence = 0,
+                payload_length = 0, payload_sha256 = new string('a', 64), predecessor_attempt_id = (string?)null }), TestContext.Current.CancellationToken);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+    }
+}

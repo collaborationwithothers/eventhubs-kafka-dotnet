@@ -215,6 +215,7 @@ def idle_observation_judge_host_acceptance(td, verifier_publish):
 
 
 def main():
+    from test_b10_abrupt_host import b10_abrupt_host_acceptance
     with tempfile.TemporaryDirectory(prefix='parchwell-loadgen-host-') as name:
         td=Path(name); publish=td/'publish'
         proc=subprocess.run(['python3','infra/scripts/lifecycle/command.py','600','--','dotnet','publish','src/Parchwell.LoadGen/Parchwell.LoadGen.csproj','--configuration','Release','--output',str(publish),'-p:RestoreLockedMode=true'],
@@ -260,5 +261,6 @@ def main():
         verifier_publish = td / 'idle-judge-verifier-publish'
         publish_worker('Verifier', verifier_publish)
         idle_observation_judge_host_acceptance(td, verifier_publish)
+        b10_abrupt_host_acceptance(td, publish)
 
 if __name__=='__main__': main()
