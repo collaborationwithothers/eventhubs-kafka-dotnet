@@ -21,7 +21,7 @@ public sealed class B10TwoInstanceVerifyTests
     {
         foreach (int producer in new[] { 0, 1 })
             foreach (string field in new[] { "generator_version", "confluent_kafka", "librdkafka", "dotnet" })
-                foreach (int length in new[] { 255, 256, 257 }) yield return [producer, field, length];
+                foreach (int length in new[] { 0, 255, 256, 257 }) yield return [producer, field, length];
     }
 
     [Theory]
