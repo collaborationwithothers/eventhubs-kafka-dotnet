@@ -25,7 +25,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | B07 | Batching delay | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | B08 | Partitioner compatibility | The default `consistent_random` partitioner sent the key `b08-synthetic-0` to partition 30 and `murmur2_random` sent it to partition 2 in all five repeats of each, on a 32-partition event hub, matching the partitions computed from the pinned librdkafka source. One key and one partition count were tested. | confirmed | [Report](results/B08/2026-11-01.md) |
 | B09 | Produce throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| B10 | Message timeout and application retry | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| B10 | Message timeout, application retry and restart recovery | Unpublished. | timeout/application retry: unpublished; restart recovery: held, no scientific run yet | [Inventory](docs/blueprint.md#frozen-inventory) |
 | B11 | Claim-check ordering and retention | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C01 | Session timeout configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C02 | Heartbeat interval configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
@@ -87,7 +87,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | K09 | Trace: LocalDNS prerequisites and effects | Not run: LocalDNS changes the DNS path for every item. | untestable | [Report](results/K09/2026-10-28.md) |
 | K10 | Trace: SNAT use for Entra egress | Not run: exhaustion needs scale. | untestable | [Report](results/K10/2026-10-27.md) |
 
-Verdicts: confirmed, contradicted, undocumented, untestable.
+Verdicts: confirmed, contradicted, undocumented, untestable. B10 has two separately approved verdicts, timeout/application retry and restart recovery, under ADR-021. Every restart verdict carries the full subject: "With idempotence enabled, application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message can leave both the original and the resend in the log." It does not establish survival or loss of internal retry state. The restart report includes the matched same-instance comparison and fatal-capture limits. Until a scientific run exists, the restart cell reads `held, no scientific run yet`. After a scientific run, it shows `held` only if ADR-021 holds the restart verdict, with the eligible-repeat count and reasons; otherwise it shows the selected restart verdict with its full subject. It is never a dash, blank or `not_tested`; independently eligible timeout evidence may publish alone. ADR-021 rules 3 and 4 publish lost-resend findings from eligible and ineligible C1 repeats; only loss in eligible repeats affects the restart verdict.
 
 Rows marked unpublished have no published report. A dash means no published verdict.
 
