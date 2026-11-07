@@ -46,6 +46,7 @@ internal static class VerifierResultCodec
             writer.WriteNumber("schema_version", result.SchemaVersion);
             WriteIdentity(writer, result.Identity);
             if (result.B10Intake is not null) PhaseWireCodec.WriteB10Intake(writer, result.B10Intake);
+            if (result.B10ProducerObservations is not null) B10ProducerObservationsCodec.Write(writer, result.B10ProducerObservations, result.B10Intake!);
             if (result.ClassificationFinal is bool final) writer.WriteBoolean("classification_final", final);
             if (result.B10WindowChecksComplete is bool eligible) writer.WriteBoolean("b10_window_checks_complete", eligible);
             if (result.GeneratorVersion is not null) writer.WriteString("generator_version", result.GeneratorVersion);
@@ -219,12 +220,23 @@ internal static class VerifierResultCodec
             return Failure(artifact, "b10_intake", "invalid_b10_intake");
         }
 
+        IReadOnlyList<B10ProducerObservation>? b10Observations = null;
+        if (root.TryGetProperty("b10_producer_observations", out JsonElement observationElement))
+        {
+            try
+            {
+                if (identity!.ScenarioId != "B10" || b10Intake is null) throw new FormatException("B10 observations require intake.");
+                b10Observations = B10ProducerObservationsCodec.Read(observationElement, b10Intake);
+            }
+            catch (FormatException) { return Failure(artifact, "b10_producer_observations", "invalid_b10_producer_observations"); }
+        }
+
         if (windowChecksComplete == true && !EligibleShape(status, failedChecks!, classificationFinal, startLine, endLine, b10Intake))
             return Failure(artifact, "b10_window_checks_complete", "invalid_b10_window_checks_complete");
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete, b10Observations));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -245,6 +257,12 @@ internal static class VerifierResultCodec
             try { PhaseWireCodec.ValidateB10Intake(result.B10Intake, result.Identity, result.VerifierCommit); }
             catch (Exception ex) when (ex is FormatException or ArgumentException)
             { throw new ArgumentException("B10 intake evidence is invalid.", nameof(result), ex); }
+        }
+        if (result.B10ProducerObservations is not null)
+        {
+            if (result.Identity.ScenarioId != "B10" || result.B10Intake is null)
+                throw new FormatException("B10 producer observations require B10 intake.");
+            B10ProducerObservationsCodec.Validate(result.B10ProducerObservations, result.B10Intake);
         }
         if (result.Status == VerifierResultStatus.CompleteValid && result.Counts is null)
             throw new ArgumentException("A complete_valid result requires all six supplied outcome counts.", nameof(result));
@@ -1047,7 +1065,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete", "b10_producer_observations"
         };
         fields.UnionWith(CountFields);
         return fields;

@@ -29,6 +29,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
     ScenarioLoader scenarioLoader, RegisteredProducerConfigurationResolver configurationResolver,
     VerifierCompletionState? completion = null) : IVerifierModeHandler
 {
+    private static readonly string[] ProducerRuntimeVersionKeys = ["confluent_kafka", "librdkafka", "dotnet"];
+
     public VerifierMode Mode => VerifierMode.Verify;
 
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
@@ -213,12 +215,19 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 status=judgement.Status??VerifierResultStatus.Incomplete;
                 var hashes=firstInput.Acceptance.AcceptedSnapshot is null?[]:PublicationAcceptance.DescriptorNames
                     .Select(n=>{byte[] bytes=firstInput.Raw[n]!;return new JudgedFileHash(n,Convert.ToHexStringLower(SHA256.HashData(bytes)));}).ToArray();
+                B10ProducerObservation[]? observations=b10?inputs.Select((input,index)=>new B10ProducerObservation(
+                    input.Registration.Identity.InstanceId,
+                    input.Manifest.Value?.GeneratorVersion is {Length:<=B10ProducerObservationsCodec.MaximumStringLength} generatorVersion?generatorVersion:null,
+                    input.Manifest.Value?.RuntimeVersions is { } versions?ProducerRuntimeVersionKeys
+                        .Where(key=>versions.ContainsKey(key)&&versions[key].Length<=B10ProducerObservationsCodec.MaximumStringLength)
+                        .ToDictionary(key=>key,key=>versions[key],StringComparer.Ordinal):null,
+                    judgements[index].BrokerCount)).ToArray():null;
                 var result=new VerifierResult(1,registration.Identity,firstInput.Manifest.Value?.GeneratorVersion,firstInput.Manifest.Value?.RuntimeVersions,options.VerifierCommit!,typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(),Library.VersionString,
                     status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray(),ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
-                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?b10Evaluation!.InWindowCounts is not null:null);
+                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?b10Evaluation!.InWindowCounts is not null:null,observations);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
                 coverage=b10?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";

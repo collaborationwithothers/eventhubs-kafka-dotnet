@@ -17,6 +17,164 @@ namespace Parchwell.Verifier.Tests.Host;
 #pragma warning disable CA1707 // Repository test naming convention.
 public sealed class B10TwoInstanceVerifyTests
 {
+    public static IEnumerable<object[]> VersionCaptureBoundaries()
+    {
+        foreach (int producer in new[] { 0, 1 })
+            foreach (string field in new[] { "generator_version", "confluent_kafka", "librdkafka", "dotnet" })
+                foreach (int length in new[] { 0, 255, 256, 257 }) yield return [producer, field, length];
+    }
+
+    [Theory]
+    [MemberData(nameof(VersionCaptureBoundaries))]
+    public async Task Given_CapturedVersionAtObservationBoundary_When_Verifying_Then_OnlyOversizeValueIsOmittedAndReceiptRemainsAvailable(
+        int producer, string field, int length)
+    {
+        using var fixture = CreateSyntheticB10Intake();
+        foreach (string instance in new[] { First, Second })
+            ChangePayload(fixture, instance, "manifest.json", manifest =>
+            {
+                manifest["generator_version"] = "generator-a";
+                manifest["runtime_versions"] = new JsonObject
+                { ["confluent_kafka"] = "kafka-a", ["librdkafka"] = "native-a", ["dotnet"] = "dotnet-a" };
+                if (instance == (producer == 0 ? First : Second))
+                    if (field == "generator_version") manifest[field] = new string('v', length);
+                    else manifest["runtime_versions"]![field] = new string('v', length);
+            });
+        var completion = new VerifierCompletionState();
+        Assert.Equal(1, await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken));
+        byte[] resultBytes = fixture.Output!;
+        using JsonDocument document = JsonDocument.Parse(resultBytes);
+        JsonElement result = document.RootElement;
+        AssertStatus(result, "incomplete");
+        Assert.Empty(FailedChecks(result));
+        Assert.True(result.GetProperty("b10_window_checks_complete").GetBoolean());
+        AssertPair(result, true, true);
+        JsonElement pair = result.GetProperty("b10_producer_observations");
+        Assert.Equal([First, Second], pair.EnumerateArray().Select(entry => entry.GetProperty("instance_id").GetString()));
+        for (int index = 0; index < 2; index++)
+        {
+            JsonElement observation = pair[index];
+            foreach (var (versionField, baseline) in new[] { ("generator_version", "generator-a"), ("confluent_kafka", "kafka-a"), ("librdkafka", "native-a"), ("dotnet", "dotnet-a") })
+            {
+                JsonElement target = versionField == "generator_version" ? observation : observation.GetProperty("runtime_versions");
+                bool changed = index == producer && versionField == field;
+                if (changed && length > 256) Assert.False(target.TryGetProperty(versionField, out _));
+                else Assert.Equal(changed ? new string('v', length) : baseline, target.GetProperty(versionField).GetString());
+                if (index == 0)
+                {
+                    JsonElement legacy = versionField == "generator_version" ? result : result.GetProperty("runtime_versions");
+                    Assert.Equal(changed ? new string('v', length) : baseline, legacy.GetProperty(versionField).GetString());
+                }
+            }
+            JsonElement broker = observation.GetProperty("broker_count");
+            Assert.Equal(index == 0 ? First : Second, broker.GetProperty("client_id").GetString());
+            Assert.Equal(1, broker.GetProperty("maximum").GetInt64());
+            Assert.Equal(1, broker.GetProperty("first_post_drain").GetInt64());
+            Assert.True(broker.GetProperty("lower_bound").GetBoolean());
+        }
+        AssertObservationReceipt(fixture, completion, resultBytes);
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)]
+    public async Task Given_AllCapturedVersionsOversizeForOneProducer_When_Verifying_Then_EmptyObservationProvenanceStillPublishesReceipt(int producer)
+    {
+        using var fixture = CreateSyntheticB10Intake();
+        ChangePayload(fixture, producer == 0 ? First : Second, "manifest.json", manifest =>
+        {
+            manifest["generator_version"] = new string('v', 257);
+            manifest["runtime_versions"] = new JsonObject
+            { ["confluent_kafka"] = new string('v', 257), ["librdkafka"] = new string('v', 257), ["dotnet"] = new string('v', 257) };
+        });
+        var completion = new VerifierCompletionState();
+        Assert.Equal(1, await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken));
+        byte[] resultBytes = fixture.Output!;
+        using JsonDocument document = JsonDocument.Parse(resultBytes);
+        JsonElement result = document.RootElement;
+        AssertStatus(result, "incomplete");
+        Assert.Empty(FailedChecks(result));
+        Assert.True(result.GetProperty("b10_window_checks_complete").GetBoolean());
+        AssertPair(result, true, true);
+        JsonElement observation = result.GetProperty("b10_producer_observations")[producer];
+        Assert.False(observation.TryGetProperty("generator_version", out _));
+        Assert.Empty(observation.GetProperty("runtime_versions").EnumerateObject());
+        Assert.Equal(1, observation.GetProperty("broker_count").GetProperty("maximum").GetInt64());
+        AssertObservationReceipt(fixture, completion, resultBytes);
+    }
+
+    private static void AssertObservationReceipt(HostEvidenceBuilder fixture, VerifierCompletionState completion, byte[] resultBytes)
+    {
+        Assert.True(fixture.Events.IndexOf("consumer-dispose") < fixture.Events.IndexOf("create"));
+        completion.MarkReturned(fixture.Options, 1, CancellationToken.None, CancellationToken.None);
+        Assert.True(completion.TryGetBlobReceipt(out _, out _, out byte[] receiptBytes));
+        WorkerReceipt receipt = PhaseWireCodec.ReadReceipt(receiptBytes);
+        Assert.True(receipt.CleanupCompleted);
+        Assert.Equal(1, receipt.HandlerExitCode);
+        Assert.All(receipt.B10Intake!.Producers, p => Assert.NotNull(p.PublicationAcceptance));
+        ArtifactReference reference = Assert.Single(receipt.Artifacts);
+        Assert.Equal(resultBytes.LongLength, reference.Length);
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(resultBytes)), reference.Sha256);
+    }
+
+    [Theory]
+    [InlineData("pair")]
+    [InlineData("missing-dotnet")]
+    [InlineData("unreadable-manifest")]
+    public async Task Given_IndependentProducerManifests_When_Verifying_Then_RecordsEachInstancesOwnProvenanceAndBrokerCount(string change)
+    {
+        using var fixture = CreateSyntheticB10Intake();
+        foreach (string instance in new[] { First, Second })
+            ChangePayload(fixture, instance, "manifest.json", manifest =>
+            {
+                string suffix = instance == First ? "first" : "second";
+                manifest["generator_version"] = "generator-" + suffix;
+                manifest["runtime_versions"] = new JsonObject
+                {
+                    ["confluent_kafka"] = "kafka-" + suffix, ["librdkafka"] = "native-" + suffix,
+                    ["dotnet"] = "dotnet-" + suffix, ["workload_generator"] = "extra-runtime-key"
+                };
+                if (instance == Second && change == "missing-dotnet") manifest["runtime_versions"]!.AsObject().Remove("dotnet");
+                if (instance == Second && change == "unreadable-manifest") manifest.Remove("runtime_versions");
+            });
+        var completion = new VerifierCompletionState();
+        Assert.Equal(1, await fixture.Verify(completion).ExecuteAsync(TestContext.Current.CancellationToken));
+        using JsonDocument document = JsonDocument.Parse(fixture.Output!);
+        JsonElement result = document.RootElement;
+        AssertStatus(result, change == "unreadable-manifest" ? "invalid" : "incomplete");
+        Assert.Equal("generator-first", result.GetProperty("generator_version").GetString());
+        Assert.Equal("kafka-first", result.GetProperty("runtime_versions").GetProperty("confluent_kafka").GetString());
+        JsonElement pair = result.GetProperty("b10_producer_observations");
+        Assert.Equal([First, Second], pair.EnumerateArray().Select(x => x.GetProperty("instance_id").GetString()));
+        for (int index = 0; index < 2; index++)
+        {
+            JsonElement observation = pair[index];
+            if (index == 1 && change == "unreadable-manifest")
+            {
+                Assert.False(observation.TryGetProperty("generator_version", out _));
+                Assert.False(observation.TryGetProperty("runtime_versions", out _));
+                continue;
+            }
+            string suffix = index == 0 ? "first" : "second";
+            Assert.Equal("generator-" + suffix, observation.GetProperty("generator_version").GetString());
+            JsonElement runtimes = observation.GetProperty("runtime_versions");
+            Assert.Equal("kafka-" + suffix, runtimes.GetProperty("confluent_kafka").GetString());
+            Assert.Equal("native-" + suffix, runtimes.GetProperty("librdkafka").GetString());
+            Assert.False(runtimes.TryGetProperty("workload_generator", out _));
+            if (index == 1 && change == "missing-dotnet") Assert.False(runtimes.TryGetProperty("dotnet", out _));
+            else Assert.Equal("dotnet-" + suffix, runtimes.GetProperty("dotnet").GetString());
+            JsonElement count = observation.GetProperty("broker_count");
+            Assert.Equal(index == 0 ? First : Second, count.GetProperty("client_id").GetString());
+            Assert.Equal(1, count.GetProperty("maximum").GetInt64());
+            Assert.Equal(1, count.GetProperty("first_post_drain").GetInt64());
+            Assert.True(count.GetProperty("lower_bound").GetBoolean());
+        }
+        completion.MarkReturned(fixture.Options, 1, CancellationToken.None, CancellationToken.None);
+        Assert.True(completion.TryGetBlobReceipt(out _, out _, out byte[] receiptBytes));
+        using JsonDocument receipt = JsonDocument.Parse(receiptBytes);
+        Assert.False(receipt.RootElement.TryGetProperty("b10_producer_observations", out _));
+        Assert.Equal(result.GetProperty("b10_intake").GetRawText(), receipt.RootElement.GetProperty("b10_intake").GetRawText());
+    }
+
     private static readonly int[] ForeignInstanceChecks = [3, 6];
     private static readonly int[] MissingInstanceChecks = [6];
     internal const string First = "pod-first";

@@ -16,6 +16,194 @@ namespace Parchwell.Verifier.Tests.Judge;
 #pragma warning disable CA1707
 public sealed class JudgeHandlerTests
 {
+    [Theory]
+    [InlineData("missing-sweep")] [InlineData("failed-sweep")] [InlineData("message-invalid")] [InlineData("slot-only")]
+    public async Task Given_TrustedB10ProducerObservations_When_Judged_Then_PreservesCommonVersionsAndSeparateCountsIndependentlyOfFinality(string change)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        if (change == "failed-sweep") AttachSweep(stores, "failed");
+        if (change == "message-invalid") ChangeObservationResult(stores, 1, result =>
+        { result["status"] = "invalid"; result["b10_window_checks_complete"] = false; result["failed_checks"] = new JsonArray(14); });
+        if (change == "slot-only") stores.Verifier["synthetic-c5/C0/r6/unexpected"] = [];
+        using JsonDocument candidate = await JudgeB10(stores);
+        AssertVersions(candidate.RootElement);
+        Assert.DoesNotContain("version_unavailable", candidate.RootElement.GetProperty("reasons").EnumerateArray().Select(x => x.GetString()));
+        Assert.False(candidate.RootElement.TryGetProperty("counts", out _));
+        foreach (JsonElement repeat in candidate.RootElement.GetProperty("repeats").EnumerateArray())
+        {
+            JsonElement pair = repeat.GetProperty("b10_producer_observations");
+            Assert.Equal(3, pair[0].GetProperty("broker_count").GetProperty("maximum").GetInt64());
+            Assert.Equal(1, pair[0].GetProperty("broker_count").GetProperty("first_post_drain").GetInt64());
+            Assert.Equal(7, pair[1].GetProperty("broker_count").GetProperty("maximum").GetInt64());
+            Assert.Equal(0, pair[1].GetProperty("broker_count").GetProperty("first_post_drain").GetInt64());
+            for (int index = 0; index < 2; index++)
+                Assert.Equal(repeat.GetProperty("b10_intake").GetProperty("producers")[index].GetProperty("identity").GetProperty("instance_id").GetString(),
+                    pair[index].GetProperty("instance_id").GetString());
+            Assert.False(repeat.TryGetProperty("broker_count", out _));
+            Assert.False(repeat.TryGetProperty("counts", out _));
+            Assert.False(repeat.GetProperty("classification_final").GetBoolean());
+            if (change == "slot-only") Assert.False(repeat.GetProperty("checks").GetProperty("j1_repeat_slots").GetBoolean());
+            else Assert.True(repeat.GetProperty("checks").GetProperty("j1_repeat_slots").GetBoolean());
+        }
+        if (change == "message-invalid") Assert.Contains(candidate.RootElement.GetProperty("repeats")[0].GetProperty("reasons").EnumerateArray(),
+            reason => reason.GetString() == "trusted_result_invalid");
+    }
+
+    public static IEnumerable<object[]> B10VersionChanges()
+    {
+        foreach (string key in new[] { "workload_generator", "confluent_kafka", "librdkafka", "dotnet" })
+            foreach (int repeat in new[] { 1, 5 })
+                foreach (string change in new[] { "different", "missing", "case-only" }) yield return [key, repeat, change];
+    }
+
+    [Theory]
+    [MemberData(nameof(B10VersionChanges))]
+    public async Task Given_OneSecondProducerVersionMissingOrDifferent_When_Judged_Then_OnlyThatCommonVersionIsUnavailable(string key, int repeat, string change)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        ChangeObservationResult(stores, repeat, result =>
+        {
+            JsonObject observation = result["b10_producer_observations"]![1]!.AsObject();
+            JsonObject target = key == "workload_generator" ? observation : observation["runtime_versions"]!.AsObject();
+            string field = key == "workload_generator" ? "generator_version" : key;
+            if (change == "missing") target.Remove(field);
+            else target[field] = change == "case-only" ? key switch
+            { "workload_generator" => "GENERATOR-A", "confluent_kafka" => "KAFKA-A", "librdkafka" => "NATIVE-A", _ => "DOTNET-A" } : "different";
+        });
+        using JsonDocument candidate = await JudgeB10(stores);
+        AssertVersions(candidate.RootElement, key);
+        Assert.Equal(1, candidate.RootElement.GetProperty("reasons").EnumerateArray().Count(x => x.GetString() == "version_unavailable"));
+        Assert.Equal(2, candidate.RootElement.GetProperty("repeats")[repeat - 1].GetProperty("b10_producer_observations").GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("workload_generator")] [InlineData("confluent_kafka")] [InlineData("librdkafka")] [InlineData("dotnet")]
+    public async Task Given_AllProducersReportSameEmptyVersion_When_Judged_Then_EmptyAgreementCannotEstablishVersion(string key)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        for (int repeat = 1; repeat <= 5; repeat++) ChangeObservationResult(stores, repeat, result =>
+        {
+            foreach (JsonNode? observation in result["b10_producer_observations"]!.AsArray())
+                if (key == "workload_generator") observation!["generator_version"] = "";
+                else observation!["runtime_versions"]![key] = "";
+        });
+        using JsonDocument candidate = await JudgeB10(stores);
+        AssertVersions(candidate.RootElement, key);
+        Assert.Equal(1, candidate.RootElement.GetProperty("reasons").EnumerateArray().Count(x => x.GetString() == "version_unavailable"));
+    }
+
+    [Theory]
+    [InlineData("empty-map")] [InlineData("missing-pair")] [InlineData("no-pairs")]
+    public async Task Given_B10ObservationProvenanceUnavailable_When_Judged_Then_NeverFallsBackToLegacyFirstProducer(string change)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        foreach (int repeat in change == "no-pairs" ? Enumerable.Range(1, 5) : [5])
+            ChangeObservationResult(stores, repeat, result =>
+            {
+                if (change == "empty-map") result["b10_producer_observations"]![1]!["runtime_versions"] = new JsonObject();
+                else result.Remove("b10_producer_observations");
+            });
+        using JsonDocument candidate = await JudgeB10(stores);
+        JsonElement versions = candidate.RootElement.GetProperty("versions");
+        foreach (string key in new[] { "workload_generator", "confluent_kafka", "librdkafka", "dotnet" })
+            if (change == "empty-map" && key == "workload_generator") Assert.Equal("generator-a", versions.GetProperty(key).GetString());
+            else Assert.Equal(JsonValueKind.Null, versions.GetProperty(key).ValueKind);
+        Assert.NotEqual(JsonValueKind.Null, versions.GetProperty("verifier").ValueKind);
+        Assert.Equal(1, candidate.RootElement.GetProperty("reasons").EnumerateArray().Count(x => x.GetString() == "version_unavailable"));
+    }
+
+    [Theory]
+    [InlineData("object")] [InlineData("maximum")] [InlineData("first_post_drain")]
+    public async Task Given_SecondProducerBrokerMeasurementMissing_When_Judged_Then_PreservesFirstAndOmitsOnlyMissingEvidence(string missing)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        ChangeObservationResult(stores, 1, result =>
+        {
+            JsonObject second = result["b10_producer_observations"]![1]!.AsObject();
+            if (missing == "object") second.Remove("broker_count"); else second["broker_count"]!.AsObject().Remove(missing);
+        });
+        using JsonDocument candidate = await JudgeB10(stores);
+        AssertVersions(candidate.RootElement);
+        JsonElement pair = candidate.RootElement.GetProperty("repeats")[0].GetProperty("b10_producer_observations");
+        Assert.Equal(3, pair[0].GetProperty("broker_count").GetProperty("maximum").GetInt64());
+        Assert.Equal(1, pair[0].GetProperty("broker_count").GetProperty("first_post_drain").GetInt64());
+        if (missing == "object") Assert.False(pair[1].TryGetProperty("broker_count", out _));
+        else
+        {
+            Assert.False(pair[1].GetProperty("broker_count").TryGetProperty(missing, out _));
+            string retained = missing == "maximum" ? "first_post_drain" : "maximum";
+            Assert.Equal(missing == "maximum" ? 0 : 7, pair[1].GetProperty("broker_count").GetProperty(retained).GetInt64());
+        }
+    }
+
+    [Theory]
+    [InlineData("first-completion")] [InlineData("second-completion")] [InlineData("result-reference")] [InlineData("start")]
+    [InlineData("producer_job_binding-fail")] [InlineData("producer_job_binding-unavailable")]
+    [InlineData("registered_producer_count-fail")] [InlineData("registered_producer_count-unavailable")]
+    [InlineData("broker_inventory_coverage-fail")] [InlineData("broker_inventory_coverage-unavailable")]
+    [InlineData("check24-contradiction")]
+    public async Task Given_B10ObservationAuthorizationMissing_When_Judged_Then_SuppressesPairAndAllCommonProducerVersions(string change)
+    {
+        PhaseStores stores = await ObservedB10Repeats();
+        const int repeat = 1;
+        if (change.EndsWith("completion", StringComparison.Ordinal))
+            stores.Ledger.Remove(PhasePaths.ProducerCompletion("synthetic-c5", "C0", repeat, change == "first-completion" ? "pod-first" : "pod-second"));
+        else if (change == "start") stores.Verifier.Remove(PhasePaths.StartLineCompletion("synthetic-c5", "C0", repeat));
+        else if (change == "result-reference") ChangeJson(stores.Verifier, PhasePaths.Result("synthetic-c5", "C0", repeat), result => result["generator_version"] = "unreferenced");
+        else if (change == "check24-contradiction") ChangeObservationResult(stores, repeat, result =>
+        { result["status"] = "invalid"; result["b10_window_checks_complete"] = false; result["failed_checks"] = new JsonArray(24); });
+        else
+        {
+            string[] parts = change.Split('-');
+            ChangeJson(stores.Verifier, PhasePaths.VerifyCompletion("synthetic-c5", "C0", repeat), receipt => receipt["repeat_checks"]![parts[0]] = parts[1]);
+        }
+        using JsonDocument candidate = await JudgeB10(stores);
+        JsonElement slot = candidate.RootElement.GetProperty("repeats")[0];
+        Assert.False(slot.TryGetProperty("b10_producer_observations", out _));
+        Assert.False(slot.TryGetProperty("b10_intake", out _));
+        foreach (string key in new[] { "workload_generator", "confluent_kafka", "librdkafka", "dotnet" })
+            Assert.Equal(JsonValueKind.Null, candidate.RootElement.GetProperty("versions").GetProperty(key).ValueKind);
+        Assert.Equal(1, candidate.RootElement.GetProperty("reasons").EnumerateArray().Count(x => x.GetString() == "version_unavailable"));
+        Assert.False(slot.TryGetProperty("counts", out _));
+        Assert.False(candidate.RootElement.TryGetProperty("counts", out _));
+        foreach (JsonElement unaffected in candidate.RootElement.GetProperty("repeats").EnumerateArray().Skip(1))
+            Assert.Equal(2, unaffected.GetProperty("b10_producer_observations").GetArrayLength());
+    }
+
+    private static async Task<PhaseStores> ObservedB10Repeats()
+    {
+        PhaseStores stores = await BuildFiveB10Repeats();
+        for (int repeat = 1; repeat <= 5; repeat++) ChangeObservationResult(stores, repeat, result =>
+        {
+            JsonArray pair = Results.B10ProducerObservationsCodecTests.WirePair();
+            for (int index = 0; index < 2; index++)
+            {
+                JsonNode identity = result["b10_intake"]!["producers"]![index]!["identity"]!;
+                pair[index]!["instance_id"] = identity["instance_id"]!.DeepClone();
+                pair[index]!["broker_count"]!["client_id"] = identity["client_id"]!.DeepClone();
+            }
+            result["b10_producer_observations"] = pair;
+        });
+        return stores;
+    }
+
+    private static void ChangeObservationResult(PhaseStores stores, int repeat, Action<JsonObject> change)
+    {
+        string name = PhasePaths.Result("synthetic-c5", "C0", repeat);
+        ChangeJson(stores.Verifier, name, change);
+        ChangeJson(stores.Verifier, PhasePaths.VerifyCompletion("synthetic-c5", "C0", repeat), receipt =>
+            UpdateReference(receipt["artifacts"]![0]!.AsObject(), name, stores.Verifier[name]));
+    }
+
+    private static void AssertVersions(JsonElement candidate, string? unavailable = null)
+    {
+        JsonElement versions = candidate.GetProperty("versions");
+        foreach (var (key, value) in new[] { ("workload_generator", "generator-a"), ("confluent_kafka", "kafka-a"), ("librdkafka", "native-a"), ("dotnet", "dotnet-a") })
+            if (key == unavailable) Assert.Equal(JsonValueKind.Null, versions.GetProperty(key).ValueKind);
+            else Assert.Equal(value, versions.GetProperty(key).GetString());
+        Assert.NotEqual(JsonValueKind.Null, versions.GetProperty("verifier").ValueKind);
+    }
+
     // Production-writer metadata must survive verification and phase aggregation without normalization.
     [Theory]
     [InlineData("2.16.0")]
