@@ -65,9 +65,21 @@ public sealed class PhaseCandidateCodecTests
     {
         PhaseCandidate candidate = B10Candidate("C0", 1);
         var pair = Results.B10ProducerObservationsCodecTests.Observations(candidate.Repeats[0].B10Intake!).ToArray();
+        if (change == "non-b10")
+        {
+            PhaseCandidate ordinary = Candidate();
+            byte[] valid = PhaseCandidateCodec.Write(ordinary);
+            using JsonDocument baseline = PhaseCandidateCodec.Read(valid);
+            JsonObject root = JsonNode.Parse(valid)!.AsObject();
+            root["repeats"]![0]!["b10_producer_observations"] = Results.B10ProducerObservationsCodecTests.WirePair();
+            Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString())));
+            Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(ordinary with
+            { Repeats = [ordinary.Repeats[0] with { B10ProducerObservations = pair }] }));
+            return;
+        }
         if (change == "reverse") Array.Reverse(pair);
         if (change == "foreign") pair[1] = pair[1] with { InstanceId = "foreign" };
-        candidate = candidate with { ScenarioId = change == "non-b10" ? "A01" : "B10", Repeats = [candidate.Repeats[0] with
+        candidate = candidate with { Repeats = [candidate.Repeats[0] with
         { B10ProducerObservations = pair, B10Intake = change == "missing-intake" ? null : candidate.Repeats[0].B10Intake }] };
         Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(candidate));
     }
