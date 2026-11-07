@@ -24,26 +24,52 @@ import c5_projection as projection
 
 
 TARGETS = {
-    "phase": ("Judge/PhaseJudge.cs", 1),
-    "publication": ("VerifyRun/Publication/PublicationAcceptance.cs", 1),
+    "phase": ("Judge/PhaseJudge.cs", 3),
+    "publication": ("VerifyRun/Publication/PublicationAcceptance.cs", 2),
     "a01": ("VerifyRun/A01/A01EvidenceRecorder.cs", 1),
     "workload": ("VerifyRun/A01/WorkloadRecorder.cs", 1),
-    "single-action-repeat": ("VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", 3),
-    "single-action-configuration": ("VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 8),
-    "idle-observation": ("VerifyRun/IdleObservation/IdleObservationJudgement.cs", 3),
+    "single-action-repeat": ("VerifyRun/SingleAction/SingleActionRepeatJudgement.cs", 8),
+    "single-action-configuration": ("VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs", 19),
+    "idle-observation": ("VerifyRun/IdleObservation/IdleObservationJudgement.cs", 5),
     "batching": ("VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs", 1),
-    "b10-restart-manifest": ("VerifyRun/Input/RestartManifestReader.cs", 1),
+    "b10-restart-manifest": ("VerifyRun/Input/RestartManifestReader.cs", 2),
     "b10-intake": ("VerifyRun/Judgement/B10IntakeChecks.cs", 1),
     "b10-judge": ("Judge/B10JudgeChecks.cs", 1),
-    "b10-repeat": ("VerifyRun/Judgement/B10RepeatChecks.cs", 1),
+    "b10-repeat": ("VerifyRun/Judgement/B10RepeatChecks.cs", 2),
     "b10-phase-registrations": ("VerifyRun/Input/B10PhaseRegistrationReader.cs", 1),
     "b10-late-write": ("VerifyRun/Judgement/B10LateWriteChecks.cs", 1),
     "b10-sweep": ("VerifyRun/B10SweepHandler.cs", 1),
     "b10-sweep-judge": ("Judge/B10SweepChecks.cs", 1),
-    "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 1),
+    "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 3),
 }
-PARTS = {key if count == 1 else f"{key}-p{index}": (key, index, count)
-         for key, (_, count) in TARGETS.items() for index in range(1, count + 1)}
+PRIMARY_CUTS = {
+    "phase": (4376, 6570),
+    "publication": (4719,),
+    "single-action-repeat": (3555, 7222, 10692, 13977, 16262, 19347, 22533),
+    "single-action-configuration": (2314, 4053, 6613, 9284, 10952, 13113, 14461, 16935,
+                                    19779, 25473, 28510, 32364, 34949, 37376, 39225,
+                                    44139, 48960, 53161),
+    "idle-observation": (5062, 8804, 12323, 14813),
+    "b10-restart-manifest": (6681,),
+    "b10-repeat": (8428,),
+    "b10-sweep-codec": (5934, 10787),
+}
+def build_parts(targets: dict[str, tuple[str, int]],
+                primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
+    """Reject singleton splits before their crossing entry can overwrite the primary."""
+    for key in primary_cuts:
+        count = targets[key][1]
+        if type(count) is not int or count < 2:
+            raise ValueError("declared split must have at least two primary spans")
+    return {
+        key if count == 1 else (f"{key}-p{index}" if index <= count else f"{key}-crossing"):
+            (key, index, count + int(key in primary_cuts))
+        for key, (_, count) in targets.items()
+        for index in range(1, count + 1 + int(key in primary_cuts))
+    }
+
+
+PARTS = build_parts(TARGETS, PRIMARY_CUTS)
 SHARDS = {shard: TARGETS[key][0] for shard, (key, _, _) in PARTS.items()}
 SPAN_END = 2147483647
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -332,13 +358,41 @@ def spans(text: str, count: int) -> list[tuple[int, int]]:
     return list(zip(bounds, bounds[1:]))
 
 
+def primary_spans(key: str, source: bytes) -> list[tuple[int, int]]:
+    """Use the declared UTF-16 cuts, retaining the member splitter for undeclared targets."""
+    text = target_text(source)
+    count = TARGETS[key][1]
+    if key not in PRIMARY_CUTS:
+        return spans(text, count)
+    if type(count) is not int or count < 1:
+        raise ValueError("primary count must be a positive integer")
+    if count == 1:
+        raise ValueError("declared split must have at least two primary spans")
+    cuts = PRIMARY_CUTS[key]
+    if len(cuts) != count - 1:
+        raise ValueError("primary cut count does not match primary count")
+    length = utf16_length(text)
+    if length >= SPAN_END:
+        raise ValueError("target too long for span selection")
+    if (any(type(cut) is not int or not 0 < cut < length for cut in cuts)
+            or any(left >= right for left, right in zip(cuts, cuts[1:]))):
+        raise ValueError("primary cuts must be strictly increasing integer offsets inside target")
+    if any(start < cut < end for start, end in static_regions(text) for cut in cuts):
+        raise ValueError("static field declaration crosses a span boundary")
+    bounds = (0, *cuts, SPAN_END)
+    return list(zip(bounds, bounds[1:]))
+
+
 def shard_span(shard: str, source: bytes | None) -> tuple[int, int] | None:
     key, index, count = PARTS[shard]
     if count == 1:
         return None
     if source is None:
         raise ValueError("span shard requires target source")
-    return spans(target_text(source), count)[index - 1]
+    selected = primary_spans(key, source)
+    if key in PRIMARY_CUTS and index == count:
+        return None
+    return selected[index - 1]
 
 
 def line_starts(text: str) -> list[int]:
@@ -376,6 +430,9 @@ def shard_static_regions(shard: str, source: bytes | None) -> list[tuple[int, in
     span = shard_span(shard, source) or (0, SPAN_END)
     if source is None:
         raise ValueError("shard configuration requires target source")
+    key, index, count = PARTS[shard]
+    if key in PRIMARY_CUTS and index == count:
+        return []
     inside = []
     for start, end in static_regions(target_text(source)):
         if span[0] <= start and end <= span[1]:
@@ -386,10 +443,17 @@ def shard_static_regions(shard: str, source: bytes | None) -> list[tuple[int, in
 
 
 def shard_config(shard: str, source: bytes | None) -> dict:
-    """Main invocation: the shard's span, minus its static field regions, whose mutants run isolated."""
+    """Select a primary minus isolated fields, or the complement of all primary spans."""
     target = SHARDS[shard]
     span = shard_span(shard, source)
     config = copy.deepcopy(BASE_CONFIG)
+    key, index, count = PARTS[shard]
+    if key in PRIMARY_CUTS and index == count:
+        length = utf16_length(target_text(source))
+        config["stryker-config"]["mutate"] = [
+            target, *(f"!{target}{{{start}..{min(end, length)}}}"
+                      for start, end in primary_spans(key, source))]
+        return config
     config["stryker-config"]["mutate"] = [
         target if span is None else f"{target}{{{span[0]}..{span[1]}}}",
         *(f"!{target}{{{start}..{end}}}" for start, end in shard_static_regions(shard, source))]
@@ -988,7 +1052,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             part_counts, part_numerator, part_denominator = populations(rows)
             shards[shard].update({"status_counts": part_counts, "numerator": part_numerator,
                                   "denominator": part_denominator})
-        targets[key] = {"target": target, "parts": count, "status_counts": target_counts,
+        targets[key] = {"target": target, "parts": len(members), "status_counts": target_counts,
                         "numerator": target_numerator, "denominator": target_denominator}
         records.extend(reconciled)
     rebalance = []
