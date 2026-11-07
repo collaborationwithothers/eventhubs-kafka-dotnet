@@ -15,9 +15,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: phase
+          - shard: phase-p1
             target: Judge/PhaseJudge.cs
-          - shard: publication
+          - shard: phase-p2
+            target: Judge/PhaseJudge.cs
+          - shard: phase-p3
+            target: Judge/PhaseJudge.cs
+          - shard: phase-crossing
+            target: Judge/PhaseJudge.cs
+          - shard: publication-p1
+            target: VerifyRun/Publication/PublicationAcceptance.cs
+          - shard: publication-p2
+            target: VerifyRun/Publication/PublicationAcceptance.cs
+          - shard: publication-crossing
             target: VerifyRun/Publication/PublicationAcceptance.cs
           - shard: a01
             target: VerifyRun/A01/A01EvidenceRecorder.cs
@@ -28,6 +38,18 @@ jobs:
           - shard: single-action-repeat-p2
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
           - shard: single-action-repeat-p3
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p4
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p5
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p6
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p7
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p8
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-crossing
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
           - shard: single-action-configuration-p1
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
@@ -45,21 +67,59 @@ jobs:
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: single-action-configuration-p8
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p9
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p10
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p11
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p12
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p13
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p14
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p15
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p16
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p17
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p18
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p19
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-crossing
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: idle-observation-p1
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
           - shard: idle-observation-p2
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
           - shard: idle-observation-p3
             target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: idle-observation-p4
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: idle-observation-p5
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
+          - shard: idle-observation-crossing
+            target: VerifyRun/IdleObservation/IdleObservationJudgement.cs
           - shard: batching
             target: VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs
-          - shard: b10-restart-manifest
+          - shard: b10-restart-manifest-p1
+            target: VerifyRun/Input/RestartManifestReader.cs
+          - shard: b10-restart-manifest-p2
+            target: VerifyRun/Input/RestartManifestReader.cs
+          - shard: b10-restart-manifest-crossing
             target: VerifyRun/Input/RestartManifestReader.cs
           - shard: b10-intake
             target: VerifyRun/Judgement/B10IntakeChecks.cs
           - shard: b10-judge
             target: Judge/B10JudgeChecks.cs
-          - shard: b10-repeat
+          - shard: b10-repeat-p1
+            target: VerifyRun/Judgement/B10RepeatChecks.cs
+          - shard: b10-repeat-p2
+            target: VerifyRun/Judgement/B10RepeatChecks.cs
+          - shard: b10-repeat-crossing
             target: VerifyRun/Judgement/B10RepeatChecks.cs
           - shard: b10-phase-registrations
             target: VerifyRun/Input/B10PhaseRegistrationReader.cs
@@ -69,7 +129,13 @@ jobs:
             target: VerifyRun/B10SweepHandler.cs
           - shard: b10-sweep-judge
             target: Judge/B10SweepChecks.cs
-          - shard: b10-sweep-codec
+          - shard: b10-sweep-codec-p1
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+          - shard: b10-sweep-codec-p2
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+          - shard: b10-sweep-codec-p3
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+          - shard: b10-sweep-codec-crossing
             target: Common/Phase/B10SweepEvidenceCodec.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
