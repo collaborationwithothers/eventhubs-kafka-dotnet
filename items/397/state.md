@@ -1,6 +1,6 @@
 # State: #397 C5 mutation run time reduction and #355 follow-ups
 
-Covers: comment 6703427658 created 2026-11-07T06:34:32Z; read at 2026-11-07T06:35:34Z
+Covers: comment 6704285300 created 2026-11-07T08:07:02Z; read at 2026-11-07T08:12:20Z
 Parent items: [producer investigation](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [child scope](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397); [parent proposal](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Implementing tool: Codex. Source: [tool assignment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397#issuecomment-6683024818)
@@ -10,6 +10,7 @@ Decisions in force:
 - Semantics-preserving fixes may proceed; selection, thresholds, gates and assertions need Hari's Approval after measurements. Existing run cancelled; control session owns a later main-only run. Source: [runtime decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397#issuecomment-6683039430)
 - Implement the checked rebalance with only its listed administrative contract and legacy fixture updates, including ProjectionTests, and both exact plan-check corrections. Every judging assertion, score/coverage/isolation assertion and gate stays unchanged; Hari merges the workflow change and Control owns the post-merge main-only C5 run. Source: [narrow approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397#issuecomment-6703287109)
 - Retain separate crossing negatives but clamp the final endpoint to decoded UTF-16 source length; add the independent reporter proof, preserving all existing judging behavior. Source: [Revision 2 approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397#issuecomment-6703427658)
+- Reject declared singleton splits before PARTS construction or mutant launch, and document the pinned report-coordinate assumptions. Source: [Hari's request to fix Claude review comments](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/397#issuecomment-6704285300)
 Open questions:
 - None
 Next action: Merge the measured span rebalance only after required final-head checks and reviews, with Hari merging the workflow change. The control session owns a later authorized main-only C5 measurement; runtime improvement and its resulting acceptance evidence are not established by this PR.
