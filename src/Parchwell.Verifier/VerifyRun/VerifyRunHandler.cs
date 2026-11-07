@@ -216,9 +216,11 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                 var hashes=firstInput.Acceptance.AcceptedSnapshot is null?[]:PublicationAcceptance.DescriptorNames
                     .Select(n=>{byte[] bytes=firstInput.Raw[n]!;return new JudgedFileHash(n,Convert.ToHexStringLower(SHA256.HashData(bytes)));}).ToArray();
                 B10ProducerObservation[]? observations=b10?inputs.Select((input,index)=>new B10ProducerObservation(
-                    input.Registration.Identity.InstanceId,input.Manifest.Value?.GeneratorVersion,
+                    input.Registration.Identity.InstanceId,
+                    input.Manifest.Value?.GeneratorVersion is {Length:<=B10ProducerObservationsCodec.MaximumStringLength} generatorVersion?generatorVersion:null,
                     input.Manifest.Value?.RuntimeVersions is { } versions?ProducerRuntimeVersionKeys
-                        .Where(versions.ContainsKey).ToDictionary(key=>key,key=>versions[key],StringComparer.Ordinal):null,
+                        .Where(key=>versions.ContainsKey(key)&&versions[key].Length<=B10ProducerObservationsCodec.MaximumStringLength)
+                        .ToDictionary(key=>key,key=>versions[key],StringComparer.Ordinal):null,
                     judgements[index].BrokerCount)).ToArray():null;
                 var result=new VerifierResult(1,registration.Identity,firstInput.Manifest.Value?.GeneratorVersion,firstInput.Manifest.Value?.RuntimeVersions,options.VerifierCommit!,typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(),Library.VersionString,
                     status,judgement.FailedChecks,start.Value?.PartitionHighs.Select(p=>new WatermarkOffset(p.Partition,p.High)).ToArray(),ends?.OrderBy(p=>p.Key).Select(p=>new WatermarkOffset(p.Key,p.Value)).ToArray(),

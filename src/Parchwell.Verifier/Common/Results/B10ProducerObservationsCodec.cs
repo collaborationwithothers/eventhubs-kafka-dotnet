@@ -6,6 +6,8 @@ namespace Parchwell.Verifier.Common.Results;
 /// <summary>Shares the passive, ordered B10 producer-observation schema across result and candidate projections.</summary>
 internal static class B10ProducerObservationsCodec
 {
+    internal const int MaximumStringLength = 256;
+
     private static readonly string[] RuntimeKeys = ["confluent_kafka", "librdkafka", "dotnet"];
     private static readonly string[] EntryFields = ["instance_id", "generator_version", "runtime_versions", "broker_count"];
     private static readonly string[] BrokerFields = ["role", "client_id", "maximum", "first_post_drain", "lower_bound"];
@@ -117,7 +119,7 @@ internal static class B10ProducerObservationsCodec
 
     private static void Text(string? value)
     {
-        if (value is null || value.Length > 256) throw new FormatException("B10 observation text exceeds its bound or is null.");
+        if (value is null || value.Length > MaximumStringLength) throw new FormatException("B10 observation text exceeds its bound or is null.");
     }
 
     private static long? Measurement(JsonElement broker, string name)
