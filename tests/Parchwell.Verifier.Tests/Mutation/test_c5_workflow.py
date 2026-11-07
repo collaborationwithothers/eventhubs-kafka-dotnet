@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +16,8 @@ import tempfile
 import time
 import unittest
 from collections import namedtuple
+from decimal import Decimal
+from fractions import Fraction
 from unittest.mock import patch
 
 import c5_workflow as workflow
@@ -40,6 +43,91 @@ MUTATE_FILTER = "Removed by mutate filter"
 STATIC_PHASE = b"    private static readonly int[] A=[1];\n    bool B() => true;\n"
 STATIC_PHASE_TWO = b"    private static readonly int[] A=[1];\n    private static readonly int[] C=[2];\n    bool B() => true;\n"
 RPC_BYTES = b"Synthetic assertion\nSynthetic stack\ntime.duration-ms: 55\n"
+
+EXPECTED_PRIMARY_CUTS = {
+    'phase': (4376, 6570),
+    'publication': (4719,),
+    'single-action-repeat': (3555, 7222, 10692, 13977, 16262, 19347, 22533),
+    'single-action-configuration': (2314, 4053, 6613, 9284, 10952, 13113, 14461, 16935, 19779, 25473, 28510, 32364, 34949, 37376, 39225, 44139, 48960, 53161),
+    'idle-observation': (5062, 8804, 12323, 14813),
+    'b10-restart-manifest': (6681,),
+    'b10-repeat': (8428,),
+    'b10-sweep-codec': (5934, 10787),
+}
+EXPECTED_JOB_NAMES = (
+    'phase-p1',
+    'phase-p2',
+    'phase-p3',
+    'phase-crossing',
+    'publication-p1',
+    'publication-p2',
+    'publication-crossing',
+    'a01',
+    'workload',
+    'single-action-repeat-p1',
+    'single-action-repeat-p2',
+    'single-action-repeat-p3',
+    'single-action-repeat-p4',
+    'single-action-repeat-p5',
+    'single-action-repeat-p6',
+    'single-action-repeat-p7',
+    'single-action-repeat-p8',
+    'single-action-repeat-crossing',
+    'single-action-configuration-p1',
+    'single-action-configuration-p2',
+    'single-action-configuration-p3',
+    'single-action-configuration-p4',
+    'single-action-configuration-p5',
+    'single-action-configuration-p6',
+    'single-action-configuration-p7',
+    'single-action-configuration-p8',
+    'single-action-configuration-p9',
+    'single-action-configuration-p10',
+    'single-action-configuration-p11',
+    'single-action-configuration-p12',
+    'single-action-configuration-p13',
+    'single-action-configuration-p14',
+    'single-action-configuration-p15',
+    'single-action-configuration-p16',
+    'single-action-configuration-p17',
+    'single-action-configuration-p18',
+    'single-action-configuration-p19',
+    'single-action-configuration-crossing',
+    'idle-observation-p1',
+    'idle-observation-p2',
+    'idle-observation-p3',
+    'idle-observation-p4',
+    'idle-observation-p5',
+    'idle-observation-crossing',
+    'batching',
+    'b10-restart-manifest-p1',
+    'b10-restart-manifest-p2',
+    'b10-restart-manifest-crossing',
+    'b10-intake',
+    'b10-judge',
+    'b10-repeat-p1',
+    'b10-repeat-p2',
+    'b10-repeat-crossing',
+    'b10-phase-registrations',
+    'b10-late-write',
+    'b10-sweep',
+    'b10-sweep-judge',
+    'b10-sweep-codec-p1',
+    'b10-sweep-codec-p2',
+    'b10-sweep-codec-p3',
+    'b10-sweep-codec-crossing',
+)
+
+
+def legacy_layout(test_case):
+    counts = (1, 1, 1, 1, 3, 8, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    targets = {key: (target, count) for (key, (target, _)), count
+               in zip(workflow.TARGETS.items(), counts, strict=True)}
+    parts = {(key if count == 1 else f"{key}-p{index}"): (key, index, count)
+             for key, (_, count) in targets.items() for index in range(1, count + 1)}
+    shards = {shard: targets[key][0] for shard, (key, _, _) in parts.items()}
+    for name, value in (("TARGETS", targets), ("PARTS", parts), ("SHARDS", shards), ("PRIMARY_CUTS", {})):
+        test_case.enterContext(patch.object(workflow, name, value))
 
 
 def digest(path):
@@ -194,53 +282,86 @@ class AggregateFixture:
 class CommittedContractTests(unittest.TestCase):
     def test_literal_targets_parts_and_shards_match_code_config_and_workflow(self):
         targets = {
-            "phase": ("Judge/PhaseJudge.cs", 1),
-            "publication": ("VerifyRun/Publication/PublicationAcceptance.cs", 1),
+            "phase": ("Judge/PhaseJudge.cs", 3),
+            "publication": ("VerifyRun/Publication/PublicationAcceptance.cs", 2),
             "a01": ("VerifyRun/A01/A01EvidenceRecorder.cs", 1),
             "workload": ("VerifyRun/A01/WorkloadRecorder.cs", 1),
-            "single-action-repeat": (REPEAT, 3),
-            "single-action-configuration": (CONFIGURATION, 8),
-            "idle-observation": (IDLE, 3),
+            "single-action-repeat": (REPEAT, 8),
+            "single-action-configuration": (CONFIGURATION, 19),
+            "idle-observation": (IDLE, 5),
             "batching": (BATCH, 1),
-            "b10-restart-manifest": (RESTART_MANIFEST, 1),
+            "b10-restart-manifest": (RESTART_MANIFEST, 2),
             "b10-intake": ("VerifyRun/Judgement/B10IntakeChecks.cs", 1),
             "b10-judge": ("Judge/B10JudgeChecks.cs", 1),
-            "b10-repeat": ("VerifyRun/Judgement/B10RepeatChecks.cs", 1),
+            "b10-repeat": ("VerifyRun/Judgement/B10RepeatChecks.cs", 2),
             "b10-phase-registrations": ("VerifyRun/Input/B10PhaseRegistrationReader.cs", 1),
             "b10-late-write": ("VerifyRun/Judgement/B10LateWriteChecks.cs", 1),
             "b10-sweep": ("VerifyRun/B10SweepHandler.cs", 1),
             "b10-sweep-judge": ("Judge/B10SweepChecks.cs", 1),
-            "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 1),
+            "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 3),
         }
         shards = {
-            "phase": "Judge/PhaseJudge.cs",
-            "publication": "VerifyRun/Publication/PublicationAcceptance.cs",
-            "a01": "VerifyRun/A01/A01EvidenceRecorder.cs",
-            "workload": "VerifyRun/A01/WorkloadRecorder.cs",
-            "single-action-repeat-p1": REPEAT,
-            "single-action-repeat-p2": REPEAT,
-            "single-action-repeat-p3": REPEAT,
-            "single-action-configuration-p1": CONFIGURATION,
-            "single-action-configuration-p2": CONFIGURATION,
-            "single-action-configuration-p3": CONFIGURATION,
-            "single-action-configuration-p4": CONFIGURATION,
-            "single-action-configuration-p5": CONFIGURATION,
-            "single-action-configuration-p6": CONFIGURATION,
-            "single-action-configuration-p7": CONFIGURATION,
-            "single-action-configuration-p8": CONFIGURATION,
-            "idle-observation-p1": IDLE,
-            "idle-observation-p2": IDLE,
-            "idle-observation-p3": IDLE,
-            "batching": BATCH,
-            "b10-restart-manifest": RESTART_MANIFEST,
-            "b10-intake": "VerifyRun/Judgement/B10IntakeChecks.cs",
-            "b10-judge": "Judge/B10JudgeChecks.cs",
-            "b10-repeat": "VerifyRun/Judgement/B10RepeatChecks.cs",
-            "b10-phase-registrations": "VerifyRun/Input/B10PhaseRegistrationReader.cs",
-            "b10-late-write": "VerifyRun/Judgement/B10LateWriteChecks.cs",
-            "b10-sweep": "VerifyRun/B10SweepHandler.cs",
-            "b10-sweep-judge": "Judge/B10SweepChecks.cs",
-            "b10-sweep-codec": "Common/Phase/B10SweepEvidenceCodec.cs",
+            'phase-p1': "Judge/PhaseJudge.cs",
+            'phase-p2': "Judge/PhaseJudge.cs",
+            'phase-p3': "Judge/PhaseJudge.cs",
+            'phase-crossing': "Judge/PhaseJudge.cs",
+            'publication-p1': "VerifyRun/Publication/PublicationAcceptance.cs",
+            'publication-p2': "VerifyRun/Publication/PublicationAcceptance.cs",
+            'publication-crossing': "VerifyRun/Publication/PublicationAcceptance.cs",
+            'a01': "VerifyRun/A01/A01EvidenceRecorder.cs",
+            'workload': "VerifyRun/A01/WorkloadRecorder.cs",
+            'single-action-repeat-p1': REPEAT,
+            'single-action-repeat-p2': REPEAT,
+            'single-action-repeat-p3': REPEAT,
+            'single-action-repeat-p4': REPEAT,
+            'single-action-repeat-p5': REPEAT,
+            'single-action-repeat-p6': REPEAT,
+            'single-action-repeat-p7': REPEAT,
+            'single-action-repeat-p8': REPEAT,
+            'single-action-repeat-crossing': REPEAT,
+            'single-action-configuration-p1': CONFIGURATION,
+            'single-action-configuration-p2': CONFIGURATION,
+            'single-action-configuration-p3': CONFIGURATION,
+            'single-action-configuration-p4': CONFIGURATION,
+            'single-action-configuration-p5': CONFIGURATION,
+            'single-action-configuration-p6': CONFIGURATION,
+            'single-action-configuration-p7': CONFIGURATION,
+            'single-action-configuration-p8': CONFIGURATION,
+            'single-action-configuration-p9': CONFIGURATION,
+            'single-action-configuration-p10': CONFIGURATION,
+            'single-action-configuration-p11': CONFIGURATION,
+            'single-action-configuration-p12': CONFIGURATION,
+            'single-action-configuration-p13': CONFIGURATION,
+            'single-action-configuration-p14': CONFIGURATION,
+            'single-action-configuration-p15': CONFIGURATION,
+            'single-action-configuration-p16': CONFIGURATION,
+            'single-action-configuration-p17': CONFIGURATION,
+            'single-action-configuration-p18': CONFIGURATION,
+            'single-action-configuration-p19': CONFIGURATION,
+            'single-action-configuration-crossing': CONFIGURATION,
+            'idle-observation-p1': IDLE,
+            'idle-observation-p2': IDLE,
+            'idle-observation-p3': IDLE,
+            'idle-observation-p4': IDLE,
+            'idle-observation-p5': IDLE,
+            'idle-observation-crossing': IDLE,
+            'batching': BATCH,
+            'b10-restart-manifest-p1': RESTART_MANIFEST,
+            'b10-restart-manifest-p2': RESTART_MANIFEST,
+            'b10-restart-manifest-crossing': RESTART_MANIFEST,
+            'b10-intake': "VerifyRun/Judgement/B10IntakeChecks.cs",
+            'b10-judge': "Judge/B10JudgeChecks.cs",
+            'b10-repeat-p1': "VerifyRun/Judgement/B10RepeatChecks.cs",
+            'b10-repeat-p2': "VerifyRun/Judgement/B10RepeatChecks.cs",
+            'b10-repeat-crossing': "VerifyRun/Judgement/B10RepeatChecks.cs",
+            'b10-phase-registrations': "VerifyRun/Input/B10PhaseRegistrationReader.cs",
+            'b10-late-write': "VerifyRun/Judgement/B10LateWriteChecks.cs",
+            'b10-sweep': "VerifyRun/B10SweepHandler.cs",
+            'b10-sweep-judge': "Judge/B10SweepChecks.cs",
+            'b10-sweep-codec-p1': "Common/Phase/B10SweepEvidenceCodec.cs",
+            'b10-sweep-codec-p2': "Common/Phase/B10SweepEvidenceCodec.cs",
+            'b10-sweep-codec-p3': "Common/Phase/B10SweepEvidenceCodec.cs",
+            'b10-sweep-codec-crossing': "Common/Phase/B10SweepEvidenceCodec.cs",
         }
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(targets, workflow.TARGETS)
@@ -252,16 +373,25 @@ class CommittedContractTests(unittest.TestCase):
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(28, len(matrix))
-        self.assertEqual(("b10-restart-manifest", 1, 1), workflow.PARTS["b10-restart-manifest"])
+        self.assertEqual(61, len(matrix))
+        self.assertEqual(("b10-restart-manifest", 1, 3), workflow.PARTS["b10-restart-manifest-p1"])
         self.assertEqual(("b10-intake", 1, 1), workflow.PARTS["b10-intake"])
         self.assertEqual(("b10-judge", 1, 1), workflow.PARTS["b10-judge"])
-        self.assertEqual(("b10-repeat", 1, 1), workflow.PARTS["b10-repeat"])
+        self.assertEqual(("b10-repeat", 1, 3), workflow.PARTS["b10-repeat-p1"])
         self.assertEqual(("b10-phase-registrations", 1, 1), workflow.PARTS["b10-phase-registrations"])
         self.assertEqual(("b10-late-write", 1, 1), workflow.PARTS["b10-late-write"])
         self.assertEqual(("b10-sweep", 1, 1), workflow.PARTS["b10-sweep"])
         self.assertEqual(("b10-sweep-judge", 1, 1), workflow.PARTS["b10-sweep-judge"])
-        self.assertEqual(("b10-sweep-codec", 1, 1), workflow.PARTS["b10-sweep-codec"])
+        self.assertEqual(("b10-sweep-codec", 1, 4), workflow.PARTS["b10-sweep-codec-p1"])
+
+        self.assertEqual(('phase', 4, 4), workflow.PARTS['phase-crossing'])
+        self.assertEqual(('publication', 3, 3), workflow.PARTS['publication-crossing'])
+        self.assertEqual(('single-action-repeat', 9, 9), workflow.PARTS['single-action-repeat-crossing'])
+        self.assertEqual(('single-action-configuration', 20, 20), workflow.PARTS['single-action-configuration-crossing'])
+        self.assertEqual(('idle-observation', 6, 6), workflow.PARTS['idle-observation-crossing'])
+        self.assertEqual(('b10-restart-manifest', 3, 3), workflow.PARTS['b10-restart-manifest-crossing'])
+        self.assertEqual(('b10-repeat', 3, 3), workflow.PARTS['b10-repeat-crossing'])
+        self.assertEqual(('b10-sweep-codec', 4, 4), workflow.PARTS['b10-sweep-codec-crossing'])
 
     def test_workflow_keeps_stryker_logs_out_of_aggregate_input(self):
         import yaml
@@ -286,15 +416,17 @@ class CommittedContractTests(unittest.TestCase):
         download = {step["name"]: step for step in jobs["aggregate"]["steps"]}["Download shard evidence"]
         self.assertEqual("c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*", download["with"]["pattern"])
 
-    def test_committed_split_targets_have_enough_member_boundaries(self):
+    def test_committed_primary_spans_match_layout(self):
         root = Path(__file__).resolve().parents[3]
         for key, (target, count) in workflow.TARGETS.items():
             with self.subTest(target=key):
-                text = workflow.target_text((root / "src/Parchwell.Verifier" / target).read_bytes())
-                selected = workflow.spans(text, count)
+                source = (root / "src/Parchwell.Verifier" / target).read_bytes()
+                selected = workflow.primary_spans(key, source)
                 self.assertEqual(count, len(selected))
                 self.assertEqual(0, selected[0][0])
                 self.assertEqual(SPAN_END, selected[-1][1])
+                self.assertEqual(list(EXPECTED_PRIMARY_CUTS.get(key, ())), [end for _, end in selected[:-1]])
+                self.assertEqual([end for _, end in selected[:-1]], [start for start, _ in selected[1:]])
 
 
     def test_committed_static_regions_each_lie_inside_one_span(self):
@@ -308,6 +440,9 @@ class CommittedContractTests(unittest.TestCase):
 
 
 class SpanTests(unittest.TestCase):
+    def setUp(self):
+        legacy_layout(self)
+
     TEXT = "namespace N;\n\npublic sealed class C\n{\n    void A()\n    {\n    }\n\n    void B()\n    {\n    }\n}\n"
 
     def test_member_boundaries_follow_exact_member_closing_lines(self):
@@ -411,6 +546,9 @@ STATIC_TEXT = ('namespace N;\n\ninternal static class C\n{\n'
 
 
 class StaticRegionTests(unittest.TestCase):
+    def setUp(self):
+        legacy_layout(self)
+
     def test_regions_are_whole_lines_through_the_terminating_semicolon(self):
         self.assertEqual([(40, 88), (88, 167)], workflow.static_regions(STATIC_TEXT))
         self.assertEqual([0, 13, 14, 38, 40, 88, 148, 167, 197, 222, 251, 257, 286, 307, 313, 315],
@@ -570,6 +708,7 @@ class ReconcileTests(unittest.TestCase):
 
 class AggregationTests(unittest.TestCase):
     def setUp(self):
+        legacy_layout(self)
         self.temp = tempfile.TemporaryDirectory()
         self.directory = Path(self.temp.name)
         self.addCleanup(self.temp.cleanup)
@@ -1101,6 +1240,7 @@ CHILD = r'''
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -1173,6 +1313,9 @@ sys.exit(int(mode) if mode in ('0', '1', '2') else 0)
 
 
 class ProjectionTests(unittest.TestCase):
+    def setUp(self):
+        legacy_layout(self)
+
     def test_projection_preserves_bom_original_bytes_and_line_count(self):
         for data in (b"", b"using System;\nreturn false;\n", b"\xef\xbb\xbfusing System;\r\nreturn false;\r\n"):
             with self.subTest(data=data):
@@ -1491,6 +1634,7 @@ class DiagnosticCollectorTests(unittest.TestCase):
 
 class RunnerTests(unittest.TestCase):
     def setUp(self):
+        legacy_layout(self)
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.addCleanup(self.temp.cleanup)
@@ -1973,5 +2117,374 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("unknown C5 target", printed.getvalue())
 
 
+
+def reference_select(patterns, target, node):
+    """Pinned FilePattern semantics: contain a whole node; reduce spans only within a pattern."""
+    def matches(pattern):
+        path = pattern.split("{", 1)[0]
+        if path != target:
+            return False
+        ranges = [(int(low), int(high)) for low, high in re.findall(r"\{(\d+)\.\.(\d+)\}", pattern)]
+        if not ranges:
+            return True
+        reduced = []
+        for low, high in sorted(ranges):
+            if reduced and low <= reduced[-1][1]:
+                reduced[-1] = (reduced[-1][0], max(high, reduced[-1][1]))
+            else:
+                reduced.append((low, high))
+        return any(low <= node[0] and node[1] <= high for low, high in reduced)
+
+    return (any(matches(pattern) for pattern in patterns if not pattern.startswith("!"))
+            and not any(matches(pattern[1:]) for pattern in patterns if pattern.startswith("!")))
+
+
+class ProductionLayoutTests(unittest.TestCase):
+    def test_exact_unmocked_layout_selectors_and_static_owners(self):
+        import yaml
+        root = Path(__file__).resolve().parents[3]
+        self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
+        self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
+        self.assertEqual(61, len(set(EXPECTED_JOB_NAMES)))
+        original_paths = workflow.BASE_CONFIG["stryker-config"]["mutate"]
+        self.assertEqual(17, len(set(original_paths)))
+        self.assertEqual(original_paths, [target for target, _ in workflow.TARGETS.values()])
+        matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
+        self.assertEqual(EXPECTED_JOB_NAMES, tuple(row["shard"] for row in matrix))
+        self.assertEqual(list(workflow.SHARDS.items()), [(row["shard"], row["target"]) for row in matrix])
+        for key, (target, count) in workflow.TARGETS.items():
+            with self.subTest(target=key):
+                source = (root / "src/Parchwell.Verifier" / target).read_bytes()
+                bounds = (0, *EXPECTED_PRIMARY_CUTS.get(key, ()), SPAN_END)
+                expected = list(zip(bounds, bounds[1:]))
+                self.assertEqual(expected, workflow.primary_spans(key, source))
+                self.assertEqual(count, len(expected))
+                self.assertTrue(all(0 <= low < high <= SPAN_END for low, high in expected))
+                regions = workflow.static_regions(workflow.target_text(source))
+                members = [name for name, (owner, _, _) in workflow.PARTS.items() if owner == key]
+                for region in regions:
+                    self.assertEqual(1, sum(low <= region[0] and region[1] <= high for low, high in expected))
+                    self.assertEqual(1, sum(region in workflow.shard_static_regions(name, source) for name in members))
+                for name in members:
+                    config = workflow.shard_config(name, source)
+                    actual = config["stryker-config"]["mutate"]
+                    self.assertEqual(target, workflow.SHARDS[name])
+                    if name.endswith("-crossing"):
+                        self.assertEqual([target, *(f"!{target}{{{low}..{high}}}" for low, high in expected)], actual)
+                        self.assertEqual(len(expected) + 1, len(set(actual)))
+                        self.assertEqual([], workflow.shard_static_regions(name, source))
+                        self.assertIsNone(workflow.shard_span(name, source))
+                        with tempfile.TemporaryDirectory() as temporary:
+                            folder = Path(temporary)
+                            write_json(folder / "shard-config.json", config)
+                            self.assertIsNone(workflow.retained_span(folder, target))
+                    else:
+                        span = workflow.shard_span(name, source)
+                        positive = target if span is None else f"{target}{{{span[0]}..{span[1]}}}"
+                        self.assertEqual([positive, *(f"!{target}{{{low}..{high}}}" for low, high in workflow.shard_static_regions(name, source))], actual)
+                    config["stryker-config"]["mutate"] = original_paths
+                    self.assertEqual(workflow.BASE_CONFIG, config)
+
+
+class PrimaryLayoutInputTests(unittest.TestCase):
+    def selected(self, cuts, count=3, source=b"x" * 21):
+        with patch.object(workflow, "TARGETS", {"synthetic": ("Synthetic.cs", count)}), patch.object(workflow, "PRIMARY_CUTS", {"synthetic": cuts}):
+            return workflow.primary_spans("synthetic", source)
+
+    def test_cut_count_order_type_and_source_edges(self):
+        self.assertEqual([(0, 10), (10, 20), (20, SPAN_END)], self.selected((10, 20)))
+        for cuts in ((), (10,), (10, 20, 21)):
+            with self.subTest(cuts=cuts), self.assertRaisesRegex(ValueError, "primary cut count does not match primary count"):
+                self.selected(cuts)
+        for cuts in ((0, 10), (-1, 10), (10, 10), (11, 10), (10, 21), (10, 22), (True, 10), (10, 20.0), (10, "20")):
+            with self.subTest(cuts=cuts), self.assertRaisesRegex(ValueError, "primary cuts must be strictly increasing integer offsets inside target"):
+                self.selected(cuts)
+        self.assertEqual([(0, 1), (1, 20), (20, SPAN_END)], self.selected((1, 20)))
+        for count in (0, -1, True, "3", 3.0):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "primary count must be a positive integer"):
+                self.selected((10, 20), count=count)
+        with self.assertRaises(ValueError):
+            self.selected((1, 2), source=b"")
+        with self.assertRaisesRegex(ValueError, "target too long for span selection"), patch.object(workflow, "SPAN_END", 20):
+            self.selected((1, 10))
+
+    def test_static_region_edges_allow_touching_and_reject_interior_cuts(self):
+        source = b"x\n    private static readonly int[] A=[1];\nz\n"
+        [(low, high)] = workflow.static_regions(source.decode())
+        for edge in (low, high):
+            with self.subTest(edge=edge):
+                self.assertEqual([(0, edge), (edge, SPAN_END)], self.selected((edge,), 2, source))
+        for edge in (low + 1, high - 1):
+            with self.subTest(edge=edge), self.assertRaisesRegex(ValueError, "static field declaration crosses a span boundary"):
+                self.selected((edge,), 2, source)
+
+    def test_utf16_cuts_use_bom_stripped_source(self):
+        self.assertEqual([(0, 2), (2, 3), (3, SPAN_END)],
+                         self.selected((2, 3), source=b"\xef\xbb\xbf" + "\U0001f600xy".encode()))
+
+
+class ComplementSelectionTests(unittest.TestCase):
+    def test_separate_negatives_partition_whole_nodes_and_preserve_equal_span_identities(self):
+        target = "Synthetic.cs"
+        spans = ((0, 10), (10, 20), (20, SPAN_END))
+        primaries = [[f"{target}{{{low}..{high}}}"] for low, high in spans]
+        crossing = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}", "!Synthetic.cs{20..2147483647}"]
+        with patch.object(workflow, "TARGETS", {"synthetic": (target, 3)}), patch.object(workflow, "PRIMARY_CUTS", {"synthetic": (10, 20)}), patch.object(workflow, "PARTS", {"synthetic-crossing": ("synthetic", 4, 4)}), patch.object(workflow, "SHARDS", {"synthetic-crossing": target}):
+            self.assertEqual(crossing, workflow.shard_config("synthetic-crossing", b"x" * 30)["stryker-config"]["mutate"])
+        nodes = (("inside-first", (1, 9), 0), ("touch-start", (10, 19), 1),
+                 ("crossing-body", (19, 21), 3), ("whole-block-removal", (1, 21), 3),
+                 ("equal-span-a", (5, 15), 3), ("touch-both", (10, 20), 1),
+                 ("equal-span-b", (5, 15), 3), ("nested-child", (5, 9), 0),
+                 ("touch-end", (1, 10), 0), ("touch-next", (20, 21), 2))
+        crossing_ids = []
+        for identifier, node, expected in nodes:
+            selected = [index for index, config in enumerate([*primaries, crossing]) if reference_select(config, target, node)]
+            self.assertEqual([expected], selected, identifier)
+            if selected == [3]:
+                crossing_ids.append(identifier)
+        self.assertEqual(["crossing-body", "whole-block-removal", "equal-span-a", "equal-span-b"], crossing_ids)
+        self.assertEqual(3, len(set(crossing[1:])))
+        coalesced = [target, "!Synthetic.cs{0..10}{10..20}{20..2147483647}"]
+        self.assertFalse(reference_select(coalesced, target, (1, 21)))
+        self.assertTrue(reference_select(crossing, target, (1, 21)))
+        self.assertFalse(reference_select(crossing, target, (5, 9)))
+
+
+class ProductionAggregationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        root = Path(__file__).resolve().parents[3]
+        self.sources = {target: (root / "src/Parchwell.Verifier" / target).read_bytes()
+                        for target, _ in workflow.TARGETS.values()}
+
+    def test_zero_tested_complements_keep_positive_target_population(self):
+        fixture = AggregateFixture(self.directory, sources=self.sources)
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertIs(summary["measurement_complete"], True)
+        self.assertIs(summary["break_passed"], True)
+        self.assertEqual((17, 17), (summary["numerator"], summary["denominator"]))
+        for key, (_, count) in workflow.TARGETS.items():
+            self.assertEqual(1, summary["targets"][key]["denominator"])
+            self.assertEqual(count + (key in EXPECTED_PRIMARY_CUTS), summary["targets"][key]["parts"])
+            if key in EXPECTED_PRIMARY_CUTS:
+                shard = key + "-crossing"
+                self.assertEqual(0, summary["shards"][shard]["denominator"])
+                self.assertIsNone(summary["shards"][shard]["span"])
+
+    def test_crossing_owner_gaps_and_duplicates_keep_reconcile_errors(self):
+        fixture = AggregateFixture(self.directory, sources=self.sources)
+        members = fixture.members("phase")
+        crossing = "phase-crossing"
+        for name in members:
+            fixture.target_rows(name).append(row("crossing-owner", "Killed") if name == crossing else filtered("crossing-owner"))
+            fixture.save(name)
+        result, summary = fixture.invoke()
+        self.assertEqual(0, result)
+        self.assertEqual(2, summary["targets"]["phase"]["denominator"])
+        for mode, expected in (("missing", "has no owning span"), ("duplicate", "has more than one owning span")):
+            with self.subTest(mode=mode):
+                for name in members:
+                    owner = name == crossing and mode != "missing" or name == members[0] and mode == "duplicate"
+                    fixture.target_rows(name)[-1] = row("crossing-owner", "Killed") if owner else filtered("crossing-owner")
+                    fixture.save(name)
+                fixture.output = self.directory / mode
+                result, summary = fixture.invoke()
+                self.assertEqual(1, result)
+                self.assertIs(summary["measurement_complete"], False)
+                self.assertIsNone(summary["break_passed"])
+                self.assertTrue(any("mutant crossing-owner " + expected in reason for reason in summary["incomplete_reasons"]))
+
+
+def measured_inventory_suite(root, summary_path):
+    """Create retained-artifact proof cases only for the explicit CLI invocation."""
+    class MeasuredInventoryProof(unittest.TestCase):
+        def runTest(self):
+            retained = Path(root)
+            downloaded = json.loads(Path(summary_path).read_text())
+            pinned = {"run_id": "42274873194", "run_attempt": "1",
+                      "commit": "8e2ab2fbb1ca7fe1a02396af4a07ac9626c13c73",
+                      "tree": "04d03d7870529148f7b61838aa3db07917428611"}
+            for field, value in pinned.items():
+                self.assertEqual(value, downloaded[field])
+            counts = dict(zip(STATUSES, (4999, 1, 329, 0, 1089, 0, 218), strict=True))
+            self.assertIs(downloaded["measurement_complete"], True)
+            self.assertIs(downloaded["break_passed"], True)
+            self.assertEqual([], downloaded["incomplete_reasons"])
+            self.assertEqual(counts, downloaded["status_counts"])
+            self.assertEqual((5000, 5329), (downloaded["numerator"], downloaded["denominator"]))
+            corpus = {}
+            old_weights = {}
+            rate_table = []
+            # The unchanged aggregate verifies every binding and isolated invocation.
+            # Reparse native inputs below independently of its summary population.
+            with contextlib.ExitStack() as stack:
+                class LegacyContext:
+                    enterContext = staticmethod(stack.enter_context)
+                legacy_layout(LegacyContext())
+                self.assertEqual(28, len(downloaded["shards"]))
+                self.assertEqual(set(workflow.SHARDS), set(downloaded["shards"]))
+                self.assertEqual(set(workflow.TARGETS), set(downloaded["targets"]))
+                prefix = "c5-mutation-42274873194-1-"
+                self.assertEqual({prefix + name for name in downloaded["shards"]},
+                                 {folder.name for folder in retained.iterdir() if folder.is_dir() and folder.name.startswith(prefix)})
+                with tempfile.TemporaryDirectory() as temporary:
+                    destination = Path(temporary) / "summary"
+                    self.assertEqual(0, workflow.aggregate(retained, pinned["commit"], pinned["run_id"], pinned["run_attempt"], destination))
+                    self.assertEqual(downloaded, json.loads((destination / "summary.json").read_text()))
+                for key, (target, _) in workflow.TARGETS.items():
+                    # Membership comes from the downloaded target binding, not new-layout names.
+                    names = [name for name, item in downloaded["shards"].items() if item["target"] == target]
+                    self.assertEqual([name for name, path in workflow.SHARDS.items() if path == target], names)
+                    native_parts, sources, receipts = [], [], []
+                    for name in names:
+                        folder = retained / (prefix + name)
+                        receipt = json.loads((folder / "receipt.json").read_text())
+                        exact = json.loads((folder / "receipt.json").read_text(), parse_float=Decimal)
+                        source = (folder / "projection-src" / (projection.VERIFIER + target)).read_bytes()
+                        target_hash = receipt["source_sha256_before"][projection.VERIFIER + target]
+                        self.assertEqual(target_hash, hashlib.sha256(source).hexdigest())
+                        rows = workflow.report_records(json.loads((folder / workflow.REPORT_PATH).read_text()), target, source_sha256=target_hash)
+                        plan = workflow.isolation_plan(rows, source, workflow.shard_static_regions(name, source))
+                        self.assertEqual(len(plan), len(receipt["isolated"]))
+                        for item, entry in zip(plan, receipt["isolated"], strict=True):
+                            isolated = json.loads((folder / "isolated" / item["mutant_id"] / workflow.REPORT_PATH).read_text())
+                            independently_merged = workflow.merge_isolated(rows, item, workflow.report_records(isolated, target, source_sha256=target_hash))
+                            self.assertEqual(independently_merged, workflow.isolated_rows(folder, target, target_hash, item, entry, rows))
+                            rows = independently_merged
+                        native_parts.append(rows)
+                        sources.append(source)
+                        receipts.append(exact)
+                    self.assertEqual(1, len(set(sources)))
+                    source = sources[0]
+                    repository = Path(__file__).resolve().parents[3]
+                    self.assertEqual(source, (repository / "src/Parchwell.Verifier" / target).read_bytes())
+                    owned, reconciled = workflow.reconcile(native_parts)
+                    target_counts, numerator, denominator = workflow.populations(reconciled)
+                    summary = downloaded["targets"][key]
+                    self.assertEqual((summary["status_counts"], summary["numerator"], summary["denominator"]),
+                                     (target_counts, numerator, denominator))
+                    text = workflow.target_text(source)
+                    starts, length = workflow.line_starts(text), workflow.utf16_length(text)
+                    nodes = {item["id"]: workflow.node_span(item, starts, length) for item in reconciled}
+                    self.assertTrue(all(0 <= low < high <= length for low, high in nodes.values()))
+                    for name, rows, receipt in zip(names, owned, receipts, strict=True):
+                        _, _, population = workflow.populations(rows)
+                        self.assertEqual(downloaded["shards"][name]["denominator"], population)
+                        rate = Fraction(receipt["elapsed_seconds"]) / population
+                        rate_table.append((name, receipt["elapsed_seconds"], population, rate))
+                        for item in rows:
+                            if item["status"] in ("Killed", "Timeout", "Survived", "NoCoverage"):
+                                identity = (target, item["id"])
+                                self.assertNotIn(identity, old_weights)
+                                old_weights[identity] = rate
+                    corpus[key] = (target, source, reconciled, nodes)
+            # New production definitions are now unpatched.
+            self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
+            self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
+            identity_fields = ("file", "id", "mutatorName", "replacement", "location", "status", "statusReason")
+            def inventory(rows):
+                return sorted(json.dumps({field: item.get(field) for field in identity_fields}, sort_keys=True) for item in rows)
+            all_before, all_after, table = [], [], []
+            assigned_weight = Fraction(0)
+            weighted_ids = set()
+            crossing_ids = []
+            equal_span_pairs = 0
+            zero_complements = []
+            for key, (target, source, original, nodes) in corpus.items():
+                members = [name for name, (owner, _, _) in workflow.PARTS.items() if owner == key]
+                bounds = (0, *EXPECTED_PRIMARY_CUTS.get(key, ()), SPAN_END)
+                spans = list(zip(bounds, bounds[1:]))
+                self.assertEqual(spans, workflow.primary_spans(key, source))
+                regions = workflow.static_regions(workflow.target_text(source))
+                for region in regions:
+                    self.assertEqual(1, sum(low <= region[0] and region[1] <= high for low, high in spans))
+                    self.assertEqual(1, sum(region in workflow.shard_static_regions(name, source) for name in members))
+                geometries = {}
+                selections = {}
+                for name in members:
+                    mutate = workflow.shard_config(name, source)["stryker-config"]["mutate"]
+                    geometric = mutate if name.endswith("-crossing") else mutate[:1]
+                    geometries[name] = geometric
+                    selections[name] = mutate
+                projected = [[] for _ in members]
+                buckets = [[] for _ in members]
+                seen_spans = {}
+                for item in original:
+                    identifier = item["id"]
+                    node = nodes[identifier]
+                    owners = [index for index, name in enumerate(members) if reference_select(geometries[name], target, node)]
+                    self.assertEqual(1, len(owners), (target, identifier, node))
+                    owner = owners[0]
+                    name = members[owner]
+                    static_owners = [index for index, member in enumerate(members)
+                                     if any(low <= node[0] and node[1] <= high for low, high in workflow.shard_static_regions(member, source))]
+                    main_owners = [index for index, member in enumerate(members) if reference_select(selections[member], target, node)]
+                    self.assertEqual([owner], main_owners + static_owners, (target, identifier, node))
+                    if name.endswith("-crossing"):
+                        self.assertEqual([], static_owners)
+                        crossing_ids.append((target, identifier))
+                        self.assertTrue(any(node[0] < cut < node[1] for cut in EXPECTED_PRIMARY_CUTS[key]))
+                    if node in seen_spans:
+                        equal_span_pairs += 1
+                        self.assertNotEqual(identifier, seen_spans[node])
+                    seen_spans[node] = identifier
+                    shared = item["status"] == "CompileError" or (item["status"] == "Ignored" and (item["status"], item.get("statusReason")) != workflow.FILTERED)
+                    for index in range(len(members)):
+                        projected[index].append(copy.deepcopy(item) if shared or index == owner else {**item, **FILTERED})
+                    buckets[owner].append(item)
+                new_owned, reconciled = workflow.reconcile(projected)
+                self.assertEqual(inventory(original), inventory(reconciled))
+                self.assertEqual(workflow.populations(original), workflow.populations(reconciled))
+                all_before.extend(original)
+                all_after.extend(reconciled)
+                for name, bucket, rows in zip(members, buckets, new_owned, strict=True):
+                    expected_ids = {(target, item["id"]) for item in bucket if item["status"] in ("Killed", "Timeout", "Survived", "NoCoverage")}
+                    actual_ids = {(target, item["id"]) for item in rows if item["status"] in ("Killed", "Timeout", "Survived", "NoCoverage")}
+                    self.assertEqual(expected_ids, actual_ids)
+                    self.assertFalse(weighted_ids & actual_ids)
+                    weighted_ids.update(actual_ids)
+                    weight = sum((old_weights[identity] for identity in actual_ids), Fraction(0))
+                    estimate = Fraction(5, 4) * weight + 600
+                    rounded = -(-estimate.numerator // estimate.denominator)
+                    self.assertLess(estimate, 6000)
+                    self.assertLess(rounded, 7200)
+                    assigned_weight += weight
+                    table.append((name, len(actual_ids), weight, estimate, rounded))
+                    if name.endswith("-crossing") and not actual_ids:
+                        zero_complements.append(name)
+            self.assertEqual(6636, len(all_before))
+            self.assertEqual(inventory(all_before), inventory(all_after))
+            self.assertEqual((counts, 5000, 5329), workflow.populations(all_after))
+            self.assertEqual(5329, len(old_weights))
+            self.assertEqual(set(old_weights), weighted_ids)
+            self.assertEqual(sum(old_weights.values(), Fraction(0)), assigned_weight)
+            self.assertEqual(61, len(table))
+            self.assertEqual(Fraction(445371390747, 80000000), max(item[3] for item in table))
+            self.assertEqual(5568, max(item[4] for item in table))
+            self.assertEqual(["publication-crossing", "b10-repeat-crossing"], zero_complements)
+            self.assertTrue(crossing_ids)
+            self.assertGreater(equal_span_pairs, 0)
+            print("\nEstimate dated 2026-11-07; retained baseline only, no optimized campaign measurement.")
+            print("| Old shard | Retained elapsed / s | Tested denominator | Amortized s / tested mutant |")
+            print("| --- | ---: | ---: | ---: |")
+            for name, elapsed, denominator, rate in rate_table:
+                print(f"| {name} | {elapsed:.3f} | {denominator} | {float(rate):.6f} |")
+            print("| Proposed shard | Tested mutants | W / s | E / s, estimate 2026-11-07 |")
+            print("| --- | ---: | ---: | ---: |")
+            for name, tested, weight, estimate, rounded in table:
+                print(f"| {name} | {tested} | {float(weight):.3f} | {rounded} |")
+            print(f"Inventory {len(all_before)}; weighted identities {len(weighted_ids)}; jobs {len(table)}; raw score 5000/5329.")
+            print(f"Exact conserved W: {assigned_weight}; exact maximum E: {max(item[3] for item in table)}; ceiling 5568.")
+    return unittest.TestSuite([MeasuredInventoryProof()])
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--measured-inventory":
+        if len(sys.argv) != 4:
+            raise SystemExit("usage: test_c5_workflow.py --measured-inventory ROOT SUMMARY")
+        result = unittest.TextTestRunner(verbosity=2).run(measured_inventory_suite(sys.argv[2], sys.argv[3]))
+        raise SystemExit(0 if result.wasSuccessful() else 1)
     unittest.main()
