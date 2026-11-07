@@ -310,6 +310,67 @@ public sealed class B10AbruptProducerTests
         Assert.Equal("not_implemented_pr3", fixture.Seals[0].GetProperty("fatal_capture_status").GetString());
     }
 
+    [Theory]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.Persisted, true)]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.NotPersisted, true)]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.PossiblyPersisted, false)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.NotPersisted, true)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted, true)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.Persisted, false)]
+    [InlineData(ErrorCode.Local_Transport, PersistenceStatus.PossiblyPersisted, false)]
+    public async Task Given_TimeoutCohortCallback_When_CheckingGuards_Then_PossiblyPersistedRequiresPermittedTimeout(
+        ErrorCode error, PersistenceStatus status, bool permitted)
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        fixture.StartReports();
+        fixture.Native.OnProduce = (_, callback) => callback(Report(error, status));
+        Task cohort = fixture.Runner.RunTimeoutCohortAsync(TestContext.Current.CancellationToken);
+        if (permitted)
+        {
+            await cohort;
+            Assert.Single(fixture.Seals);
+            Assert.Equal(error == ErrorCode.Local_MsgTimedOut ? 2 : 1, fixture.Native.Calls.Count);
+        }
+        else
+        {
+            Assert.Equal("b10_abrupt_guard_failed", (await Assert.ThrowsAsync<InvalidDataException>(() => cohort)).Message);
+            Assert.Empty(fixture.Seals);
+            Assert.Single(fixture.Native.Calls);
+        }
+    }
+
+    [Theory]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.Persisted, true)]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.NotPersisted, true)]
+    [InlineData(ErrorCode.NoError, PersistenceStatus.PossiblyPersisted, false)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.NotPersisted, true)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted, true)]
+    [InlineData(ErrorCode.Local_MsgTimedOut, PersistenceStatus.Persisted, false)]
+    [InlineData(ErrorCode.Local_Transport, PersistenceStatus.PossiblyPersisted, false)]
+    public async Task Given_ProbeCallback_When_AdmittingResend_Then_PossiblyPersistedRequiresPermittedTimeout(
+        ErrorCode error, PersistenceStatus status, bool permitted)
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        fixture.Native.OnProduce = (_, callback) => callback(Report(error, status));
+        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        Assert.NotNull(original.Terminal);
+        Assert.Equal((int)status, original.Terminal.Value.GetProperty("persistence_status").GetInt32());
+        Assert.Equal((int)error, original.Terminal.Value.GetProperty("error_code").GetInt32());
+        Task resend = fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, TestContext.Current.CancellationToken);
+        if (permitted)
+        {
+            await resend;
+            Assert.Equal(2, fixture.Native.Calls.Count);
+        }
+        else
+        {
+            Assert.Equal("b10_abrupt_guard_failed", (await Assert.ThrowsAsync<InvalidDataException>(() => resend)).Message);
+            Assert.Single(fixture.Native.Calls);
+        }
+    }
+
     [Fact]
     public async Task Given_CompletedControlOriginal_When_ReleaseArrives_Then_ResendsOnceAndAdmitsKillWithoutCleanup()
     {

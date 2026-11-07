@@ -149,7 +149,7 @@ internal sealed class B10AbruptProducer
                             status.HasValue ? "native_callback" : "missing", ElapsedMicroseconds(completed),
                             clock.GetElapsedTime(invoked, completed).TotalMilliseconds, null);
                         if (!ledger.TryAppend(row) || !rows.TryAdd(entry.AttemptId, row)) faulted = true;
-                        if (status is null || report.Error.IsError && !ApplicationRetryPolicy.IsPermittedTimeout(row)) faulted = true;
+                        if (!IsPermittedTerminal(row.ErrorCode, status)) faulted = true;
                         if (ApplicationRetryPolicy.IsPermittedTimeout(row)) retryQueue.Enqueue(planned);
                     }
                     catch { faulted = true; }
@@ -318,14 +318,21 @@ internal sealed class B10AbruptProducer
             {
                 if (attempt.Terminal is not null) { faulted = true; return; }
                 attempt.Terminal = terminal;
-                bool permittedTimeout = report.Error.Code == ErrorCode.Local_MsgTimedOut &&
-                    status is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.PossiblyPersisted;
-                if (status is null || report.Error.IsError && !permittedTimeout) faulted = true;
+                if (!IsPermittedTerminal((int)report.Error.Code, status)) faulted = true;
             }
             if (!captureTerminal(terminal)) faulted = true;
         }
         catch { faulted = true; }
     }
+
+    internal static bool IsPermittedTerminal(int errorCode, int? persistenceStatus) =>
+        errorCode switch
+        {
+            (int)ErrorCode.NoError => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.Persisted,
+            // This is the callback error/status combination admitted by ApplicationRetryPolicy.IsPermittedTimeout.
+            (int)ErrorCode.Local_MsgTimedOut => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.PossiblyPersisted,
+            _ => false
+        };
 
     internal async Task<SuccessorArtifacts> RunSuccessorAsync(WorkloadProfile workload, RunIdentity runIdentity,
         RunExecutionOptions executionOptions, JsonElement selectedEntries, DateTimeOffset releaseUtc,

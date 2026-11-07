@@ -72,42 +72,68 @@ internal static class B10AbruptHost
                 await supervisor.RunAsync(lifetime.Token).ConfigureAwait(false);
                 return 0;
             }
-            B10AbruptPublisher.SuccessorInput? input = role == "successor"
-                ? await B10AbruptPublisher.LoadSelectionAsync(options, lifetime.Token).ConfigureAwait(false) : null;
-            if (input is not null) await publisher.RegisterDiagnosticAsync(options.Identity(input.FirstIdentity.InstanceId), lifetime.Token).ConfigureAwait(false);
-            B10AbruptChildChannel? channel = role == "child"
-                ? B10AbruptChildChannel.Connect(options.EventsPipeHandle, options.AckPipeHandle, options.IdentityChallenge) : null;
-            await using var channelScope = channel;
-            var runtime = await CreateProducerAsync(host.Services, options, channel, input, lifetime.Token).ConfigureAwait(false);
-            var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
-            if (input is null)
+            if (role == "successor")
+                return await RunValidatedSuccessorAsync(options, input => RunProducerAsync(input), lifetime.Token).ConfigureAwait(false);
+            return await RunProducerAsync(null).ConfigureAwait(false);
+
+            async Task<int> RunProducerAsync(B10AbruptPublisher.SuccessorInput? input)
             {
-                await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
-                return 1; // The first child only completes by the supervisor's observed kill.
+                if (input is not null) await publisher.RegisterDiagnosticAsync(options.Identity(input.FirstIdentity.InstanceId), lifetime.Token).ConfigureAwait(false);
+                B10AbruptChildChannel? channel = role == "child"
+                    ? B10AbruptChildChannel.Connect(options.EventsPipeHandle, options.AckPipeHandle, options.IdentityChallenge) : null;
+                await using var channelScope = channel;
+                var runtime = await CreateProducerAsync(host.Services, options, channel, input, lifetime.Token).ConfigureAwait(false);
+                var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
+                if (input is null)
+                {
+                    await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
+                    return 1; // The first child only completes by the supervisor's observed kill.
+                }
+                B10AbruptProducer.SuccessorArtifacts result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
+                    input.Selection.GetProperty("data").GetProperty("entries"), input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
+                using (var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock))
+                {
+                    await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    await Task.Run(host.Dispose, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                }
+                var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+                foreach (var pair in result.Paths)
+                    payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
+                await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.Termination, input.Selection,
+                    result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
+                return 0;
             }
-            B10AbruptProducer.SuccessorArtifacts result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
-                input.Selection.GetProperty("data").GetProperty("entries"), input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
-            using (var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock))
-            {
-                await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
-                await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
-                await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-                await Task.Run(host.Dispose, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-            }
-            var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-            foreach (var pair in result.Paths)
-                payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
-            await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.Termination, input.Selection,
-                result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
-            return 0;
         }
         catch (Exception exception)
         {
-            if (exception is OperationCanceledException) { Console.Error.WriteLine("b10_abrupt_deadline_exhausted"); return 1; }
-            Console.Error.WriteLine(exception.Message.StartsWith("b10_abrupt_", StringComparison.Ordinal) || exception.Message.StartsWith("kill_too_", StringComparison.Ordinal)
-                ? exception.Message : "b10_abrupt_configuration_invalid");
+            return ReportFailure(exception, Console.Error);
+        }
+    }
+
+    internal static async Task<int> RunValidatedSuccessorAsync(B10AbruptOptions options,
+        Func<B10AbruptPublisher.SuccessorInput, Task<int>> continuation, CancellationToken cancellationToken)
+    {
+        B10AbruptPublisher.SuccessorInput input = await B10AbruptPublisher.LoadSelectionAsync(options, cancellationToken).ConfigureAwait(false);
+        return await continuation(input).ConfigureAwait(false);
+    }
+
+    internal static int ReportFailure(Exception exception, TextWriter error)
+    {
+        if (exception is OwnedProducerProcess.SignalException signalFailure)
+        {
+            error.WriteLine(JsonSerializer.Serialize(new
+            {
+                failure = signalFailure.Message,
+                signal_observation = signalFailure.Observation
+            }, B10AbruptWire.JsonOptions));
             return 1;
         }
+        if (exception is OperationCanceledException) { error.WriteLine("b10_abrupt_deadline_exhausted"); return 1; }
+        error.WriteLine(exception.Message.StartsWith("b10_abrupt_", StringComparison.Ordinal) || exception.Message.StartsWith("kill_too_", StringComparison.Ordinal)
+            ? exception.Message : "b10_abrupt_configuration_invalid");
+        return 1;
     }
 
     internal static IHost BuildServices(B10AbruptOptions options)

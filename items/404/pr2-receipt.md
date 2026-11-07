@@ -46,12 +46,14 @@ The mutation-only Compile item comparison and scripted preservation checks follo
 
 - Resume progress uses a create-only local child acknowledgement after reading the authenticated control checkpoint. The supervisor checks the checkpoint and identity binding within the existing arm budget. This implements `b10_abrupt_resume_unconfirmed` without adding an IPC kind, signal or publication member.
 
+- Deadline-name alignment: after stopped state is observed, exhaustion during drain/checkpoint uses the existing `b10_abrupt_deadline_exhausted` outcome for the enclosing arm deadline. `b10_abrupt_stop_unconfirmed` remains for missing/late stopped observation. A successful native KILL observed outside its budget likewise reports deadline exhaustion, while `b10_abrupt_signal_failed` remains an actual native failure. Sticky journal gaps and actual signal observations are retained; the budgets and admission comparisons are unchanged.
+
 ## Verification and review status
 
-Local implementation verification is complete. Cold review and Linux CI remain pending; neither is claimed as passed. No live trial has run in this session.
+Local verification passed on the initial candidate `cb6d0cfa52e1ae7ad3d20af72133c19975c75a2b`. Its first cold review found six P1 root causes; the consolidated corrections have passed affected verification and await the second comprehensive review. Linux CI remains pending. No live trial has run in this session.
 
 - `./scripts/verify-dotnet.sh` passed with locked restore, Release build (zero warnings/errors), architecture checks, all project tests, checked reports and the warning-as-error control. Measured report counts: Architecture 16, Enrichment 56, Kafka 486, LoadGen 1429, Scenarios 340 and Verifier 7389. Logs remained outside the repository.
-- Baseline, before chart changes, source `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`: `bash charts/parchwell/tests/check-loadgen-host.sh` passed. Bash `time -p` measured real 121.04 s, user 90.88 s, system 21.96 s. Post-change: the same whole script passed, including E10/E11, with Bash `time -p` measuring real 114.19 s, user 89.66 s and system 29.36 s, within the unchanged 900 s bound. A local `timeout 900` enforced that bound.
+- Baseline, before chart changes, source `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`: `bash charts/parchwell/tests/check-loadgen-host.sh` passed. Bash `time -p` measured real 121.04 s, user 90.88 s, system 21.96 s. Initial candidate post-change: the same whole script passed, including E10/E11, with Bash `time -p` measuring real 114.19 s, user 89.66 s and system 29.36 s, within the unchanged 900 s bound. A local `timeout 900` enforced that bound.
 - `npm ci --ignore-scripts` completed; `npm run test:docs` passed 28 tests with no failures or skips.
 - `bash charts/parchwell/tests/check.sh` passed; measured elapsed time was 264.13 s. `bash infra/scripts/lifecycle/check-offline.sh` passed with exit 0.
 - `npm run check:docs` reported eight warnings, all in unchanged files.
@@ -68,8 +70,11 @@ Local implementation verification is complete. Cold review and Linux CI remain p
 
 ## Verification failure dispositions
 
-The list below contains 14 distinct measured root causes across all implementing agents, counted by script; repeated manifestations appear only once. The plan cap is 20; no warning is waived.
+The list below contains 17 distinct failure groups across all implementing agents, counted by script and conservatively charged against the root-cause cap; repeated manifestations appear only once. Uncertain causes are identified below. The plan cap is 20; no warning is waived.
 
+- A broad native-runner LoadGen rerun executed 1492 tests with one failure in unchanged ProducerRegistrationTests: evidence_readback_failed:TaskCanceledException during its existing cleanup budget. The test and ordinary worker bytes match the base. The standard repository-runner rerun without a competing test process passed all 1490 tests with no skips, and its report validated. The scheduling cause is not established; no test or budget was changed.
+- Correction tests exposed deadline cancellation wrapped by the journal as writer_failed instead of the operation outcome. The corrected deadline handling retains the sticky capture gap; its new boundary tests pass.
+- The reap-at-deadline test failed with the TimeSpan-based WaitAsync path. The correction uses the TimeProvider cancellation-token path plus an elapsed-completion check; the corrected boundary tests pass.
 - The first timing wrapper could not launch because `/usr/bin/time` is absent. No host test ran in that invocation; Bash `time -p` is used instead.
 - The scratch policy comparison initially addressed `bounds` at the chart root. Correcting it to `runtime.bounds` made the comparison pass; no repository setting changed.
 - The first Python invocations omitted the installed tools from PATH. Loading the shared tool environment made both mandatory suites pass.
@@ -85,11 +90,11 @@ The list below contains 14 distinct measured root causes across all implementing
 - DeliveryReport.Status is nonnullable. The synthetic invalid-status test now uses an undefined enum value, which the guard rejects.
 - InvalidDataException is not caught by an IOException arm. Adding it to the report-binding catch restored the required first-failure latch; the affected tests passed.
 
-All listed causes are resolved. The full .NET and timed host acceptance commands passed after these corrections.
+The original candidate passed the full .NET and timed host commands. The correction build and all abrupt-path tests pass; broader affected verification is recorded below.
 
 ## Cold-review input
 
-Mode: initial comprehensive review. Input revision: the frozen HEAD on `codex/404-pr2-abrupt-restart`; the review diff filename identifies its exact commit. Comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. The supplied diff contains every authored file, including this receipt and item state. At this freeze there are no completed cold-review reports or focused rounds. The pull request self-review record will hold the complete report, dispositions and cumulative counts; a report is not added to its own reviewed receipt.
+Mode for the next review: consolidated comprehensive re-review. Input revision: the frozen HEAD on `codex/404-pr2-abrupt-restart`, identified exactly by the supplied diff filename. Comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. The supplied diff contains every authored file, including this receipt and item state. Cumulative completed reviews: one comprehensive, zero focused. The first complete report follows. The second report and final cumulative counts belong in the pull request self-review record, not its own reviewed receipt.
 
 Both the Codex and Claude reviews must explicitly check each choice under "Cap-covered choices": C1, C2, C3, report_length and UTF-8 RawJson. Hosted review and final-head Linux CI remain separate gates. This environment has no available Claude review tool or CLI; that review requires a Claude session before Hari merges.
 
@@ -109,3 +114,102 @@ Read on 2026-11-07:
 - [proc_pid_stat(5)](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) identifies field 22 as start time in clock ticks; [cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html) identifies local, non-hierarchical memory events and group-level OOM kill counts. Neither establishes deployed availability or victim identity.
 
 - [Confluent.Kafka v2.16.0 IProducer](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IProducer.cs), [librdkafka v2.16.0 statistics](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md), [introduction](https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md) and [configuration](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md) were checked for Produce, callback, Flush, counter and permitted-timeout semantics. They do not prove wire exposure or Event Hubs persistence.
+
+## First cold-review report
+
+Mode: initial comprehensive cold review (repo-review).
+Reviewed revision: cb6d0cfa52e1ae7ad3d20af72133c19975c75a2b.
+Comparison revision: 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef.
+Report: complete
+
+Specification: issue 404 PR2 implementation-grade plan Revision 6, comment 6709851444, as approved by comment 6711868908; cap decision 6711519349. Applied AGENTS.md, docs/agents/pull-requests.md, CLAUDE.md, docs/agents/factory.md, blueprint ADRs (especially ADR-012/013/019/020/021), and docs/engineering/dotnet.md. The entire authored diff was reviewed; the file inventory follows below. No implementation file was edited during review.
+
+Scope comparison: the changed paths fit the PR2 file/member map. The new workflow and mirror agree; existing workflow bytes are unchanged. Default-off routing, diagnostic isolation, scientific-reader rejection, ordinary project structure and the narrowly approved mutation exclusion are present. The new contract's wire/policy/failure sections match the approved plan except the authorized report_length raise-list correction. No PR3 implementation, scientific result, expected-outcome change, new package/project/reference, identity/network expansion or existing workflow-trigger change was found. Implementation and acceptance are incomplete in the findings below. Local evidence does not discharge the explicitly pending reviewed-head Linux CI, hosted review or Claude head-review gates.
+
+Cap choices checked explicitly:
+- C1: valid reports for both recognized arms accompany the unknown-arm case in B10AbruptSupervisorTests; the unattributable report has its own binding-invalid latch. This is the approved first option.
+- C2: hand-off absence produces sample_missing, while invalid bindings latch binding_invalid without adding sample_missing for that arm. Overflow remains a separate no-message case.
+- C3: SelectPreAcceptance returns null after overflow, including when a previously numbered report exists; the producer test covers loss of that earlier fallback.
+- report_length: explicit 1..1048576 checks and zero/oversize tests implement the carried correction.
+- RawJson: Encoding.UTF8.GetBytes writes the selected raw report without a BOM, and the test compares those actual bytes.
+These choices fit the approval; they do not excuse the separate unreadable-file failure in finding 4.
+
+Review validation: git diff --check passed. A scratch harness outside the repository called the reviewed Release implementation and reproduced three cases: stop confirmation at 29 s followed by a 2 s checkpoint flush still completed the checkpoint and sent KILL at 31 s; an unreadable fixed report path threw UnauthorizedAccessException with no arm failure and mapped to capture_gap; a NoError/PossiblyPersisted terminal was accepted by the production supervisor handler. The scratch source is /workspace/scratch/cold1-proof/Program.cs, runnable with /workspace/scratch/dotnet/dotnet run --project /workspace/scratch/cold1-proof/proof.csproj. These are isolated synthetic boundary observations, not a live trial. Source inspection also checked the production exception consumers and all added runtime tests. Pinned signal/fcntl headers, Confluent.Kafka IProducer, librdkafka statistics/configuration/introduction, and the cited Microsoft/POSIX/proc/cgroup API statements were checked for the narrow claims used here.
+
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs:308  Revision 6 "Policy fixed before any run" Arm/stop row, E4; ADR-021 protocol 6  The 30 s arm deadline is checked before draining queued frames and flushing the checkpoint, but not enforced through those operations or checked after completion. A checkpoint can therefore complete after the authorized deadline and still authorize KILL. The scratch production-method probe confirms STOP at 29 s plus a 2 s checkpoint flush results in KILL at 31 s. Bound the complete arm/checkpoint operation by its original deadline and reject late completion; add the specified below/at/above deadline cases.
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs:323  Revision 6 item 9 (reuse existing guard meanings), policy Guards; docs/blueprint.md ADR-021 "Permitted conditions"  PossiblyPersisted is accepted whenever Error.IsError is false, even though ADR-021 permits that status only on its named timeout outcome. The same omission exists in the timeout callback and supervisor terminal validation (B10AbruptSupervisor.cs:214-218). A synthetic delivered=true/error_code=0/persistence_status=1 terminal passes the production supervisor, and the producer predicate likewise leaves faulted false. Reject PossiblyPersisted outside ApplicationRetryPolicy's permitted-timeout combination across all three paths.
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptHost.cs:107  Revision 6 item 4 and failure rows b10_abrupt_signal_preflight_failed/b10_abrupt_signal_failed  Failed native-call observations are retained only on SignalException.Observation and then discarded by the production exception handlers. Preflight happens outside the supervisor try block, so its only output is this message; arm calls throw before RecordSignalAsync can record the return/errno, and failure.json also omits the exception observation. Thus the trial cannot retain the required actual return value/errno or native-load exception type on the very failure paths it must diagnose. Persist these observations for preflight and arm failures, including unavailable errno on import failure; existing tests inspect the exception object only and do not prove emitted evidence.
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs:255  Revision 6 wire pre_acceptance_report and failure row b10_abrupt_report_binding_invalid  The expected unreadable-file path is not normalized into the per-arm binding-invalid latch because UnauthorizedAccessException is absent from the catch filter. It escapes with ArmFailures empty; the supervisor maps it to capture_gap and the host ultimately prints configuration_invalid. A fixed report path that is a directory reproduced this using production AcceptReportAsync. Catch expected access failures as binding_invalid, preserve its first-failure exclusivity, and test the unreadable-file case required by the wire contract.
+P1  infra/scripts/phase/b10_abrupt.py:503  Revision 6 "Failure and outcome names" and "Diagnostic trial and safety"  The runner publishes arbitrary inner validation strings as gap names, e.g. diagnostic descriptor mismatch, diagnostic identity and release boundary, although the approved contract gives the exhaustive emitted failure names. The collection path additionally swallows such failures at lines 551-552 without recording any named gap. Map boundary failures to their applicable approved b10_abrupt_* outcome and preserve a named collection failure, retaining subordinate detail separately if needed; otherwise a failed trial lacks the prescribed diagnostic outcome.
+P1  tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs:148  Revision 6 E4/E6/E8/E9; docs/engineering/dotnet.md "Testing"  Required negative runtime acceptance is absent. This valid export load is the only test invocation of LoadSelectionAsync, so there is no successor-reader test for missing/changed receipt, wrong Job/pod UID/source/image/predecessor, stale selection, same pod identity or legacy complete-predecessor bytes, and no assertion that these fail before producer construction. The added tests also omit the specified virtual 30 s/10 s deadline boundaries and supervisor reap/EOF failure cases (the synthetic process always reports successful stop/exit and completes its event stream). Python publication mutations exercise a different reader and cannot substitute for the required successor checks. Complete these explicitly required cases before treating E1-E12 acceptance as met; this requests planned coverage, not additional hardening.
+
+Findings: 6 at P0 or P1
+
+Pre-existing (not blocking): none identified for this review.
+
+Touched-file inventory (45, computed from the frozen diff; every path matched to the anything rubric, .NET paths additionally to dotnet standards, and workflow paths additionally to hard safety rules 8/9):
+- .github/workflows/b10-abrupt-trial.yml
+- charts/parchwell/templates/jobs.yaml
+- charts/parchwell/tests/check.sh
+- charts/parchwell/tests/test_b10_abrupt_chart.py
+- charts/parchwell/tests/test_b10_abrupt_host.py
+- charts/parchwell/tests/test_loadgen_host.py
+- charts/parchwell/values.schema.json
+- charts/parchwell/values.yaml
+- docs/operations/b10-abrupt-contract.md
+- docs/operations/b10-workflow.md
+- docs/operations/loadgen-contract.md
+- docs/operations/verifier-contract.md
+- docs/operations/workflows/b10-abrupt-trial.yml.txt
+- infra/scripts/lifecycle/check-offline.sh
+- infra/scripts/lifecycle/dispatch-state.py
+- infra/scripts/phase/b10_abrupt.py
+- infra/scripts/phase/phase.py
+- infra/scripts/phase/tests/check_b10_abrupt_producers.py
+- infra/scripts/phase/tests/test_b10_abrupt.py
+- infra/scripts/phase/tests/test_workflow.py
+- infra/scripts/tests/test_dispatch_state.py
+- items/404/pr2-receipt.md
+- items/404/state.md
+- src/Parchwell.LoadGen/Program.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptCgroup.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptChildChannel.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptHost.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptJournal.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptOptions.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProc.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs
+- src/Parchwell.LoadGen/Run/Abrupt/B10AbruptWire.cs
+- src/Parchwell.LoadGen/Run/Abrupt/OwnedProducerProcess.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptCgroupTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptJournalTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptOptionsTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProcessTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSupervisorTests.cs
+- tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs
+- tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs
+- tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj
+
+## First-review dispositions
+
+All six P1 findings are accepted as implementation or required-coverage defects. Corrections preserve the approved protocol, policy values, guards and failure vocabulary; no finding is waived.
+
+- R1: retain the original arm deadline through queued-frame drain and checkpoint completion, checking it before experimental KILL. Apply the existing kill, reap and EOF budgets to observed completion and add virtual boundary cases.
+- R2: use one callback error/status predicate in timeout, probe, successor and supervisor paths. PossiblyPersisted is permitted only for the existing actual-timeout combination; the supervisor also checks delivered/error agreement.
+- R3: the host emits the actual SignalException observation, including null unavailable values on native-load failure. The supervisor retains that observation in its failed diagnostic. Tests inspect emitted evidence.
+- R4: normalize expected access failures on the fixed report file into the existing per-arm binding-invalid latch; preserve first-failure exclusivity.
+- R5: emit only approved phase failure names, retain subordinate validation detail separately, and record collection failures. Unknown termination always preserves safety_stop, including malformed nested pod data caught by outer handlers.
+- R6: add actual successor-reader negative cases using newly produced bytes and the production host's validation-before-continuation boundary. Rejected input never enters the continuation that registers/constructs the producer. Add the required virtual deadline and supervisor reap/EOF failures. No test contacts Azure.
+
+The first review accounts for six review-finding root causes against the policy cap of 20. Correction verification:
+
+- Release LoadGen.Tests build passed with zero warnings/errors in 25.51 s. All 270 abrupt-path tests passed with no failures/skips in 12.101 s.
+- The fresh production worker passed eight facts in 11.508 s and produced `/workspace/scratch/b10-export-cold1-fixed`. The Python consumer passed ten produced-byte tests in 0.154 s with its exact success marker. Loaded versions remain the measured values above.
+- The phase/diagnostic/workflow regression command passed 128 tests in 22.576 s.
+- The Verifier rejection class passed both tests in 12.963 s against the corrected worker, including scientific rejection of actual newly generated bytes.
+- All 13 runtime source hashes and all seven abrupt test source hashes match bytes present in their current Release PDBs.
+- The complete LoadGen suite passed through the standard repository command: 1490 succeeded, zero failures/skips, duration 1m 22s 358ms; the repository report validator passed. The corrected whole host acceptance also passed: Bash time measured real 132.11 s, user 85.18 s and system 26.94 s, within the unchanged 900 s bound. It regenerated the production-byte bridge inputs and checked them successfully.

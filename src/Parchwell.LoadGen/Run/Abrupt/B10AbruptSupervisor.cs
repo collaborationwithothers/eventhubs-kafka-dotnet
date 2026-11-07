@@ -77,24 +77,13 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 if (_killRequested) break;
             }
             if (!_killRequested) throw Failure("b10_abrupt_unexpected_exit");
-            OwnedProducerProcess.ExitObservation exit = child.ObserveExit();
-            if (!exit.WaitForExitObserved) throw Failure("b10_abrupt_exit_unobserved");
+            OwnedProducerProcess.ExitObservation exit = await ObserveExitAsync(child, cancellationToken).ConfigureAwait(false);
             await journal.AppendAsync("exit", B10AbruptWire.Element(new
             {
                 process = child.Identity, wait_for_exit_observed = true, observed_utc = Utc(), monotonic_ticks = clock.GetTimestamp(),
                 exit_code_local_observation = exit.ExitCodeLocalObservation, runtime_version = exit.RuntimeVersion
             }), cancellationToken).ConfigureAwait(false);
-            using (var eof = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock))
-            using (var linked = CancellationTokenSource.CreateLinkedTokenSource(eof.Token, cancellationToken))
-            {
-                try
-                {
-                    await foreach (var message in _incoming.Reader.ReadAllAsync(linked.Token).ConfigureAwait(false))
-                        await HandleAsync(message, linked.Token, afterKill: true).ConfigureAwait(false);
-                    await pump.ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) { throw Failure("b10_abrupt_eof_incomplete"); }
-            }
+            await DrainToEofAsync(_incoming.Reader, pump, cancellationToken).ConfigureAwait(false);
             if (_before is null) throw Failure("b10_abrupt_cgroup_unavailable");
             B10AbruptCgroup.Observation after = child.CaptureAfter(_before);
             _ = B10AbruptCgroup.Compare(_before, after);
@@ -133,7 +122,8 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 {
                     mechanical_status = "incomplete", failure = FailureName(failure),
                     process = child.Identity, kill_requested = _killRequested, has_exited = child.HasExited,
-                    capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "not_implemented_pr3"
+                    capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "not_implemented_pr3",
+                    signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation
                 });
                 Console.Error.WriteLine(Encoding.UTF8.GetString(diagnostic));
                 await file.WriteAsync(diagnostic, diagnosticDeadline.Token).ConfigureAwait(false);
@@ -212,9 +202,9 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 var terminal = await journal.AppendAsync("terminal", message.Data, cancellationToken).ConfigureAwait(false);
                 _terminals.Add(attempt, terminal);
                 if (message.Data.GetProperty("persistence_status").ValueKind != JsonValueKind.Number ||
-                    !message.Data.GetProperty("persistence_status").TryGetInt32(out int status) || status is < 0 or > 2 ||
+                    !message.Data.GetProperty("persistence_status").TryGetInt32(out int status) ||
                     message.Data.GetProperty("delivered").GetBoolean() != (message.Data.GetProperty("error_code").GetInt32() == 0) ||
-                    (message.Data.GetProperty("error_code").GetInt32() != 0 && (message.Data.GetProperty("error_code").GetInt32() != (int)Confluent.Kafka.ErrorCode.Local_MsgTimedOut || status == 2)))
+                    !B10AbruptProducer.IsPermittedTerminal(message.Data.GetProperty("error_code").GetInt32(), status))
                     throw Failure("b10_abrupt_guard_failed");
                 break;
             case "synchronous_rejection":
@@ -252,7 +242,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             _reports.Add(arm, B10AbruptWire.Element(new { name, length, sha256 = B10AbruptPublisher.Hash(bytes),
                 report_identity = identity, report_sequence = data.GetProperty("report_sequence"), report_capture_utc = data.GetProperty("report_capture_utc") }));
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or FormatException or OverflowException or KeyNotFoundException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException or FormatException or OverflowException or KeyNotFoundException)
         { _armFailures.TryAdd(arm, "b10_abrupt_report_binding_invalid"); }
     }
 
@@ -290,29 +280,115 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         if (checkpoint.Data.GetProperty("selected_attempt_ids").GetArrayLength() == 0) throw Failure("kill_too_late:no_unconfirmed_attempt");
         var intent = await RecordSignalAsync("cross_restart", new(9, null, null), 0, cancellationToken).ConfigureAwait(false);
         _killRequested = true;
-        await RecordSignalAsync("cross_restart", _child.Kill(), intent.Sequence, cancellationToken).ConfigureAwait(false);
+        await RequestKillAsync(_child, intent.Sequence, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<B10AbruptWire.Frame> StopCheckpointAsync(string arm, string attempt, CancellationToken cancellationToken)
     {
         long begin = _armStarts.GetValueOrDefault(arm, clock.GetTimestamp());
-        if (_child is null || _child.HasExited) throw Failure("b10_abrupt_unexpected_exit");
-        await RecordSignalAsync(arm, _child.Stop(), 0, cancellationToken).ConfigureAwait(false);
-        TimeSpan remaining = TimeSpan.FromSeconds(30) - clock.GetElapsedTime(begin);
-        if (remaining < TimeSpan.Zero || !_child.ConfirmStopped(remaining, clock) || clock.GetElapsedTime(begin) > TimeSpan.FromSeconds(30)) throw Failure("b10_abrupt_stop_unconfirmed");
-        await Task.Yield();
-        if (_incoming is not null)
-            while (_incoming.Reader.TryRead(out var message)) await HandleAsync(message, cancellationToken, afterKill: true).ConfigureAwait(false);
-        if (!_reports.TryGetValue(arm, out var report)) throw Failure(_armFailures.GetValueOrDefault(arm, "b10_abrupt_sample_missing"));
-        DateTimeOffset utc = clock.GetUtcNow();
-        return await journal.CheckpointAsync(B10AbruptWire.Element(new
+        TimeSpan budget = TimeSpan.FromSeconds(30);
+        TimeSpan remaining = budget - clock.GetElapsedTime(begin);
+        if (remaining < TimeSpan.Zero) throw Failure("b10_abrupt_stop_unconfirmed");
+        // One tick beyond the inclusive deadline lets an already completed operation at the boundary be observed.
+        using var deadline = new CancellationTokenSource(remaining + TimeSpan.FromTicks(1), clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
+        bool stoppedObserved = false;
+        try
         {
-            arm, accepted_attempt_ids = _accepted.Contains(attempt) ? new[] { attempt } : [],
-            selected_attempt_ids = _accepted.Contains(attempt) && !_terminals.ContainsKey(attempt) ? new[] { attempt } : [],
-            last_complete_sequence = journal.Frames.Count == 0 ? 0 : journal.Frames[^1].Sequence, pre_acceptance_report = report,
-            process = _child.Identity, checkpoint_utc = B10AbruptPublisher.Utc(utc), checkpoint_monotonic_ticks = clock.GetTimestamp(),
-            release_utc = B10AbruptPublisher.Utc(utc.AddSeconds(120))
-        }), cancellationToken).ConfigureAwait(false);
+            if (_child is null || _child.HasExited) throw Failure("b10_abrupt_unexpected_exit");
+            await RecordSignalAsync(arm, _child.Stop(), 0, linked.Token).ConfigureAwait(false);
+            remaining = budget - clock.GetElapsedTime(begin);
+            if (remaining < TimeSpan.Zero || !_child.ConfirmStopped(remaining, clock) || clock.GetElapsedTime(begin) > budget)
+                throw Failure("b10_abrupt_stop_unconfirmed");
+            stoppedObserved = true;
+            await Task.Yield();
+            if (_incoming is not null)
+                while (_incoming.Reader.TryRead(out var message))
+                {
+                    await HandleAsync(message, linked.Token, afterKill: true).ConfigureAwait(false);
+                    if (clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_deadline_exhausted");
+                }
+            if (!_reports.TryGetValue(arm, out var report)) throw Failure(_armFailures.GetValueOrDefault(arm, "b10_abrupt_sample_missing"));
+            DateTimeOffset utc = clock.GetUtcNow();
+            var checkpoint = await journal.CheckpointAsync(B10AbruptWire.Element(new
+            {
+                arm, accepted_attempt_ids = _accepted.Contains(attempt) ? new[] { attempt } : [],
+                selected_attempt_ids = _accepted.Contains(attempt) && !_terminals.ContainsKey(attempt) ? new[] { attempt } : [],
+                last_complete_sequence = journal.Frames.Count == 0 ? 0 : journal.Frames[^1].Sequence, pre_acceptance_report = report,
+                process = _child.Identity, checkpoint_utc = B10AbruptPublisher.Utc(utc), checkpoint_monotonic_ticks = clock.GetTimestamp(),
+                release_utc = B10AbruptPublisher.Utc(utc.AddSeconds(120))
+            }), linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
+            if (clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_deadline_exhausted");
+            return checkpoint;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        { throw Failure(stoppedObserved ? "b10_abrupt_deadline_exhausted" : "b10_abrupt_stop_unconfirmed"); }
+        catch (InvalidDataException exception) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested &&
+            exception.Message == "b10_abrupt_capture_gap:writer_failed")
+        { throw Failure(stoppedObserved ? "b10_abrupt_deadline_exhausted" : "b10_abrupt_stop_unconfirmed"); }
+    }
+
+    internal async Task RequestKillAsync(IB10AbruptProcess child, long intentSequence, CancellationToken cancellationToken)
+    {
+        long begin = clock.GetTimestamp();
+        TimeSpan budget = TimeSpan.FromSeconds(10);
+        OwnedProducerProcess.SignalObservation? observation = null;
+        using var deadline = new CancellationTokenSource(budget + TimeSpan.FromTicks(1), clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
+        try
+        {
+            observation = await Task.Run(child.Kill, cancellationToken).WaitAsync(linked.Token).ConfigureAwait(false);
+            if (clock.GetElapsedTime(begin) > budget) throw new OwnedProducerProcess.SignalException("b10_abrupt_deadline_exhausted", observation);
+            await RecordSignalAsync("cross_restart", observation, intentSequence, linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
+            if (clock.GetElapsedTime(begin) > budget) throw new OwnedProducerProcess.SignalException("b10_abrupt_deadline_exhausted", observation);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (observation is not null) throw new OwnedProducerProcess.SignalException("b10_abrupt_deadline_exhausted", observation);
+            throw Failure("b10_abrupt_deadline_exhausted");
+        }
+        catch (InvalidDataException exception) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested &&
+            exception.Message == "b10_abrupt_capture_gap:writer_failed")
+        {
+            if (observation is not null) throw new OwnedProducerProcess.SignalException("b10_abrupt_deadline_exhausted", observation);
+            throw Failure("b10_abrupt_deadline_exhausted");
+        }
+    }
+
+    internal async Task<OwnedProducerProcess.ExitObservation> ObserveExitAsync(IB10AbruptProcess child, CancellationToken cancellationToken)
+    {
+        long begin = clock.GetTimestamp();
+        TimeSpan budget = TimeSpan.FromSeconds(10);
+        using var deadline = new CancellationTokenSource(budget + TimeSpan.FromTicks(1), clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
+        try
+        {
+            var exit = await Task.Run(child.ObserveExit, cancellationToken).WaitAsync(linked.Token).ConfigureAwait(false);
+            if (!exit.WaitForExitObserved || clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_exit_unobserved");
+            return exit;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        { throw Failure("b10_abrupt_exit_unobserved"); }
+    }
+
+    internal async Task DrainToEofAsync(ChannelReader<B10AbruptWire.Message> reader, Task pump, CancellationToken cancellationToken)
+    {
+        long begin = clock.GetTimestamp();
+        TimeSpan budget = TimeSpan.FromSeconds(10);
+        using var deadline = new CancellationTokenSource(budget + TimeSpan.FromTicks(1), clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
+        try
+        {
+            await foreach (var message in reader.ReadAllAsync(linked.Token).ConfigureAwait(false))
+                await HandleAsync(message, linked.Token, afterKill: true).ConfigureAwait(false);
+            await pump.WaitAsync(linked.Token).ConfigureAwait(false);
+            if (clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_eof_incomplete");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        { throw Failure("b10_abrupt_eof_incomplete"); }
+        catch (InvalidDataException exception) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested &&
+            exception.Message == "b10_abrupt_capture_gap:writer_failed")
+        { throw Failure("b10_abrupt_eof_incomplete"); }
     }
 
     internal async Task FinalizeSelectionAsync(CancellationToken cancellationToken)

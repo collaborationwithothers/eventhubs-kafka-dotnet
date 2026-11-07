@@ -34,6 +34,42 @@ DATA_FIELDS = {key: set(value.split()) for key, value in {
     'successor_receipt': 'first_termination selection registration artifacts ready_utc release_utc invocations cleanup_completed cross_host_timing',
 }.items()}
 
+# Emitted outcomes are the closed list in the approved diagnostic contract.
+FAILURE_NAMES = frozenset('''
+b10_abrupt_diagnostic_not_scientific
+b10_abrupt_configuration_invalid
+b10_abrupt_platform_unsupported
+b10_abrupt_signal_preflight_failed
+b10_abrupt_child_start_failed
+b10_abrupt_child_identity_mismatch
+b10_abrupt_target_invalid
+b10_abrupt_signal_failed
+b10_abrupt_stop_unconfirmed
+b10_abrupt_resume_unconfirmed
+b10_abrupt_exit_unobserved
+b10_abrupt_eof_incomplete
+b10_abrupt_unexpected_exit
+b10_abrupt_capture_gap
+b10_abrupt_sample_missing
+b10_abrupt_report_binding_invalid
+b10_abrupt_guard_failed
+b10_abrupt_control_incomplete
+kill_too_early
+kill_too_late
+b10_abrupt_cgroup_unavailable
+b10_abrupt_oom_conflict
+b10_abrupt_publication_failed
+b10_abrupt_publication_ambiguous
+b10_abrupt_first_termination_unknown
+b10_abrupt_successor_binding_invalid
+b10_abrupt_successor_late
+b10_abrupt_deadline_exhausted
+'''.split())
+
+
+class RecordedFailure(ValueError):
+    """A failure already retained in phase-status.json by an inner boundary."""
+
 
 def execution_modes(configuration):
     if configuration == 'C0':
@@ -130,13 +166,30 @@ class Trial:
     def directory(self):
         return self.p.artifacts / 'b10-abrupt-diagnostic'
 
-    def fail(self, reason, safety=False):
+    def record_failure(self, error, fallback, boundary, safety=False):
+        if isinstance(error, RecordedFailure):
+            return
+        message = str(error)
+        binding_errors = {'diagnostic identity', 'selection checkpoint', 'selection stale', 'selection identity',
+                          'prepared selection binding', 'selection payload', 'release boundary', 'successor release'}
+        reason = (message if message in FAILURE_NAMES else
+                  'b10_abrupt_successor_binding_invalid' if message in binding_errors else
+                  'b10_abrupt_publication_failed' if message == 'diagnostic descriptor mismatch' else fallback)
+        if reason not in FAILURE_NAMES:
+            raise ValueError('unsupported diagnostic failure mapping')
         state = self.p.state()
         state.setdefault('b10_abrupt_gaps', []).append(reason)
+        state.setdefault('b10_abrupt_diagnostics', []).append({
+            'reason': reason, 'boundary': boundary, 'exception_type': type(error).__name__,
+            'validation_detail': message})
         state['candidate'] = None
-        state['safety_stop'] = state.get('safety_stop', False) or safety
+        state['safety_stop'] = (state.get('safety_stop', False) or safety
+                                or reason == 'b10_abrupt_first_termination_unknown')
         self.p.save_state(state)
-        raise ValueError(reason)
+
+    def fail(self, reason, safety=False):
+        self.record_failure(ValueError(reason), reason, 'admission', safety)
+        raise RecordedFailure(reason)
 
     def prepare(self):
         expected = {'PARCHWELL_SCENARIO': 'B10', 'PARCHWELL_PHASE': 'C1',
@@ -288,7 +341,7 @@ class Trial:
             observation = {'job_name': record['job'], 'pod_name': metadata['name'], 'pod_uid': metadata['uid'],
                 'image_reference': image, 'source_commit': phase['source_commit'], 'finished_utc': finished}
             return observation
-        except (ValueError, OSError, KeyError, TypeError):
+        except (ValueError, OSError, LookupError, TypeError, AttributeError):
             self.fail('b10_abrupt_first_termination_unknown', safety=True)
 
     def envelope(self, raw, kind, observation, predecessor=None, maximum=AUXILIARY_MAXIMUM):
@@ -484,24 +537,32 @@ class Trial:
         previous = self.p.command_deadline
         deadline = self.p.b10_deadline(start=True)
         self.p.command_deadline = deadline
+        boundary, failure = 'metadata', 'b10_abrupt_publication_failed'
         try:
             metadata = self.p.run_mode('start-line', 1, absolute_deadline=deadline)
             if metadata['outcome'] != 'complete' or self.p.state()['safety_stop']:
                 raise ValueError('b10_abrupt_publication_failed')
             self.metadata(metadata, deadline)
+            boundary, failure = 'first_job', 'b10_abrupt_publication_failed'
             first = self.job('loadgen', deadline)
+            boundary, failure = 'first_termination', 'b10_abrupt_first_termination_unknown'
             observation = self.observe_first_termination(first)
             if first['outcome'] != 'complete':
                 raise ValueError('b10_abrupt_publication_failed')
+            boundary, failure = 'first_publication', 'b10_abrupt_publication_failed'
             files = self.download(observation, FIRST_FILES, deadline)
             binding = self.accept_diagnostic_publication(observation, files)
             (self.directory / 'predecessor-binding.json').write_bytes(encode(binding))
+            boundary, failure = 'successor_admission', 'b10_abrupt_successor_binding_invalid'
             successor = self.release_successor(binding, deadline)
-            return int(successor['outcome'] != 'complete')
-        except (ValueError, OSError, KeyError, TypeError) as error:
-            state = self.p.state()
-            state.setdefault('b10_abrupt_gaps', []).append(str(error))
-            self.p.save_state(state)
+            if successor['outcome'] != 'complete':
+                reason = ('b10_abrupt_deadline_exhausted' if successor.get('wait') == 124
+                          else 'b10_abrupt_publication_ambiguous')
+                self.record_failure(ValueError(reason), reason, 'successor_job')
+                return 1
+            return 0
+        except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+            self.record_failure(error, failure, boundary)
             return 1
         finally:
             self.p.command_deadline = previous
@@ -544,16 +605,33 @@ class Trial:
         for record in self.p.state()['modes']:
             if record['mode'] not in ('loadgen', 'loadgen2') or record['apply'] is None:
                 continue
+            boundary, failure = 'successor_termination', 'b10_abrupt_first_termination_unknown'
             try:
                 if record['mode'] == 'loadgen2':
                     observation = self.observe_first_termination(record)
-                    self.collect(self.download(observation, SUCCESSOR_FILES, self.p.b10_deadline()), observation)
-            except (ValueError, KeyError, TypeError, OSError):
+                    boundary, failure = 'successor_publication', 'b10_abrupt_publication_failed'
+                    files = self.download(observation, SUCCESSOR_FILES, self.p.b10_deadline())
+                    boundary, failure = 'successor_receipt', 'b10_abrupt_successor_binding_invalid'
+                    self.collect(files, observation)
+            except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                self.record_failure(error, failure, boundary)
                 failed = True
-            code = self.p.run(['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job', record['job']], 210)
-            failed = failed or bool(code)
-            source = self.p.artifacts / record['job']
-            if source.is_dir():
-                shutil.copytree(source, self.directory / record['job'], dirs_exist_ok=True)
-        (self.directory / 'phase-status.json').write_bytes(encode(self.p.state()))
+            try:
+                code = self.p.run(['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job', record['job']], 210)
+                if code:
+                    reason = ('b10_abrupt_deadline_exhausted' if code == 124
+                              else 'b10_abrupt_publication_ambiguous')
+                    self.record_failure(ValueError(reason), reason, 'job_collection')
+                    failed = True
+                source = self.p.artifacts / record['job']
+                if source.is_dir():
+                    shutil.copytree(source, self.directory / record['job'], dirs_exist_ok=True)
+            except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                self.record_failure(error, 'b10_abrupt_publication_failed', 'job_collection')
+                failed = True
+        try:
+            (self.directory / 'phase-status.json').write_bytes(encode(self.p.state()))
+        except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+            self.record_failure(error, 'b10_abrupt_publication_failed', 'diagnostic_status')
+            failed = True
         return int(failed)

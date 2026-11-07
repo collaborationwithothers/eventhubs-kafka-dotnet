@@ -78,7 +78,14 @@ class ByteIndependentCases(Setup, unittest.TestCase):
     def test_pod_unknown_never_authorizes_successor_and_sets_safety_stop(self):
         self.diagnostic()
         record = {'job': self.run_id + '-c1-r1-loadgen', 'mode': 'loadgen'}
-        for payload in ({'items': []}, {'items': [{}, {}]}, {'items': [{}]}):
+        cases = ({'items': []}, {'items': [{}, {}]}, {'items': [{}]},
+                 {'items': [{'metadata': {'ownerReferences': [None]}, 'spec': {}}]},
+                 {'items': [{'metadata': {'ownerReferences': [[]]}, 'spec': {}}]},
+                 {'items': [{'metadata': None, 'spec': {}}]})
+        for payload in cases:
+            state = self.p.state()
+            state.update(safety_stop=False, b10_abrupt_gaps=[])
+            self.p.save_state(state)
             def run(_args, _seconds, output=None, **_kwargs):
                 output.write_text(json.dumps(payload))
                 return 0
@@ -86,6 +93,15 @@ class ByteIndependentCases(Setup, unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'b10_abrupt_first_termination_unknown'):
                     self.trial.observe_first_termination(record)
                 self.assertTrue(self.p.state()['safety_stop'])
+                self.assertEqual(['b10_abrupt_first_termination_unknown'], self.p.state()['b10_abrupt_gaps'])
+
+    def test_outer_unknown_termination_mapping_sets_safety_stop(self):
+        self.diagnostic()
+        self.assertFalse(self.p.state()['safety_stop'])
+        self.trial.record_failure(AttributeError('synthetic malformed owner'),
+                                  'b10_abrupt_first_termination_unknown', 'first_termination')
+        self.assertTrue(self.p.state()['safety_stop'])
+        self.assertEqual(['b10_abrupt_first_termination_unknown'], self.p.state()['b10_abrupt_gaps'])
 
     def test_diagnostic_container_limits_precede_decoding(self):
         for entries in (4095, 4096):
@@ -95,6 +111,33 @@ class ByteIndependentCases(Setup, unittest.TestCase):
         self.assertIsNotNone(abrupt.decode(('[' * 32 + '0' + ']' * 32).encode()))
         with self.assertRaisesRegex(ValueError, 'depth bound'):
             abrupt.decode(('[' * 33 + '0' + ']' * 33).encode())
+
+    def test_collection_command_and_copy_failures_record_named_gaps(self):
+        self.diagnostic()
+        record = {'mode': 'loadgen', 'job': self.run_id + '-c1-r1-loadgen', 'apply': 0}
+        for code, expected in [(1, 'b10_abrupt_publication_ambiguous'), (124, 'b10_abrupt_deadline_exhausted')]:
+            state = self.p.state()
+            state.update(modes=[record], b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            with self.subTest(code=code), patch.object(self.p, 'run', return_value=code):
+                self.assertEqual(1, self.trial.collect())
+            self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+            self.assertEqual('job_collection', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+        state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+        self.p.save_state(state)
+        (self.p.artifacts / record['job']).mkdir()
+        with patch.object(self.p, 'run', return_value=0), \
+             patch.object(abrupt.shutil, 'copytree', side_effect=OSError('synthetic copy failure')):
+            self.assertEqual(1, self.trial.collect())
+        self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('synthetic copy failure', self.p.state()['b10_abrupt_diagnostics'][0]['validation_detail'])
+
+    def test_named_admission_failure_is_recorded_once(self):
+        self.diagnostic()
+        with self.assertRaisesRegex(abrupt.RecordedFailure, 'b10_abrupt_successor_late') as raised:
+            self.trial.fail('b10_abrupt_successor_late')
+        self.trial.record_failure(raised.exception, 'b10_abrupt_publication_failed', 'outer')
+        self.assertEqual(['b10_abrupt_successor_late'], self.p.state()['b10_abrupt_gaps'])
 
     def test_late_release_never_creates_or_launches_successor(self):
         self.diagnostic()
@@ -238,6 +281,117 @@ class ProducedBytesCases(Setup):
                  patch.object(self.trial, 'release_successor') as release:
                 self.assertEqual(1, self.trial.run())
                 release.assert_not_called()
+
+    def rebind_first_publication(self, files):
+        manifest = abrupt.decode(files['abrupt-manifest.json'])
+        for key, name in [('registration', 'registration.json'), ('journal', 'journal.jsonl'),
+                          ('timeout_seal', 'timeout-seal.json'), ('control_seal', 'control-seal.json'),
+                          ('selection', 'kill-selection.json')]:
+            manifest['data'][key] = abrupt.descriptor(name, files[name])
+        files['abrupt-manifest.json'] = abrupt.encode(manifest)
+        termination = abrupt.decode(files['termination.json'])
+        termination['data']['manifest'] = abrupt.descriptor('abrupt-manifest.json', files['abrupt-manifest.json'])
+        files['termination.json'] = abrupt.encode(termination)
+        return files
+
+    def test_trial_records_approved_names_for_produced_transport_failures(self):
+        self.produced()
+        cases = []
+        files = dict(self.first)
+        receipt = abrupt.decode(files['termination.json'])
+        receipt['data']['manifest']['sha256'] = '0' * 64
+        files['termination.json'] = abrupt.encode(receipt)
+        cases.append((files, 'b10_abrupt_publication_failed', 'diagnostic descriptor mismatch'))
+        files = dict(self.first)
+        receipt = abrupt.decode(files['termination.json'])
+        receipt['identity']['source_commit'] = 'f' * 40
+        files['termination.json'] = abrupt.encode(receipt)
+        cases.append((files, 'b10_abrupt_successor_binding_invalid', 'diagnostic identity'))
+        files = dict(self.first)
+        selection = abrupt.decode(files['kill-selection.json'])
+        frames = [abrupt.decode(line) for line in files['journal.jsonl'].splitlines()]
+        checkpoint = next(frame for frame in frames if frame['kind'] == 'checkpoint' and frame['data']['arm'] == 'cross_restart')
+        checkpoint['data']['release_utc'] = checkpoint['data']['checkpoint_utc']
+        selection['data']['checkpoint'] = checkpoint
+        selection['data']['checkpoint_descriptor'] = abrupt.descriptor('cross_restart-checkpoint.json', abrupt.encode(checkpoint))
+        files['journal.jsonl'] = b''.join(abrupt.encode(frame) + b'\n' for frame in frames)
+        files['kill-selection.json'] = abrupt.encode(selection)
+        cases.append((self.rebind_first_publication(files), 'b10_abrupt_successor_binding_invalid', 'release boundary'))
+        for files, expected, detail in cases:
+            state = self.p.state()
+            state.pop('b10_abrupt_started', None)
+            state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            with self.subTest(detail=detail), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+                 patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+                 patch.object(self.trial, 'metadata', return_value=None), \
+                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
+                 patch.object(self.trial, 'download', return_value=files), \
+                 patch.object(self.trial, 'release_successor') as release:
+                self.assertEqual(1, self.trial.run())
+                release.assert_not_called()
+            self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+            diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+            self.assertEqual(expected, diagnostic['reason'])
+            self.assertEqual(detail, diagnostic['validation_detail'])
+            self.assertEqual('first_publication', diagnostic['boundary'])
+
+    def test_unsuccessful_successor_records_named_trial_failure(self):
+        self.produced()
+        for result, expected in [({'outcome': 'unknown', 'wait': 124}, 'b10_abrupt_deadline_exhausted'),
+                                 ({'outcome': 'failed', 'wait': 1}, 'b10_abrupt_publication_ambiguous')]:
+            state = self.p.state()
+            state.pop('b10_abrupt_started', None)
+            state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            with self.subTest(result=result), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+                 patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+                 patch.object(self.trial, 'metadata', return_value=None), \
+                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
+                 patch.object(self.trial, 'download', return_value=self.first), \
+                 patch.object(self.trial, 'release_successor', return_value=result):
+                self.assertEqual(1, self.trial.run())
+            self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+            self.assertEqual('successor_job', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+
+    def test_collection_retains_produced_receipt_failure_and_collects_logs(self):
+        self.produced()
+        binding = self.trial.accept_diagnostic_publication(self.observation, self.first)
+        (self.trial.directory / 'predecessor-binding.json').write_bytes(abrupt.encode(binding))
+        identity = abrupt.decode(self.successor['completion.json'])['identity']
+        observation = {key: identity[key] for key in ('job_name', 'pod_name', 'pod_uid', 'source_commit', 'image_reference')}
+        cases = []
+        for mutation, expected, detail in [
+                (lambda receipt: receipt['data']['registration'].update(sha256='0' * 64),
+                 'b10_abrupt_publication_failed', 'diagnostic descriptor mismatch'),
+                (lambda receipt: receipt['identity'].update(source_commit='f' * 40),
+                 'b10_abrupt_successor_binding_invalid', 'diagnostic identity')]:
+            files = dict(self.successor)
+            receipt = abrupt.decode(files['completion.json'])
+            mutation(receipt)
+            files['completion.json'] = abrupt.encode(receipt)
+            cases.append((files, expected, detail))
+        for files, expected, detail in cases:
+            state = self.p.state()
+            state.update(modes=[{'mode': 'loadgen2', 'job': identity['job_name'], 'apply': 0}],
+                         b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            with self.subTest(detail=detail), patch.object(self.trial, 'observe_first_termination', return_value=observation), \
+                 patch.object(self.trial, 'download', return_value=files), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 60), \
+                 patch.object(self.p, 'run', return_value=0) as run:
+                self.assertEqual(1, self.trial.collect())
+                self.assertEqual('collect-job', run.call_args.args[0][2])
+            self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+            diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+            self.assertEqual(detail, diagnostic['validation_detail'])
+            self.assertEqual('successor_receipt', diagnostic['boundary'])
+            exported = abrupt.decode((self.trial.directory / 'phase-status.json').read_bytes())
+            self.assertEqual([expected], exported['b10_abrupt_gaps'])
 
     def test_trial_order_and_delayed_logs_outside_release_path(self):
         self.produced()

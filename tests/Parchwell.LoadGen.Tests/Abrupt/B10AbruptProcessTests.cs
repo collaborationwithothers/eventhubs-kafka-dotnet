@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using Parchwell.LoadGen.Run.Abrupt;
 using Xunit;
 
@@ -108,6 +109,67 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Null(exception.Observation.Errno);
         Assert.Null(exception.Observation.ReturnValue);
         Assert.Equal(failure.GetType().Name, exception.Observation.NativeException);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(9)]
+    [InlineData(18)]
+    [InlineData(19)]
+    public void Given_NativeReturnFailure_When_HostReportsFailure_Then_EmitsActualReturnAndErrno(int signal)
+    {
+        var exception = CaptureSignalFailure(signal, (_, requested) => new(requested, -1, 13));
+        using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, diagnostic));
+        string line = Assert.Single(diagnostic.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
+        using var emitted = JsonDocument.Parse(line);
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "signal_observation");
+        Assert.Equal(signal == 0 ? "b10_abrupt_signal_preflight_failed" : "b10_abrupt_signal_failed", emitted.RootElement.GetProperty("failure").GetString());
+        var observation = emitted.RootElement.GetProperty("signal_observation");
+        B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
+        Assert.Equal(signal, observation.GetProperty("requested_signal").GetInt32());
+        Assert.Equal(-1, observation.GetProperty("return_value").GetInt32());
+        Assert.Equal(13, observation.GetProperty("errno").GetInt32());
+        Assert.Equal(JsonValueKind.Null, observation.GetProperty("native_exception").ValueKind);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
+    [InlineData(0, 2)]
+    [InlineData(9, 0)]
+    [InlineData(9, 1)]
+    [InlineData(9, 2)]
+    [InlineData(18, 0)]
+    [InlineData(18, 1)]
+    [InlineData(18, 2)]
+    [InlineData(19, 0)]
+    [InlineData(19, 1)]
+    [InlineData(19, 2)]
+    public void Given_NativeImportFailure_When_HostReportsFailure_Then_EmitsTypeWithUnavailableReturnAndErrno(int signal, int kind)
+    {
+        Exception failure = kind switch { 0 => new DllNotFoundException(), 1 => new EntryPointNotFoundException(), _ => new BadImageFormatException() };
+        var exception = CaptureSignalFailure(signal, (_, _) => throw failure);
+        using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, diagnostic));
+        string line = Assert.Single(diagnostic.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
+        using var emitted = JsonDocument.Parse(line);
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "signal_observation");
+        Assert.Equal(signal == 0 ? "b10_abrupt_signal_preflight_failed" : "b10_abrupt_signal_failed", emitted.RootElement.GetProperty("failure").GetString());
+        var observation = emitted.RootElement.GetProperty("signal_observation");
+        B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
+        Assert.Equal(signal, observation.GetProperty("requested_signal").GetInt32());
+        Assert.Equal(JsonValueKind.Null, observation.GetProperty("return_value").ValueKind);
+        Assert.Equal(JsonValueKind.Null, observation.GetProperty("errno").ValueKind);
+        Assert.Equal(failure.GetType().Name, observation.GetProperty("native_exception").GetString());
+    }
+
+    private static OwnedProducerProcess.SignalException CaptureSignalFailure(int signal,
+        Func<int, int, OwnedProducerProcess.SignalObservation> invoke)
+    {
+        if (signal == 0) return Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.PreflightSignalEntryPoint(invoke));
+        var target = new OwnedProducerProcess.ProcessIdentity(5, 10, "boot", 1);
+        return Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.RequestSignal(target, target, false, 10, signal, invoke));
     }
 
     [Theory]
