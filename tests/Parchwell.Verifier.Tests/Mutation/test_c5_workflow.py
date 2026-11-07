@@ -2139,6 +2139,41 @@ def reference_select(patterns, target, node):
             and not any(matches(pattern[1:]) for pattern in patterns if pattern.startswith("!")))
 
 
+def reference_reporter(patterns, target):
+    """Independently union matching strings, subtract exclusions, and retain nonempty spans."""
+    included, excluded = [], []
+    for pattern in patterns:
+        negative = pattern.startswith("!")
+        expression = pattern[1:] if negative else pattern
+        if expression.split("{", 1)[0] != target:
+            continue
+        intervals = [(int(low), int(high)) for low, high in re.findall(r"\{(\d+)\.\.(\d+)\}", expression)]
+        (excluded if negative else included).extend(intervals or [(0, SPAN_END)])
+
+    def union(intervals):
+        result = []
+        for low, high in sorted(intervals):
+            if result and low <= result[-1][1]:
+                result[-1] = (result[-1][0], max(high, result[-1][1]))
+            else:
+                result.append((low, high))
+        return result
+
+    remaining = union(included)
+    for low, high in union(excluded):
+        pieces = []
+        for start, end in remaining:
+            if high <= start or end <= low:
+                pieces.append((start, end))
+            else:
+                if start < low:
+                    pieces.append((start, low))
+                if high < end:
+                    pieces.append((high, end))
+        remaining = pieces
+    return bool(remaining), remaining
+
+
 class ProductionLayoutTests(unittest.TestCase):
     def test_exact_unmocked_layout_selectors_and_static_owners(self):
         import yaml
@@ -2155,6 +2190,7 @@ class ProductionLayoutTests(unittest.TestCase):
         for key, (target, count) in workflow.TARGETS.items():
             with self.subTest(target=key):
                 source = (root / "src/Parchwell.Verifier" / target).read_bytes()
+                length = workflow.utf16_length(workflow.target_text(source))
                 bounds = (0, *EXPECTED_PRIMARY_CUTS.get(key, ()), SPAN_END)
                 expected = list(zip(bounds, bounds[1:]))
                 self.assertEqual(expected, workflow.primary_spans(key, source))
@@ -2169,8 +2205,16 @@ class ProductionLayoutTests(unittest.TestCase):
                     config = workflow.shard_config(name, source)
                     actual = config["stryker-config"]["mutate"]
                     self.assertEqual(target, workflow.SHARDS[name])
+                    self.assertIs(reference_reporter(actual, target)[0], True)
                     if name.endswith("-crossing"):
-                        self.assertEqual([target, *(f"!{target}{{{low}..{high}}}" for low, high in expected)], actual)
+                        self.assertEqual([target, *(f"!{target}{{{low}..{min(high, length)}}}" for low, high in expected)], actual)
+                        self.assertEqual((True, [(length, SPAN_END)]), reference_reporter(actual, target))
+                        old = [target, *(f"!{target}{{{low}..{high}}}" for low, high in expected)]
+                        self.assertEqual((False, []), reference_reporter(old, target))
+                        nodes = [(low, min(high, length)) for low, high in expected]
+                        nodes.extend((cut - 1, cut + 1) for cut in EXPECTED_PRIMARY_CUTS[key])
+                        for node in nodes:
+                            self.assertEqual(reference_select(old, target, node), reference_select(actual, target, node))
                         self.assertEqual(len(expected) + 1, len(set(actual)))
                         self.assertEqual([], workflow.shard_static_regions(name, source))
                         self.assertIsNone(workflow.shard_span(name, source))
@@ -2182,6 +2226,19 @@ class ProductionLayoutTests(unittest.TestCase):
                         span = workflow.shard_span(name, source)
                         positive = target if span is None else f"{target}{{{span[0]}..{span[1]}}}"
                         self.assertEqual([positive, *(f"!{target}{{{low}..{high}}}" for low, high in workflow.shard_static_regions(name, source))], actual)
+                    nodes = [(low, min(high, length)) for low, high in expected]
+                    nodes.extend((cut - 1, cut + 1) for cut in EXPECTED_PRIMARY_CUTS.get(key, ()))
+                    for node in nodes:
+                        contained = [index for index, (low, high) in enumerate(expected)
+                                     if low <= node[0] and node[1] <= high]
+                        if name.endswith("-crossing"):
+                            selected = not contained
+                        else:
+                            primary = workflow.PARTS[name][1] - 1
+                            selected = contained == [primary] and not any(
+                                low <= node[0] and node[1] <= high
+                                for low, high in workflow.shard_static_regions(name, source))
+                        self.assertEqual(selected, reference_select(actual, target, node), (name, node))
                     config["stryker-config"]["mutate"] = original_paths
                     self.assertEqual(workflow.BASE_CONFIG, config)
 
@@ -2228,7 +2285,7 @@ class ComplementSelectionTests(unittest.TestCase):
         target = "Synthetic.cs"
         spans = ((0, 10), (10, 20), (20, SPAN_END))
         primaries = [[f"{target}{{{low}..{high}}}"] for low, high in spans]
-        crossing = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}", "!Synthetic.cs{20..2147483647}"]
+        crossing = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}", "!Synthetic.cs{20..30}"]
         with patch.object(workflow, "TARGETS", {"synthetic": (target, 3)}), patch.object(workflow, "PRIMARY_CUTS", {"synthetic": (10, 20)}), patch.object(workflow, "PARTS", {"synthetic-crossing": ("synthetic", 4, 4)}), patch.object(workflow, "SHARDS", {"synthetic-crossing": target}):
             self.assertEqual(crossing, workflow.shard_config("synthetic-crossing", b"x" * 30)["stryker-config"]["mutate"])
         nodes = (("inside-first", (1, 9), 0), ("touch-start", (10, 19), 1),
@@ -2237,7 +2294,9 @@ class ComplementSelectionTests(unittest.TestCase):
                  ("equal-span-b", (5, 15), 3), ("nested-child", (5, 9), 0),
                  ("touch-end", (1, 10), 0), ("touch-next", (20, 21), 2))
         crossing_ids = []
+        old = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}", "!Synthetic.cs{20..2147483647}"]
         for identifier, node, expected in nodes:
+            self.assertEqual(reference_select(old, target, node), reference_select(crossing, target, node))
             selected = [index for index, config in enumerate([*primaries, crossing]) if reference_select(config, target, node)]
             self.assertEqual([expected], selected, identifier)
             if selected == [3]:
@@ -2248,6 +2307,70 @@ class ComplementSelectionTests(unittest.TestCase):
         self.assertFalse(reference_select(coalesced, target, (1, 21)))
         self.assertTrue(reference_select(crossing, target, (1, 21)))
         self.assertFalse(reference_select(crossing, target, (5, 9)))
+
+
+class ReporterSelectionTests(unittest.TestCase):
+    def test_reporter_unions_adjacent_exclusions_across_separate_patterns(self):
+        target = "Synthetic.cs"
+        unbounded = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}",
+                     "!Synthetic.cs{20..2147483647}"]
+        self.assertEqual((False, []), reference_reporter(unbounded, target))
+        clamped = [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..20}", "!Synthetic.cs{20..30}"]
+        self.assertEqual("!Synthetic.cs{0..10}", clamped[1])
+        self.assertEqual("!Synthetic.cs{10..20}", clamped[2])
+        self.assertEqual("!Synthetic.cs{20..30}", clamped[3])
+        self.assertEqual((True, [(30, SPAN_END)]), reference_reporter(clamped, target))
+        self.assertEqual((False, []), reference_reporter(
+            [target, "!Synthetic.cs{0..10}", "!Synthetic.cs{10..2147483647}"], target))
+        self.assertEqual((False, []), reference_reporter([target, "!Synthetic.cs{0..2147483647}"], target))
+        self.assertEqual((True, [(10, 20)]), reference_reporter(["Synthetic.cs{10..20}"], target))
+        self.assertEqual((False, []), reference_reporter(
+            ["Synthetic.cs{10..20}", "!Synthetic.cs{10..20}"], target))
+        self.assertEqual((True, [(10, 11)]), reference_reporter(
+            ["Synthetic.cs{10..20}", "!Synthetic.cs{11..20}"], target))
+        self.assertEqual((True, [(19, 20)]), reference_reporter(
+            ["Synthetic.cs{10..20}", "!Synthetic.cs{10..19}"], target))
+        self.assertEqual((True, [(10, 20)]), reference_reporter(
+            ["Synthetic.cs{10..20}", "!Synthetic.cs{0..10}", "!Synthetic.cs{20..30}"], target))
+        self.assertEqual((False, []), reference_reporter([], target))
+        self.assertEqual((False, []), reference_reporter(["Other.cs"], target))
+        self.assertEqual((True, [(0, SPAN_END)]), reference_reporter([target, "!Other.cs"], target))
+        self.assertTrue(reference_select(unbounded, target, (1, 21)))
+        self.assertTrue(reference_select(clamped, target, (1, 21)))
+        self.assertFalse(reference_select(clamped, target, (1, 9)))
+
+    def test_plain_bom_and_astral_sources_keep_utf16_endpoint_and_node_ownership(self):
+        target = "Synthetic.cs"
+        astral = "ab\U0001f600cdefg".encode()
+        sources = {"plain": b"abcdefghi", "plain-bom": b"\xef\xbb\xbfabcdefghi",
+                   "astral": astral, "astral-bom": b"\xef\xbb\xbf" + astral}
+        parts = {"synthetic-p1": ("synthetic", 1, 4), "synthetic-p2": ("synthetic", 2, 4),
+                 "synthetic-p3": ("synthetic", 3, 4), "synthetic-crossing": ("synthetic", 4, 4)}
+        primary_patterns = [["Synthetic.cs{0..2}"], ["Synthetic.cs{2..4}"],
+                            ["Synthetic.cs{4..2147483647}"]]
+        crossing = [target, "!Synthetic.cs{0..2}", "!Synthetic.cs{2..4}", "!Synthetic.cs{4..9}"]
+        old = [target, "!Synthetic.cs{0..2}", "!Synthetic.cs{2..4}", "!Synthetic.cs{4..2147483647}"]
+        nodes = (((0, 2), 0), ((2, 4), 1), ((4, 9), 2), ((1, 3), 3),
+                 ((1, 9), 3), ((3, 5), 3), ((2, 3), 1), ((8, 9), 2))
+        with patch.object(workflow, "TARGETS", {"synthetic": (target, 3)}), patch.object(workflow, "PRIMARY_CUTS", {"synthetic": (2, 4)}), patch.object(workflow, "PARTS", parts), patch.object(workflow, "SHARDS", {name: target for name in parts}):
+            for label, source in sources.items():
+                with self.subTest(source=label):
+                    text = workflow.target_text(source)
+                    self.assertEqual(9, workflow.utf16_length(text))
+                    actual = [workflow.shard_config(name, source)["stryker-config"]["mutate"] for name in parts]
+                    self.assertEqual([*primary_patterns, crossing], actual)
+                    self.assertEqual((True, [(9, SPAN_END)]), reference_reporter(actual[-1], target))
+                    self.assertEqual((False, []), reference_reporter(old, target))
+                    self.assertEqual((4, SPAN_END), workflow.shard_span("synthetic-p3", source))
+                    for node, owner in nodes:
+                        self.assertEqual([owner], [index for index, config in enumerate(actual) if reference_select(config, target, node)])
+                        self.assertEqual([owner], [index for index, config in enumerate([*primary_patterns, old]) if reference_select(config, target, node)])
+                        item = located("node", "Killed", 1, node[0] + 1, node[1] + 1, static=False)
+                        self.assertEqual(node, workflow.node_span(item, workflow.line_starts(text), 9))
+                    for node in ((9, 10), (8, 10), (9, 9), (4, 4)):
+                        item = located("invalid", "Killed", 1, node[0] + 1, node[1] + 1, static=False)
+                        with self.subTest(node=node), self.assertRaisesRegex(ValueError, "mutant location outside target"):
+                            workflow.node_span(item, workflow.line_starts(text), 9)
 
 
 class ProductionAggregationTests(unittest.TestCase):
@@ -2404,23 +2527,39 @@ def measured_inventory_suite(root, summary_path):
                     self.assertEqual(1, sum(region in workflow.shard_static_regions(name, source) for name in members))
                 geometries = {}
                 selections = {}
+                old_selections = {}
+                member_regions = {name: workflow.shard_static_regions(name, source) for name in members}
+                length = workflow.utf16_length(workflow.target_text(source))
                 for name in members:
                     mutate = workflow.shard_config(name, source)["stryker-config"]["mutate"]
+                    self.assertIs(reference_reporter(mutate, target)[0], True, name)
+                    if name.endswith("-crossing"):
+                        self.assertEqual([target, *(f"!{target}{{{low}..{min(high, length)}}}" for low, high in spans)], mutate)
+                        self.assertEqual((True, [(length, SPAN_END)]), reference_reporter(mutate, target))
+                        old = [target, *(f"!{target}{{{low}..{high}}}" for low, high in spans)]
+                        self.assertEqual((False, []), reference_reporter(old, target))
+                        self.assertEqual([], member_regions[name])
+                    else:
+                        old = mutate
                     geometric = mutate if name.endswith("-crossing") else mutate[:1]
                     geometries[name] = geometric
                     selections[name] = mutate
+                    old_selections[name] = old
                 projected = [[] for _ in members]
                 buckets = [[] for _ in members]
                 seen_spans = {}
                 for item in original:
                     identifier = item["id"]
                     node = nodes[identifier]
+                    self.assertEqual([reference_select(old_selections[name], target, node) for name in members],
+                                     [reference_select(selections[name], target, node) for name in members],
+                                     (target, identifier, node))
                     owners = [index for index, name in enumerate(members) if reference_select(geometries[name], target, node)]
                     self.assertEqual(1, len(owners), (target, identifier, node))
                     owner = owners[0]
                     name = members[owner]
                     static_owners = [index for index, member in enumerate(members)
-                                     if any(low <= node[0] and node[1] <= high for low, high in workflow.shard_static_regions(member, source))]
+                                     if any(low <= node[0] and node[1] <= high for low, high in member_regions[member])]
                     main_owners = [index for index, member in enumerate(members) if reference_select(selections[member], target, node)]
                     self.assertEqual([owner], main_owners + static_owners, (target, identifier, node))
                     if name.endswith("-crossing"):

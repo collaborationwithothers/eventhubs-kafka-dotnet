@@ -437,8 +437,10 @@ def shard_config(shard: str, source: bytes | None) -> dict:
     config = copy.deepcopy(BASE_CONFIG)
     key, index, count = PARTS[shard]
     if key in PRIMARY_CUTS and index == count:
+        length = utf16_length(target_text(source))
         config["stryker-config"]["mutate"] = [
-            target, *(f"!{target}{{{start}..{end}}}" for start, end in primary_spans(key, source))]
+            target, *(f"!{target}{{{start}..{min(end, length)}}}"
+                      for start, end in primary_spans(key, source))]
         return config
     config["stryker-config"]["mutate"] = [
         target if span is None else f"{target}{{{span[0]}..{span[1]}}}",
