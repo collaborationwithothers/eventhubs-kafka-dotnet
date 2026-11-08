@@ -75,6 +75,7 @@ spec:
           image: {{ index $r (printf "%s_image" $role) | quote }}
           imagePullPolicy: IfNotPresent
           {{- if $abrupt }}
+          command: ["/app/Parchwell.LoadGen"]
           args: [{{ ternary "--b10-abrupt-supervisor" "--b10-abrupt-successor" (eq $mode "loadgen") | quote }}]
           {{- end }}
           securityContext:

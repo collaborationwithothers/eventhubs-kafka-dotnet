@@ -7,6 +7,12 @@ namespace Parchwell.LoadGen.Run.Abrupt;
 internal sealed class B10AbruptOptions
 {
     internal const string Prefix = "B10Abrupt__";
+    internal enum ValidationDetail
+    {
+        Unclassified, MixedPrefix, SettingNameOrDuplicate, DiagnosticIdentity, RequiredIdentity,
+        RunSourceOrImage, PodOrNamespace, JobName, BlobEndpoint, AbsolutePath, FixedPolicy,
+        Role, Binding, ChildFields, ChildHandshake, ApphostProcessPathMismatch, ApphostMissing
+    }
     private static readonly string[] OtherPrefixes = ["LoadGen__", "Verifier__", "SingleAction__", "ProbeV2__", "IdleObservation__", "SeedF04__"];
     internal static IReadOnlyDictionary<string, int> Policy { get; } = new Dictionary<string, int>(StringComparer.Ordinal)
     {
@@ -58,11 +64,11 @@ internal sealed class B10AbruptOptions
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var entry in environment)
         {
-            if (OtherPrefixes.Any(prefix => entry.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))) throw Invalid();
+            if (OtherPrefixes.Any(prefix => entry.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))) throw Invalid(ValidationDetail.MixedPrefix);
             if (!entry.Key.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase)) continue;
             string name = entry.Key[Prefix.Length..];
             if (!entry.Key.StartsWith(Prefix, StringComparison.Ordinal) || !names.Contains(name) || !values.TryAdd(name, entry.Value))
-                throw Invalid();
+                throw Invalid(ValidationDetail.SettingNameOrDuplicate);
         }
         return new B10AbruptOptions(values);
     }
@@ -70,38 +76,38 @@ internal sealed class B10AbruptOptions
     internal void Validate(string? expectedRole = null)
     {
         if (!Enabled || Purpose != "diagnostic_trial" || ScenarioId != "B10" || ConfigurationId != "C1" || Phase != "C1" ||
-            Get("Repeat") != "1" || (expectedRole is not null && Role != expectedRole)) throw Invalid();
+            Get("Repeat") != "1" || (expectedRole is not null && Role != expectedRole)) throw Invalid(ValidationDetail.DiagnosticIdentity);
         ValidateRole();
         foreach (string name in new[] { "RunId", "SourceCommit", "ImageReference", "JobName", "PodName", "PodUid", "NamespaceName", "BlobEndpoint", "ScenarioSourceRoot", "OutputRoot" })
-            if (string.IsNullOrWhiteSpace(Get(name)) || Get(name).Any(char.IsControl)) throw Invalid();
+            if (string.IsNullOrWhiteSpace(Get(name)) || Get(name).Any(char.IsControl)) throw Invalid(ValidationDetail.RequiredIdentity);
         if (!Regex.IsMatch(RunId, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.CultureInvariant) || RunId.Length > 29 ||
             !Regex.IsMatch(SourceCommit, "^[a-f0-9]{40}$", RegexOptions.CultureInvariant) ||
-            !Regex.IsMatch(ImageReference, "^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$", RegexOptions.CultureInvariant)) throw Invalid();
+            !Regex.IsMatch(ImageReference, "^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$", RegexOptions.CultureInvariant)) throw Invalid(ValidationDetail.RunSourceOrImage);
         foreach (string value in new[] { PodName, PodUid, NamespaceName })
-            if (value.Any(char.IsWhiteSpace) || value.Contains('/', StringComparison.Ordinal) || value is "." or ".." or "seed") throw Invalid();
-        if (JobName != $"{RunId}-c1-r1-loadgen{(Role == "successor" ? "2" : string.Empty)}") throw Invalid();
+            if (value.Any(char.IsWhiteSpace) || value.Contains('/', StringComparison.Ordinal) || value is "." or ".." or "seed") throw Invalid(ValidationDetail.PodOrNamespace);
+        if (JobName != $"{RunId}-c1-r1-loadgen{(Role == "successor" ? "2" : string.Empty)}") throw Invalid(ValidationDetail.JobName);
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out var endpoint) || endpoint.Scheme != "https" ||
-            endpoint.AbsolutePath != "/" || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0) throw Invalid();
+            endpoint.AbsolutePath != "/" || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0) throw Invalid(ValidationDetail.BlobEndpoint);
         foreach (string path in new[] { ScenarioSourceRoot, OutputRoot, Role == "successor" ? PredecessorBindingPath : StartLineBindingPath })
-            if (!Path.IsPathFullyQualified(path) || path.Split(Path.DirectorySeparatorChar).Contains("..", StringComparer.Ordinal)) throw Invalid();
+            if (!Path.IsPathFullyQualified(path) || path.Split(Path.DirectorySeparatorChar).Contains("..", StringComparer.Ordinal)) throw Invalid(ValidationDetail.AbsolutePath);
         foreach (var policy in Policy)
-            if (_values.TryGetValue(policy.Key, out string? value) && value != policy.Value.ToString(CultureInfo.InvariantCulture)) throw Invalid();
+            if (_values.TryGetValue(policy.Key, out string? value) && value != policy.Value.ToString(CultureInfo.InvariantCulture)) throw Invalid(ValidationDetail.FixedPolicy);
     }
 
     internal void ValidateRole()
     {
-        if (Role is not ("supervisor" or "successor" or "child")) throw Invalid();
+        if (Role is not ("supervisor" or "successor" or "child")) throw Invalid(ValidationDetail.Role);
         string required = Role == "successor" ? "PredecessorBindingPath" : "StartLineBindingPath";
         string rejected = Role == "successor" ? "StartLineBindingPath" : "PredecessorBindingPath";
-        if (string.IsNullOrWhiteSpace(Get(required)) || _values.ContainsKey(rejected)) throw Invalid();
+        if (string.IsNullOrWhiteSpace(Get(required)) || _values.ContainsKey(rejected)) throw Invalid(ValidationDetail.Binding);
         string[] childFields = ["EventsPipeHandle", "AckPipeHandle", "IdentityChallenge"];
         if (Role != "child")
         {
-            if (childFields.Any(_values.ContainsKey)) throw Invalid();
+            if (childFields.Any(_values.ContainsKey)) throw Invalid(ValidationDetail.ChildFields);
         }
         else if (!Regex.IsMatch(IdentityChallenge, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant) ||
             !long.TryParse(EventsPipeHandle, NumberStyles.None, CultureInfo.InvariantCulture, out long events) || events < 0 ||
-            !long.TryParse(AckPipeHandle, NumberStyles.None, CultureInfo.InvariantCulture, out long ack) || ack < 0 || events == ack) throw Invalid();
+            !long.TryParse(AckPipeHandle, NumberStyles.None, CultureInfo.InvariantCulture, out long ack) || ack < 0 || events == ack) throw Invalid(ValidationDetail.ChildHandshake);
     }
 
     internal IReadOnlyDictionary<string, string> ToChildEnvironment() => _values.Where(pair => pair.Key is not
@@ -110,5 +116,16 @@ internal sealed class B10AbruptOptions
 
     internal B10AbruptWire.Identity Identity(string? predecessor = null) => new(RunId, ScenarioId, ConfigurationId, Phase,
         Repeat, SourceCommit, ImageReference, JobName, PodName, PodUid, PodName, predecessor);
-    private static InvalidDataException Invalid() => new("b10_abrupt_configuration_invalid");
+    private static InvalidDataException Invalid(ValidationDetail detail) =>
+        WithDetail(new InvalidDataException("b10_abrupt_configuration_invalid"), detail);
+
+    internal static T WithDetail<T>(T exception, ValidationDetail detail) where T : Exception
+    {
+        exception.Data["validation_detail"] = detail;
+        return exception;
+    }
+
+    internal static string ReadValidationDetail(Exception exception) =>
+        exception.Data["validation_detail"] is ValidationDetail detail && Enum.IsDefined(detail)
+            ? detail.ToString() : nameof(ValidationDetail.Unclassified);
 }

@@ -72,7 +72,7 @@ def verify(document, values):
     container = pod['containers'][0]
     assert container['name'] == 'loadgen' and container['image'] == runtime['loadgen_image']
     assert container['args'] == ['--b10-abrupt-supervisor' if first else '--b10-abrupt-successor']
-    assert 'command' not in container
+    assert container['command'] == ['/app/Parchwell.LoadGen']
     assert container['securityContext'] == {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
                                             'capabilities': {'drop': ['ALL']}}
     assert container['resources'] == {'requests': {'cpu': '1', 'memory': '2Gi'}, 'limits': {'cpu': '3', 'memory': '12Gi'}}
@@ -147,7 +147,10 @@ def main():
         directory = Path(name)
         defaults = deepcopy(FIXTURE)
         explicit_false = deepcopy(defaults); explicit_false['runtime']['b10_abrupt_diagnostic'] = False
-        assert render(defaults, directory, 'defaults') == render(explicit_false, directory, 'explicit-false')
+        ordinary = render(defaults, directory, 'defaults')
+        assert ordinary == render(explicit_false, directory, 'explicit-false')
+        ordinary_job = next(obj for obj in yaml.safe_load_all(ordinary) if obj and obj['kind'] == 'Job')
+        assert 'command' not in ordinary_job['spec']['template']['spec']['containers'][0]
         for case_name, values in zip(('first', 'successor'), diagnostic_cases(), strict=True):
             verify(render(values, directory, case_name), values)
             proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',

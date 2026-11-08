@@ -51,9 +51,28 @@ jobs:
           set -euo pipefail
           python3 -c 'import sys; assert sys.version_info >= (3, 10); assert sys.version_info[:2] == (3, 12)'
           export PARCHWELL_TOOLS_DIRECTORY="$RUNNER_TEMP/parchwell-lifecycle-tools"
-          bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci
-          printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
-          printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+          log="$RUNNER_TEMP/parchwell-offline-tools-install.log"
+          if bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci 2>&1 | tee "$log"; then
+            printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
+            printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+          else
+            status=$?
+            printf '::error::Pinned offline tools installation failed (exit %s). See the run summary and installation log artifact.\n' "$status"
+            {
+              printf '### Pinned offline tools installation failed (exit %s)\n\n' "$status"
+              printf '```text\n'
+              tail -n 80 "$log"
+              printf '\n```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$status"
+          fi
+      - name: Upload failed pinned-tool installation log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: offline-tools-install-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/parchwell-offline-tools-install.log
+          if-no-files-found: ignore
       - name: Verify lifecycle with stub commands
         shell: bash
         run: python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'
@@ -82,9 +101,28 @@ jobs:
           set -euo pipefail
           python3 -c 'import sys; assert sys.version_info >= (3, 10); assert sys.version_info[:2] == (3, 12)'
           export PARCHWELL_TOOLS_DIRECTORY="$RUNNER_TEMP/parchwell-lifecycle-tools"
-          bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci
-          printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
-          printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+          log="$RUNNER_TEMP/parchwell-offline-tools-install.log"
+          if bash infra/scripts/lifecycle/install-tools.sh "$PARCHWELL_TOOLS_DIRECTORY" ci 2>&1 | tee "$log"; then
+            printf 'PARCHWELL_TOOLS_DIRECTORY=%s\n' "$PARCHWELL_TOOLS_DIRECTORY" >> "$GITHUB_ENV"
+            printf '%s\n' "$PARCHWELL_TOOLS_DIRECTORY" "$PARCHWELL_TOOLS_DIRECTORY/venv/bin" >> "$GITHUB_PATH"
+          else
+            status=$?
+            printf '::error::Pinned offline tools installation failed (exit %s). See the run summary and installation log artifact.\n' "$status"
+            {
+              printf '### Pinned offline tools installation failed (exit %s)\n\n' "$status"
+              printf '```text\n'
+              tail -n 80 "$log"
+              printf '\n```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$status"
+          fi
+      - name: Upload failed pinned-tool installation log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: offline-tools-install-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/parchwell-offline-tools-install.log
+          if-no-files-found: ignore
       - name: Check Terraform formatting
         shell: bash
         run: python3 infra/scripts/lifecycle/command.py 600 -- terraform fmt -check -recursive infra tests/terraform

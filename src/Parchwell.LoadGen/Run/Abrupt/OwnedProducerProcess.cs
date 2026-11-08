@@ -11,8 +11,18 @@ internal sealed record ChildCommand(string FileName, IReadOnlyList<string> Argum
 {
     internal static ChildCommand ForRunningApphost()
     {
-        var expected = Path.Combine(AppContext.BaseDirectory, "Parchwell.LoadGen");
-        if (Environment.ProcessPath != expected || !File.Exists(expected)) throw new InvalidOperationException("b10_abrupt_configuration_invalid");
+        return ForRunningApphost(AppContext.BaseDirectory, Environment.ProcessPath);
+    }
+
+    internal static ChildCommand ForRunningApphost(string baseDirectory, string? processPath)
+    {
+        var expected = Path.Combine(baseDirectory, "Parchwell.LoadGen");
+        if (processPath != expected)
+            throw B10AbruptOptions.WithDetail(new InvalidOperationException("b10_abrupt_configuration_invalid"),
+                B10AbruptOptions.ValidationDetail.ApphostProcessPathMismatch);
+        if (!File.Exists(expected))
+            throw B10AbruptOptions.WithDetail(new InvalidOperationException("b10_abrupt_configuration_invalid"),
+                B10AbruptOptions.ValidationDetail.ApphostMissing);
         return new(expected, ["--b10-abrupt-child"], new Dictionary<string, string>());
     }
 }

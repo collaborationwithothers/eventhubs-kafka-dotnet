@@ -30,10 +30,9 @@ internal static class B10AbruptHost
             Console.Out.WriteLine("{\"b10_abrupt_configuration_valid\":true}");
             return 0;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            Console.Error.WriteLine("b10_abrupt_configuration_invalid");
-            return 1;
+            return ReportFailure(exception, Console.Error);
         }
     }
     internal static Task<int> RunSupervisorAsync() => RunAsync("supervisor");
@@ -141,8 +140,10 @@ internal static class B10AbruptHost
             return 1;
         }
         if (exception is OperationCanceledException) { error.WriteLine("b10_abrupt_deadline_exhausted"); return 1; }
-        error.WriteLine(exception.Message.StartsWith("b10_abrupt_", StringComparison.Ordinal) || exception.Message.StartsWith("kill_too_", StringComparison.Ordinal)
-            ? exception.Message : "b10_abrupt_configuration_invalid");
+        string failure = exception.Message.StartsWith("b10_abrupt_", StringComparison.Ordinal) || exception.Message.StartsWith("kill_too_", StringComparison.Ordinal)
+            ? exception.Message : "b10_abrupt_configuration_invalid";
+        error.WriteLine(failure == "b10_abrupt_configuration_invalid"
+            ? failure + " validation_detail=" + B10AbruptOptions.ReadValidationDetail(exception) : failure);
         return 1;
     }
 

@@ -109,7 +109,7 @@ These literal strings are the only failure and outcome names PR2 emits. Tests as
 | Name | Raised when | Effect |
 |---|---|---|
 | `b10_abrupt_diagnostic_not_scientific` | Any ordinary phase, verify, judge or candidate command, or the ordinary host, meets a diagnostic phase, flag or marker | Nonzero exit, `full_allowed=false`, no candidate |
-| `b10_abrupt_configuration_invalid` | Diagnostic options, role, identity, child handles, challenge or apphost path fail validation | Exit before token, producer or child |
+| `b10_abrupt_configuration_invalid` | Diagnostic options, role, identity, child handles, challenge or apphost path fail validation | Exit before producer or child; Azure token acquisitions can precede exit. Stderr is `b10_abrupt_configuration_invalid validation_detail=<name>`. The closed detail list is `Unclassified`, `MixedPrefix`, `SettingNameOrDuplicate`, `DiagnosticIdentity`, `RequiredIdentity`, `RunSourceOrImage`, `PodOrNamespace`, `JobName`, `BlobEndpoint`, `AbsolutePath`, `FixedPolicy`, `Role`, `Binding`, `ChildFields`, `ChildHandshake`, `ApphostProcessPathMismatch`, `ApphostMissing` (source: `B10AbruptHost.ReportFailure` and `B10AbruptOptions.ValidationDetail`). The failure-name list is unchanged; the suffix is not a wire member. |
 | `b10_abrupt_platform_unsupported` | `OwnedProducerProcess.Start` on a non-Linux OS | No pipe or process created |
 | `b10_abrupt_signal_preflight_failed` | Own-PID null-signal preflight returns nonzero or its native import cannot load, before pipes/child/arms | No child or arm; record actual return/errno or load exception, never fabricated errno |
 | `b10_abrupt_child_start_failed` | `Process.Start` returns null or throws | No signal; diagnostic failure |
