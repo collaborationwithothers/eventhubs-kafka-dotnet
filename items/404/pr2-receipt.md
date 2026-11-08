@@ -2,6 +2,8 @@
 
 This pull request implements only the diagnostic restart execution approved for issue 404. It cannot authorize scientific publication; Hari merges it and separately approves the post-merge trial environment.
 
+The first diagnostic trial startup investigation and its separately authorized fix are recorded in [the trial-fix receipt](pr2-trial-fix-receipt.md).
+
 ## Execution card
 
 - Deliverable and exact scope: [Revision 6 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6709851444), file map items 1-20 and acceptance E1-E12. PR3 is excluded.

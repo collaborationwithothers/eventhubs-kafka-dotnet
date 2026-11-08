@@ -312,6 +312,39 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Throws<FileNotFoundException>(() => B10AbruptProc.ReadBounded(path));
     }
 
+    [Fact]
+    public void Given_SdkDotnetParent_When_ApphostCommandIsValidated_Then_RejectsWithNamedDetail()
+    {
+        var productionFailure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost("/app/", "/usr/share/dotnet/dotnet"));
+        Assert.Equal("ApphostProcessPathMismatch", B10AbruptOptions.ReadValidationDetail(productionFailure));
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+        string expected = Path.Combine(directory, "Parchwell.LoadGen");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.WriteAllText(expected, "synthetic-apphost");
+            var failure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost(directory, "/usr/share/dotnet/dotnet"));
+            using var errors = new StringWriter(CultureInfo.InvariantCulture);
+            Assert.Equal(1, B10AbruptHost.ReportFailure(failure, errors));
+            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostProcessPathMismatch" + Environment.NewLine, errors.ToString());
+            ChildCommand command = ChildCommand.ForRunningApphost(directory, expected);
+            Assert.Equal(expected, command.FileName);
+            Assert.Equal(["--b10-abrupt-child"], command.Arguments);
+            Assert.Empty(command.ExtraEnvironment);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void Given_MissingPublishedApphost_When_ApphostCommandIsValidated_Then_RejectsWithDistinctDetail()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+        var failure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost(directory, Path.Combine(directory, "Parchwell.LoadGen")));
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(failure, errors));
+        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostMissing" + Environment.NewLine, errors.ToString());
+    }
+
     internal static B10AbruptOptions Options(string bindingPath = "/work/start-line.json") => B10AbruptOptions.Read(new Dictionary<string, string>
     {
         ["B10Abrupt__Enabled"] = "true", ["B10Abrupt__Purpose"] = "diagnostic_trial", ["B10Abrupt__Role"] = "supervisor",
@@ -359,5 +392,23 @@ public sealed class B10AbruptProcessChildWorker
                 payload_length = 0, payload_sha256 = new string('a', 64), predecessor_attempt_id = (string?)null }), TestContext.Current.CancellationToken);
             await Task.Delay(100, TestContext.Current.CancellationToken);
         }
+    }
+}
+
+public sealed class B10AbruptPublishedApphostTests
+{
+    [Fact]
+    public void Given_ChartSelectedPublishedApphost_When_PathGuardRuns_Then_SelectsOnlyThatChildExecutable()
+    {
+        string? apphost = Environment.GetEnvironmentVariable("PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST");
+        if (apphost is null) return;
+        Assert.True(File.Exists(apphost));
+        Assert.Equal("Parchwell.LoadGen", Path.GetFileName(apphost));
+        ChildCommand command = ChildCommand.ForRunningApphost(Path.GetDirectoryName(apphost)!, apphost);
+        Assert.Equal(apphost, command.FileName);
+        Assert.Equal(["--b10-abrupt-child"], command.Arguments);
+        Assert.Empty(command.ExtraEnvironment);
+        var failure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost(Path.GetDirectoryName(apphost)!, "/usr/share/dotnet/dotnet"));
+        Assert.Equal("ApphostProcessPathMismatch", B10AbruptOptions.ReadValidationDetail(failure));
     }
 }

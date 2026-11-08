@@ -221,6 +221,38 @@ public sealed class B10AbruptOptionsTests
         finally { Console.SetOut(original); }
     }
 
+    [Theory]
+    [InlineData("Role", "private-role-value", "Role")]
+    [InlineData("ImageReference", "private-image-value", "RunSourceOrImage")]
+    [InlineData("StartLineBindingPath", "private-binding-value", "AbsolutePath")]
+    public async Task Given_InvalidConfiguration_When_ValidatorReportsFailure_Then_NamesPredicateWithoutInputValues(
+        string field, string value, string detail)
+    {
+        var values = Valid("supervisor");
+        values[B10AbruptOptions.Prefix + field] = value;
+        using var environment = new EnvironmentScope(values);
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        TextWriter original = Console.Error;
+        Console.SetError(errors);
+        try
+        {
+            Assert.Equal(1, await Program.RunAsync(["--validate-b10-abrupt-configuration"]));
+            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=" + detail + Environment.NewLine, errors.ToString());
+            Assert.DoesNotContain(value, errors.ToString(), StringComparison.Ordinal);
+        }
+        finally { Console.SetError(original); }
+    }
+
+    [Fact]
+    public void Given_UnexpectedExceptionWithUntrustedDetail_When_Reported_Then_EmitsOnlySafeFallback()
+    {
+        var exception = new InvalidOperationException("private-exception-message");
+        exception.Data["validation_detail"] = "private-detail-value";
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
+        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=Unclassified" + Environment.NewLine, errors.ToString());
+    }
+
     private static void Invalid(IEnumerable<KeyValuePair<string, string>> values) =>
         Assert.Equal("b10_abrupt_configuration_invalid", Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values).Validate()).Message);
 
