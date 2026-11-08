@@ -237,7 +237,7 @@ public sealed class B10AbruptOptionsTests
         try
         {
             Assert.Equal(1, await Program.RunAsync(["--validate-b10-abrupt-configuration"]));
-            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=" + detail + Environment.NewLine, errors.ToString());
+            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=" + detail + " exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
             Assert.DoesNotContain(value, errors.ToString(), StringComparison.Ordinal);
         }
         finally { Console.SetError(original); }
@@ -250,7 +250,69 @@ public sealed class B10AbruptOptionsTests
         exception.Data["validation_detail"] = "private-detail-value";
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
-        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=Unclassified" + Environment.NewLine, errors.ToString());
+        Assert.Equal("b10_abrupt_capture_gap exception_type=System.InvalidOperationException" + Environment.NewLine, errors.ToString());
+        Assert.DoesNotContain("private-exception-message", errors.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("private-detail-value", errors.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("b10_abrupt_untrusted_secret", "b10_abrupt_capture_gap")]
+    [InlineData("b10_abrupt_guard_failed:private-token", "b10_abrupt_guard_failed")]
+    [InlineData("kill_too_late:private-token", "kill_too_late")]
+    [InlineData("kill_too_late:no_unconfirmed_attempt:private-token", "kill_too_late")]
+    [InlineData("kill_too_early:private-token", "kill_too_early")]
+    public void Given_ThrownSecretBearingException_When_Reported_Then_EmitsClosedLabelAndTypeOnly(string message, string expectedFailure)
+    {
+        Exception inner;
+        try { throw new IOException("private-inner-message /private/sentinel-path private-token"); }
+        catch (IOException exception) { inner = exception; }
+        Assert.NotNull(inner.StackTrace);
+        try { throw new InvalidOperationException(message, inner); }
+        catch (InvalidOperationException exception)
+        {
+            Assert.NotNull(exception.StackTrace);
+            exception.Data["validation_detail"] = "private-detail-value";
+            using var errors = new StringWriter(CultureInfo.InvariantCulture);
+            Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
+            string report = errors.ToString();
+            Assert.Equal(expectedFailure + " exception_type=System.InvalidOperationException" + Environment.NewLine, report);
+            Assert.DoesNotContain(message, report, StringComparison.Ordinal);
+            Assert.DoesNotContain("private-inner-message", report, StringComparison.Ordinal);
+            Assert.DoesNotContain("/private/sentinel-path", report, StringComparison.Ordinal);
+            Assert.DoesNotContain("private-token", report, StringComparison.Ordinal);
+            Assert.DoesNotContain("private-detail-value", report, StringComparison.Ordinal);
+            Assert.DoesNotContain(exception.StackTrace, report, StringComparison.Ordinal);
+            Assert.DoesNotContain(inner.StackTrace, report, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Given_ExplicitConfigurationFailureWithUntrustedDetail_When_Reported_Then_EmitsUnclassifiedAndRealType()
+    {
+        var exception = new InvalidDataException("b10_abrupt_configuration_invalid");
+        exception.Data["validation_detail"] = "private-detail-value";
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
+        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=Unclassified exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
+        Assert.DoesNotContain("private-detail-value", errors.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("private-cancellation-message")]
+    [InlineData("kill_too_late:no_unconfirmed_attempt")]
+    public void Given_Cancellation_When_Reported_Then_EmitsDeadlineAndTypeOnly(string message)
+    {
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(new OperationCanceledException(message), errors));
+        Assert.Equal("b10_abrupt_deadline_exhausted exception_type=System.OperationCanceledException" + Environment.NewLine, errors.ToString());
+    }
+
+    [Fact]
+    public void Given_ExactNoUnconfirmedAttemptFailure_When_Reported_Then_PreservesOnlyItsAuthorizedSuffix()
+    {
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(new InvalidDataException("kill_too_late:no_unconfirmed_attempt"), errors));
+        Assert.Equal("kill_too_late:no_unconfirmed_attempt exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
     }
 
     private static void Invalid(IEnumerable<KeyValuePair<string, string>> values) =>

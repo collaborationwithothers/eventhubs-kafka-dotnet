@@ -43,6 +43,8 @@ internal sealed class B10AbruptOwnedProcess(OwnedProducerProcess process) : IB10
 internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider clock, B10AbruptJournal journal,
     B10AbruptPublisher publisher, Func<IB10AbruptProcess> start, Func<CancellationToken, Task>? validateCapturedStatistics = null)
 {
+    internal static readonly TimeSpan ChildFailureReportGrace = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan ChildFailureReportPoll = TimeSpan.FromMilliseconds(10);
     private readonly Dictionary<string, B10AbruptWire.Frame> _prepared = new(StringComparer.Ordinal);
     private readonly HashSet<string> _accepted = new(StringComparer.Ordinal);
     private readonly Dictionary<string, B10AbruptWire.Frame> _terminals = new(StringComparer.Ordinal);
@@ -63,17 +65,21 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
 
     internal async Task RunAsync(CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(Path.Combine(options.OutputRoot, "abrupt-child"));
-        _files["registration.json"] = await publisher.RegisterDiagnosticAsync(options.Identity(), cancellationToken).ConfigureAwait(false);
-        using IB10AbruptProcess child = start();
-        _child = child;
-        _incoming = Channel.CreateBounded<B10AbruptWire.Message>(new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true, SingleWriter = true });
-        using var pumpCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var eventReader = new B10AbruptWire.AvailableMessageReader(child.Events, child.EventsReady, CaptureIncoming);
-        _eventReader = eventReader;
-        Task pump = PumpAsync(eventReader, _incoming.Writer, pumpCancellation.Token);
+        IB10AbruptProcess? child = null;
+        CancellationTokenSource? pumpCancellation = null;
+        B10AbruptWire.AvailableMessageReader? eventReader = null;
+        Task? pump = null;
         try
         {
+            Directory.CreateDirectory(Path.Combine(options.OutputRoot, "abrupt-child"));
+            _files["registration.json"] = await publisher.RegisterDiagnosticAsync(options.Identity(), cancellationToken).ConfigureAwait(false);
+            child = start();
+            _child = child;
+            _incoming = Channel.CreateBounded<B10AbruptWire.Message>(new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true, SingleWriter = true });
+            pumpCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            eventReader = new B10AbruptWire.AvailableMessageReader(child.Events, child.EventsReady, CaptureIncoming);
+            _eventReader = eventReader;
+            pump = PumpAsync(eventReader, _incoming.Writer, pumpCancellation.Token);
             while (await _incoming.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 while (_incoming.Reader.TryRead(out var message))
@@ -83,7 +89,12 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 }
                 if (_killRequested) break;
             }
-            if (!_killRequested) throw Failure("b10_abrupt_unexpected_exit");
+            if (!_killRequested)
+            {
+                await pump.ConfigureAwait(false);
+                await WaitForChildFailureReportAsync(child, cancellationToken).ConfigureAwait(false);
+                throw Failure("b10_abrupt_unexpected_exit");
+            }
             OwnedProducerProcess.ExitObservation exit = await ObserveExitAsync(child, cancellationToken).ConfigureAwait(false);
             await journal.AppendAsync("exit", B10AbruptWire.Element(new
             {
@@ -127,9 +138,16 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 byte[] diagnostic = B10AbruptWire.SerializeEnvelope("failed_diagnostic", options.Identity(), new
                 {
                     mechanical_status = "incomplete", failure = FailureName(failure),
-                    process = child.Identity, kill_requested = _killRequested, has_exited = child.HasExited,
+                    exception_type = failure.GetType().FullName ?? failure.GetType().Name,
+                    process = child?.Identity, kill_requested = _killRequested, has_exited = child?.HasExited,
                     capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "not_implemented_pr3",
-                    signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation, cleanup = _cleanup
+                    signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation, cleanup = _cleanup,
+                    startup_cleanup = failure is OwnedProducerProcess.StartupException startup ? new
+                    {
+                        failure = startup.CleanupFailure is { } cleanupFailure ? FailureName(cleanupFailure) : null,
+                        exception_type = startup.CleanupFailure?.GetType().FullName ?? startup.CleanupFailure?.GetType().Name,
+                        signal_observation = (startup.CleanupFailure as OwnedProducerProcess.SignalException)?.Observation
+                    } : null
                 });
                 Console.Error.WriteLine(Encoding.UTF8.GetString(diagnostic));
                 await using var file = new FileStream(Path.Combine(options.OutputRoot, "abrupt", "failure.json"), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
@@ -141,10 +159,52 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         }
         finally
         {
-            await pumpCancellation.CancelAsync().ConfigureAwait(false);
-            try { await pump.ConfigureAwait(false); }
-            catch (Exception) when (pumpCancellation.IsCancellationRequested) { }
+            try
+            {
+                if (pumpCancellation is not null) await pumpCancellation.CancelAsync().ConfigureAwait(false);
+                if (pump is not null)
+                {
+                    try { await pump.ConfigureAwait(false); }
+                    catch (Exception) when (pumpCancellation?.IsCancellationRequested == true) { }
+                }
+            }
+            finally
+            {
+                try { eventReader?.Dispose(); }
+                finally
+                {
+                    try { pumpCancellation?.Dispose(); }
+                    finally { child?.Dispose(); }
+                }
+            }
         }
+    }
+
+    internal async Task WaitForChildFailureReportAsync(IB10AbruptProcess child, CancellationToken cancellationToken)
+    {
+        long begin = clock.GetTimestamp();
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (child.HasExited) return;
+            TimeSpan remaining = ChildFailureReportGrace - clock.GetElapsedTime(begin);
+            if (remaining <= TimeSpan.Zero) return;
+            TimeSpan delay = remaining < ChildFailureReportPoll ? remaining : ChildFailureReportPoll;
+            await WaitForChildFailureReportPollAsync(delay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task WaitForChildFailureReportPollAsync(
+        TimeSpan delay, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using ITimer timer = clock.CreateTimer(
+            _ => completion.TrySetResult(), null, delay, Timeout.InfiniteTimeSpan);
+        using CancellationTokenRegistration registration = cancellationToken.Register(
+            () => completion.TrySetCanceled(cancellationToken));
+        await completion.Task.ConfigureAwait(false);
     }
 
     private void CaptureIncoming(B10AbruptWire.Message message)
