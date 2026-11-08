@@ -212,6 +212,28 @@ public sealed class B10AbruptSupervisorTests
         }
     }
 
+    [Fact]
+    public async Task Given_FullIncomingQueue_When_IncrementalReaderCaptures_Then_RetainsOnlyQueueFullGap()
+    {
+        await using var fixture = new DeadlineFixture();
+        var incoming = Channel.CreateBounded<B10AbruptWire.Message>(256);
+        B10AbruptWire.Message message = Terminal("original", 0, 2, true);
+        for (int index = 0; index < 256; index++) Assert.True(incoming.Writer.TryWrite(message));
+        SetPrivate(fixture.Supervisor, "_incoming", incoming);
+        var capture = typeof(B10AbruptSupervisor).GetMethod("CaptureIncoming", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .CreateDelegate<Action<B10AbruptWire.Message>>(fixture.Supervisor);
+        using var input = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(input, message with { Sequence = 2 }, TestContext.Current.CancellationToken);
+        input.Position = 0;
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length, capture);
+        var drain = typeof(B10AbruptSupervisor).GetMethod("DrainAvailableAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        Task<bool> operation = (Task<bool>)drain.Invoke(fixture.Supervisor, [reader, TestContext.Current.CancellationToken, false])!;
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => operation);
+        Assert.Equal("b10_abrupt_capture_gap:queue_full", error.Message);
+        Assert.Equal("queue_full", Assert.Single(fixture.Journal.Gaps));
+        Assert.Equal(256, incoming.Reader.Count);
+    }
+
     [Theory]
     [InlineData("same_instance", false)]
     [InlineData("same_instance", true)]
@@ -219,10 +241,13 @@ public sealed class B10AbruptSupervisorTests
     [InlineData("cross_restart", true)]
     public async Task Given_TerminalAvailableBeforeStop_When_ReaderHasNotEnqueued_Then_CheckpointWaitsAndExcludesOriginal(string arm, bool inFlight)
     {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, TestContext.Current.CancellationToken);
+        CancellationToken token = cancellation.Token;
         await using var fixture = new DeadlineFixture();
         await fixture.PrepareAcceptedAsync(arm);
         using var input = new MemoryStream();
-        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), TestContext.Current.CancellationToken);
+        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), token);
         input.Position = 0;
         var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
         var captureEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -231,26 +256,26 @@ public sealed class B10AbruptSupervisorTests
         using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length, message =>
         {
             captureEntered.TrySetResult();
-            Assert.True(releaseCapture.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            Assert.True(releaseCapture.Wait(TimeSpan.FromSeconds(10), token));
             Assert.True(incoming.Writer.TryWrite(message));
         }, 9);
         SetPrivate(fixture.Supervisor, "_incoming", incoming);
         SetPrivate(fixture.Supervisor, "_eventReader", reader);
         fixture.Child.OnConfirmStopped = () => stopped.TrySetResult();
-        Task<bool>? pump = inFlight ? Task.Run(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken) : null;
+        Task<bool>? pump = inFlight ? Task.Run(() => reader.DrainAvailableAsync(token), token) : null;
         try
         {
-            if (pump is not null) await captureEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-            Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", TestContext.Current.CancellationToken) :
-                fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
-            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            if (pump is not null) await captureEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), token);
+            Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", token) :
+                fixture.Supervisor.CheckpointKillAsync("original", token);
+            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), token);
             if (inFlight)
             {
                 Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
                 Assert.Equal(0, fixture.Child.Kills);
                 releaseCapture.Set();
             }
-            var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint);
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint.WaitAsync(TimeSpan.FromSeconds(10), token));
             Assert.Equal(arm == "same_instance" ? "b10_abrupt_control_incomplete" : "kill_too_late:no_unconfirmed_attempt", error.Message);
             var terminal = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "terminal");
             var sealedCheckpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
@@ -262,7 +287,7 @@ public sealed class B10AbruptSupervisorTests
         finally
         {
             releaseCapture.Set();
-            if (pump is not null) await pump;
+            if (pump is not null) await pump.WaitAsync(TimeSpan.FromSeconds(10), token);
         }
     }
 
@@ -277,28 +302,31 @@ public sealed class B10AbruptSupervisorTests
     [InlineData("cross_restart", -1)]
     public async Task Given_PartialFrameBufferedAtStop_When_Checkpointing_Then_RejectsWithoutSealingOrResuming(string arm, int length)
     {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, TestContext.Current.CancellationToken);
+        CancellationToken token = cancellation.Token;
         await using var fixture = new DeadlineFixture();
         await fixture.PrepareAcceptedAsync(arm);
         using var input = new MemoryStream();
-        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), TestContext.Current.CancellationToken);
+        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), token);
         input.SetLength(length == -1 ? input.Length - 1 : length);
         input.Position = 0;
         var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
         using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length,
             message => Assert.True(incoming.Writer.TryWrite(message)), 9);
-        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.False(await reader.DrainAvailableAsync(token));
         Assert.False(incoming.Reader.TryPeek(out _));
         SetPrivate(fixture.Supervisor, "_incoming", incoming);
         SetPrivate(fixture.Supervisor, "_eventReader", reader);
-        Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", TestContext.Current.CancellationToken) :
-            fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint);
+        Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", token) :
+            fixture.Supervisor.CheckpointKillAsync("original", token);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint.WaitAsync(TimeSpan.FromSeconds(10), token));
         Assert.Equal("b10_abrupt_capture_gap:malformed_frame", error.Message);
         Assert.Contains("malformed_frame", fixture.Journal.Gaps);
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal" && frame.Data.GetProperty("requested_signal").GetInt32() is 18 or 9);
         Assert.Equal(0, fixture.Child.Kills);
-        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken))).Message);
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(token))).Message);
     }
 
     [Theory]

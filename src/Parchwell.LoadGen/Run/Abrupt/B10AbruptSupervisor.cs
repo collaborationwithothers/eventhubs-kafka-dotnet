@@ -69,14 +69,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         _child = child;
         _incoming = Channel.CreateBounded<B10AbruptWire.Message>(new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true, SingleWriter = true });
         using var pumpCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var eventReader = new B10AbruptWire.AvailableMessageReader(child.Events, child.EventsReady, message =>
-        {
-            if (!_incoming.Writer.TryWrite(message))
-            {
-                journal.LatchGap("queue_full");
-                throw Failure("b10_abrupt_capture_gap");
-            }
-        });
+        using var eventReader = new B10AbruptWire.AvailableMessageReader(child.Events, child.EventsReady, CaptureIncoming);
         _eventReader = eventReader;
         Task pump = PumpAsync(eventReader, _incoming.Writer, pumpCancellation.Token);
         try
@@ -151,6 +144,15 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             await pumpCancellation.CancelAsync().ConfigureAwait(false);
             try { await pump.ConfigureAwait(false); }
             catch (Exception) when (pumpCancellation.IsCancellationRequested) { }
+        }
+    }
+
+    private void CaptureIncoming(B10AbruptWire.Message message)
+    {
+        if (!_incoming!.Writer.TryWrite(message))
+        {
+            journal.LatchGap("queue_full");
+            throw B10AbruptWire.Gap("queue_full");
         }
     }
 

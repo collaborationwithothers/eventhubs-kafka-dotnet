@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Blobs;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -160,7 +161,9 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         {
             await storage.CreateAsync(path, bytes, linked.Token).ConfigureAwait(false);
         }
-        // A create exception alone is not proof that the object is absent.
+        catch (RequestFailedException exception) when (IsDefiniteCreateRefusal(exception))
+        { throw new IOException("b10_abrupt_publication_failed", exception); }
+        // Other create exceptions do not establish whether the operation took effect.
         catch (Exception exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
         byte[] actual;
         try { actual = await storage.ReadAsync(path, bytes.Length, linked.Token).ConfigureAwait(false); }
@@ -169,6 +172,14 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         if (!actual.AsSpan().SequenceEqual(bytes)) throw PublicationFailed();
         _published.Add(name, bytes);
     }
+
+    private static bool IsDefiniteCreateRefusal(RequestFailedException exception) => (exception.Status, exception.ErrorCode) switch
+    {
+        (400, "InvalidAuthenticationInfo" or "InvalidHeaderValue" or "InvalidInput" or "InvalidQueryParameterValue") => true,
+        (401, "NoAuthenticationInformation" or "InvalidAuthenticationInfo") => true,
+        (403, "AuthenticationFailed" or "AuthorizationPermissionMismatch" or "AuthorizationServiceMismatch" or "AuthorizationFailure") => true,
+        _ => false
+    };
 
     internal static B10AbruptWire.Descriptor Describe(string name, byte[] bytes) => new(name, bytes.LongLength, Hash(bytes));
     internal static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
