@@ -170,12 +170,11 @@ internal static class B10AbruptHost
         builder.Services.AddSingleton<B10AbruptPublisher>();
         builder.Services.AddParchwellScenarios(value => { value.MaxDocumentCharacters = 1048576; value.MaxNestingDepth = 32; value.MaxScalarCharacters = 65536; value.MaxParserEvents = 100000; });
         builder.Services.AddSingleton<IScenarioSource>(_ => new FileSystemScenarioSource(options.ScenarioSourceRoot));
+        AddB10KafkaRoles(builder.Services, options);
         if (options.Role != "supervisor")
         {
             builder.Services.AddSingleton<RunEvidenceSinkRouter>();
             builder.Services.AddSingleton<IKafkaStatisticsEvidenceSink>(services => services.GetRequiredService<RunEvidenceSinkRouter>());
-            builder.Services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, value =>
-            { value.NamespaceName = options.NamespaceName; value.ClientId = options.PodName; value.EnrichmentGroupId = "a01-unused-enrichment"; });
             builder.Services.AddParchwellKafkaAuthentication(value =>
             {
                 value.TenantId = Environment.GetEnvironmentVariable("AZURE_TENANT_ID");
@@ -186,6 +185,17 @@ internal static class B10AbruptHost
             { value.MaxSnapshotCharacters = 1048576; value.QueueCapacity = 2048; value.MaxBrokerSeries = 64; value.CompletionTimeout = TimeSpan.FromSeconds(20); });
         }
         return builder.Build();
+    }
+
+    // ScenarioResolver.Resolve builds a baseline for every role that scenarios/B10/scenario.yaml declares,
+    // so every host role registers both. Registration maps options only: no consumer is created here.
+    // The verifier consumer's baseline is resolved and discarded; its client.id is a fixed unused label.
+    private static void AddB10KafkaRoles(IServiceCollection services, B10AbruptOptions options)
+    {
+        services.AddParchwellKafka(KafkaClientRole.LoadGenProducer, value =>
+        { value.NamespaceName = options.NamespaceName; value.ClientId = options.PodName; value.EnrichmentGroupId = "a01-unused-enrichment"; });
+        services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, value =>
+        { value.NamespaceName = options.NamespaceName; value.ClientId = "b10-abrupt-unused-verifier"; });
     }
 
     private static async Task<ProducerRuntime> CreateProducerAsync(IServiceProvider services, B10AbruptOptions options,
