@@ -27,6 +27,12 @@ internal sealed class OwnedProducerProcess : IDisposable
         internal SignalObservation Observation { get; } = observation;
     }
 
+    internal sealed class StartupException(Exception cause, Exception? cleanupFailure)
+        : InvalidOperationException(cause.Message == "b10_abrupt_child_start_failed" ? cause.Message : "b10_abrupt_child_identity_mismatch", cause)
+    {
+        internal Exception? CleanupFailure { get; } = cleanupFailure;
+    }
+
     private readonly Process process;
     private bool killRequested;
     private bool disposed;
@@ -83,11 +89,20 @@ internal sealed class OwnedProducerProcess : IDisposable
         }
         catch (Exception exception)
         {
-            if (owned is not null) owned.Dispose();
-            else { events.Dispose(); acknowledgements.Dispose(); child?.Dispose(); }
-            if (exception.Message == "b10_abrupt_child_start_failed") throw;
-            throw new InvalidOperationException("b10_abrupt_child_identity_mismatch", exception);
+            throw CleanupStartupFailure(exception, () =>
+            {
+                if (owned is not null) owned.Dispose();
+                else { events.Dispose(); acknowledgements.Dispose(); child?.Dispose(); }
+            });
         }
+    }
+
+    internal static StartupException CleanupStartupFailure(Exception cause, Action cleanup)
+    {
+        Exception? cleanupFailure = null;
+        try { cleanup(); }
+        catch (Exception exception) { cleanupFailure = exception; }
+        return new(cause, cleanupFailure);
     }
 
     internal static SignalObservation PreflightSignalEntryPoint() => PreflightSignalEntryPoint(InvokeSignal);

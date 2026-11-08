@@ -427,7 +427,9 @@ public sealed class B10AbruptProducerTests
     [InlineData(ErrorCode.Local_MsgTimedOut)]
     public async Task Given_SealedKillSelection_When_Replaying_Then_InvokesOnceWithoutRetryAndDrains(ErrorCode outcome)
     {
-        await using var fixture = new Fixture();
+        var release = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+        var clock = new ReleaseBoundaryClock(release);
+        await using var fixture = new Fixture(clock: clock);
         fixture.StartReports();
         fixture.Native.OnProduce = (_, callback) => callback(Report(outcome, outcome == ErrorCode.NoError ? PersistenceStatus.Persisted : PersistenceStatus.PossiblyPersisted));
         byte[] payload = [1, 2, 3];
@@ -438,7 +440,7 @@ public sealed class B10AbruptProducerTests
             payload_base64 = Convert.ToBase64String(payload)
         } });
         var artifacts = await fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity, fixture.Options,
-            selection, TimeProvider.System.GetUtcNow().AddMilliseconds(50), TestContext.Current.CancellationToken);
+            selection, release, TestContext.Current.CancellationToken);
         Assert.Single(fixture.Native.Calls);
         Assert.Equal(payload, fixture.Native.Calls[0].Value);
         Assert.Equal(1, fixture.Native.Disposals);

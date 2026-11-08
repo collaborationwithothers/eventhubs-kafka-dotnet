@@ -4,6 +4,21 @@ This contract defines the diagnostic-only B10 abrupt restart execution: its wire
 
 On this page, PR1, PR2 and PR3 are the three pull requests of [issue 404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404): PR1 recorded the design, PR2 adds this diagnostic execution, and PR3 is planned to add the verifier support. A decision named by a number is Hari's comment of that number on issue 404, linked where it appears.
 
+## References used by the wire text
+
+The wire text below retains the numbering from the [approved plan's file map](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6709851444). These references identify implementation files, not additional protocol steps.
+
+| Plan reference | Implementation or local file |
+| --- | --- |
+| Item 2 | [B10AbruptOptions](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptOptions.cs), including the validated `ScenarioId` and `RunId` |
+| The item-5 file | `/work/loadgen/abrupt-child/<arm>-pre-acceptance-report.json`, the child-created raw report bound by the `pre_acceptance_report` message; item 5 describes [B10AbruptJournal](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptJournal.cs) and that hand-off |
+| Item 9 and its `Observe` | [B10AbruptStatistics](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs), which observes and selects the child's report |
+| Item 11 | [B10AbruptPublisher](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs), which publishes the fixed diagnostic member sets |
+
+For local file hand-offs and the supervisor-exit cleanup dependency, see the [implementation receipt](../../items/404/pr2-receipt.md#local-file-hand-offs-and-supervisor-exit).
+
+During diagnostic collection, `b10_abrupt_first_termination_unknown` at boundary `successor_termination` means the successor pod could not be observed. The collection code reuses the termination-observation helper and retains `safety_stop`; the gap name alone does not identify which pod was unobservable. Read it together with the boundary in `b10_abrupt_diagnostics`. This explains the existing mapping without adding a failure name or changing its safety handling.
+
 ## Wire and state machine
 
 Every wire object carries `schema_version: 2`, `dialect: "b10_abrupt"`, `purpose: "diagnostic_trial"`, `synthetic: true`, `scientific_admissible: false`, `kind`, and `identity`. Identity exact members: `run_id,scenario_id,configuration_id,phase,repeat,source_commit,image_reference,job_name,pod_name,pod_uid,instance_id,predecessor_instance_id`; predecessor is null for first instance and required for successor. Local owned-child observations add a separate `process` object, never a third producer identity. Process fields are `pid,parent_pid,boot_id,start_identity`; no caller-selected PID is accepted. Strings use the existing run/source/image/instance validation. UTC and monotonic observations are explicitly distinguished and never compared across boot/clock domains as if interchangeable.

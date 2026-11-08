@@ -1,3 +1,4 @@
+using Azure;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -466,5 +467,124 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
+    }
+}
+
+public sealed class B10AbruptPublisherTests
+{
+    [Theory]
+    [InlineData("duplicate")]
+    [InlineData("transport_before_write")]
+    [InlineData("transport_after_write")]
+    [InlineData("canceled")]
+    [InlineData("invalid_data")]
+    public async Task Given_UncertainCreateOutcome_When_Publishing_Then_AmbiguousPreservesCauseAndDoesNotRetry(string fault)
+    {
+        var storage = new Storage();
+        Exception cause = fault switch
+        {
+            "duplicate" => new RequestFailedException(409, "synthetic_duplicate", "BlobAlreadyExists", null),
+            "canceled" => new OperationCanceledException("synthetic_cancellation"),
+            "invalid_data" => new InvalidDataException("synthetic_failure"),
+            _ => new IOException("synthetic_transport_failure")
+        };
+        storage.CreateFailure = cause;
+        storage.WriteBeforeFailure = fault == "transport_after_write";
+        var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
+        var failure = await Assert.ThrowsAsync<IOException>(() => publisher.RegisterDiagnosticAsync(
+            B10AbruptProcessTests.Options().Identity(), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_publication_ambiguous", failure.Message);
+        Assert.Same(cause, failure.InnerException);
+        Assert.Equal(1, storage.Creates);
+        Assert.Equal(0, storage.Reads);
+        Assert.Equal(storage.WriteBeforeFailure, storage.Bytes is not null);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("transport")]
+    [InlineData("canceled")]
+    [InlineData("invalid_data")]
+    public async Task Given_UnverifiableReadBack_When_Publishing_Then_AmbiguousPreservesCause(string fault)
+    {
+        Exception cause = fault switch
+        {
+            "missing" => new RequestFailedException(404, "synthetic_missing", "BlobNotFound", null),
+            "invalid_data" => new InvalidDataException("synthetic_storage_failure"),
+            "canceled" => new OperationCanceledException("synthetic_cancellation"),
+            _ => new IOException("synthetic_transport_failure")
+        };
+        var storage = new Storage { ReadFailure = cause };
+        var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
+        var failure = await Assert.ThrowsAsync<IOException>(() => publisher.RegisterDiagnosticAsync(
+            B10AbruptProcessTests.Options().Identity(), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_publication_ambiguous", failure.Message);
+        Assert.Same(cause, failure.InnerException);
+        Assert.Equal(1, storage.Creates);
+        Assert.Equal(1, storage.Reads);
+        Assert.NotNull(storage.Bytes);
+    }
+
+    [Fact]
+    public async Task Given_OversizedReadBack_When_Publishing_Then_PreservesPublicationFailure()
+    {
+        var cause = new InvalidDataException("b10_abrupt_publication_failed");
+        var storage = new Storage { ReadFailure = cause };
+        var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => publisher.RegisterDiagnosticAsync(
+            B10AbruptProcessTests.Options().Identity(), TestContext.Current.CancellationToken));
+        Assert.Same(cause, failure);
+        Assert.Equal("b10_abrupt_publication_failed", failure.Message);
+        Assert.Equal(1, storage.Creates);
+        Assert.Equal(1, storage.Reads);
+    }
+
+    [Fact]
+    public async Task Given_ChangedReadBack_When_Publishing_Then_FailsWithoutRetry()
+    {
+        var storage = new Storage { ChangeReadBack = true };
+        var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => publisher.RegisterDiagnosticAsync(
+            B10AbruptProcessTests.Options().Identity(), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_publication_failed", failure.Message);
+        Assert.Equal(1, storage.Creates);
+        Assert.Equal(1, storage.Reads);
+    }
+
+    [Fact]
+    public async Task Given_AlreadyPublishedObject_When_PublishingAgain_Then_AmbiguousWithoutAnotherWrite()
+    {
+        var storage = new Storage();
+        var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
+        var identity = B10AbruptProcessTests.Options().Identity();
+        byte[] original = await publisher.RegisterDiagnosticAsync(identity, TestContext.Current.CancellationToken);
+        var failure = await Assert.ThrowsAsync<IOException>(() => publisher.RegisterDiagnosticAsync(identity, TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_publication_ambiguous", failure.Message);
+        Assert.Equal(original, storage.Bytes);
+        Assert.Equal(1, storage.Creates);
+        Assert.Equal(1, storage.Reads);
+    }
+
+    private sealed class Storage : IB10AbruptStorage
+    {
+        internal Exception? CreateFailure { get; set; }
+        internal Exception? ReadFailure { get; set; }
+        internal bool WriteBeforeFailure { get; set; }
+        internal bool ChangeReadBack { get; set; }
+        internal byte[]? Bytes { get; private set; }
+        internal int Creates { get; private set; }
+        internal int Reads { get; private set; }
+        public Task CreateAsync(string name, byte[] bytes, CancellationToken cancellationToken)
+        {
+            Creates++;
+            if (CreateFailure is null || WriteBeforeFailure) Bytes = bytes;
+            return CreateFailure is null ? Task.CompletedTask : Task.FromException(CreateFailure);
+        }
+        public Task<byte[]> ReadAsync(string name, int maximumBytes, CancellationToken cancellationToken)
+        {
+            Reads++;
+            if (ReadFailure is not null) return Task.FromException<byte[]>(ReadFailure);
+            return Task.FromResult(ChangeReadBack ? [] : Bytes!);
+        }
     }
 }

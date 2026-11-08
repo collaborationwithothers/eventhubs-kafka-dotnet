@@ -86,7 +86,14 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
     [Fact]
     public void Given_PreflightErrno_When_Start_Then_FailsBeforeExecutableLaunch()
     {
-        if (!OperatingSystem.IsLinux()) return;
+        if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
+        {
+            var unsupported = Assert.Throws<InvalidOperationException>(() => OwnedProducerProcess.Start(
+                new("/does/not/exist", [], new Dictionary<string, string>()), Options(),
+                (_, _) => throw new InvalidOperationException("preflight_must_not_run")));
+            Assert.Equal("b10_abrupt_platform_unsupported", unsupported.Message);
+            return;
+        }
         var calls = new List<(int Pid, int Signal)>();
         var exception = Assert.Throws<OwnedProducerProcess.SignalException>(() => OwnedProducerProcess.Start(
             new("/does/not/exist", [], new Dictionary<string, string>()), Options(), (pid, signal) =>
@@ -95,6 +102,69 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Equal(-1, exception.Observation.ReturnValue);
         Assert.Equal(13, exception.Observation.Errno);
         Assert.Equal([(Environment.ProcessId, 0)], calls);
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("target")]
+    [InlineData("errno")]
+    [InlineData("import")]
+    public void Given_HandshakeFailure_When_StartupCleanupRuns_Then_PreservesCauseAndActualCleanupObservation(string cleanupKind)
+    {
+        var cause = new InvalidDataException("b10_abrupt_child_identity_mismatch");
+        Exception? cleanupFailure = cleanupKind switch
+        {
+            "target" => new InvalidOperationException("b10_abrupt_target_invalid"),
+            "errno" => CaptureSignalFailure(9, (_, signal) => new(signal, -1, 13)),
+            "import" => CaptureSignalFailure(9, (_, _) => throw new EntryPointNotFoundException()),
+            _ => null
+        };
+        int cleanups = 0;
+        var failure = OwnedProducerProcess.CleanupStartupFailure(cause, () =>
+        {
+            cleanups++;
+            if (cleanupFailure is not null) throw cleanupFailure;
+        });
+        Assert.Equal(1, cleanups);
+        Assert.Equal("b10_abrupt_child_identity_mismatch", failure.Message);
+        Assert.Same(cause, failure.InnerException);
+        Assert.Same(cleanupFailure, failure.CleanupFailure);
+        using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(failure, diagnostic));
+        using var emitted = JsonDocument.Parse(diagnostic.ToString());
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "cleanup_failure", "cleanup_signal_observation");
+        Assert.Equal("b10_abrupt_child_identity_mismatch", emitted.RootElement.GetProperty("failure").GetString());
+        Assert.Equal(cleanupFailure?.Message, emitted.RootElement.GetProperty("cleanup_failure").GetString());
+        var observation = emitted.RootElement.GetProperty("cleanup_signal_observation");
+        if (cleanupFailure is OwnedProducerProcess.SignalException signalFailure)
+        {
+            Assert.Equal(signalFailure.Observation, observation.Deserialize<OwnedProducerProcess.SignalObservation>(B10AbruptWire.JsonOptions));
+            Assert.Equal(9, observation.GetProperty("requested_signal").GetInt32());
+            if (cleanupKind == "errno")
+            {
+                Assert.Equal(-1, observation.GetProperty("return_value").GetInt32());
+                Assert.Equal(13, observation.GetProperty("errno").GetInt32());
+                Assert.Equal(JsonValueKind.Null, observation.GetProperty("native_exception").ValueKind);
+            }
+            else
+            {
+                Assert.Equal(JsonValueKind.Null, observation.GetProperty("return_value").ValueKind);
+                Assert.Equal(JsonValueKind.Null, observation.GetProperty("errno").ValueKind);
+                Assert.Equal(nameof(EntryPointNotFoundException), observation.GetProperty("native_exception").GetString());
+            }
+        }
+        else Assert.Equal(JsonValueKind.Null, observation.ValueKind);
+    }
+
+    [Fact]
+    public void Given_ExecutableLaunchFailure_When_StartupCleanupFails_Then_PreservesStartFailureName()
+    {
+        var cause = new InvalidOperationException("b10_abrupt_child_start_failed");
+        var cleanup = new IOException("synthetic_cleanup_failure");
+        var failure = OwnedProducerProcess.CleanupStartupFailure(cause, () => throw cleanup);
+        Assert.Equal("b10_abrupt_child_start_failed", failure.Message);
+        Assert.Same(cause, failure.InnerException);
+        Assert.Same(cleanup, failure.CleanupFailure);
     }
 
     [Theory]

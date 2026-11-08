@@ -150,7 +150,8 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
     {
         ValidateIdentity(identity);
         string[] allowed = identity.PredecessorInstanceId is null ? FirstMembers : SuccessorMembers;
-        if (!allowed.Contains(name, StringComparer.Ordinal) || _published.ContainsKey(name) || bytes.Length > 268435456 ||
+        if (_published.ContainsKey(name)) throw new IOException("b10_abrupt_publication_ambiguous");
+        if (!allowed.Contains(name, StringComparer.Ordinal) || bytes.Length > 268435456 ||
             _published.Values.Sum(value => (long)value.Length) + bytes.Length > 1073741824) throw PublicationFailed();
         string path = $"{identity.RunId}/C1/r1/b10-abrupt-diagnostic/{identity.PodName}/{name}";
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
@@ -158,12 +159,15 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         try
         {
             await storage.CreateAsync(path, bytes, linked.Token).ConfigureAwait(false);
-            byte[] actual = await storage.ReadAsync(path, bytes.Length, linked.Token).ConfigureAwait(false);
-            if (!actual.AsSpan().SequenceEqual(bytes)) throw PublicationFailed();
-            _published.Add(name, bytes);
         }
-        catch (OperationCanceledException exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
-        catch (Exception exception) when (exception is not InvalidDataException) { throw new IOException("b10_abrupt_publication_failed", exception); }
+        // A create exception alone is not proof that the object is absent.
+        catch (Exception exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
+        byte[] actual;
+        try { actual = await storage.ReadAsync(path, bytes.Length, linked.Token).ConfigureAwait(false); }
+        catch (InvalidDataException exception) when (exception.Message == "b10_abrupt_publication_failed") { throw; }
+        catch (Exception exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
+        if (!actual.AsSpan().SequenceEqual(bytes)) throw PublicationFailed();
+        _published.Add(name, bytes);
     }
 
     internal static B10AbruptWire.Descriptor Describe(string name, byte[] bytes) => new(name, bytes.LongLength, Hash(bytes));

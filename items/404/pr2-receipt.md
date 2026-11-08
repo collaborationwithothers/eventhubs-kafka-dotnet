@@ -9,7 +9,13 @@ This pull request implements only the diagnostic restart execution approved for 
 - Base: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`, merged PR1. The plan's Authority and predecessor snapshot identifies binding decisions and ADR dependencies.
 - Mandatory gates: exact plan acceptance below, source and policy equality, default-off/scientific rejection, Linux process proof, cold review under pull-requests.md rule 8, hosted Codex review and Claude head review checking every cap-covered choice, final-head CI, and Hari's merge. No workflow dispatch, Azure execution or live B10 evidence access is authorized in this session.
 - Earliest publication checkpoint: tested implementation after applicable cold-review coverage; CI and hosted review may run together.
-- Review budget and exhaustion: plan section Mutation, review budget and bounded work and docs/agents/pull-requests.md rule 8. At most two comprehensive passes and two focused correction rounds cumulatively. Budget exhaustion or unsafe focused review requires a backup push and handoff to Hari. Plan disposition caps apply unchanged.
+- Original review budget and exhaustion: plan section Mutation, review budget and bounded work and docs/agents/pull-requests.md rule 8. The original two comprehensive passes and two focused rounds were used before the recorded handoff. The bounded continuation authorized by the later user instruction is recorded below; prior counts are not reset.
+
+### Authorized review-comment continuation
+
+After the [budget handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#issuecomment-6713457687), the user instructed this implementing session on 2026-11-08: "fix the comments". This resumes the bounded corrections in [Claude part A](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#issuecomment-6713375550) and [Claude part B](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#issuecomment-6713787031), their affected verification and the required focused correction review. The reported finding count is eight, computed from the six part-A and two part-B entries. This is direct task authorization, not a new issue-plan approval, a reset of historical counts or permission for another comprehensive review. A finding requiring a protocol, gate, policy, scientific or safety change still stops for Hari. Further work outside this correction set requires a new handoff; no open-ended correction loop is authorized.
+
+The prior full local verification and final-head CI are historical evidence for `7217ce4d955e3a77a26ec31278a82f61d5d31841`. This continuation will run the warning-as-error build and full .NET verification, the affected abrupt/process/publication tests and produced-byte bridge, whole host acceptance, and documentation checks. Unchanged chart/Python/workflow behavior keeps its prior passing coverage and final-head CI runs again automatically after the reviewed push. No workflow dispatch is authorized.
 
 Exact verification commands, from the plan:
 
@@ -36,6 +42,11 @@ The mutation-only Compile item comparison and scripted preservation checks follo
 - Report length: a value outside 1 to 1048576 raises `b10_abrupt_report_binding_invalid`. This applies the carried exact raise-list correction and preserves E4's zero and oversized boundaries.
 - Raw report encoding: write `Encoding.UTF8.GetBytes(report.RawJson)` without a byte-order mark. This applies the carried correction and matches the existing UTF-8 byte bound.
 
+The review-comment continuation also records these failure-name choices under the cap decision:
+
+- Publication storage exceptions leave the create/read-back outcome unconfirmed and are reported as `b10_abrupt_publication_ambiguous`; duplicate publication is also ambiguous. Local validation/size failures and an observed read-back byte mismatch remain `b10_abrupt_publication_failed`. Both outcomes block successful publication without overwrite or retry.
+- Successor termination collection retains the closed name `b10_abrupt_first_termination_unknown` and its existing safety stop. At boundary `successor_termination`, it describes the successor observation gap. The contract now tells operators to read the recorded boundary with the gap name; no new failure name or safety behavior is introduced.
+
 ## Mechanical representation choices
 
 - The successor binding carries the original authenticated start-line, broker inventory and completion strings in `start_line_binding`. This gives the successor the existing expected-broker inputs through its sole permitted binding path; the complete input remains subject to the fixed byte cap.
@@ -48,9 +59,26 @@ The mutation-only Compile item comparison and scripted preservation checks follo
 
 - Deadline-name alignment: after stopped state is observed, exhaustion during drain/checkpoint uses the existing `b10_abrupt_deadline_exhausted` outcome for the enclosing arm deadline. `b10_abrupt_stop_unconfirmed` remains for missing/late stopped observation. A successful native KILL observed outside its budget likewise reports deadline exhaustion, while `b10_abrupt_signal_failed` remains an actual native failure. Sticky journal gaps and actual signal observations are retained; the budgets and admission comparisons are unchanged.
 
+## Local file hand-offs and supervisor exit
+
+The two anonymous pipes carry the closed IPC messages and acknowledgements. The implementation also shares local files within the first pod's `OutputRoot` (`/work/loadgen`); it is not a pipes-only exchange. These existing hand-offs are implemented by [B10AbruptHost](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptHost.cs), [B10AbruptProducer](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs) and [B10AbruptSupervisor](../../src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs).
+
+| Local hand-off | Writer and reader | Binding and limit of the observation |
+| --- | --- | --- |
+| `abrupt-child/<arm>-pre-acceptance-report.json` | Child writes; supervisor reads before accepting the report hand-off | The IPC descriptor binds the raw UTF-8 bytes, identity, sequence and capture time. |
+| `abrupt-child/timeout-seal.json` and `abrupt-child/control-seal.json` | Child writes; supervisor reads before the next probe | The supervisor checks envelope identity, cohort, drain/guard status and artifact descriptors. The timeout ledger, inventory and seal originate in the child; their agreement is self-consistency, not an independent broker observation. Control ledger rows are also compared with the supervisor's journal terminal frames. |
+| `timeout/` and `control/` ledger, manifest and `post-drain-report.json` | Child writes; supervisor reads when validating each seal | The seal binds these bytes by descriptor. They remain separate cohort artifacts. |
+| `abrupt-child/<arm>-payload.bin` | Child writes each probe payload; supervisor reads `cross_restart-payload.bin` when finalizing selection | The cross-restart payload's length and SHA-256 must equal its prepared frame. |
+| `abrupt/<arm>-checkpoint.json` | Supervisor writes; resumed control child reads `same_instance-checkpoint.json` for `release_utc` | The child checks frame kind, identity and arm. The kill-arm checkpoint is carried to the successor in the authenticated selection binding, not read by a resumed first child. |
+| `abrupt-child/same_instance-resumed.json` | Control child writes; supervisor reads after CONT | The create-only acknowledgement binds identity, arm, checkpoint sequence and hash. It confirms child progress through the checkpoint read, not broker acceptance. |
+
+The supervisor's configured process watchdog calls `Environment.Exit(124)` after 900 s. This call is not the managed `AbortAsync` cleanup path and does not itself signal the child. [.NET 10 Environment.Exit](https://learn.microsoft.com/en-us/dotnet/api/system.environment.exit?view=net-10.0) states that `finally` blocks do not execute when Exit is called from a try/catch block. Cleanup therefore cannot rely on managed disposal after this abrupt process exit.
+
+For a deployed pod, ending a child after the supervisor exits abruptly depends on the container/PID-namespace lifecycle outside that managed path. [Linux pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html), "The namespace init process", states that the kernel sends SIGKILL to the namespace's processes when its init process terminates. Whether the deployed supervisor is that init process has not been verified in a trial. A standalone host launch has no such established containment guarantee and may leave its child alive. Neither the watchdog nor a supervisor exit code proves child death, reaping or EOF. The existing observation requirements and unknown-termination safety stop remain binding; no lifetime, signal, policy or protocol change is made here.
+
 ## Verification and review status
 
-Local verification passed on the initial candidate `cb6d0cfa52e1ae7ad3d20af72133c19975c75a2b`. Two comprehensive cold reviews and the first focused correction review are complete; the focused review found no P0 or P1. The reviewed head passed the Ubuntu .NET job. Its lifecycle job exposed a shallow-checkout dependency in the new preservation test; the correction and CI receipt update await the final focused round. No live trial has run in this session.
+The original implementation completed two comprehensive and two focused cold reviews, with the last focused review finding no P0 or P1 on `7217ce4d955e3a77a26ec31278a82f61d5d31841`. Its [final .NET, lifecycle and Terraform CI](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42416876916) and [documentation CI](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42416876910) passed. The resumed review-comment corrections require their own affected verification and focused review. No live trial has run in this session. The following results describe the original implementation and its earlier correction commits.
 
 - `./scripts/verify-dotnet.sh` passed with locked restore, Release build (zero warnings/errors), architecture checks, all project tests, checked reports and the warning-as-error control. Measured report counts: Architecture 16, Enrichment 56, Kafka 486, LoadGen 1429, Scenarios 340 and Verifier 7389. Logs remained outside the repository.
 - Baseline, before chart changes, source `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`: `bash charts/parchwell/tests/check-loadgen-host.sh` passed. Bash `time -p` measured real 121.04 s, user 90.88 s, system 21.96 s. Initial candidate post-change: the same whole script passed, including E10/E11, with Bash `time -p` measuring real 114.19 s, user 89.66 s and system 29.36 s, within the unchanged 900 s bound. A local `timeout 900` enforced that bound.
@@ -59,7 +87,7 @@ Local verification passed on the initial candidate `cb6d0cfa52e1ae7ad3d20af72133
 - `npm run check:docs` reported eight warnings, all in unchanged files.
 - The phase, diagnostic and workflow Python command passed 125 tests in 31.212 s on the final phase implementation after loading the installed tool environment. Its first invocation omitted that PATH and failed at Helm execution; this is one environment failure root cause shared with the script-discovery invocation, whose retry passed 326 tests in 88.403 s.
 - Scripted preservation found 45 authored changed paths within the approved file map, no non-ASCII punctuation, all six existing workflows unchanged, an identical new workflow mirror, unchanged helper/host-runner files and exactly the authorized project-file replacement.
-- The final targeted transport run passed 79 tests, zero failures/skips, in 2.915 s on Debian 13, .NET 10.0.13 and kernel 6.18.57. Production process tests observed inherited pipes, stop, lack of progress while stopped, resumed progress, kill, wait/reap and EOF. The observed exit code 137 is labelled local evidence, not a death predicate. Linux GitHub Actions proof on the reviewed head remains pending.
+- The final targeted transport run passed 79 tests, zero failures/skips, in 2.915 s on Debian 13, .NET 10.0.13 and kernel 6.18.57. Production process tests observed inherited pipes, stop, lack of progress while stopped, resumed progress, kill, wait/reap and EOF. The observed exit code 137 is labelled local evidence, not a death predicate. The subsequent reviewed-head Linux GitHub Actions proof is recorded below.
 - E11 checked fresh production export `/workspace/scratch/b10-export-first`: `python3 infra/scripts/phase/tests/check_b10_abrupt_producers.py /workspace/scratch/b10-export-first` passed seven produced-byte tests and emitted exactly `b10_abrupt_produced_bytes_checked` plus newline. The mandatory host script regenerated and checked its own fresh export successfully.
 - Scripted section comparison confirms the copied wire, policy and failure text matches Revision 6 exactly apart from the authorized report_length raise-list corrections.
 - A scripted comparison confirmed all 11 runtime policy values equal `runtime.bounds.b10_abrupt` in the chart.
@@ -94,7 +122,7 @@ The original candidate passed the full .NET and timed host commands. The correct
 
 ## Cold-review input
 
-Mode for the next review: second and final focused correction review. Input revision: the frozen HEAD on `codex/404-pr2-abrupt-restart`, identified exactly by the supplied diff filename. Full comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. Focused comparison revision: `0de1514e040b0fe25fbd5786b8d1b47d808e41ed`. Review the shallow-checkout preservation-test correction, CI evidence and state/receipt updates, with affected tests/contracts and the full authored diff as context. There are no unresolved findings from the first focused review. Cumulative completed reviews: two comprehensive, one focused. Earlier complete reports follow. The final focused report and cumulative counts belong in the pull request self-review record, not its own reviewed receipt. If focus is unsafe or another required correction review is needed, stop for Hari under the review-budget handoff.
+Mode for the next review: focused correction review authorized by the user's 2026-11-08 "fix the comments" instruction after the prior handoff. Input revision: the frozen HEAD identified by the supplied diff filename. Full comparison revision: `74be825cb6ac71c2c70a6612f3fa0910dcdc52ef`. Focused comparison revision: `7217ce4d955e3a77a26ec31278a82f61d5d31841`. Review the eight Claude findings, the corresponding runtime/test and additive explanation changes, affected callers/contracts and this receipt/state update; the full PR diff is context. Historical cumulative reviews: two comprehensive and two focused. This is an additional focused round under the resumed task authorization, not a third comprehensive pass or a counter reset. Stop if safe focus is impossible or new work exceeds the resumed correction set.
 
 Both the Codex and Claude reviews must explicitly check each choice under "Cap-covered choices": C1, C2, C3, report_length and UTF-8 RawJson. Hosted review and final-head Linux CI remain separate gates. This environment has no available Claude review tool or CLI; that review requires a Claude session before Hari merges.
 
@@ -374,3 +402,88 @@ Correction verification before final focused review:
 - `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` passed all 329 tests in 72.837 s; wrapper wall time 73.212 s.
 - A scratch tree containing the current workflow test and its required files, with no `.git` directory or parent repository, passed all six B10AbruptWorkflowTests in 0.089 s. `git rev-parse` returned 128 there, confirming the missing-history condition. No repository workflow was edited.
 - A script recomputed all six pinned hashes from the original base and verified both the complete baseline file set and current byte equality. `git diff --check` passed.
+
+## Prior second focused cold-review report
+
+Review mode: focused correction review (second and final focused round).
+Reviewed revision: 7217ce4d955e3a77a26ec31278a82f61d5d31841.
+Focused comparison revision: 0de1514e040b0fe25fbd5786b8d1b47d808e41ed.
+Full-PR comparison revision: 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef.
+Focused input: /workspace/scratch/404-focused-focused2-7217ce4d955e3a77a26ec31278a82f61d5d31841.diff.
+Full context: /workspace/scratch/404-full-focused2-7217ce4d955e3a77a26ec31278a82f61d5d31841.diff.
+Authored receipt: items/404/pr2-receipt.md.
+Report: complete
+
+Applied the repository-owned .agents/skills/repo-review/SKILL.md. This is the focused review of the shallow-checkout preservation-test correction and the receipt/state updates since the first focused review. No unresolved finding was carried into this round. The full PR is context; this report does not repeat a comprehensive review. Both supplied diffs match git diff of their identified revisions byte for byte. Script-computed scope: three focused paths and 45 full-context paths.
+
+File/rubric coverage:
+- infra/scripts/phase/tests/test_workflow.py: general rubric, governance, assertion integrity, specification and affected test contracts.
+- items/404/pr2-receipt.md: general rubric, review protocol/budget, authority recognition, claim provenance and writing rules.
+- items/404/state.md: general rubric plus factory.md Item state file and authority/next-action requirements.
+
+Read and applied AGENTS.md, CLAUDE.md, docs/agents/pull-requests.md, docs/agents/factory.md and docs/blueprint.md's ADRs and scope. Also checked docs/engineering/dotnet.md Testing for the receipt's Linux evidence and unchanged process-test context. These governing documents and the skill are unchanged from origin/main. Affected context includes the complete B10AbruptWorkflowTests class, its duplicate-key loader and workflow/mirror inputs, the baseline workflow file set, dotnet-verification.yml's head checkout and verification command, the actual Linux process test, the prior review record and the five cap-covered choices. No new workflow edit, trigger, runtime behavior, verifier predicate, project/reference/package, result, expectation, verdict, identity or network permission occurs in this focused diff.
+
+Specification comparison:
+Fetched approved Revision 6 (issue comment 6709851444), PR2-only approval 6711868908 and cap decision 6711519349 through GitHub REST. Computed plan updated_at 2026-11-07T18:45:47Z, 126836 characters and SHA-256 4a6a093a00b909d8bbea623983c8aebd404773b3a81fe2c7bb116e4e76596376 match the approval. Applied authority recognition under factory.md Item lifecycle step 3.
+
+The correction implements the existing file-map item 16 and E12 preservation requirement: compare the new workflow and mirror bytes and require every pre-existing workflow to remain byte-identical to the pinned base. It substitutes measured SHA-256 constants for runtime Git-history reads. An independent script enumerated the pinned base tree and proved exact set equality with all six constants, recomputed each hash from original base bytes, and compared current bytes with those original bytes. The constant mapping is nonempty and complete. The removed nonempty-list assertion is satisfied by that fixed, reviewed mapping; no baseline file or preservation outcome is dropped. The mirror assertion remains exact byte equality. This removes a checkout-history prerequisite without changing workflow bytes or the preservation contract.
+
+Receipt/state updates accurately distinguish the reviewed runtime's successful Ubuntu .NET job from the overall failed workflow, and retain final-head CI, hosted review, Claude review, Hari's merge and separately approved trial as distinct gates. PR3 remains unapproved. No missing, partial or incorrect requirement, scope creep or unsafe focus was identified in this correction scope.
+
+CI and claim verification:
+- GitHub REST identifies run 42415691021 with head 0de1514e040b0fe25fbd5786b8d1b47d808e41ed and conclusion failure. Its .NET job 128533153955 and Terraform job succeeded; lifecycle job 128533154141 failed. Documentation run 42415691059 succeeded on the same head.
+- The completed-run log archive records ubuntu-24.04, checkout of that exact head with depth 1, and checked passing reports of Architecture 16, Enrichment 56, Kafka 486, LoadGen 1504, Scenarios 340 and Verifier 7389. The actual Linux process test exercises production stop/resume/kill/exit/EOF and has no Linux skip path. The receipt's E2 claim is scoped to that reviewed runtime, not a live experiment or final corrected head.
+- The lifecycle log records 329 tests in 54.737 s and the git ls-tree subprocess failure for the unavailable pinned base. The local reproduction logs substantiate 329 tests in 64.256 s before correction and 72.837 s after correction. These logs are evidence read, not tests rerun by this reviewer.
+- Hosted summary comment 6713205151 identifies completed code and security reviews for that head and explicitly reports no code findings. The receipt does not claim that this clears the final head or replaces Claude review.
+- The receipt preserves the earlier 17 verification-failure groups as a historical list and adds the two named new groups for the cumulative 19 against the approved cap of 20. No new review root was found here.
+
+Cap-covered choices checked explicitly against approval 6711868908 and the retained sources/tests:
+- C1: the unknown-arm test supplies valid hand-offs for both real arms and asserts only the unknown binding-invalid latch.
+- C2: absent hand-off produces sample_missing; invalid binding uses the first-failure binding_invalid latch; counter overflow is a separately tested no-report case.
+- C3: SelectPreAcceptance returns no selection after overflow, preventing fallback to an earlier numbered report; the retained invocation test asserts no hand-off.
+- report_length: the supervisor rejects values outside 1..1048576 as report_binding_invalid; retained negative tests include zero, negative and oversized lengths.
+- RawJson: the producer writes Encoding.UTF8.GetBytes of the selected raw report, and the retained test compares the actual bytes, length and SHA-256.
+These choices remain unchanged by this correction and within the recorded approval. This check does not substitute for the required Claude head review.
+
+Findings: none at P0 or P1
+
+Pre-existing (not blocking):
+None identified in the affected review context.
+
+Verification performed by this reviewer:
+- Both supplied diffs matched the stated Git revisions byte for byte.
+- git diff --check over the focused comparison/reviewed revisions passed.
+- Independently recomputed all six workflow hashes and verified the complete pinned baseline set and current byte equality.
+- Copied the reviewed workflow-test module and required workflow/mirror files into a temporary tree outside any Git repository. git rev-parse returned 128. All six B10AbruptWorkflowTests passed there in 0.082 s.
+- In that isolated tree, changing a baseline workflow's bytes caused the preservation assertion to fail; deleting it caused FileNotFoundError. No repository workflow or test was modified by these probes.
+
+Cumulative cold-review budget after this complete report: two comprehensive passes and two focused correction rounds. No focused rounds remain. Earlier unchanged work retains its applicable coverage. If another correction needs cold review, docs/agents/pull-requests.md rule 8 requires saving unpublished work under rule 12 and handing off to Hari; a new session does not reset the budget. Final-head CI and hosted review, Claude head review including the cap-covered choices, Hari's merge and a separately approved post-merge diagnostic trial remain mandatory separate gates. No Azure operation, live evidence access or live experiment was performed.
+
+## Claude review-comment dispositions
+
+All eight comments are addressed within the approved execution scope. No existing workflow, protocol sequence, policy value, verdict rule or scientific text changes.
+
+- A1: replace the replay theory's wall-clock readiness race with virtual time, retaining the actual replay assertions and separate late-readiness boundaries.
+- A2: distinguish ambiguous storage outcomes/duplicate publication from local validation and observed read-back mismatch, using only the existing failure names.
+- A3: retain the startup identity-mismatch cause if cleanup also fails; report the cleanup observation independently without adding a signal request.
+- A4: document that abrupt watchdog exit bypasses managed cleanup and that deployed child cleanup depends on container/PID-namespace lifecycle not verified in the trial. No new containment claim or safety mechanism is added.
+- A5: list all existing shared-file hand-offs and their integrity limits, including the control checkpoint/release path and the child-originated timeout artifacts.
+- A6: make the non-Linux preflight-errno test assert platform rejection, rather than returning without an assertion.
+- B1: add a reference table before the approved wire text, resolving item 2, the item-5 file, item 9 and item 11 to implementation files. The approved verbatim sections remain unchanged.
+- B2: explain the successor collection boundary's existing termination-unknown label and safety stop; preserve the closed failure-name list and safety handling.
+
+Resumed verification on the working tree based on `7217ce4d955e3a77a26ec31278a82f61d5d31841`:
+
+- Pinned .NET SDK 10.0.402 restored from official release metadata with SHA-512 verification. The repository's pinned offline tool installer and `npm ci --ignore-scripts` succeeded. Managed Docker was available; no Azure identity was used.
+- Release LoadGen.Tests build passed with zero warnings/errors in 11.62 s. All 301 abrupt-path tests passed with zero errors, failures, skips or not-run cases in 11.644 s. The publication cases cover existing object, transport/cancellation, missing read-back, unknown invalid data, known size rejection, byte mismatch, duplicate publication and successful read-back. Startup cases retain the original cause alongside target/native cleanup failures; the replay assertion uses virtual time.
+- The fresh worker passed eight tests; its independent Python checker passed ten tests in 0.255 s and printed `b10_abrupt_produced_bytes_checked`. These bytes preceded the final narrow read-back exception filter; the whole host acceptance below regenerates them against the final correction. A first checker launch used an incorrect local interpreter path; the explicit pinned interpreter succeeded. This is the previously recorded tool-path failure class, not a product/test failure.
+- Documentation tests passed all 28 cases with zero failures/skips. Documentation checks reported the same eight unchanged-file warnings and no changed-file warning.
+- Scripted checks found nine correction paths, all within the already approved file map. Existing workflow/mirror, scientific and mutation-project bytes are unchanged. The approved wire/policy/failure sections are byte-identical to the prior reviewed head. ASCII punctuation and `git diff --check` passed.
+
+Source checks for the new explanations and classification tests: [.NET 10 Environment.Exit](https://learn.microsoft.com/en-us/dotnet/api/system.environment.exit?view=net-10.0), [Linux pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html), [Azure.Storage.Blobs 12.30.1 UploadAsync](https://github.com/Azure/azure-sdk-for-net/blob/Azure.Storage.Blobs_12.30.1/sdk/storage/Azure.Storage.Blobs/src/BlobClient.cs#L855-L898), and [Azure.Core 1.63.0 RequestFailedException](https://github.com/Azure/azure-sdk-for-net/blob/Azure.Core_1.63.0/sdk/core/Azure.Core/src/RequestFailedException.cs#L47-L89). The synthetic duplicate/missing status-code examples use the [Blob service error-code table](https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-error-codes). The SDK source confirms create-only upload throws for an existing object and uses `IfNoneMatch`; the correction does not claim that an arbitrary transport exception proves the remote write outcome.
+
+- `./scripts/verify-dotnet.sh` passed on the corrected tree with locked restore, the Release solution build, architecture checks, checked reports and warning-as-error control. Measured passing counts: Architecture 16, Enrichment 56, Kafka 486, LoadGen 1521, Scenarios 340 and Verifier 7389. The verifier report records zero failures/skips and duration 2m 57s 839ms. Logs and reports are outside the repository at `/tmp/parchwell-dotnet-verification.nP3uC0l8`.
+- The first whole-host launch stopped before tests because the restored tool environment omitted `PARCHWELL_TOOLS_DIRECTORY`. Supplying the already installed pinned-tools directory resolves the launcher prerequisite; no repository script or assertion changed. This is the same recorded tool-environment failure class as the earlier missing tool path.
+
+- The corrected whole host command passed: `time -p timeout 900 bash charts/parchwell/tests/check-loadgen-host.sh`, with the pinned tools environment loaded. Bash measured real 84.61 s, user 54.99 s and system 15.91 s. The abrupt host checks accepted the two rendered environments, rejected five invalid inputs and completed the newly generated production-byte bridge. The unchanged 900 s limit was respected.
+- No new product verification-failure root was observed in this continuation. The two tool-environment launch errors above belong to the existing tool-path/configuration root; they were corrected without changing repository commands or assertions. Historical cap accounting and the prior handoff remain recorded; this continuation is bounded by the user's correction request, not a reset of that ledger.

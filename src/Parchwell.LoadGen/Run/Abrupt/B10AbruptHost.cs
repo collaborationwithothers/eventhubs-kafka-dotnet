@@ -121,6 +121,16 @@ internal static class B10AbruptHost
 
     internal static int ReportFailure(Exception exception, TextWriter error)
     {
+        if (exception is OwnedProducerProcess.StartupException startupFailure)
+        {
+            error.WriteLine(JsonSerializer.Serialize(new
+            {
+                failure = startupFailure.Message,
+                cleanup_failure = startupFailure.CleanupFailure?.Message,
+                cleanup_signal_observation = (startupFailure.CleanupFailure as OwnedProducerProcess.SignalException)?.Observation
+            }, B10AbruptWire.JsonOptions));
+            return 1;
+        }
         if (exception is OwnedProducerProcess.SignalException signalFailure)
         {
             error.WriteLine(JsonSerializer.Serialize(new
