@@ -120,12 +120,17 @@ internal static class B10AbruptHost
 
     internal static int ReportFailure(Exception exception, TextWriter error)
     {
+        string failure = B10AbruptSupervisor.FailureName(exception);
+        string exceptionType = exception.GetType().FullName ?? exception.GetType().Name;
         if (exception is OwnedProducerProcess.StartupException startupFailure)
         {
             error.WriteLine(JsonSerializer.Serialize(new
             {
-                failure = startupFailure.Message,
-                cleanup_failure = startupFailure.CleanupFailure?.Message,
+                failure,
+                exception_type = exceptionType,
+                cleanup_failure = startupFailure.CleanupFailure is { } cleanupFailure ? B10AbruptSupervisor.FailureName(cleanupFailure) : null,
+                cleanup_exception_type = startupFailure.CleanupFailure is { } cleanupException
+                    ? cleanupException.GetType().FullName ?? cleanupException.GetType().Name : null,
                 cleanup_signal_observation = (startupFailure.CleanupFailure as OwnedProducerProcess.SignalException)?.Observation
             }, B10AbruptWire.JsonOptions));
             return 1;
@@ -134,16 +139,16 @@ internal static class B10AbruptHost
         {
             error.WriteLine(JsonSerializer.Serialize(new
             {
-                failure = signalFailure.Message,
+                failure,
+                exception_type = exceptionType,
                 signal_observation = signalFailure.Observation
             }, B10AbruptWire.JsonOptions));
             return 1;
         }
-        if (exception is OperationCanceledException) { error.WriteLine("b10_abrupt_deadline_exhausted"); return 1; }
-        string failure = exception.Message.StartsWith("b10_abrupt_", StringComparison.Ordinal) || exception.Message.StartsWith("kill_too_", StringComparison.Ordinal)
-            ? exception.Message : "b10_abrupt_configuration_invalid";
+        if (failure == "kill_too_late" && exception.Message == "kill_too_late:no_unconfirmed_attempt") failure = "kill_too_late:no_unconfirmed_attempt";
         error.WriteLine(failure == "b10_abrupt_configuration_invalid"
-            ? failure + " validation_detail=" + B10AbruptOptions.ReadValidationDetail(exception) : failure);
+            ? failure + " validation_detail=" + B10AbruptOptions.ReadValidationDetail(exception) + " exception_type=" + exceptionType
+            : failure + " exception_type=" + exceptionType);
         return 1;
     }
 

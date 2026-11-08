@@ -134,9 +134,11 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(failure, diagnostic));
         using var emitted = JsonDocument.Parse(diagnostic.ToString());
-        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "cleanup_failure", "cleanup_signal_observation");
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "exception_type", "cleanup_failure", "cleanup_exception_type", "cleanup_signal_observation");
         Assert.Equal("b10_abrupt_child_identity_mismatch", emitted.RootElement.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+StartupException", emitted.RootElement.GetProperty("exception_type").GetString());
         Assert.Equal(cleanupFailure?.Message, emitted.RootElement.GetProperty("cleanup_failure").GetString());
+        Assert.Equal(cleanupFailure?.GetType().FullName, emitted.RootElement.GetProperty("cleanup_exception_type").GetString());
         var observation = emitted.RootElement.GetProperty("cleanup_signal_observation");
         if (cleanupFailure is OwnedProducerProcess.SignalException signalFailure)
         {
@@ -170,6 +172,78 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Given_SecretBearingStartupAndCleanupExceptions_When_HostReportsFailure_Then_EmitsClosedLabelsAndTypesOnly(bool signalCleanup)
+    {
+        const string causeMessage = "private-startup-message /private/sentinel-path private-token";
+        const string cleanupMessage = "b10_abrupt_signal_failed:private-cleanup-message /private/sentinel-path private-token";
+        var cause = Assert.Throws<IOException>((Action)(() => { throw new IOException(causeMessage); }));
+        Exception cleanup = signalCleanup
+            ? Assert.Throws<OwnedProducerProcess.SignalException>((Action)(() => { throw new OwnedProducerProcess.SignalException(cleanupMessage, new(9, -1, 13)); }))
+            : Assert.Throws<UnauthorizedAccessException>((Action)(() => { throw new UnauthorizedAccessException("private-cleanup-message /private/sentinel-path private-token"); }));
+        var failure = OwnedProducerProcess.CleanupStartupFailure(cause, () => throw cleanup);
+        Assert.NotNull(cause.StackTrace);
+        Assert.NotNull(cleanup.StackTrace);
+        Assert.Same(cause, failure.InnerException);
+        Assert.Same(cleanup, failure.CleanupFailure);
+        using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(failure, diagnostic));
+        string report = diagnostic.ToString();
+        using var emitted = JsonDocument.Parse(report);
+        var root = emitted.RootElement;
+        B10AbruptWire.ExactMembers(root, "failure", "exception_type", "cleanup_failure", "cleanup_exception_type", "cleanup_signal_observation");
+        Assert.Equal("b10_abrupt_child_identity_mismatch", root.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+StartupException", root.GetProperty("exception_type").GetString());
+        Assert.Equal(signalCleanup ? "b10_abrupt_signal_failed" : "b10_abrupt_capture_gap", root.GetProperty("cleanup_failure").GetString());
+        Assert.Equal(signalCleanup ? "Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException" : "System.UnauthorizedAccessException",
+            root.GetProperty("cleanup_exception_type").GetString());
+        var observation = root.GetProperty("cleanup_signal_observation");
+        if (signalCleanup)
+        {
+            B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
+            Assert.Equal(9, observation.GetProperty("requested_signal").GetInt32());
+            Assert.Equal(-1, observation.GetProperty("return_value").GetInt32());
+            Assert.Equal(13, observation.GetProperty("errno").GetInt32());
+            Assert.Equal(JsonValueKind.Null, observation.GetProperty("native_exception").ValueKind);
+        }
+        else Assert.Equal(JsonValueKind.Null, observation.ValueKind);
+        Assert.DoesNotContain(causeMessage, report, StringComparison.Ordinal);
+        Assert.DoesNotContain(cleanup.Message, report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-startup-message", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-cleanup-message", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("/private/sentinel-path", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-token", report, StringComparison.Ordinal);
+        Assert.DoesNotContain(cause.StackTrace, report, StringComparison.Ordinal);
+        Assert.DoesNotContain(cleanup.StackTrace, report, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("b10_abrupt_untrusted_secret", "b10_abrupt_capture_gap")]
+    [InlineData("b10_abrupt_signal_failed:private-token", "b10_abrupt_signal_failed")]
+    public void Given_SecretBearingSignalFailure_When_HostReportsFailure_Then_EmitsClosedLabelAndActualObservation(string message, string expectedFailure)
+    {
+        var exception = Assert.Throws<OwnedProducerProcess.SignalException>((Action)(() => { throw new OwnedProducerProcess.SignalException(message, new(19, -1, 3)); }));
+        Assert.NotNull(exception.StackTrace);
+        using var diagnostic = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, diagnostic));
+        string report = diagnostic.ToString();
+        using var emitted = JsonDocument.Parse(report);
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "exception_type", "signal_observation");
+        Assert.Equal(expectedFailure, emitted.RootElement.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException", emitted.RootElement.GetProperty("exception_type").GetString());
+        var observation = emitted.RootElement.GetProperty("signal_observation");
+        B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
+        Assert.Equal(19, observation.GetProperty("requested_signal").GetInt32());
+        Assert.Equal(-1, observation.GetProperty("return_value").GetInt32());
+        Assert.Equal(3, observation.GetProperty("errno").GetInt32());
+        Assert.Equal(JsonValueKind.Null, observation.GetProperty("native_exception").ValueKind);
+        Assert.DoesNotContain(message, report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-token", report, StringComparison.Ordinal);
+        Assert.DoesNotContain(exception.StackTrace, report, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -195,8 +269,9 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, diagnostic));
         string line = Assert.Single(diagnostic.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
         using var emitted = JsonDocument.Parse(line);
-        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "signal_observation");
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "exception_type", "signal_observation");
         Assert.Equal(signal == 0 ? "b10_abrupt_signal_preflight_failed" : "b10_abrupt_signal_failed", emitted.RootElement.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException", emitted.RootElement.GetProperty("exception_type").GetString());
         var observation = emitted.RootElement.GetProperty("signal_observation");
         B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
         Assert.Equal(signal, observation.GetProperty("requested_signal").GetInt32());
@@ -226,8 +301,9 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, diagnostic));
         string line = Assert.Single(diagnostic.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
         using var emitted = JsonDocument.Parse(line);
-        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "signal_observation");
+        B10AbruptWire.ExactMembers(emitted.RootElement, "failure", "exception_type", "signal_observation");
         Assert.Equal(signal == 0 ? "b10_abrupt_signal_preflight_failed" : "b10_abrupt_signal_failed", emitted.RootElement.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException", emitted.RootElement.GetProperty("exception_type").GetString());
         var observation = emitted.RootElement.GetProperty("signal_observation");
         B10AbruptWire.ExactMembers(observation, "requested_signal", "return_value", "errno", "native_exception");
         Assert.Equal(signal, observation.GetProperty("requested_signal").GetInt32());
@@ -326,7 +402,7 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
             var failure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost(directory, "/usr/share/dotnet/dotnet"));
             using var errors = new StringWriter(CultureInfo.InvariantCulture);
             Assert.Equal(1, B10AbruptHost.ReportFailure(failure, errors));
-            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostProcessPathMismatch" + Environment.NewLine, errors.ToString());
+            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostProcessPathMismatch exception_type=System.InvalidOperationException" + Environment.NewLine, errors.ToString());
             ChildCommand command = ChildCommand.ForRunningApphost(directory, expected);
             Assert.Equal(expected, command.FileName);
             Assert.Equal(["--b10-abrupt-child"], command.Arguments);
@@ -342,7 +418,7 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         var failure = Assert.Throws<InvalidOperationException>(() => ChildCommand.ForRunningApphost(directory, Path.Combine(directory, "Parchwell.LoadGen")));
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(failure, errors));
-        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostMissing" + Environment.NewLine, errors.ToString());
+        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=ApphostMissing exception_type=System.InvalidOperationException" + Environment.NewLine, errors.ToString());
     }
 
     internal static B10AbruptOptions Options(string bindingPath = "/work/start-line.json") => B10AbruptOptions.Read(new Dictionary<string, string>

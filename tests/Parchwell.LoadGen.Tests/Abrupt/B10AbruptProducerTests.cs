@@ -22,6 +22,83 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 public sealed class B10AbruptProducerTests
 {
     private static readonly string[] EventNames = ["uploaded", "ocr-started", "ocr-finished", "classified", "indexed"];
+
+    [Fact]
+    public async Task Given_OutputDirectoryCollision_When_Initializing_Then_ReportsCaptureGapBeforeConstructingProducer()
+    {
+        await using var fixture = new Fixture();
+        string path = Path.Combine(fixture.Root, "abrupt-child");
+        await File.WriteAllBytesAsync(path, [1], TestContext.Current.CancellationToken);
+
+        var exception = Assert.Throws<IOException>(() => fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options));
+
+        Assert.Equal(0, fixture.Constructions);
+        AssertCaptureGapReport(exception, "b10_abrupt_capture_gap exception_type=System.IO.IOException", path);
+    }
+
+    [Fact]
+    public async Task Given_ExistingDurableDestination_When_Writing_Then_ReportsCaptureGapAndPreservesExistingBytes()
+    {
+        await using var fixture = new Fixture();
+        string path = Path.Combine(fixture.Root, "private-existing-output.bin");
+        byte[] retained = [1, 2, 3];
+        await File.WriteAllBytesAsync(path, retained, TestContext.Current.CancellationToken);
+
+        var exception = await Assert.ThrowsAsync<IOException>(() => B10AbruptProducer.WriteDurableAsync(
+            path, [4, 5], TestContext.Current.CancellationToken));
+
+        Assert.Equal(retained, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
+        AssertCaptureGapReport(exception, "b10_abrupt_capture_gap exception_type=System.IO.IOException", path);
+    }
+
+    [Fact]
+    public async Task Given_NewDurableDestination_When_Writing_Then_RetainsExactBytes()
+    {
+        await using var fixture = new Fixture();
+        string path = Path.Combine(fixture.Root, "new-output", "payload.bin");
+        byte[] bytes = [1, 2, 3];
+
+        await B10AbruptProducer.WriteDurableAsync(path, bytes, TestContext.Current.CancellationToken);
+
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void Given_UnauthorizedLocalAccess_When_Reported_Then_EmitsTypeWithoutPrivateMessageOrPath()
+    {
+        const string path = "/private-output/synthetic-token";
+        var exception = new UnauthorizedAccessException("private-access-message " + path);
+
+        AssertCaptureGapReport(exception, "b10_abrupt_capture_gap exception_type=System.UnauthorizedAccessException", path);
+    }
+
+    [Fact]
+    public void Given_FrozenReleaseUtc_When_InnerClockAdvancesOneDay_Then_ResumingExposesAdvancedUtc()
+    {
+        var release = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+        var inner = new ReleaseBoundaryClock(release);
+        var clock = new ReleaseWindowClock(inner);
+
+        Assert.Equal(release, clock.FreezeUtc());
+        inner.Advance(TimeSpan.FromDays(1));
+        Assert.Equal(release, clock.GetUtcNow());
+
+        clock.ResumeUtc();
+        Assert.Equal(release.AddDays(1), clock.GetUtcNow());
+    }
+
+    [Fact]
+    public async Task Given_SuppliedClock_When_ObservingStatistics_Then_ReceivedAtUsesItsUtc()
+    {
+        var received = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+        var clock = new ReleaseBoundaryClock(received);
+        await using var fixture = new Fixture(clock: clock);
+
+        Assert.Equal(received, fixture.Observe().ReceivedAt);
+        clock.Advance(TimeSpan.FromDays(1));
+        Assert.Equal(received.AddDays(1), fixture.Observe().ReceivedAt);
+    }
+
     [Fact]
     public async Task Given_PreparedAcknowledgementHeld_When_Invoking_Then_NoNativeCallOccurs()
     {
@@ -391,7 +468,7 @@ public sealed class B10AbruptProducerTests
             Assert.NotNull(originalCallback);
             originalCallback(Report());
             Assert.Equal(2, fixture.Native.Calls.Count);
-            return Task.FromResult(TimeProvider.System.GetUtcNow().AddMilliseconds(5));
+            return Task.FromResult(fixture.Clock.FreezeUtc());
         };
         fixture.Send = (kind, data) =>
         {
@@ -565,6 +642,15 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(["prepared", "accepted", "terminal"], fixture.Events.Select(item => item.Kind));
     }
 
+    private static void AssertCaptureGapReport(Exception exception, string expectedLine, string privatePath)
+    {
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
+        Assert.Equal(expectedLine + Environment.NewLine, errors.ToString());
+        Assert.DoesNotContain(privatePath, errors.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(exception.Message, errors.ToString(), StringComparison.Ordinal);
+    }
+
     internal static DeliveryReport<byte[], byte[]> Report(ErrorCode code = ErrorCode.NoError, PersistenceStatus? status = PersistenceStatus.Persisted) => new()
     { Error = new Error(code), Status = status ?? (PersistenceStatus)(-1) };
 
@@ -597,6 +683,7 @@ public sealed class B10AbruptProducerTests
         internal RunIdentity Identity { get; } = new("B10", "C1", "run-1", "pod-1", "pod-1", "client");
         internal RunExecutionOptions Options { get; }
         internal B10AbruptProducer Runner { get; }
+        internal ReleaseWindowClock Clock { get; }
         internal B10AbruptStatistics Statistics { get; }
         internal NativeProducer Native { get; }
         internal RunEvidenceSession? Evidence { get; }
@@ -604,7 +691,7 @@ public sealed class B10AbruptProducerTests
         internal List<(string Kind, JsonElement Data)> Events { get; } = [];
         internal List<JsonElement> Seals { get; } = [];
         internal Func<string, JsonElement, Task<long>> Send { get; set; } = (_, _) => Task.FromResult(1L);
-        internal Func<string, Task<DateTimeOffset>> Release { get; set; } = _ => Task.FromResult(TimeProvider.System.GetUtcNow().AddMilliseconds(5));
+        internal Func<string, Task<DateTimeOffset>> Release { get; set; }
         internal TaskCompletionSource Accepted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal int Constructions { get; private set; }
         internal int Releases { get; private set; }
@@ -614,6 +701,8 @@ public sealed class B10AbruptProducerTests
 
         internal Fixture(long sequence = 0, TimeProvider? clock = null, bool captureEvidence = false)
         {
+            Clock = new ReleaseWindowClock(clock ?? TimeProvider.System);
+            Release = _ => Task.FromResult(Clock.FreezeUtc());
             Directory.CreateDirectory(Root);
             Options = new RunExecutionOptions(8, 256, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(1), 16384, 1048576, 1048576, Root, "document-events", ["broker"], false,
@@ -624,14 +713,16 @@ public sealed class B10AbruptProducerTests
             if (captureEvidence)
                 Evidence = new RunEvidenceSession(Identity,
                     new RunEvidenceOptions(Path.Combine(Root, "capture"), 16, 16384, 1048576, 16, TimeSpan.FromSeconds(1)),
-                    clock ?? TimeProvider.System);
+                    Clock);
             var wireIdentity = new B10AbruptWire.Identity("run-1", "B10", "C1", "C1", 1, new string('a', 40),
                 "image@sha256:" + new string('b', 64), "run-1-loadgen", "pod-1", "uid-1", "pod-1", null);
-            Runner = new B10AbruptProducer(() => { Constructions++; return native; }, clock ?? TimeProvider.System, Statistics,
+            Runner = new B10AbruptProducer(() => { Constructions++; return native; }, Clock, Statistics,
                 cohort => new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(Root, cohort, "ledger.jsonl"),
                     Path.Combine(Root, cohort, "manifest.json"), 16, 16384, 1048576, 1048576, TimeSpan.FromSeconds(1))),
                 async (kind, data, _) =>
                 {
+                    if (kind == "prepared" && data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null)
+                        Clock.ResumeUtc();
                     Events.Add((kind, data));
                     if (kind == "accepted") Accepted.TrySetResult();
                     return await Send(kind, data);
@@ -648,7 +739,7 @@ public sealed class B10AbruptProducerTests
 
         internal KafkaStatisticsReport Observe()
         {
-            var report = StatisticsReport(statisticsIdentity);
+            var report = StatisticsReport(statisticsIdentity) with { ReceivedAt = Clock.GetUtcNow() };
             Statistics.Observe(report);
             return report;
         }
@@ -673,6 +764,32 @@ public sealed class B10AbruptProducerTests
             reportStop.Dispose();
             if (Evidence is not null) await Evidence.DisposeAsync();
             Directory.Delete(Root, true);
+        }
+    }
+
+    private sealed class ReleaseWindowClock(TimeProvider inner) : TimeProvider
+    {
+        private readonly object gate = new();
+        private DateTimeOffset? frozenUtc;
+        public override long TimestampFrequency => inner.TimestampFrequency;
+        public override long GetTimestamp() => inner.GetTimestamp();
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            inner.CreateTimer(callback, state, dueTime, period);
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (gate) return frozenUtc ?? inner.GetUtcNow();
+        }
+        internal DateTimeOffset FreezeUtc()
+        {
+            lock (gate)
+            {
+                frozenUtc = inner.GetUtcNow();
+                return frozenUtc.Value;
+            }
+        }
+        internal void ResumeUtc()
+        {
+            lock (gate) frozenUtc = null;
         }
     }
 
