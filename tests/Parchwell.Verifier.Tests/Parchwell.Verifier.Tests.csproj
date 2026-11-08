@@ -18,6 +18,6 @@
     </None>
   </ItemGroup>
   <ItemGroup Condition="'$(ParchwellVerifierMutationOnly)' == 'true'">
-    <Compile Remove="Component/**/*.cs;Support/ComponentEvidenceBuilder.cs;Host/VerifyRunHandlerTests.cs;Host/VerifierHostTests.cs" />
+    <Compile Remove="Component/**/*.cs;Support/ComponentEvidenceBuilder.cs;Host/VerifyRunHandlerTests.cs;Host/VerifierHostTests.cs;Host/B10AbruptRejectionTests.cs" />
   </ItemGroup>
 </Project>

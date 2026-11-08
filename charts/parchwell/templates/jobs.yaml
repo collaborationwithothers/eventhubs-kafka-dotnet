@@ -10,6 +10,7 @@
 {{- else -}}
 {{- $r := .Values.runtime -}}
 {{- $mode := $r.mode -}}
+{{- $abrupt := $r.b10_abrupt_diagnostic -}}
 {{- $phaseMode := has $mode (list "judge" "b10-sweep-line" "b10-sweep") -}}
 {{- $role := include "parchwell.role" . -}}
 {{- $job := include "parchwell.jobName" . -}}
@@ -73,6 +74,9 @@ spec:
         - name: {{ $role }}
           image: {{ index $r (printf "%s_image" $role) | quote }}
           imagePullPolicy: IfNotPresent
+          {{- if $abrupt }}
+          args: [{{ ternary "--b10-abrupt-supervisor" "--b10-abrupt-successor" (eq $mode "loadgen") | quote }}]
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -104,7 +108,27 @@ spec:
               value: {{ $.Values.scenario_id | quote }}
             - name: Telemetry__RunId
               value: {{ $r.run_id | quote }}
-            {{- if eq $role "loadgen" }}
+            {{- if $abrupt }}
+            {{- range $key, $value := $r.bounds.b10_abrupt }}
+            - name: {{ printf "B10Abrupt__%s" $key | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
+            {{- range $key, $value := dict "Enabled" "true" "Purpose" "diagnostic_trial" "Role" (ternary "supervisor" "successor" (eq $mode "loadgen")) "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "SourceCommit" $r.source_commit "ImageReference" $r.loadgen_image "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "ScenarioSourceRoot" "/app" "OutputRoot" "/work/loadgen" }}
+            - name: {{ printf "B10Abrupt__%s" $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: B10Abrupt__PodName
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: B10Abrupt__PodUid
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+            {{- if eq $mode "loadgen" }}
+            - name: B10Abrupt__StartLineBindingPath
+              value: /bindings/b10-abrupt/start-line.json
+            {{- else }}
+            - name: B10Abrupt__PredecessorBindingPath
+              value: /bindings/b10-abrupt/predecessor.json
+            {{- end }}
+            {{- else if eq $role "loadgen" }}
             {{- range $section := list "loadgen" "scenario_parsing" }}{{ range $key, $value := index $r.bounds $section }}
             - name: {{ printf "LoadGen__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
@@ -195,11 +219,24 @@ spec:
               mountPath: /work
             - name: tmp
               mountPath: /tmp
+            {{- if $abrupt }}
+            - name: b10-abrupt-binding
+              mountPath: /bindings/b10-abrupt
+              readOnly: true
+            {{- end }}
       volumes:
         - name: work
           emptyDir: {sizeLimit: 8Gi}
         - name: tmp
           emptyDir: {}
+        {{- if $abrupt }}
+        - name: b10-abrupt-binding
+          configMap:
+            name: {{ $r.b10_abrupt_binding_configmap | quote }}
+            items:
+              - key: binding.json
+                path: {{ ternary "start-line.json" "predecessor.json" (eq $mode "loadgen") | quote }}
+        {{- end }}
 {{- end }}
 
 {{- end }}

@@ -60,6 +60,10 @@ The writer uses bounded non-waiting admission and a separate background file wri
 
 Unit tests cover in-memory generation, codecs, inventory and reconciliation. Filesystem cases are component tests in isolated temporary directories. Local tests establish harness behavior, with no live result, verifier totals or A01 verdict.
 
+## Inactive B10 abrupt diagnostic execution
+
+Diagnostic-only; not active for scientific publication. The arguments `--b10-abrupt-supervisor`, `--b10-abrupt-child`, `--b10-abrupt-successor` and `--validate-b10-abrupt-configuration` run the B10 abrupt diagnostic of ADR-021 in [the blueprint](../blueprint.md) only when chart value `runtime.b10_abrupt_diagnostic` is true, for B10, C1, repeat 1 and purpose `diagnostic_trial`. Its wire, policy and failure names are in the [B10 abrupt diagnostic contract](b10-abrupt-contract.md). Its output is published under `b10-abrupt-diagnostic/`, never under `producer/`, and no verifier, judge or candidate path accepts it.
+
 ## Application retry (B10)
 
 The load generator retries a send only in B10 repeats, because [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) applies only to repeats of scenario B10. Every other scenario invokes each scheduled event at most once.
@@ -73,6 +77,8 @@ A retry is a new invocation. It takes the next inventory ordinal and the attempt
 Worker status and `first_unexecuted_ordinal` follow schedule progress, not the invocation count, so a complete schedule with retries is `complete`. Permitted timeout rows still raise the `async_delivery_failure_observed` guard observation, and `possibly_persisted_observed` when their status is `PossiblyPersisted`. ADR-021 has the verifier judge the rows behind those markers. A restarted instance does not retry; it resends as "Restarted instance (B10)" below defines.
 
 ## Restarted instance (B10)
+
+This section describes the legacy schema-one clean restart. It is not the restart protocol of ADR-021's redesign; see "Inactive B10 abrupt diagnostic execution" above.
 
 ADR-021 in [the blueprint](../blueprint.md) lets a B10 repeat run a second load generator instance after the first has ended. It resends only sends the first instance reported as timed out. "Second load generator Job (B10)" below defines how it starts and reads the first instance's published evidence.
 
@@ -92,6 +98,8 @@ Its manifest ends with a `restart` object: `predecessor_instance_id`, the first 
 Checks 1 to 6 need only the manifest. The second instance applies check 7 at read-back.
 
 ## Second load generator Job (B10)
+
+This section describes the legacy schema-one clean restart. It is not the restart protocol of ADR-021's redesign; see "Inactive B10 abrupt diagnostic execution" above.
 
 Chart mode `loadgen2` runs the second instance as Job `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`, otherwise rendered as `loadgen`. That name alone marks the second instance. Configuration validation rejects it outside B10. The host reports only the generic invalid-inputs message; `restart_instance_requires_b10` is the reason the tests assert, not a line in the pod log.
 

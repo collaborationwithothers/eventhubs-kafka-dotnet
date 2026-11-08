@@ -1,6 +1,7 @@
 """Offline contract tests for the shared scenario workflow and batch smoke."""
 from pathlib import Path
 import importlib.util
+import hashlib
 import json
 import os
 import re
@@ -658,6 +659,149 @@ esac
         self.assertTrue(any(identifier.startswith('test_phase.') for identifier in identifiers), identifiers)
         self.assertTrue(any(identifier.startswith('test_workflow.') for identifier in identifiers), identifiers)
         self.assertFalse(any(isinstance(test, unittest.loader._FailedTest) for test in tests), identifiers)
+
+
+class B10AbruptWorkflowTests(unittest.TestCase):
+    # SHA-256 of exact workflow bytes at merged PR1 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef.
+    # Actions checks out one commit; preservation must not require Git history.
+    BASE_WORKFLOWS = {
+        '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
+        '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
+        '.github/workflows/dotnet-verification.yml': '7c2e0283f2cffa977760de381be619e233eebcb770524ed6940791c71f7ea017',
+        '.github/workflows/scenario.yml': 'c3323aca63fa977f75129ed9050c2d30f98a49ae18104d3f88240d40ecce7099',
+        '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
+        '.github/workflows/verifier-c5-mutation.yml': 'c483ee439a2682fb6bc4a578b69b014c45e39ae01c21f2f17940196ae6780f4e',
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.path = REPO / '.github/workflows/b10-abrupt-trial.yml'
+        cls.workflow = yaml.load(cls.path.read_text(), Loader=UniqueLoader)
+        cls.scenario = yaml.load((REPO / '.github/workflows/scenario.yml').read_text(), Loader=UniqueLoader)
+        cls.trial = cls.workflow['jobs']['trial']
+        cls.stop = cls.workflow['jobs']['stop']
+
+    @staticmethod
+    def steps(job):
+        return {step['id']: step for step in job['steps'] if 'id' in step}
+
+    def test_manual_confirmation_and_fixed_diagnostic_selection(self):
+        self.assertEqual({'workflow_dispatch': {'inputs': {'confirm_diagnostic_trial': {
+            'description': 'Confirm the single diagnostic-only B10 restart trial',
+            'type': 'boolean', 'required': 'true', 'default': 'false'}}}}, self.workflow['on'])
+        self.assertEqual({'contents': 'read', 'id-token': 'write'}, self.workflow['permissions'])
+        self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.workflow['concurrency'])
+        self.assertEqual(['trial', 'stop'], list(self.workflow['jobs']))
+        self.assertNotIn('outputs', self.trial)
+        for name, value in {'PARCHWELL_SCENARIO': 'B10', 'PARCHWELL_PHASE': 'C1',
+                            'PARCHWELL_CONFIGURATION': 'C1', 'PARCHWELL_RUN_KIND': 'smoke',
+                            'PARCHWELL_PURPOSE': 'diagnostic_trial', 'PARCHWELL_REPEAT': '1',
+                            'PARCHWELL_B10_ABRUPT_DIAGNOSTIC': 'true',
+                            'PARCHWELL_CONFIRM_DIAGNOSTIC_TRIAL': "${{ inputs.confirm_diagnostic_trial && 'true' || 'false' }}"}.items():
+            self.assertEqual(value, self.trial['env'][name])
+        self.assertNotIn('needs', self.trial)
+        self.assertEqual(['trial'], self.stop['needs'])
+        self.assertEqual('always()', self.stop['if'])
+        for job, environment in ((self.trial, 'parchwell-scenarios'), (self.stop, 'parchwell-sweeper')):
+            self.assertEqual(environment, job['environment'])
+            self.assertEqual('${{ vars.PARCHWELL_RUNNER_LABEL }}', job['runs-on'])
+            self.assertEqual('360', job['timeout-minutes'])
+
+    def test_guards_before_login_with_real_shell_and_no_cloud(self):
+        synthetic_uuid = '00000000-0000-0000-0000-000000000001'
+        for job in (self.trial, self.stop):
+            steps = job['steps']
+            self.assertEqual('guard', steps[0]['id'])
+            self.assertLess(0, next(i for i, step in enumerate(steps) if step.get('id') == 'login'))
+            self.assertIn('test "$GITHUB_REF" = refs/heads/main', steps[0]['run'])
+        for ref, confirmation, succeeds in [('refs/heads/main', 'true', True),
+                                            ('refs/heads/main', 'false', False),
+                                            ('refs/heads/main', '', False),
+                                            ('refs/heads/untrusted', 'true', False)]:
+            with self.subTest(ref=ref, confirmation=confirmation):
+                env = dict(os.environ, GITHUB_REF=ref, PARCHWELL_CONFIRM_DIAGNOSTIC_TRIAL=confirmation,
+                           **{key: synthetic_uuid for key in ('AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID')})
+                result = subprocess.run(['bash', '-c', self.trial['steps'][0]['run']], env=env,
+                                        text=True, capture_output=True, timeout=30)
+                self.assertEqual(succeeds, result.returncode == 0, result.stderr)
+
+    def test_pinned_setup_lifecycle_and_stop_bodies_are_copied(self):
+        source = self.steps(self.scenario['jobs']['probe'])
+        actual = self.steps(self.trial)
+        copied = ('checkout', 'tools', 'login', 'azure_session', 'images', 'cluster_init',
+                  'start', 'cluster_plan', 'cluster_apply', 'ephemeral_init', 'ephemeral_plan',
+                  'ephemeral_apply', 'dns', 'credentials', 'namespace', 'delete_workload', 'destroy')
+        for identifier in copied:
+            self.assertEqual(source[identifier], actual[identifier], identifier)
+        self.assertEqual([step for step in self.scenario['jobs']['probe']['steps'] if 'id' not in step],
+                         [step for step in self.trial['steps'] if 'id' not in step])
+        self.assertEqual(self.scenario['jobs']['batch-stop']['steps'], self.stop['steps'])
+        expected_pins = {
+            'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
+            'hashicorp/setup-terraform': 'dfe3c3f87815947d99a8997f908cb6525fc44e9e',
+            'actions/setup-dotnet': 'a98b56852c35b8e3190ac28c8c2271da59106c68',
+            'azure/login': '7184910d9eb2b1c5e48f7073824a90609bb9b6d6',
+            'actions/upload-artifact': 'ea165f8d65b6e75b540449e92b4886f43607fa02',
+        }
+        for job in self.workflow['jobs'].values():
+            for step in job['steps']:
+                if 'uses' in step:
+                    action, revision = step['uses'].split('@')
+                    self.assertEqual(expected_pins[action], revision)
+        self.assertEqual(source['prepare']['env'], actual['prepare']['env'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh prepare-b10-abrupt-trial', actual['prepare']['run'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh run-b10-abrupt-trial', actual['trial']['run'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh collect-b10-abrupt-trial', actual['collect']['run'])
+        self.assertEqual("always() && steps.prepare.outcome == 'success'", actual['collect']['if'])
+        self.assertLess(list(actual).index('prepare'), list(actual).index('login'))
+
+    def test_only_diagnostic_upload_and_required_steps_match(self):
+        steps = self.steps(self.trial)
+        self.assertFalse({'judge', 'candidate', 'upload_candidate', 'upload_pods', 'repeats'} & steps.keys())
+        uploads = [step for job in self.workflow['jobs'].values() for step in job['steps']
+                   if step.get('uses', '').startswith('actions/upload-artifact@')]
+        self.assertEqual([steps['upload_diagnostic']], uploads)
+        self.assertEqual('${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}/b10-abrupt-diagnostic', uploads[0]['with']['path'])
+        self.assertEqual('b10-abrupt-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}', uploads[0]['with']['name'])
+        for job in (self.trial, self.stop):
+            indexed = self.steps(job)
+            report = indexed['report']
+            self.assertEqual('always()', report['if'])
+            required = report['env']['REQUIRED_STEPS'].split() + report['env']['WORKLOAD_STEPS'].split()
+            self.assertEqual(len(required), len(set(required)))
+            self.assertEqual(set(indexed) - {'login', 'report'}, set(required))
+
+    def test_success_failure_timeout_and_cancelled_paths_keep_cleanup(self):
+        def allowed(expression, outcomes):
+            expression = expression.replace('always()', 'True').replace('&&', ' and ')
+            for name, value in outcomes.items():
+                expression = expression.replace('steps.' + name + '.outcome', repr(value))
+            return eval(expression, {'__builtins__': {}}, {})
+
+        steps = self.steps(self.trial)
+        stop = self.steps(self.stop)
+        for status in ('success', 'failure', 'timed_out', 'cancelled'):
+            with self.subTest(trial=status):
+                outcomes = {name: 'success' for name in steps}
+                outcomes['trial'] = status
+                for name in ('collect', 'upload_diagnostic', 'delete_workload', 'destroy', 'report'):
+                    self.assertTrue(allowed(steps[name]['if'], outcomes), name)
+                self.assertTrue(allowed(self.stop['if'], outcomes))
+                self.assertTrue(allowed(stop['stop']['if'], {'stop_prepare': 'success', 'azure_session': 'success'}))
+                self.assertTrue(allowed(stop['report']['if'], {}))
+        for failed in ('prepare', 'azure_session', 'credentials'):
+            outcomes = {name: 'success' for name in steps}
+            outcomes[failed] = 'failure'
+            self.assertFalse(allowed(steps['delete_workload']['if'], outcomes))
+            self.assertEqual(failed == 'credentials', allowed(steps['destroy']['if'], outcomes))
+        for failed in ('stop_prepare', 'azure_session'):
+            outcomes = {'stop_prepare': 'success', 'azure_session': 'success', failed: 'failure'}
+            self.assertFalse(allowed(stop['stop']['if'], outcomes))
+
+    def test_mirror_and_all_preexisting_workflows_unchanged(self):
+        self.assertEqual(self.path.read_bytes(), (REPO / 'docs/operations/workflows/b10-abrupt-trial.yml.txt').read_bytes())
+        for relative, expected in self.BASE_WORKFLOWS.items():
+            self.assertEqual(expected, hashlib.sha256((REPO / relative).read_bytes()).hexdigest(), relative)
 
 
 if __name__ == '__main__':

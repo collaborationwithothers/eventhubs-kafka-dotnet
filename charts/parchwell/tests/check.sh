@@ -11,4 +11,5 @@ cd "$root"
 "$python" charts/parchwell/tests/test_chart.py
 "$python" charts/parchwell/tests/test_single_action_chart.py
 "$python" charts/parchwell/tests/test_idle_observation_chart.py
+"$python" charts/parchwell/tests/test_b10_abrupt_chart.py
 exec "$python" charts/parchwell/tests/test_probe_v2_chart.py

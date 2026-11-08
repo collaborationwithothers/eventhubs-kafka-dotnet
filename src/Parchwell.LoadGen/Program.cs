@@ -37,6 +37,21 @@ internal static class Program
     internal static async Task<int> RunAsync(string[] args, Action<IServiceCollection>? configureTestServices = null,
         TextWriter? completionOutput = null, Func<IHost>? hostFactory = null)
     {
+        if (args.Length == 1)
+        {
+            switch (args[0])
+            {
+                case "--b10-abrupt-supervisor": return await Run.Abrupt.B10AbruptHost.RunSupervisorAsync().ConfigureAwait(false);
+                case "--b10-abrupt-child": return await Run.Abrupt.B10AbruptHost.RunChildAsync().ConfigureAwait(false);
+                case "--b10-abrupt-successor": return await Run.Abrupt.B10AbruptHost.RunSuccessorAsync().ConfigureAwait(false);
+                case "--validate-b10-abrupt-configuration": return Run.Abrupt.B10AbruptHost.ValidateConfiguration();
+            }
+        }
+        if (Run.Abrupt.B10AbruptOptions.HasReservedEnvironment())
+        {
+            Console.Error.WriteLine("b10_abrupt_diagnostic_not_scientific");
+            return 1;
+        }
         if (args.Length == 1 && args[0] == "--image-smoke") return ImageSmoke();
         if (args.Length == 1 && args[0] == "--single-action-v2") return await SingleActionV2.ProbeV2Host.RunAsync(configureTestServices, hostFactory, completionOutput).ConfigureAwait(false);
         if (args.Length == 1 && args[0] == "--validate-single-action-v2-configuration") return SingleActionV2.ProbeV2Host.ValidateConfiguration();

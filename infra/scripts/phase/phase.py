@@ -258,6 +258,52 @@ class Phase:
     def candidates(self):
         return Path(require("PARCHWELL_CANDIDATE_DIRECTORY"))
 
+    def b10_abrupt(self):
+        source = Path(__file__).with_name("b10_abrupt.py")
+        spec = importlib.util.spec_from_file_location("parchwell_b10_abrupt", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.Trial(self, Failure)
+
+    def prepare_b10_abrupt_trial(self):
+        return self.b10_abrupt().prepare()
+
+    def run_b10_abrupt_trial(self):
+        return self.b10_abrupt().run()
+
+    def collect_b10_abrupt_trial(self):
+        return self.b10_abrupt().collect()
+
+    def reject_b10_abrupt_science(self, value=None):
+        def marked(document):
+            if isinstance(document, dict):
+                return (document.get("dialect") == "b10_abrupt"
+                    or document.get("purpose") == "diagnostic_trial"
+                    or document.get("b10_abrupt_diagnostic") is True
+                    or document.get("scientific_admissible") is False
+                    or any(marked(item) for item in document.values()))
+            return isinstance(document, list) and any(marked(item) for item in document)
+        frozen = {}
+        private = os.environ.get("PARCHWELL_PRIVATE_DIRECTORY")
+        if private and (Path(private) / "phase.json").exists():
+            frozen = self.read("phase.json")
+        selected = (os.environ.get("PARCHWELL_B10_ABRUPT_DIAGNOSTIC", "false") != "false"
+                    or os.environ.get("PARCHWELL_PURPOSE") == "diagnostic_trial"
+                    or any(key.lower().startswith("b10abrupt__") for key in os.environ))
+        if selected or marked(frozen) or marked(value):
+            directory = os.environ.get("PARCHWELL_CANDIDATE_DIRECTORY")
+            if directory:
+                for name in ("candidate.json", "candidate.json.partial"):
+                    (Path(directory) / name).unlink(missing_ok=True)
+            artifacts = os.environ.get("PARCHWELL_ARTIFACT_DIRECTORY")
+            if artifacts and (Path(artifacts) / "phase-status.json").is_file():
+                state = self.state()
+                state["candidate"] = None
+                self.save_state(state)
+            if os.environ.get("GITHUB_OUTPUT"):
+                append_lines(os.environ["GITHUB_OUTPUT"], ["full_allowed=false"])
+            raise Failure("b10_abrupt_diagnostic_not_scientific", 1)
+
     def probe_v2(self):
         source = Path(__file__).with_name("probe_v2.py")
         spec = importlib.util.spec_from_file_location("parchwell_probe_v2", source)
@@ -312,6 +358,7 @@ class Phase:
             raise Failure("invalid AKS resource ID")
 
     def validate_scenario(self):
+        self.reject_b10_abrupt_science()
         if scenario() not in SCENARIOS:
             raise Failure("unsupported scenario")
         if capture_authentication_metadata():
@@ -358,6 +405,7 @@ class Phase:
         return 0
 
     def prepare(self, phase):
+        self.reject_b10_abrupt_science()
         selected = scenario()
         if selected not in SCENARIOS or phase not in SCENARIOS[selected]:
             raise Failure("unsupported phase")
@@ -604,7 +652,10 @@ class Phase:
         job = self.mode_job(phase, mode, repeat, item, configuration, action_role)
         values = self.private / f"values-{job}.json"
         rendered = self.private / f"rendered-{job}.yaml"
-        write_json(values, self.values(mode, repeat, item, configuration, action_role))
+        value_set = self.values(mode, repeat, item, configuration, action_role)
+        if phase.get("b10_abrupt_diagnostic") is True and mode in ("loadgen", "loadgen2"):
+            value_set = self.b10_abrupt().values(mode, value_set)
+        write_json(values, value_set)
         self.render_code = self.run(["helm", "template", "parchwell", "charts/parchwell", "--values", str(values)],
                                     120, output=rendered, maximum=4 * MIB)
         if self.render_code:
@@ -716,12 +767,14 @@ class Phase:
             print("::endgroup::", flush=True)
 
     def run_repeats(self):
+        self.reject_b10_abrupt_science()
         if self.read("phase.json")["scenario"] == "B10":
             return self.run_b10_repeats()
         records = [self.run_mode(mode, repeat) for repeat in SLOTS for mode in MODES]
         return int(any(record["outcome"] in BAD_OUTCOMES for record in records))
 
     def judge(self):
+        self.reject_b10_abrupt_science()
         if self.read("phase.json")["scenario"] == "B10":
             return int(self.run_mode("judge", None, absolute_deadline=self.b10_deadline())["outcome"] in BAD_OUTCOMES)
         return int(self.run_mode("judge", None)["outcome"] in BAD_OUTCOMES)
@@ -1169,7 +1222,7 @@ class Phase:
             "accepted": False, "candidate": None, "judge_completion": None})
         self.save_state(state)
 
-    def download_blob(self, name, target, maximum, deadline, container="verifier"):
+    def download_blob(self, name, target, maximum, deadline, container="verifier", minimum=1):
         previous = self.command_deadline
         self.command_deadline = deadline
         partial = Path(str(target) + ".partial")
@@ -1182,7 +1235,7 @@ class Phase:
                 return None
             data = single_action_json(properties.read_bytes())
             length, etag = data["contentLength"], data["etag"]
-            if type(length) is not int or not 0 < length <= maximum or not isinstance(etag, str) or not etag:
+            if type(length) is not int or not minimum <= length <= maximum or not isinstance(etag, str) or not etag:
                 return None
             args = ["az", "storage", "blob", "download", "--account-name", account, "--container-name", container,
                     "--name", name, "--file", str(partial), "--auth-mode", "login", "--if-match", etag,
@@ -1295,10 +1348,12 @@ class Phase:
         return accepted
 
     def check_candidate(self, content, expected=None):
+        self.reject_b10_abrupt_science()
         if not 0 < len(content) <= CANDIDATE_MAXIMUM:
             raise Failure("candidate size invalid", 1)
         try:
             candidate = strict_json(content)
+            self.reject_b10_abrupt_science(candidate)
             if not isinstance(candidate, dict):
                 raise Failure("candidate must be an object", 1)
             phase = self.read("phase.json")
@@ -1324,6 +1379,8 @@ class Phase:
                 raise Failure("candidate contract invalid", 1)
             return candidate
         except (ValueError, UnicodeError, KeyError, TypeError, Failure) as error:
+            if isinstance(error, Failure) and str(error) == "b10_abrupt_diagnostic_not_scientific":
+                raise
             raise Failure("candidate contract invalid", 1) from error
 
     def candidate_valid(self, content, expected):
@@ -1334,6 +1391,7 @@ class Phase:
             return False
 
     def candidate(self):
+        self.reject_b10_abrupt_science()
         if self.read("phase.json")["scenario"] != "B10":
             return self.candidate_download()
         previous = self.command_deadline
@@ -1353,6 +1411,7 @@ class Phase:
             self.command_deadline = previous
 
     def candidate_download(self):
+        self.reject_b10_abrupt_science()
         output = require("GITHUB_OUTPUT")
         partial = self.candidates / "candidate.json.partial"
         target = self.candidates / "candidate.json"
@@ -1400,6 +1459,8 @@ class Phase:
                     self.sleep(attempt + 1)
             raise Failure("candidate retrieval exhausted", 1)
         except (OSError, ValueError, KeyError, TypeError, UnicodeError, Failure) as error:
+            if isinstance(error, Failure) and str(error) == "b10_abrupt_diagnostic_not_scientific":
+                raise
             raise Failure("candidate retrieval failed", 1) from error
         finally:
             partial.unlink(missing_ok=True)
@@ -1411,7 +1472,7 @@ class Phase:
         selector = f"app.kubernetes.io/instance={phase['run_id']}"
         if phase["scenario"] == LEDGER_MODE:
             selector = "app.kubernetes.io/instance in (" + ",".join(f"{phase['run_id']}-{item.lower()}" for item in LEDGER_ITEMS) + ")"
-        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") else "jobs", "-n", "parchwell", "-l",
+        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") or phase.get("b10_abrupt_diagnostic") is True else "jobs", "-n", "parchwell", "-l",
                          selector, "--ignore-not-found", "--wait=false",
                          "--request-timeout=30s"], 60)
 
@@ -1458,7 +1519,9 @@ class Phase:
 
 
 def main(argv):
-    commands = {"prepare": (1, "prepare"), "prepare-stop": (0, "prepare_stop"), "allow-c3": (0, "allow_c3"),
+    commands = {"prepare-b10-abrupt-trial": (0, "prepare_b10_abrupt_trial"),
+                "run-b10-abrupt-trial": (0, "run_b10_abrupt_trial"),
+                "collect-b10-abrupt-trial": (0, "collect_b10_abrupt_trial"), "prepare": (1, "prepare"), "prepare-stop": (0, "prepare_stop"), "allow-c3": (0, "allow_c3"),
                 "validate-batch": (0, "validate_batch"), "prepare-batch": (0, "prepare_batch"),
                 "single-action-seed": (0, "single_action_seed"), "run-single-action-batch": (0, "run_single_action_batch"),
                 "validate-scenario": (0, "validate_scenario"), "allow-images": (0, "allow_images"),

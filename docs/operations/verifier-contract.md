@@ -2,6 +2,8 @@
 
 The production C5 worker supports `start-line`, `verify`, `b10-sweep`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
 
+B10 abrupt diagnostic artifacts (`schema_version 2`, `dialect b10_abrupt`, `purpose diagnostic_trial`) are rejected by every verifier reader. The verifier support that ADR-021 requires for them is not implemented yet; issue 404 plans it as its third pull request. See the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
+
 ## Single-action judgement
 
 The new mode reads captured evidence without constructing a Kafka client. Its [wire contract](single-action-contract.md) owns closed schemas, paths, receipts and bounds; [scenario declarations](scenario-contract.md#single-action-declarations) select the action. The [parent plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/210#issuecomment-6415356278) and [S2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/213#issuecomment-6425997798) authorize this closed list. The parent owns scientific decision rules; this list identifies implementation diagnostics.
