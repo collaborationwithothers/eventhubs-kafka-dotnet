@@ -1,5 +1,6 @@
-"""Thirteen offline cases; downloaded tools only validate local synthetic inputs."""
+"""Offline cases; downloaded tools only validate local synthetic inputs."""
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import tempfile
@@ -53,6 +54,50 @@ class ToolsOfflineTests(unittest.TestCase):
 
     def test_scenario_extra_pull_request_trigger_fails_check_workflows(self):
         self.scenario_workflow_fixture(lambda document: document['on'].update(pull_request=''))
+
+    def run_workflow_installer(self, directory, job, exit_status):
+        document = yaml.safe_load((ROOT / '.github/workflows/dotnet-verification.yml').read_text())
+        step = next(step for step in document['jobs'][job]['steps']
+                    if step['name'] == 'Install and verify pinned offline tools')
+        root = Path(directory)
+        installer = root / 'infra/scripts/lifecycle/install-tools.sh'
+        installer.parent.mkdir(parents=True)
+        installer.write_text('#!/bin/bash\nprintf "synthetic installer stdout\\n"\n'
+                             'printf "synthetic download error HTTP 504\\n" >&2\n'
+                             f'exit {exit_status}\n')
+        runner = root / 'runner'
+        runner.mkdir()
+        environment = dict(os.environ, RUNNER_TEMP=str(runner), GITHUB_ENV=str(root / 'env'),
+                           GITHUB_PATH=str(root / 'path'), GITHUB_STEP_SUMMARY=str(root / 'summary'))
+        result = subprocess.run(['bash', '-c', step['run']], cwd=root, env=environment,
+                                capture_output=True, text=True, timeout=30)
+        return root, runner, result
+
+    def test_workflow_installer_failure_retains_errors_and_exit_status(self):
+        for job in ('lifecycle-verification', 'terraform-verification'):
+            with self.subTest(job=job), tempfile.TemporaryDirectory() as directory:
+                root, runner, result = self.run_workflow_installer(directory, job, 22)
+                self.assertEqual(result.returncode, 22, result.stdout + result.stderr)
+                log = (runner / 'parchwell-offline-tools-install.log').read_text()
+                summary = (root / 'summary').read_text()
+                for message in ('synthetic installer stdout', 'synthetic download error HTTP 504'):
+                    self.assertIn(message, result.stdout)
+                    self.assertIn(message, log)
+                    self.assertIn(message, summary)
+                self.assertIn('exit 22', summary)
+                self.assertFalse((root / 'env').exists())
+                self.assertFalse((root / 'path').exists())
+
+    def test_workflow_installer_success_publishes_tools_without_failure_summary(self):
+        for job in ('lifecycle-verification', 'terraform-verification'):
+            with self.subTest(job=job), tempfile.TemporaryDirectory() as directory:
+                root, runner, result = self.run_workflow_installer(directory, job, 0)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn('synthetic installer stdout', (runner / 'parchwell-offline-tools-install.log').read_text())
+                tools = runner / 'parchwell-lifecycle-tools'
+                self.assertEqual((root / 'env').read_text(), f'PARCHWELL_TOOLS_DIRECTORY={tools}\n')
+                self.assertEqual((root / 'path').read_text(), f'{tools}\n{tools}/venv/bin\n')
+                self.assertFalse((root / 'summary').exists())
 
     def test_corrupted_download_never_reaches_extraction(self):
         with tempfile.TemporaryDirectory() as directory:
