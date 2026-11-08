@@ -43,6 +43,12 @@ run_tests() {
     if [[ "$name" == "Parchwell.Kafka.Tests" ]]; then
         export PARCHWELL_SPIKE_EVIDENCE_DIRECTORY="$results/spike"
     fi
+    if [[ "$name" == "Parchwell.LoadGen.Tests" ]]; then
+        run_logged "Published LoadGen fixture" "$results/publish.log" dotnet publish \
+            src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release \
+            --no-build --no-restore --output "$results/publish"
+        local -x PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST="$results/publish/Parchwell.LoadGen"
+    fi
     run_logged "$name tests" "$results/test.log" dotnet test \
         --project "$project" --configuration Release --no-build \
         --minimum-expected-tests 1 --results-directory "$results" -- \

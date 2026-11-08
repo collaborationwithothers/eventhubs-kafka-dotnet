@@ -401,7 +401,7 @@ public sealed class B10AbruptPublishedApphostTests
     public void Given_ChartSelectedPublishedApphost_When_PathGuardRuns_Then_SelectsOnlyThatChildExecutable()
     {
         string? apphost = Environment.GetEnvironmentVariable("PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST");
-        if (apphost is null) return;
+        Assert.SkipUnless(apphost is not null, "Set PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST via check-loadgen-host.sh.");
         Assert.True(File.Exists(apphost));
         Assert.Equal("Parchwell.LoadGen", Path.GetFileName(apphost));
         ChildCommand command = ChildCommand.ForRunningApphost(Path.GetDirectoryName(apphost)!, apphost);
