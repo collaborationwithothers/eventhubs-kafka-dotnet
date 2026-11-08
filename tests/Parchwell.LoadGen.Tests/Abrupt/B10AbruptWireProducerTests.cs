@@ -485,14 +485,14 @@ public sealed class B10AbruptPublisherTests
     [InlineData(403, "AuthorizationPermissionMismatch")]
     [InlineData(403, "AuthorizationServiceMismatch")]
     [InlineData(403, "AuthorizationFailure")]
-    public async Task Given_DefiniteCreateRefusal_When_Publishing_Then_FailsWithoutReadbackOrRetry(int status, string code)
+    public async Task Given_CreateRefusal_When_Publishing_Then_AmbiguousPreservesCauseWithoutReadbackOrRetry(int status, string code)
     {
         var cause = new RequestFailedException(status, "synthetic refusal", code, null);
         var storage = new Storage { CreateFailure = cause };
         var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
         var failure = await Assert.ThrowsAsync<IOException>(() => publisher.RegisterDiagnosticAsync(
             B10AbruptProcessTests.Options().Identity(), TestContext.Current.CancellationToken));
-        Assert.Equal("b10_abrupt_publication_failed", failure.Message);
+        Assert.Equal("b10_abrupt_publication_ambiguous", failure.Message);
         Assert.Same(cause, failure.InnerException);
         Assert.Equal(1, storage.Creates);
         Assert.Equal(0, storage.Reads);
@@ -508,7 +508,7 @@ public sealed class B10AbruptPublisherTests
     [InlineData(412, "ConditionNotMet")]
     [InlineData(429, "ServerBusy")]
     [InlineData(500, "InternalError")]
-    public async Task Given_OtherServiceCreateFailure_When_Publishing_Then_PreservesAmbiguity(int status, string code)
+    public async Task Given_OtherServiceCreateFailure_When_Publishing_Then_AmbiguousPreservesCauseWithoutReadbackOrRetry(int status, string code)
     {
         var cause = new RequestFailedException(status, "synthetic uncertain failure", code, null);
         var storage = new Storage { CreateFailure = cause };
