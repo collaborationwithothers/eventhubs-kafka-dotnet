@@ -407,6 +407,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         private readonly object gate = new();
         public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(1234, 123, "synthetic-boot", 42);
         public Stream Events => events;
+        public bool EventsReady() => events.Ready;
         public Stream Acknowledgements => acknowledgements;
         public bool HasExited { get; private set; }
         internal string? Failure { get; init; }
@@ -450,6 +451,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         public override bool CanWrite => true;
         public override long Length => throw new NotSupportedException();
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        internal bool Ready => (current is not null && offset < current.Length) || bytes.Reader.TryPeek(out _) || bytes.Reader.Completion.IsCompleted;
         internal void Complete() => bytes.Writer.TryComplete();
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {

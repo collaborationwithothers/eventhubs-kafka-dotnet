@@ -321,6 +321,11 @@ internal static class B10AbruptWire
         var body = new byte[(int)length];
         try { await stream.ReadExactlyAsync(body, cancellationToken).ConfigureAwait(false); }
         catch (EndOfStreamException) { throw Gap("malformed_frame"); }
+        return ReadMessageBody(body, expectedSequence);
+    }
+
+    private static Message ReadMessageBody(ReadOnlyMemory<byte> body, long expectedSequence)
+    {
         var root = Parse(body);
         ExactMembers(root, "kind", "sequence", "data");
         var sequence = Nonnegative(root.GetProperty("sequence"));
@@ -329,6 +334,69 @@ internal static class B10AbruptWire
         if (kind is not ("hello" or "prepared" or "accepted" or "synchronous_rejection" or "terminal" or "capture_gap" or "pre_acceptance_report" or "ack")) throw Gap("malformed_frame");
         ValidateData(kind, root.GetProperty("data"));
         return new(kind, sequence, root.GetProperty("data").Clone());
+    }
+
+    internal sealed class AvailableMessageReader(Stream stream, Func<bool> canRead, Action<Message> capture, long expectedSequence = 2) : IDisposable
+    {
+        private readonly SemaphoreSlim readerGate = new(1, 1);
+        private readonly byte[] header = new byte[4];
+        private int headerCount;
+        private byte[]? body;
+        private int bodyCount;
+        private long sequence = expectedSequence;
+        private bool eof;
+        private System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure;
+
+        internal async Task<bool> DrainAvailableAsync(CancellationToken cancellationToken, bool requireCompleteFrame = false)
+        {
+            await readerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                failure?.Throw();
+                while (!eof && canRead())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int count = body is null ? stream.Read(header, headerCount, header.Length - headerCount) :
+                        stream.Read(body, bodyCount, body.Length - bodyCount);
+                    if (count == 0)
+                    {
+                        if (headerCount != 0 || body is not null) throw Gap("malformed_frame");
+                        eof = true;
+                        break;
+                    }
+                    if (body is null)
+                    {
+                        headerCount += count;
+                        if (headerCount != header.Length) continue;
+                        uint length = BinaryPrimitives.ReadUInt32BigEndian(header);
+                        if (length > MaximumBodyBytes) throw Gap("frame_oversize");
+                        if (length == 0) throw Gap("malformed_frame");
+                        body = new byte[(int)length];
+                    }
+                    else
+                    {
+                        bodyCount += count;
+                        if (bodyCount != body.Length) continue;
+                        Message message = ReadMessageBody(body, sequence);
+                        sequence = checked(sequence + 1);
+                        capture(message);
+                        headerCount = 0;
+                        body = null;
+                        bodyCount = 0;
+                    }
+                }
+                if (requireCompleteFrame && (headerCount != 0 || body is not null)) throw Gap("malformed_frame");
+                return eof;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                throw;
+            }
+            finally { readerGate.Release(); }
+        }
+
+        public void Dispose() => readerGate.Dispose();
     }
 
     internal static JsonElement Parse(ReadOnlyMemory<byte> bytes, int maximum = MaximumBodyBytes)

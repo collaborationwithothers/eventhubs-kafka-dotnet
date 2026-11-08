@@ -28,16 +28,17 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         using var bindingCleanup = new FileCleanup(bindingPath);
         using var process = OwnedProducerProcess.Start(command, Options(bindingPath));
         var messages = new ConcurrentQueue<B10AbruptWire.Message>();
+        long acknowledgement = 0;
+        using var reader = new B10AbruptWire.AvailableMessageReader(process.Events, process.EventsReady, message =>
+        {
+            messages.Enqueue(message);
+            B10AbruptWire.WriteMessageAsync(process.Acknowledgements,
+                new("ack", ++acknowledgement, B10AbruptWire.Element(new { acknowledged_sequence = message.Sequence })), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        });
         var pump = Task.Run(async () =>
         {
-            long sequence = 2;
-            long acknowledgement = 0;
-            while (await B10AbruptWire.ReadMessageAsync(process.Events, sequence++, TestContext.Current.CancellationToken) is { } message)
-            {
-                messages.Enqueue(message);
-                await B10AbruptWire.WriteMessageAsync(process.Acknowledgements,
-                    new("ack", ++acknowledgement, B10AbruptWire.Element(new { acknowledged_sequence = message.Sequence })), TestContext.Current.CancellationToken);
-            }
+            while (!await reader.DrainAvailableAsync(TestContext.Current.CancellationToken))
+                await Task.Delay(1, TestContext.Current.CancellationToken);
         }, TestContext.Current.CancellationToken);
         await UntilAsync(() => messages.Count >= 3, TimeSpan.FromSeconds(10));
         output.WriteLine($"runtime={Environment.Version};os={RuntimeInformation.OSDescription};kernel={File.ReadAllText("/proc/sys/kernel/osrelease").Trim()};start={TimeProvider.System.GetUtcNow():O}");
@@ -47,7 +48,8 @@ public sealed class B10AbruptProcessTests(ITestOutputHelper output)
         Assert.Equal(0, process.RequestStop().ReturnValue);
         Assert.True(process.ConfirmStopped());
         output.WriteLine($"stopped={TimeProvider.System.GetUtcNow():O}");
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.False(process.EventsReady());
         int count = messages.Count;
         await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
         Assert.Equal(count, messages.Count);

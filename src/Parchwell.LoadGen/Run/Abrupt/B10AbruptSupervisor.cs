@@ -11,6 +11,7 @@ internal interface IB10AbruptProcess : IDisposable
 {
     OwnedProducerProcess.ProcessIdentity Identity { get; }
     Stream Events { get; }
+    bool EventsReady();
     Stream Acknowledgements { get; }
     bool HasExited { get; }
     OwnedProducerProcess.SignalObservation Stop();
@@ -26,6 +27,7 @@ internal sealed class B10AbruptOwnedProcess(OwnedProducerProcess process) : IB10
 {
     public OwnedProducerProcess.ProcessIdentity Identity => process.Identity;
     public Stream Events => process.Events;
+    public bool EventsReady() => process.EventsReady();
     public Stream Acknowledgements => process.Acknowledgements;
     public bool HasExited => process.HasExited;
     public OwnedProducerProcess.SignalObservation Stop() => process.RequestStop();
@@ -56,6 +58,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     private B10AbruptWire.Frame? _killCheckpoint;
     private IB10AbruptProcess? _child;
     private Channel<B10AbruptWire.Message>? _incoming;
+    private B10AbruptWire.AvailableMessageReader? _eventReader;
     internal IReadOnlyDictionary<string, string> ArmFailures => _armFailures;
 
     internal async Task RunAsync(CancellationToken cancellationToken)
@@ -66,7 +69,16 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         _child = child;
         _incoming = Channel.CreateBounded<B10AbruptWire.Message>(new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true, SingleWriter = true });
         using var pumpCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task pump = PumpAsync(child, _incoming.Writer, pumpCancellation.Token);
+        using var eventReader = new B10AbruptWire.AvailableMessageReader(child.Events, child.EventsReady, message =>
+        {
+            if (!_incoming.Writer.TryWrite(message))
+            {
+                journal.LatchGap("queue_full");
+                throw Failure("b10_abrupt_capture_gap");
+            }
+        });
+        _eventReader = eventReader;
+        Task pump = PumpAsync(eventReader, _incoming.Writer, pumpCancellation.Token);
         try
         {
             while (await _incoming.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
@@ -143,23 +155,31 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     }
 
     private B10AbruptCgroup.Observation? _before;
-    private async Task PumpAsync(IB10AbruptProcess child, ChannelWriter<B10AbruptWire.Message> writer, CancellationToken cancellationToken)
+    private async Task PumpAsync(B10AbruptWire.AvailableMessageReader reader, ChannelWriter<B10AbruptWire.Message> writer, CancellationToken cancellationToken)
     {
         try
         {
-            long sequence = 2; // Start has already consumed the authenticated hello.
-            while (await B10AbruptWire.ReadMessageAsync(child.Events, sequence, cancellationToken).ConfigureAwait(false) is { } message)
-            {
-                sequence = checked(sequence + 1);
-                if (!writer.TryWrite(message))
-                {
-                    journal.LatchGap("queue_full");
-                    throw Failure("b10_abrupt_capture_gap");
-                }
-            }
+            while (!await DrainAvailableAsync(reader, cancellationToken).ConfigureAwait(false))
+                await Task.Delay(TimeSpan.FromMilliseconds(1), clock, cancellationToken).ConfigureAwait(false);
             writer.TryComplete();
         }
         catch (Exception exception) { writer.TryComplete(exception); throw; }
+    }
+
+    private async Task<bool> DrainAvailableAsync(B10AbruptWire.AvailableMessageReader reader, CancellationToken cancellationToken, bool requireCompleteFrame = false)
+    {
+        try { return await reader.DrainAvailableAsync(cancellationToken, requireCompleteFrame).ConfigureAwait(false); }
+        catch (InvalidDataException exception)
+        {
+            string reason = exception.Message.StartsWith("b10_abrupt_capture_gap:", StringComparison.Ordinal) ? exception.Message.Split(':')[^1] : "writer_failed";
+            journal.LatchGap(reason);
+            throw;
+        }
+        catch (IOException)
+        {
+            journal.LatchGap("writer_failed");
+            throw B10AbruptWire.Gap("writer_failed");
+        }
     }
 
     internal async Task HandleAsync(B10AbruptWire.Message message, CancellationToken cancellationToken, bool afterKill = false)
@@ -303,7 +323,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             if (remaining < TimeSpan.Zero || !_child.ConfirmStopped(remaining, clock) || clock.GetElapsedTime(begin) > budget)
                 throw Failure("b10_abrupt_stop_unconfirmed");
             stoppedObserved = true;
-            await Task.Yield();
+            if (_eventReader is not null) await DrainAvailableAsync(_eventReader, linked.Token, requireCompleteFrame: true).ConfigureAwait(false);
             if (_incoming is not null)
                 while (_incoming.Reader.TryRead(out var message))
                 {

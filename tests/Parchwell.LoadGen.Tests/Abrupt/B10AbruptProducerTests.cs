@@ -11,6 +11,7 @@ using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
+using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Ledger;
 using Parchwell.Scenarios;
 using Xunit;
@@ -455,6 +456,48 @@ public sealed class B10AbruptProducerTests
     }
 
     [Theory]
+    [InlineData(ErrorCode.NoError)]
+    [InlineData(ErrorCode.Local_Fail)]
+    public async Task Given_DisposalErrorCallback_When_CompletingSuccessor_Then_CapturesBeforeFinalizingAndAppliesGuard(ErrorCode code)
+    {
+        var release = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+        await using var fixture = new Fixture(clock: new ReleaseBoundaryClock(release), captureEvidence: true);
+        fixture.StartReports();
+        fixture.Native.OnProduce = (_, callback) => callback(Report());
+        fixture.Native.OnDispose = () => fixture.Evidence!.CaptureError(new Error(code, "synthetic disposal callback"));
+        byte[] payload = [1, 2, 3];
+        JsonElement selection = JsonSerializer.SerializeToElement(new[] { new
+        {
+            attempt_id = "predecessor-cross_restart-0", key = "B10/run-1/C1/1/cross_restart", sequence = 0,
+            payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload)),
+            payload_base64 = Convert.ToBase64String(payload)
+        } });
+        Task<B10AbruptProducer.SuccessorArtifacts> operation = fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity,
+            fixture.Options, selection, release, TestContext.Current.CancellationToken);
+        if (code == ErrorCode.NoError)
+        {
+            var artifacts = await operation;
+            string captured = await File.ReadAllTextAsync(artifacts.Paths["request-lifecycle.jsonl"], TestContext.Current.CancellationToken);
+            Assert.Contains("synthetic disposal callback", captured, StringComparison.Ordinal);
+            Assert.All(artifacts.Paths.Values, path => Assert.True(File.Exists(path)));
+        }
+        else
+        {
+            var failure = await Assert.ThrowsAsync<InvalidDataException>(() => operation);
+            Assert.Equal("b10_abrupt_guard_failed", failure.Message);
+            Assert.Contains("native_error_callback_observed", fixture.Evidence!.GuardObservations);
+            Assert.False(File.Exists(Path.Combine(fixture.Root, "successor", "capabilities.json")));
+            Assert.False(File.Exists(Path.Combine(fixture.Root, "successor", "request-lifecycle.jsonl")));
+        }
+        Assert.Equal(1, fixture.Native.Disposals);
+        Assert.Equal(1, fixture.DisposalsAtEvidenceCompletion);
+        Assert.False(fixture.Evidence!.IsFaulted);
+        Assert.DoesNotContain("error_capture_unavailable", fixture.Evidence.Diagnostics);
+        string retained = await File.ReadAllTextAsync(Path.Combine(fixture.Root, "capture", "request-lifecycle.jsonl"), TestContext.Current.CancellationToken);
+        Assert.Contains("synthetic disposal callback", retained, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -556,6 +599,8 @@ public sealed class B10AbruptProducerTests
         internal B10AbruptProducer Runner { get; }
         internal B10AbruptStatistics Statistics { get; }
         internal NativeProducer Native { get; }
+        internal RunEvidenceSession? Evidence { get; }
+        internal int DisposalsAtEvidenceCompletion { get; private set; }
         internal List<(string Kind, JsonElement Data)> Events { get; } = [];
         internal List<JsonElement> Seals { get; } = [];
         internal Func<string, JsonElement, Task<long>> Send { get; set; } = (_, _) => Task.FromResult(1L);
@@ -567,7 +612,7 @@ public sealed class B10AbruptProducerTests
         private Task? reportTask;
         private readonly KafkaStatisticsIdentity statisticsIdentity = new("B10", "run-1", KafkaClientRole.LoadGenProducer, "client");
 
-        internal Fixture(long sequence = 0, TimeProvider? clock = null)
+        internal Fixture(long sequence = 0, TimeProvider? clock = null, bool captureEvidence = false)
         {
             Directory.CreateDirectory(Root);
             Options = new RunExecutionOptions(8, 256, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1),
@@ -576,6 +621,10 @@ public sealed class B10AbruptProducerTests
             Statistics = new B10AbruptStatistics(statisticsIdentity, ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), initialSequence: sequence);
             IProducer<byte[], byte[]> native = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProducer>();
             Native = (NativeProducer)(object)native;
+            if (captureEvidence)
+                Evidence = new RunEvidenceSession(Identity,
+                    new RunEvidenceOptions(Path.Combine(Root, "capture"), 16, 16384, 1048576, 16, TimeSpan.FromSeconds(1)),
+                    clock ?? TimeProvider.System);
             var wireIdentity = new B10AbruptWire.Identity("run-1", "B10", "C1", "C1", 1, new string('a', 40),
                 "image@sha256:" + new string('b', 64), "run-1-loadgen", "pod-1", "uid-1", "pod-1", null);
             Runner = new B10AbruptProducer(() => { Constructions++; return native; }, clock ?? TimeProvider.System, Statistics,
@@ -588,7 +637,13 @@ public sealed class B10AbruptProducerTests
                     return await Send(kind, data);
                 }, data => { Events.Add(("terminal", data)); return true; },
                 (arm, _) => { Releases++; return Release(arm); },
-                (_, seal, _) => { Seals.Add(seal); return Task.CompletedTask; }, diagnosticIdentity: wireIdentity);
+                (_, seal, _) => { Seals.Add(seal); return Task.CompletedTask; }, evidence: Evidence, diagnosticIdentity: wireIdentity,
+                completeEvidence: Evidence is null ? null : async token =>
+                {
+                    DisposalsAtEvidenceCompletion = Native.Disposals;
+                    await Evidence.CompleteAsync(null, token);
+                    return Evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(Root, "capture", name), StringComparer.Ordinal);
+                });
         }
 
         internal KafkaStatisticsReport Observe()
@@ -616,6 +671,7 @@ public sealed class B10AbruptProducerTests
             await reportStop.CancelAsync();
             if (reportTask is not null) await reportTask;
             reportStop.Dispose();
+            if (Evidence is not null) await Evidence.DisposeAsync();
             Directory.Delete(Root, true);
         }
     }
@@ -640,6 +696,7 @@ public sealed class B10AbruptProducerTests
         internal List<Message<byte[], byte[]>> Calls { get; } = [];
         internal Action<Message<byte[], byte[]>, Action<DeliveryReport<byte[], byte[]>>> OnProduce { get; set; } = (_, _) => { };
         internal Action OnFlush { get; set; } = () => { };
+        internal Action OnDispose { get; set; } = () => { };
         internal int Disposals { get; private set; }
         internal int FlushAfterKill { get; private set; }
         private bool killed;
@@ -657,7 +714,7 @@ public sealed class B10AbruptProducerTests
                     if (killed) FlushAfterKill++;
                     OnFlush();
                     return 0;
-                case "Dispose": Disposals++; return null;
+                case "Dispose": Disposals++; OnDispose(); return null;
                 default: throw new NotSupportedException(targetMethod?.Name);
             }
         }

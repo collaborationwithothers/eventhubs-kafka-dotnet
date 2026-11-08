@@ -213,6 +213,95 @@ public sealed class B10AbruptSupervisorTests
     }
 
     [Theory]
+    [InlineData("same_instance", false)]
+    [InlineData("same_instance", true)]
+    [InlineData("cross_restart", false)]
+    [InlineData("cross_restart", true)]
+    public async Task Given_TerminalAvailableBeforeStop_When_ReaderHasNotEnqueued_Then_CheckpointWaitsAndExcludesOriginal(string arm, bool inFlight)
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.PrepareAcceptedAsync(arm);
+        using var input = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), TestContext.Current.CancellationToken);
+        input.Position = 0;
+        var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
+        var captureEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseCapture = new ManualResetEventSlim(!inFlight);
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length, message =>
+        {
+            captureEntered.TrySetResult();
+            Assert.True(releaseCapture.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            Assert.True(incoming.Writer.TryWrite(message));
+        }, 9);
+        SetPrivate(fixture.Supervisor, "_incoming", incoming);
+        SetPrivate(fixture.Supervisor, "_eventReader", reader);
+        fixture.Child.OnConfirmStopped = () => stopped.TrySetResult();
+        Task<bool>? pump = inFlight ? Task.Run(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken) : null;
+        try
+        {
+            if (pump is not null) await captureEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", TestContext.Current.CancellationToken) :
+                fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
+            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            if (inFlight)
+            {
+                Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+                Assert.Equal(0, fixture.Child.Kills);
+                releaseCapture.Set();
+            }
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint);
+            Assert.Equal(arm == "same_instance" ? "b10_abrupt_control_incomplete" : "kill_too_late:no_unconfirmed_attempt", error.Message);
+            var terminal = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "terminal");
+            var sealedCheckpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+            Assert.True(terminal.Sequence < sealedCheckpoint.Sequence);
+            Assert.Empty(sealedCheckpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
+            Assert.Equal(0, fixture.Child.Kills);
+            Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal" && frame.Data.GetProperty("requested_signal").GetInt32() == 18);
+        }
+        finally
+        {
+            releaseCapture.Set();
+            if (pump is not null) await pump;
+        }
+    }
+
+    [Theory]
+    [InlineData("same_instance", 1)]
+    [InlineData("same_instance", 4)]
+    [InlineData("same_instance", 5)]
+    [InlineData("same_instance", -1)]
+    [InlineData("cross_restart", 1)]
+    [InlineData("cross_restart", 4)]
+    [InlineData("cross_restart", 5)]
+    [InlineData("cross_restart", -1)]
+    public async Task Given_PartialFrameBufferedAtStop_When_Checkpointing_Then_RejectsWithoutSealingOrResuming(string arm, int length)
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.PrepareAcceptedAsync(arm);
+        using var input = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), TestContext.Current.CancellationToken);
+        input.SetLength(length == -1 ? input.Length - 1 : length);
+        input.Position = 0;
+        var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length,
+            message => Assert.True(incoming.Writer.TryWrite(message)), 9);
+        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.False(incoming.Reader.TryPeek(out _));
+        SetPrivate(fixture.Supervisor, "_incoming", incoming);
+        SetPrivate(fixture.Supervisor, "_eventReader", reader);
+        Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", TestContext.Current.CancellationToken) :
+            fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint);
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", error.Message);
+        Assert.Contains("malformed_frame", fixture.Journal.Gaps);
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal" && frame.Data.GetProperty("requested_signal").GetInt32() is 18 or 9);
+        Assert.Equal(0, fixture.Child.Kills);
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken))).Message);
+    }
+
+    [Theory]
     [InlineData("kill", -1)] [InlineData("kill", 0)] [InlineData("kill", 1)]
     [InlineData("reap", -1)] [InlineData("reap", 0)] [InlineData("reap", 1)]
     [InlineData("eof", -1)] [InlineData("eof", 0)] [InlineData("eof", 1)]
@@ -432,21 +521,21 @@ public sealed class B10AbruptSupervisorTests
             Supervisor = new(options, Clock, Journal, new(new B10AbruptWireProducerTests.FileStorage(Path.Combine(Root, "publication")), Clock), () => Child);
             SetPrivate(Supervisor, "_child", Child);
         }
-        internal async Task AddPreparedAsync(string attempt)
+        internal async Task AddPreparedAsync(string attempt, string arm = "cross_restart")
         {
             await Supervisor.HandleAsync(new("prepared", 1, B10AbruptWire.Element(new
             {
-                attempt_id = attempt, invocation_ordinal = 0, cohort = "cross_restart", probe_id = "B10/synthetic/C1/1/cross_restart", key = "B10/synthetic/C1/1/cross_restart",
+                attempt_id = attempt, invocation_ordinal = 0, cohort = arm, probe_id = "B10/synthetic/C1/1/" + arm, key = "B10/synthetic/C1/1/" + arm,
                 sequence = 0, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
             })), TestContext.Current.CancellationToken, true);
         }
-        internal async Task PrepareAcceptedAsync()
+        internal async Task PrepareAcceptedAsync(string arm = "cross_restart")
         {
-            await AddPreparedAsync("original");
-            File.WriteAllBytes(Path.Combine(Root, "abrupt-child", "cross_restart-pre-acceptance-report.json"), [1]);
+            await AddPreparedAsync("original", arm);
+            File.WriteAllBytes(Path.Combine(Root, "abrupt-child", arm + "-pre-acceptance-report.json"), [1]);
             await Supervisor.AcceptReportAsync(B10AbruptWire.Element(new
             {
-                arm = "cross_restart", attempt_id = "original", report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
+                arm, attempt_id = "original", report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
                 report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "synthetic-first" },
                 report_sequence = 1, report_capture_utc = B10AbruptPublisher.Utc(Clock.GetUtcNow())
             }), TestContext.Current.CancellationToken);
@@ -461,6 +550,7 @@ public sealed class B10AbruptSupervisorTests
         public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, "synthetic", 1);
         internal Stream EventInput { get; set; } = Stream.Null;
         public Stream Events => EventInput;
+        public bool EventsReady() => true;
         public Stream Acknowledgements => Stream.Null;
         public bool HasExited => false;
         internal int Kills { get; private set; }

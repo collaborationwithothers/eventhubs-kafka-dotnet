@@ -368,8 +368,10 @@ internal sealed class B10AbruptProducer
             CheckGuards();
             _ = await SealProbeCohortAsync("cross_restart", "successor", drained, cancellationToken).ConfigureAwait(false);
             string directory = Path.Combine(options.OutputRoot, "successor");
+            await CleanupAsync().ConfigureAwait(false);
             IReadOnlyDictionary<string, string>? captured = completeEvidence is null ? null :
                 await completeEvidence(cancellationToken).ConfigureAwait(false);
+            CheckGuards();
             if (captured is not null)
             {
                 foreach (string name in SuccessorNames.Skip(2))
@@ -391,7 +393,6 @@ internal sealed class B10AbruptProducer
                 fatal_capture_status = "not_implemented_pr3"
             }), cancellationToken).ConfigureAwait(false);
             }
-            await CleanupAsync().ConfigureAwait(false);
             return new SuccessorArtifacts(SuccessorNames.ToDictionary(name => name, name => Path.Combine(directory, name), StringComparer.Ordinal),
                 JsonSerializer.SerializeToElement(new[] { new { attempt_id = attemptId, predecessor_attempt_id = originalId,
                     key, sequence = 0, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O", CultureInfo.InvariantCulture),

@@ -45,6 +45,33 @@ internal sealed class OwnedProducerProcess : IDisposable
     internal int Id => process.Id;
     internal bool HasExited => process.HasExited;
 
+    internal bool EventsReady()
+    {
+        var pipe = (AnonymousPipeServerStream)Events;
+        bool added = false;
+        try
+        {
+            pipe.SafePipeHandle.DangerousAddRef(ref added);
+            var descriptor = new PollDescriptor { FileDescriptor = pipe.SafePipeHandle.DangerousGetHandle().ToInt32(), Events = 1 };
+            int result = Poll(ref descriptor, 1, 0);
+            int error = result < 0 ? Marshal.GetLastPInvokeError() : 0;
+            if (result < 0 || (descriptor.ReturnedEvents & (8 | 32)) != 0)
+                throw new IOException("b10_abrupt_capture_gap:writer_failed", new System.ComponentModel.Win32Exception(error));
+            return result == 1 && (descriptor.ReturnedEvents & (1 | 16)) != 0;
+        }
+        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        { throw new IOException("b10_abrupt_capture_gap:writer_failed", exception); }
+        finally { if (added) pipe.SafePipeHandle.DangerousRelease(); }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PollDescriptor
+    {
+        internal int FileDescriptor;
+        internal short Events;
+        internal short ReturnedEvents;
+    }
+
     internal static OwnedProducerProcess Start(ChildCommand command, B10AbruptOptions options) => Start(command, options, InvokeSignal);
 
     internal static OwnedProducerProcess Start(ChildCommand command, B10AbruptOptions options, Func<int, int, SignalObservation> signal)
@@ -221,9 +248,12 @@ internal sealed class OwnedProducerProcess : IDisposable
         { return new(signal, null, null, exception.GetType().Name); }
     }
 
-#pragma warning disable SYSLIB1054 // The approved native boundary specifies DllImport without generated unsafe code.
+#pragma warning disable SYSLIB1054 // Keep the fixed Linux signal and pipe-readiness imports free of generated unsafe code.
     [DllImport("libc", EntryPoint = "kill", ExactSpelling = true, SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
     private static extern int Kill(int pid, int signal);
+
+    [DllImport("libc", EntryPoint = "poll", ExactSpelling = true, SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int Poll(ref PollDescriptor descriptor, nuint count, int timeout);
 #pragma warning restore SYSLIB1054
 
     public void Dispose()

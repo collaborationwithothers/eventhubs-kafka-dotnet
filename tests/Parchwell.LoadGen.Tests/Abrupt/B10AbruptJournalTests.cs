@@ -12,6 +12,65 @@ public sealed class B10AbruptJournalTests
     internal static B10AbruptWire.Identity Identity => new("test", "B10", "C1", "C1", 1, new('a', 40), "example/image@sha256:" + new string('b', 64), "test-c1-r1-loadgen", "first", "uid", "first", null);
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task Given_PartialFrameAtStoppedBoundary_When_RemainingBytesArrive_Then_RetainsAndCapturesExactlyOnce(int split)
+    {
+        using var input = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(input, new("ack", 2, B10AbruptWire.Element(new { acknowledged_sequence = 1 })), TestContext.Current.CancellationToken);
+        byte[] bytes = input.ToArray();
+        input.SetLength(split);
+        input.Position = 0;
+        bool closed = false;
+        var captured = new List<B10AbruptWire.Message>();
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => input.Position < input.Length || closed, captured.Add);
+        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(captured);
+        long position = input.Position;
+        input.Write(bytes.AsSpan(split));
+        input.Position = position;
+        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(2, Assert.Single(captured).Sequence);
+        Assert.False(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Single(captured);
+        closed = true;
+        Assert.True(await reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task Given_PartialAvailableFrame_When_PipeCloses_Then_CaptureRemainsIncomplete(int length)
+    {
+        using var input = new MemoryStream();
+        await B10AbruptWire.WriteMessageAsync(input, new("ack", 2, B10AbruptWire.Element(new { acknowledged_sequence = 1 })), TestContext.Current.CancellationToken);
+        input.SetLength(length);
+        input.Position = 0;
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => true, _ => Assert.Fail("partial_frame_captured"));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", error.Message);
+    }
+
+    [Theory]
+    [InlineData(0, "malformed_frame")]
+    [InlineData(65537, "frame_oversize")]
+    [InlineData(uint.MaxValue, "frame_oversize")]
+    public async Task Given_InvalidAvailableLength_When_Draining_Then_RejectsBeforeReadingBody(uint length, string failure)
+    {
+        byte[] header = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(header, length);
+        using var input = new MemoryStream(header);
+        using var reader = new B10AbruptWire.AvailableMessageReader(input, () => true, _ => Assert.Fail("invalid_frame_captured"));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_capture_gap:" + failure, error.Message);
+        Assert.Equal(4, input.Position);
+    }
+
+    [Theory]
     [InlineData(65535)]
     [InlineData(65536)]
     public async Task Given_BoundedBody_When_Read_Then_AcceptsExactlyPrefixLength(int size)
@@ -22,6 +81,11 @@ public sealed class B10AbruptJournalTests
         using var stream = Framed(body);
         Assert.Equal("hello", (await B10AbruptWire.ReadMessageAsync(stream, 1, TestContext.Current.CancellationToken))!.Kind);
         Assert.Null(await B10AbruptWire.ReadMessageAsync(stream, 2, TestContext.Current.CancellationToken));
+        using var availableStream = Framed(body);
+        var captured = new List<B10AbruptWire.Message>();
+        using var availableReader = new B10AbruptWire.AvailableMessageReader(availableStream, () => true, captured.Add, 1);
+        Assert.True(await availableReader.DrainAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("hello", Assert.Single(captured).Kind);
     }
 
     [Theory]
@@ -66,6 +130,10 @@ public sealed class B10AbruptJournalTests
     {
         using var stream = Framed(Encoding.UTF8.GetBytes(json));
         Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => B10AbruptWire.ReadMessageAsync(stream, 1, TestContext.Current.CancellationToken))).Message);
+        using var availableStream = Framed(Encoding.UTF8.GetBytes(json));
+        using var reader = new B10AbruptWire.AvailableMessageReader(availableStream, () => true, _ => Assert.Fail("malformed_frame_captured"), 1);
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken))).Message);
+        Assert.Equal("b10_abrupt_capture_gap:malformed_frame", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken))).Message);
     }
 
     [Theory]
@@ -75,6 +143,9 @@ public sealed class B10AbruptJournalTests
     {
         using var stream = Framed(Encoding.UTF8.GetBytes($"{{\"kind\":\"ack\",\"sequence\":{sequence},\"data\":{{\"acknowledged_sequence\":1}}}}"));
         Assert.Equal("b10_abrupt_capture_gap:sequence_gap", (await Assert.ThrowsAsync<InvalidDataException>(() => B10AbruptWire.ReadMessageAsync(stream, 1, TestContext.Current.CancellationToken))).Message);
+        stream.Position = 0;
+        using var reader = new B10AbruptWire.AvailableMessageReader(stream, () => true, _ => Assert.Fail("sequence_gap_captured"), 1);
+        Assert.Equal("b10_abrupt_capture_gap:sequence_gap", (await Assert.ThrowsAsync<InvalidDataException>(() => reader.DrainAvailableAsync(TestContext.Current.CancellationToken))).Message);
     }
 
     [Theory]
