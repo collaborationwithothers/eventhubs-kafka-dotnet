@@ -15,7 +15,17 @@ This pull request implements the approved diagnostic observability change for is
 
 ## Implementation and evidence
 
-Implementation and verification are in progress. No passing result or review is claimed yet. Evidence is retained outside the repository at `/workspace/scratch/issue404-child-implementation/`; program output is not committed.
+Implementation and local verification are complete. The tested source contents are recorded in `389f93a9d3f3bcad16aff8e7301053e042b7ddfc`; compilation began from the working tree with those contents before that local commit was created. Evidence is retained outside the repository at `/workspace/scratch/issue404-child-implementation/`; program output is not committed.
+
+The initial foundation invocation passed locked restore but stopped at four compile errors, all one root cause: throw-only regression lambdas selected xUnit's obsolete async overload. Explicit Action casts corrected all four instances without changing their assertions. The first consolidated correction-verification round reran the full foundation script because the initial build had prevented every test from running. It exited 0: Release build/analyzers, architecture checks, all populated test projects, published LoadGen fixture and both warning-as-error controls passed. No further test rerun is needed for the unchanged code.
+
+Machine-validated XML reports in `/tmp/parchwell-dotnet-verification.LrhNECUY/` show 9898 passes, zero failures/skips: architecture 16, enrichment 56, Kafka 486, LoadGen 1611, scenarios 340 and verifier 7389. Counts and the aggregate were computed by script. The complete LoadGen suite includes all new diagnostic regressions and the existing published-apphost check. The suite's successful process and synthetic controls do not establish a live cause or scientific eligibility.
+
+`dotnet --version` returned 10.0.402. `npm ci --ignore-scripts` and `npm run check:docs` exited 0 under Node 24.19.0. Eight advisory documentation warnings are all in unchanged files and receive the rule-8 blanket disposition; every changed document passed. `git diff --check` passed. Logs are `foundation-initial.log`, `foundation-correction-1.log`, `npm-ci.log`, and `docs-initial.log` under the evidence directory.
+
+The scripted scope audit found exactly the approved nine changed files, the same 28 failure rows, no C5 mutate-list intersection, byte-equivalent normalized P2-1 helper code and both exact P2-2 apphost expectations. No new five-second grace value occurs in the full PR's added lines. A whole-file search also finds four existing five-second test coordination guards; they are unchanged, unrelated to grace, and retained. C5 mutation acceptance is not required for this diff. `scope-audit.json` and `verification-results.json` retain the measured audit and counts outside the repository.
+
+Verification root causes disposed: 1 of the cap of 20. Correction-verification rounds used: 1 of 2; one remains for genuinely changed behavior/failure. Changed-file documentation-warning root causes: 0 of 20. Mandatory per-review documentation scans remain required. No test, gate, failure name or expectation was loosened to clear a failure.
 
 ### Approval choices and deadline arithmetic
 
@@ -48,4 +58,6 @@ Negative grace is unreachable because it is a fixed positive constant, not input
 
 ## Review record
 
-Comprehensive passes used: 0 of 2. Focused rounds used: 0 of 2. Hosted reviews requested: 0. No cold Claude report is yet available.
+Initial comprehensive cold review C1 is the next gate, on the complete nine-file diff and this receipt. Its exact frozen revision will be recorded in the review input manifest and the PR self-review record; this receipt describes the tested code commit above and does not try to describe its own containing commit. Comprehensive passes allocated: 1 of 2. Focused rounds used: 0 of 2. Hosted reviews requested: 0. No completed cold report is claimed yet.
+
+There is no Claude executable or callable Claude session/reviewer tool in this environment. The available fresh-context Codex reviewer will provide applicable cold coverage; the exact-head cold Claude report required by the approval remains an explicit gate before Hari merges. The plan permits opening the tested draft after available cold coverage while that report is pending. Neither the vendor requirement nor the cumulative review budget is waived.
