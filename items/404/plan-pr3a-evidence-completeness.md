@@ -1,8 +1,10 @@
 # PR3a evidence completeness contract-grade plan
 
-Revision 1. Issue 404, pull request short name `PR3a evidence completeness`. Implementing tool: Codex, as `items/404/state.md` records.
+Revision 2. Issue 404, pull request short name `PR3a evidence completeness`. Implementing tool: Codex, as `items/404/state.md` records.
 
-This pull request makes the first B10 abrupt producer publish the cohort evidence the verifier must reconcile on its own, and adds fatal-error capture to the supervisor journal. It changes the load generator, the trial phase script, their tests and the abrupt contract; it adds no verifier logic. Two points need Hari before approval: the extra uploads push the configured worst-case first-pod budget sum past the Job deadline (Q2), and the produced-byte export list sits in one protected verifier test (Q1).
+Changes since Revision 1 (commit `354f6fb64c894d1fc3f72d9c12a57f0362f2ad20`): folds in Hari's four decisions on its questions (6750864341, 6750879393, 6750891952, 6750940329); adds the per-file upload log line (4.6, R12, T14) that decision 6750940329 makes a condition; records the 1270 s budget arithmetic in the contract (R11); moves the three accepted deployment assumptions back to section 9 with links; replaces the inferred overlap list in 3.3 with the successor-fix plan's actual list; quotes the abrupt LoadGen test count with and without the published apphost (A1). Open questions: none.
+
+This pull request makes the first B10 abrupt producer publish the cohort evidence the verifier must reconcile on its own, and adds fatal-error capture to the supervisor journal. It changes the load generator, the trial phase script, their tests, the abrupt contract and one list in one protected verifier test; it adds no verifier logic, gate, failure name or budget. Hari merges it, because of that protected test file (decision 6750879393).
 
 ## 1. Goal and authority
 
@@ -17,10 +19,14 @@ Authority, in creation order (docs/agents/factory.md "Item lifecycle" step 3):
 - [6749565231](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749565231): the successor fix and the verifier are planned in parallel; both plans carry a never-ran inventory.
 - [6749995101](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749995101): the next step aims at a one-repeat diagnostic observation; "not a verdict, not a published result, and not an eligibility finding".
 - [6750021224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750021224) item 1: "PR3a, abrupt evidence completeness. Load generator, phase script and contract docs: publish the timeout and control cohort ledgers, inventories and post-drain reports and both arm pre-acceptance reports, and add fatal capture to the journal. Predecessor: the successor fix."
+- [6750864341](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750864341): accept the new first-pod worst-case sum; "PR3a records 1270 s in the contract the way 1030 s is recorded now, with the same statement that it is policy arithmetic, not measured. No budget, timeout, lifetime or Job deadline changes."
+- [6750879393](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750879393): PR3a "changes that file's `ExportNames` array from the 14 names to the 22 names, adding only the eight cohort file names ... so Hari merges PR3a. No other change to that file, and no second export directory."
+- [6750891952](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750891952): "Accept the reflection technique, in test code only. No production seam is added around Confluent.Kafka." If an upgrade removes or renames the member, "the fix is a planned change, not a skip."
+- [6750940329](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750940329): DA1, DA2 and DA3 accepted by name, on condition that "PR3a logs the duration of each cohort file upload, per file ... The plan pins the log line's stage name and fields. The log is operational and states no documentation prose ... It adds no gate, failure name or budget."
 
-Catch-up: state file covers comment 6746177383. Comments read after it: 6747016131 (completion report, not a decision), 6749565231, 6749995101 and 6750021224 (decisions, read in full). Snapshot before writing: 142 comments, issue `updated_at` 2026-11-09T19:59:55Z. The scope record for the whole verifier work is `items/404/plan-verifier.md` at `12adae761f268dbf20842f7c568c82000263422b`; this plan does not revise it.
+Catch-up: state file covers comment 6746177383. Comments read after it: 6747016131 (completion report, not a decision), 6749565231, 6749995101, 6750021224, 6750864341, 6750879393, 6750891952 and 6750940329 (decisions, read in full). Snapshot before writing Revision 2: 146 comments, none edited or deleted since Revision 1, issue `updated_at` 2026-11-09T20:41:56Z. The scope record for the whole verifier work is `items/404/plan-verifier.md` at `12adae761f268dbf20842f7c568c82000263422b`; this plan does not revise it.
 
-Predecessor: the successor fix (decision 6749565231 item 1), planned in parallel by another session and not merged when this revision was written. This plan is pinned against `main` at `f5cc496f`. Section 3.3 names the files both plans may touch; section 14's stop rule covers a successor-fix change to them.
+Predecessor: the successor fix (decision 6749565231 item 1), planned in parallel in `items/404/plan-successor-fix.md` (Revision 1, branch `claude/404-plan` at `d5b119a3`) and not merged when this revision was written. This plan is pinned against `main` at `f5cc496f`. Section 3.3 lists the files both plans change; section 14's stop rule covers a successor-fix change to them. Under decision 6708991894 this plan is rechecked against the successor fix once it merges.
 
 ## 2. Problem, with evidence
 
@@ -34,20 +40,22 @@ Predecessor: the successor fix (decision 6749565231 item 1), planned in parallel
 
 ### 3.1 Files allowed to change
 
-- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs`, `B10AbruptSupervisor.cs`, `B10AbruptWire.cs`, `B10AbruptChildChannel.cs`, `B10AbruptJournal.cs`, `B10AbruptHost.cs`, `B10AbruptProducer.cs`, `B10AbruptDiagnostics.cs` (new fact names only).
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs`, `B10AbruptSupervisor.cs`, `B10AbruptWire.cs`, `B10AbruptChildChannel.cs`, `B10AbruptJournal.cs`, `B10AbruptHost.cs`, `B10AbruptProducer.cs`, `B10AbruptDiagnostics.cs` (new `B10AbruptFact` and `B10AbruptStage` members only, 4.6).
 - `tests/Parchwell.LoadGen.Tests/Abrupt/*.cs` (new test classes and changes to existing assertions listed in section 8).
 - `infra/scripts/phase/b10_abrupt.py`, `infra/scripts/phase/tests/test_b10_abrupt.py`, `infra/scripts/phase/tests/check_b10_abrupt_producers.py`.
 - `docs/operations/b10-abrupt-contract.md`.
-- `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs`, `ExportNames` array only, if Hari answers Q1 with option (i). This file is protected.
+- `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs`: the `ExportNames` array only, from 14 to 22 names, adding only the eight `first/` cohort-file names of 4.1 and changing no other name, line or assertion (decision 6750879393). This file is protected; Hari merges.
 - `items/404/state.md` and the receipt `items/404/pr3a-receipt.md`.
 
 ### 3.2 Paths that must not change
 
-Everything under `src/Parchwell.Verifier/`, every other file under `tests/Parchwell.Verifier.Tests/`, `.github/workflows/**`, `docs/operations/workflows/**`, `charts/**`, `scenarios/**`, any `expected.yaml`, `results/**`, `docs/blueprint.md`, `docs/agents/**`, `AGENTS.md`, `CLAUDE.md`, `README.md`, any `*.csproj`, `Directory.*.props`, `*.sln*`, `src/Parchwell.LoadGen/Run/Evidence/**`, `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs`, `OwnedProducerProcess.cs`, `B10AbruptCgroup.cs`, `B10AbruptProc.cs`, `B10AbruptOptions.cs`. No new project, assembly reference or NuGet package.
+Everything under `src/Parchwell.Verifier/`, every other file under `tests/Parchwell.Verifier.Tests/` and every other line of `B10AbruptRejectionTests.cs`, `.github/workflows/**`, `docs/operations/workflows/**`, `charts/**`, `scenarios/**`, any `expected.yaml`, `results/**`, `docs/blueprint.md`, `docs/agents/**`, `AGENTS.md`, `CLAUDE.md`, `README.md`, any `*.csproj`, `Directory.*.props`, `*.sln*`, `src/Parchwell.LoadGen/Run/Evidence/**`, `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs`, `OwnedProducerProcess.cs`, `B10AbruptCgroup.cs`, `B10AbruptProc.cs`, `B10AbruptOptions.cs`. No new project, assembly reference or NuGet package.
 
-### 3.3 Files the successor fix may also touch
+### 3.3 Files the successor fix also changes
 
-From decision 6749565231 item 1 ("completes statistics while the producer is still live, then disposes it, then completes evidence, and adds completion diagnostics to the guard facts"), inferred, not read from its plan, which was not on the branch when this revision was written: `B10AbruptHost.cs` (`CreateProducerAsync` evidence completion), `B10AbruptProducer.cs` (`RunSuccessorAsync`, `CleanupAsync`), `B10AbruptDiagnostics.cs` (`B10AbruptFact` members), `docs/operations/b10-abrupt-contract.md`, `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs`, `B10AbruptWireProducerTests.cs`. PR3a changes the first five of these in different members: `B10AbruptHost.CreateProducerAsync` error handler only; `B10AbruptProducer` timeout and control seal objects only; `B10AbruptDiagnostics` added facts only; the contract's wire, publication and outcome-label text only.
+Actual list from `items/404/plan-successor-fix.md` section 2.1 at `d5b119a3`: `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs`, `B10AbruptHost.cs`, `B10AbruptDiagnostics.cs` (new `B10AbruptFact` members only), `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs`, `B10AbruptWireProducerTests.cs`, new file `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSuccessorCompletionTests.cs`, `items/404/state.md`, and its receipt `items/404/successor-fix-receipt.md`. It changes no file under `docs/`, `infra/` or `tests/Parchwell.Verifier.Tests/`.
+
+Shared with PR3a: `B10AbruptProducer.cs` (the successor fix changes `RunSuccessorAsync` and the members it calls; PR3a changes only the timeout and control seal objects), `B10AbruptHost.cs` (successor evidence completion; PR3a changes only the first child's error-handler wiring), `B10AbruptDiagnostics.cs` (both add `B10AbruptFact` members; PR3a also adds one `B10AbruptStage` member), `B10AbruptProducerTests.cs`, `B10AbruptWireProducerTests.cs` (the successor fix moves the exporter's successor half onto the real statistics chain, its T7; PR3a changes the first-instance half and the exported count), and `items/404/state.md`. Both plans keep every source file inside the 12 files that `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs` scans; PR3a adds no source file.
 
 ## 4. External contracts
 
@@ -107,6 +115,18 @@ No reason text, broker name or other free text is carried. The journal frame's `
 - New phase-status boundary literal `first_cohort_publication`.
 - The predecessor binding written to `predecessor-binding.json` and mounted for the successor keeps exactly its current `files` members: the six names of `FIRST_FILES` without `journal.jsonl`.
 
+### 4.6 Cohort file upload log line
+
+One timeline entry per cohort-file upload attempt, held by the supervisor and written with its other held lines at `publication_complete` or `abort_complete`, in the existing format of `docs/operations/b10-abrupt-contract.md` "Failure report observability":
+
+`b10_abrupt_stage {"role":"supervisor","stage":"cohort_file_uploaded","elapsed_ms":<timeline ms>,"ticks":<monotonic ticks>,"facts":{"name_index":<i>,"file_length":<bytes>,"elapsed_milliseconds":<ms>,"budget_milliseconds":30000,"upload_succeeded":<0 or 1>}}`
+
+- Stage `cohort_file_uploaded`: new `B10AbruptStage` member `CohortFileUploaded`, added to the contract's supervisor stage list.
+- Facts, exactly these five in this order: `name_index` (existing fact; the file's position 0 to 7 in the 4.1 cohort table), `file_length` (existing; bytes uploaded), `elapsed_milliseconds` (existing; whole milliseconds from immediately before the storage create call to immediately after the read-back comparison returns or the first exception), `budget_milliseconds` (existing; the existing per-upload budget, 30000), `upload_succeeded` (new `B10AbruptFact` member `UploadSucceeded`; 1 when the read-back matched, 0 otherwise).
+- An attempt that fails records its entry before the failure propagates; no entry is recorded for a file not attempted.
+- The line is operational. It carries no file name, path, payload or prose, adds no gate, failure name or budget, and changes no failure handling.
+- Entry count: trial 7's supervisor wrote 32 stage lines on its successful path (counted by script from the first-pod log); eight more give 40, within the existing cap of 48 entries per process (`B10AbruptDiagnostics.MaximumTimelineEntries`).
+
 ## 5. Requirements
 
 Publication:
@@ -124,11 +144,14 @@ Fatal capture:
 - R10. WHEN `b10_abrupt.py` accepts the first publication, THEN it also requires: the journal's `native_error` frames have `capture_sequence` 1 to n in journal order; `termination` `native_error_count` equals n and `native_fatal_count` equals the number with `is_fatal` true; both seals have `fatal_capture_status` `journal` and `native_error_count` at most n; `termination` `fatal_capture_status` is `journal_through_eof`. Failure as R4.
 
 Contract:
-- R11. `docs/operations/b10-abrupt-contract.md` states 4.1 to 4.5 once, in "Wire and state machine" and the publication text, replaces the sentence "Fatal coverage beyond existing ordinary capture is explicitly unavailable until PR3." with one stating what the journal now covers (every first-child error callback through event-stream EOF; the native tail after the kill remains unknown), and changes the outcome-labels line to the literals of 4.4. It claims no absence of fatal errors.
+- R11. `docs/operations/b10-abrupt-contract.md` states 4.1 to 4.6 once, in "Wire and state machine", the publication text and "Failure report observability", replaces the sentence "Fatal coverage beyond existing ordinary capture is explicitly unavailable until PR3." with one stating what the journal now covers (every first-child error callback through event-stream EOF; the native tail after the kill remains unknown), and changes the outcome-labels line to the literals of 4.4. It claims no absence of fatal errors. Under decision 6750864341 it records the new sum exactly as the old one is recorded, with these replacements and no other change to that paragraph's meaning:
+  - in the "First-pod configured-stage worst-case sum" paragraph, `+ 6 * 30 = 1030 s` becomes `+ 14 * 30 = 1270 s`; "and the six post-kill uploads used by the [lifetime calculation in the Revision 1 check](...)" becomes "and the fourteen post-kill uploads: the six used by the [lifetime calculation in the Revision 1 check](...) and the eight cohort files accepted by [decision 6750864341](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750864341)"; "The sum exceeds the 900 s process lifetime by 130 s and is below the 1140 s Job deadline by 110 s." becomes "The sum exceeds the 900 s process lifetime by 370 s and the 1140 s Job deadline by 130 s."; "No timeout or publication order is changed." becomes "No timeout is changed, and the existing members keep their publication order.";
+  - in the script, the comment line becomes `# Unchanged ADR-021 policy; six uploads in the linked lifetime calculation plus eight cohort files.`, `uploads = 30, 120, 10, 10, 10, 6` becomes `uploads = 30, 120, 10, 10, 10, 14`, and `# 1030 130 110` becomes `# 1270 370 -130`.
+- R12. WHEN the supervisor attempts to publish a cohort file, THEN it holds exactly one `cohort_file_uploaded` entry for that attempt as 4.6, success or failure, and writes it with the held lines at `publication_complete` or `abort_complete`. No other behaviour changes.
 
 ## 6. Invariants and safety
 
-- No change to any protocol sequence, gate, policy value, failure name, verdict rule, timeout or ADR text. The only new literals are those in section 4. Q2 asks Hari about the budget arithmetic; PR3a changes no budget.
+- No change to any protocol sequence, gate, policy value, failure name, verdict rule, timeout or ADR text. The only new literals are those in section 4. No budget changes; the contract records the new 1270 s sum as policy arithmetic (decision 6750864341).
 - No change to pre-release timing work: the eight cohort files are not downloaded before successor release (R4, R5).
 - The successor's mounted binding does not grow (R3); a ConfigMap carrying the 26441293-byte trial 7 timeout ledger would not be possible.
 - The timeout cohort's `timeout-ledger.jsonl` and `timeout-manifest.json` are schema-one ordinary bytes. They are published only under `b10-abrupt-diagnostic/`, never under `producer/`, and carry no index or schema-one completion receipt. The ordinary verifier path lists only `producer/` (`VerifyRunHandler.cs:41,47`), so no reader admits them; PR3a changes no verifier code.
@@ -155,6 +178,7 @@ Evidence: the seven trial runs and artifact zips recorded in `items/404/plan-ver
 | E12 Seal coverage check | No | No line shows it | T8 |
 | E13 Termination fatal coverage counts | No | Trial 7 `termination.json` has `not_implemented_pr3` | T10, T1 |
 | E14 Native fatal error delivered by the deployed producer | No line shows it | No fatal error occurred in any trial | T6 raises a real librdkafka fatal error offline; broker-caused delivery on the pinned image is DA2 |
+| E15 Per-file cohort upload log line | No; not implemented | No such line in any trial log | T14 on the real supervisor timeline and captured stderr |
 
 Fixtures: PR3a uses produced bytes from the existing export (`B10AbruptWireProducerTests`, acceptance A3) and fresh files written by its own tests. It commits no trial artifact.
 
@@ -174,14 +198,15 @@ New test classes: `B10AbruptFatalCaptureTests` and `B10AbruptPublicationTests` i
 - T10 (R9). Supervisor run with two `native_error` frames before the kill, one with `is_fatal` true, and one after the kill: `termination.json` `native_error_count` 3, `native_fatal_count` 1, `fatal_capture_status` `journal_through_eof`, `native_tail` `unknown_due_to_intended_kill`.
 - T11 (R6). A `native_error` enqueue with the channel's 256-message queue full latches `queue_full`; the next written message is `capture_gap` with reason `queue_full`.
 - T12. `check_b10_abrupt_producers.py` on the new export prints exactly `b10_abrupt_produced_bytes_checked`.
-- T13. `B10AbruptRejectionTests` passes with the export of T1 (Q1).
+- T13. `B10AbruptRejectionTests` passes with the export of T1, with `ExportNames` holding the 22 names. The file's diff against `main` adds exactly eight lines' worth of names, the eight `first/` cohort names of 4.1, and changes nothing else.
+- T14 (R12). Publication through a storage wrapper over the test `FileStorage` whose create call advances the supervisor's test clock by exactly 250 ms for each cohort file. Expected on the captured supervisor stderr: exactly eight `cohort_file_uploaded` lines, with `name_index` 0 to 7 in order, `file_length` equal to each published file's length, `elapsed_milliseconds` 250, `budget_milliseconds` 30000, `upload_succeeded` 1, the five fact names in the order of 4.6 and no other fact; written after the `selection_finalized` line and before the `publication_complete` line; timeline `dropped` 0. Failure case: the wrapper advances the clock 30000 ms and then throws for `name_index` 1 (`timeout-ledger.jsonl`): exactly two `cohort_file_uploaded` lines, `name_index` 0 with `upload_succeeded` 1 and `name_index` 1 with `upload_succeeded` 0 and `elapsed_milliseconds` 30000; failure `b10_abrupt_publication_ambiguous` as today; the lines are written with `abort_complete`.
 
 ## 9. Deployment assumptions
 
-Each blocks approval until Hari accepts it by name or names a test (factory.md "Item lifecycle" steps 1 and 3); all are under "Open questions for Hari".
-- DA1. The pod's blob upload of each cohort file completes within the existing 30 s per-upload budget. Trial 7 sizes: 36311952 bytes in total for the eight files, the largest 26441293. Policy limits allow 268435456 per object and 1073741824 in aggregate (`B10AbruptPublisher.PublishAsync`). One live observation: the existing post-selection uploads took 159 ms from `selection_finalized` to `publication_complete` in trial 7 for objects totalling 53981 bytes, computed by script from the supervisor log; that is not a measurement for the larger files.
-- DA2. A fatal error that the broker causes in the deployed producer reaches the error handler as T6's fabricated one does. T6 uses librdkafka's documented test hook ("this method allows an application to trigger fabricated fatal errors in tests to check its error handling code", `src/rdkafka.h` at v2.16.0, lines 852-866). Offline evidence: Ubuntu 24.04 with .NET runtime 10.0.13 loaded the `centos8-librdkafka.so` variant; the LoadGen image base is `mcr.microsoft.com/dotnet/aspnet:10.0.13-noble` (`Parchwell.LoadGen.csproj:8`). Which variant the image loads is not verified.
-- DA3. The added upload time before first-pod completion leaves the successor ready before the 120 s release boundary. Not measured.
+Each was accepted by name in [decision 6750940329](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750940329), on the condition that R12's per-file upload log line exists (factory.md "Item lifecycle" step 3).
+- DA1. Each of the eight cohort file uploads completes within the existing 30 s per-upload budget. Trial 7 sizes: 36311952 bytes in total, the largest 26441293. Policy limits allow 268435456 per object and 1073741824 in aggregate (`B10AbruptPublisher.PublishAsync`). The only live timing: 159 ms from `selection_finalized` to `publication_complete` in trial 7 for objects totalling 53981 bytes, computed by script from the supervisor log; not a measurement for the larger files. R12 makes a failure diagnosable per file.
+- DA2. A broker-caused fatal error reaches the error handler as T6's fabricated one does, on the librdkafka build the LoadGen image loads. T6 uses librdkafka's documented test hook ("this method allows an application to trigger fabricated fatal errors in tests to check its error handling code", `src/rdkafka.h` at v2.16.0, lines 852-866). Offline evidence: Ubuntu 24.04 with .NET runtime 10.0.13 loaded the `centos8-librdkafka.so` variant; the LoadGen image base is `mcr.microsoft.com/dotnet/aspnet:10.0.13-noble` (`Parchwell.LoadGen.csproj:8`). Which variant the image loads is not verified.
+- DA3. The added upload time before first-pod completion still leaves the successor ready before the 120 s release boundary. Not measured; R12 makes it diagnosable.
 
 ## 10. Acceptance commands
 
@@ -193,7 +218,7 @@ Each command was run in this planning session on a clean worktree of `main` at `
   dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release --no-build --no-restore --output <publish directory>
   PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST=<publish directory>/Parchwell.LoadGen dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj -c Release --no-build -- --filter-class "*B10Abrupt*"
   ```
-  Observed: `total: 457` `failed: 0` `skipped: 0`, exit 0. After: exit 0, `failed: 0`, `skipped: 0`, total 457 plus the new test methods.
+  Observed with the published apphost: `total: 457` `succeeded: 457` `failed: 0` `skipped: 0`, exit 0. Observed without `PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST`: `total: 457` `succeeded: 456` `skipped: 1` (`B10AbruptPublishedApphostTests`, reserved to CI), exit 0. After: exit 0, `failed: 0`, totals 457 plus the new test methods, and the successor fix's additions once it has merged; `skipped` 0 with the apphost, 1 without.
 - A2 new fatal-capture tests: `dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj -c Release --no-build -- --filter-class "*B10AbruptFatal*"`. Observed: zero tests, `Test run completed with non-success exit code: 8`. After: exit 0, `failed: 0`, `skipped: 0`.
 - A3 produced-byte export and checker:
   ```
@@ -206,7 +231,7 @@ Each command was run in this planning session on a clean worktree of `main` at `
 - A6 architecture: `PARCHWELL_REPOSITORY_ROOT=$PWD dotnet test --project tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj -c Release --no-build -- --filter-class "*B10Abrupt*"`. Observed: `total: 1` `failed: 0`. Without the variable it fails with "Run ./scripts/verify-dotnet.sh to identify the repository root."; that is not a pass. After: the same pass.
 - A7 documentation: `npm ci --ignore-scripts && npm run check:docs` and `git diff --check`. Observed: `8 warnings`, in `docs/agents/factory.md`, `docs/operations/evidence/issue-124/README.md`, `issue-140/README.md` and `issue-211/receipt.md`, none in a file PR3a changes. After: no warning in a changed file.
 - A8 remaining placeholder literal: `grep -rn not_implemented_pr3 src/Parchwell.LoadGen infra/scripts/phase/b10_abrupt.py`. Observed on `main`: 9 lines. After: exactly 3, in `B10AbruptWire.cs` (the `capabilities` check), `B10AbruptProducer.cs` (successor fallback `capabilities`) and `B10AbruptStatistics.cs` (`SealCohort`).
-- A9 budget arithmetic (the contract's own script with `uploads` 6 and 14): observed `6 1030 130 110` and `14 1270 370 -130`, meaning worst case, excess over the 900 s lifetime, margin below the 1140 s Job deadline.
+- A9 budget arithmetic: the contract's script, from repository root. Observed on `main` with `uploads` 6: `1030 130 110`; with `uploads` 14: `1270 370 -130` (worst case, excess over the 900 s lifetime, margin below the 1140 s Job deadline). After R11: the committed script prints `1270 370 -130`.
 - A10 offline fatal reproduction (scratch program, not committed; `Program.cs` SHA-256 `9a089406f4c85d1b62f4496a17fda7851daeacff534363caa62495ca668578db`, project SHA-256 `20351c8a80ac19d8c6492ab651cf2f6c5e5d2cf04c8c36e7ed45679091c95774`, run three times with no `bootstrap.servers`). Observed each time: `loaded=centos8-librdkafka.so`, `rc=0 member=property getter_public=False type=Confluent.Kafka.Impl.SafeKafkaHandle`, then the error handler's only callback `code=45 name=OutOfOrderSequenceNumber is_error=True is_fatal=True`. With `bootstrap.servers` `127.0.0.1:1` the handler also received `-195 Local_Transport` and `-187 Local_AllBrokersDown` (not fatal), so T6 sets no bootstrap server.
 
 ## 11. Plan-check questions
@@ -215,7 +240,7 @@ Each command was run in this planning session on a clean worktree of `main` at `
 
 (b) Stricter than the parent: the never-ran inventory and real-input tests (decision 6749565231); T6's real native fatal error, where the item plan required only production-byte synthetic tests.
 
-(c) Dependencies neither on `main` nor in the pull request: the successor fix (section 3.3, stop rule); DA1 to DA3.
+(c) Dependencies neither on `main` nor in the pull request: the successor fix (section 3.3, stop rule); DA1 to DA3, accepted by decision 6750940329 with R12 as its condition.
 
 ## 12. Sources
 
@@ -226,11 +251,8 @@ Each command was run in this planning session on a clean worktree of `main` at `
 
 ## 13. Open questions for Hari
 
-- Q1. Protected test file. The produced-byte export is checked by `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs`, which requires the export directory to hold exactly 14 named files (lines 24-30, 115-125). Decision 6750021224 lists PR3a as load generator, phase script and contract docs. Options: (i) PR3a also changes that file's `ExportNames` array to the 22 names, a protected path that Hari merges (recommended: one list, and the export keeps carrying every published member); (ii) the export writes the cohort files to a second directory named by a new environment variable, so the protected file is untouched, at the cost of test plumbing that the scope record's PR3b must then also read.
-- Q2. Budget arithmetic. Eight more 30 s upload budgets raise the configured first-pod worst-case sum from 1030 s to 1270 s, 130 s past the 1140 s Job deadline (A9). The sum is policy arithmetic, not a measured duration, and smaller enclosing deadlines already win. Options: (i) accept, and record the new sum in the contract as the existing text records 1030 s; (ii) give the eight cohort files one shared upload budget, a policy change; (iii) another choice. PR3a changes no budget until Hari decides.
-- Q3. DA1 (cohort file upload within 30 s each), DA2 (broker-caused fatal delivery like the test hook, and the image's librdkafka variant) and DA3 (successor still ready before release): accept each by name or name a test.
-- Q4. T6 reads a non-public Confluent.Kafka property (`Handle.LibrdkafkaHandle`) by reflection and calls librdkafka's test hook. AGENTS.md "Engineering standards" puts seams "at our own boundaries, not around Confluent.Kafka"; this adds no seam in production code, but the test depends on an internal member of the pinned 2.16.0 package. Accept this test technique, or require another.
+None. Revision 1's four questions are decided: the budget sum by 6750864341, the protected test list by 6750879393, the reflection technique by 6750891952 and the deployment assumptions by 6750940329.
 
 ## 14. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change anything in section 4, a requirement in section 5 or the scope in section 3. It also stops when the merged successor fix has changed, in a file of section 3.3, any member that PR3a changes, `FirstMembers`, `SuccessorMembers`, the seal, manifest or termination objects, or the predecessor binding; this plan is then revised and rechecked against it before implementation. The disposition caps in section 11 stop with their stated exhaustion action.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change anything in section 4, a requirement in section 5 or the scope in section 3. It also stops when the merged successor fix differs from `items/404/plan-successor-fix.md` at `d5b119a3` in a way that touches a file of section 3.3 in a member PR3a changes, or changes `FirstMembers`, `SuccessorMembers`, the seal, manifest or termination objects, the predecessor binding, the `B10AbruptFact` or `B10AbruptStage` lists beyond added members, or the exporter's first-instance half; this plan is then revised and rechecked against it before implementation. A Confluent.Kafka change that removes or renames `Handle.LibrdkafkaHandle` is a planned change, not a skip (decision 6750891952). The disposition caps in section 11 stop with their stated exhaustion action.
